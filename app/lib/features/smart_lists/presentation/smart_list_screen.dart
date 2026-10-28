@@ -8,6 +8,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/saved_filter_repository_providers.dart';
@@ -335,6 +336,7 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
       body: buildRefreshable(
         list,
         loadingLabel: l10n.projectTasksLoading,
+        maxWidth: ReadableWidth.list,
         builder: (value, notice) {
           final loadedAt = value.loadedAt;
           final local = value.evaluation == FilterEvaluation.local;

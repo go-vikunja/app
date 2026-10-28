@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
@@ -229,6 +230,7 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
               onPickParent: () => unawaited(_pickParent()),
             ),
           (_, true) => CenteredScrollView(
+            maxWidth: ReadableWidth.form,
             child: EmptyState(
               icon: Icons.search_off,
               title: l10n.projectGoneTitle,
@@ -236,6 +238,7 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
             ),
           ),
           _ => CenteredScrollView(
+            maxWidth: ReadableWidth.form,
             child: LoadingPlaceholder(label: l10n.projectsLoading),
           ),
         },
@@ -283,90 +286,93 @@ class _Form extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final hasTitle = titleController.text.trim().isNotEmpty;
     final descriptionText = htmlToPlainText(description);
-    return ListView(
-      padding: const EdgeInsets.only(top: 8, bottom: 32),
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: titleController,
-            enabled: enabled,
-            // Wraps, but Return moves on instead of adding a line.
-            maxLines: null,
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.next,
-            textCapitalization: TextCapitalization.sentences,
-            inputFormatters: [CodePointLimitFormatter(projectTitleMaxLength)],
-            decoration: InputDecoration(
-              labelText: l10n.projectTitleLabel,
-              errorText: !hasTitle
-                  ? l10n.projectTitleRequired
-                  : titleTooLong
-                  ? l10n.projectTitleTooLong
-                  : null,
-              errorMaxLines: 3,
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.form,
+      builder: (_, _, inset) => ListView(
+        padding: EdgeInsets.fromLTRB(inset, 8, inset, 32),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: titleController,
+              enabled: enabled,
+              // Wraps, but Return moves on instead of adding a line.
+              maxLines: null,
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.next,
+              textCapitalization: TextCapitalization.sentences,
+              inputFormatters: [CodePointLimitFormatter(projectTitleMaxLength)],
+              decoration: InputDecoration(
+                labelText: l10n.projectTitleLabel,
+                errorText: !hasTitle
+                    ? l10n.projectTitleRequired
+                    : titleTooLong
+                    ? l10n.projectTitleTooLong
+                    : null,
+                errorMaxLines: 3,
+              ),
+              onChanged: (_) => onChanged(),
             ),
-            onChanged: (_) => onChanged(),
           ),
-        ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: identifierController,
-            enabled: enabled,
-            style: AppTheme.monospace,
-            maxLength: projectIdentifierMaxLength,
-            autocorrect: false,
-            enableSuggestions: false,
-            textCapitalization: TextCapitalization.characters,
-            textInputAction: TextInputAction.done,
-            inputFormatters: [
-              _UpperCaseFormatter(),
-              CodePointLimitFormatter(projectIdentifierMaxLength),
-            ],
-            decoration: InputDecoration(
-              labelText: l10n.projectIdentifierLabel,
-              helperText: l10n.projectIdentifierHelp,
-              helperMaxLines: 6,
-              errorText: identifierError,
-              errorMaxLines: 4,
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: identifierController,
+              enabled: enabled,
+              style: AppTheme.monospace,
+              maxLength: projectIdentifierMaxLength,
+              autocorrect: false,
+              enableSuggestions: false,
+              textCapitalization: TextCapitalization.characters,
+              textInputAction: TextInputAction.done,
+              inputFormatters: [
+                _UpperCaseFormatter(),
+                CodePointLimitFormatter(projectIdentifierMaxLength),
+              ],
+              decoration: InputDecoration(
+                labelText: l10n.projectIdentifierLabel,
+                helperText: l10n.projectIdentifierHelp,
+                helperMaxLines: 6,
+                errorText: identifierError,
+                errorMaxLines: 4,
+              ),
+              onChanged: (_) {
+                onIdentifierChanged();
+                onChanged();
+              },
             ),
-            onChanged: (_) {
-              onIdentifierChanged();
-              onChanged();
-            },
           ),
-        ),
-        const SizedBox(height: 8),
-        ParentProjectTile(
-          label: parentLabel,
-          onTap: enabled ? onPickParent : null,
-        ),
-        FormSectionTitle(l10n.taskEditColour),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: IgnorePointer(
-            ignoring: !enabled,
-            child: ColorRow(value: hexColor, onChanged: onColorChanged),
+          const SizedBox(height: 8),
+          ParentProjectTile(
+            label: parentLabel,
+            onTap: enabled ? onPickParent : null,
           ),
-        ),
-        const SizedBox(height: 16),
-        ListTile(
-          leading: Icon(Icons.notes, color: colors.onSurfaceVariant),
-          title: Text(l10n.projectEditDescription),
-          subtitle: Text(
-            descriptionText.isEmpty
-                ? l10n.projectEditNoDescription
-                : descriptionText,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
+          FormSectionTitle(l10n.taskEditColour),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: IgnorePointer(
+              ignoring: !enabled,
+              child: ColorRow(value: hexColor, onChanged: onColorChanged),
+            ),
           ),
-          trailing: const Icon(Icons.chevron_right),
-          enabled: onEditDescription != null,
-          onTap: onEditDescription,
-        ),
-      ],
+          const SizedBox(height: 16),
+          ListTile(
+            leading: Icon(Icons.notes, color: colors.onSurfaceVariant),
+            title: Text(l10n.projectEditDescription),
+            subtitle: Text(
+              descriptionText.isEmpty
+                  ? l10n.projectEditNoDescription
+                  : descriptionText,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            enabled: onEditDescription != null,
+            onTap: onEditDescription,
+          ),
+        ],
+      ),
     );
   }
 }

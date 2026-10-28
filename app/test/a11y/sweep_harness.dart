@@ -5,9 +5,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 
+import '../helpers/large_screens.dart';
 import '../helpers/pump_app.dart';
+import 'readable_widths.dart';
 import 'sweep_guidelines.dart';
 
 const Set<TargetPlatform> bothPlatforms = {
@@ -24,6 +28,20 @@ const sweepLocales = [Locale('en'), Locale('de')];
 const maxScrollStops = 10;
 
 enum SweepKind { route, overlay, state }
+
+/// The phone of the 36a sweep, or the platform's tablet (step 36b): an
+/// Android tablet at 1280×800, an 11" iPad at 1194×834, or turned.
+enum SweepSurface {
+  phone,
+  tabletLandscape,
+  tabletPortrait;
+
+  String get label => switch (this) {
+    phone => 'phone',
+    tabletLandscape => 'tablet landscape',
+    tabletPortrait => 'tablet portrait',
+  };
+}
 
 typedef SweepStep = Future<void> Function(
   WidgetTester tester,
@@ -135,8 +153,10 @@ List<(String, AccessibilityGuideline)> sweepGuidelines(
   ('distinct tap labels', distinctTapLabelGuideline),
 ];
 
-/// One test per scenario, brightness and language, each on the scenario's
-/// platforms.
+/// One test per scenario, brightness and language on the phone, each on
+/// the scenario's platforms. On the tablet in both orientations, dark and
+/// in both languages, one test with the guidelines and the readable-width
+/// checks, and one at 200 % text that only looks for an overflow.
 void sweep(List<SweepScenario> scenarios) {
   for (final scenario in scenarios) {
     for (final brightness in Brightness.values) {
@@ -154,24 +174,66 @@ void sweep(List<SweepScenario> scenarios) {
         );
       }
     }
+    for (final surface in [
+      SweepSurface.tabletLandscape,
+      SweepSurface.tabletPortrait,
+    ]) {
+      for (final largeText in [false, true]) {
+        for (final locale in sweepLocales) {
+          testWidgets(
+            '${scenario.title} ${surface.label}${largeText ? ' 200 %' : ''} '
+            'dark ${locale.languageCode}',
+            (tester) => runScenario(
+              tester,
+              scenario,
+              brightness: Brightness.dark,
+              locale: locale,
+              surface: surface,
+              largeText: largeText,
+            ),
+            variant: TargetPlatformVariant(scenario.platforms),
+            timeout: const Timeout(Duration(seconds: 30)),
+          );
+        }
+      }
+    }
   }
 }
 
+Size _surfaceSize(SweepSurface surface, SweepScenario scenario) {
+  final apple = defaultTargetPlatform == TargetPlatform.iOS;
+  return switch (surface) {
+    SweepSurface.phone => apple ? scenario.iOSSurface ?? phoneSize : phoneSize,
+    SweepSurface.tabletLandscape =>
+      apple ? iPad11Landscape : androidTabletLandscape,
+    SweepSurface.tabletPortrait =>
+      apple ? iPad11Portrait : androidTabletPortrait,
+  };
+}
+
+/// With [largeText] the text is at 200 % and the guidelines stay off: the
+/// screen only has to show, without an overflow at any scroll stop.
 Future<void> runScenario(
   WidgetTester tester,
   SweepScenario scenario, {
   required Brightness brightness,
   required Locale locale,
+  SweepSurface surface = SweepSurface.phone,
+  bool largeText = false,
 }) async {
-  usePhoneSurface(
-    tester,
-    logicalSize: defaultTargetPlatform == TargetPlatform.iOS
-        ? scenario.iOSSurface ?? phoneSize
-        : phoneSize,
-  );
+  final size = _surfaceSize(surface, scenario);
+  if (surface == SweepSurface.phone) {
+    usePhoneSurface(tester, logicalSize: size);
+  } else {
+    useWindow(tester, size);
+  }
   useLocale(tester, locale);
   tester.platformDispatcher.platformBrightnessTestValue = brightness;
   addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+  if (largeText) {
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+  }
 
   final l10n = lookupAppLocalizations(locale);
   await scenario.setUp(tester, l10n);
@@ -188,9 +250,14 @@ Future<void> runScenario(
   }
   expect(scenario.expectScreen(l10n), findsOneWidget);
   expect(tester.takeException(), isNull);
+  if (surface != SweepSurface.phone && !largeText) {
+    _expectReadableWidths(tester, scenario);
+  }
 
   final failures = <String>[];
-  final guidelines = sweepGuidelines(defaultTargetPlatform);
+  final guidelines = largeText
+      ? const <(String, AccessibilityGuideline)>[]
+      : sweepGuidelines(defaultTargetPlatform);
   Future<void> evaluate(String where) async {
     for (final (name, guideline) in guidelines) {
       final evaluation = await guideline.evaluate(tester);
@@ -201,7 +268,7 @@ Future<void> runScenario(
   }
 
   await evaluate('first frame');
-  final position = _mainScrollPosition(tester);
+  final position = _mainScrollable(tester)?.position;
   for (var stop = 1; stop < maxScrollStops && position != null; stop++) {
     if (position.extentAfter <= 0) break;
     position.jumpTo(
@@ -236,19 +303,159 @@ Future<void> _settle(WidgetTester tester, SweepScenario scenario) async {
 
 /// The largest vertical list in front: a sheet's or a dialog's over the
 /// page below.
-ScrollPosition? _mainScrollPosition(WidgetTester tester) {
-  ScrollPosition? largest;
+ScrollableState? _mainScrollable(WidgetTester tester) {
+  ScrollableState? largest;
   var largestArea = 0.0;
   for (final element in find.byType(Scrollable).hitTestable().evaluate()) {
     final state = (element as StatefulElement).state as ScrollableState;
-    final position = state.position;
-    if (position.axis != Axis.vertical) continue;
+    if (state.position.axis != Axis.vertical) continue;
     final size = element.size ?? Size.zero;
     final area = size.width * size.height;
     if (area > largestArea) {
-      largest = position;
+      largest = state;
       largestArea = area;
     }
   }
   return largest;
+}
+
+/// What a card keeps clear of its band's edges.
+const _cardMargin = 16.0;
+
+/// A capped screen's main list spans the window beside the rail, so its
+/// margins scroll, and its boxes fill the band; an uncapped screen reaches
+/// past the list band, a screen with its own cap keeps to it; an overlay
+/// keeps to its cap.
+void _expectReadableWidths(WidgetTester tester, SweepScenario scenario) {
+  switch (scenario.kind) {
+    case SweepKind.route:
+      switch (readableWidths[scenario.key]) {
+        case ReadableClass.list840:
+          _expectInBand(tester, scenario, ReadableWidth.list);
+        case ReadableClass.form640:
+          _expectInBand(tester, scenario, ReadableWidth.form);
+        case ReadableClass.uncapped:
+          _expectPastListBand(tester, scenario);
+        case ReadableClass.ownCap:
+          _expectWithinOwnCap(tester, scenario);
+        case null:
+          return;
+      }
+    case SweepKind.overlay:
+      final picker = find.byWidgetPredicate(
+        (widget) => widget is DatePickerDialog || widget is TimePickerDialog,
+      );
+      if (find.byType(Dialog).evaluate().isNotEmpty &&
+          picker.evaluate().isEmpty) {
+        expect(
+          dialogRect(tester).width,
+          lessThanOrEqualTo(ReadableWidth.dialog + layoutTolerance),
+        );
+      }
+      if (find.byType(BottomSheet).evaluate().isNotEmpty) {
+        expect(
+          bottomSheetRect(tester).width,
+          lessThanOrEqualTo(materialSheetMaxWidth + layoutTolerance),
+        );
+      }
+      if (find.byType(ReadableSheetWidth).evaluate().isNotEmpty) {
+        final card = iOSSheetContentRect(tester);
+        expect(
+          card.width,
+          lessThanOrEqualTo(ReadableWidth.sheet + layoutTolerance),
+        );
+        expect(
+          card.center.dx,
+          moreOrLessEquals(
+            windowSize(tester).width / 2,
+            epsilon: layoutTolerance,
+          ),
+        );
+      }
+    case SweepKind.state:
+      return;
+  }
+}
+
+Rect _rectOf(WidgetTester tester, Element element) => tester.getRect(
+  find.byElementPredicate((candidate) => candidate == element),
+);
+
+Finder _mainList(WidgetTester tester, SweepScenario scenario) {
+  final scrollable = _mainScrollable(tester);
+  expect(scrollable, isNotNull, reason: '${scenario.key} has no list');
+  return find.byElementPredicate((element) => element == scrollable!.context);
+}
+
+/// Every box lies in the band, and the outermost reach its edges but for
+/// a card's margin: a narrower cap, or an inset applied twice, fails.
+void _expectInBand(
+  WidgetTester tester,
+  SweepScenario scenario,
+  double maxWidth,
+) {
+  final list = _mainList(tester, scenario);
+  expectFillsBand(tester.getRect(list), (
+    left: railRight(tester),
+    right: windowSize(tester).width,
+  ), reason: 'the list of ${scenario.key} spans the window');
+  final (boxes, _) =
+      readableBoxOverrides[scenario.key] ?? (readableContentBoxes, '');
+  final inList = find.descendant(of: list, matching: boxes);
+  expect(inList, findsAtLeastNWidgets(1), reason: scenario.key);
+  final band = readableBand(tester, maxWidth);
+  final found = [
+    for (final box in inList.evaluate())
+      (type: box.widget.runtimeType, rect: _rectOf(tester, box)),
+  ];
+  for (final (:type, :rect) in found) {
+    expectInBand(rect, band, reason: '$type of ${scenario.key}');
+  }
+  final rects = found.map((box) => box.rect);
+  expect(
+    rects.map((rect) => rect.left).reduce(math.min),
+    lessThanOrEqualTo(band.left + _cardMargin + layoutTolerance),
+    reason: 'the content of ${scenario.key} reaches the start of its band',
+  );
+  expect(
+    rects.map((rect) => rect.right).reduce(math.max),
+    greaterThanOrEqualTo(band.right - _cardMargin - layoutTolerance),
+    reason: 'the content of ${scenario.key} reaches the end of its band',
+  );
+}
+
+/// Where the list band leaves margins, some box of the screen lies in
+/// them.
+void _expectPastListBand(WidgetTester tester, SweepScenario scenario) {
+  final boxes = uncappedContentBoxes.evaluate();
+  expect(boxes, isNotEmpty, reason: scenario.key);
+  final band = readableBand(tester, ReadableWidth.list);
+  if (band.left - railRight(tester) <= _cardMargin) return;
+  expect(
+    boxes
+        .map((box) => _rectOf(tester, box))
+        .any(
+          (rect) =>
+              rect.left < band.left - layoutTolerance ||
+              rect.right > band.right + layoutTolerance,
+        ),
+    isTrue,
+    reason: '${scenario.key} takes the whole width',
+  );
+}
+
+void _expectWithinOwnCap(WidgetTester tester, SweepScenario scenario) {
+  final cap = readableOwnCaps[scenario.key]!;
+  final boxes = find
+      .descendant(of: _mainList(tester, scenario), matching: ownCapContentBoxes)
+      .evaluate();
+  expect(boxes, isNotEmpty, reason: scenario.key);
+  final content = boxes
+      .map((box) => _rectOf(tester, box))
+      .reduce((all, rect) => all.expandToInclude(rect));
+  expect(
+    content.width,
+    lessThanOrEqualTo(cap + layoutTolerance),
+    reason: '${scenario.key} keeps to its own cap',
+  );
 }

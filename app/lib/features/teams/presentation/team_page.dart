@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
@@ -337,6 +338,7 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
     if (team == null) {
       body = switch (failure) {
         Forbidden() || NotFound() => CenteredScrollView(
+          maxWidth: ReadableWidth.form,
           child: EmptyState(
             icon: Icons.group_off_outlined,
             title: l10n.teamGoneTitle,
@@ -344,6 +346,7 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
           ),
         ),
         final failure? => CenteredScrollView(
+          maxWidth: ReadableWidth.form,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: DataFailureCard(
@@ -354,6 +357,7 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
           ),
         ),
         null => CenteredScrollView(
+          maxWidth: ReadableWidth.form,
           child: LoadingPlaceholder(label: l10n.teamLoading),
         ),
       };
@@ -474,150 +478,159 @@ class _TeamView extends StatelessWidget {
     final hasDescription = htmlToPlainText(team.description).trim().isNotEmpty;
     final editsDescription = guards?.canEdit ?? false;
 
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding:
-          MediaQuery.paddingOf(context) +
-          const EdgeInsets.only(top: 8, bottom: 32),
-      children: [
-        if (notice case final notice?)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: notice,
-          ),
-        SectionCard(
-          children: [
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.form,
+      builder: (_, _, inset) => ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding:
+            MediaQuery.paddingOf(context) +
+            EdgeInsets.fromLTRB(inset, 8, inset, 32),
+        children: [
+          if (notice case final notice?)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      TeamAvatar(name: team.name, radius: 24),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(team.name, style: theme.textTheme.titleLarge),
-                            Text(
-                              l10n.teamMemberCount(team.members.length),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: colors.onSurfaceVariant,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: notice,
+            ),
+          SectionCard(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        TeamAvatar(name: team.name, radius: 24),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                team.name,
+                                style: theme.textTheme.titleLarge,
                               ),
-                            ),
-                          ],
+                              Text(
+                                l10n.teamMemberCount(team.members.length),
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: colors.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (badges.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(spacing: 6, runSpacing: 4, children: badges),
+                    ],
+                    if (hasDescription) ...[
+                      const SizedBox(height: 12),
+                      SelectionArea(
+                        child: RichHtml(
+                          html: team.description,
+                          onLink: onLink,
+                          onTaskLink: onTaskLink,
                         ),
                       ),
                     ],
+                    if (editsDescription)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: TextButton.icon(
+                          onPressed: onEditDescription,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                          ),
+                          icon: Icon(
+                            hasDescription ? Icons.edit_outlined : Icons.add,
+                          ),
+                          label: Text(
+                            hasDescription
+                                ? l10n.teamEditDescription
+                                : l10n.teamAddDescription,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (team.isExternal)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: ListNote(
+                icon: Icons.sync_lock_outlined,
+                text: provider == null
+                    ? l10n.teamExternalNoteGeneric
+                    : l10n.teamExternalNote(provider),
+              ),
+            ),
+          SectionCard(
+            title: l10n.teamMembersSection,
+            count: members.length,
+            children: [
+              for (final member in members)
+                _MemberRow(
+                  key: ValueKey(member.user.id),
+                  member: member,
+                  isMe: member.user.id == userId,
+                  busy: switch (busy) {
+                    _MemberBusy(:final userId) => userId == member.user.id,
+                    _ => false,
+                  },
+                  enabled: enabled,
+                  canToggleAdmin: guards?.canToggleAdmin(member) ?? false,
+                  canRemove: guards?.canRemoveMember(member) ?? false,
+                  onAction: (action) => onMemberAction(member, action),
+                ),
+              if (onAddMember != null)
+                ListTile(
+                  enabled: enabled,
+                  leading: Icon(
+                    Icons.person_add_outlined,
+                    color: colors.primary,
                   ),
-                  if (badges.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Wrap(spacing: 6, runSpacing: 4, children: badges),
-                  ],
-                  if (hasDescription) ...[
-                    const SizedBox(height: 12),
-                    SelectionArea(
-                      child: RichHtml(
-                        html: team.description,
-                        onLink: onLink,
-                        onTaskLink: onTaskLink,
+                  title: Text(
+                    l10n.teamAddMember,
+                    style: TextStyle(color: enabled ? colors.primary : null),
+                  ),
+                  onTap: onAddMember,
+                ),
+            ],
+          ),
+          if (leave != TeamLeaveRule.unavailable || canDelete)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: [
+                  if (leave != TeamLeaveRule.unavailable)
+                    OutlinedButton.icon(
+                      onPressed: enabled ? onLeave : null,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.error,
                       ),
+                      icon: const Icon(Icons.logout),
+                      label: Text(l10n.teamLeave),
                     ),
-                  ],
-                  if (editsDescription)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: TextButton.icon(
-                        onPressed: onEditDescription,
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                        ),
-                        icon: Icon(
-                          hasDescription ? Icons.edit_outlined : Icons.add,
-                        ),
-                        label: Text(
-                          hasDescription
-                              ? l10n.teamEditDescription
-                              : l10n.teamAddDescription,
-                        ),
+                  if (canDelete)
+                    OutlinedButton.icon(
+                      onPressed: enabled ? onDelete : null,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: colors.error,
                       ),
+                      icon: const Icon(Icons.delete_outline),
+                      label: Text(l10n.teamDelete),
                     ),
                 ],
               ),
             ),
-          ],
-        ),
-        if (team.isExternal)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: ListNote(
-              icon: Icons.sync_lock_outlined,
-              text: provider == null
-                  ? l10n.teamExternalNoteGeneric
-                  : l10n.teamExternalNote(provider),
-            ),
-          ),
-        SectionCard(
-          title: l10n.teamMembersSection,
-          count: members.length,
-          children: [
-            for (final member in members)
-              _MemberRow(
-                key: ValueKey(member.user.id),
-                member: member,
-                isMe: member.user.id == userId,
-                busy: switch (busy) {
-                  _MemberBusy(:final userId) => userId == member.user.id,
-                  _ => false,
-                },
-                enabled: enabled,
-                canToggleAdmin: guards?.canToggleAdmin(member) ?? false,
-                canRemove: guards?.canRemoveMember(member) ?? false,
-                onAction: (action) => onMemberAction(member, action),
-              ),
-            if (onAddMember != null)
-              ListTile(
-                enabled: enabled,
-                leading: Icon(Icons.person_add_outlined, color: colors.primary),
-                title: Text(
-                  l10n.teamAddMember,
-                  style: TextStyle(color: enabled ? colors.primary : null),
-                ),
-                onTap: onAddMember,
-              ),
-          ],
-        ),
-        if (leave != TeamLeaveRule.unavailable || canDelete)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-            child: Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                if (leave != TeamLeaveRule.unavailable)
-                  OutlinedButton.icon(
-                    onPressed: enabled ? onLeave : null,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.error,
-                    ),
-                    icon: const Icon(Icons.logout),
-                    label: Text(l10n.teamLeave),
-                  ),
-                if (canDelete)
-                  OutlinedButton.icon(
-                    onPressed: enabled ? onDelete : null,
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: colors.error,
-                    ),
-                    icon: const Icon(Icons.delete_outline),
-                    label: Text(l10n.teamDelete),
-                  ),
-              ],
-            ),
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

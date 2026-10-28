@@ -15,12 +15,16 @@ class TimelineHeader extends StatelessWidget {
     required this.days,
     required this.today,
     required this.horizontal,
+    required this.viewportWidth,
     super.key,
   });
 
   final TimelineDays days;
   final CalendarDate today;
   final ScrollController horizontal;
+
+  /// The chart's width: what [horizontal] shows before its first layout.
+  final double viewportWidth;
 
   /// Up to 150 % text, as the Upcoming day strip; screen readers get the
   /// dates from each row instead.
@@ -112,7 +116,7 @@ class TimelineHeader extends StatelessWidget {
             builder: (context, _) {
               final (left, right) = visibleWindow(
                 horizontal,
-                fallbackWidth: MediaQuery.sizeOf(context).width,
+                fallbackWidth: viewportWidth,
               );
               final (first, end) = days.visible(
                 left - _spareDays * width,

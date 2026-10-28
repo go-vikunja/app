@@ -4,6 +4,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
+import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_view_labels.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
@@ -30,7 +32,7 @@ class ProjectAppBarBottom extends StatelessWidget
 
   /// A phone in landscape keeps its few lines for the tasks.
   static bool showsProgressIn(BuildContext context) =>
-      MediaQuery.sizeOf(context).height >= 480;
+      !WindowLayout.of(context).compactHeight;
 
   bool get _showsProgress => (progress?.total ?? 0) > 0;
 
@@ -48,12 +50,35 @@ class ProjectAppBarBottom extends StatelessWidget
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (progress != null && _showsProgress)
-          SizedBox(
-            height: ProjectProgressLine.heightFor(textScaler),
-            child: ProjectProgressLine(progress: progress),
+        // The tabs' divider, across the app bar like its background.
+        DecoratedBox(
+          decoration: BoxDecoration(
+            border: tabs == null
+                ? null
+                : Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
           ),
-        if (tabs case final tabs?) SizedBox(height: _tabsHeight, child: tabs),
+          // Where a list view's rows are, whichever view shows.
+          child: ReadableWidth(
+            maxWidth: ReadableWidth.list,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (progress != null && _showsProgress)
+                  SizedBox(
+                    height: ProjectProgressLine.heightFor(textScaler),
+                    child: ProjectProgressLine(progress: progress),
+                  ),
+                if (tabs case final tabs?)
+                  SizedBox(height: _tabsHeight, child: tabs),
+              ],
+            ),
+          ),
+        ),
         const SyncProgressBar(),
       ],
     );
@@ -208,6 +233,8 @@ class _ProjectViewTabsState extends State<ProjectViewTabs>
             controller: _controller,
             isScrollable: scrolls,
             tabAlignment: scrolls ? TabAlignment.start : TabAlignment.fill,
+            // ProjectAppBarBottom draws it across the whole app bar.
+            dividerColor: Colors.transparent,
             onTap: (index) => widget.onSelected(widget.views[index].id),
             tabs: [for (final title in titles) Tab(text: title)],
           );

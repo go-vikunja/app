@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/l10n/licence_page_localizations.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/legal.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
@@ -34,58 +35,61 @@ class AboutPage extends ConsumerWidget {
       appBar: AppBar(title: ScreenTitle(l10n.aboutTitle)),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.only(top: 8, bottom: 24),
-          children: [
-            _Header(version: versionText),
-            SectionCard(
-              title: l10n.aboutLicenceHeading,
-              children: [
-                SettingsNote(
-                  icon: Icons.balance_outlined,
-                  text: l10n.aboutLicence,
-                ),
-                SettingsNote(
-                  icon: Icons.info_outline,
-                  text: l10n.aboutNoWarranty,
-                ),
-                ListTile(
-                  leading: const Icon(Icons.description_outlined),
-                  title: Text(l10n.aboutLicences),
-                  subtitle: Text(l10n.aboutLicencesSubtitle),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () => _showLicences(context, versionText),
-                ),
-              ],
-            ),
-            SectionCard(
-              title: l10n.aboutSourceCodeHeading,
-              children: [
-                if (sourceCode == null)
+        child: ReadableWidth.builder(
+          maxWidth: ReadableWidth.form,
+          builder: (_, _, inset) => ListView(
+            padding: EdgeInsets.fromLTRB(inset, 8, inset, 24),
+            children: [
+              _Header(version: versionText),
+              SectionCard(
+                title: l10n.aboutLicenceHeading,
+                children: [
                   SettingsNote(
-                    icon: Icons.code,
-                    text: l10n.aboutSourceCodeLater,
-                  )
-                else
-                  ListTile(
-                    leading: const Icon(Icons.code),
-                    title: Text(l10n.aboutSourceCodeOpen),
-                    subtitle: Text(sourceCode),
-                    trailing: const Icon(Icons.open_in_new),
-                    onTap: () => unawaited(_open(context, ref, sourceCode)),
+                    icon: Icons.balance_outlined,
+                    text: l10n.aboutLicence,
                   ),
-              ],
-            ),
-            SectionCard(
-              title: l10n.aboutNameAndLogoHeading,
-              children: [
-                SettingsNote(
-                  icon: Icons.copyright_outlined,
-                  text: l10n.aboutNameAndLogo,
-                ),
-              ],
-            ),
-          ],
+                  SettingsNote(
+                    icon: Icons.info_outline,
+                    text: l10n.aboutNoWarranty,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.description_outlined),
+                    title: Text(l10n.aboutLicences),
+                    subtitle: Text(l10n.aboutLicencesSubtitle),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _showLicences(context, versionText),
+                  ),
+                ],
+              ),
+              SectionCard(
+                title: l10n.aboutSourceCodeHeading,
+                children: [
+                  if (sourceCode == null)
+                    SettingsNote(
+                      icon: Icons.code,
+                      text: l10n.aboutSourceCodeLater,
+                    )
+                  else
+                    ListTile(
+                      leading: const Icon(Icons.code),
+                      title: Text(l10n.aboutSourceCodeOpen),
+                      subtitle: Text(sourceCode),
+                      trailing: const Icon(Icons.open_in_new),
+                      onTap: () => unawaited(_open(context, ref, sourceCode)),
+                    ),
+                ],
+              ),
+              SectionCard(
+                title: l10n.aboutNameAndLogoHeading,
+                children: [
+                  SettingsNote(
+                    icon: Icons.copyright_outlined,
+                    text: l10n.aboutNameAndLogo,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

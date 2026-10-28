@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository_providers.dart';
@@ -184,6 +185,7 @@ class _AvatarPageState extends ConsumerState<AvatarPage> {
           onUpload: () => unawaited(_uploadPhoto()),
         ),
         _ => CenteredScrollView(
+          maxWidth: ReadableWidth.form,
           child: LoadingPlaceholder(label: l10n.accountSettingsLoading),
         ),
       },
@@ -252,76 +254,79 @@ class _AvatarChoices extends StatelessWidget {
       ),
     };
 
-    return ListView(
-      padding: const EdgeInsets.only(top: 24, bottom: 32),
-      children: [
-        Center(
-          child: Semantics(
-            image: true,
-            label: l10n.avatarCurrent,
-            child: UserAvatar(
-              user: user,
-              radius: 56,
-              accountId: accountId,
-              primary: true,
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        if (needsReauth)
-          SettingsNote(
-            text: l10n.accountSettingsSignInAgain,
-            icon: Icons.lock_clock_outlined,
-            emphasized: true,
-            action: TextButton(
-              onPressed: onSignInAgain,
-              child: Text(l10n.reauthAction),
-            ),
-          )
-        else if (offline)
-          SettingsNote(
-            text: l10n.accountSettingsOffline,
-            icon: Icons.cloud_off_outlined,
-            emphasized: true,
-            action: TextButton(onPressed: onRetry, child: Text(l10n.retry)),
-          ),
-        if (fromSignIn)
-          SettingsNote(
-            text: current == AvatarProvider.ldap
-                ? l10n.avatarManagedLdap
-                : l10n.avatarManagedOpenId(authProvider),
-            icon: avatarProviderIcon(current!),
-          )
-        else ...[
-          for (final provider in AvatarProvider.choices)
-            ListTile(
-              leading: preview(provider),
-              title: Text(avatarProviderLabel(l10n, provider)),
-              subtitle: Text(
-                provider == AvatarProvider.upload &&
-                        current == AvatarProvider.upload
-                    ? l10n.avatarProviderUploadReplace
-                    : avatarProviderDescription(l10n, provider),
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.form,
+      builder: (_, _, inset) => ListView(
+        padding: EdgeInsets.fromLTRB(inset, 24, inset, 32),
+        children: [
+          Center(
+            child: Semantics(
+              image: true,
+              label: l10n.avatarCurrent,
+              child: UserAvatar(
+                user: user,
+                radius: 56,
+                accountId: accountId,
+                primary: true,
               ),
-              selected: provider == current,
-              trailing: provider == current
-                  ? const Icon(Icons.check)
-                  : provider == AvatarProvider.upload
-                  ? const Icon(Icons.chevron_right)
-                  : null,
-              enabled: canChange,
-              onTap: switch (provider) {
-                AvatarProvider.upload => onUpload,
-                _ when provider == current => null,
-                _ => () => onChoose(provider),
-              },
             ),
-          SettingsNote(
-            text: l10n.avatarAppShowsInitials,
-            icon: Icons.info_outline,
           ),
+          const SizedBox(height: 16),
+          if (needsReauth)
+            SettingsNote(
+              text: l10n.accountSettingsSignInAgain,
+              icon: Icons.lock_clock_outlined,
+              emphasized: true,
+              action: TextButton(
+                onPressed: onSignInAgain,
+                child: Text(l10n.reauthAction),
+              ),
+            )
+          else if (offline)
+            SettingsNote(
+              text: l10n.accountSettingsOffline,
+              icon: Icons.cloud_off_outlined,
+              emphasized: true,
+              action: TextButton(onPressed: onRetry, child: Text(l10n.retry)),
+            ),
+          if (fromSignIn)
+            SettingsNote(
+              text: current == AvatarProvider.ldap
+                  ? l10n.avatarManagedLdap
+                  : l10n.avatarManagedOpenId(authProvider),
+              icon: avatarProviderIcon(current!),
+            )
+          else ...[
+            for (final provider in AvatarProvider.choices)
+              ListTile(
+                leading: preview(provider),
+                title: Text(avatarProviderLabel(l10n, provider)),
+                subtitle: Text(
+                  provider == AvatarProvider.upload &&
+                          current == AvatarProvider.upload
+                      ? l10n.avatarProviderUploadReplace
+                      : avatarProviderDescription(l10n, provider),
+                ),
+                selected: provider == current,
+                trailing: provider == current
+                    ? const Icon(Icons.check)
+                    : provider == AvatarProvider.upload
+                    ? const Icon(Icons.chevron_right)
+                    : null,
+                enabled: canChange,
+                onTap: switch (provider) {
+                  AvatarProvider.upload => onUpload,
+                  _ when provider == current => null,
+                  _ => () => onChoose(provider),
+                },
+              ),
+            SettingsNote(
+              text: l10n.avatarAppShowsInitials,
+              icon: Icons.info_outline,
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

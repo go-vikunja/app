@@ -27,6 +27,10 @@ const _sameAlertAsDelete =
 /// Every call `overlay_sites.dart` finds, keyed as it keys them. A new
 /// call needs an entry; an entry whose call is gone fails too.
 const overlayInventory = <String, OverlayCoverage>{
+  'app/layout/readable_sheet.dart '
+      'showReadableCupertinoSheet showCupertinoSheet': Exempt(
+    'the shared iOS sheet presenter; its callers are listed',
+  ),
   'features/about/presentation/about_page.dart '
       'AboutPage._showLicences MaterialPageRoute': Exempt(
     "Flutter's LicensePage, whose app bars mark their titles as headers "
@@ -58,7 +62,7 @@ const overlayInventory = <String, OverlayCoverage>{
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/accounts/presentation/account_switcher_sheet.dart '
-      'showAccountSwitcher showCupertinoSheet': Swept(
+      'showAccountSwitcher showReadableCupertinoSheet': Swept(
     'account switcher',
   ),
   'features/accounts/presentation/account_switcher_sheet.dart '
@@ -92,7 +96,7 @@ const overlayInventory = <String, OverlayCoverage>{
     'the last day of the range',
   ),
   'features/common/presentation/option_sheet.dart '
-      'showOptionSheet showCupertinoSheet': Swept(
+      'showOptionSheet showReadableCupertinoSheet': Swept(
     'option sheet',
   ),
   'features/common/presentation/option_sheet.dart '
@@ -182,7 +186,7 @@ const overlayInventory = <String, OverlayCoverage>{
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/share/presentation/open_shared_link_sheet.dart '
-      'askToOpenSharedLink showCupertinoSheet': Exempt(
+      'askToOpenSharedLink showReadableCupertinoSheet': Exempt(
     'a sheet of three labelled choices; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
@@ -192,7 +196,7 @@ const overlayInventory = <String, OverlayCoverage>{
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/share/presentation/share_sheet.dart '
-      'showShareSheet showCupertinoSheet': Exempt(
+      'showShareSheet showReadableCupertinoSheet': Exempt(
     'opened at 200 % in both modes in '
     'test/app/accessibility_smoke_test.dart',
   ),
@@ -239,7 +243,7 @@ const overlayInventory = <String, OverlayCoverage>{
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/tasks/presentation/open/account_picker.dart '
-      'pickAccount showCupertinoSheet': Exempt(
+      'pickAccount showReadableCupertinoSheet': Exempt(
     'a list of labelled account rows for a link that names no '
     'account; opened in test/app/deep_link_test.dart',
   ),
@@ -262,7 +266,7 @@ const overlayInventory = <String, OverlayCoverage>{
     'shown after the date',
   ),
   'features/tasks/presentation/pickers/picker_sheet.dart '
-      'showPickerSheet showCupertinoSheet': Swept(
+      'showPickerSheet showReadableCupertinoSheet': Swept(
     'label picker',
   ),
   'features/tasks/presentation/pickers/picker_sheet.dart '
@@ -270,7 +274,7 @@ const overlayInventory = <String, OverlayCoverage>{
     'label picker',
   ),
   'features/tasks/presentation/pickers/project_picker.dart '
-      'pickProject showCupertinoSheet': Swept(
+      'pickProject showReadableCupertinoSheet': Swept(
     'project picker',
   ),
   'features/tasks/presentation/pickers/project_picker.dart '
@@ -286,7 +290,7 @@ const overlayInventory = <String, OverlayCoverage>{
     'image viewer',
   ),
   'features/tasks/presentation/task_detail_sheet.dart '
-      'showTaskDetail showCupertinoSheet': Swept(
+      'showTaskDetail showReadableCupertinoSheet': Swept(
     'detail sheet',
   ),
   'features/tasks/presentation/task_detail_sheet.dart '

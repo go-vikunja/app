@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/core/activity/activity_item.dart';
@@ -148,6 +149,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
       body: buildRefreshable(
         items,
         loadingLabel: l10n.inboxLoading,
+        maxWidth: ReadableWidth.list,
         builder: (value, notice) => _InboxList(
           sections: groupActivityByDay(value, now),
           now: now,
@@ -178,6 +180,7 @@ class _InboxList extends StatelessWidget {
     if (sections.isEmpty) {
       return CenteredScrollView(
         header: notice,
+        maxWidth: ReadableWidth.list,
         child: EmptyState(
           icon: Icons.notifications_none,
           title: l10n.inboxEmptyTitle,
@@ -188,24 +191,29 @@ class _InboxList extends StatelessWidget {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        if (notice case final notice?) NoticeSliver(notice: notice),
-        for (final section in sections)
-          SliverSectionCard(
-            title: _dayTitle(l10n, section.day),
-            itemCount: section.items.length,
-            itemBuilder: (context, index) {
-              final item = section.items[index];
-              return InboxRow(
-                key: ValueKey(item.id),
-                item: item,
-                now: now,
-                onTap: () => onTap(item),
-              );
-            },
-          ),
-        const SliverSafeArea(
-          top: false,
-          sliver: SliverToBoxAdapter(child: SizedBox(height: 16)),
+        SliverReadableWidth.group(
+          maxWidth: ReadableWidth.list,
+          slivers: [
+            if (notice case final notice?) NoticeSliver(notice: notice),
+            for (final section in sections)
+              SliverSectionCard(
+                title: _dayTitle(l10n, section.day),
+                itemCount: section.items.length,
+                itemBuilder: (context, index) {
+                  final item = section.items[index];
+                  return InboxRow(
+                    key: ValueKey(item.id),
+                    item: item,
+                    now: now,
+                    onTap: () => onTap(item),
+                  );
+                },
+              ),
+            const SliverSafeArea(
+              top: false,
+              sliver: SliverToBoxAdapter(child: SizedBox(height: 16)),
+            ),
+          ],
         ),
       ],
     );

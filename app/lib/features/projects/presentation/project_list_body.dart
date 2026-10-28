@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
@@ -233,6 +234,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     if (model.isEmpty) {
       return CenteredScrollView(
         header: widget.header,
+        maxWidth: ReadableWidth.list,
         child: ViewEmptyState(
           kind: widget.kind,
           source: widget.source,
@@ -248,12 +250,13 @@ class _ProjectListBodyState extends State<ProjectListBody> {
         ? listGroupsOf(model.rows, effectivePositionsOf(widget.source))
         : const [];
     final doneRows = model.doneRows ?? const [];
-    return LayoutBuilder(
-      builder: (context, constraints) {
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.list,
+      builder: (context, contentWidth, inset) {
         _identifiersLead = TaskRow.identifiersFitBeforeTitle(
           context,
           [...model.rows, ...doneRows].map((row) => row.task),
-          rowWidth: constraints.maxWidth,
+          rowWidth: contentWidth,
         );
         return DragTarget<_RowDrag>(
           onWillAcceptWithDetails: (_) => widget.onReorder != null,
@@ -262,25 +265,32 @@ class _ProjectListBodyState extends State<ProjectListBody> {
           builder: (context, _, _) => CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              if (widget.header case final header?)
-                NoticeSliver(notice: header),
-              if (reorderable)
-                _groupList(width: constraints.maxWidth)
-              else
-                _rows(model.rows, key: _openRowsKey),
-              if (doneRows.isNotEmpty) ...[
-                SliverToBoxAdapter(
-                  child: ListSectionHeader(
-                    title: l10n.projectTasksDoneSection,
-                    count: doneRows.where((row) => row.depth == 0).length,
-                  ),
+              SliverPadding(
+                padding: EdgeInsets.symmetric(horizontal: inset),
+                sliver: SliverMainAxisGroup(
+                  slivers: [
+                    if (widget.header case final header?)
+                      NoticeSliver(notice: header),
+                    if (reorderable)
+                      _groupList(width: contentWidth)
+                    else
+                      _rows(model.rows, key: _openRowsKey),
+                    if (doneRows.isNotEmpty) ...[
+                      SliverToBoxAdapter(
+                        child: ListSectionHeader(
+                          title: l10n.projectTasksDoneSection,
+                          count: doneRows.where((row) => row.depth == 0).length,
+                        ),
+                      ),
+                      _rows(doneRows),
+                    ],
+                    // Room for the floating action button below the last row.
+                    const SliverSafeArea(
+                      top: false,
+                      sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
+                    ),
+                  ],
                 ),
-                _rows(doneRows),
-              ],
-              // Room for the floating action button below the last row.
-              const SliverSafeArea(
-                top: false,
-                sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
               ),
             ],
           ),

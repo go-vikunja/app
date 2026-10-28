@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
+import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/features/account_settings/application/square_avatar.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_failure.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
@@ -171,10 +173,15 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
             ),
             (final image?, _) => LayoutBuilder(
               builder: (context, constraints) {
+                final inset = ReadableWidth.insetFor(
+                  available: constraints.maxWidth,
+                  max: ReadableWidth.form,
+                  caps: WindowLayout.of(context).capsWidths,
+                );
                 final side = math.max<double>(
                   64,
                   math.min(
-                    constraints.maxWidth - 32,
+                    constraints.maxWidth - 2 * inset - 32,
                     constraints.maxHeight * 0.6,
                   ),
                 );
@@ -194,7 +201,12 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
                     ),
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.fromLTRB(
+                          16 + inset,
+                          16,
+                          16 + inset,
+                          16,
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [

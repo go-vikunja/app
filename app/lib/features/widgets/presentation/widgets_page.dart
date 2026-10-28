@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/auth/account_title.dart';
@@ -149,74 +150,85 @@ class _WidgetsPageState extends ConsumerState<WidgetsPage> {
       appBar: AppBar(title: ScreenTitle(l10n.widgetsTitle)),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.only(top: 8, bottom: 24),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: Text(l10n.widgetsIntro, style: theme.textTheme.bodyLarge),
-            ),
-            SectionCard(
-              title: l10n.widgetsHowToHeading,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    android ? l10n.widgetsHowToAndroid : l10n.widgetsHowToIos,
-                  ),
+        child: ReadableWidth.builder(
+          maxWidth: ReadableWidth.form,
+          builder: (_, _, inset) => ListView(
+            padding: EdgeInsets.fromLTRB(inset, 8, inset, 24),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: Text(
+                  l10n.widgetsIntro,
+                  style: theme.textTheme.bodyLarge,
                 ),
-              ],
-            ),
-            if (android) ...[
-              FutureBuilder<bool>(
-                future: _canPin,
-                builder: (context, canPin) => canPin.data ?? false
-                    ? SectionSemantics(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SectionCard(
-                              title: l10n.widgetsAddHeading,
-                              children: [
-                                for (final kind in _addable)
-                                  _AddTile(
-                                    kind: kind,
-                                    onAdd: () => unawaited(_add(kind)),
-                                  ),
-                              ],
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-                              child: Text(l10n.widgetsAddHint, style: muted),
-                            ),
-                            if (_pinUnsupported)
+              ),
+              SectionCard(
+                title: l10n.widgetsHowToHeading,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      android ? l10n.widgetsHowToAndroid : l10n.widgetsHowToIos,
+                    ),
+                  ),
+                ],
+              ),
+              if (android) ...[
+                FutureBuilder<bool>(
+                  future: _canPin,
+                  builder: (context, canPin) => canPin.data ?? false
+                      ? SectionSemantics(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              SectionCard(
+                                title: l10n.widgetsAddHeading,
+                                children: [
+                                  for (final kind in _addable)
+                                    _AddTile(
+                                      kind: kind,
+                                      onAdd: () => unawaited(_add(kind)),
+                                    ),
+                                ],
+                              ),
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  12,
-                                  16,
+                                  20,
+                                  8,
+                                  20,
                                   0,
                                 ),
-                                child: ListNote(
-                                  icon: Icons.info_outline,
-                                  text: l10n.widgetsPinUnsupported,
-                                ),
+                                child: Text(l10n.widgetsAddHint, style: muted),
                               ),
-                          ],
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+                              if (_pinUnsupported)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    12,
+                                    16,
+                                    0,
+                                  ),
+                                  child: ListNote(
+                                    icon: Icons.info_outline,
+                                    text: l10n.widgetsPinUnsupported,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                _PlacedSection(placed: _placed, onConfigure: _configure),
+              ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+                child: ListNote(
+                  icon: Icons.visibility_outlined,
+                  text: l10n.widgetsPrivacyNote,
+                ),
               ),
-              _PlacedSection(placed: _placed, onConfigure: _configure),
             ],
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
-              child: ListNote(
-                icon: Icons.visibility_outlined,
-                text: l10n.widgetsPrivacyNote,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

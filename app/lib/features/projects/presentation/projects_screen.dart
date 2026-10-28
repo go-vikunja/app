@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
@@ -164,6 +165,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
       body: buildRefreshable(
         ready ? projects : const AsyncLoading<List<Project>>(),
         loadingLabel: l10n.projectsLoading,
+        maxWidth: ReadableWidth.list,
         builder: (projects, notice) => _Sections(
           projects: projects,
           preferences: preferences,
@@ -720,6 +722,7 @@ class _SectionsState extends ConsumerState<_Sections> {
     if (rows.isEmpty && !hasFavourites && savedFilters.isEmpty) {
       return CenteredScrollView(
         header: widget.notice,
+        maxWidth: ReadableWidth.list,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -790,75 +793,84 @@ class _SectionsState extends ConsumerState<_Sections> {
       ..._subtreeRows(_held),
       ..._subtreeRows(sending?.projectId),
     };
-    return LayoutBuilder(
-      builder: (context, constraints) => DragTarget<_ProjectDrag>(
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.list,
+      builder: (context, contentWidth, inset) => DragTarget<_ProjectDrag>(
         onAcceptWithDetails: (_) => _drop(),
         onLeave: (_) => _setTarget(null),
         builder: (context, _, _) => CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            if (widget.notice case final notice?) NoticeSliver(notice: notice),
-            if (hasFavourites)
-              SliverSectionCard(
-                title: l10n.projectsFavouritesHeading,
-                itemCount: favouriteRows.length,
-                itemBuilder: (context, index) => favouriteRows[index],
-              ),
-            if (savedFilters.isNotEmpty)
-              SliverSectionCard(
-                title: l10n.savedFiltersHeading,
-                itemCount: filterRows.length,
-                itemBuilder: (context, index) => filterRows[index],
-              ),
-            if (rows.isNotEmpty)
-              SliverMainAxisGroup(
+            SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: inset),
+              sliver: SliverMainAxisGroup(
                 slivers: [
-                  SliverToBoxAdapter(
-                    child: ListSectionHeader(
-                      title: l10n.projectsAllHeading,
-                      padding: _cardHeaderPadding,
+                  if (widget.notice case final notice?)
+                    NoticeSliver(notice: notice),
+                  if (hasFavourites)
+                    SliverSectionCard(
+                      title: l10n.projectsFavouritesHeading,
+                      itemCount: favouriteRows.length,
+                      itemBuilder: (context, index) => favouriteRows[index],
                     ),
-                  ),
-                  SliverPadding(
-                    padding: _cardMargin,
-                    sliver: SliverList.builder(
-                      key: _treeKey,
-                      itemCount: rows.length,
-                      findChildIndexCallback: (key) {
-                        if (key case ValueKey<(String, int)>(
-                          value: (_, final id),
-                        )) {
-                          final index = rows.indexWhere(
-                            (row) => row.node.project.id == id,
-                          );
-                          return index < 0 ? null : index;
-                        }
-                        return null;
-                      },
-                      itemBuilder: (context, index) => SectionCardItem(
-                        key: ValueKey((
-                          'tree slot',
-                          rows[index].node.project.id,
-                        )),
-                        first: index == 0,
-                        last: index == rows.length - 1,
-                        child: _treeRow(
-                          context,
-                          index,
-                          width: constraints.maxWidth - _cardMargin.horizontal,
-                          heldRows: heldRows,
+                  if (savedFilters.isNotEmpty)
+                    SliverSectionCard(
+                      title: l10n.savedFiltersHeading,
+                      itemCount: filterRows.length,
+                      itemBuilder: (context, index) => filterRows[index],
+                    ),
+                  if (rows.isNotEmpty)
+                    SliverMainAxisGroup(
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: ListSectionHeader(
+                            title: l10n.projectsAllHeading,
+                            padding: _cardHeaderPadding,
+                          ),
                         ),
-                      ),
+                        SliverPadding(
+                          padding: _cardMargin,
+                          sliver: SliverList.builder(
+                            key: _treeKey,
+                            itemCount: rows.length,
+                            findChildIndexCallback: (key) {
+                              if (key case ValueKey<(String, int)>(
+                                value: (_, final id),
+                              )) {
+                                final index = rows.indexWhere(
+                                  (row) => row.node.project.id == id,
+                                );
+                                return index < 0 ? null : index;
+                              }
+                              return null;
+                            },
+                            itemBuilder: (context, index) => SectionCardItem(
+                              key: ValueKey((
+                                'tree slot',
+                                rows[index].node.project.id,
+                              )),
+                              first: index == 0,
+                              last: index == rows.length - 1,
+                              child: _treeRow(
+                                context,
+                                index,
+                                width: contentWidth - _cardMargin.horizontal,
+                                heldRows: heldRows,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  SliverSafeArea(
+                    top: false,
+                    // While a project is held, room below the last row to drop
+                    // it on the top level.
+                    sliver: SliverToBoxAdapter(
+                      child: SizedBox(height: _held == null ? 16 : 72),
                     ),
                   ),
                 ],
-              ),
-            SliverSafeArea(
-              top: false,
-              // While a project is held, room below the last row to drop
-              // it on the top level.
-              sliver: SliverToBoxAdapter(
-                child: SizedBox(height: _held == null ? 16 : 72),
               ),
             ),
           ],

@@ -233,9 +233,24 @@ final List<SweepScenario> onboardingStateScenarios = [
   ),
 ];
 
+/// The button scrolls with the content where the window is too low for a
+/// pinned bar, and the list builds it only once it comes near.
 Future<void> _tapSignIn(WidgetTester tester, AppLocalizations _) async {
   final signIn = find.byType(FilledButton);
-  await tester.ensureVisible(signIn);
+  await tester.scrollUntilVisible(
+    signIn,
+    200,
+    scrollable: find
+        .descendant(
+          of: find.byType(ServerOverviewScreen),
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Scrollable &&
+                axisDirectionToAxis(widget.axisDirection) == Axis.vertical,
+          ),
+        )
+        .first,
+  );
   await tester.pumpAndSettle();
   await tester.tap(signIn);
 }

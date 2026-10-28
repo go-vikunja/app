@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/core/security/device_authenticator.dart';
@@ -147,153 +148,158 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
       appBar: AppBar(title: ScreenTitle(l10n.privacyTitle)),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.only(top: 8, bottom: 24),
-          children: [
-            if (stored?.unreadable ?? false)
-              _PageNote(
-                icon: Icons.error_outline,
-                text: l10n.privacySettingsUnreadable,
-              ),
-            if (_saveFailed)
-              _PageNote(
-                icon: Icons.error_outline,
-                text: l10n.privacySaveFailed,
-              ),
-            SectionCard(
-              title: l10n.privacyAppLockHeading,
-              children: [
-                SwitchListTile.adaptive(
-                  secondary: const Icon(Icons.lock_outline),
-                  title: Text(l10n.privacyAppLockSwitch),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(lockSubtitle),
-                      if (lockError != null) SettingErrorText(lockError),
-                    ],
-                  ),
-                  value: settings.appLock,
-                  onChanged: canChangeLock
-                      ? (value) => unawaited(_setAppLock(enabled: value))
-                      : null,
+        child: ReadableWidth.builder(
+          maxWidth: ReadableWidth.form,
+          builder: (_, _, inset) => ListView(
+            padding: EdgeInsets.fromLTRB(inset, 8, inset, 24),
+            children: [
+              if (stored?.unreadable ?? false)
+                _PageNote(
+                  icon: Icons.error_outline,
+                  text: l10n.privacySettingsUnreadable,
                 ),
-                if (settings.appLock)
-                  SettingChoiceTile(
-                    leading: const Icon(Icons.timer_outlined),
-                    title: l10n.privacyLockAfter,
-                    value: lockAfterLabel(l10n, settings.lockAfter),
-                    help: l10n.privacyLockAfterRestart,
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () =>
-                        unawaited(_chooseLockAfter(settings.lockAfter)),
-                  ),
-                SettingsNote(
-                  icon: Icons.visibility_off_outlined,
-                  text: bestEffort
-                      ? l10n.privacyAppSwitcherBestEffort
-                      : l10n.privacyAppSwitcherHidden,
+              if (_saveFailed)
+                _PageNote(
+                  icon: Icons.error_outline,
+                  text: l10n.privacySaveFailed,
                 ),
-              ],
-            ),
-            if (platform == TargetPlatform.android)
               SectionCard(
-                title: l10n.privacyScreenshotsHeading,
+                title: l10n.privacyAppLockHeading,
                 children: [
                   SwitchListTile.adaptive(
-                    secondary: const Icon(Icons.screenshot_outlined),
-                    title: Text(l10n.privacyBlockScreenshots),
-                    subtitle: Text(l10n.privacyBlockScreenshotsSubtitle),
-                    value: settings.blockScreenshots,
+                    secondary: const Icon(Icons.lock_outline),
+                    title: Text(l10n.privacyAppLockSwitch),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(lockSubtitle),
+                        if (lockError != null) SettingErrorText(lockError),
+                      ],
+                    ),
+                    value: settings.appLock,
+                    onChanged: canChangeLock
+                        ? (value) => unawaited(_setAppLock(enabled: value))
+                        : null,
+                  ),
+                  if (settings.appLock)
+                    SettingChoiceTile(
+                      leading: const Icon(Icons.timer_outlined),
+                      title: l10n.privacyLockAfter,
+                      value: lockAfterLabel(l10n, settings.lockAfter),
+                      help: l10n.privacyLockAfterRestart,
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () =>
+                          unawaited(_chooseLockAfter(settings.lockAfter)),
+                    ),
+                  SettingsNote(
+                    icon: Icons.visibility_off_outlined,
+                    text: bestEffort
+                        ? l10n.privacyAppSwitcherBestEffort
+                        : l10n.privacyAppSwitcherHidden,
+                  ),
+                ],
+              ),
+              if (platform == TargetPlatform.android)
+                SectionCard(
+                  title: l10n.privacyScreenshotsHeading,
+                  children: [
+                    SwitchListTile.adaptive(
+                      secondary: const Icon(Icons.screenshot_outlined),
+                      title: Text(l10n.privacyBlockScreenshots),
+                      subtitle: Text(l10n.privacyBlockScreenshotsSubtitle),
+                      value: settings.blockScreenshots,
+                      onChanged: stored == null
+                          ? null
+                          : (value) => unawaited(
+                              _change(
+                                (current) =>
+                                    current.copyWith(blockScreenshots: value),
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              RadioGroup<NotificationContent>(
+                groupValue: settings.notificationContent,
+                onChanged: (value) {
+                  if (value == null) return;
+                  unawaited(
+                    _change(
+                      (current) => current.copyWith(notificationContent: value),
+                    ),
+                  );
+                },
+                child: SectionCard(
+                  title: l10n.privacyNotificationContentHeading,
+                  children: [
+                    _ContentChoice(
+                      value: NotificationContent.all,
+                      title: l10n.privacyNotificationContentAll,
+                      subtitle: l10n.privacyNotificationContentAllSubtitle,
+                      enabled: stored != null,
+                    ),
+                    _ContentChoice(
+                      value: NotificationContent.hiddenOnLockScreen,
+                      title: l10n.privacyNotificationContentHidden,
+                      // Android leaves them off the secure lock screen
+                      // entirely; iOS shows a placeholder when set up so.
+                      subtitle: platform == TargetPlatform.android
+                          ? l10n.privacyNotificationContentHiddenSubtitleAndroid
+                          : l10n.privacyNotificationContentHiddenSubtitle,
+                      enabled: stored != null,
+                    ),
+                    // iOS leaves the lock screen previews to its own
+                    // setting.
+                    if (platform == TargetPlatform.iOS &&
+                        settings.notificationContent ==
+                            NotificationContent.hiddenOnLockScreen)
+                      SettingsNote(
+                        icon: Icons.info_outline,
+                        text: l10n.privacyNotificationContentIosHint,
+                        action: TextButton(
+                          onPressed: () =>
+                              unawaited(_openNotificationSettings()),
+                          child: Text(l10n.notificationsOpenSettings),
+                        ),
+                      ),
+                    _ContentChoice(
+                      value: NotificationContent.noTitles,
+                      title: l10n.privacyNotificationContentNoTitles,
+                      subtitle: l10n.privacyNotificationContentNoTitlesSubtitle,
+                      enabled: stored != null,
+                    ),
+                  ],
+                ),
+              ),
+              SectionCard(
+                title: l10n.privacyWidgetsHeading,
+                children: [
+                  SwitchListTile.adaptive(
+                    secondary: const Icon(Icons.widgets_outlined),
+                    title: Text(l10n.privacyWidgetTitles),
+                    subtitle: Text(l10n.privacyWidgetTitlesSubtitle),
+                    value: settings.widgetTitles,
                     onChanged: stored == null
                         ? null
                         : (value) => unawaited(
                             _change(
                               (current) =>
-                                  current.copyWith(blockScreenshots: value),
+                                  current.copyWith(widgetTitles: value),
                             ),
                           ),
                   ),
                 ],
               ),
-            RadioGroup<NotificationContent>(
-              groupValue: settings.notificationContent,
-              onChanged: (value) {
-                if (value == null) return;
-                unawaited(
-                  _change(
-                    (current) => current.copyWith(notificationContent: value),
+              if (settings.widgetTitles)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: ListNote(
+                    icon: Icons.visibility_outlined,
+                    text: l10n.widgetsPrivacyNote,
                   ),
-                );
-              },
-              child: SectionCard(
-                title: l10n.privacyNotificationContentHeading,
-                children: [
-                  _ContentChoice(
-                    value: NotificationContent.all,
-                    title: l10n.privacyNotificationContentAll,
-                    subtitle: l10n.privacyNotificationContentAllSubtitle,
-                    enabled: stored != null,
-                  ),
-                  _ContentChoice(
-                    value: NotificationContent.hiddenOnLockScreen,
-                    title: l10n.privacyNotificationContentHidden,
-                    // Android leaves them off the secure lock screen
-                    // entirely; iOS shows a placeholder when set up so.
-                    subtitle: platform == TargetPlatform.android
-                        ? l10n.privacyNotificationContentHiddenSubtitleAndroid
-                        : l10n.privacyNotificationContentHiddenSubtitle,
-                    enabled: stored != null,
-                  ),
-                  // iOS leaves the lock screen previews to its own
-                  // setting.
-                  if (platform == TargetPlatform.iOS &&
-                      settings.notificationContent ==
-                          NotificationContent.hiddenOnLockScreen)
-                    SettingsNote(
-                      icon: Icons.info_outline,
-                      text: l10n.privacyNotificationContentIosHint,
-                      action: TextButton(
-                        onPressed: () => unawaited(_openNotificationSettings()),
-                        child: Text(l10n.notificationsOpenSettings),
-                      ),
-                    ),
-                  _ContentChoice(
-                    value: NotificationContent.noTitles,
-                    title: l10n.privacyNotificationContentNoTitles,
-                    subtitle: l10n.privacyNotificationContentNoTitlesSubtitle,
-                    enabled: stored != null,
-                  ),
-                ],
-              ),
-            ),
-            SectionCard(
-              title: l10n.privacyWidgetsHeading,
-              children: [
-                SwitchListTile.adaptive(
-                  secondary: const Icon(Icons.widgets_outlined),
-                  title: Text(l10n.privacyWidgetTitles),
-                  subtitle: Text(l10n.privacyWidgetTitlesSubtitle),
-                  value: settings.widgetTitles,
-                  onChanged: stored == null
-                      ? null
-                      : (value) => unawaited(
-                          _change(
-                            (current) => current.copyWith(widgetTitles: value),
-                          ),
-                        ),
                 ),
-              ],
-            ),
-            if (settings.widgetTitles)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                child: ListNote(
-                  icon: Icons.visibility_outlined,
-                  text: l10n.widgetsPrivacyNote,
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );

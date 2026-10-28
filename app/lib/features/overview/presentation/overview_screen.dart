@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
@@ -107,6 +108,7 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
                   overview,
                   loadingLabel: l10n.overviewLoading,
                   header: header(),
+                  maxWidth: ReadableWidth.list,
                   builder: (value, notice) {
                     final sections = groupTasksByDueDate(
                       withLeavingTasks(value.tasks),
@@ -211,6 +213,7 @@ class _TaskSections extends StatelessWidget {
     if (sections.isEmpty) {
       return CenteredScrollView(
         header: header,
+        maxWidth: ReadableWidth.list,
         child: switch (filter) {
           _? when !local && loadedAt == null => EmptyState(
             icon: Icons.cloud_download_outlined,
@@ -235,37 +238,42 @@ class _TaskSections extends StatelessWidget {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        NoticeSliver(notice: header),
-        for (final section in sections)
-          SliverSectionCard(
-            title: _sectionTitle(l10n, section.group),
-            count: section.tasks.length,
-            titleColor: section.group == DueGroup.overdue
-                ? Theme.of(context).colorScheme.error
-                : null,
-            itemCount: section.tasks.length,
-            itemBuilder: (context, index) {
-              final task = section.tasks[index];
-              final project = projectsById[task.projectId];
-              return TaskRow(
-                key: ValueKey(task.id),
-                task: task,
-                now: now,
-                minimumPriority: minimumPriority,
-                projectTitle: project?.displayTitle(l10n),
-                projectColor: parseHexColor(project?.hexColor ?? ''),
-                pending: pendingIds.contains(task.id),
-                onTap: () => unawaited(showTaskDetail(context, task: task)),
-                onDoneChanged: (done) => onDoneChanged(task, done: done),
-                onFavoriteChanged: (favorite) =>
-                    onFavoriteChanged(task, favorite: favorite),
-              );
-            },
-          ),
-        // Room for the floating action button below the last row.
-        const SliverSafeArea(
-          top: false,
-          sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
+        SliverReadableWidth.group(
+          maxWidth: ReadableWidth.list,
+          slivers: [
+            NoticeSliver(notice: header),
+            for (final section in sections)
+              SliverSectionCard(
+                title: _sectionTitle(l10n, section.group),
+                count: section.tasks.length,
+                titleColor: section.group == DueGroup.overdue
+                    ? Theme.of(context).colorScheme.error
+                    : null,
+                itemCount: section.tasks.length,
+                itemBuilder: (context, index) {
+                  final task = section.tasks[index];
+                  final project = projectsById[task.projectId];
+                  return TaskRow(
+                    key: ValueKey(task.id),
+                    task: task,
+                    now: now,
+                    minimumPriority: minimumPriority,
+                    projectTitle: project?.displayTitle(l10n),
+                    projectColor: parseHexColor(project?.hexColor ?? ''),
+                    pending: pendingIds.contains(task.id),
+                    onTap: () => unawaited(showTaskDetail(context, task: task)),
+                    onDoneChanged: (done) => onDoneChanged(task, done: done),
+                    onFavoriteChanged: (favorite) =>
+                        onFavoriteChanged(task, favorite: favorite),
+                  );
+                },
+              ),
+            // Room for the floating action button below the last row.
+            const SliverSafeArea(
+              top: false,
+              sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
+            ),
+          ],
         ),
       ],
     );

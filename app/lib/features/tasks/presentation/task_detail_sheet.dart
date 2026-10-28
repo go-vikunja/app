@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
@@ -91,7 +91,7 @@ Future<void> showTaskDetail(
 }) {
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
-      return showCupertinoSheet<void>(
+      return showReadableCupertinoSheet<void>(
         context: context,
         showDragHandle: true,
         scrollableBuilder: (context, scrollController) => TaskDetailSheet(

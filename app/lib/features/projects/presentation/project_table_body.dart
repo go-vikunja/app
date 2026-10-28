@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
@@ -69,6 +70,7 @@ class ProjectTableBody extends StatelessWidget {
     if (rows.isEmpty) {
       return CenteredScrollView(
         header: header,
+        maxWidth: ReadableWidth.list,
         child: ViewEmptyState(
           kind: kind,
           source: source,
@@ -79,47 +81,57 @@ class ProjectTableBody extends StatelessWidget {
         ),
       );
     }
-    return LayoutBuilder(
-      builder: (context, constraints) {
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.list,
+      builder: (context, contentWidth, inset) {
         final identifiersLead =
             columns.contains(TableColumn.taskIndex) &&
             TaskRow.identifiersFitBeforeTitle(
               context,
               rows,
-              rowWidth: constraints.maxWidth,
+              rowWidth: contentWidth,
             );
         return CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            if (header case final header?) NoticeSliver(notice: header),
-            SliverList.builder(
-              itemCount: rows.length,
-              findChildIndexCallback: (key) {
-                if (key case ValueKey<(String, int)>(value: (_, final id))) {
-                  final index = rows.indexWhere((task) => task.id == id);
-                  return index < 0 ? null : index;
-                }
-                return null;
-              },
-              // The last row is wrapped too: a row that stops being the
-              // last keeps its key, its place and so its state.
-              itemBuilder: (context, index) => Column(
-                key: ValueKey(('table', rows[index].id)),
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _row(
-                    context,
-                    rows[index],
-                    identifierBeforeTitle: identifiersLead,
+            SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: inset),
+              sliver: SliverMainAxisGroup(
+                slivers: [
+                  if (header case final header?) NoticeSliver(notice: header),
+                  SliverList.builder(
+                    itemCount: rows.length,
+                    findChildIndexCallback: (key) {
+                      if (key case ValueKey<(String, int)>(
+                        value: (_, final id),
+                      )) {
+                        final index = rows.indexWhere((task) => task.id == id);
+                        return index < 0 ? null : index;
+                      }
+                      return null;
+                    },
+                    // The last row is wrapped too: a row that stops being the
+                    // last keeps its key, its place and so its state.
+                    itemBuilder: (context, index) => Column(
+                      key: ValueKey(('table', rows[index].id)),
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _row(
+                          context,
+                          rows[index],
+                          identifierBeforeTitle: identifiersLead,
+                        ),
+                        if (index < rows.length - 1) _divider,
+                      ],
+                    ),
                   ),
-                  if (index < rows.length - 1) _divider,
+                  // Room for the floating action button below the last row.
+                  const SliverSafeArea(
+                    top: false,
+                    sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
+                  ),
                 ],
               ),
-            ),
-            // Room for the floating action button below the last row.
-            const SliverSafeArea(
-              top: false,
-              sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
             ),
           ],
         );

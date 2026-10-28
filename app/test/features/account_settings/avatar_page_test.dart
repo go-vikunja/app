@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -16,6 +17,7 @@ import '../../helpers/account_settings_fakes.dart';
 import '../../helpers/attachment_picker_fake.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fakes.dart';
+import '../../helpers/large_screens.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
@@ -45,8 +47,13 @@ void main() {
     bool needsReauth = false,
     FakeServerConnector? connector,
     List<Override> overrides = const [],
+    Size? size,
   }) async {
-    usePhoneSurface(tester);
+    if (size == null) {
+      usePhoneSurface(tester);
+    } else {
+      useWindow(tester, size);
+    }
     if (state != null) repository().state = state;
     await auth.seedAccount(
       fullServer270(),
@@ -267,6 +274,26 @@ void main() {
 
     expect(picker.calls, ['camera']);
     expect(find.byType(AvatarCropPage), findsOneWidget);
+  });
+
+  testWidgets('on a tablet the square and the hint of the crop page lie in '
+      'the 640 band', (tester) async {
+    await pumpAvatarPage(tester, size: androidTabletPortrait);
+
+    await pickAndCrop(tester, en.avatarChoosePhoto);
+
+    final band = readableBand(tester, ReadableWidth.form);
+    final content = (left: band.left + 16, right: band.right - 16);
+    expectFillsBand(
+      tester.getRect(
+        find.descendant(
+          of: find.byType(AvatarCropPage),
+          matching: find.byType(InteractiveViewer),
+        ),
+      ),
+      content,
+    );
+    expectFillsBand(tester.getRect(find.text(en.avatarCropHint)), content);
   });
 
   testWidgets('a cancelled pick changes nothing', (tester) async {

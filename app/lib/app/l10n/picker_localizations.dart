@@ -1,17 +1,28 @@
 import 'package:intl/intl.dart' as intl;
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 
 /// A builder for `showDatePicker` and `showTimePicker` that starts the
 /// calendar grid on [firstDayOfWeekIndex] (0 = Sunday) and shows the clock
 /// in 24 or 12 hours as [use24HourFormat] says; null keeps the device
-/// locale's choice, and with both null nothing is wrapped.
-TransitionBuilder? pickerFormatsBuilder({
+/// locale's choice. It also gives the picker back the framework's dialog
+/// width, which the app caps for its other dialogs on large windows: the
+/// landscape pickers are wider than the cap.
+TransitionBuilder pickerFormatsBuilder({
   int? firstDayOfWeekIndex,
   bool? use24HourFormat,
 }) {
-  if (firstDayOfWeekIndex == null && use24HourFormat == null) return null;
   return (context, child) {
-    var wrapped = child ?? const SizedBox.shrink();
+    final theme = Theme.of(context);
+    Widget wrapped = Theme(
+      data: theme.copyWith(
+        dialogTheme: theme.dialogTheme.copyWith(
+          constraints: ReadableWidth.defaultDialogConstraints,
+        ),
+      ),
+      child: child ?? const SizedBox.shrink(),
+    );
+    if (firstDayOfWeekIndex == null && use24HourFormat == null) return wrapped;
     // The time picker reads the hour format from both: the dial from the
     // localizations, the typed hours and field sizes from the media query.
     if (use24HourFormat != null) {

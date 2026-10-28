@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import '../helpers/pump_app.dart';
 import 'overlay_inventory.dart';
 import 'overlay_sites.dart';
+import 'readable_widths.dart';
 import 'route_walk.dart';
 import 'scenarios_overlays.dart';
 import 'sweep_harness.dart';
@@ -107,6 +108,28 @@ void main() {
           'scenarios and exemptions of no '
           'route',
     );
+  });
+
+  test('every route scenario has its readable width, and every width a '
+      'route scenario', () {
+    final routes = {
+      for (final scenario in allScenarios)
+        if (scenario.kind == SweepKind.route) scenario.key,
+    };
+    expect(
+      routes.difference(readableWidths.keys.toSet()),
+      isEmpty,
+      reason: 'route scenarios without a readable width',
+    );
+    expect(
+      {...readableWidths.keys, ...readableBoxOverrides.keys}.difference(routes),
+      isEmpty,
+      reason: 'readable widths of no route scenario',
+    );
+    expect(readableOwnCaps.keys.toSet(), {
+      for (final MapEntry(:key, :value) in readableWidths.entries)
+        if (value == ReadableClass.ownCap) key,
+    }, reason: 'every screen with its own cap, and only those, has it listed');
   });
 
   test('every scenario has its own title', () {

@@ -1,6 +1,6 @@
-import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_tile.dart';
 
@@ -16,7 +16,7 @@ Future<String?> pickAccount(
 }) {
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
-      return showCupertinoSheet<String>(
+      return showReadableCupertinoSheet<String>(
         context: context,
         showDragHandle: true,
         scrollableBuilder: (context, scrollController) => Material(

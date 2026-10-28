@@ -81,12 +81,26 @@ final class _TapTargetGuideline extends MinimumTapTargetGuideline {
   @override
   bool shouldSkipNode(SemanticsNode node) {
     if (super.shouldSkipNode(node)) return true;
+    if (_isReadOnlySelectableText(node)) return true;
     if (_nativeRects.isEmpty) return false;
     final logical = _logicalRect(node, _pixelRatio);
     return logical.width >= wcagMinimumTarget.width &&
         logical.height >= wcagMinimumTarget.height &&
         _nativeRects.any((native) => _encloses(native, logical));
   }
+}
+
+/// Read-only selectable text, e.g. the server's message of the day: WCAG
+/// 2.5.8's inline exception, as its size is set by the line height of the
+/// text, and selecting is a text function, not a control. D68 lists it as a
+/// deviation, whatever its size.
+bool _isReadOnlySelectableText(SemanticsNode node) {
+  final data = node.getSemanticsData();
+  final textActions =
+      SemanticsAction.longPress.index | SemanticsAction.focus.index;
+  return data.flagsCollection.isTextField &&
+      data.flagsCollection.isReadOnly &&
+      data.actions & ~textActions == 0;
 }
 
 /// Where [node] is on the screen, in logical pixels.

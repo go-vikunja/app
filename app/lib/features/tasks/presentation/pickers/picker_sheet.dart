@@ -1,5 +1,6 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 
 /// A picker over the page: a Cupertino sheet on iOS, a modal bottom sheet
 /// elsewhere, both above the keyboard. With [heightFactor] the content gets
@@ -24,7 +25,7 @@ Future<T?> showPickerSheet<T>(
 
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
-      return showCupertinoSheet<T>(
+      return showReadableCupertinoSheet<T>(
         context: context,
         showDragHandle: true,
         scrollableBuilder: (context, scrollController) => Material(

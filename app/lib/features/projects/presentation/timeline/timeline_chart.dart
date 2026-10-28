@@ -221,72 +221,76 @@ class _TimelineChartState extends ConsumerState<TimelineChart> {
         ? const NeverScrollableScrollPhysics()
         : null;
 
-    final chart = Listener(
-      onPointerDown: _pointerDown,
-      onPointerMove: _pointerMove,
-      onPointerUp: _pointerUp,
-      onPointerCancel: _pointerUp,
-      child: SingleChildScrollView(
-        controller: _horizontal,
-        scrollDirection: Axis.horizontal,
-        physics: scrollPhysics,
-        child: SizedBox(
-          width: days.width,
-          child: CustomPaint(
-            painter: TimelineGridPainter(
-              days: days,
-              top: headerHeight,
-              horizontal: _horizontal,
-              colors: colors,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TimelineHeader(
-                  days: days,
-                  today: today,
-                  horizontal: _horizontal,
-                ),
-                Expanded(
-                  child: CustomPaint(
-                    foregroundPainter: TimelineOverlayPainter(
-                      days: days,
-                      today: today,
-                      arrows: layout.arrows,
-                      rowHeight: metrics.rowHeight,
-                      vertical: _vertical,
-                      colors: colors,
-                    ),
-                    child: ListView.builder(
-                      controller: _vertical,
-                      physics: pinching
-                          ? const NeverScrollableScrollPhysics()
-                          : const AlwaysScrollableScrollPhysics(),
-                      padding: EdgeInsets.only(bottom: widget.bottomPadding),
-                      itemExtent: metrics.rowHeight,
-                      itemCount: rows.length,
-                      itemBuilder: (context, index) {
-                        final row = rows[index];
-                        final task = row.task;
-                        return TimelineRow(
-                          key: ValueKey(task.id),
-                          row: row,
-                          days: days,
-                          horizontal: _horizontal,
-                          metrics: metrics,
-                          semanticsLabel: semantics.labelOf(row),
-                          groupSpans: spans[index],
-                          collapsed: row.collapsed,
-                          onTap: () => widget.onOpen(task),
-                          onToggleCollapsed: row.canCollapse
-                              ? () => widget.onToggleCollapsed(task.id)
-                              : null,
-                        );
-                      },
+    final chart = LayoutBuilder(
+      builder: (context, constraints) => Listener(
+        onPointerDown: _pointerDown,
+        onPointerMove: _pointerMove,
+        onPointerUp: _pointerUp,
+        onPointerCancel: _pointerUp,
+        child: SingleChildScrollView(
+          controller: _horizontal,
+          scrollDirection: Axis.horizontal,
+          physics: scrollPhysics,
+          child: SizedBox(
+            width: days.width,
+            child: CustomPaint(
+              painter: TimelineGridPainter(
+                days: days,
+                top: headerHeight,
+                horizontal: _horizontal,
+                colors: colors,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TimelineHeader(
+                    days: days,
+                    today: today,
+                    horizontal: _horizontal,
+                    viewportWidth: constraints.maxWidth,
+                  ),
+                  Expanded(
+                    child: CustomPaint(
+                      foregroundPainter: TimelineOverlayPainter(
+                        days: days,
+                        today: today,
+                        arrows: layout.arrows,
+                        rowHeight: metrics.rowHeight,
+                        vertical: _vertical,
+                        colors: colors,
+                      ),
+                      child: ListView.builder(
+                        controller: _vertical,
+                        physics: pinching
+                            ? const NeverScrollableScrollPhysics()
+                            : const AlwaysScrollableScrollPhysics(),
+                        padding: EdgeInsets.only(bottom: widget.bottomPadding),
+                        itemExtent: metrics.rowHeight,
+                        itemCount: rows.length,
+                        itemBuilder: (context, index) {
+                          final row = rows[index];
+                          final task = row.task;
+                          return TimelineRow(
+                            key: ValueKey(task.id),
+                            row: row,
+                            days: days,
+                            horizontal: _horizontal,
+                            viewportWidth: constraints.maxWidth,
+                            metrics: metrics,
+                            semanticsLabel: semantics.labelOf(row),
+                            groupSpans: spans[index],
+                            collapsed: row.collapsed,
+                            onTap: () => widget.onOpen(task),
+                            onToggleCollapsed: row.canCollapse
+                                ? () => widget.onToggleCollapsed(task.id)
+                                : null,
+                          );
+                        },
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/project_sharing_repository.dart';
 import 'package:vikunja_mobile/core/repositories/project_sharing_repository_providers.dart';
@@ -477,6 +478,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
       return Scaffold(
         appBar: AppBar(title: ScreenTitle(title)),
         body: CenteredScrollView(
+          maxWidth: ReadableWidth.form,
           child: EmptyState(
             icon: Icons.lock_outline,
             title: l10n.shareNoAccessTitle,
@@ -489,6 +491,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
       return Scaffold(
         appBar: AppBar(title: ScreenTitle(title)),
         body: CenteredScrollView(
+          maxWidth: ReadableWidth.form,
           child: EmptyState(
             icon: Icons.search_off,
             title: l10n.projectGoneTitle,
@@ -529,159 +532,165 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
       ),
       body: RefreshIndicator.adaptive(
         onRefresh: _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          // An explicit padding replaces the system bars' and cutouts'; the
-          // page's context still carries the status bar, which the app bar
-          // already takes.
-          padding:
-              MediaQuery.paddingOf(context).copyWith(top: 0) +
-              const EdgeInsets.only(bottom: 32),
-          children: [
-            if (failure is NetworkFailure)
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: OfflineNotice(),
-              )
-            else if (failure != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: DataFailureCard(
-                  error: failure,
-                  stale: hasData,
-                  onRetry: () => unawaited(_load()),
-                ),
-              ),
-            if (_loading && !hasData)
-              LoadingPlaceholder(label: l10n.sharePageLoading),
-            if (hasData) ...[
-              if (!admin)
+        child: ReadableWidth.builder(
+          maxWidth: ReadableWidth.form,
+          builder: (_, _, inset) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            // An explicit padding replaces the system bars' and cutouts'; the
+            // page's context still carries the status bar, which the app bar
+            // already takes.
+            padding:
+                MediaQuery.paddingOf(context).copyWith(top: 0) +
+                EdgeInsets.fromLTRB(inset, 0, inset, 32),
+            children: [
+              if (failure is NetworkFailure)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: OfflineNotice(),
+                )
+              else if (failure != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: ListNote(
-                    icon: Icons.lock_outline,
-                    text: l10n.shareReadOnlyNote,
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: DataFailureCard(
+                    error: failure,
+                    stale: hasData,
+                    onRetry: () => unawaited(_load()),
                   ),
                 ),
-              SectionCard(
-                title: l10n.sharePeopleSection,
-                children: [
-                  for (final share in users)
-                    _PersonRow(
-                      key: ValueKey('user-${share.user.id}'),
-                      share: share,
-                      isMe: share.user.id == me,
-                      busy: busy == 'user:${share.user.id}',
-                      onTap: admin && idle
-                          ? () => unawaited(
-                              _changePerson(share, isMe: share.user.id == me),
-                            )
-                          : null,
-                    ),
-                  if (users.isEmpty) _NoteRow(text: l10n.sharePeopleEmpty),
-                  if (admin)
-                    _AddRow(
-                      icon: Icons.person_add_alt_outlined,
-                      label: l10n.shareAddPerson,
-                      busy: busy == 'add-person',
-                      onTap: idle ? () => unawaited(_addPerson(project)) : null,
-                    ),
-                ],
-              ),
-              SectionCard(
-                title: l10n.shareTeamsSection,
-                children: [
-                  for (final share in teams)
-                    _TeamRow(
-                      key: ValueKey('team-${share.teamId}'),
-                      share: share,
-                      busy: busy == 'team:${share.teamId}',
-                      onTap: admin && idle
-                          ? () => unawaited(_changeTeam(share))
-                          : null,
-                    ),
-                  if (teams.isEmpty) _NoteRow(text: l10n.shareTeamsEmpty),
-                  if (admin)
-                    _AddRow(
-                      icon: Icons.group_add_outlined,
-                      label: l10n.shareAddTeam,
-                      busy: busy == 'add-team',
-                      onTap: idle ? () => unawaited(_addTeam()) : null,
-                    ),
-                ],
-              ),
-              if (showsLinks) ...[
-                if (linksFailure != null &&
-                    linksFailure is! NotFound &&
-                    linksFailure is! NetworkFailure)
+              if (_loading && !hasData)
+                LoadingPlaceholder(label: l10n.sharePageLoading),
+              if (hasData) ...[
+                if (!admin)
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                    child: DataFailureCard(
-                      error: linksFailure,
-                      stale: false,
-                      onRetry: () => unawaited(_load()),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: ListNote(
+                      icon: Icons.lock_outline,
+                      text: l10n.shareReadOnlyNote,
                     ),
                   ),
                 SectionCard(
-                  title: l10n.shareLinksSection,
+                  title: l10n.sharePeopleSection,
                   children: [
-                    if (linksFailure case NotFound(routeAbsent: true))
-                      _NoteRow(text: l10n.shareFailureLinkSharingOff)
-                    else ...[
-                      for (final share in links ?? const <LinkShare>[])
-                        _LinkRow(
-                          key: ValueKey('link-${share.id}'),
-                          share: share,
-                          url: bases == null
-                              ? null
-                              : linkShareUriFor(
-                                  bases,
-                                  share,
-                                  viewId: linkViewIdFor(
-                                    views,
-                                    _linkViewIds[share.id],
-                                  ),
-                                ),
-                          view: views.length > 1
-                              ? views
-                                    .where(
-                                      (view) =>
-                                          view.id ==
-                                          linkViewIdFor(
-                                            views,
-                                            _linkViewIds[share.id],
-                                          ),
-                                    )
-                                    .firstOrNull
-                              : null,
-                          projectTitle:
-                              project?.displayTitle(l10n) ??
-                              l10n.projectUnknownTitle,
-                          busy: busy == 'link:${share.id}',
-                          onTap: idle
-                              ? () =>
-                                    unawaited(_openLink(share, project, views))
-                              : null,
-                        ),
-                      if (links != null && links.isEmpty)
-                        _NoteRow(
-                          text: l10n.shareLinksEmpty,
-                          detail: l10n.shareLinksIntro,
-                        ),
-                      _AddRow(
-                        icon: Icons.add_link,
-                        label: l10n.linkShareCreate,
-                        busy: false,
-                        onTap: idle && linksFailure == null
-                            ? () => unawaited(_createLink(project, views))
+                    for (final share in users)
+                      _PersonRow(
+                        key: ValueKey('user-${share.user.id}'),
+                        share: share,
+                        isMe: share.user.id == me,
+                        busy: busy == 'user:${share.user.id}',
+                        onTap: admin && idle
+                            ? () => unawaited(
+                                _changePerson(share, isMe: share.user.id == me),
+                              )
                             : null,
                       ),
-                    ],
+                    if (users.isEmpty) _NoteRow(text: l10n.sharePeopleEmpty),
+                    if (admin)
+                      _AddRow(
+                        icon: Icons.person_add_alt_outlined,
+                        label: l10n.shareAddPerson,
+                        busy: busy == 'add-person',
+                        onTap: idle
+                            ? () => unawaited(_addPerson(project))
+                            : null,
+                      ),
                   ],
                 ),
+                SectionCard(
+                  title: l10n.shareTeamsSection,
+                  children: [
+                    for (final share in teams)
+                      _TeamRow(
+                        key: ValueKey('team-${share.teamId}'),
+                        share: share,
+                        busy: busy == 'team:${share.teamId}',
+                        onTap: admin && idle
+                            ? () => unawaited(_changeTeam(share))
+                            : null,
+                      ),
+                    if (teams.isEmpty) _NoteRow(text: l10n.shareTeamsEmpty),
+                    if (admin)
+                      _AddRow(
+                        icon: Icons.group_add_outlined,
+                        label: l10n.shareAddTeam,
+                        busy: busy == 'add-team',
+                        onTap: idle ? () => unawaited(_addTeam()) : null,
+                      ),
+                  ],
+                ),
+                if (showsLinks) ...[
+                  if (linksFailure != null &&
+                      linksFailure is! NotFound &&
+                      linksFailure is! NetworkFailure)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                      child: DataFailureCard(
+                        error: linksFailure,
+                        stale: false,
+                        onRetry: () => unawaited(_load()),
+                      ),
+                    ),
+                  SectionCard(
+                    title: l10n.shareLinksSection,
+                    children: [
+                      if (linksFailure case NotFound(routeAbsent: true))
+                        _NoteRow(text: l10n.shareFailureLinkSharingOff)
+                      else ...[
+                        for (final share in links ?? const <LinkShare>[])
+                          _LinkRow(
+                            key: ValueKey('link-${share.id}'),
+                            share: share,
+                            url: bases == null
+                                ? null
+                                : linkShareUriFor(
+                                    bases,
+                                    share,
+                                    viewId: linkViewIdFor(
+                                      views,
+                                      _linkViewIds[share.id],
+                                    ),
+                                  ),
+                            view: views.length > 1
+                                ? views
+                                      .where(
+                                        (view) =>
+                                            view.id ==
+                                            linkViewIdFor(
+                                              views,
+                                              _linkViewIds[share.id],
+                                            ),
+                                      )
+                                      .firstOrNull
+                                : null,
+                            projectTitle:
+                                project?.displayTitle(l10n) ??
+                                l10n.projectUnknownTitle,
+                            busy: busy == 'link:${share.id}',
+                            onTap: idle
+                                ? () => unawaited(
+                                    _openLink(share, project, views),
+                                  )
+                                : null,
+                          ),
+                        if (links != null && links.isEmpty)
+                          _NoteRow(
+                            text: l10n.shareLinksEmpty,
+                            detail: l10n.shareLinksIntro,
+                          ),
+                        _AddRow(
+                          icon: Icons.add_link,
+                          label: l10n.linkShareCreate,
+                          busy: false,
+                          onTap: idle && linksFailure == null
+                              ? () => unawaited(_createLink(project, views))
+                              : null,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ],
             ],
-          ],
+          ),
         ),
       ),
     );

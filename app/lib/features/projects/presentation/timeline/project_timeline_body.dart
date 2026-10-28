@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/filters/filter_zone.dart';
 import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
@@ -165,6 +166,7 @@ class _ProjectTimelineBodyState extends ConsumerState<ProjectTimelineBody> {
       final filter = describeViewFilter(view.filter);
       return CenteredScrollView(
         header: header,
+        maxWidth: ReadableWidth.list,
         child: switch ((widget.offline, widget.downloadFailed)) {
           (true, _) => EmptyState(
             icon: Icons.cloud_download_outlined,
@@ -194,6 +196,7 @@ class _ProjectTimelineBodyState extends ConsumerState<ProjectTimelineBody> {
       );
       return CenteredScrollView(
         header: header,
+        maxWidth: ReadableWidth.list,
         child: EmptyState(
           icon: Icons.view_timeline_outlined,
           title: l10n.projectTimelineEmptyTitle(from, to),
@@ -205,7 +208,12 @@ class _ProjectTimelineBodyState extends ConsumerState<ProjectTimelineBody> {
     }
 
     final slivers = [
-      if (header != null) NoticeSliver(notice: header),
+      // The controls under the tabs, the timeline at the whole width.
+      if (header != null)
+        SliverReadableWidth(
+          maxWidth: ReadableWidth.list,
+          sliver: NoticeSliver(notice: header),
+        ),
       SliverLayoutBuilder(
         builder: (context, sliver) => SliverToBoxAdapter(
           child: SizedBox(

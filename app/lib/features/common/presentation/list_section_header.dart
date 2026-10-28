@@ -20,7 +20,7 @@ class ListSectionHeader extends StatelessWidget {
   final Color? color;
   final EdgeInsetsGeometry padding;
 
-  /// The most of the screen's width [trailing] takes; a longer text wraps,
+  /// The most of the header's width [trailing] takes; a longer text wraps,
   /// e.g. in large text, and leaves the title its room.
   static const _trailingShare = 0.4;
 
@@ -30,39 +30,41 @@ class ListSectionHeader extends StatelessWidget {
     final colors = theme.colorScheme;
     final trailing =
         this.trailing ?? (count == null ? null : Text('${count!}'));
-    return Padding(
-      padding: padding,
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 32),
-        child: Semantics(
-          header: true,
-          headingLevel: 2,
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: color ?? colors.primary,
-                  ),
-                ),
-              ),
-              if (trailing != null) ...[
-                const SizedBox(width: 8),
-                ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.sizeOf(context).width * _trailingShare,
-                  ),
-                  child: DefaultTextStyle.merge(
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: colors.onSurfaceVariant,
+    return LayoutBuilder(
+      builder: (context, constraints) => Padding(
+        padding: padding,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 32),
+          child: Semantics(
+            header: true,
+            headingLevel: 2,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: color ?? colors.primary,
                     ),
-                    textAlign: TextAlign.end,
-                    child: trailing,
                   ),
                 ),
+                if (trailing != null) ...[
+                  const SizedBox(width: 8),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: constraints.maxWidth * _trailingShare,
+                    ),
+                    child: DefaultTextStyle.merge(
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: colors.onSurfaceVariant,
+                      ),
+                      textAlign: TextAlign.end,
+                      child: trailing,
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

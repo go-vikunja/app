@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/saved_filter_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
@@ -285,6 +286,7 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
     if (_start != null) return _form(context);
     if (filters.hasValue && listed == null) {
       return CenteredScrollView(
+        maxWidth: ReadableWidth.form,
         child: EmptyState(
           icon: Icons.filter_list_off,
           title: l10n.smartListFilterGoneTitle,
@@ -295,6 +297,7 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
     final reading = _reading;
     if (reading == null) {
       return CenteredScrollView(
+        maxWidth: ReadableWidth.form,
         child: LoadingPlaceholder(label: l10n.savedFilterLoading),
       );
     }
@@ -317,6 +320,7 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
         }
         if (snapshot.error case final error?) {
           return CenteredScrollView(
+            maxWidth: ReadableWidth.form,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -334,6 +338,7 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
           );
         }
         return CenteredScrollView(
+          maxWidth: ReadableWidth.form,
           child: LoadingPlaceholder(label: l10n.savedFilterLoading),
         );
       },
@@ -354,79 +359,82 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
     final start = _start!;
     final enabled = !_saving;
     final hasTitle = _title.text.trim().isNotEmpty;
-    return ListView(
-      padding: const EdgeInsets.only(top: 8, bottom: 32),
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: _title,
-            enabled: enabled,
-            autofocus: _isNew,
-            // Wraps, but Return moves on instead of adding a line.
-            maxLines: null,
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.next,
-            textCapitalization: TextCapitalization.sentences,
-            inputFormatters: [CodePointLimitFormatter(projectTitleMaxLength)],
-            decoration: InputDecoration(
-              labelText: l10n.projectTitleLabel,
-              errorText: !hasTitle && (_dirty || !_isNew)
-                  ? l10n.projectTitleRequired
-                  : null,
-              errorMaxLines: 3,
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.form,
+      builder: (_, _, inset) => ListView(
+        padding: EdgeInsets.fromLTRB(inset, 8, inset, 32),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _title,
+              enabled: enabled,
+              autofocus: _isNew,
+              // Wraps, but Return moves on instead of adding a line.
+              maxLines: null,
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.next,
+              textCapitalization: TextCapitalization.sentences,
+              inputFormatters: [CodePointLimitFormatter(projectTitleMaxLength)],
+              decoration: InputDecoration(
+                labelText: l10n.projectTitleLabel,
+                errorText: !hasTitle && (_dirty || !_isNew)
+                    ? l10n.projectTitleRequired
+                    : null,
+                errorMaxLines: 3,
+              ),
+              onChanged: (_) => setState(() {}),
             ),
-            onChanged: (_) => setState(() {}),
           ),
-        ),
-        const SizedBox(height: 16),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: _description,
-            enabled: enabled,
-            minLines: 2,
-            maxLines: null,
-            keyboardType: TextInputType.multiline,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(
-              labelText: l10n.savedFilterDescriptionLabel,
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: _description,
+              enabled: enabled,
+              minLines: 2,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: l10n.savedFilterDescriptionLabel,
+              ),
+              onChanged: (_) => setState(() {}),
             ),
-            onChanged: (_) => setState(() {}),
           ),
-        ),
-        const SizedBox(height: 16),
-        FilterField(
-          initialFilter: start.filter.filter,
-          includeNulls: _includeNulls,
-          search: start.filter.search,
-          timezone: start.timezone,
-          enabled: enabled,
-          serverError:
-              _filterError ??
-              (_filter.edited && _filterMissing
-                  ? l10n.savedFilterFilterRequired
-                  : null),
-          onChanged: _filterChanged,
-        ),
-        const SizedBox(height: 8),
-        SwitchListTile.adaptive(
-          value: _includeNulls,
-          onChanged: enabled
-              ? (value) => setState(() => _includeNulls = value)
-              : null,
-          title: Text(l10n.savedFilterIncludeNulls),
-          subtitle: Text(l10n.savedFilterIncludeNullsHint),
-        ),
-        SwitchListTile.adaptive(
-          value: _favourite,
-          onChanged: enabled
-              ? (value) => setState(() => _favourite = value)
-              : null,
-          title: Text(l10n.savedFilterFavourite),
-          subtitle: Text(l10n.savedFilterFavouriteHint),
-        ),
-      ],
+          const SizedBox(height: 16),
+          FilterField(
+            initialFilter: start.filter.filter,
+            includeNulls: _includeNulls,
+            search: start.filter.search,
+            timezone: start.timezone,
+            enabled: enabled,
+            serverError:
+                _filterError ??
+                (_filter.edited && _filterMissing
+                    ? l10n.savedFilterFilterRequired
+                    : null),
+            onChanged: _filterChanged,
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile.adaptive(
+            value: _includeNulls,
+            onChanged: enabled
+                ? (value) => setState(() => _includeNulls = value)
+                : null,
+            title: Text(l10n.savedFilterIncludeNulls),
+            subtitle: Text(l10n.savedFilterIncludeNullsHint),
+          ),
+          SwitchListTile.adaptive(
+            value: _favourite,
+            onChanged: enabled
+                ? (value) => setState(() => _favourite = value)
+                : null,
+            title: Text(l10n.savedFilterFavourite),
+            subtitle: Text(l10n.savedFilterFavouriteHint),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
@@ -156,6 +157,7 @@ class _SearchPageState extends ConsumerState<SearchPage>
       ),
       body: switch (results) {
         null when query.isEmpty => CenteredScrollView(
+          maxWidth: ReadableWidth.list,
           child: EmptyState(
             icon: Icons.search,
             title: l10n.searchStartTitle,
@@ -164,6 +166,7 @@ class _SearchPageState extends ConsumerState<SearchPage>
         ),
         null => const SizedBox.shrink(),
         final results when results.isEmpty => CenteredScrollView(
+          maxWidth: ReadableWidth.list,
           child: EmptyState(
             icon: Icons.search_off,
             title: l10n.searchNoResultsTitle,
@@ -213,95 +216,104 @@ class _Results extends ConsumerWidget {
     return CustomScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       slivers: [
-        if (results.taskCount > 0) ...[
-          SliverSectionCard(
-            title: l10n.searchTasks,
-            count: results.taskCount,
-            itemCount: tasks.length,
-            itemBuilder: (context, index) {
-              final task = tasks[index];
-              final project = projectsById[task.projectId];
-              // A favourite task of an archived project is found too; the
-              // server refuses changes to it.
-              final archived = isArchivedInTree(task.projectId, projectsById);
-              return TaskRow(
-                key: ValueKey(('task', task.id)),
-                task: task,
-                now: now,
-                minimumPriority: minimumPriority,
-                projectTitle: project?.displayTitle(l10n),
-                projectColor: parseHexColor(project?.hexColor ?? ''),
-                pending: pendingIds.contains(task.id),
-                onTap: () => unawaited(showTaskDetail(context, task: task)),
-                onDoneChanged: archived
-                    ? null
-                    : (done) => onDoneChanged(task, done: done),
-                onFavoriteChanged: archived
-                    ? null
-                    : (favorite) => onFavoriteChanged(task, favorite: favorite),
-              );
-            },
-          ),
-          if (more > 0)
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              sliver: SliverToBoxAdapter(
-                child: ListNote(
-                  icon: Icons.more_horiz,
-                  text: l10n.searchMoreTasks(more),
-                ),
+        SliverReadableWidth.group(
+          maxWidth: ReadableWidth.list,
+          slivers: [
+            if (results.taskCount > 0) ...[
+              SliverSectionCard(
+                title: l10n.searchTasks,
+                count: results.taskCount,
+                itemCount: tasks.length,
+                itemBuilder: (context, index) {
+                  final task = tasks[index];
+                  final project = projectsById[task.projectId];
+                  // A favourite task of an archived project is found too; the
+                  // server refuses changes to it.
+                  final archived = isArchivedInTree(
+                    task.projectId,
+                    projectsById,
+                  );
+                  return TaskRow(
+                    key: ValueKey(('task', task.id)),
+                    task: task,
+                    now: now,
+                    minimumPriority: minimumPriority,
+                    projectTitle: project?.displayTitle(l10n),
+                    projectColor: parseHexColor(project?.hexColor ?? ''),
+                    pending: pendingIds.contains(task.id),
+                    onTap: () => unawaited(showTaskDetail(context, task: task)),
+                    onDoneChanged: archived
+                        ? null
+                        : (done) => onDoneChanged(task, done: done),
+                    onFavoriteChanged: archived
+                        ? null
+                        : (favorite) =>
+                              onFavoriteChanged(task, favorite: favorite),
+                  );
+                },
               ),
+              if (more > 0)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                  sliver: SliverToBoxAdapter(
+                    child: ListNote(
+                      icon: Icons.more_horiz,
+                      text: l10n.searchMoreTasks(more),
+                    ),
+                  ),
+                ),
+            ],
+            if (results.projects.isNotEmpty) ...[
+              SliverSectionCard(
+                title: l10n.searchProjects,
+                count: results.projects.length,
+                itemCount: results.projects.length,
+                itemBuilder: (context, index) {
+                  final project = results.projects[index];
+                  return ProjectRow(
+                    key: ValueKey(('project', project.id)),
+                    project: project,
+                    onTap: () => router.go(AppRoutes.project(project.id)),
+                  );
+                },
+              ),
+            ],
+            if (results.savedFilters.isNotEmpty) ...[
+              SliverSectionCard(
+                title: l10n.savedFiltersHeading,
+                count: results.savedFilters.length,
+                itemCount: results.savedFilters.length,
+                itemBuilder: (context, index) {
+                  final filter = results.savedFilters[index];
+                  return _SavedFilterResult(
+                    key: ValueKey(('filter', filter.projectId)),
+                    filter: filter,
+                    onTap: () => router.go(AppRoutes.project(filter.projectId)),
+                  );
+                },
+              ),
+            ],
+            if (results.labels.isNotEmpty) ...[
+              SliverSectionCard(
+                title: l10n.searchLabels,
+                count: results.labels.length,
+                itemCount: results.labels.length,
+                itemBuilder: (context, index) {
+                  final label = results.labels[index];
+                  return _LabelResult(
+                    key: ValueKey(('label', label.id)),
+                    label: label,
+                    onTap: () =>
+                        unawaited(router.push(AppRoutes.labelTasks(label.id))),
+                  );
+                },
+              ),
+            ],
+            const SliverSafeArea(
+              top: false,
+              sliver: SliverToBoxAdapter(child: SizedBox(height: 16)),
             ),
-        ],
-        if (results.projects.isNotEmpty) ...[
-          SliverSectionCard(
-            title: l10n.searchProjects,
-            count: results.projects.length,
-            itemCount: results.projects.length,
-            itemBuilder: (context, index) {
-              final project = results.projects[index];
-              return ProjectRow(
-                key: ValueKey(('project', project.id)),
-                project: project,
-                onTap: () => router.go(AppRoutes.project(project.id)),
-              );
-            },
-          ),
-        ],
-        if (results.savedFilters.isNotEmpty) ...[
-          SliverSectionCard(
-            title: l10n.savedFiltersHeading,
-            count: results.savedFilters.length,
-            itemCount: results.savedFilters.length,
-            itemBuilder: (context, index) {
-              final filter = results.savedFilters[index];
-              return _SavedFilterResult(
-                key: ValueKey(('filter', filter.projectId)),
-                filter: filter,
-                onTap: () => router.go(AppRoutes.project(filter.projectId)),
-              );
-            },
-          ),
-        ],
-        if (results.labels.isNotEmpty) ...[
-          SliverSectionCard(
-            title: l10n.searchLabels,
-            count: results.labels.length,
-            itemCount: results.labels.length,
-            itemBuilder: (context, index) {
-              final label = results.labels[index];
-              return _LabelResult(
-                key: ValueKey(('label', label.id)),
-                label: label,
-                onTap: () =>
-                    unawaited(router.push(AppRoutes.labelTasks(label.id))),
-              );
-            },
-          ),
-        ],
-        const SliverSafeArea(
-          top: false,
-          sliver: SliverToBoxAdapter(child: SizedBox(height: 16)),
+          ],
         ),
       ],
     );

@@ -60,12 +60,14 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   /// page over the shell), the notice to show above it. [header] stays
   /// above the loading and failure states, for controls that must survive
   /// them. [notificationPredicate] picks the scrolls a pull starts from,
-  /// e.g. nested ones too.
+  /// e.g. nested ones too. [maxWidth] is the screen's readable width for
+  /// the loading and failure states; [builder] applies its own.
   Widget buildRefreshable<T>(
     AsyncValue<T> data, {
     required String loadingLabel,
     required Widget Function(T value, Widget? notice) builder,
     Widget? header,
+    double? maxWidth,
     ScrollNotificationPredicate notificationPredicate =
         defaultScrollNotificationPredicate,
   }) {
@@ -80,6 +82,7 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
         // value, which must not show.
         AsyncLoading() => CenteredScrollView(
           header: header,
+          maxWidth: maxWidth,
           child: LoadingPlaceholder(label: loadingLabel),
         ),
         AsyncValue(:final value?) => builder(value, switch (_refreshFailure) {
@@ -96,10 +99,12 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
         }),
         AsyncError(:final error) when !_refreshing => CenteredScrollView(
           header: header,
+          maxWidth: maxWidth,
           child: DataFailureCard(error: error, stale: false, onRetry: refresh),
         ),
         AsyncError() => CenteredScrollView(
           header: header,
+          maxWidth: maxWidth,
           child: LoadingPlaceholder(label: loadingLabel),
         ),
       },

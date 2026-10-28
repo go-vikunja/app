@@ -10,6 +10,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
@@ -389,6 +390,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
             onDeleteAccount: () => unawaited(_deleteAccount(entry)),
           ),
           _ => CenteredScrollView(
+            maxWidth: ReadableWidth.form,
             child: LoadingPlaceholder(label: l10n.accountSettingsLoading),
           ),
         },
@@ -1006,12 +1008,15 @@ class _Settings extends ConsumerWidget {
       ),
     ];
 
-    return ListView(
-      // An explicit padding replaces the system bars' and cutouts'.
-      padding:
-          MediaQuery.paddingOf(context) +
-          const EdgeInsets.only(top: 8, bottom: 32),
-      children: children,
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.form,
+      builder: (_, _, inset) => ListView(
+        // An explicit padding replaces the system bars' and cutouts'.
+        padding:
+            MediaQuery.paddingOf(context) +
+            EdgeInsets.fromLTRB(inset, 8, inset, 32),
+        children: children,
+      ),
     );
   }
 }

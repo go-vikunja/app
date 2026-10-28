@@ -1,5 +1,6 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 
 /// A Cupertino wheel in a popup with Cancel and Done, and [title] between
@@ -15,13 +16,15 @@ Future<DateTime?> showCupertinoPickerSheet(
   DateTime? maximum,
 }) => showCupertinoModalPopup<DateTime>(
   context: context,
-  builder: (context) => _CupertinoPickerSheet(
-    mode: mode,
-    initial: initial,
-    use24Hour: use24Hour,
-    title: title,
-    minimum: minimum,
-    maximum: maximum,
+  builder: (context) => ReadableSheetWidth(
+    child: _CupertinoPickerSheet(
+      mode: mode,
+      initial: initial,
+      use24Hour: use24Hour,
+      title: title,
+      minimum: minimum,
+      maximum: maximum,
+    ),
   ),
 );
 

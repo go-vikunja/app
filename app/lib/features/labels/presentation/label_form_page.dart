@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
@@ -271,6 +272,7 @@ class _LabelFormPageState extends ConsumerState<LabelFormPage> {
       );
     } else if (labels.hasValue) {
       body = CenteredScrollView(
+        maxWidth: ReadableWidth.form,
         child: EmptyState(
           icon: Icons.label_off_outlined,
           title: l10n.labelsGoneTitle,
@@ -279,6 +281,7 @@ class _LabelFormPageState extends ConsumerState<LabelFormPage> {
       );
     } else {
       body = CenteredScrollView(
+        maxWidth: ReadableWidth.form,
         child: LoadingPlaceholder(label: l10n.labelsLoading),
       );
     }
@@ -369,113 +372,116 @@ class _Form extends StatelessWidget {
     final muted = theme.textTheme.bodyMedium?.copyWith(
       color: colors.onSurfaceVariant,
     );
-    return ListView(
-      padding: const EdgeInsets.only(top: 8, bottom: 32),
-      children: [
-        for (final note in notes)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: note,
-          ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: titleController,
-            enabled: enabled,
-            autofocus: description == null,
-            // Wraps, but Return saves instead of adding a line.
-            maxLines: null,
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.done,
-            textCapitalization: TextCapitalization.sentences,
-            inputFormatters: [CodePointLimitFormatter(Label.maxTitleLength)],
-            decoration: InputDecoration(
-              labelText: l10n.labelsTitleLabel,
-              errorText: titleError,
-              errorMaxLines: 3,
-              counterText: left <= _counterFrom
-                  ? '$used/${Label.maxTitleLength}'
-                  : null,
-              semanticCounterText: left <= _counterFrom
-                  ? l10n.labelsTitleRemaining(left)
-                  : null,
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.form,
+      builder: (_, _, inset) => ListView(
+        padding: EdgeInsets.fromLTRB(inset, 8, inset, 32),
+        children: [
+          for (final note in notes)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: note,
             ),
-            onChanged: (_) => onTitleChanged(),
-            onSubmitted: (_) => onSubmit(),
-          ),
-        ),
-        FormSectionTitle(l10n.labelsColour),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: IgnorePointer(
-            ignoring: !enabled,
-            child: ColorRow(
-              value: hexColor,
-              palette: newLabelColors,
-              onChanged: onColorPicked,
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: TextField(
-            controller: customHexController,
-            enabled: enabled,
-            autocorrect: false,
-            enableSuggestions: false,
-            textInputAction: TextInputAction.done,
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp('[#0-9a-fA-F]')),
-              LengthLimitingTextInputFormatter(7),
-            ],
-            decoration: InputDecoration(
-              labelText: l10n.labelsCustomColour,
-              prefixText: '#',
-              helperText: l10n.labelsCustomColourHelper,
-              helperMaxLines: 3,
-              errorText: customHexInvalid
-                  ? l10n.labelsCustomColourInvalid
-                  : null,
-              errorMaxLines: 3,
-            ),
-            onChanged: onColorTyped,
-          ),
-        ),
-        FormSectionTitle(l10n.labelsDescription),
-        if (description == null)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(l10n.labelsDescriptionAfterCreate, style: muted),
-          )
-        else ...[
+            child: TextField(
+              controller: titleController,
+              enabled: enabled,
+              autofocus: description == null,
+              // Wraps, but Return saves instead of adding a line.
+              maxLines: null,
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.done,
+              textCapitalization: TextCapitalization.sentences,
+              inputFormatters: [CodePointLimitFormatter(Label.maxTitleLength)],
+              decoration: InputDecoration(
+                labelText: l10n.labelsTitleLabel,
+                errorText: titleError,
+                errorMaxLines: 3,
+                counterText: left <= _counterFrom
+                    ? '$used/${Label.maxTitleLength}'
+                    : null,
+                semanticCounterText: left <= _counterFrom
+                    ? l10n.labelsTitleRemaining(left)
+                    : null,
+              ),
+              onChanged: (_) => onTitleChanged(),
+              onSubmitted: (_) => onSubmit(),
+            ),
+          ),
+          FormSectionTitle(l10n.labelsColour),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SelectionArea(
-              child: RichHtml(
-                html: description,
-                onLink: onLink,
-                onTaskLink: onTaskLink,
-                empty: Text(l10n.labelsNoDescription, style: muted),
+            child: IgnorePointer(
+              ignoring: !enabled,
+              child: ColorRow(
+                value: hexColor,
+                palette: newLabelColors,
+                onChanged: onColorPicked,
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(4, 8, 16, 0),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                onPressed: onEditDescription,
-                icon: Icon(hasDescription ? Icons.edit_outlined : Icons.add),
-                label: Text(
-                  hasDescription
-                      ? l10n.labelsEditDescription
-                      : l10n.labelsAddDescription,
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            child: TextField(
+              controller: customHexController,
+              enabled: enabled,
+              autocorrect: false,
+              enableSuggestions: false,
+              textInputAction: TextInputAction.done,
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp('[#0-9a-fA-F]')),
+                LengthLimitingTextInputFormatter(7),
+              ],
+              decoration: InputDecoration(
+                labelText: l10n.labelsCustomColour,
+                prefixText: '#',
+                helperText: l10n.labelsCustomColourHelper,
+                helperMaxLines: 3,
+                errorText: customHexInvalid
+                    ? l10n.labelsCustomColourInvalid
+                    : null,
+                errorMaxLines: 3,
+              ),
+              onChanged: onColorTyped,
+            ),
+          ),
+          FormSectionTitle(l10n.labelsDescription),
+          if (description == null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(l10n.labelsDescriptionAfterCreate, style: muted),
+            )
+          else ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: SelectionArea(
+                child: RichHtml(
+                  html: description,
+                  onLink: onLink,
+                  onTaskLink: onTaskLink,
+                  empty: Text(l10n.labelsNoDescription, style: muted),
                 ),
               ),
             ),
-          ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 8, 16, 0),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: TextButton.icon(
+                  onPressed: onEditDescription,
+                  icon: Icon(hasDescription ? Icons.edit_outlined : Icons.add),
+                  label: Text(
+                    hasDescription
+                        ? l10n.labelsEditDescription
+                        : l10n.labelsAddDescription,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }

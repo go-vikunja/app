@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
@@ -133,87 +134,93 @@ class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop) unawaited(_confirmLeave());
       },
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-        children: [
-          Semantics(
-            header: true,
-            headingLevel: 2,
-            child: Text(widget.title, style: theme.textTheme.titleLarge),
-          ),
-          const SizedBox(height: 16),
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
+      child: ReadableWidth.builder(
+        maxWidth: ReadableWidth.form,
+        builder: (_, _, inset) => ListView(
+          padding: EdgeInsets.fromLTRB(16 + inset, 16, 16 + inset, 32),
+          children: [
+            Semantics(
+              header: true,
+              headingLevel: 2,
+              child: Text(widget.title, style: theme.textTheme.titleLarge),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Semantics(
-                label: l10n.oneTimeSecretLabel,
-                child: Actions(
-                  actions: {
-                    CopySelectionTextIntent:
-                        CallbackAction<CopySelectionTextIntent>(
-                          onInvoke: (_) => _copySelection(),
-                        ),
-                  },
-                  child: SelectableText(
-                    widget.secret,
-                    style: theme.textTheme.titleMedium?.merge(
-                      AppTheme.monospace,
+            const SizedBox(height: 16),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Semantics(
+                  label: l10n.oneTimeSecretLabel,
+                  child: Actions(
+                    actions: {
+                      CopySelectionTextIntent:
+                          CallbackAction<CopySelectionTextIntent>(
+                            onInvoke: (_) => _copySelection(),
+                          ),
+                    },
+                    child: SelectableText(
+                      widget.secret,
+                      style: theme.textTheme.titleMedium?.merge(
+                        AppTheme.monospace,
+                      ),
+                      onSelectionChanged: (selection, _) =>
+                          _selection = selection,
+                      contextMenuBuilder: _selectionMenu,
                     ),
-                    onSelectionChanged: (selection, _) =>
-                        _selection = selection,
-                    contextMenuBuilder: _selectionMenu,
                   ),
                 ),
               ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Align(
-            alignment: AlignmentDirectional.centerStart,
-            child: FilledButton.icon(
-              onPressed: () => unawaited(_copy(widget.secret)),
-              icon: Icon(_copied ? Icons.check : Icons.copy),
-              label: Text(
-                _copied ? l10n.copiedToClipboard : l10n.oneTimeSecretCopy,
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ExcludeSemantics(
-                child: Icon(Icons.visibility_off_outlined, color: colors.error),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  l10n.oneTimeSecretOnce,
-                  style: theme.textTheme.bodyLarge,
+            const SizedBox(height: 16),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: FilledButton.icon(
+                onPressed: () => unawaited(_copy(widget.secret)),
+                icon: Icon(_copied ? Icons.check : Icons.copy),
+                label: Text(
+                  _copied ? l10n.copiedToClipboard : l10n.oneTimeSecretCopy,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            widget.usage,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: colors.onSurfaceVariant,
             ),
-          ),
-          const SizedBox(height: 32),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: OutlinedButton(
-              onPressed: () => Navigator.of(context).maybePop(),
-              child: Text(l10n.oneTimeSecretDone),
+            const SizedBox(height: 24),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ExcludeSemantics(
+                  child: Icon(
+                    Icons.visibility_off_outlined,
+                    color: colors.error,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    l10n.oneTimeSecretOnce,
+                    style: theme.textTheme.bodyLarge,
+                  ),
+                ),
+              ],
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text(
+              widget.usage,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 32),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).maybePop(),
+                child: Text(l10n.oneTimeSecretDone),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

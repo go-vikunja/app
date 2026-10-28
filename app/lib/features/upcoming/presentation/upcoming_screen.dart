@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
@@ -216,6 +217,7 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
       body: buildRefreshable(
         tasks,
         loadingLabel: l10n.overviewLoading,
+        maxWidth: ReadableWidth.list,
         builder: (value, notice) {
           // A task marked done here stays where it was while its Undo is
           // offered, though the selection skips done tasks.
@@ -394,19 +396,24 @@ class _UpcomingSections extends StatelessWidget {
       return CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [
-          ...header,
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: SafeArea(
-              top: false,
-              child: Center(
-                child: EmptyState(
-                  icon: Icons.event_available,
-                  title: l10n.upcomingEmptyTitle,
-                  body: l10n.upcomingEmptyBody,
+          SliverReadableWidth.group(
+            maxWidth: ReadableWidth.list,
+            slivers: [
+              ...header,
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: SafeArea(
+                  top: false,
+                  child: Center(
+                    child: EmptyState(
+                      icon: Icons.event_available,
+                      title: l10n.upcomingEmptyTitle,
+                      body: l10n.upcomingEmptyBody,
+                    ),
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
         ],
       );
@@ -414,45 +421,50 @@ class _UpcomingSections extends StatelessWidget {
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        ...header,
-        for (final section in sections)
-          if (section case OverdueSection(:final tasks))
-            SliverSectionCard(
-              title: l10n.sectionOverdue,
-              count: tasks.length,
-              titleColor: Theme.of(context).colorScheme.error,
-              itemCount: tasks.length,
-              itemBuilder: (context, index) => _row(context, tasks[index]),
+        SliverReadableWidth.group(
+          maxWidth: ReadableWidth.list,
+          slivers: [
+            ...header,
+            for (final section in sections)
+              if (section case OverdueSection(:final tasks))
+                SliverSectionCard(
+                  title: l10n.sectionOverdue,
+                  count: tasks.length,
+                  titleColor: Theme.of(context).colorScheme.error,
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) => _row(context, tasks[index]),
+                ),
+            if (days.isNotEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.only(top: 16),
+                sliver: SliverList.builder(
+                  itemCount: days.length,
+                  itemBuilder: (context, index) {
+                    final DaySection(:day, :tasks) = days[index];
+                    return TimelineDay(
+                      key: ValueKey(day),
+                      day: day,
+                      title: dayTitle(context, day, now),
+                      today: day == today,
+                      rows: [for (final task in tasks) _row(context, task)],
+                    );
+                  },
+                ),
+              ),
+            for (final section in sections)
+              if (section case WithoutDueDateSection(:final tasks))
+                SliverSectionCard(
+                  title: l10n.sectionNoDueDate,
+                  count: tasks.length,
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) => _row(context, tasks[index]),
+                ),
+            // Room for the floating action button below the last row.
+            const SliverSafeArea(
+              top: false,
+              sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
             ),
-        if (days.isNotEmpty)
-          SliverPadding(
-            padding: const EdgeInsets.only(top: 16),
-            sliver: SliverList.builder(
-              itemCount: days.length,
-              itemBuilder: (context, index) {
-                final DaySection(:day, :tasks) = days[index];
-                return TimelineDay(
-                  key: ValueKey(day),
-                  day: day,
-                  title: dayTitle(context, day, now),
-                  today: day == today,
-                  rows: [for (final task in tasks) _row(context, task)],
-                );
-              },
-            ),
-          ),
-        for (final section in sections)
-          if (section case WithoutDueDateSection(:final tasks))
-            SliverSectionCard(
-              title: l10n.sectionNoDueDate,
-              count: tasks.length,
-              itemCount: tasks.length,
-              itemBuilder: (context, index) => _row(context, tasks[index]),
-            ),
-        // Room for the floating action button below the last row.
-        const SliverSafeArea(
-          top: false,
-          sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
+          ],
         ),
       ],
     );

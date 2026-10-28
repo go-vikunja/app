@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/repositories/project_view_repository.dart';
 import 'package:vikunja_mobile/core/repositories/project_view_repository_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
@@ -154,39 +155,44 @@ class _ProjectViewsPageState extends ConsumerState<ProjectViewsPage> {
         ],
       ),
       body: switch ((project, projects.hasValue)) {
-        (final project?, _) => ListView(
-          padding: const EdgeInsets.only(bottom: 32),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Text(
-                l10n.projectViewsIntro(project.displayTitle(l10n)),
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+        (final project?, _) => ReadableWidth.builder(
+          maxWidth: ReadableWidth.form,
+          builder: (_, _, inset) => ListView(
+            padding: EdgeInsets.fromLTRB(inset, 0, inset, 32),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Text(
+                  l10n.projectViewsIntro(project.displayTitle(l10n)),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
-            ),
-            SectionCard(
-              children: [
-                for (final (index, view) in views.indexed)
-                  _ViewRow(
-                    key: ValueKey(view.id),
-                    view: view,
-                    busy: _busyViewId == view.id,
-                    enabled: !busy,
-                    canMoveUp: planViewMove(views, view.id, index - 1) != null,
-                    canMoveDown:
-                        index < views.length - 1 &&
-                        planViewMove(views, view.id, index + 1) != null,
-                    canDelete: views.length > 1,
-                    onTap: () => unawaited(_edit(view)),
-                    onAction: (action) => _onAction(view, index, action),
-                  ),
-              ],
-            ),
-          ],
+              SectionCard(
+                children: [
+                  for (final (index, view) in views.indexed)
+                    _ViewRow(
+                      key: ValueKey(view.id),
+                      view: view,
+                      busy: _busyViewId == view.id,
+                      enabled: !busy,
+                      canMoveUp:
+                          planViewMove(views, view.id, index - 1) != null,
+                      canMoveDown:
+                          index < views.length - 1 &&
+                          planViewMove(views, view.id, index + 1) != null,
+                      canDelete: views.length > 1,
+                      onTap: () => unawaited(_edit(view)),
+                      onAction: (action) => _onAction(view, index, action),
+                    ),
+                ],
+              ),
+            ],
+          ),
         ),
         (_, true) => CenteredScrollView(
+          maxWidth: ReadableWidth.form,
           child: EmptyState(
             icon: Icons.search_off,
             title: l10n.projectGoneTitle,
@@ -194,6 +200,7 @@ class _ProjectViewsPageState extends ConsumerState<ProjectViewsPage> {
           ),
         ),
         _ => CenteredScrollView(
+          maxWidth: ReadableWidth.form,
           child: LoadingPlaceholder(label: l10n.projectsLoading),
         ),
       },

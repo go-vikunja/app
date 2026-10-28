@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/repositories/account_security_repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/application/api_token_expiry.dart';
@@ -278,6 +279,7 @@ class _ApiTokenFormPageState extends ConsumerState<ApiTokenFormPage> {
         body: switch ((offered, loadFailure)) {
           (final offered?, _) => _form(context, offered),
           (_, final failure?) => CenteredScrollView(
+            maxWidth: ReadableWidth.form,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: DataFailureCard(
@@ -288,6 +290,7 @@ class _ApiTokenFormPageState extends ConsumerState<ApiTokenFormPage> {
             ),
           ),
           _ => CenteredScrollView(
+            maxWidth: ReadableWidth.form,
             child: LoadingPlaceholder(label: l10n.apiTokenFormLoading),
           ),
         },
@@ -302,21 +305,28 @@ class _ApiTokenFormPageState extends ConsumerState<ApiTokenFormPage> {
     return SafeArea(
       top: false,
       bottom: false,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (error != null)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: FormErrorText(error),
-            ),
-          Expanded(child: _fields(context, offered)),
-        ],
+      child: ReadableWidth.builder(
+        maxWidth: ReadableWidth.form,
+        builder: (_, _, inset) => Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (error != null)
+              Padding(
+                padding: EdgeInsets.fromLTRB(inset, 0, inset, 8),
+                child: FormErrorText(error),
+              ),
+            Expanded(child: _fields(context, offered, inset)),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _fields(BuildContext context, ApiPermissionGroups offered) {
+  Widget _fields(
+    BuildContext context,
+    ApiPermissionGroups offered,
+    double inset,
+  ) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
@@ -331,9 +341,11 @@ class _ApiTokenFormPageState extends ConsumerState<ApiTokenFormPage> {
       _ => l10n.apiTokenFormExpiryCustom,
     };
     return ListView(
-      padding: EdgeInsets.only(
-        top: 8,
-        bottom: 32 + MediaQuery.paddingOf(context).bottom,
+      padding: EdgeInsets.fromLTRB(
+        inset,
+        8,
+        inset,
+        32 + MediaQuery.paddingOf(context).bottom,
       ),
       children: [
         Padding(

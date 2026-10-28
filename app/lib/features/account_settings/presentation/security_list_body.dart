@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 
@@ -37,27 +38,31 @@ class SecurityListBody extends StatelessWidget {
     final failure = this.failure;
     return RefreshIndicator.adaptive(
       onRefresh: onRefresh,
-      child: ListView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        // An explicit padding replaces the system bars' and cutouts'.
-        padding:
-            MediaQuery.paddingOf(context) + const EdgeInsets.only(bottom: 32),
-        children: [
-          ?header,
-          if (failure != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: DataFailureCard(
-                error: failure,
-                stale: hasData,
-                onRetry: () => unawaited(onRefresh()),
+      child: ReadableWidth.builder(
+        maxWidth: ReadableWidth.form,
+        builder: (_, _, inset) => ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          // An explicit padding replaces the system bars' and cutouts'.
+          padding:
+              MediaQuery.paddingOf(context) +
+              EdgeInsets.fromLTRB(inset, 0, inset, 32),
+          children: [
+            ?header,
+            if (failure != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: DataFailureCard(
+                  error: failure,
+                  stale: hasData,
+                  onRetry: () => unawaited(onRefresh()),
+                ),
               ),
-            ),
-          if (loading) LoadingPlaceholder(label: loadingLabel),
-          ?empty,
-          ...children,
-          ?footer,
-        ],
+            if (loading) LoadingPlaceholder(label: loadingLabel),
+            ?empty,
+            ...children,
+            ?footer,
+          ],
+        ),
       ),
     );
   }

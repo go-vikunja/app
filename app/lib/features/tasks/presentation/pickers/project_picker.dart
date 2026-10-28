@@ -1,7 +1,7 @@
-import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
@@ -19,7 +19,7 @@ Future<Project?> pickProject(
   final rows = selectableProjects(writableProjects(projects));
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
-      return showCupertinoSheet<Project>(
+      return showReadableCupertinoSheet<Project>(
         context: context,
         showDragHandle: true,
         scrollableBuilder: (context, scrollController) => Material(

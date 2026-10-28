@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
 import 'package:vikunja_mobile/core/network/header_rules.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
@@ -266,94 +267,98 @@ class _HeadersPageState extends ConsumerState<HeadersPage> {
       ),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-          children: [
-            Text('$_origin', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(l10n.connectionHeadersIntro('$_origin')),
-            if (!_origin.isSecure) ...[
-              const SizedBox(height: 12),
-              ListNote(
-                icon: Icons.warning_amber_outlined,
-                text: l10n.connectionHeadersUnencrypted,
-              ),
-            ],
-            const SizedBox(height: 8),
-            if (_loadFailure case final failure?)
-              StatusCard(
-                icon: Icons.error_outline,
-                title: switch (failure) {
-                  _LoadFailure.unavailable => l10n.connectionProfileLockedTitle,
-                  _LoadFailure.damaged => l10n.connectionProfileDamagedTitle,
-                },
-                body: switch (failure) {
-                  _LoadFailure.unavailable => l10n.connectionNotAvailableBody,
-                  _LoadFailure.damaged =>
-                    l10n.connectionProfileDamagedExplanation,
-                },
-                background: colors.errorContainer,
-                foreground: colors.onErrorContainer,
-                liveRegion: true,
-                action: TextButton(
-                  onPressed: () => unawaited(_load()),
-                  child: Text(l10n.retry),
+        child: ReadableWidth.builder(
+          maxWidth: ReadableWidth.form,
+          builder: (_, _, inset) => ListView(
+            padding: EdgeInsets.fromLTRB(16 + inset, 12, 16 + inset, 32),
+            children: [
+              Text('$_origin', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(l10n.connectionHeadersIntro('$_origin')),
+              if (!_origin.isSecure) ...[
+                const SizedBox(height: 12),
+                ListNote(
+                  icon: Icons.warning_amber_outlined,
+                  text: l10n.connectionHeadersUnencrypted,
                 ),
-              )
-            else if (rows == null)
-              LoadingPlaceholder(label: l10n.connectionHeadersHeading)
-            else ...[
-              RadioGroup<HeaderPreset>(
-                groupValue: _preset,
-                onChanged: _busy ? (_) {} : _choosePreset,
-                child: Column(
-                  children: [
-                    RadioListTile<HeaderPreset>.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      value: HeaderPreset.cloudflareAccessServiceToken,
-                      title: Text(l10n.connectionHeaderPresetCloudflare),
-                    ),
-                    RadioListTile<HeaderPreset>.adaptive(
-                      contentPadding: EdgeInsets.zero,
-                      value: HeaderPreset.custom,
-                      title: Text(l10n.connectionHeaderPresetCustom),
-                    ),
-                  ],
-                ),
-              ),
-              for (final (index, row) in rows.indexed)
-                _HeaderFields(
-                  key: ObjectKey(row),
-                  row: row,
-                  enabled: !_busy,
-                  last: index == rows.length - 1,
-                  onRemove: row.fixed ? null : () => _removeRow(row),
-                  onSubmitted: () => unawaited(_save()),
-                ),
-              if (_preset == HeaderPreset.custom)
-                Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: TextButton.icon(
-                    onPressed: _busy || rows.length >= HeaderRules.maxHeaders
-                        ? null
-                        : _addRow,
-                    icon: const Icon(Icons.add),
-                    label: Text(l10n.connectionAddHeader),
+              ],
+              const SizedBox(height: 8),
+              if (_loadFailure case final failure?)
+                StatusCard(
+                  icon: Icons.error_outline,
+                  title: switch (failure) {
+                    _LoadFailure.unavailable =>
+                      l10n.connectionProfileLockedTitle,
+                    _LoadFailure.damaged => l10n.connectionProfileDamagedTitle,
+                  },
+                  body: switch (failure) {
+                    _LoadFailure.unavailable => l10n.connectionNotAvailableBody,
+                    _LoadFailure.damaged =>
+                      l10n.connectionProfileDamagedExplanation,
+                  },
+                  background: colors.errorContainer,
+                  foreground: colors.onErrorContainer,
+                  liveRegion: true,
+                  action: TextButton(
+                    onPressed: () => unawaited(_load()),
+                    child: Text(l10n.retry),
+                  ),
+                )
+              else if (rows == null)
+                LoadingPlaceholder(label: l10n.connectionHeadersHeading)
+              else ...[
+                RadioGroup<HeaderPreset>(
+                  groupValue: _preset,
+                  onChanged: _busy ? (_) {} : _choosePreset,
+                  child: Column(
+                    children: [
+                      RadioListTile<HeaderPreset>.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        value: HeaderPreset.cloudflareAccessServiceToken,
+                        title: Text(l10n.connectionHeaderPresetCloudflare),
+                      ),
+                      RadioListTile<HeaderPreset>.adaptive(
+                        contentPadding: EdgeInsets.zero,
+                        value: HeaderPreset.custom,
+                        title: Text(l10n.connectionHeaderPresetCustom),
+                      ),
+                    ],
                   ),
                 ),
-              if (listError != null) FormErrorText(listError),
-              const SizedBox(height: 16),
-              ListNote(
-                icon: Icons.info_outline,
-                text: l10n.connectionServiceTokenHint,
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _busy ? null : () => unawaited(_save()),
-                child: Text(l10n.connectionSave),
-              ),
+                for (final (index, row) in rows.indexed)
+                  _HeaderFields(
+                    key: ObjectKey(row),
+                    row: row,
+                    enabled: !_busy,
+                    last: index == rows.length - 1,
+                    onRemove: row.fixed ? null : () => _removeRow(row),
+                    onSubmitted: () => unawaited(_save()),
+                  ),
+                if (_preset == HeaderPreset.custom)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: TextButton.icon(
+                      onPressed: _busy || rows.length >= HeaderRules.maxHeaders
+                          ? null
+                          : _addRow,
+                      icon: const Icon(Icons.add),
+                      label: Text(l10n.connectionAddHeader),
+                    ),
+                  ),
+                if (listError != null) FormErrorText(listError),
+                const SizedBox(height: 16),
+                ListNote(
+                  icon: Icons.info_outline,
+                  text: l10n.connectionServiceTokenHint,
+                ),
+                const SizedBox(height: 24),
+                FilledButton(
+                  onPressed: _busy ? null : () => unawaited(_save()),
+                  child: Text(l10n.connectionSave),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

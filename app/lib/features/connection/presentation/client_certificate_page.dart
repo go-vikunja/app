@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/network/client_certificate.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
@@ -167,61 +168,66 @@ class _ClientCertificatePageState extends ConsumerState<ClientCertificatePage> {
       ),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-          children: [
-            Text('${widget.origin}', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(l10n.connectionClientCertificateIntroFor('${widget.origin}')),
-            const SizedBox(height: 16),
-            if (fileName != null)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.badge_outlined),
-                title: Text(fileName),
+        child: ReadableWidth.builder(
+          maxWidth: ReadableWidth.form,
+          builder: (_, _, inset) => ListView(
+            padding: EdgeInsets.fromLTRB(16 + inset, 12, 16 + inset, 32),
+            children: [
+              Text('${widget.origin}', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Text(
+                l10n.connectionClientCertificateIntroFor('${widget.origin}'),
               ),
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: OutlinedButton.icon(
-                onPressed: _busy ? null : () => unawaited(_choose()),
-                icon: const Icon(Icons.file_open_outlined),
-                label: Text(
-                  fileName == null
-                      ? l10n.connectionChooseFile
-                      : l10n.connectionChooseOtherFile,
+              const SizedBox(height: 16),
+              if (fileName != null)
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.badge_outlined),
+                  title: Text(fileName),
+                ),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: OutlinedButton.icon(
+                  onPressed: _busy ? null : () => unawaited(_choose()),
+                  icon: const Icon(Icons.file_open_outlined),
+                  label: Text(
+                    fileName == null
+                        ? l10n.connectionChooseFile
+                        : l10n.connectionChooseOtherFile,
+                  ),
                 ),
               ),
-            ),
-            if (fileError != null) FormErrorText(fileError),
-            const SizedBox(height: 16),
-            SecretTextField(
-              controller: _password,
-              label: l10n.connectionFilePassword,
-              revealTooltip: l10n.connectionShowPassword,
-              hideTooltip: l10n.connectionHidePassword,
-              errorText: _passwordError,
-              enabled: !_busy,
-              textInputAction: TextInputAction.done,
-              onChanged: (_) {
-                if (_passwordError != null) {
-                  setState(() => _passwordError = null);
-                }
-              },
-              onSubmitted: (_) => unawaited(_save()),
-            ),
-            if (!trustsServerInApp) ...[
+              if (fileError != null) FormErrorText(fileError),
               const SizedBox(height: 16),
-              ListNote(
-                icon: Icons.info_outline,
-                text: l10n.connectionClientCertificatePrivateCaHint,
+              SecretTextField(
+                controller: _password,
+                label: l10n.connectionFilePassword,
+                revealTooltip: l10n.connectionShowPassword,
+                hideTooltip: l10n.connectionHidePassword,
+                errorText: _passwordError,
+                enabled: !_busy,
+                textInputAction: TextInputAction.done,
+                onChanged: (_) {
+                  if (_passwordError != null) {
+                    setState(() => _passwordError = null);
+                  }
+                },
+                onSubmitted: (_) => unawaited(_save()),
+              ),
+              if (!trustsServerInApp) ...[
+                const SizedBox(height: 16),
+                ListNote(
+                  icon: Icons.info_outline,
+                  text: l10n.connectionClientCertificatePrivateCaHint,
+                ),
+              ],
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: _busy ? null : () => unawaited(_save()),
+                child: Text(l10n.connectionSave),
               ),
             ],
-            const SizedBox(height: 24),
-            FilledButton(
-              onPressed: _busy ? null : () => unawaited(_save()),
-              child: Text(l10n.connectionSave),
-            ),
-          ],
+          ),
         ),
       ),
     );

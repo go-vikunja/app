@@ -16,6 +16,7 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 - Every route, page pushed with the Navigator and dialog, sheet, picker or menu call has a scenario or an exemption with a written reason; a new one without either fails ([CONTRIBUTING.md](../CONTRIBUTING.md#pull-requests)).
 - Each scenario runs on Android and iOS, light and dark, English and German, with Flutter's tap-target, labelled-target and contrast guidelines and the project's checks for heading levels, headings that are no buttons, image labels and control names, on every scroll stop.
 - The six core screens have no overflow at 3.12× on iOS, at 375 × 667 and 320 × 568 points.
+- Since step 36b ([D69]) each scenario also runs on its platform's tablet in both orientations (Android 1280 × 800 and 800 × 1280, iPad 1194 × 834 and 834 × 1194), in dark mode, English and German: with the guidelines above and the readable-width checks, and once more at 200 % text, where it has to show without an exception at every scroll stop.
 - Every `header: true` has a heading level, and every announcement goes through the announcer.
 
 ## 2. Manual, on Android
@@ -27,7 +28,7 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 - **Build:** the release APK, installed with `adb install -r`; the project's emulator rules apply (start lean, one emulator, stop it afterwards).
 - **Server and data:** the local test server, seeded with `tool/seed_demo_data.py`; make sure it has: an overdue task and a task due later today; a description with headings, a link and a checklist; a Kanban view with a done column; a Gantt view with one *blocking* and one *precedes* relation between tasks in range; two accounts; an API token, a CalDAV token and a second session (signed in on the web).
 - **Settings during the pass:** font size and display size at their maximum for flows 2, 5, 6 and 11 (once also at the default); dark theme for half of the flows; colour correction for deuteranomaly for flows 2 and 8; every flow in German, flows 2, 3, 5 and 8 also in English.
-- **Known:** changing the system Contrast, or the wallpaper while system colours are on, makes Android relaunch the activity, and the app comes back at the Overview ([D68]). Set the contrast before opening the screen to check.
+- **Known until 2026-10-28:** changing the system Contrast, or the wallpaper while system colours are on, made Android relaunch the activity, and the app came back at the Overview ([D68]); since then the activity keeps its engine and the app keeps its screen.
 
 ### 2.2 In every flow
 
@@ -87,6 +88,8 @@ Once, on a device (the simulator for what it can show):
 3. **Increase Contrast:** the app uses the high-contrast scheme; the alerts' actions (delete task, sign out, the http question) with and without it, the 1.4.3 deviation of [D68].
 4. **Reduce Motion:** the board, the task sheet and "Go to today" jump; page and sheet transitions still slide, as [D68] records.
 5. **The tab bar:** inactive labels readable in light and dark.
+6. **iPad** ([D69]): the task sheet and a picker as centred cards (an 11" iPad in both orientations, an iPad mini in portrait) take VoiceOver's focus, and nothing on the page beside the card is reachable; in Split View with half of a 13" iPad the sheet fills the window. At the largest text, the centred settings and forms show everything.
 
 [D68]: decisions.md#d68-screen-readers-heading-levels-on-screen-titles-and-section-headers-one-announcer-with-the-apps-own-live-region-on-android-high-contrast-and-reduce-motion-followed-and-a-route-sweep-that-every-route-pushed-page-and-overlay-must-pass-wcag-22-aa-as-the-yardstick-with-written-deviations
+[D69]: decisions.md#d69-large-screens-one-window-layout-helper-readable-widths-of-840-dp-for-lists-and-640-dp-for-settings-and-forms-with-scrolling-margins-dialogs-at-most-560-dp-and-ios-sheets-at-most-640-dp-only-on-tablet-sized-windows
 [Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass

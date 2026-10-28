@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -104,127 +105,130 @@ class AccountTab extends ConsumerWidget {
       ),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.only(top: 8, bottom: 24),
-          children: [
-            // During sign-out the logout's refresh can end the session,
-            // which must not offer a sign-in racing the wipe.
-            if (entry.account.needsReauth && !signingOut)
-              Padding(
-                padding: bannerPadding,
-                child: guest
-                    ? GuestReauthBanner(entry: entry)
-                    : ReauthBanner(
-                        serverRoot: connection.rootUri,
-                        isSigningIn: isSigningIn,
-                        onSignInAgain: () => unawaited(
-                          signInAgainAfterHint(context, ref, entry),
+        child: ReadableWidth.builder(
+          maxWidth: ReadableWidth.form,
+          builder: (_, _, inset) => ListView(
+            padding: EdgeInsets.fromLTRB(inset, 8, inset, 24),
+            children: [
+              // During sign-out the logout's refresh can end the session,
+              // which must not offer a sign-in racing the wipe.
+              if (entry.account.needsReauth && !signingOut)
+                Padding(
+                  padding: bannerPadding,
+                  child: guest
+                      ? GuestReauthBanner(entry: entry)
+                      : ReauthBanner(
+                          serverRoot: connection.rootUri,
+                          isSigningIn: isSigningIn,
+                          onSignInAgain: () => unawaited(
+                            signInAgainAfterHint(context, ref, entry),
+                          ),
                         ),
-                      ),
-              ),
-            if (signIn case SignInFailed(:final error, :final serverRoot))
-              Padding(
-                padding: bannerPadding,
-                child: ConnectionErrorCard(
-                  message: describeSignInFailure(
-                    l10n,
-                    error,
-                    serverRoot: serverRoot,
-                    platform: theme.platform,
-                  ),
-                  action: ConnectionSettingsAction.appliesTo(error)
-                      ? ConnectionSettingsAction(
-                          error: error,
-                          serverRoot: serverRoot,
-                          foreground: theme.colorScheme.onErrorContainer,
-                        )
-                      : null,
                 ),
-              ),
-            // The account being signed out must not be changed or read
-            // again on the server.
-            AccountHeader(
-              entry: entry,
-              onOpenSettings: busy || guest
-                  ? null
-                  : () => _openSettings(context),
-            ),
-            if (entry.account.projectId case final projectId? when guest)
-              GuestNote(projectId: projectId),
-            if (deletionScheduledAt != null)
-              DeletionScheduledNote(
-                scheduledAt: deletionScheduledAt,
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                // Cancelling needs the password, so the web's page does it
-                // (D14).
-                onCancel: () => unawaited(
-                  openWebSettingsPage(
-                    context,
-                    ref,
-                    entry,
-                    WebSettingsPage.deletion,
+              if (signIn case SignInFailed(:final error, :final serverRoot))
+                Padding(
+                  padding: bannerPadding,
+                  child: ConnectionErrorCard(
+                    message: describeSignInFailure(
+                      l10n,
+                      error,
+                      serverRoot: serverRoot,
+                      platform: theme.platform,
+                    ),
+                    action: ConnectionSettingsAction.appliesTo(error)
+                        ? ConnectionSettingsAction(
+                            error: error,
+                            serverRoot: serverRoot,
+                            foreground: theme.colorScheme.onErrorContainer,
+                          )
+                        : null,
                   ),
                 ),
-              ),
-            if (!guest)
-              ListTile(
-                leading: const Icon(Icons.manage_accounts_outlined),
-                title: Text(l10n.accountSettingsEntry),
-                subtitle: Text(l10n.accountSettingsEntrySubtitle),
-                trailing: const Icon(Icons.chevron_right),
-                enabled: !busy,
-                onTap: () => _openSettings(context),
-              ),
-            const SizedBox(height: 8),
-            if (!guest) OrganiseSection(busy: busy),
-            AccountsSection(busy: busy),
-            SettingsSection(
-              title: l10n.accountServerHeading,
-              children: [
-                if (serverVersion.isNotEmpty)
-                  ListTile(
-                    leading: const Icon(Icons.dns_outlined),
-                    title: Text(l10n.overviewVikunjaVersion(serverVersion)),
-                  ),
-                ConnectionTile(
-                  serverRoot: connection.rootUri,
-                  enabled: !signingOut,
-                ),
-                ServerNotices(info: connection.info),
-                SyncStatusSection(entry: entry, signingOut: signingOut),
-                PendingChangesLine(
-                  entry: entry,
-                  canSend: !signingOut && !entry.account.needsReauth,
-                ),
-                SyncProblemsSection(entry: entry),
-              ],
-            ),
-            const WidgetsSection(),
-            NotificationsSection(entry: entry),
-            const PrivacySection(),
-            const AppearanceSection(),
-            const SizedBox(height: 16),
-            Center(
-              child: OutlinedButton.icon(
-                onPressed: busy
+              // The account being signed out must not be changed or read
+              // again on the server.
+              AccountHeader(
+                entry: entry,
+                onOpenSettings: busy || guest
                     ? null
-                    : () => unawaited(_signOut(context, ref, entry)),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: theme.colorScheme.error,
-                ),
-                icon: signingOut
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator.adaptive(
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Icon(Icons.logout),
-                label: Text(signOutLabel),
+                    : () => _openSettings(context),
               ),
-            ),
-            const _AppVersionLine(),
-          ],
+              if (entry.account.projectId case final projectId? when guest)
+                GuestNote(projectId: projectId),
+              if (deletionScheduledAt != null)
+                DeletionScheduledNote(
+                  scheduledAt: deletionScheduledAt,
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  // Cancelling needs the password, so the web's page does it
+                  // (D14).
+                  onCancel: () => unawaited(
+                    openWebSettingsPage(
+                      context,
+                      ref,
+                      entry,
+                      WebSettingsPage.deletion,
+                    ),
+                  ),
+                ),
+              if (!guest)
+                ListTile(
+                  leading: const Icon(Icons.manage_accounts_outlined),
+                  title: Text(l10n.accountSettingsEntry),
+                  subtitle: Text(l10n.accountSettingsEntrySubtitle),
+                  trailing: const Icon(Icons.chevron_right),
+                  enabled: !busy,
+                  onTap: () => _openSettings(context),
+                ),
+              const SizedBox(height: 8),
+              if (!guest) OrganiseSection(busy: busy),
+              AccountsSection(busy: busy),
+              SettingsSection(
+                title: l10n.accountServerHeading,
+                children: [
+                  if (serverVersion.isNotEmpty)
+                    ListTile(
+                      leading: const Icon(Icons.dns_outlined),
+                      title: Text(l10n.overviewVikunjaVersion(serverVersion)),
+                    ),
+                  ConnectionTile(
+                    serverRoot: connection.rootUri,
+                    enabled: !signingOut,
+                  ),
+                  ServerNotices(info: connection.info),
+                  SyncStatusSection(entry: entry, signingOut: signingOut),
+                  PendingChangesLine(
+                    entry: entry,
+                    canSend: !signingOut && !entry.account.needsReauth,
+                  ),
+                  SyncProblemsSection(entry: entry),
+                ],
+              ),
+              const WidgetsSection(),
+              NotificationsSection(entry: entry),
+              const PrivacySection(),
+              const AppearanceSection(),
+              const SizedBox(height: 16),
+              Center(
+                child: OutlinedButton.icon(
+                  onPressed: busy
+                      ? null
+                      : () => unawaited(_signOut(context, ref, entry)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: theme.colorScheme.error,
+                  ),
+                  icon: signingOut
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator.adaptive(
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Icon(Icons.logout),
+                  label: Text(signOutLabel),
+                ),
+              ),
+              const _AppVersionLine(),
+            ],
+          ),
         ),
       ),
     );

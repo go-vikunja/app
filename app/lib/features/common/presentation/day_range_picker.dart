@@ -2,6 +2,7 @@ import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 
 /// A range of whole days: the Material date picker for the first day and
@@ -28,12 +29,14 @@ Future<(DateTime, DateTime)?> pickDayRange(
     TargetPlatform.iOS ||
     TargetPlatform.macOS => showCupertinoModalPopup<(DateTime, DateTime)>(
       context: context,
-      builder: (context) => _CupertinoDayRangeSheet(
-        first: clamp(first),
-        last: clamp(last),
-        minimum: firstDate,
-        maximum: lastDate,
-        now: now,
+      builder: (context) => ReadableSheetWidth(
+        child: _CupertinoDayRangeSheet(
+          first: clamp(first),
+          last: clamp(last),
+          minimum: firstDate,
+          maximum: lastDate,
+          now: now,
+        ),
       ),
     ),
     _ => _pickWithMaterialDialogs(

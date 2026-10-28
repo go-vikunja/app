@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -18,7 +18,7 @@ import 'package:vikunja_mobile/features/session/application/sign_out_controller.
 Future<void> showAccountSwitcher(BuildContext context) {
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
-      return showCupertinoSheet<void>(
+      return showReadableCupertinoSheet<void>(
         context: context,
         showDragHandle: true,
         scrollableBuilder: (context, scrollController) => Material(

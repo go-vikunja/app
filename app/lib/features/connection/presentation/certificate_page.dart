@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
 import 'package:vikunja_mobile/core/network/certificate_info.dart';
@@ -172,35 +173,38 @@ class _CertificatePageState extends ConsumerState<CertificatePage> {
       ),
       body: SafeArea(
         top: false,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-          children: [
-            Text('$_origin', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 12),
-            ...switch (probe) {
-              null => [
-                LoadingPlaceholder(
-                  label: l10n.connectionCertificateChecking('$_origin'),
-                ),
-              ],
-              CertificateProbeFailed(:final problem) => [
-                _probeFailure(context, problem),
-                if (review && profile != null) ...[
-                  const SizedBox(height: 16),
-                  ..._reviewDetails(context, profile, probed: null),
+        child: ReadableWidth.builder(
+          maxWidth: ReadableWidth.form,
+          builder: (_, _, inset) => ListView(
+            padding: EdgeInsets.fromLTRB(16 + inset, 12, 16 + inset, 32),
+            children: [
+              Text('$_origin', style: theme.textTheme.titleMedium),
+              const SizedBox(height: 12),
+              ...switch (probe) {
+                null => [
+                  LoadingPlaceholder(
+                    label: l10n.connectionCertificateChecking('$_origin'),
+                  ),
                 ],
-              ],
-              ProbedCertificate(:final certificate, :final deviceTrusted) =>
-                review && profile != null
-                    ? _review(context, profile, certificate)
-                    : _trustContent(
-                        context,
-                        profile,
-                        certificate,
-                        deviceTrusted: deviceTrusted,
-                      ),
-            },
-          ],
+                CertificateProbeFailed(:final problem) => [
+                  _probeFailure(context, problem),
+                  if (review && profile != null) ...[
+                    const SizedBox(height: 16),
+                    ..._reviewDetails(context, profile, probed: null),
+                  ],
+                ],
+                ProbedCertificate(:final certificate, :final deviceTrusted) =>
+                  review && profile != null
+                      ? _review(context, profile, certificate)
+                      : _trustContent(
+                          context,
+                          profile,
+                          certificate,
+                          deviceTrusted: deviceTrusted,
+                        ),
+              },
+            ],
+          ),
         ),
       ),
     );

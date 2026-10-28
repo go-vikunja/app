@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
+import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
@@ -33,15 +35,17 @@ class VikunjaApp extends ConsumerWidget {
       localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: appSupportedLocales,
       routerConfig: ref.watch(appRouterProvider),
-      builder: (context, child) => AppLockGate(
-        child: AnnouncerHost(
-          child: NotificationTapListener(
-            child: DeepLinkListener(
-              child: WidgetLinkListener(
-                child: NewTaskShortcutListener(
-                  child: ShareIntentListener(
-                    child: GuestLandingListener(
-                      child: child ?? const SizedBox.shrink(),
+      builder: (context, child) => _LargeWindowDialogs(
+        child: AppLockGate(
+          child: AnnouncerHost(
+            child: NotificationTapListener(
+              child: DeepLinkListener(
+                child: WidgetLinkListener(
+                  child: NewTaskShortcutListener(
+                    child: ShareIntentListener(
+                      child: GuestLandingListener(
+                        child: child ?? const SizedBox.shrink(),
+                      ),
                     ),
                   ),
                 ),
@@ -51,6 +55,35 @@ class VikunjaApp extends ConsumerWidget {
         ),
       ),
       debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+/// Material dialogs at most [ReadableWidth.dialog] wide on large windows,
+/// for every dialog route below; the date and time pickers keep their own
+/// sizes (`pickerFormatsBuilder`). The theme stays in the tree either way,
+/// so a resize keeps the app's state.
+class _LargeWindowDialogs extends StatelessWidget {
+  const new({required this.child});
+
+  final Widget child;
+
+  static final BoxConstraints _constraints = ReadableWidth
+      .defaultDialogConstraints
+      .copyWith(maxWidth: ReadableWidth.dialog);
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Theme(
+      data: WindowLayout.of(context).capsWidths
+          ? theme.copyWith(
+              dialogTheme: theme.dialogTheme.copyWith(
+                constraints: _constraints,
+              ),
+            )
+          : theme,
+      child: child,
     );
   }
 }

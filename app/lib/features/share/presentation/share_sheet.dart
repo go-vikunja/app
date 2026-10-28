@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -70,7 +70,7 @@ Future<ShareOutcome?> showShareSheet(
   const settings = RouteSettings(name: shareSheetRouteName);
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
-      return showCupertinoSheet<ShareOutcome>(
+      return showReadableCupertinoSheet<ShareOutcome>(
         context: context,
         settings: settings,
         showDragHandle: true,

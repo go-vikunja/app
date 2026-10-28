@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
+import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/external_link.dart';
@@ -42,8 +44,6 @@ class ServerOverviewScreen extends ConsumerStatefulWidget {
 }
 
 class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
-  static const _shortViewportHeight = 480.0;
-
   final _scrollController = ScrollController();
 
   @override
@@ -149,7 +149,7 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
     final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
     final pinActions =
         MediaQuery.sizeOf(context).height >=
-        _shortViewportHeight * math.max(1, textScale);
+        WindowLayout.mediumHeightFrom * math.max(1, textScale);
     final actions = OverviewActions(
       canSignIn: signInMethod != null,
       isSigningIn: isSigningIn,
@@ -197,61 +197,67 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
         body: SafeArea(
           top: false,
           bottom: !pinActions,
-          child: ListView(
-            controller: _scrollController,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            children: [
-              if (signIn case SignInFailed(
-                :final error,
-                :final serverRoot,
-              )) ...[
-                ConnectionErrorCard(
-                  message: describeSignInFailure(
-                    l10n,
-                    error,
-                    serverRoot: serverRoot,
-                    platform: theme.platform,
+          child: ReadableWidth.builder(
+            maxWidth: ReadableWidth.form,
+            builder: (_, _, inset) => ListView(
+              controller: _scrollController,
+              padding: EdgeInsets.fromLTRB(16 + inset, 8, 16 + inset, 24),
+              children: [
+                if (signIn case SignInFailed(
+                  :final error,
+                  :final serverRoot,
+                )) ...[
+                  ConnectionErrorCard(
+                    message: describeSignInFailure(
+                      l10n,
+                      error,
+                      serverRoot: serverRoot,
+                      platform: theme.platform,
+                    ),
+                    action: ConnectionSettingsAction.appliesTo(error)
+                        ? ConnectionSettingsAction(
+                            error: error,
+                            serverRoot: serverRoot,
+                            foreground: theme.colorScheme.onErrorContainer,
+                          )
+                        : null,
                   ),
-                  action: ConnectionSettingsAction.appliesTo(error)
-                      ? ConnectionSettingsAction(
-                          error: error,
-                          serverRoot: serverRoot,
-                          foreground: theme.colorScheme.onErrorContainer,
-                        )
-                      : null,
-                ),
+                  const SizedBox(height: 20),
+                ],
+                ServerHeader(connection: connection),
                 const SizedBox(height: 20),
+                SupportStatusCard(connection: connection),
+                if (motd.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  MotdCard(message: motd),
+                ],
+                if (signInMethod != null) ...[
+                  const SizedBox(height: 24),
+                  SignInMethodsSection(method: signInMethod),
+                ],
+                if (isSupported) ...[
+                  const SizedBox(height: 24),
+                  ServerFeaturesSection(connection: connection),
+                ],
+                if (LegalLinksRow.hasAny(legal)) ...[
+                  const SizedBox(height: 16),
+                  LegalLinksRow(links: legal),
+                ],
+                if (!pinActions) ...[const SizedBox(height: 24), actions],
               ],
-              ServerHeader(connection: connection),
-              const SizedBox(height: 20),
-              SupportStatusCard(connection: connection),
-              if (motd.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                MotdCard(message: motd),
-              ],
-              if (signInMethod != null) ...[
-                const SizedBox(height: 24),
-                SignInMethodsSection(method: signInMethod),
-              ],
-              if (isSupported) ...[
-                const SizedBox(height: 24),
-                ServerFeaturesSection(connection: connection),
-              ],
-              if (LegalLinksRow.hasAny(legal)) ...[
-                const SizedBox(height: 16),
-                LegalLinksRow(links: legal),
-              ],
-              if (!pinActions) ...[const SizedBox(height: 24), actions],
-            ],
+            ),
           ),
         ),
         bottomNavigationBar: pinActions
             ? Material(
                 color: theme.colorScheme.surfaceContainer,
-                child: SafeArea(
-                  top: false,
-                  minimum: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: actions,
+                child: ReadableWidth(
+                  maxWidth: ReadableWidth.form,
+                  child: SafeArea(
+                    top: false,
+                    minimum: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                    child: actions,
+                  ),
                 ),
               )
             : null,

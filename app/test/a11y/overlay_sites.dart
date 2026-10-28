@@ -4,7 +4,8 @@ import 'dart:io';
 /// pushed with the Navigator, which the route walk does not see.
 final RegExp overlayCall = RegExp(
   r'\b(showAdaptiveDialog|showDialog|showModalBottomSheet|showCupertinoSheet'
-  '|showCupertinoModalPopup|showDatePicker|showTimePicker|showMenu'
+  '|showReadableCupertinoSheet|showCupertinoModalPopup|showDatePicker'
+  '|showTimePicker|showMenu'
   '|MenuAnchor|PopupMenuButton|MaterialPageRoute|CupertinoPageRoute'
   r'|PageRouteBuilder)\b\s*(?:<.*?>)?\(',
 );
@@ -67,6 +68,7 @@ List<OverlaySite> scanOverlaySites(Directory lib) {
       final trimmed = line.trimLeft();
       if (trimmed.startsWith('//')) continue;
       for (final match in overlayCall.allMatches(line)) {
+        if (_declaresTopLevel(line, match.group(1)!)) continue;
         final enclosing = _enclosing(lines, index);
         final base = '$path $enclosing ${match.group(1)}';
         final count = counts[base] = (counts[base] ?? 0) + 1;
@@ -80,6 +82,15 @@ List<OverlaySite> scanOverlaySites(Directory lib) {
     }
   }
   return sites;
+}
+
+/// Whether [line] declares the top-level function [name], e.g. the app's
+/// own presenter around one of the calls, rather than calling it.
+bool _declaresTopLevel(String line, String name) {
+  final match = _declaration.firstMatch(line);
+  if (match == null || match.group(1)!.isNotEmpty) return false;
+  final firstWord = line.trim().split(RegExp(r'[\s(<]')).first;
+  return match.group(2) == name && !_notDeclarations.contains(firstWord);
 }
 
 /// The nearest declaration above [index]: a top-level function, or a

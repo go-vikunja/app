@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
@@ -71,6 +72,7 @@ class _LabelTasksScreenState extends ConsumerState<LabelTasksScreen>
       ),
       body: labels != null && label == null
           ? CenteredScrollView(
+              maxWidth: ReadableWidth.list,
               child: EmptyState(
                 icon: Icons.label_off_outlined,
                 title: l10n.labelTasksGoneTitle,
@@ -80,6 +82,7 @@ class _LabelTasksScreenState extends ConsumerState<LabelTasksScreen>
           : buildRefreshable(
               tasks,
               loadingLabel: l10n.projectTasksLoading,
+              maxWidth: ReadableWidth.list,
               builder: (value, notice) => DueSectionsList(
                 sections: groupTasksByDueDate(withLeavingTasks(value), now),
                 projectsById: projectsById,

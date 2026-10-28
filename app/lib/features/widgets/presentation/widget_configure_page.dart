@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -298,6 +299,7 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
       return Scaffold(
         appBar: AppBar(title: ScreenTitle(l10n.widgetConfigureTitle)),
         body: CenteredScrollView(
+          maxWidth: ReadableWidth.form,
           child: EmptyState(
             icon: Icons.widgets_outlined,
             title: l10n.widgetConfigureUnknownTitle,
@@ -335,37 +337,40 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
         top: false,
         child: kind == null || registry == null
             ? const Center(child: CircularProgressIndicator.adaptive())
-            : ListView(
-                padding: const EdgeInsets.only(bottom: 24),
-                children: [
-                  if (registry.accounts.length > 1)
+            : ReadableWidth.builder(
+                maxWidth: ReadableWidth.form,
+                builder: (_, _, inset) => ListView(
+                  padding: EdgeInsets.fromLTRB(inset, 0, inset, 24),
+                  children: [
+                    if (registry.accounts.length > 1)
+                      SectionCard(
+                        title: l10n.widgetConfigureAccountHeading,
+                        children: [
+                          for (final account in registry.accountsByRecency)
+                            _AccountChoice(
+                              entry: account,
+                              selected: account.id == accountId,
+                              onTap: _saving
+                                  ? null
+                                  : () => _selectAccount(account),
+                            ),
+                        ],
+                      ),
+                    if (kind is! QuickAddKind && entry != null)
+                      _ListSection(
+                        accountId: entry.id,
+                        guest: entry.account.isLinkShare,
+                        kind: kind,
+                        enabled: !_saving,
+                        onChoose: (choice) => unawaited(_choose(choice)),
+                        onDays: (days) => _selectKind(UpcomingKind(days)),
+                      ),
                     SectionCard(
-                      title: l10n.widgetConfigureAccountHeading,
-                      children: [
-                        for (final account in registry.accountsByRecency)
-                          _AccountChoice(
-                            entry: account,
-                            selected: account.id == accountId,
-                            onTap: _saving
-                                ? null
-                                : () => _selectAccount(account),
-                          ),
-                      ],
+                      title: l10n.widgetConfigurePreviewHeading,
+                      children: [_PreviewView(preview: _preview)],
                     ),
-                  if (kind is! QuickAddKind && entry != null)
-                    _ListSection(
-                      accountId: entry.id,
-                      guest: entry.account.isLinkShare,
-                      kind: kind,
-                      enabled: !_saving,
-                      onChoose: (choice) => unawaited(_choose(choice)),
-                      onDays: (days) => _selectKind(UpcomingKind(days)),
-                    ),
-                  SectionCard(
-                    title: l10n.widgetConfigurePreviewHeading,
-                    children: [_PreviewView(preview: _preview)],
-                  ),
-                ],
+                  ],
+                ),
               ),
       ),
     );

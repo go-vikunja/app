@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
@@ -425,6 +426,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       return Scaffold(
         appBar: AppBar(title: ScreenTitle(l10n.projectUnknownTitle)),
         body: CenteredScrollView(
+          maxWidth: ReadableWidth.list,
           child: EmptyState(
             icon: Icons.search_off,
             title: l10n.projectGoneTitle,
@@ -699,6 +701,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         shownData,
         loadingLabel: l10n.projectTasksLoading,
         header: listControls,
+        // Under the tabs in every view; the board and the timeline
+        // themselves use the whole width.
+        maxWidth: ReadableWidth.list,
         // A board's columns and a timeline's rows scroll inside a
         // horizontal scroll.
         notificationPredicate: board || viewKind == ProjectViewKind.gantt

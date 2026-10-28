@@ -47,6 +47,7 @@ class TimelineRow extends StatelessWidget {
     required this.row,
     required this.days,
     required this.horizontal,
+    required this.viewportWidth,
     required this.metrics,
     required this.semanticsLabel,
     required this.groupSpans,
@@ -59,6 +60,9 @@ class TimelineRow extends StatelessWidget {
   final GanttRow row;
   final TimelineDays days;
   final ScrollController horizontal;
+
+  /// The chart's width: what [horizontal] shows before its first layout.
+  final double viewportWidth;
   final TimelineRowMetrics metrics;
   final String semanticsLabel;
 
@@ -165,13 +169,12 @@ class TimelineRow extends StatelessWidget {
         decorationColor: titleColor,
       ),
     );
-    final screenWidth = MediaQuery.sizeOf(context).width;
 
     Widget following(Widget Function(double viewLeft) build) =>
         ListenableBuilder(
           listenable: horizontal,
           builder: (context, _) =>
-              build(visibleWindow(horizontal, fallbackWidth: screenWidth).$1),
+              build(visibleWindow(horizontal, fallbackWidth: viewportWidth).$1),
         );
 
     // Null where the chevron stays left of the bar.

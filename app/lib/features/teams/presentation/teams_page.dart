@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
@@ -140,65 +141,73 @@ class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
       ),
       body: RefreshIndicator.adaptive(
         onRefresh: _load,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          // The page's context still carries the status bar, which the app
-          // bar already takes.
-          padding:
-              MediaQuery.paddingOf(context).copyWith(top: 0) +
-              const EdgeInsets.only(top: 8, bottom: 96),
-          children: [
-            if (notice != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                child: notice,
-              ),
-            if (teams == null && failure != null && failure is! NetworkFailure)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: DataFailureCard(
-                  error: failure,
-                  stale: false,
-                  onRetry: () => unawaited(_load()),
+        child: ReadableWidth.builder(
+          maxWidth: ReadableWidth.form,
+          builder: (_, _, inset) => ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            // The page's context still carries the status bar, which the app
+            // bar already takes.
+            padding:
+                MediaQuery.paddingOf(context).copyWith(top: 0) +
+                EdgeInsets.fromLTRB(inset, 8, inset, 96),
+            children: [
+              if (notice != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: notice,
                 ),
-              )
-            else if (teams == null && _loading)
-              LoadingPlaceholder(label: l10n.teamsLoading)
-            else if (teams != null && teams.isEmpty)
-              Column(
-                children: [
-                  EmptyState(
-                    icon: Icons.groups_outlined,
-                    title: l10n.teamsEmptyTitle,
-                    body: l10n.teamsEmptyBody,
+              if (teams == null &&
+                  failure != null &&
+                  failure is! NetworkFailure)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: DataFailureCard(
+                    error: failure,
+                    stale: false,
+                    onRetry: () => unawaited(_load()),
                   ),
-                  FilledButton.tonalIcon(
-                    onPressed: offline ? null : () => unawaited(_create()),
-                    icon: const Icon(Icons.group_add_outlined),
-                    label: Text(l10n.teamsNew),
-                  ),
-                ],
-              )
-            else if (teams != null)
-              SectionCard(
-                children: [
-                  for (final team in teams)
-                    _TeamRow(
-                      key: ValueKey(team.id),
-                      team: team,
-                      badges: teamBadges(
-                        l10n,
-                        team,
-                        admin:
-                            userId != null &&
-                            TeamGuards.of(team, currentUserId: userId).isAdmin,
-                        publicTeams: publicTeams,
-                      ),
-                      onTap: () => unawaited(_open(team.id)),
+                )
+              else if (teams == null && _loading)
+                LoadingPlaceholder(label: l10n.teamsLoading)
+              else if (teams != null && teams.isEmpty)
+                Column(
+                  children: [
+                    EmptyState(
+                      icon: Icons.groups_outlined,
+                      title: l10n.teamsEmptyTitle,
+                      body: l10n.teamsEmptyBody,
                     ),
-                ],
-              ),
-          ],
+                    FilledButton.tonalIcon(
+                      onPressed: offline ? null : () => unawaited(_create()),
+                      icon: const Icon(Icons.group_add_outlined),
+                      label: Text(l10n.teamsNew),
+                    ),
+                  ],
+                )
+              else if (teams != null)
+                SectionCard(
+                  children: [
+                    for (final team in teams)
+                      _TeamRow(
+                        key: ValueKey(team.id),
+                        team: team,
+                        badges: teamBadges(
+                          l10n,
+                          team,
+                          admin:
+                              userId != null &&
+                              TeamGuards.of(
+                                team,
+                                currentUserId: userId,
+                              ).isAdmin,
+                          publicTeams: publicTeams,
+                        ),
+                        onTap: () => unawaited(_open(team.id)),
+                      ),
+                  ],
+                ),
+            ],
+          ),
         ),
       ),
     );

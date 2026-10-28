@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
@@ -224,6 +225,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
             onPickReminder: ({index}) => unawaited(_pickReminder(index: index)),
           ),
           (null, AsyncValue(hasValue: true)) => CenteredScrollView(
+            maxWidth: ReadableWidth.form,
             child: EmptyState(
               icon: Icons.search_off,
               title: l10n.taskEditGoneTitle,
@@ -231,6 +233,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
             ),
           ),
           (null, _) => CenteredScrollView(
+            maxWidth: ReadableWidth.form,
             child: LoadingPlaceholder(label: l10n.taskEditLoading),
           ),
         },
@@ -277,174 +280,177 @@ class _Form extends ConsumerWidget {
     final descriptionText = htmlToPlainText(description);
     final projectColor = parseHexColor(project?.hexColor ?? '');
 
-    return ListView(
-      padding: const EdgeInsets.only(top: 8, bottom: 32),
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            controller: titleController,
-            // Wraps, but Return confirms instead of adding a line: titles
-            // are one line everywhere.
-            maxLines: null,
-            keyboardType: TextInputType.text,
-            textInputAction: TextInputAction.done,
-            textCapitalization: TextCapitalization.sentences,
-            decoration: InputDecoration(
-              labelText: l10n.taskEditTitleLabel,
-              errorText: draft.hasTitle ? null : l10n.taskEditTitleRequired,
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.form,
+      builder: (_, _, inset) => ListView(
+        padding: EdgeInsets.fromLTRB(inset, 8, inset, 32),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: TextField(
+              controller: titleController,
+              // Wraps, but Return confirms instead of adding a line: titles
+              // are one line everywhere.
+              maxLines: null,
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.done,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: l10n.taskEditTitleLabel,
+                errorText: draft.hasTitle ? null : l10n.taskEditTitleRequired,
+              ),
+              onChanged: (text) =>
+                  onChanged((draft) => draft.copyWith(title: text)),
             ),
-            onChanged: (text) =>
-                onChanged((draft) => draft.copyWith(title: text)),
           ),
-        ),
-        const SizedBox(height: 8),
-        ListTile(
-          leading: Icon(
-            Icons.folder_outlined,
-            color: projectColor ?? colors.onSurfaceVariant,
+          const SizedBox(height: 8),
+          ListTile(
+            leading: Icon(
+              Icons.folder_outlined,
+              color: projectColor ?? colors.onSurfaceVariant,
+            ),
+            title: Text(l10n.taskEditProject),
+            subtitle: Text(
+              project?.displayTitle(l10n) ?? l10n.projectUnknownTitle,
+            ),
+            trailing: const Icon(Icons.arrow_drop_down),
+            onTap: onPickProject,
           ),
-          title: Text(l10n.taskEditProject),
-          subtitle: Text(
-            project?.displayTitle(l10n) ?? l10n.projectUnknownTitle,
+          ListTile(
+            leading: Icon(Icons.notes, color: colors.onSurfaceVariant),
+            title: Text(l10n.taskDetailDescription),
+            subtitle: Text(
+              descriptionText.isEmpty
+                  ? l10n.taskDetailNoDescription
+                  : descriptionText,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            enabled: onEditDescription != null,
+            onTap: onEditDescription,
           ),
-          trailing: const Icon(Icons.arrow_drop_down),
-          onTap: onPickProject,
-        ),
-        ListTile(
-          leading: Icon(Icons.notes, color: colors.onSurfaceVariant),
-          title: Text(l10n.taskDetailDescription),
-          subtitle: Text(
-            descriptionText.isEmpty
-                ? l10n.taskDetailNoDescription
-                : descriptionText,
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
+          _SectionTitle(l10n.taskDetailLabels),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: LabelsSection(
+              labels: draft.labels,
+              onRemove: (label) => onChanged(
+                (draft) => draft.copyWith(
+                  labels: [
+                    for (final kept in draft.labels)
+                      if (kept.id != label.id) kept,
+                  ],
+                ),
+              ),
+              onAdd: onPickLabels,
+            ),
           ),
-          trailing: const Icon(Icons.chevron_right),
-          enabled: onEditDescription != null,
-          onTap: onEditDescription,
-        ),
-        _SectionTitle(l10n.taskDetailLabels),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: LabelsSection(
-            labels: draft.labels,
-            onRemove: (label) => onChanged(
+          _SectionTitle(l10n.taskDetailAssignees),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: AssigneesSection(
+              assignees: draft.assignees,
+              onRemove: (user) => onChanged(
+                (draft) => draft.copyWith(
+                  assignees: [
+                    for (final kept in draft.assignees)
+                      if (kept.id != user.id) kept,
+                  ],
+                ),
+              ),
+              onAdd: onPickAssignees,
+            ),
+          ),
+          const SizedBox(height: 16),
+          DateField(
+            label: l10n.taskDetailDueDate,
+            clearLabel: l10n.taskEditClearDueDate,
+            icon: Icons.event_outlined,
+            value: draft.dueDate,
+            now: now,
+            shortcuts: shortcuts,
+            onChanged: (value) =>
+                onChanged((draft) => draft.copyWith(dueDate: value)),
+          ),
+          DateField(
+            label: l10n.taskDetailStartDate,
+            clearLabel: l10n.taskEditClearStartDate,
+            icon: Icons.play_arrow_outlined,
+            value: draft.startDate,
+            now: now,
+            shortcuts: shortcuts,
+            onChanged: (value) =>
+                onChanged((draft) => draft.copyWith(startDate: value)),
+          ),
+          DateField(
+            label: l10n.taskDetailEndDate,
+            clearLabel: l10n.taskEditClearEndDate,
+            icon: Icons.stop_outlined,
+            value: draft.endDate,
+            now: now,
+            shortcuts: shortcuts,
+            onChanged: (value) =>
+                onChanged((draft) => draft.copyWith(endDate: value)),
+          ),
+          _SectionTitle(l10n.taskDetailReminders),
+          RemindersSection(
+            reminders: draft.reminders,
+            dates: draft.reminderDates,
+            onEdit: (index) => onPickReminder(index: index),
+            onRemove: (index) => onChanged(
               (draft) => draft.copyWith(
-                labels: [
-                  for (final kept in draft.labels)
-                    if (kept.id != label.id) kept,
-                ],
+                reminders: [...draft.reminders]..removeAt(index),
               ),
             ),
-            onAdd: onPickLabels,
+            onAdd: onPickReminder,
           ),
-        ),
-        _SectionTitle(l10n.taskDetailAssignees),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: AssigneesSection(
-            assignees: draft.assignees,
-            onRemove: (user) => onChanged(
-              (draft) => draft.copyWith(
-                assignees: [
-                  for (final kept in draft.assignees)
-                    if (kept.id != user.id) kept,
-                ],
+          _SectionTitle(l10n.taskDetailPriority),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: PriorityChips(
+              value: draft.priority,
+              onChanged: (priority) =>
+                  onChanged((draft) => draft.copyWith(priority: priority)),
+            ),
+          ),
+          _SectionTitle(l10n.taskDetailProgress),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(l10n.taskPercentDone(percent)),
+          ),
+          Slider.adaptive(
+            value: percent.toDouble(),
+            max: 100,
+            divisions: 10,
+            label: l10n.taskPercentDone(percent),
+            semanticFormatterCallback: (value) =>
+                l10n.taskPercentDone(value.round()),
+            onChanged: (value) => onChanged(
+              (draft) => draft.copyWith(percentDone: value.round() / 100),
+            ),
+          ),
+          _SectionTitle(l10n.taskEditColour),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ColorRow(
+              value: draft.hexColor,
+              onChanged: (hex) =>
+                  onChanged((draft) => draft.copyWith(hexColor: hex)),
+            ),
+          ),
+          _SectionTitle(l10n.taskEditRepeat),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: RepeatSection(
+              value: draft.repeat,
+              onChanged: (change) => onChanged(
+                (draft) => draft.copyWith(repeat: change(draft.repeat)),
               ),
             ),
-            onAdd: onPickAssignees,
           ),
-        ),
-        const SizedBox(height: 16),
-        DateField(
-          label: l10n.taskDetailDueDate,
-          clearLabel: l10n.taskEditClearDueDate,
-          icon: Icons.event_outlined,
-          value: draft.dueDate,
-          now: now,
-          shortcuts: shortcuts,
-          onChanged: (value) =>
-              onChanged((draft) => draft.copyWith(dueDate: value)),
-        ),
-        DateField(
-          label: l10n.taskDetailStartDate,
-          clearLabel: l10n.taskEditClearStartDate,
-          icon: Icons.play_arrow_outlined,
-          value: draft.startDate,
-          now: now,
-          shortcuts: shortcuts,
-          onChanged: (value) =>
-              onChanged((draft) => draft.copyWith(startDate: value)),
-        ),
-        DateField(
-          label: l10n.taskDetailEndDate,
-          clearLabel: l10n.taskEditClearEndDate,
-          icon: Icons.stop_outlined,
-          value: draft.endDate,
-          now: now,
-          shortcuts: shortcuts,
-          onChanged: (value) =>
-              onChanged((draft) => draft.copyWith(endDate: value)),
-        ),
-        _SectionTitle(l10n.taskDetailReminders),
-        RemindersSection(
-          reminders: draft.reminders,
-          dates: draft.reminderDates,
-          onEdit: (index) => onPickReminder(index: index),
-          onRemove: (index) => onChanged(
-            (draft) => draft.copyWith(
-              reminders: [...draft.reminders]..removeAt(index),
-            ),
-          ),
-          onAdd: onPickReminder,
-        ),
-        _SectionTitle(l10n.taskDetailPriority),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: PriorityChips(
-            value: draft.priority,
-            onChanged: (priority) =>
-                onChanged((draft) => draft.copyWith(priority: priority)),
-          ),
-        ),
-        _SectionTitle(l10n.taskDetailProgress),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(l10n.taskPercentDone(percent)),
-        ),
-        Slider.adaptive(
-          value: percent.toDouble(),
-          max: 100,
-          divisions: 10,
-          label: l10n.taskPercentDone(percent),
-          semanticFormatterCallback: (value) =>
-              l10n.taskPercentDone(value.round()),
-          onChanged: (value) => onChanged(
-            (draft) => draft.copyWith(percentDone: value.round() / 100),
-          ),
-        ),
-        _SectionTitle(l10n.taskEditColour),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: ColorRow(
-            value: draft.hexColor,
-            onChanged: (hex) =>
-                onChanged((draft) => draft.copyWith(hexColor: hex)),
-          ),
-        ),
-        _SectionTitle(l10n.taskEditRepeat),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: RepeatSection(
-            value: draft.repeat,
-            onChanged: (change) => onChanged(
-              (draft) => draft.copyWith(repeat: change(draft.repeat)),
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

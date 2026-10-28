@@ -8,6 +8,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -131,8 +132,10 @@ class _LabelsPageState extends ConsumerState<LabelsPage>
       body: buildRefreshable(
         labels,
         loadingLabel: l10n.labelsLoading,
+        maxWidth: ReadableWidth.form,
         builder: (value, notice) => value.isEmpty
             ? CenteredScrollView(
+                maxWidth: ReadableWidth.form,
                 header: notice,
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -179,65 +182,68 @@ class _LabelsPageState extends ConsumerState<LabelsPage>
       onAction: (action) => _onAction(label, action),
     );
 
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      // The page's context still carries the status bar, which the app bar
-      // already takes.
-      padding:
-          MediaQuery.paddingOf(context).copyWith(top: 0) +
-          const EdgeInsets.only(top: 8, bottom: 96),
-      children: [
-        if (notice != null)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: notice,
-          ),
-        if (searchable)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
-            child: TextField(
-              controller: _query,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                labelText: l10n.labelsSearch,
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _query.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: l10n.clearSearch,
-                        icon: const Icon(Icons.clear),
-                        onPressed: () => setState(_query.clear),
-                      ),
-              ),
-              onChanged: (_) => setState(() {}),
+    return ReadableWidth.builder(
+      maxWidth: ReadableWidth.form,
+      builder: (_, _, inset) => ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        // The page's context still carries the status bar, which the app bar
+        // already takes.
+        padding:
+            MediaQuery.paddingOf(context).copyWith(top: 0) +
+            EdgeInsets.fromLTRB(inset, 8, inset, 96),
+        children: [
+          if (notice != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: notice,
             ),
-          ),
-        if (shown.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Semantics(
-              liveRegion: true,
-              child: Text(
-                l10n.labelsSearchEmpty(query.trim()),
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+          if (searchable)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+              child: TextField(
+                controller: _query,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  labelText: l10n.labelsSearch,
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _query.text.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: l10n.clearSearch,
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(_query.clear),
+                        ),
+                ),
+                onChanged: (_) => setState(() {}),
+              ),
+            ),
+          if (shown.isEmpty)
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Semantics(
+                liveRegion: true,
+                child: Text(
+                  l10n.labelsSearchEmpty(query.trim()),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
-          ),
-        if (own.isNotEmpty)
-          SectionCard(
-            title: l10n.labelsOwnSection,
-            count: own.length,
-            children: [for (final label in own) row(label, mine: true)],
-          ),
-        if (others.isNotEmpty)
-          SectionCard(
-            title: l10n.labelsOthersSection,
-            count: others.length,
-            children: [for (final label in others) row(label, mine: false)],
-          ),
-      ],
+          if (own.isNotEmpty)
+            SectionCard(
+              title: l10n.labelsOwnSection,
+              count: own.length,
+              children: [for (final label in own) row(label, mine: true)],
+            ),
+          if (others.isNotEmpty)
+            SectionCard(
+              title: l10n.labelsOthersSection,
+              count: others.length,
+              children: [for (final label in others) row(label, mine: false)],
+            ),
+        ],
+      ),
     );
   }
 }

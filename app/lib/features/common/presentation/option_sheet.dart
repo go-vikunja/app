@@ -1,5 +1,5 @@
-import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 
 final class SheetOption<T> {
   const new({
@@ -27,7 +27,7 @@ Future<T?> showOptionSheet<T extends Object>(
 }) {
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
-      return showCupertinoSheet<T>(
+      return showReadableCupertinoSheet<T>(
         context: context,
         showDragHandle: true,
         scrollableBuilder: (context, scrollController) => Material(

@@ -1,5 +1,6 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/app/layout/window_layout.dart';
 
 final class AdaptiveDestination {
   const new({
@@ -20,7 +21,7 @@ final class AdaptiveDestination {
 bool usesNavigationRail(BuildContext context) =>
     switch (Theme.of(context).platform) {
       TargetPlatform.iOS || TargetPlatform.macOS => false,
-      _ => MediaQuery.sizeOf(context).width >= 600,
+      _ => WindowLayout.of(context).sizeClass != WindowSizeClass.compact,
     };
 
 /// A Material 3 navigation bar, or the Cupertino tab bar on Apple platforms.
