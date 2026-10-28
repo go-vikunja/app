@@ -29,6 +29,11 @@ final class RootModalRoutes extends NavigatorObserver {
   bool isOpen(String name) =>
       _routes.any((route) => route.isActive && route.settings.name == name);
 
+  /// Whether one is open on [navigator]; the shell's tab navigators report
+  /// here too, so this finds a tab's popup menu.
+  bool isOpenOn(NavigatorState navigator) =>
+      _routes.any((route) => route.isActive && route.navigator == navigator);
+
   /// Without animation, the topmost first; their futures complete with null.
   void closeAll() {
     for (final route in _routes.reversed.toList()) {

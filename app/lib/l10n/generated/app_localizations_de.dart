@@ -8185,4 +8185,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String projectTimelineSummarySemantics(String today, String range) {
     return 'Heute, $today; Zeitraum: $range';
   }
+
+  @override
+  String taskDetailPaneBack(String title) {
+    return 'Zurück zu „$title“';
+  }
+
+  @override
+  String taskDetailPaneMore(String title) {
+    return 'Mehr zu „$title“';
+  }
 }

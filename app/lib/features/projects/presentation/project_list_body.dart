@@ -21,7 +21,7 @@ import 'package:vikunja_mobile/features/projects/application/project_list_model.
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_view_labels.dart';
 import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 @immutable
@@ -430,7 +430,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
       projectTitle: elsewhere?.displayTitle(context.l10n),
       projectColor: parseHexColor(elsewhere?.hexColor ?? ''),
       pending: widget.pendingIds.contains(task.id),
-      onTap: () => unawaited(showTaskDetail(context, task: task)),
+      onTap: () => openTaskDetail(context, task: task),
       onDoneChanged: archived
           ? null
           : (done) => widget.onDoneChanged(task, done: done),

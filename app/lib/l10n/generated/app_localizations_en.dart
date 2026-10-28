@@ -8095,4 +8095,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String projectTimelineSummarySemantics(String today, String range) {
     return 'Today, $today; showing $range';
   }
+
+  @override
+  String taskDetailPaneBack(String title) {
+    return 'Back to $title';
+  }
+
+  @override
+  String taskDetailPaneMore(String title) {
+    return 'More for $title';
+  }
 }

@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 part 'task_opener.g.dart';
@@ -35,9 +36,10 @@ String taskOpenFailureText(AppLocalizations l10n, Object error) =>
 /// Opens a task from outside the screens (a notification, a deep link, a
 /// home-screen widget, the inbox) the same way: once the router shows the
 /// shell, in the task's account, which becomes active first, with the
-/// detail sheet over the Overview or over a page that covers the shell (the
-/// edit page keeps its unsaved changes). A sheet that opens a task itself
-/// stacks the next one instead and only uses [resolve].
+/// detail in the Overview's pane where the window has room for one, else in
+/// a sheet over the Overview or over a page that covers the shell (the edit
+/// page keeps its unsaved changes). A detail that opens a task itself shows
+/// the next one over or in place of itself and only uses [resolve].
 final class TaskOpener {
   new(this._ref) : _router = _ref.read(appRouterProvider) {
     _router.routerDelegate.addListener(_runWhenReady);
@@ -169,20 +171,22 @@ final class TaskOpener {
         (resolver) => resolver.resolve(reference),
       );
 
-  /// Shows [task] of the active account in a new detail sheet, at its
-  /// comment [commentId] when there is one: the open dialogs and sheets
-  /// close, a tab other than the Overview goes back to it, a page over the
-  /// shell stays under the sheet.
+  /// Shows [task] of the active account at its comment [commentId] when
+  /// there is one: the open dialogs and sheets close, a tab other than the
+  /// Overview goes back to it, and the task opens anew in the Overview's
+  /// pane, or in a sheet where the window has no room for the pane or a
+  /// page over the shell stays under it.
   Future<void> showTask(Task task, {int? commentId}) {
     _ref.read(rootModalRoutesProvider).closeAll();
     final location = _router.routerDelegate.state.matchedLocation;
     if (AppRoutes.isTab(location) && location != AppRoutes.overview) {
       _router.go(AppRoutes.overview);
     }
-    return showAfterFrame(
-      (context) =>
-          unawaited(showTaskDetail(context, task: task, commentId: commentId)),
-    );
+    return showAfterFrame((context) {
+      final panes = _ref.read(taskDetailPanesProvider);
+      if (panes.showInOverview(task, commentId: commentId)) return;
+      unawaited(showTaskDetail(context, task: task, commentId: commentId));
+    });
   }
 
   /// Asks for the New task sheet the way [request] asks for a task: in

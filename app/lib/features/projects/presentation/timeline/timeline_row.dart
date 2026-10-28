@@ -6,6 +6,8 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_days.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/selected_task_highlight.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 
 /// The sizes of a row: the bar grows with the text, so a title stays
 /// readable at 200 %.
@@ -42,6 +44,8 @@ final class TimelineRowMetrics {
 /// chevron move along as [horizontal] scrolls the bar's start off screen,
 /// so a task in progress shows them. One screen reader node with the title,
 /// the dates and the collapse action. Read-only: a tap opens the task.
+/// While the task is open in the pane beside the chart, the row is tinted
+/// and its bar outlined.
 class TimelineRow extends StatelessWidget {
   const new({
     required this.row,
@@ -92,6 +96,7 @@ class TimelineRow extends StatelessWidget {
     final barRight = math.min<double>(fullRight, width);
     final barWidth = math.max<double>(barRight - barLeft, 0);
     final look = _BarLook.of(row, colors);
+    final selected = TaskDetailPaneScope.isSelected(context, task.id);
     final style = TimelineRowMetrics.titleStyleOf(context);
     final textScaler = MediaQuery.textScalerOf(context);
     final direction = Directionality.of(context);
@@ -235,93 +240,108 @@ class TimelineRow extends StatelessWidget {
       ),
     );
 
-    return SizedBox(
-      width: width,
-      height: metrics.rowHeight,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          if (groupSpans.isNotEmpty)
-            Positioned.fill(
-              child: ExcludeSemantics(
-                child: CustomPaint(
-                  painter: _BandsPainter(
-                    spans: [
-                      for (final (start, end) in groupSpans)
-                        (
-                          math.max<double>(days.xOf(start) - _bandOverhang, 0),
-                          math.min<double>(
-                            days.xOf(end) + _bandOverhang,
-                            width,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        // Translucent: the chart's day lines and weekends lie under it.
+        color: selected
+            ? SelectedTaskHighlight.fillOf(colors).withValues(alpha: 0.6)
+            : null,
+      ),
+      child: SizedBox(
+        width: width,
+        height: metrics.rowHeight,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (groupSpans.isNotEmpty)
+              Positioned.fill(
+                child: ExcludeSemantics(
+                  child: CustomPaint(
+                    painter: _BandsPainter(
+                      spans: [
+                        for (final (start, end) in groupSpans)
+                          (
+                            math.max<double>(
+                              days.xOf(start) - _bandOverhang,
+                              0,
+                            ),
+                            math.min<double>(
+                              days.xOf(end) + _bandOverhang,
+                              width,
+                            ),
+                          ),
+                      ],
+                      color: colors.primary,
+                    ),
+                  ),
+                ),
+              ),
+            Positioned(
+              left: groupLeft,
+              width: groupRight - groupLeft,
+              top: 0,
+              bottom: 0,
+              child: Semantics(
+                container: true,
+                button: true,
+                label: semanticsLabel,
+                selected: selected ? true : null,
+                expanded: toggle == null ? null : !collapsed,
+                onTap: onTap,
+                customSemanticsActions: toggle == null
+                    ? null
+                    : {
+                        CustomSemanticsAction(
+                          label: collapsed
+                              ? l10n.projectTimelineExpand(task.title)
+                              : l10n.projectTimelineCollapse(task.title),
+                        ): toggle,
+                      },
+                excludeSemantics: true,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onTap,
+                  // Read-only: a long press is not a tap that opens the task.
+                  onLongPress: () {},
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned(
+                        left: barLeft - groupLeft,
+                        width: barWidth,
+                        top: barTop,
+                        height: metrics.barHeight,
+                        child: CustomPaint(
+                          painter: _BarPainter(
+                            look: look,
+                            kind: bar.kind,
+                            parent: row.isParent,
+                            clippedStart: bar.column < 0,
+                            clippedEnd: bar.endColumn > days.count,
+                            fullOffset: fullLeft - barLeft,
+                            fullWidth: fullWidth,
+                            outline: selected
+                                ? SelectedTaskHighlight.indicatorOf(colors)
+                                : null,
                           ),
                         ),
+                      ),
+                      if (inside && bar.kind != GanttBarKind.endOnly)
+                        following(followingLabel)
+                      else if (labelWidth > 0)
+                        label(labelLeft, labelWidth),
+                      if (toggle != null)
+                        following(
+                          (viewLeft) =>
+                              chevron(pinnedChevron(viewLeft) ?? chevronLeft),
+                        ),
                     ],
-                    color: colors.primary,
                   ),
                 ),
               ),
             ),
-          Positioned(
-            left: groupLeft,
-            width: groupRight - groupLeft,
-            top: 0,
-            bottom: 0,
-            child: Semantics(
-              container: true,
-              button: true,
-              label: semanticsLabel,
-              expanded: toggle == null ? null : !collapsed,
-              onTap: onTap,
-              customSemanticsActions: toggle == null
-                  ? null
-                  : {
-                      CustomSemanticsAction(
-                        label: collapsed
-                            ? l10n.projectTimelineExpand(task.title)
-                            : l10n.projectTimelineCollapse(task.title),
-                      ): toggle,
-                    },
-              excludeSemantics: true,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: onTap,
-                // Read-only: a long press is not a tap that opens the task.
-                onLongPress: () {},
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned(
-                      left: barLeft - groupLeft,
-                      width: barWidth,
-                      top: barTop,
-                      height: metrics.barHeight,
-                      child: CustomPaint(
-                        painter: _BarPainter(
-                          look: look,
-                          kind: bar.kind,
-                          parent: row.isParent,
-                          clippedStart: bar.column < 0,
-                          clippedEnd: bar.endColumn > days.count,
-                          fullOffset: fullLeft - barLeft,
-                          fullWidth: fullWidth,
-                        ),
-                      ),
-                    ),
-                    if (inside && bar.kind != GanttBarKind.endOnly)
-                      following(followingLabel)
-                    else if (labelWidth > 0)
-                      label(labelLeft, labelWidth),
-                    if (toggle != null)
-                      following(
-                        (viewLeft) =>
-                            chevron(pinnedChevron(viewLeft) ?? chevronLeft),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -382,6 +402,7 @@ class _BarPainter extends CustomPainter {
     required this.clippedEnd,
     required this.fullOffset,
     required this.fullWidth,
+    required this.outline,
   });
 
   final _BarLook look;
@@ -391,6 +412,9 @@ class _BarPainter extends CustomPainter {
   final bool clippedEnd;
   final double fullOffset;
   final double fullWidth;
+
+  /// The selection's, just outside the bar.
+  final Color? outline;
 
   static const _radius = Radius.circular(6);
 
@@ -448,6 +472,24 @@ class _BarPainter extends CustomPainter {
         canvas.drawRRect(shape, stroke);
       }
     }
+    if (outline case final outline?) {
+      const width = SelectedTaskHighlight.outlineWidth;
+      // Centred on the box's edge, so it meets the bar 1 dp inside it.
+      final radius = _radius + const Radius.circular(width / 2);
+      canvas.drawRRect(
+        RRect.fromRectAndCorners(
+          Offset.zero & size,
+          topLeft: clippedStart ? Radius.zero : radius,
+          bottomLeft: clippedStart ? Radius.zero : radius,
+          topRight: clippedEnd ? Radius.zero : radius,
+          bottomRight: clippedEnd ? Radius.zero : radius,
+        ),
+        Paint()
+          ..color = outline
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = width,
+      );
+    }
     if (parent) {
       final marker = Paint()..color = look.onBar;
       final centreY = size.height / 2;
@@ -499,7 +541,8 @@ class _BarPainter extends CustomPainter {
       oldDelegate.clippedStart != clippedStart ||
       oldDelegate.clippedEnd != clippedEnd ||
       oldDelegate.fullOffset != fullOffset ||
-      oldDelegate.fullWidth != fullWidth;
+      oldDelegate.fullWidth != fullWidth ||
+      oldDelegate.outline != outline;
 }
 
 class _BandsPainter extends CustomPainter {

@@ -4,7 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/pane_split.dart';
+import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -20,9 +23,14 @@ import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/realtime_connection_providers.dart';
 import 'package:vikunja_mobile/features/sync/application/startup_sync.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
+import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
+    show taskByIdProvider;
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 /// The signed-in app: the tab bar (or, in a wide window, the rail) around
-/// the Overview, Upcoming, Projects and Account branches, the offline
+/// the Overview, Upcoming, Projects and Account branches, each tab's task
+/// detail pane beside it where the window has room, the offline
 /// banner, the session check when the app opens or resumes,
 /// the quiet sync when it opens, the scheduler that keeps syncing while it
 /// is in front, the socket that brings the server's notifications at once,
@@ -37,16 +45,53 @@ class HomeShell extends ConsumerStatefulWidget {
   ConsumerState<HomeShell> createState() => _HomeShellState();
 }
 
-class _HomeShellState extends ConsumerState<HomeShell> {
+/// A pane's task waiting for the shell to come to the front, to open as a
+/// sheet: the window lost the room for the pane meanwhile.
+final class _PendingSheet {
+  new({required this.tab, required this.origin, required this.entry});
+
+  final int tab;
+  final String origin;
+  final TaskDetailPaneEntry entry;
+}
+
+class _HomeShellState extends ConsumerState<HomeShell>
+    implements TaskDetailPaneShell {
+  static const _accountTab = 3;
+  static const _maxPaneEntries = 10;
+
   late final AppLifecycleListener _lifecycle;
+  late final TaskDetailPanes _panes;
 
   /// For the one frame after an account switch in which the tabs are left
   /// out.
   var _resettingTabs = false;
 
+  /// Per tab: the tasks opened in its pane, the top one shown, the tab's
+  /// location they were opened at, and what had the focus before.
+  final List<List<TaskDetailPaneEntry>> _paneStacks = List.generate(
+    4,
+    (_) => [],
+  );
+  final _paneOrigins = List<String?>.filled(4, null);
+  final _focusBeforePanes = List<FocusNode?>.filled(4, null);
+  final _paneFocus = FocusNode(
+    debugLabel: 'Task detail pane',
+    skipTraversal: true,
+  );
+
+  /// Whether the window has room for a pane: two panes and no tabletop.
+  bool? _paneMode;
+  _PendingSheet? _pendingSheet;
+  var _pendingSheetScheduled = false;
+
+  ThemeData? _parentTheme;
+  late ThemeData _branchTheme;
+
   @override
   void initState() {
     super.initState();
+    _panes = ref.read(taskDetailPanesProvider)..attach(this);
     _lifecycle = AppLifecycleListener(onResume: _checkSession);
     // A provider nobody listens to is paused; these run while the shell is
     // up. Not in build: every rebuild, a tab switch among them, closes the
@@ -67,9 +112,281 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final paneMode =
+        WindowLayout.of(context).twoPane &&
+        !isTabletop(MediaQuery.displayFeaturesOf(context));
+    final before = _paneMode;
+    _paneMode = paneMode;
+    if (before == null || before == paneMode) return;
+    if (paneMode) {
+      _returnPendingToPane();
+    } else {
+      _collapsePanes();
+    }
+  }
+
+  @override
+  void didUpdateWidget(HomeShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The shell's own location: a page over the shell leaves it as it is.
+    final tab = _currentTab;
+    if (_paneStacks[tab].isNotEmpty && _paneOrigins[tab] != _location) {
+      _clearPane(tab);
+    }
+    if (_pendingSheet case final pending?
+        when pending.tab != tab || pending.origin != _location) {
+      _pendingSheet = null;
+    }
+  }
+
+  @override
   void dispose() {
+    _panes.detach(this);
+    _paneFocus.dispose();
     _lifecycle.dispose();
     super.dispose();
+  }
+
+  int get _currentTab => widget.navigationShell.currentIndex;
+
+  String get _location =>
+      widget.navigationShell.shellRouteContext.routerState.matchedLocation;
+
+  bool get _paneShown =>
+      (_paneMode ?? false) &&
+      _currentTab != _accountTab &&
+      _paneStacks[_currentTab].isNotEmpty;
+
+  void _clearPane(int tab) {
+    _paneStacks[tab].clear();
+    _paneOrigins[tab] = null;
+    _focusBeforePanes[tab] = null;
+  }
+
+  void _clearPanes() {
+    for (var tab = 0; tab < _paneStacks.length; tab++) {
+      _clearPane(tab);
+    }
+    _pendingSheet = null;
+  }
+
+  /// The window lost the room for panes: the current tab's task opens as a
+  /// sheet, the other tabs' panes are dropped.
+  void _collapsePanes() {
+    final tab = _currentTab;
+    final stack = _paneStacks[tab];
+    final pending = stack.isEmpty
+        ? null
+        : _PendingSheet(
+            tab: tab,
+            origin: _paneOrigins[tab]!,
+            entry: stack.last,
+          );
+    _clearPanes();
+    _pendingSheet = pending;
+  }
+
+  /// The room came back before the pending sheet could open.
+  void _returnPendingToPane() {
+    final pending = _pendingSheet;
+    _pendingSheet = null;
+    if (pending == null ||
+        pending.tab != _currentTab ||
+        pending.origin != _location) {
+      return;
+    }
+    _paneStacks[pending.tab].add(pending.entry);
+    _paneOrigins[pending.tab] = pending.origin;
+  }
+
+  /// Once the shell is in front, after the pane has left the tree, so the
+  /// sheet reads the comment draft the pane kept.
+  void _schedulePendingSheet() {
+    if (_pendingSheetScheduled) return;
+    _pendingSheetScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _pendingSheetScheduled = false;
+      final pending = _pendingSheet;
+      if (!mounted || pending == null || (_paneMode ?? false)) return;
+      if (!(ModalRoute.isCurrentOf(context) ?? false)) return;
+      _pendingSheet = null;
+      unawaited(
+        showTaskDetail(Navigator.of(context).context, task: pending.entry.task),
+      );
+    });
+  }
+
+  bool _inPane(FocusNode? node) =>
+      node != null &&
+      (node == _paneFocus || node.ancestors.contains(_paneFocus));
+
+  bool _inTab(FocusNode? node) {
+    final tab = _tabNavigator?.focusNode;
+    return node != null &&
+        tab != null &&
+        (node == tab || node.ancestors.contains(tab));
+  }
+
+  void _showPane(
+    int tab,
+    void Function(List<TaskDetailPaneEntry> stack) change,
+  ) {
+    final stack = _paneStacks[tab];
+    // A close returns the focus to the row last used to open a task.
+    final focus = FocusManager.instance.primaryFocus;
+    if (stack.isEmpty || _inTab(focus)) _focusBeforePanes[tab] = focus;
+    setState(() => change(stack));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _paneFocus.context != null) _paneFocus.requestFocus();
+    });
+  }
+
+  void _replacePane(int tab, TaskDetailPaneEntry entry) =>
+      _showPane(tab, (stack) {
+        stack
+          ..clear()
+          ..add(entry);
+        _paneOrigins[tab] = _location;
+      });
+
+  /// The id of [entry]'s task now: a queued create's row takes the
+  /// server's id once it is sent.
+  int _currentIdOf(TaskDetailPaneEntry entry) =>
+      ref.read(taskByIdProvider(entry.task.id)).value?.id ?? entry.task.id;
+
+  void _openFromList(Task task) {
+    final tab = _currentTab;
+    final top = _paneStacks[tab].lastOrNull;
+    if (top != null && _currentIdOf(top) == task.id) return;
+    _replacePane(tab, TaskDetailPaneEntry(task));
+  }
+
+  void _pushPane(int tab, Task task) => _showPane(tab, (stack) {
+    stack.add(TaskDetailPaneEntry(task));
+    if (stack.length > _maxPaneEntries) stack.removeAt(0);
+  });
+
+  /// The task before, or no pane after the first.
+  void _popPane(int tab) {
+    final stack = _paneStacks[tab];
+    if (stack.length > 1) {
+      _showPane(tab, (stack) => stack.removeLast());
+    } else {
+      _closePane(tab);
+    }
+  }
+
+  /// [taskId] was deleted in [tab]'s pane: it leaves every tab's pane, and
+  /// a pane with nothing left closes.
+  void _dropDeleted(int tab, int taskId) {
+    final ids = {taskId, ?_paneStacks[tab].lastOrNull?.task.id};
+    void drop(List<TaskDetailPaneEntry> stack) {
+      stack.removeWhere((entry) => ids.contains(entry.task.id));
+      // Else back would show the same task once more.
+      for (var index = stack.length - 1; index > 0; index--) {
+        if (stack[index].task.id == stack[index - 1].task.id) {
+          stack.removeAt(index - 1);
+        }
+      }
+    }
+
+    setState(() {
+      for (var other = 0; other < _paneStacks.length; other++) {
+        if (other == tab) continue;
+        drop(_paneStacks[other]);
+        if (_paneStacks[other].isEmpty) _clearPane(other);
+      }
+    });
+    if (_paneStacks[tab].every((entry) => ids.contains(entry.task.id))) {
+      _closePane(tab);
+    } else {
+      _showPane(tab, drop);
+    }
+  }
+
+  void _closePane(int tab) {
+    if (_paneStacks[tab].isEmpty) return;
+    final before = _focusBeforePanes[tab];
+    final focusInPane = _inPane(FocusManager.instance.primaryFocus);
+    setState(() => _clearPane(tab));
+    // A row's node is gone once the row has scrolled out of the list's
+    // cache, though it keeps its context.
+    if (before != null &&
+        !_inPane(before) &&
+        (before.context?.mounted ?? false) &&
+        before.canRequestFocus) {
+      before.requestFocus();
+    } else if (focusInPane) {
+      _tabNavigator?.focusNode.requestFocus();
+    }
+  }
+
+  TaskDetailPaneHost _paneHost(int tab) {
+    final stack = _paneStacks[tab];
+    final previous = stack.length > 1 ? stack[stack.length - 2] : null;
+    return TaskDetailPaneHost(
+      close: () => _closePane(tab),
+      openOther: (task) => _pushPane(tab, task),
+      deleted: (taskId) => _dropDeleted(tab, taskId),
+      back: previous == null ? null : () => _popPane(tab),
+      // A related task may have come with its id alone.
+      backTitle: previous == null
+          ? null
+          : ref.watch(taskByIdProvider(previous.task.id)).value?.title ??
+                previous.task.title,
+    );
+  }
+
+  NavigatorState? get _tabNavigator =>
+      widget.navigationShell.shellRouteContext.navigatorKey.currentState;
+
+  @override
+  bool showInOverview(Task task, {int? commentId}) {
+    if (!mounted) return false;
+    // The newer task opens, in the pane or as a sheet.
+    _pendingSheet = null;
+    if (!(_paneMode ?? false) ||
+        _currentTab != 0 ||
+        !(ModalRoute.isCurrentOf(context) ?? false)) {
+      return false;
+    }
+    _replacePane(0, TaskDetailPaneEntry(task, commentId: commentId));
+    return true;
+  }
+
+  /// Back inside the pane before the tab's own pages: unless something is
+  /// open over the shell or in the tab (a menu), it returns to the task
+  /// before or closes the pane.
+  Future<bool> _paneBack() async {
+    if (!mounted || !_paneShown) return false;
+    if (!(ModalRoute.isCurrentOf(context) ?? false)) return false;
+    final tabNavigator = _tabNavigator;
+    if (tabNavigator != null &&
+        ref.read(rootModalRoutesProvider).isOpenOn(tabNavigator)) {
+      return false;
+    }
+    _popPane(_currentTab);
+    return true;
+  }
+
+  /// Android's predictive back claims a back swipe on a tab's page even in
+  /// a tab that is not shown, or under a page or sheet over the shell, and
+  /// pops it there; the swipe then pops nothing that is seen, or two things
+  /// at once. Without it, the swipe goes through the same path as the back
+  /// button, which asks what is in front first. Taps look as before.
+  ThemeData _branchThemeOf(ThemeData parent) {
+    if (identical(parent, _parentTheme)) return _branchTheme;
+    _parentTheme = parent;
+    return _branchTheme = parent.copyWith(
+      pageTransitionsTheme: PageTransitionsTheme(
+        builders: {
+          ...parent.pageTransitionsTheme.builders,
+          TargetPlatform.android: const FadeForwardsPageTransitionsBuilder(),
+        },
+      ),
+    );
   }
 
   void _checkSession() {
@@ -97,7 +414,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   void _onActiveAccountChanged(String? previous, String? next) {
     // A failure card belongs to the account it happened for.
     ref.read(signInControllerProvider.notifier).reset();
-    if (previous != null && next != null) _closePreviousAccount();
+    if (previous != null && next != null) {
+      _closePreviousAccount();
+    } else {
+      setState(_clearPanes);
+    }
     _checkSession();
     _syncQuietly();
   }
@@ -111,7 +432,10 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   void _closePreviousAccount() {
     ref.read(rootModalRoutesProvider).closeAll();
     GoRouter.of(context).go(AppRoutes.overview);
-    setState(() => _resettingTabs = true);
+    setState(() {
+      _clearPanes();
+      _resettingTabs = true;
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() => _resettingTabs = false);
     });
@@ -125,11 +449,13 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     }
   }
 
-  void _selectTab(int index) => widget.navigationShell.goBranch(
-    index,
-    // Re-selecting the current tab returns to its first screen.
-    initialLocation: index == widget.navigationShell.currentIndex,
-  );
+  void _selectTab(int index) {
+    // Re-selecting the current tab returns to its first screen, without a
+    // pane.
+    final again = index == _currentTab;
+    if (again) _closePane(index);
+    widget.navigationShell.goBranch(index, initialLocation: again);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +503,36 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     ];
     final rail = usesNavigationRail(context);
     final offline = ref.watch(offlineProvider.select((state) => state != null));
+    final tab = _currentTab;
+    final paneShown = _paneShown;
+    // A dependency, so the shell rebuilds when it is in front again.
+    final inFront = ModalRoute.isCurrentOf(context) ?? false;
+    if (_pendingSheet != null && inFront) _schedulePendingSheet();
+    final top = paneShown ? _paneStacks[tab].last : null;
+    final tabs = TaskDetailPaneScope(
+      available: (_paneMode ?? false) && tab != _accountTab,
+      selectedTaskId: top == null
+          ? null
+          : ref.watch(
+                  taskByIdProvider(top.task.id)
+                      .select((task) => task.value?.id),
+                ) ??
+                top.task.id,
+      open: _openFromList,
+      child: Theme(
+        data: _branchThemeOf(Theme.of(context)),
+        child: _resettingTabs
+            ? const SizedBox.expand()
+            : widget.navigationShell,
+      ),
+    );
+    final pane = top != null
+        ? TaskDetailPane(
+            entry: top,
+            host: _paneHost(tab),
+            focusNode: _paneFocus,
+          )
+        : null;
     final content = Builder(
       // Below the scaffold, whose bar takes the bottom inset.
       builder: (context) {
@@ -190,9 +546,15 @@ class _HomeShellState extends ConsumerState<HomeShell> {
               child: MediaQuery(
                 data: padding.removePadding(removeBottom: offline),
                 child: OfflineBannerArea(
-                  child: _resettingTabs
-                      ? const SizedBox.expand()
-                      : widget.navigationShell,
+                  // Always this row, so opening or closing a pane keeps
+                  // the tabs' state.
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => _TabsBesidePane(
+                      contentWidth: constraints.maxWidth,
+                      tabs: tabs,
+                      pane: pane,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -205,40 +567,105 @@ class _HomeShellState extends ConsumerState<HomeShell> {
     // On Android before 12, back on the root route finishes the activity and
     // with it the isolate, which would cut off a token exchange or sign-out.
     // Back on another tab's root returns to the first tab instead, as Android
-    // expects; a tab's own stack is popped before a pop reaches the shell.
+    // expects; a tab's own stack is popped before a pop reaches the shell,
+    // and an open pane before both.
     return PopScope(
-      canPop: !signingIn && !signingOut && onFirstTab,
+      canPop: !signingIn && !signingOut && onFirstTab && !paneShown,
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && !signingIn && !signingOut && !onFirstTab) {
           widget.navigationShell.goBranch(0);
         }
       },
-      // The same structure with the rail as with the bar, so a rotation
-      // keeps the content, the banner among it, which screen readers would
-      // otherwise announce again. The rail is outside the scaffold, whose
-      // snackbars then stay beside it rather than across it.
-      child: Row(
-        children: [
-          if (rail)
-            AdaptiveNavigationRail(
-              selectedIndex: widget.navigationShell.currentIndex,
-              onDestinationSelected: _selectTab,
-              destinations: destinations,
+      child: BackButtonListener(
+        onBackButtonPressed: _paneBack,
+        // The same structure with the rail as with the bar, so a rotation
+        // keeps the content, the banner among it, which screen readers would
+        // otherwise announce again. The rail is outside the scaffold, whose
+        // snackbars then stay beside it rather than across it.
+        child: Row(
+          children: [
+            if (rail)
+              AdaptiveNavigationRail(
+                selectedIndex: widget.navigationShell.currentIndex,
+                onDestinationSelected: _selectTab,
+                destinations: destinations,
+              ),
+            Expanded(
+              child: Scaffold(
+                body: content,
+                bottomNavigationBar: rail
+                    ? null
+                    : AdaptiveNavigationBar(
+                        selectedIndex: widget.navigationShell.currentIndex,
+                        onDestinationSelected: _selectTab,
+                        destinations: destinations,
+                      ),
+              ),
             ),
-          Expanded(
-            child: Scaffold(
-              body: content,
-              bottomNavigationBar: rail
-                  ? null
-                  : AdaptiveNavigationBar(
-                      selectedIndex: widget.navigationShell.currentIndex,
-                      onDestinationSelected: _selectTab,
-                      destinations: destinations,
-                    ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The tabs, and beside them on their end side the pane with its divider
+/// (or the fold it is split on). Each keeps clear of the inset on the
+/// other's side, and is a region of its own for screen readers and
+/// keyboards while the pane shows.
+class _TabsBesidePane extends StatelessWidget {
+  const new({
+    required this.contentWidth,
+    required this.tabs,
+    required this.pane,
+  });
+
+  final double contentWidth;
+  final Widget tabs;
+  final Widget? pane;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final ltr = Directionality.of(context) == TextDirection.ltr;
+    final pane = this.pane;
+    final split = pane == null
+        ? null
+        : paneSplitFor(
+            windowWidth: media.size.width,
+            contentWidth: contentWidth,
+            textDirection: Directionality.of(context),
+            displayFeatures: media.displayFeatures,
+          );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: MediaQuery(
+            data: split == null
+                ? media
+                : media.removePadding(removeLeft: !ltr, removeRight: ltr),
+            child: Semantics(
+              container: split != null,
+              explicitChildNodes: split != null,
+              child: FocusTraversalGroup(child: tabs),
+            ),
+          ),
+        ),
+        if (split != null && pane != null) ...[
+          if (split.divider)
+            const VerticalDivider(width: 1, thickness: 1)
+          else
+            SizedBox(width: split.gap),
+          SizedBox(
+            width: split.paneWidth,
+            child: MediaQuery(
+              data: media.removePadding(removeLeft: ltr, removeRight: !ltr),
+              child: pane,
             ),
           ),
         ],
-      ),
+      ],
     );
   }
 }

@@ -12719,6 +12719,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Today, {today}; showing {range}'**
   String projectTimelineSummarySemantics(String today, String range);
+
+  /// Tooltip of the back arrow in the task detail pane beside the list on wide windows: it shows the task that was open before, named by its title.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to {title}'**
+  String taskDetailPaneBack(String title);
+
+  /// Tooltip of the menu with more actions (duplicate, delete) in the task detail pane beside the list on wide windows. It names the task by its title, so that it differs from the More menu of the screen beside the pane.
+  ///
+  /// In en, this message translates to:
+  /// **'More for {title}'**
+  String taskDetailPaneMore(String title);
 }
 
 class _AppLocalizationsDelegate

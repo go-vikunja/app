@@ -91,13 +91,15 @@ void main() {
     await pumpVikunjaApp(tester);
     final configuration = routerOf(tester).configuration;
 
+    final covered = {
+      for (final scenario in allScenarios)
+        if (scenario.kind == SweepKind.route && !scenario.showsPane)
+          scenario.key,
+    };
     final result = compareRouteCoverage(
       routes: configuration.routes,
       fullPath: configuration.locationForRoute,
-      covered: {
-        for (final scenario in allScenarios)
-          if (scenario.kind == SweepKind.route) scenario.key,
-      },
+      covered: covered,
     );
 
     expect(result.missing, isEmpty, reason: 'routes without a scenario');
@@ -108,6 +110,41 @@ void main() {
           'scenarios and exemptions of no '
           'route',
     );
+    // A pane scenario sweeps a route's screen once more, with a task beside.
+    final routes = {for (final key in covered) key.split(' [').first};
+    expect(
+      [
+        for (final scenario in allScenarios)
+          if (scenario.showsPane && !routes.contains(scenario.name))
+            scenario.key,
+      ],
+      isEmpty,
+      reason: 'pane scenarios of no route',
+    );
+  });
+
+  test('every pane scenario is a route scenario on the tablet in landscape '
+      'only, in both brightnesses, and only those leave the default '
+      'surfaces', () {
+    for (final scenario in allScenarios) {
+      if (scenario.showsPane) {
+        expect(scenario.kind, SweepKind.route, reason: scenario.key);
+        expect(scenario.surfaces, {
+          SweepSurface.tabletLandscape,
+        }, reason: scenario.key);
+        expect(
+          scenario.tabletBrightnesses,
+          Brightness.values.toSet(),
+          reason: scenario.key,
+        );
+      } else {
+        expect(scenario.surfaces, defaultSweepSurfaces, reason: scenario.title);
+      }
+    }
+    expect([
+      for (final scenario in allScenarios)
+        if (scenario.showsPane) scenario,
+    ], isNotEmpty);
   });
 
   test('every route scenario has its readable width, and every width a '

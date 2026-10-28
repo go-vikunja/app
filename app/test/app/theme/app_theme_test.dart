@@ -152,6 +152,11 @@ void main() {
         for (final (pair, foreground, background) in [
           ('onSurface on surface', colors.onSurface, colors.surface),
           (
+            'onSurface on surfaceContainerHighest, the selected row',
+            colors.onSurface,
+            colors.surfaceContainerHighest,
+          ),
+          (
             'onSurfaceVariant on surface',
             colors.onSurfaceVariant,
             colors.surface,
@@ -192,6 +197,25 @@ void main() {
           _contrast(colors.outline, colors.surfaceContainer),
           greaterThanOrEqualTo(component),
         );
+      });
+
+      // The selected task's tint is too faint to mark it alone (1.17:1
+      // and 1.39:1 on a card); the primary indicator has to.
+      test('$name keeps the selection indicator visible', () {
+        final boardCard = theme.brightness == Brightness.dark
+            ? colors.surfaceContainerHigh
+            : colors.surface;
+        for (final (pair, background) in [
+          ('on a section card and a board column', colors.surfaceContainerLow),
+          ('on the selected tint', colors.surfaceContainerHighest),
+          ('beside a board card', boardCard),
+        ]) {
+          expect(
+            _contrast(colors.primary, background),
+            greaterThanOrEqualTo(component),
+            reason: pair,
+          );
+        }
       });
 
       // The light brand amber is the one exception: it fills the star and

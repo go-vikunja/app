@@ -76,16 +76,23 @@ double railRight(WidgetTester tester) {
 typedef Band = ({double left, double right});
 
 /// Where content of at most [maxWidth] lies across the window: beside the
-/// rail (or from [left]), inset as the app insets it.
-Band readableBand(WidgetTester tester, double maxWidth, {double? left}) {
+/// rail (or from [left]) up to the window's edge (or to [right], e.g. the
+/// task detail pane's divider), inset as the app insets it.
+Band readableBand(
+  WidgetTester tester,
+  double maxWidth, {
+  double? left,
+  double? right,
+}) {
   final window = windowSize(tester);
   final start = left ?? railRight(tester);
+  final end = right ?? window.width;
   final inset = ReadableWidth.insetFor(
-    available: window.width - start,
+    available: end - start,
     max: maxWidth,
     caps: WindowLayout(window).capsWidths,
   );
-  return (left: start + inset, right: window.width - inset);
+  return (left: start + inset, right: end - inset);
 }
 
 const layoutTolerance = 0.5;

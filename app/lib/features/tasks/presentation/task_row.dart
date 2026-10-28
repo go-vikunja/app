@@ -12,6 +12,8 @@ import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart
 import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/selected_task_highlight.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_summary.dart';
@@ -22,7 +24,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_summary.dart';
 /// the detail sheet), the assignees and the favourite star. The controls
 /// are indicators only without their callbacks; the checkbox also in a
 /// project the user may only read. Full-bleed or in a section card alike.
-/// In a table view the line holds the chosen [columns] instead.
+/// In a table view the line holds the chosen [columns] instead. Selected
+/// while its task is open in the pane beside the list.
 class TaskRow extends ConsumerWidget {
   const new({
     required this.task,
@@ -216,99 +219,105 @@ class TaskRow extends ConsumerWidget {
     final avatars = summary.showsAssignees
         ? AvatarStack(users: task.assignees)
         : null;
+    final selected = TaskDetailPaneScope.isSelected(context, task.id);
 
-    return InkWell(
-      onTap: onTap,
-      child: Semantics(
-        button: onTap != null,
-        child: Padding(
-          padding: EdgeInsetsDirectional.only(
-            start: 4 + _indentPerLevel * math.min(depth, _maxIndentedLevels),
-            end: 4,
-          ),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // Beside the texts while they keep room for about ten
-              // characters, in the line below them otherwise.
-              final avatarsBeside =
-                  avatars != null &&
-                  constraints.maxWidth -
-                          _controlsWidth -
-                          AvatarStack.widthOf(task.assignees.length) >=
-                      MediaQuery.textScalerOf(context).scale(160);
-              final details = [...meta, ?(avatarsBeside ? null : avatars)];
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TaskDoneControl(
-                    done: task.done,
-                    onChanged: readOnly ? null : onDoneChanged,
-                    readOnly: readOnly,
-                  ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Semantics(
-                            label: summary.semanticsLabel(
-                              l10n,
-                              parentTitle: depth > 0 ? parentTitle : null,
-                              pending: pending,
-                            ),
-                            customSemanticsActions: actions.isEmpty
-                                ? null
-                                : actions,
-                            child: ExcludeSemantics(
-                              child: DefaultTextStyle.merge(
-                                style: theme.textTheme.bodyLarge,
-                                child: title,
+    return SelectedTaskHighlight(
+      selected: selected,
+      child: InkWell(
+        onTap: onTap,
+        child: Semantics(
+          button: onTap != null,
+          selected: selected ? true : null,
+          child: Padding(
+            padding: EdgeInsetsDirectional.only(
+              start: 4 + _indentPerLevel * math.min(depth, _maxIndentedLevels),
+              end: 4,
+            ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                // Beside the texts while they keep room for about ten
+                // characters, in the line below them otherwise.
+                final avatarsBeside =
+                    avatars != null &&
+                    constraints.maxWidth -
+                            _controlsWidth -
+                            AvatarStack.widthOf(task.assignees.length) >=
+                        MediaQuery.textScalerOf(context).scale(160);
+                final details = [...meta, ?(avatarsBeside ? null : avatars)];
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TaskDoneControl(
+                      done: task.done,
+                      onChanged: readOnly ? null : onDoneChanged,
+                      readOnly: readOnly,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Semantics(
+                              label: summary.semanticsLabel(
+                                l10n,
+                                parentTitle: depth > 0 ? parentTitle : null,
+                                pending: pending,
                               ),
-                            ),
-                          ),
-                          if (details.isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 4),
+                              customSemanticsActions: actions.isEmpty
+                                  ? null
+                                  : actions,
                               child: ExcludeSemantics(
-                                child: Wrap(
-                                  spacing: 10,
-                                  runSpacing: 4,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: details,
+                                child: DefaultTextStyle.merge(
+                                  style: theme.textTheme.bodyLarge,
+                                  child: title,
                                 ),
                               ),
                             ),
-                          if (columns == null && summary.showsPercent)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: ExcludeSemantics(
-                                child: TaskProgressBar(
-                                  percentDone: task.percentDone,
+                            if (details.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: ExcludeSemantics(
+                                  child: Wrap(
+                                    spacing: 10,
+                                    runSpacing: 4,
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: details,
+                                  ),
                                 ),
                               ),
-                            ),
-                        ],
+                            if (columns == null && summary.showsPercent)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: ExcludeSemantics(
+                                  child: TaskProgressBar(
+                                    percentDone: task.percentDone,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  if (avatarsBeside)
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(
-                        top: 12,
-                        start: 8,
+                    if (avatarsBeside)
+                      Padding(
+                        padding: const EdgeInsetsDirectional.only(
+                          top: 12,
+                          start: 8,
+                        ),
+                        child: avatars,
                       ),
-                      child: avatars,
-                    ),
-                  if (!guest)
-                    FavouriteButton(
-                      isFavorite: task.isFavorite,
-                      onChanged: readOnly ? null : onFavoriteChanged,
-                    ),
-                ],
-              );
-            },
+                    if (!guest)
+                      FavouriteButton(
+                        isFavorite: task.isFavorite,
+                        onChanged: readOnly ? null : onFavoriteChanged,
+                      ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),

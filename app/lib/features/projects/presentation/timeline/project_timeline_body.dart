@@ -23,7 +23,7 @@ import 'package:vikunja_mobile/features/projects/presentation/project_view_label
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_chart.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_controls.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 
 /// A Gantt view's body: the timeline of the tasks in its range, laid out
 /// once per source, range, day and collapsed rows; or why there is none:
@@ -233,8 +233,7 @@ class _ProjectTimelineBodyState extends ConsumerState<ProjectTimelineBody> {
                 layout: layout,
                 dayWidth: timeline.dayWidth,
                 bottomPadding: widget.bottomPadding,
-                onOpen: (task) =>
-                    unawaited(showTaskDetail(context, task: task)),
+                onOpen: (task) => openTaskDetail(context, task: task),
                 onToggleCollapsed: _toggle,
                 onDayWidthChanged: _saveDayWidth,
                 onPinchChanged: (pinching) {

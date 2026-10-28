@@ -2,6 +2,7 @@ import 'scenarios_account.dart';
 import 'scenarios_onboarding.dart';
 import 'scenarios_overlays.dart';
 import 'scenarios_pages.dart';
+import 'scenarios_pane.dart';
 import 'scenarios_shell.dart';
 import 'sweep_harness.dart';
 
@@ -15,4 +16,5 @@ final Map<String, List<SweepScenario>> sweepSuites = {
   'account': [...accountRouteScenarios, ...accountStateScenarios],
   'onboarding': [...onboardingRouteScenarios, ...onboardingStateScenarios],
   'overlays': [...overlayScenarios, ...guestOverlayScenarios],
+  'pane': paneRouteScenarios,
 };

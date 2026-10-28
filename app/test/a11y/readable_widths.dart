@@ -26,7 +26,8 @@ enum ReadableClass {
 }
 
 /// Every route scenario of the sweep, by its key. The tablet pass checks
-/// the `list840` and `form640` screens' boxes against their band.
+/// the `list840` and `form640` screens' boxes against their band, which
+/// ends at the task pane's divider when a task is open beside the list.
 const readableWidths = <String, ReadableClass>{
   '/home/overview': ReadableClass.list840,
   '/home/upcoming': ReadableClass.list840,
@@ -38,6 +39,15 @@ const readableWidths = <String, ReadableClass>{
   '/home/projects/:id [gantt]': ReadableClass.uncapped,
   '/home/projects/:id [favourites]': ReadableClass.list840,
   '/home/projects/:id [saved filter]': ReadableClass.list840,
+  '/home/overview [pane]': ReadableClass.list840,
+  '/home/overview [pane guest]': ReadableClass.list840,
+  '/home/overview [pane offline]': ReadableClass.list840,
+  '/home/upcoming [pane]': ReadableClass.list840,
+  '/home/projects/:id [pane list]': ReadableClass.list840,
+  '/home/projects/:id [pane table]': ReadableClass.list840,
+  '/home/projects/:id [pane kanban]': ReadableClass.uncapped,
+  '/home/projects/:id [pane gantt]': ReadableClass.uncapped,
+  '/home/projects/:id [pane favourites]': ReadableClass.list840,
   '/home/tasks/:id/edit': ReadableClass.form640,
   '/home/tasks/:id/description': ReadableClass.uncapped,
   '/home/tasks/:id/comments/:commentId/edit': ReadableClass.uncapped,

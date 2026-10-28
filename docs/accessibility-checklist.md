@@ -17,6 +17,7 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 - Each scenario runs on Android and iOS, light and dark, English and German, with Flutter's tap-target, labelled-target and contrast guidelines and the project's checks for heading levels, headings that are no buttons, image labels and control names, on every scroll stop.
 - The six core screens have no overflow at 3.12× on iOS, at 375 × 667 and 320 × 568 points.
 - Since step 36b ([D69]) each scenario also runs on its platform's tablet in both orientations (Android 1280 × 800 and 800 × 1280, iPad 1194 × 834 and 834 × 1194), in dark mode, English and German: with the guidelines above and the readable-width checks, and once more at 200 % text, where it has to show without an exception at every scroll stop.
+- Since step 36c ([D70]) nine scenarios with a task open in the pane beside the list run on the tablet in landscape only (Android 1280 × 800, iPad 1194 × 834), in light and dark, English and German with the guidelines and the readable-width checks of the list beside the pane, and dark at 200 % text; two of them also on an unfolded foldable (841 × 701, Android) at 200 %. Their scroll stops go through the pane's list, then the list's.
 - Every `header: true` has a heading level, and every announcement goes through the announcer.
 
 ## 2. Manual, on Android
@@ -59,7 +60,17 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 - [ ] **Remove animations** on: the board jumps to the column after a drop or a move instead of gliding; focusing the comment field jumps the task sheet to full height; "Zu heute springen" in Gantt jumps. Record any other motion that remains.
 - [ ] **Dragging without TalkBack** (WCAG 2.5.7): as a pointer user, confirm that moving a card to another column, reordering cards, list rows and sibling projects has no single-pointer way, and that a column's place (its menu), a project's parent (project edit › parent) and a task's project (task edit › project) do. [D68] records exactly this.
 
-### 2.4 The flows
+### 2.4 Checks of step 36c
+
+On the tablet emulator in landscape (1280 × 800), with TalkBack, Switch Access and the Scanner ([D70]):
+
+- [ ] **Open:** activate a row of the Overview and of a project's list. The task opens in the pane beside the list; TalkBack's focus moves into the pane; nothing is announced beyond what opening the sheet says on a phone; back on the list, the row reads "ausgewählt" ("selected"), and so do a Kanban card and a Gantt row in their views.
+- [ ] **Order and headings:** swiping goes through the list, then the pane; the Headings control reaches the screen's title, its section headers, the task's title (level 1) and the pane's sections. The pane's menu reads "Mehr zu „*Titel*“", the project page's menu "Mehr".
+- [ ] **A task inside the pane:** activate a related task or a subtask in the pane. It opens in the same place, focus stays in the pane, and the back arrow reads "Zurück zu „*Titel*“" once; activating it returns to the task before.
+- [ ] **Close:** activate "Schließen". The pane closes and focus returns to the row that opened the task; record where it lands when that row has scrolled away.
+- [ ] **Switch Access** reaches the rows, the pane's back arrow, its close button and its menu; the Scanner finds nothing new on the screen with the pane.
+
+### 2.5 The flows
 
 Each flow lists what to do, what to expect and what to record, beyond section 2.2.
 
@@ -88,8 +99,9 @@ Once, on a device (the simulator for what it can show):
 3. **Increase Contrast:** the app uses the high-contrast scheme; the alerts' actions (delete task, sign out, the http question) with and without it, the 1.4.3 deviation of [D68].
 4. **Reduce Motion:** the board, the task sheet and "Go to today" jump; page and sheet transitions still slide, as [D68] records.
 5. **The tab bar:** inactive labels readable in light and dark.
-6. **iPad** ([D69]): the task sheet and a picker as centred cards (an 11" iPad in both orientations, an iPad mini in portrait) take VoiceOver's focus, and nothing on the page beside the card is reachable; in Split View with half of a 13" iPad the sheet fills the window. At the largest text, the centred settings and forms show everything.
+6. **iPad** ([D69]): the task sheet and a picker as centred cards (an 11" iPad in both orientations, an iPad mini in portrait) take VoiceOver's focus, and nothing on the page beside the card is reachable; in Split View with half of a 13" iPad the sheet fills the window. At the largest text, the centred settings and forms show everything. The task pane ([D70]) on an 11" iPad in landscape and a 13" iPad in portrait: VoiceOver reads the list, then the pane; its focus moves into the pane when a task opens, and back to the row when it closes; the row reads "selected".
 
 [D68]: decisions.md#d68-screen-readers-heading-levels-on-screen-titles-and-section-headers-one-announcer-with-the-apps-own-live-region-on-android-high-contrast-and-reduce-motion-followed-and-a-route-sweep-that-every-route-pushed-page-and-overlay-must-pass-wcag-22-aa-as-the-yardstick-with-written-deviations
 [D69]: decisions.md#d69-large-screens-one-window-layout-helper-readable-widths-of-840-dp-for-lists-and-640-dp-for-settings-and-forms-with-scrolling-margins-dialogs-at-most-560-dp-and-ios-sheets-at-most-640-dp-only-on-tablet-sized-windows
+[D70]: decisions.md#d70-task-detail-pane-on-windows-at-least-840-dp-wide-and-480-dp-high-a-task-opens-beside-the-list-one-pane-per-tab-with-a-back-stack-and-a-selected-row-the-sheet-everywhere-else-back-through-the-pane-first-and-pages-in-a-tab-without-androids-predictive-back
 [Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass

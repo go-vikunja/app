@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
@@ -12,7 +10,7 @@ import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_list_body.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 /// The rows of a project's table view, the web table as a detailed list:
@@ -159,7 +157,7 @@ class ProjectTableBody extends StatelessWidget {
       projectTitle: project?.displayTitle(context.l10n),
       projectColor: parseHexColor(project?.hexColor ?? ''),
       pending: pendingIds.contains(task.id),
-      onTap: () => unawaited(showTaskDetail(context, task: task)),
+      onTap: () => openTaskDetail(context, task: task),
       onDoneChanged: archived
           ? null
           : (done) => onDoneChanged(task, done: done),

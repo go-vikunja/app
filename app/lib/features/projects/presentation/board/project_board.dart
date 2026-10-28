@@ -24,7 +24,7 @@ import 'package:vikunja_mobile/features/projects/presentation/board/column_menu.
 import 'package:vikunja_mobile/features/projects/presentation/board/column_sheets.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/new_column_tile.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 
 final _log = Logger('Board');
 
@@ -795,7 +795,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
       now: widget.now,
       minimumPriority: widget.minimumPriority,
       pending: pending,
-      onTap: () => unawaited(showTaskDetail(context, task: task)),
+      onTap: () => openTaskDetail(context, task: task),
       actions: widget.readOnly ? const {} : _actionsFor(column, task, index),
     );
     if (widget.readOnly) return card;

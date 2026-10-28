@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
@@ -11,7 +9,7 @@ import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dar
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 /// A list that is no project, grouped by due date like the Overview, each
@@ -82,7 +80,7 @@ class DueSectionsList extends StatelessWidget {
                     projectTitle: project?.displayTitle(l10n),
                     projectColor: parseHexColor(project?.hexColor ?? ''),
                     pending: pendingIds.contains(task.id),
-                    onTap: () => unawaited(showTaskDetail(context, task: task)),
+                    onTap: () => openTaskDetail(context, task: task),
                     onDoneChanged: archived
                         ? null
                         : (done) => onDoneChanged(task, done: done),

@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
@@ -22,15 +23,18 @@ import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/comment_composer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../helpers/announcer_region.dart';
 import '../helpers/app_lock_fakes.dart';
 import '../helpers/auth_fakes.dart';
+import '../helpers/large_screens.dart';
 import '../helpers/notification_ui_fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/sample_data.dart';
 import '../helpers/sync_fakes.dart';
+import '../helpers/task_detail_panes.dart';
 
 const _lockOn = PrivacySettings(appLock: true);
 const _immediately = PrivacySettings(
@@ -436,6 +440,68 @@ void main() {
 
       expect(find.text(_belowTheLock), findsNothing);
       expect(backgrounding.moves, 0);
+    });
+
+    testWidgets('the task pane beside the list waits under the lock with '
+        'its tasks and draft; back while locked moves the app back and '
+        'leaves it', (tester) async {
+      useWindow(tester, androidTabletLandscape);
+      data.tasks.all = [
+        sampleTask(
+          id: 7,
+          title: 'Water the plants',
+          relatedTasks: {
+            TaskRelationKind.related: [sampleTask(id: 8, title: '')],
+          },
+        ),
+        sampleTask(id: 8, title: 'Buy the pots'),
+      ];
+      data.details.detailsByTask[8] = const TaskDetails(
+        maxPermission: Permission.write,
+      );
+      await start(tester, settings: _immediately);
+      routerOf(tester).go(AppRoutes.project(1));
+      await tester.pumpAndSettle();
+      await tapTaskRow(tester, 7);
+      await openRelatedInPane(tester);
+      expect(paneTaskId(tester), 8);
+      final composer = inPane(
+        find.descendant(
+          of: find.byType(CommentComposer),
+          matching: find.byType(TextField),
+        ),
+      );
+      await tester.enterText(composer, 'Half a thought');
+      await tester.pump(const Duration(seconds: 1));
+      expect(backReports.last, isTrue);
+
+      await lockAgain(tester);
+      expect(backReports.last, isFalse);
+      expect(await tester.binding.handlePopRoute(), isTrue);
+      await tester.pumpAndSettle();
+      await tester.binding.defaultBinaryMessenger.handlePlatformMessage(
+        SystemChannels.backGesture.name,
+        SystemChannels.backGesture.codec.encodeMethodCall(
+          const MethodCall('commitBackGesture'),
+        ),
+        (_) {},
+      );
+      await tester.pumpAndSettle();
+      expect(backgrounding.moves, 2);
+
+      device.finish(DeviceAuthResult.success);
+      await tester.pumpAndSettle();
+      expect(lockScreen, findsNothing);
+      expectPane(tester, taskId: 8);
+      expect(
+        inPane(find.byTooltip(en.taskDetailPaneBack('Water the plants'))),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<TextField>(composer).controller!.text,
+        'Half a thought',
+      );
+      expect(backReports.last, isTrue);
     });
 
     testWidgets('on the overview, where back would leave the app, the '

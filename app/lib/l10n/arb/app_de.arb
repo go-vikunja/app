@@ -2102,5 +2102,7 @@
   "projectTimelineBlockedBySemantics": "blockiert durch {titles}",
   "projectTimelinePrecedesSemantics": "geht {titles} voraus",
   "projectTimelineFollowsSemantics": "folgt auf {titles}",
-  "projectTimelineSummarySemantics": "Heute, {today}; Zeitraum: {range}"
+  "projectTimelineSummarySemantics": "Heute, {today}; Zeitraum: {range}",
+  "taskDetailPaneBack": "Zurück zu „{title}“",
+  "taskDetailPaneMore": "Mehr zu „{title}“"
 }

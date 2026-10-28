@@ -7,6 +7,8 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/common/presentation/avatar_stack.dart';
 import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/selected_task_highlight.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_summary.dart';
@@ -14,6 +16,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_summary.dart';
 /// A task on a kanban board with the web card's content: one semantics node
 /// that reads it like the task row, taps open the task, and [actions] move
 /// it for screen readers. No done control and no star, as on the web.
+/// Selected while its task is open in the pane beside the board.
 class BoardCard extends ConsumerWidget {
   const new({
     required this.task,
@@ -35,6 +38,8 @@ class BoardCard extends ConsumerWidget {
   final bool pending;
   final VoidCallback? onTap;
   final Map<CustomSemanticsAction, VoidCallback> actions;
+
+  static const _radius = Radius.circular(12);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -71,10 +76,12 @@ class BoardCard extends ConsumerWidget {
       if (pending) metaIcon(Icons.cloud_off_outlined),
     ];
     final title = Text(task.title, style: theme.textTheme.bodyMedium);
+    final selected = TaskDetailPaneScope.isSelected(context, task.id);
 
     return Semantics(
       container: true,
       label: summary.semanticsLabel(l10n, pending: pending),
+      selected: selected ? true : null,
       onTap: onTap,
       customSemanticsActions: actions.isEmpty ? null : actions,
       child: ExcludeSemantics(
@@ -86,74 +93,78 @@ class BoardCard extends ConsumerWidget {
           color: theme.brightness == Brightness.dark
               ? colors.surfaceContainerHigh
               : colors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(_radius),
           ),
           clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (taskColor == null)
-                    title
-                  else
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.baseline,
-                      textBaseline: TextBaseline.alphabetic,
-                      children: [
-                        Text.rich(
-                          WidgetSpan(
-                            alignment: PlaceholderAlignment.middle,
-                            child: ColorDot(color: taskColor),
-                          ),
-                          style: theme.textTheme.bodyMedium,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(child: title),
-                      ],
-                    ),
-                  if (summary.labels.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Wrap(
-                        spacing: 4,
-                        runSpacing: 4,
+          child: SelectedTaskHighlight(
+            selected: selected,
+            cardRadius: _radius,
+            child: InkWell(
+              onTap: onTap,
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (taskColor == null)
+                      title
+                    else
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.baseline,
+                        textBaseline: TextBaseline.alphabetic,
                         children: [
-                          for (final label in summary.labels)
-                            LabelPill(label: label),
-                        ],
-                      ),
-                    ),
-                  if (summary.percent > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: TaskProgressBar(percentDone: task.percentDone),
-                    ),
-                  if (meta.isNotEmpty || task.assignees.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: Wrap(
-                              spacing: 10,
-                              runSpacing: 4,
-                              crossAxisAlignment: WrapCrossAlignment.center,
-                              children: meta,
+                          Text.rich(
+                            WidgetSpan(
+                              alignment: PlaceholderAlignment.middle,
+                              child: ColorDot(color: taskColor),
                             ),
+                            style: theme.textTheme.bodyMedium,
                           ),
-                          if (task.assignees.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            AvatarStack(users: task.assignees),
-                          ],
+                          const SizedBox(width: 6),
+                          Expanded(child: title),
                         ],
                       ),
-                    ),
-                ],
+                    if (summary.labels.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Wrap(
+                          spacing: 4,
+                          runSpacing: 4,
+                          children: [
+                            for (final label in summary.labels)
+                              LabelPill(label: label),
+                          ],
+                        ),
+                      ),
+                    if (summary.percent > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: TaskProgressBar(percentDone: task.percentDone),
+                      ),
+                    if (meta.isNotEmpty || task.assignees.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Wrap(
+                                spacing: 10,
+                                runSpacing: 4,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: meta,
+                              ),
+                            ),
+                            if (task.assignees.isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              AvatarStack(users: task.assignees),
+                            ],
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),

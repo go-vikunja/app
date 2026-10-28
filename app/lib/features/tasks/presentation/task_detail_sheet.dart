@@ -181,6 +181,26 @@ class _DraggableTaskDetailState extends State<_DraggableTaskDetail> {
 
 enum _SheetAction { duplicate, delete }
 
+/// What the detail does in the pane beside the list instead of in a sheet:
+/// [close] closes the pane, [openOther] shows another task inside it,
+/// [back] (null on the pane's first task) returns to [backTitle]'s task,
+/// and [deleted] leaves the task with that id once it is deleted.
+final class TaskDetailPaneHost {
+  const new({
+    required this.close,
+    required this.openOther,
+    required this.deleted,
+    this.back,
+    this.backTitle,
+  });
+
+  final VoidCallback close;
+  final void Function(Task task) openOther;
+  final void Function(int taskId) deleted;
+  final VoidCallback? back;
+  final String? backTitle;
+}
+
 /// Follows the local row of [task] while it is open, so a done toggle here,
 /// the server's answer to it (a repeating task's next occurrence) and the
 /// id a queued create gets show; [task] itself is the fallback once the row
@@ -197,11 +217,15 @@ class TaskDetailSheet extends ConsumerStatefulWidget {
     this.messengerBelow,
     this.commentId,
     this.expand,
+    this.pane,
     super.key,
   });
 
   final Task task;
   final ScrollController scrollController;
+
+  /// Set in the pane beside the list; null in a sheet.
+  final TaskDetailPaneHost? pane;
 
   /// A comment to show, e.g. the one a notification is about: the comments
   /// load and the sheet scrolls to it, tinted for a moment, when it is on
@@ -296,6 +320,14 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
           .listen((_) => _refreshFromServer());
     }, fireImmediately: true);
     if (widget.task.id > 0) _loadDetails(widget.task.id);
+  }
+
+  // Before a detail for the same task that replaces this one in the same
+  // frame reads the draft in its initState.
+  @override
+  void deactivate() {
+    if (_draftWrite != null) unawaited(_keepDraft());
+    super.deactivate();
   }
 
   @override
@@ -756,7 +788,8 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       ..showSnackBar(SnackBar(content: Text(text)));
   }
 
-  /// The sheet closes, so its "Task deleted" lands on what is below it.
+  /// The sheet closes, so its "Task deleted" lands on what is below it; in
+  /// the pane it shows on the screen beside it.
   Future<void> _delete(TaskRepository repository, Task task) async {
     final l10n = context.l10n;
     final navigator = Navigator.of(context);
@@ -765,6 +798,11 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     if (!confirmed || !mounted) return;
     await repository.deleteTask(task.id);
     if (!mounted) return;
+    if (widget.pane case final pane?) {
+      pane.deleted(task.id);
+      screenMessenger.showSnackBar(SnackBar(content: Text(l10n.taskDeleted)));
+      return;
+    }
     final messenger = widget.messengerBelow?.currentState ?? screenMessenger;
     navigator.pop();
     messenger.showSnackBar(SnackBar(content: Text(l10n.taskDeleted)));
@@ -826,10 +864,11 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     if (message != null && mounted) _showMessage(message);
   }
 
-  /// The edit page replaces the sheet, so its "Saved" lands on the list.
+  /// The edit page replaces the sheet, so its "Saved" lands on the list;
+  /// the pane stays under it.
   void _edit(Task task) {
     final router = GoRouter.of(context);
-    Navigator.of(context).pop();
+    if (widget.pane == null) Navigator.of(context).pop();
     unawaited(router.push(AppRoutes.taskEdit(task.id)));
   }
 
@@ -880,9 +919,14 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     );
   }
 
-  /// Another sheet over this one, which closing brings back.
+  /// Another sheet over this one, which closing brings back; in the pane,
+  /// the next task in it, which its back arrow leaves.
   void _open(Task other) {
     if (!mounted) return;
+    if (widget.pane case final pane?) {
+      pane.openOther(other);
+      return;
+    }
     unawaited(showTaskDetail(context, task: other, messengerBelow: _messenger));
   }
 
@@ -1007,6 +1051,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final pane = widget.pane;
     final repository = ref.watch(taskRepositoryProvider);
     final stored = ref.watch(taskByIdProvider(widget.task.id)).value;
     final task = stored ?? widget.task;
@@ -1255,6 +1300,131 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 busy: _busyComments,
                 pendingReactions: _pendingCommentReactions,
               );
+              final back = pane?.back;
+              final header = Padding(
+                padding: EdgeInsetsDirectional.only(
+                  start: back == null ? 16 : 4,
+                  end: 4,
+                ),
+                child: Row(
+                  children: [
+                    if (back != null)
+                      IconButton(
+                        onPressed: back,
+                        tooltip: l10n.taskDetailPaneBack(pane?.backTitle ?? ''),
+                        // The tooltip names the task; the icon's own "Back"
+                        // would be read before it.
+                        icon: const ExcludeSemantics(child: BackButtonIcon()),
+                      ),
+                    if (color != null) ...[
+                      ColorDot(color: color),
+                      const SizedBox(width: 8),
+                    ],
+                    // A task not yet sent has no identifier until the
+                    // server assigns one. Beside five actions in large
+                    // text it shrinks rather than break in two.
+                    Expanded(
+                      child: task.id > 0
+                          ? FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: AlignmentDirectional.centerStart,
+                              child: IdentifierText(
+                                taskIdentifierIn(task, project),
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                    if (!readOnly)
+                      IconButton(
+                        onPressed: repository == null
+                            ? null
+                            : () => _edit(task),
+                        tooltip: l10n.taskEdit,
+                        icon: const Icon(Icons.edit_outlined),
+                      ),
+                    if (!guest) ...[
+                      ValueListenableBuilder(
+                        valueListenable: _follow,
+                        builder: (context, state, _) => FollowButton(
+                          state: task.id < 0 ? const FollowUnknown() : state,
+                          onPressed: () =>
+                              unawaited(_toggleFollow(task, projectTitles)),
+                        ),
+                      ),
+                      FavouriteButton(
+                        isFavorite: task.isFavorite,
+                        onChanged: changer == null
+                            ? null
+                            : (favorite) => unawaited(
+                                writeTaskFavorite(
+                                  changer,
+                                  task,
+                                  favorite: favorite,
+                                ),
+                              ),
+                      ),
+                    ],
+                    if (!readOnly)
+                      PopupMenuButton<_SheetAction>(
+                        // Beside the screen's own More in the pane.
+                        tooltip: pane == null
+                            ? l10n.moreActions
+                            : l10n.taskDetailPaneMore(task.title),
+                        enabled: repository != null,
+                        onSelected: (action) => switch (action) {
+                          _SheetAction.duplicate => unawaited(
+                            _duplicate(repository!, task),
+                          ),
+                          _SheetAction.delete => unawaited(
+                            _delete(repository!, task),
+                          ),
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: _SheetAction.duplicate,
+                            enabled: !_duplicating,
+                            child: Row(
+                              children: [
+                                const Icon(Icons.content_copy_outlined),
+                                const SizedBox(width: 12),
+                                Flexible(child: Text(l10n.taskDuplicate)),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuDivider(),
+                          PopupMenuItem(
+                            value: _SheetAction.delete,
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete_outline, color: colors.error),
+                                const SizedBox(width: 12),
+                                Flexible(
+                                  child: Text(
+                                    l10n.taskDelete,
+                                    style: TextStyle(color: colors.error),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    IconButton(
+                      onPressed:
+                          pane?.close ?? () => Navigator.of(context).pop(),
+                      tooltip: l10n.taskDetailClose,
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              );
+              final progress = SizedBox(
+                height: 4,
+                child: _duplicating || _openingLinkedTask
+                    ? const LinearProgressIndicator()
+                    : null,
+              );
               final list = ListView(
                 controller: widget.scrollController,
                 // iOS has no other way to close the keyboard of the subtask
@@ -1263,123 +1433,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
-                  Padding(
-                    padding: const EdgeInsetsDirectional.only(
-                      start: 16,
-                      end: 4,
-                    ),
-                    child: Row(
-                      children: [
-                        if (color != null) ...[
-                          ColorDot(color: color),
-                          const SizedBox(width: 8),
-                        ],
-                        // A task not yet sent has no identifier until the
-                        // server assigns one. Beside five actions in large
-                        // text it shrinks rather than break in two.
-                        Expanded(
-                          child: task.id > 0
-                              ? FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: AlignmentDirectional.centerStart,
-                                  child: IdentifierText(
-                                    taskIdentifierIn(task, project),
-                                    style: const TextStyle(fontSize: 16),
-                                  ),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                        if (!readOnly)
-                          IconButton(
-                            onPressed: repository == null
-                                ? null
-                                : () => _edit(task),
-                            tooltip: l10n.taskEdit,
-                            icon: const Icon(Icons.edit_outlined),
-                          ),
-                        if (!guest) ...[
-                          ValueListenableBuilder(
-                            valueListenable: _follow,
-                            builder: (context, state, _) => FollowButton(
-                              state: task.id < 0
-                                  ? const FollowUnknown()
-                                  : state,
-                              onPressed: () =>
-                                  unawaited(_toggleFollow(task, projectTitles)),
-                            ),
-                          ),
-                          FavouriteButton(
-                            isFavorite: task.isFavorite,
-                            onChanged: changer == null
-                                ? null
-                                : (favorite) => unawaited(
-                                    writeTaskFavorite(
-                                      changer,
-                                      task,
-                                      favorite: favorite,
-                                    ),
-                                  ),
-                          ),
-                        ],
-                        if (!readOnly)
-                          PopupMenuButton<_SheetAction>(
-                            tooltip: l10n.moreActions,
-                            enabled: repository != null,
-                            onSelected: (action) => switch (action) {
-                              _SheetAction.duplicate => unawaited(
-                                _duplicate(repository!, task),
-                              ),
-                              _SheetAction.delete => unawaited(
-                                _delete(repository!, task),
-                              ),
-                            },
-                            itemBuilder: (context) => [
-                              PopupMenuItem(
-                                value: _SheetAction.duplicate,
-                                enabled: !_duplicating,
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.content_copy_outlined),
-                                    const SizedBox(width: 12),
-                                    Flexible(child: Text(l10n.taskDuplicate)),
-                                  ],
-                                ),
-                              ),
-                              const PopupMenuDivider(),
-                              PopupMenuItem(
-                                value: _SheetAction.delete,
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.delete_outline,
-                                      color: colors.error,
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Flexible(
-                                      child: Text(
-                                        l10n.taskDelete,
-                                        style: TextStyle(color: colors.error),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        IconButton(
-                          onPressed: () => Navigator.of(context).pop(),
-                          tooltip: l10n.taskDetailClose,
-                          icon: const Icon(Icons.close),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    height: 4,
-                    child: _duplicating || _openingLinkedTask
-                        ? const LinearProgressIndicator()
-                        : null,
-                  ),
+                  if (pane == null) ...[header, progress],
                   _Inset(
                     child: Wrap(
                       spacing: 8,
@@ -1598,7 +1652,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
               );
               // The composer takes no more than the height above the
               // keyboard, the list what it leaves.
-              return LayoutBuilder(
+              final content = LayoutBuilder(
                 builder: (context, constraints) => Column(
                   children: [
                     Expanded(child: list),
@@ -1614,6 +1668,16 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       ),
                   ],
                 ),
+              );
+              if (pane == null) return content;
+              // Close and back stay in reach however far the pane scrolls:
+              // there is no drag handle or scrim to leave it by.
+              return Column(
+                children: [
+                  header,
+                  progress,
+                  Expanded(child: content),
+                ],
               );
             },
           ),

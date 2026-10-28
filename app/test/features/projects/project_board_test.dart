@@ -549,6 +549,22 @@ void main() {
       expect(find.byType(TaskDetailSheet), findsOneWidget);
     });
 
+    testWidgets('on a phone a tap opens the task in a sheet', (tester) async {
+      await pumpBoard(tester, size: const Size(400, 800));
+
+      await tester.tap(find.text('Call Anna'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BottomSheet), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.byType(TaskDetailSheet),
+        ),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('empty columns offer to add a task; "Add another task" '
         'where there are cards', (tester) async {
       storeBoard(columns: [...buckets(), bucket(24, 'Later')]);

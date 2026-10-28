@@ -8,9 +8,11 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 
 import '../helpers/large_screens.dart';
 import '../helpers/pump_app.dart';
+import '../helpers/task_detail_panes.dart' show androidFoldable;
 import 'readable_widths.dart';
 import 'sweep_guidelines.dart';
 
@@ -30,18 +32,28 @@ const maxScrollStops = 10;
 enum SweepKind { route, overlay, state }
 
 /// The phone of the 36a sweep, or the platform's tablet (step 36b): an
-/// Android tablet at 1280×800, an 11" iPad at 1194×834, or turned.
+/// Android tablet at 1280×800, an 11" iPad at 1194×834, or turned; or an
+/// unfolded foldable at 841×701, the narrowest window with the task pane.
 enum SweepSurface {
   phone,
   tabletLandscape,
-  tabletPortrait;
+  tabletPortrait,
+  foldable;
 
   String get label => switch (this) {
     phone => 'phone',
     tabletLandscape => 'tablet landscape',
     tabletPortrait => 'tablet portrait',
+    foldable => 'foldable',
   };
 }
+
+/// Where a scenario runs unless it says otherwise.
+const Set<SweepSurface> defaultSweepSurfaces = {
+  SweepSurface.phone,
+  SweepSurface.tabletLandscape,
+  SweepSurface.tabletPortrait,
+};
 
 typedef SweepStep = Future<void> Function(
   WidgetTester tester,
@@ -57,7 +69,8 @@ typedef ScreenFinder = Finder Function(AppLocalizations l10n);
 /// GoRoute pattern), so a silent redirect fails. [expectScreen] finds
 /// exactly one widget of the screen. With [settle] false the screen never
 /// settles (an indeterminate progress indicator) and is evaluated once
-/// [expectScreen] matches.
+/// [expectScreen] matches. A scenario runs on [surfaces], the tablets with
+/// the guidelines in [tabletBrightnesses].
 final class SweepScenario {
   const new({
     required this.kind,
@@ -71,6 +84,8 @@ final class SweepScenario {
     this.settle = true,
     this.tearDown,
     this.iOSSurface,
+    this.surfaces = defaultSweepSurfaces,
+    this.tabletBrightnesses = const {Brightness.dark},
   });
 
   factory route(
@@ -82,6 +97,8 @@ final class SweepScenario {
     Set<TargetPlatform> platforms = bothPlatforms,
     bool settle = true,
     SweepStep? tearDown,
+    Set<SweepSurface> surfaces = defaultSweepSurfaces,
+    Set<Brightness> tabletBrightnesses = const {Brightness.dark},
   }) => SweepScenario(
     kind: SweepKind.route,
     name: pattern,
@@ -93,6 +110,8 @@ final class SweepScenario {
     platforms: platforms,
     settle: settle,
     tearDown: tearDown,
+    surfaces: surfaces,
+    tabletBrightnesses: tabletBrightnesses,
   );
 
   final SweepKind kind;
@@ -118,8 +137,16 @@ final class SweepScenario {
   /// the scenario.
   final Size? iOSSurface;
 
+  final Set<SweepSurface> surfaces;
+
+  /// The tablets' guideline passes; the 200 % pass is dark only.
+  final Set<Brightness> tabletBrightnesses;
+
   /// What the completeness checks match: the route and its variant.
   String get key => variant.isEmpty ? name : '$name [$variant]';
+
+  /// The route's screen with a task in the pane beside it (step 36c).
+  bool get showsPane => variant == 'pane' || variant.startsWith('pane ');
 
   String get title => switch (kind) {
     SweepKind.route => 'route $key',
@@ -154,48 +181,84 @@ List<(String, AccessibilityGuideline)> sweepGuidelines(
 ];
 
 /// One test per scenario, brightness and language on the phone, each on
-/// the scenario's platforms. On the tablet in both orientations, dark and
-/// in both languages, one test with the guidelines and the readable-width
-/// checks, and one at 200 % text that only looks for an overflow.
+/// the scenario's platforms. On the tablet in both orientations, in its
+/// tablet brightnesses (dark unless it says otherwise) and in both
+/// languages, one test with the guidelines and the readable-width checks;
+/// dark in both languages, one at 200 % text that only looks for an
+/// overflow. Each only on the scenario's [SweepScenario.surfaces].
 void sweep(List<SweepScenario> scenarios) {
   for (final scenario in scenarios) {
-    for (final brightness in Brightness.values) {
-      for (final locale in sweepLocales) {
-        testWidgets(
-          '${scenario.title} ${brightness.name} ${locale.languageCode}',
-          (tester) => runScenario(
-            tester,
-            scenario,
-            brightness: brightness,
-            locale: locale,
-          ),
-          variant: TargetPlatformVariant(scenario.platforms),
-          timeout: const Timeout(Duration(seconds: 30)),
-        );
-      }
-    }
-    for (final surface in [
-      SweepSurface.tabletLandscape,
-      SweepSurface.tabletPortrait,
-    ]) {
-      for (final largeText in [false, true]) {
+    if (scenario.surfaces.contains(SweepSurface.phone)) {
+      for (final brightness in Brightness.values) {
         for (final locale in sweepLocales) {
           testWidgets(
-            '${scenario.title} ${surface.label}${largeText ? ' 200 %' : ''} '
-            'dark ${locale.languageCode}',
+            '${scenario.title} ${brightness.name} ${locale.languageCode}',
             (tester) => runScenario(
               tester,
               scenario,
-              brightness: Brightness.dark,
+              brightness: brightness,
               locale: locale,
-              surface: surface,
-              largeText: largeText,
             ),
             variant: TargetPlatformVariant(scenario.platforms),
             timeout: const Timeout(Duration(seconds: 30)),
           );
         }
       }
+    }
+    for (final surface in [
+      SweepSurface.tabletLandscape,
+      SweepSurface.tabletPortrait,
+    ]) {
+      if (!scenario.surfaces.contains(surface)) continue;
+      for (final largeText in [false, true]) {
+        final brightnesses = largeText
+            ? const {Brightness.dark}
+            : scenario.tabletBrightnesses;
+        for (final brightness in brightnesses) {
+          for (final locale in sweepLocales) {
+            testWidgets(
+              '${scenario.title} ${surface.label}'
+              '${largeText ? ' 200 %' : ''} '
+              '${brightness.name} ${locale.languageCode}',
+              (tester) => runScenario(
+                tester,
+                scenario,
+                brightness: brightness,
+                locale: locale,
+                surface: surface,
+                largeText: largeText,
+              ),
+              variant: TargetPlatformVariant(scenario.platforms),
+              timeout: const Timeout(Duration(seconds: 30)),
+            );
+          }
+        }
+      }
+    }
+  }
+}
+
+/// The [scenarios] on an unfolded foldable, Android only, dark at 200 %
+/// text in both languages: the task pane at its narrowest beside the list.
+void sweepFoldable(List<SweepScenario> scenarios) {
+  for (final scenario in scenarios) {
+    for (final locale in sweepLocales) {
+      testWidgets(
+        '${scenario.title} ${SweepSurface.foldable.label} 200 % dark '
+        '${locale.languageCode}',
+        (tester) => runScenario(
+          tester,
+          scenario,
+          brightness: Brightness.dark,
+          locale: locale,
+          surface: SweepSurface.foldable,
+          largeText: true,
+        ),
+        variant: TargetPlatformVariant(
+          scenario.platforms.intersection(androidOnly),
+        ),
+        timeout: const Timeout(Duration(seconds: 30)),
+      );
     }
   }
 }
@@ -208,6 +271,7 @@ Size _surfaceSize(SweepSurface surface, SweepScenario scenario) {
       apple ? iPad11Landscape : androidTabletLandscape,
     SweepSurface.tabletPortrait =>
       apple ? iPad11Portrait : androidTabletPortrait,
+    SweepSurface.foldable => androidFoldable,
   };
 }
 
@@ -268,18 +332,25 @@ Future<void> runScenario(
   }
 
   await evaluate('first frame');
-  final position = _mainScrollable(tester)?.position;
-  for (var stop = 1; stop < maxScrollStops && position != null; stop++) {
-    if (position.extentAfter <= 0) break;
-    position.jumpTo(
-      math.min(
-        position.maxScrollExtent,
-        position.pixels + position.viewportDimension * 0.8,
-      ),
-    );
-    await _settle(tester, scenario);
-    expect(tester.takeException(), isNull);
-    await evaluate('scroll stop $stop');
+  // With the task pane beside the list, its list first, then the list.
+  final pane = _paneScrollable(tester);
+  for (final (where, scrollable) in [
+    if (pane != null) ('pane ', pane),
+    ('', _mainScrollable(tester)),
+  ]) {
+    final position = scrollable?.position;
+    for (var stop = 1; stop < maxScrollStops && position != null; stop++) {
+      if (position.extentAfter <= 0) break;
+      position.jumpTo(
+        math.min(
+          position.maxScrollExtent,
+          position.pixels + position.viewportDimension * 0.8,
+        ),
+      );
+      await _settle(tester, scenario);
+      expect(tester.takeException(), isNull);
+      await evaluate('${where}scroll stop $stop');
+    }
   }
 
   await scenario.tearDown?.call(tester, l10n);
@@ -302,11 +373,33 @@ Future<void> _settle(WidgetTester tester, SweepScenario scenario) async {
 }
 
 /// The largest vertical list in front: a sheet's or a dialog's over the
-/// page below.
-ScrollableState? _mainScrollable(WidgetTester tester) {
+/// page below; beside the task pane, the list's, not the pane's.
+ScrollableState? _mainScrollable(WidgetTester tester) => _largestVertical(
+  find
+      .byType(Scrollable)
+      .hitTestable()
+      .evaluate()
+      .where(
+        (element) =>
+            element.findAncestorWidgetOfExactType<TaskDetailPane>() == null,
+      ),
+);
+
+/// The task pane's own list, when a task is open in the pane.
+ScrollableState? _paneScrollable(WidgetTester tester) => _largestVertical(
+  find
+      .descendant(
+        of: find.byType(TaskDetailPane),
+        matching: find.byType(Scrollable),
+      )
+      .hitTestable()
+      .evaluate(),
+);
+
+ScrollableState? _largestVertical(Iterable<Element> scrollables) {
   ScrollableState? largest;
   var largestArea = 0.0;
-  for (final element in find.byType(Scrollable).hitTestable().evaluate()) {
+  for (final element in scrollables) {
     final state = (element as StatefulElement).state as ScrollableState;
     if (state.position.axis != Axis.vertical) continue;
     final size = element.size ?? Size.zero;
@@ -317,6 +410,15 @@ ScrollableState? _mainScrollable(WidgetTester tester) {
     }
   }
   return largest;
+}
+
+/// Where the list ends: at the task pane's divider while a task is open
+/// in the pane, else at the window's edge.
+double _listRight(WidgetTester tester) {
+  final pane = find.byType(TaskDetailPane);
+  return pane.evaluate().isEmpty
+      ? windowSize(tester).width
+      : tester.getRect(pane).left - 1;
 }
 
 /// What a card keeps clear of its band's edges.
@@ -395,15 +497,16 @@ void _expectInBand(
   double maxWidth,
 ) {
   final list = _mainList(tester, scenario);
+  final right = _listRight(tester);
   expectFillsBand(tester.getRect(list), (
     left: railRight(tester),
-    right: windowSize(tester).width,
+    right: right,
   ), reason: 'the list of ${scenario.key} spans the window');
   final (boxes, _) =
       readableBoxOverrides[scenario.key] ?? (readableContentBoxes, '');
   final inList = find.descendant(of: list, matching: boxes);
   expect(inList, findsAtLeastNWidgets(1), reason: scenario.key);
-  final band = readableBand(tester, maxWidth);
+  final band = readableBand(tester, maxWidth, right: right);
   final found = [
     for (final box in inList.evaluate())
       (type: box.widget.runtimeType, rect: _rectOf(tester, box)),
@@ -425,11 +528,20 @@ void _expectInBand(
 }
 
 /// Where the list band leaves margins, some box of the screen lies in
-/// them.
+/// them; beside the task pane, the screen reaches the pane's divider.
 void _expectPastListBand(WidgetTester tester, SweepScenario scenario) {
   final boxes = uncappedContentBoxes.evaluate();
   expect(boxes, isNotEmpty, reason: scenario.key);
-  final band = readableBand(tester, ReadableWidth.list);
+  final right = _listRight(tester);
+  if (find.byType(TaskDetailPane).evaluate().isNotEmpty) {
+    final rights = boxes.map((box) => _rectOf(tester, box).right);
+    expect(
+      rights.reduce(math.max),
+      moreOrLessEquals(right, epsilon: layoutTolerance),
+      reason: '${scenario.key} reaches the pane',
+    );
+  }
+  final band = readableBand(tester, ReadableWidth.list, right: right);
   if (band.left - railRight(tester) <= _cardMargin) return;
   expect(
     boxes

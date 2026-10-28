@@ -30,7 +30,7 @@ import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import 'package:vikunja_mobile/features/upcoming/application/upcoming_providers.dart';
@@ -359,7 +359,7 @@ class _UpcomingSections extends StatelessWidget {
       projectTitle: project?.displayTitle(l10n),
       projectColor: parseHexColor(project?.hexColor ?? ''),
       pending: pendingIds.contains(task.id),
-      onTap: () => unawaited(showTaskDetail(context, task: task)),
+      onTap: () => openTaskDetail(context, task: task),
       onDoneChanged: (done) => onDoneChanged(task, done: done),
       onFavoriteChanged: (favorite) =>
           onFavoriteChanged(task, favorite: favorite),
