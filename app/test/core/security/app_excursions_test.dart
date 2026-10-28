@@ -87,4 +87,24 @@ void main() {
     expect(excursions.active, isFalse);
     expect(ended, [DateTime.utc(2026, 10, 27, 9, 1)]);
   });
+
+  test('tells of each abandon at once, also with none running, and of none '
+      'once disposed', () async {
+    var abandons = 0;
+    final subscription = excursions.abandons.listen((_) => abandons++);
+    addTearDown(subscription.cancel);
+    unawaited(excursions.run(() => Completer<void>().future));
+
+    excursions.abandon();
+    expect(abandons, 1);
+    expect(excursions.active, isFalse);
+    excursions.abandon();
+    expect(abandons, 2);
+    expect(ended, isEmpty);
+
+    excursions
+      ..dispose()
+      ..abandon();
+    expect(abandons, 2);
+  });
 }

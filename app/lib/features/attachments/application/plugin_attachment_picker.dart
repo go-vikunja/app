@@ -1,4 +1,6 @@
 import 'package:file_selector/file_selector.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart' hide PickedFile;
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
@@ -13,6 +15,11 @@ import 'package:vikunja_mobile/features/attachments/application/channel_document
 final class PluginAttachmentPicker implements AttachmentPicker {
   new({this.documents, this.excursions, DateTime Function()? now})
     : _now = now ?? DateTime.now;
+
+  static const lostPickPoll = Duration(milliseconds: 500);
+
+  /// Without a lost pick by then, nothing was picked.
+  static const lostPickWait = Duration(seconds: 15);
 
   final ChannelDocumentPicker? documents;
   final AppExcursions? excursions;
@@ -70,7 +77,7 @@ final class PluginAttachmentPicker implements AttachmentPicker {
       return multiple
           ? await picker.pickMultipleMedia(requestFullMetadata: false)
           : [?await picker.pickMedia(requestFullMetadata: false)];
-    });
+    }, recover: _lostPick);
     return files.map(_picked).toList();
   }
 
@@ -81,6 +88,7 @@ final class PluginAttachmentPicker implements AttachmentPicker {
         source: ImageSource.camera,
         requestFullMetadata: false,
       ),
+      recover: () async => (await _lostPick()).firstOrNull,
     );
     if (file == null) return null;
     return PickedFile(
@@ -90,8 +98,40 @@ final class PluginAttachmentPicker implements AttachmentPicker {
     );
   }
 
-  Future<T> _away<T>(Future<T> Function() pick) =>
-      excursions?.roundTrip(pick) ?? pick();
+  // image_picker keeps lost picks on Android only, and iOS does not
+  // relaunch.
+  Future<T> _away<T>(
+    Future<T> Function() pick, {
+    Future<T> Function()? recover,
+  }) =>
+      excursions?.roundTrip(
+        pick,
+        recover: defaultTargetPlatform == TargetPlatform.android
+            ? recover
+            : null,
+      ) ??
+      pick();
+
+  // image_picker never answers a pick across an activity relaunch; it keeps
+  // what was picked for retrieveLostData once its background work (for the
+  // camera a media scan) is done.
+  static Future<List<XFile>> _lostPick() async {
+    final picker = ImagePicker();
+    for (var waited = Duration.zero; ; waited += lostPickPoll) {
+      // While no activity is attached (the app left again and Android
+      // destroyed the activity), image_picker cannot be asked; a later look
+      // may still find the pick.
+      final lost = await picker.retrieveLostData().onError<PlatformException>(
+        (_, _) => LostDataResponse.empty(),
+      );
+      if (!lost.isEmpty) {
+        if (lost.exception case final exception?) throw exception;
+        return lost.files ?? [?lost.file];
+      }
+      if (waited >= lostPickWait) return const [];
+      await Future<void>.delayed(lostPickPoll);
+    }
+  }
 
   static PickedFile _picked(XFile file) => PickedFile(
     path: file.path,

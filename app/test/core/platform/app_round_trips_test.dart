@@ -86,6 +86,160 @@ void main() {
     });
   });
 
+  group('a round trip that can recover', () {
+    late Completer<String> answer;
+    late List<Completer<String>> recovers;
+
+    Future<String> roundTrip() => excursions.roundTrip(
+      () => answer.future,
+      recover: () {
+        recovers.add(Completer());
+        return recovers.last.future;
+      },
+    );
+
+    void setUpRecovery(WidgetTester tester) {
+      setUpExcursions(tester);
+      answer = Completer();
+      recovers = [];
+    }
+
+    testWidgets('answers with what it recovers after an abandon', (
+      tester,
+    ) async {
+      setUpRecovery(tester);
+      final result = roundTrip();
+
+      excursions.abandon();
+      expect(recovers, hasLength(1));
+      recovers.single.complete('recovered');
+
+      expect(await result, 'recovered');
+      expect(excursions.active, isFalse);
+      expect(ended, isEmpty);
+    });
+
+    testWidgets('recovers nothing without an abandon', (tester) async {
+      setUpRecovery(tester);
+      final result = roundTrip();
+      await tester.pump(const Duration(minutes: 1));
+
+      answer.complete('picked');
+
+      expect(await result, 'picked');
+      expect(recovers, isEmpty);
+    });
+
+    testWidgets('keeps an answer that came first and recovers nothing on a '
+        'later abandon', (tester) async {
+      setUpRecovery(tester);
+      final result = roundTrip();
+      String? answered;
+      unawaited(result.then((value) => answered = value));
+
+      step(tester, _away);
+      answer.complete('picked');
+      await tester.pump();
+      excursions.abandon();
+      step(tester, _back);
+      await tester.pump();
+
+      expect(answered, 'picked');
+      expect(recovers, isEmpty);
+    });
+
+    testWidgets('ignores a late answer', (tester) async {
+      setUpRecovery(tester);
+      final result = roundTrip();
+
+      excursions.abandon();
+      recovers.single.complete('recovered');
+      expect(await result, 'recovered');
+
+      answer.complete('late');
+      await tester.pump();
+      expect(await result, 'recovered');
+    });
+
+    testWidgets('ignores a late failure', (tester) async {
+      setUpRecovery(tester);
+      final result = roundTrip();
+
+      excursions.abandon();
+      recovers.single.complete('recovered');
+      expect(await result, 'recovered');
+
+      answer.completeError(StateError('detached'));
+      await tester.pump();
+      expect(await result, 'recovered');
+    });
+
+    testWidgets('keeps an answer that comes while it recovers, and ignores a '
+        'failed recovery after it', (tester) async {
+      setUpRecovery(tester);
+      final result = roundTrip();
+
+      excursions.abandon();
+      answer.complete('picked');
+      expect(await result, 'picked');
+
+      recovers.single.completeError(StateError('no activity'));
+      await tester.pump();
+      expect(await result, 'picked');
+    });
+
+    testWidgets('stops listening for abandons once it is answered', (
+      tester,
+    ) async {
+      setUpRecovery(tester);
+      final result = roundTrip();
+      expect(excursions.listensForAbandons, isTrue);
+
+      answer.complete('picked');
+
+      expect(await result, 'picked');
+      expect(excursions.listensForAbandons, isFalse);
+    });
+
+    testWidgets('recovers nothing on an abandon between the answer and the '
+        'end of listening', (tester) async {
+      setUpRecovery(tester);
+      final result = roundTrip();
+
+      answer.complete('picked');
+      await answer.future;
+      expect(excursions.listensForAbandons, isTrue);
+      excursions.abandon();
+
+      expect(await result, 'picked');
+      expect(recovers, isEmpty);
+    });
+
+    testWidgets('recovers once however many abandons come', (tester) async {
+      setUpRecovery(tester);
+      final result = roundTrip();
+
+      excursions
+        ..abandon()
+        ..abandon();
+      recovers.single.complete('recovered');
+      await result;
+      excursions.abandon();
+
+      expect(recovers, hasLength(1));
+    });
+
+    testWidgets('passes a failed recovery on', (tester) async {
+      setUpRecovery(tester);
+      final result = roundTrip();
+
+      excursions.abandon();
+      recovers.single.completeError(StateError('no activity'));
+
+      await expectLater(result, throwsStateError);
+    });
+  });
+
   group('a launch away', () {
     testWidgets('answers at once and lasts until the app has left and is '
         'back', (tester) async {

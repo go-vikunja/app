@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
@@ -17,6 +18,7 @@ final class AppExcursions {
 
   final DateTime Function() _now;
   final _ended = StreamController<DateTime>.broadcast(sync: true);
+  final _abandons = StreamController<void>.broadcast(sync: true);
   var _running = 0;
   DateTime? _startedAt;
   var _generation = 0;
@@ -28,6 +30,12 @@ final class AppExcursions {
 
   /// The start of each run of overlapping ones, when the last of them ends.
   Stream<DateTime> get ended => _ended.stream;
+
+  /// Each [abandon], for round trips that can recover a lost answer.
+  Stream<void> get abandons => _abandons.stream;
+
+  @visibleForTesting
+  bool get listensForAbandons => _abandons.hasListener;
 
   Future<T> run<T>(Future<T> Function() action) async {
     final generation = _generation;
@@ -50,9 +58,13 @@ final class AppExcursions {
     _generation++;
     _running = 0;
     _startedAt = null;
+    if (!_abandons.isClosed) _abandons.add(null);
   }
 
-  void dispose() => unawaited(_ended.close());
+  void dispose() {
+    unawaited(_ended.close());
+    unawaited(_abandons.close());
+  }
 }
 
 @Riverpod(keepAlive: true)

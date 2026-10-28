@@ -11,9 +11,17 @@ extension AppRoundTrips on AppExcursions {
   /// answer over just before the app resumes, so the excursion lasts until
   /// the resume; ending it while the app is still out of sight would count
   /// as a hide and lock at once with "Immediately".
-  Future<T> roundTrip<T>(Future<T> Function() action) => run(() async {
+  ///
+  /// With [recover], an [abandon] before [action] answers asks [recover]
+  /// for the answer the relaunch lost; the first of the two to answer wins.
+  Future<T> roundTrip<T>(
+    Future<T> Function() action, {
+    Future<T> Function()? recover,
+  }) => run(() async {
     try {
-      return await action();
+      return await (recover == null
+          ? action()
+          : _answerOrRecover(action, recover));
     } finally {
       await _untilForeground();
     }
@@ -43,6 +51,30 @@ extension AppRoundTrips on AppExcursions {
       }),
     );
     return answered.future;
+  }
+
+  Future<T> _answerOrRecover<T>(
+    Future<T> Function() action,
+    Future<T> Function() recover,
+  ) {
+    final first = Completer<T>();
+    void answerWith(Future<T> answer) => unawaited(
+      answer.then(
+        (value) {
+          if (!first.isCompleted) first.complete(value);
+        },
+        onError: (Object error, StackTrace stack) {
+          if (!first.isCompleted) first.completeError(error, stack);
+        },
+      ),
+    );
+    final abandons = this.abandons.listen(null);
+    abandons.onData((_) {
+      unawaited(abandons.cancel());
+      if (!first.isCompleted) answerWith(Future.sync(recover));
+    });
+    answerWith(Future.sync(action));
+    return first.future.whenComplete(abandons.cancel);
   }
 }
 

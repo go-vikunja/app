@@ -2,6 +2,7 @@ package dev.coderoftime.vikunja
 
 import android.app.Activity
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Handler
@@ -19,21 +20,24 @@ import java.util.concurrent.Executors
 // cache/attachments are handed out: through AttachmentFileProvider, with a
 // read grant for the one app that opens it, which ends with that app's
 // task.
-class FileActionsChannel(private val activity: Activity, messenger: BinaryMessenger) :
-    MethodChannel.MethodCallHandler {
+internal class FileActionsChannel(
+    private val activity: Activity,
+    messenger: BinaryMessenger,
+    private val state: EngineState,
+) : MethodChannel.MethodCallHandler {
 
+    // A write running on the executor may outlive the activity.
+    private val context: Context = activity.applicationContext
     private val channel = MethodChannel(messenger, CHANNEL)
     private val main = Handler(Looper.getMainLooper())
-    private var pendingSave: Pair<File, MethodChannel.Result>? = null
 
     init {
         channel.setMethodCallHandler(this)
     }
 
-    fun detach() {
+    fun detach(keepPending: Boolean) {
         channel.setMethodCallHandler(null)
-        pendingSave?.second?.success(false)
-        pendingSave = null
+        state.saveAs.release(keep = keepPending)
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -55,7 +59,7 @@ class FileActionsChannel(private val activity: Activity, messenger: BinaryMessen
     }
 
     private fun openWith(file: File, mime: String, result: MethodChannel.Result) {
-        val uri = FileProvider.getUriForFile(activity, authority(activity), file)
+        val uri = FileProvider.getUriForFile(context, authority(context), file)
         val intent = Intent(Intent.ACTION_VIEW)
             .setDataAndType(uri, mime)
             .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -68,7 +72,7 @@ class FileActionsChannel(private val activity: Activity, messenger: BinaryMessen
     }
 
     private fun saveAs(file: File, name: String, mime: String, result: MethodChannel.Result) {
-        if (pendingSave != null) {
+        if (state.saveAs.isPending) {
             result.error("busy", null, null)
             return
         }
@@ -76,11 +80,11 @@ class FileActionsChannel(private val activity: Activity, messenger: BinaryMessen
             .addCategory(Intent.CATEGORY_OPENABLE)
             .setType(mime)
             .putExtra(Intent.EXTRA_TITLE, name)
-        pendingSave = file to result
+        state.saveAs.start(file to result)
         try {
             activity.startActivityForResult(intent, REQUEST_SAVE_AS)
         } catch (_: ActivityNotFoundException) {
-            pendingSave = null
+            state.saveAs.take()
             result.success(false)
         }
     }
@@ -88,8 +92,7 @@ class FileActionsChannel(private val activity: Activity, messenger: BinaryMessen
     // True when the result was this channel's.
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode != REQUEST_SAVE_AS) return false
-        val (file, result) = pendingSave ?: return true
-        pendingSave = null
+        val (file, result) = state.saveAs.take() ?: return true
         val target = data?.data
         if (resultCode != Activity.RESULT_OK || target == null) {
             result.success(false)
@@ -107,7 +110,7 @@ class FileActionsChannel(private val activity: Activity, messenger: BinaryMessen
     }
 
     private fun write(file: File, target: Uri) {
-        val resolver = activity.contentResolver
+        val resolver = context.contentResolver
         // Not every provider takes "wt"; a new document is empty anyway.
         val output = try {
             resolver.openOutputStream(target, "wt")
@@ -120,7 +123,7 @@ class FileActionsChannel(private val activity: Activity, messenger: BinaryMessen
     }
 
     private fun attachmentFile(path: String): File? {
-        val root = File(activity.cacheDir, ATTACHMENTS).canonicalFile
+        val root = File(context.cacheDir, ATTACHMENTS).canonicalFile
         val file = File(path).canonicalFile
         if (!file.isFile || !file.path.startsWith(root.path + File.separator)) return null
         return file
@@ -132,7 +135,7 @@ class FileActionsChannel(private val activity: Activity, messenger: BinaryMessen
         private const val REQUEST_SAVE_AS = 0x5a7e
         private val executor = Executors.newSingleThreadExecutor()
 
-        fun authority(activity: Activity) = "${activity.packageName}.files"
+        fun authority(context: Context) = "${context.packageName}.files"
     }
 }
 

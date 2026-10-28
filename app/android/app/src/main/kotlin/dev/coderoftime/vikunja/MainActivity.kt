@@ -18,7 +18,7 @@ import io.flutter.embedding.engine.dart.DartExecutor
 // A FragmentActivity because local_auth's BiometricPrompt needs one.
 class MainActivity : FlutterFragmentActivity() {
     private var engineId: String? = null
-    private var windowState = WindowState()
+    private var engineState = EngineState()
     private var device: DeviceChannel? = null
     private var shareInbox: ShareInbox? = null
     private var fileActions: FileActionsChannel? = null
@@ -59,7 +59,7 @@ class MainActivity : FlutterFragmentActivity() {
         engineId = if (savedInstanceState == null) KeptEngines.newId() else savedInstanceState.getString(ENGINE_ID)
         engineId?.let {
             keepEngine(it)
-            windowState = KeptEngines.window(it)
+            engineState = KeptEngines.state(it)
         }
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, backWhileLocked)
@@ -71,7 +71,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onDestroy() {
-        val leaving = isFinishing && !isChangingConfigurations
+        val leaving = leavingForGood
         super.onDestroy()
         val id = engineId ?: return
         if (leaving) {
@@ -80,6 +80,9 @@ class MainActivity : FlutterFragmentActivity() {
             KeptEngines.forget(id)
         }
     }
+
+    private val leavingForGood: Boolean
+        get() = isFinishing && !isChangingConfigurations
 
     override fun getCachedEngineId(): String? = engineId
 
@@ -101,6 +104,7 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     internal fun applyWindowState() {
+        val windowState = engineState.window
         if (windowState.secure) {
             window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
         } else {
@@ -146,21 +150,25 @@ class MainActivity : FlutterFragmentActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         val messenger = flutterEngine.dartExecutor.binaryMessenger
-        device = DeviceChannel(applicationContext, messenger, windowState, this)
+        device = DeviceChannel(applicationContext, messenger, engineState.window, this)
         applyWindowState()
         shareInbox = ShareInbox(applicationContext, messenger)
-        fileActions = FileActionsChannel(this, messenger)
-        documents = DocumentPickerChannel(this, messenger)
+        fileActions = FileActionsChannel(this, messenger, engineState)
+        documents = DocumentPickerChannel(this, messenger, engineState)
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        // A relaunched or recreated activity gets the results of the pick or
+        // "save as" still open; one leaving for good answers them with nothing
+        // before its engine goes.
+        val keepPending = engineId != null && !leavingForGood
         device?.detach()
         device = null
         shareInbox?.detach()
         shareInbox = null
-        fileActions?.detach()
+        fileActions?.detach(keepPending)
         fileActions = null
-        documents?.detach()
+        documents?.detach(keepPending)
         documents = null
         super.cleanUpFlutterEngine(flutterEngine)
     }

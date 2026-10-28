@@ -3,6 +3,7 @@ package dev.coderoftime.vikunja
 import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.ContentResolver
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Handler
@@ -19,25 +20,27 @@ import java.util.concurrent.Executors
 // read each whole file into memory on the main thread would freeze or
 // kill the app for a large one. Only the files of the latest pick can be
 // copied. Nothing picked is logged.
-class DocumentPickerChannel(private val activity: Activity, messenger: BinaryMessenger) :
-    MethodChannel.MethodCallHandler {
+internal class DocumentPickerChannel(
+    private val activity: Activity,
+    messenger: BinaryMessenger,
+    private val state: EngineState,
+) : MethodChannel.MethodCallHandler {
 
+    // A copy running on the executor may outlive the activity. The read grants
+    // of picked files hold for the whole app while the activity record lives,
+    // which a relaunch keeps.
+    private val context: Context = activity.applicationContext
     private val channel = MethodChannel(messenger, CHANNEL)
     private val main = Handler(Looper.getMainLooper())
-    private var pendingPick: MethodChannel.Result? = null
-
-    @Volatile
-    private var picked: Set<Uri> = emptySet()
 
     init {
         channel.setMethodCallHandler(this)
         executor.execute { purgeFiles(pickedDirectory(), olderThanMillis = DAY_MILLIS) }
     }
 
-    fun detach() {
+    fun detach(keepPending: Boolean) {
         channel.setMethodCallHandler(null)
-        pendingPick?.success(emptyList<Any>())
-        pendingPick = null
+        state.pick.release(keep = keepPending)
     }
 
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
@@ -61,7 +64,7 @@ class DocumentPickerChannel(private val activity: Activity, messenger: BinaryMes
     }
 
     private fun pick(imagesOnly: Boolean, multiple: Boolean, result: MethodChannel.Result) {
-        if (pendingPick != null) {
+        if (state.pick.isPending) {
             result.error("busy", null, null)
             return
         }
@@ -69,11 +72,11 @@ class DocumentPickerChannel(private val activity: Activity, messenger: BinaryMes
             .addCategory(Intent.CATEGORY_OPENABLE)
             .setType(if (imagesOnly) "image/*" else "*/*")
             .putExtra(Intent.EXTRA_ALLOW_MULTIPLE, multiple)
-        pendingPick = result
+        state.pick.start(result)
         try {
             activity.startActivityForResult(intent, REQUEST_PICK)
         } catch (_: ActivityNotFoundException) {
-            pendingPick = null
+            state.pick.take()
             result.error("no_picker", null, null)
         }
     }
@@ -81,12 +84,11 @@ class DocumentPickerChannel(private val activity: Activity, messenger: BinaryMes
     // True when the result was this channel's.
     fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?): Boolean {
         if (requestCode != REQUEST_PICK) return false
-        val result = pendingPick ?: return true
-        pendingPick = null
+        val result = state.pick.take() ?: return true
         val uris = if (resultCode == Activity.RESULT_OK && data != null) urisOf(data) else emptyList()
-        picked = uris.toSet()
+        state.picked = uris.toSet()
         executor.execute {
-            val described = uris.map { describeContent(activity.contentResolver, it) }
+            val described = uris.map { describeContent(context.contentResolver, it) }
             main.post { result.success(described) }
         }
         return true
@@ -104,14 +106,14 @@ class DocumentPickerChannel(private val activity: Activity, messenger: BinaryMes
     }
 
     private fun copy(uriText: String, maxBytes: Long, result: MethodChannel.Result) {
-        val uri = picked.firstOrNull { it.toString() == uriText }
+        val uri = state.picked.firstOrNull { it.toString() == uriText }
         if (uri == null) {
             main.post { result.error("unreadable", null, null) }
             return
         }
         val target = File(pickedDirectory().apply { mkdirs() }, randomFileName())
         try {
-            val size = copyCapped(activity.contentResolver, uri, target, maxBytes)
+            val size = copyCapped(context.contentResolver, uri, target, maxBytes)
             main.post { result.success(mapOf("path" to target.absolutePath, "size" to size)) }
         } catch (_: TooLargeException) {
             main.post { result.error("too_large", null, null) }
@@ -120,7 +122,7 @@ class DocumentPickerChannel(private val activity: Activity, messenger: BinaryMes
         }
     }
 
-    private fun pickedDirectory() = File(activity.cacheDir, PICKED)
+    private fun pickedDirectory() = File(context.cacheDir, PICKED)
 
     companion object {
         private const val CHANNEL = "dev.coderoftime.vikunja/documents"
