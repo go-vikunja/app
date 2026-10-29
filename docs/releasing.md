@@ -23,12 +23,12 @@ How a release of Rurana is cut ([D73](decisions.md#d73-gitlab-ci-from-scripts-th
 7. **Artifacts:** the bundle stays a job artifact for 30 days. "Keep artifacts from most recent successful jobs" (Settings > CI/CD > Artifacts) keeps the latest one longer; download each bundle for Play within 30 days either way.
 8. **The weekly scan:** a pipeline schedule (Build > Pipeline schedules) on `main`, `23 5 * * 1` in UTC. Scheduled pipelines run the job `osv` only.
 9. **The written offer's contact:** set `WRITTEN_OFFER_CONTACT` in `tool/build_android_notices.py`, run `python3 -I tool/build_android_notices.py` and commit `app/assets/legal/android.md`. The release job fails while the contact is empty.
-10. **Cronet:** move it to `cronet-bundled` before the first tag, as its own commit (D73).
+10. **Cronet:** done on 2026-10-29: `cronet-bundled` 500.1.0, Chromium 155.0.8059.16 (D73). Keep it current as [Raising Cronet](#raising-cronet) says.
 11. **Runners ([Q22](open-questions.md#q22-ci-runners-on-gitlab)):** a full pipeline is estimated at about 100–150 compute minutes on GitLab's small shared runners, so GitLab.com's free 400 minutes a month cover only 3 or 4 pipelines. Apply for GitLab for Open Source once the project is public; that is the only remedy 37a supports. The Mac runner described below takes only the job `ios` and saves no shared-runner minutes: moving the heavy Linux jobs to the Mac would need a setup of its own that 37a does not include (tags on those jobs or a runner that takes untagged jobs, plus Docker and the Android SDK on the Mac).
 
 ## Cutting a release
 
-1. **Bump the version** in `app/pubspec.yaml` to the release's name, for example `version: 1.0.0-beta.1+1`. Only the part before `+` counts; the build number comes from the tag. Run the [dry run](#the-dry-run) for the tag, `tool/ci/release.sh --dry-run --tag v1.0.0-beta.1`: it must end with only the expected reasons, `placeholder source URL`, `throwaway keys` and `project not public` (a local run has no project); `no written-offer contact` means step 9 above is not done, and the release job would fail. Commit on `main`, push, and wait for a green pipeline before you tag.
+1. **Bump the version** (after [raising Cronet](#raising-cronet) if Google has a newer one) in `app/pubspec.yaml` to the release's name, for example `version: 1.0.0-beta.1+1`. Only the part before `+` counts; the build number comes from the tag. Run the [dry run](#the-dry-run) for the tag, `tool/ci/release.sh --dry-run --tag v1.0.0-beta.1`: it must end with only the expected reasons, `placeholder source URL`, `throwaway keys` and `project not public` (a local run has no project); `no written-offer contact` means step 9 above is not done, and the release job would fail. Commit on `main`, push, and wait for a green pipeline before you tag.
 2. **Tag and push the tag:**
 
    ```sh
@@ -57,6 +57,22 @@ How a release of Rurana is cut ([D73](decisions.md#d73-gitlab-ci-from-scripts-th
    - keeps `app-release.aab` and `SHA256SUMS` as job artifacts for members with the Developer role.
 4. **Check the release** on the project's Releases page: the three files open signed out, `SHA256SUMS` matches the APK, and the certificate's SHA-256 is the expected one. GitLab has no pre-release flag, so a beta becomes the project's latest release: link a specific release from the README and elsewhere, never `/-/releases/permalink/latest`.
 5. **Upload the bundle to Google Play** by hand (step 37d): download `build/release/app-release.aab` from the release job's artifacts, compare its SHA-256 with the line "Bundle for Play" in the job's log, and upload it in the Play Console to the closed test for a beta or to production for a final release.
+
+## Raising Cronet
+
+The app embeds Cronet, Chromium's network stack, which only an app update brings up to date ([threat model](threat-model.md) R34). Google has published `org.chromium.net:cronet-bundled` three times in nine weeks so far (3 to 6 weeks apart), each 1 to 2.5 weeks after the Chrome stable release it is built from. Look at `https://dl.google.com/android/maven2/org/chromium/net/cronet-bundled/maven-metadata.xml` at each Chrome stable release and before each release of the app. For a newer version:
+
+1. **Check its POM:** the licence is still "Chromium License and licenses of built-in dependencies", and the dependencies are still `cronet` and the transitional artifacts that `app/android/app/build.gradle.kts` excludes (a new one needs its own exclude; the notices refuse any other `org.chromium.net` library).
+2. **Raise the version** in `build.gradle.kts`, write the locks, build the release APK once so that Gradle has the new AARs, then copy their licences:
+
+   ```sh
+   (cd app/android && ./gradlew :app:dependencies --write-locks)
+   (cd app && flutter build apk --release)
+   python3 -I tool/build_android_notices.py --refresh-cronet
+   ```
+
+   `--refresh-cronet` checks both AARs against the SHA-256 that Google's Maven publishes, refuses a Chromium build that Chromium Dash does not list as a Chrome stable release for Android, copies the licence files into `tool/android_notices/cronet/` and writes `app/assets/legal/android.md`. Then check `CRONET_SUPPLEMENT` in `tool/build_android_notices.py`, what the native library links statically but the licence files do not name: `strings` on the AAR's `jni/arm64-v8a/libcronet.*.so` still shows `__Cr` names (libc++), `libc++abi:`, `libunwind:` and Rust's `panicked at`, and `third_party_licenses.txt` still names none of them; a new library of that kind gets its own entry and text.
+3. **Test and commit:** run the tests (`embedded_cronet_test.dart` compares the declared version with `tool/android_notices/cronet/source.json`), check the app on a device or emulator, and commit `build.gradle.kts`, `gradle.lockfile`, `tool/android_notices/cronet/` and `android.md` together.
 
 ## When the release job fails
 

@@ -133,15 +133,24 @@ dependencyLocking {
 // ships no Play services library (D67). cronet_http picks Play services
 // unless built with --dart-define=cronetHttpNoPlay=true; excluding it here
 // makes every build, test and CI run embedded without that define.
+// cronet-bundled's POMs also pull Google's empty transitional Cronet
+// artifacts (no classes, under the Android SDK licence), and that define
+// would pull the old cronet-embedded; nothing needs them.
 configurations.configureEach {
     exclude(group = "com.google.android.gms", module = "play-services-cronet")
+    for (module in listOf(
+        "cronet-api", "cronet-common", "cronet-embedded", "cronet-fallback", "cronet-shared",
+        "httpengine-native-provider",
+    )) {
+        exclude(group = "org.chromium.net", module = module)
+    }
 }
 
 dependencies {
-    // At least the version cronet_http names for cronetHttpNoPlay (a test
-    // checks it). Raise it for Chromium's security fixes, then run
-    // tool/build_android_notices.py --refresh-cronet.
-    implementation("org.chromium.net:cronet-embedded:143.7445.0")
+    // A build of a Chrome stable release, with org.chromium.net:cronet of
+    // the same build. Raise it with each new version on Google's Maven, then
+    // run tool/build_android_notices.py --refresh-cronet (docs/releasing.md).
+    implementation("org.chromium.net:cronet-bundled:500.1.0")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     // FileProvider and IntentCompat for attachments and shares; declared
     // here rather than relied on through the plugins.

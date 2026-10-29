@@ -98,14 +98,14 @@ ISC
     test('takes a name with spaces from the backticks it starts with', () {
       final entries = parseNotices('''
 - androidx.core:core 1.18.0 (Apache-2.0)
-- `URI Template Parser` (Apache-2.0) in cronet-embedded 143.7445.0
+- `URI Template Parser` (Apache-2.0) in cronet-bundled 500.1.0
 
 ```text
 Apache License
 ```
 
-- `Paul Hsieh's SuperFastHash` in cronet-embedded 143.7445.0
-- `` in cronet-embedded 143.7445.0
+- `Paul Hsieh's SuperFastHash` in cronet-bundled 500.1.0
+- `` in cronet-bundled 500.1.0
 
 ```text
 MIT
@@ -197,8 +197,8 @@ Text
         containsAll([
           'androidx.work:work-runtime',
           'androidx.glance:glance-appwidget',
-          'org.chromium.net:cronet-embedded',
-          'org.chromium.net:cronet-api',
+          'org.chromium.net:cronet-bundled',
+          'org.chromium.net:cronet',
           'com.android.tools:desugar_jdk_libs',
         ]),
       );
@@ -207,7 +207,7 @@ Text
         contains('Apache License'),
       );
       expect(
-        _text(android['org.chromium.net:cronet-embedded']!.single),
+        _text(android['org.chromium.net:cronet-bundled']!.single),
         contains('The Chromium Authors'),
       );
       expect(
@@ -233,8 +233,13 @@ Text
           'Abseil',
           'Protocol Buffers',
           'serde',
+          'Protocol Buffers for Java',
+          'Kotlin',
+          'JSR 305',
+          'java_annotations',
           'libc++',
           'libc++abi',
+          'libunwind',
           'Rust standard library',
         ]),
       );
@@ -247,6 +252,10 @@ Text
         contains('The libc++abi library'),
       );
       expect(
+        _text(android['libunwind']!.single),
+        allOf(contains('LLVM Exceptions'), contains('The libunwind library')),
+      );
+      expect(
         _text(android['Rust standard library']!.single),
         _text(android['androidx.work:work-runtime']!.single),
       );
@@ -254,7 +263,9 @@ Text
       expect(_text(android['zlib']!.single), contains('Jean-loup Gailly'));
       expect(
         _text(android['Protocol Buffers']!.single),
-        _text(android['com.google.protobuf:protobuf-javalite']!.single),
+        _text(
+          android['androidx.glance:glance-appwidget-external-protobuf']!.single,
+        ),
       );
       expect(ios.keys, isNot(contains('BoringSSL')));
     });

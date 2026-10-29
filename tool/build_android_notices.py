@@ -18,21 +18,25 @@ and so does an AndroidX artifact that bundles another project's code
 is looked at before it ships. Google Play services libraries are refused: the
 app ships none (D67). The texts are in tool/android_notices/.
 
-Embedded Cronet's native library bundles other projects' code. The AARs carry
-no licence file; Chromium publishes one per Cronet build beside the build's
-jars, which the POMs point to. --refresh-cronet downloads it for the locked
-cronet-embedded version into tool/android_notices/cronet/, after checking
-that the jar published there is byte for byte the classes of the
-cronet-embedded AAR in the Gradle cache, and writes the file. The other modes
-read only that copy, so they need neither Gradle nor the network, and fail
-when it does not belong to the locked Cronet version. CRONET_SUPPLEMENT adds
-what the native library links statically but that file does not name.
+Embedded Cronet (cronet-bundled, with the classes in cronet) bundles other
+projects' code. Its AARs carry its licences in third_party_licenses.txt with
+an index, third_party_licenses.json; the entry "Cronet" is Chromium's
+licence file for that build. --refresh-cronet copies both files from the
+locked version's AARs in the Gradle cache into tool/android_notices/cronet/,
+after checking the AARs against the SHA-256 that Google's Maven publishes,
+their Chromium build against Chromium's release data (a Chrome stable release
+for Android) and the "Cronet" entry against the LICENSE that Chromium
+publishes beside the build's jars, where there is one. The other modes read
+only that copy, so they need neither Gradle nor the network, and fail when it
+does not belong to the locked Cronet version. CRONET_SUPPLEMENT adds what the
+native library links statically but the licences do not name.
 
 The written offer for desugar_jdk_libs' source names the upstream commit from
 tool/android_notices/desugar_jdk_libs.source and WRITTEN_OFFER_CONTACT;
 --require-offer-contact fails while that contact is empty, which the release
 job checks (D73).
 """
+import datetime
 import glob
 import hashlib
 import io
@@ -41,6 +45,7 @@ import os
 import re
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 import zipfile
 
@@ -51,19 +56,32 @@ TEXTS = os.path.join(ROOT, 'tool/android_notices')
 OUTPUT = os.path.join(ROOT, 'app/assets/legal/android.md')
 CONFIGURATION = 'releaseRuntimeClasspath'
 CRONET_GROUP = 'org.chromium.net'
-CRONET_LIBRARY = 'cronet-embedded'
+# The native library and its provider's sentinel; it brings CRONET_JAVA of
+# the same build.
+CRONET_LIBRARY = 'cronet-bundled'
+CRONET_JAVA = 'cronet'
 CRONET = os.path.join(TEXTS, 'cronet')
+LICENCE_TEXT = 'third_party_licenses.txt'
+LICENCE_INDEX = 'third_party_licenses.json'
+CRONET_ENTRY = 'Cronet'
+CHROMIUM_HEADING = 'The Chromium Project'
+# Without it NativeCronetProvider reports itself disabled.
+SENTINEL = 'org/chromium/net/impl/NativeCronetProviderSentinel.class'
+IMPL_VERSION = 'org/chromium/net/impl/ImplVersion.class'
+MAVEN_SHA256 = 'https://dl.google.com/android/maven2/org/chromium/net/{name}/{version}/{name}-{version}.aar.sha256'
+RELEASES = ('https://chromiumdash.appspot.com/fetch_releases?channel=Stable&platform=Android&milestone={milestone}'
+            '&num=1000')
 CRONET_BUILDS = 'https://storage.googleapis.com/chromium-cronet/android/{build}/Release/cronet/'
-# cronet-embedded's classes.jar under the name the build folder gives it.
-CRONET_CLASSES = 'cronet_impl_native_java.jar'
-# libcronet links Chromium's libc++ and libc++abi (std::__Cr symbols,
-# third_party/libc++abi paths) and Rust's core and alloc statically; its
-# LICENSE names none of them. The LLVM texts are libcxx/LICENSE.TXT and
-# libcxxabi/LICENSE.TXT; Rust's standard library is MIT OR Apache-2.0, taken
-# under Apache-2.0. A component the LICENSE names itself keeps its text.
+# libcronet links Chromium's libc++, libc++abi and libunwind (std::__Cr
+# symbols, third_party/libc++abi paths, libunwind: messages) and Rust's core
+# and alloc statically; its licences name none of them. The LLVM texts are the
+# LICENSE.TXT of libcxx, libcxxabi and libunwind; Rust's standard library is
+# MIT OR Apache-2.0, taken under Apache-2.0. A component the licences name
+# keeps their text.
 CRONET_SUPPLEMENT = {
     'libc++': 'libcxx.txt',
     'libc++abi': 'libcxxabi.txt',
+    'libunwind': 'libunwind.txt',
     'Rust standard library': 'apache-2.0.txt',
 }
 GRADLE_FILES = os.path.join(os.environ.get('GRADLE_USER_HOME') or os.path.join(os.path.expanduser('~'), '.gradle'),
@@ -133,10 +151,13 @@ SOURCE_MANIFESTS = {
 WRITTEN_OFFER_CONTACT = ''
 
 DESUGARING = re.compile(r'^\s*coreLibraryDesugaring\("([^":]+):([^":]+):([^":]+)"\)', re.MULTILINE)
-# Cronet's LICENSE: Chromium's licence, then each component's under its name
-# between two lines of 20 hyphens.
+# Cronet's licence file: Chromium's licence under CHROMIUM_HEADING, then each
+# component's, every name between two lines of 20 hyphens.
 COMPONENT_HEADING = re.compile(r'\n-{20}\n(.*)\n-{20}\n')
-NATIVE_LIBRARY = re.compile(r'^jni/[^/]+/libcronet\.(\d+\.\d+\.\d+\.\d+)\.so$')
+CHROMIUM_BUILD = r'\d+\.\d+\.\d+\.\d+'
+NATIVE_LIBRARY = re.compile(rf'^jni/[^/]+/libcronet\.({CHROMIUM_BUILD})\.so$')
+CHROMIUM_VERSION = re.compile(rb'(?<![\d.])(\d+\.\d+\.\d+\.\d+)(?![\d.])')
+CHROMIUM_COMMIT = re.compile(rb'([0-9a-f]{40})-refs/')
 
 
 class NoticeError(Exception):
@@ -218,61 +239,140 @@ def source_note(artifact, version, sources, contact):
                            request=offer_request(contact))
 
 
+def add_component(components, name, text):
+    """A name listed twice with the same text counts once; with another text,
+    the second gets a number."""
+    if not name or '`' in name:
+        raise NoticeError(f"Cronet's licences have a component without a name or with a backtick: {name!r}")
+    unique, number = name, 2
+    while unique in components and normalized(components[unique]) != normalized(text):
+        unique, number = f'{name} ({number})', number + 1
+    components[unique] = text
+
+
 def cronet_components(licence):
-    """Chromium's own licence and {component: text} from a Cronet LICENSE. A
-    name listed twice with the same text counts once; with another text, the
-    second gets a number."""
-    head, *sections = COMPONENT_HEADING.split(licence.replace('\r\n', '\n'))
-    if not sections:
-        raise NoticeError("Cronet's LICENSE lists no components")
+    """Chromium's own licence and {component: text} from Cronet's licence
+    file."""
+    head, *sections = COMPONENT_HEADING.split('\n' + licence.replace('\r\n', '\n'))
+    if head.strip() or not sections or sections[0].strip() != CHROMIUM_HEADING:
+        raise NoticeError(f"Cronet's licence file does not start with Chromium's licence under {CHROMIUM_HEADING!r}")
+    if len(sections) < 4:
+        raise NoticeError("Cronet's licence file lists no components")
     components = {}
-    for name, text in zip(sections[0::2], sections[1::2]):
-        name, text = name.strip(), text.strip('\n')
-        if not name or '`' in name:
-            raise NoticeError(f"Cronet's LICENSE has a component without a name or with a backtick: {name!r}")
-        unique, number = name, 2
-        while unique in components and normalized(components[unique]) != normalized(text):
-            unique, number = f'{name} ({number})', number + 1
-        components[unique] = text
-    return head.strip('\n'), components
+    for name, text in zip(sections[2::2], sections[3::2]):
+        add_component(components, name.strip(), text.strip('\n'))
+    return sections[1].strip('\n'), components
+
+
+def licence_entries(text, index):
+    """{name: text} from an AAR's licence files: the index gives each entry's
+    start and length in bytes, every entry follows a line with its name, and
+    together they make up the whole text."""
+    try:
+        bounds = sorted((entry['start'], entry['length'], name) for name, entry in json.loads(index).items())
+    except (ValueError, AttributeError, TypeError, KeyError) as error:
+        raise NoticeError(f'{LICENCE_INDEX} is no index of {LICENCE_TEXT}: {error!r}') from error
+    entries, position = {}, 0
+    for start, length, name in bounds:
+        if not (type(start) is type(length) is int and start >= position and length >= 0) \
+                or text[position:start] != f'\n\n{name}:\n\n'.encode('utf-8'):
+            raise NoticeError(f'{LICENCE_INDEX} does not match {LICENCE_TEXT} at the entry {name!r}')
+        try:
+            entries[name] = text[start:start + length].decode('utf-8')
+        except UnicodeDecodeError as error:
+            raise NoticeError(f'the entry {name!r} of {LICENCE_TEXT} is not UTF-8') from error
+        position = start + length
+    if position != len(text):
+        raise NoticeError(f'{LICENCE_TEXT} has text that {LICENCE_INDEX} does not index')
+    if CRONET_ENTRY not in entries:
+        raise NoticeError(f'{LICENCE_INDEX} has no entry {CRONET_ENTRY!r}')
+    return entries
+
+
+def cronet_coordinates(version):
+    return sorted(f'{CRONET_GROUP}:{name}:{version}' for name in (CRONET_JAVA, CRONET_LIBRARY))
+
+
+def locked_cronet(libraries):
+    """The version of the locked Cronet libraries; None when none is
+    locked."""
+    locked = sorted({f'{group}:{name}:{version}' for group, name, version in libraries if group == CRONET_GROUP})
+    if not locked:
+        return None
+    version = locked[0].rpartition(':')[2]
+    if locked != cronet_coordinates(version):
+        raise NoticeError(f'the locked {CRONET_GROUP} libraries are not {CRONET_JAVA} and {CRONET_LIBRARY} of one '
+                          f'version: {", ".join(locked)}. Exclude the others in app/android/app/build.gradle.kts')
+    return version
+
+
+def sha256(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def iso_date(text):
+    try:
+        return bool(re.fullmatch(r'[0-9]{4}-[0-9]{2}-[0-9]{2}', text)) and bool(datetime.date.fromisoformat(text))
+    except (TypeError, ValueError):
+        return False
+
+
+def malformed_fields(source, version):
+    """The provenance fields of source.json that --refresh-cronet could not
+    have written for version."""
+    build, commit, aars = source.get('build'), source.get('commit'), source.get('aar_sha256')
+    valid = {
+        'build': isinstance(build, str) and re.fullmatch(CHROMIUM_BUILD, build),
+        'commit': isinstance(commit, str) and re.fullmatch('[0-9a-f]{40}', commit),
+        'stable_since': iso_date(source.get('stable_since')),
+        'aar_sha256': isinstance(aars, dict) and sorted(aars) == cronet_coordinates(version)
+        and all(isinstance(value, str) and re.fullmatch('[0-9a-f]{64}', value) for value in aars.values()),
+        'chromium_licence': 'chromium_licence' in source
+        and source['chromium_licence'] in (None, CRONET_BUILDS.format(build=build) + 'LICENSE'),
+    }
+    return [field for field, ok in valid.items() if not ok]
 
 
 def cronet_build(libraries, stored):
-    """(owner, LICENSE) of the locked Cronet build, whose LICENSE the stored
-    one must be; None when no Cronet library is locked."""
-    versions = {(name, version) for group, name, version in libraries if group == CRONET_GROUP}
-    if not versions:
+    """(owner, {name: text}) of the locked Cronet build, whose licence files
+    the stored ones must be; None when no Cronet library is locked."""
+    version = locked_cronet(libraries)
+    if version is None:
         if stored is not None:
-            raise NoticeError(f'{os.path.relpath(CRONET, ROOT)} belongs to {stored[0]["library"]}, '
+            raise NoticeError(f'{os.path.relpath(CRONET, ROOT)} belongs to {stored[0].get("library")}, '
                               'but no Cronet library is locked: remove it')
         return None
-    embedded = sorted(version for name, version in versions if name == CRONET_LIBRARY)
-    if len(embedded) != 1 or {version for _, version in versions} != set(embedded):
-        raise NoticeError(f'the locked {CRONET_GROUP} libraries are not one {CRONET_LIBRARY} build: '
-                          f'{", ".join(f"{name} {version}" for name, version in sorted(versions))}')
-    library = f'{CRONET_GROUP}:{CRONET_LIBRARY}:{embedded[0]}'
-    if stored is None or stored[0]['library'] != library:
-        found = stored[0]['library'] if stored else 'none'
-        raise NoticeError(f"the stored Cronet LICENSE does not belong to {library} (stored: {found}). "
+    library = f'{CRONET_GROUP}:{CRONET_LIBRARY}:{version}'
+    if stored is None or stored[0].get('library') != library \
+            or stored[0].get('libraries') != cronet_coordinates(version):
+        found = ', '.join(stored[0].get('libraries') or [str(stored[0].get('library'))]) if stored else 'none'
+        raise NoticeError(f"the stored Cronet licences do not belong to {', '.join(cronet_coordinates(version))} "
+                          f'(stored: {found}). Run --refresh-cronet')
+    source, text, index = stored
+    malformed = malformed_fields(source, version)
+    if malformed:
+        raise NoticeError(f'{os.path.relpath(CRONET, ROOT)}/source.json has no valid {", ".join(malformed)}. '
                           'Run --refresh-cronet')
-    source, licence = stored
-    if hashlib.sha256(licence.encode('utf-8')).hexdigest() != source['licence_sha256']:
-        raise NoticeError(f"{os.path.relpath(CRONET, ROOT)}/LICENSE changed since it was downloaded. "
-                          'Run --refresh-cronet')
-    return f'{CRONET_LIBRARY} {embedded[0]}', licence
+    if sha256(text) != source.get('licence_sha256') or sha256(index) != source.get('index_sha256'):
+        raise NoticeError(f'{os.path.relpath(CRONET, ROOT)}/{LICENCE_TEXT} or {LICENCE_INDEX} changed since they '
+                          'were copied. Run --refresh-cronet')
+    return f'{CRONET_LIBRARY} {version}', licence_entries(text, index)
 
 
-def bundled_components(owner, licence, texts, supplement):
-    """The components the Cronet build bundles, its LICENSE's and then the
-    supplement's: list items for the section whose licence text a component
-    has (comment markers aside), and a block for every other text with the
-    components that share it. Chromium's own licence must be the chromium
-    section's."""
-    head, components = cronet_components(licence)
+def bundled_components(owner, entries, texts, supplement):
+    """The components the Cronet build bundles, its licence file's, then the
+    AARs' other licence entries and the supplement's: list items for the
+    section whose licence text a component has (comment markers aside), and a
+    block for every other text with the components that share it. Chromium's
+    own licence must be the chromium section's."""
+    head, components = cronet_components(entries[CRONET_ENTRY])
+    for name, text in entries.items():
+        if name != CRONET_ENTRY:
+            add_component(components, name.strip(), text.strip('\n'))
     for component, text in supplement.items():
         components.setdefault(component, text)
     if normalized(uncommented(head)) != normalized(texts['chromium']):
-        raise NoticeError(f"the Chromium licence at the top of Cronet's LICENSE differs from "
+        raise NoticeError(f"the Chromium licence at the top of Cronet's licence file differs from "
                           f"{LICENCES['chromium'][1]}: compare them and update the text file")
     by_text = {}
     for component, text in sorted(components.items()):
@@ -292,11 +392,11 @@ def bundled_components(owner, licence, texts, supplement):
     return section_items, blocks
 
 
-def render(libraries, texts, cronet_licence, supplement=None, sources=None, contact=''):
+def render(libraries, texts, cronet_licences, supplement=None, sources=None, contact=''):
     grouped = {key: [] for key in LICENCES}
     for group, name, version in sorted(set(libraries)):
         grouped[licence_of(group, name)].append((group, name, version))
-    cronet = cronet_build(libraries, cronet_licence)
+    cronet = cronet_build(libraries, cronet_licences)
     section_items, component_blocks = {key: [] for key in LICENCES}, []
     if cronet is not None:
         section_items, component_blocks = bundled_components(*cronet, texts, supplement or {})
@@ -313,8 +413,8 @@ def render(libraries, texts, cronet_licence, supplement=None, sources=None, cont
                 sections.append(fenced(f'- {group}:{name} {version} (source code offer)', note,
                                        f'the source note of {group}:{name}'))
     if component_blocks:
-        sections.append(f'The other projects in {cronet[0]} whose licences are not above, as the LICENSE file '
-                        'of its build lists them:')
+        sections.append(f'The other projects in {cronet[0]} whose licences are not above, as the licence files '
+                        'of its AARs list them:')
         sections += component_blocks
     return '\n'.join([
         '# Third-party notices: Android libraries',
@@ -346,40 +446,105 @@ def chromium_build_of(names):
 
 
 def download(url):
+    """The body at url; None when there is nothing (HTTP 404)."""
     try:
         with urllib.request.urlopen(url, timeout=120) as response:
             return response.read()
+    except urllib.error.HTTPError as error:
+        if error.code == 404:
+            return None
+        raise NoticeError(f'could not download {url}: {error}') from error
     except OSError as error:
         raise NoticeError(f'could not download {url}: {error}') from error
 
 
-def refresh_cronet(fetch=download, cache=GRADLE_FILES, directory=CRONET):
-    embedded = [(group, name, version) for group, name, version in released_libraries()
-                if (group, name) == (CRONET_GROUP, CRONET_LIBRARY)]
-    if len(embedded) != 1:
-        raise NoticeError(f'expected one locked {CRONET_GROUP}:{CRONET_LIBRARY}, found {len(embedded)}')
-    group, name, version = embedded[0]
-    with zipfile.ZipFile(find_aar(group, name, version, cache)) as archive:
-        classes = archive.read('classes.jar')
-        build = chromium_build_of(archive.namelist())
-    folder = CRONET_BUILDS.format(build=build)
-    published = fetch(folder + CRONET_CLASSES)
-    if published != classes:
-        raise NoticeError(f'{folder}{CRONET_CLASSES} is not the classes of {group}:{name}:{version}; '
-                          'its LICENSE may belong to another build')
-    licence = fetch(folder + 'LICENSE').decode('utf-8').replace('\r\n', '\n')
+def fetched(fetch, url):
+    body = fetch(url)
+    if body is None:
+        raise NoticeError(f'{url} does not exist')
+    return body
+
+
+def archive_members(data, source, *names):
+    """The archive's member list and {name: bytes} of the members named."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as archive:
+            return archive.namelist(), {name: archive.read(name) for name in names}
+    except (KeyError, zipfile.BadZipFile) as error:
+        raise NoticeError(f'{source}: {error}') from error
+
+
+def published_aar(name, version, fetch, cache):
+    """The AAR from the Gradle cache, checked against Google's Maven."""
+    path = find_aar(CRONET_GROUP, name, version, cache)
+    with open(path, 'rb') as f:
+        data = f.read()
+    url = MAVEN_SHA256.format(name=name, version=version)
+    if fetched(fetch, url).decode('ascii', 'replace').split()[:1] != [sha256(data)]:
+        raise NoticeError(f'{path} is not the AAR whose SHA-256 Google publishes at {url}')
+    return data
+
+
+def stable_since(build, commit, fetch):
+    """The day Chromium build at commit became a Chrome stable release for
+    Android."""
+    url = RELEASES.format(milestone=build.split('.')[0])
+    try:
+        times = [release['time'] for release in json.loads(fetched(fetch, url))
+                 if (release.get('channel'), release.get('platform'), release.get('version'),
+                     (release.get('hashes') or {}).get('chromium')) == ('Stable', 'Android', build, commit)]
+    except (ValueError, AttributeError, TypeError, KeyError) as error:
+        raise NoticeError(f'{url} is no list of releases: {error!r}') from error
+    if not times:
+        raise NoticeError(f'Chromium {build} (commit {commit}) is not a Chrome stable release for Android ({url}): '
+                          f'take a {CRONET_LIBRARY} built from one')
+    return datetime.datetime.fromtimestamp(min(times) / 1000, datetime.timezone.utc).date().isoformat()
+
+
+def refresh_cronet(fetch=download, cache=GRADLE_FILES, directory=CRONET, libraries=None):
+    version = locked_cronet(released_libraries() if libraries is None else libraries)
+    if version is None:
+        raise NoticeError(f'no {CRONET_GROUP}:{CRONET_LIBRARY} is locked')
+    aars = {name: published_aar(name, version, fetch, cache) for name in (CRONET_JAVA, CRONET_LIBRARY)}
+    names, bundled = archive_members(aars[CRONET_LIBRARY], CRONET_LIBRARY, 'classes.jar', LICENCE_TEXT, LICENCE_INDEX)
+    _, java = archive_members(aars[CRONET_JAVA], CRONET_JAVA, 'classes.jar', LICENCE_TEXT, LICENCE_INDEX)
+    build = chromium_build_of(names)
+    if SENTINEL not in archive_members(bundled['classes.jar'], f'{CRONET_LIBRARY} classes.jar')[0]:
+        raise NoticeError(f'{CRONET_LIBRARY} {version} has no {SENTINEL}, so its provider would stay disabled')
+    implementation = archive_members(java['classes.jar'], f'{CRONET_JAVA} classes.jar', IMPL_VERSION)[1][IMPL_VERSION]
+    commits = set(CHROMIUM_COMMIT.findall(implementation))
+    if set(CHROMIUM_VERSION.findall(implementation)) != {build.encode()} or len(commits) != 1:
+        raise NoticeError(f'the classes of {CRONET_JAVA} {version} are not of Chromium {build}, the native library '
+                          f'of {CRONET_LIBRARY} {version}')
+    commit = commits.pop().decode()
+    text, index = bundled[LICENCE_TEXT], bundled[LICENCE_INDEX]
+    if (java[LICENCE_TEXT], java[LICENCE_INDEX]) != (text, index):
+        raise NoticeError(f'the licence files of {CRONET_JAVA} and {CRONET_LIBRARY} {version} differ')
+    licence = licence_entries(text, index)[CRONET_ENTRY]
     cronet_components(licence)
+    since = stable_since(build, commit, fetch)
+    chromium_licence = CRONET_BUILDS.format(build=build) + 'LICENSE'
+    published = fetch(chromium_licence)
+    if published is None:
+        chromium_licence = None
+    elif published.decode('utf-8', 'replace').replace('\r\n', '\n') != licence.replace('\r\n', '\n'):
+        raise NoticeError(f'the entry {CRONET_ENTRY!r} of the licence files differs from {chromium_licence}: '
+                          'compare them before taking this build')
     source = {
-        'library': f'{group}:{name}:{version}',
+        'library': f'{CRONET_GROUP}:{CRONET_LIBRARY}:{version}',
+        'libraries': cronet_coordinates(version),
+        'aar_sha256': {f'{CRONET_GROUP}:{name}:{version}': sha256(data) for name, data in sorted(aars.items())},
         'build': build,
-        'licence': folder + 'LICENSE',
-        'licence_sha256': hashlib.sha256(licence.encode('utf-8')).hexdigest(),
-        'classes': folder + CRONET_CLASSES,
-        'classes_sha256': hashlib.sha256(classes).hexdigest(),
+        'commit': commit,
+        'stable_since': since,
+        'chromium_licence': chromium_licence,
+        'licence_sha256': sha256(text),
+        'index_sha256': sha256(index),
     }
     os.makedirs(directory, exist_ok=True)
-    with open(os.path.join(directory, 'LICENSE'), 'w', encoding='utf-8', newline='\n') as f:
-        f.write(licence)
+    for name, data in ((LICENCE_TEXT, text), (LICENCE_INDEX, index)):
+        with open(os.path.join(directory, name), 'wb') as f:
+            f.write(data)
     with open(os.path.join(directory, 'source.json'), 'w', encoding='utf-8') as f:
         f.write(json.dumps(source, indent=2, sort_keys=True) + '\n')
 
@@ -388,7 +553,15 @@ def read_cronet(directory=CRONET):
     source = os.path.join(directory, 'source.json')
     if not os.path.exists(source):
         return None
-    return json.loads(read(source)), read(os.path.join(directory, 'LICENSE'))
+
+    def data(name):
+        try:
+            with open(os.path.join(directory, name), 'rb') as f:
+                return f.read()
+        except OSError as error:
+            raise NoticeError(f'{error}. Run --refresh-cronet') from error
+
+    return json.loads(read(source)), data(LICENCE_TEXT), data(LICENCE_INDEX)
 
 
 def read(path):
@@ -422,6 +595,16 @@ def fake_aar(entries):
     return buffer.getvalue()
 
 
+def licence_files(entries):
+    """An AAR's licence text and index for {name: text}."""
+    text, index = b'', {}
+    for name, entry in entries.items():
+        text += f'\n\n{name}:\n\n'.encode('utf-8')
+        index[name] = {'start': len(text), 'length': len(entry.encode('utf-8'))}
+        text += entry.encode('utf-8')
+    return text, json.dumps(index).encode('utf-8')
+
+
 def refused(action, description):
     try:
         action()
@@ -431,13 +614,12 @@ def refused(action, description):
 
 
 def self_test():
-    global LOCKFILE, BUILD_GRADLE
     lockfile = '\n'.join([
         '# This is a Gradle generated file for dependency locking.',
         'androidx.core:core:1.18.0=debugRuntimeClasspath,releaseRuntimeClasspath',
         'androidx.glance:glance-appwidget-external-protobuf:1.2.0=releaseRuntimeClasspath',
-        'org.chromium.net:cronet-api:143.7445.0=releaseRuntimeClasspath',
-        'org.chromium.net:cronet-embedded:143.7445.0=releaseRuntimeClasspath',
+        'org.chromium.net:cronet-bundled:500.1.0=releaseRuntimeClasspath',
+        'org.chromium.net:cronet:500.1.0=releaseRuntimeClasspath',
         'junit:junit:4.13.2=debugUnitTestRuntimeClasspath',
         'org.jetbrains.kotlin:kotlin-stdlib:2.4.0=profileRuntimeClasspath,releaseRuntimeClasspath',
         'empty=debugAndroidTestRuntimeClasspath',
@@ -455,23 +637,41 @@ def self_test():
     def section(name, text):
         return f'\n--------------------\n{name}\n--------------------\n{text}\n'
 
-    licence = ('// Copyright 2015 The Chromium Authors\n//\n//   Redistribution © allowed.\n'
+    chromium = '// Copyright 2015 The Chromium Authors\n//\n//   Redistribution © allowed.'
+    licence = (section('The Chromium Project', chromium).lstrip('\n')
                + section('CityHash', f'// {mit}') + section('CityHash', f'// {mit}')
                + section('Abseil', '  apache\n   text  ') + section('Protocol Buffers', 'protobuf text')
                + section('zlib', 'zlib text — 1995') + section('zlib', 'another zlib text')
                + section('memchr', mit) + section('termcolor', mit)
-               + section('Metrics Protos', '// Copyright 2015 The Chromium Authors\n//\n// Redistribution \u00a9 allowed.'))
+               + section('Metrics Protos', '// Copyright 2015 The Chromium Authors\n//\n// Redistribution © allowed.'))
     head, components = cronet_components(licence)
-    assert head.startswith('// Copyright 2015'), head
+    assert head == chromium, head
     assert sorted(components) == ['Abseil', 'CityHash', 'Metrics Protos', 'Protocol Buffers', 'memchr', 'termcolor',
                                   'zlib', 'zlib (2)'], components
     assert components['CityHash'] == f'// {mit}' and components['zlib (2)'] == 'another zlib text', components
     assert cronet_components(licence.replace('\n', '\r\n')) == (head, components)
+    refused(lambda: cronet_components(licence.split('--------------------\n', 2)[2]),
+            "a licence file without Chromium's heading (the format before Chromium 155)")
+    refused(lambda: cronet_components(licence.replace('The Chromium Project', 'Chromium')),
+            'a licence file under another first heading')
+    refused(lambda: cronet_components(section('The Chromium Project', chromium)),
+            'a licence file without components')
+    refused(lambda: cronet_components(licence + section('a `name`', 'text')), 'a backtick in a component name')
+    refused(lambda: cronet_components(licence + section(' ', 'text')), 'a component without a name')
 
-    def stored(text, library='org.chromium.net:cronet-embedded:143.7445.0'):
-        return {'library': library, 'licence_sha256': hashlib.sha256(text.encode('utf-8')).hexdigest()}, text
+    owner = 'cronet-bundled 500.1.0'
+    coordinates = ['org.chromium.net:cronet-bundled:500.1.0', 'org.chromium.net:cronet:500.1.0']
+    assert cronet_coordinates('500.1.0') == coordinates
+    build, chromium_commit = '155.0.8059.16', 'eb81d1e9a7da2b5edae9a034166cbf1640ab8c55'
 
-    cronet = stored(licence)
+    def stored(entries, library='org.chromium.net:cronet-bundled:500.1.0', coordinates=coordinates):
+        text, index = licence_files(entries)
+        return ({'library': library, 'libraries': coordinates, 'licence_sha256': sha256(text),
+                 'index_sha256': sha256(index), 'build': build, 'commit': chromium_commit,
+                 'stable_since': '2026-09-23', 'aar_sha256': dict.fromkeys(coordinates, 'a' * 64),
+                 'chromium_licence': None}, text, index)
+
+    cronet = stored({'Cronet': licence})
     commit = '50d9c1fb3e85fa4c00161525a45484f712c1f003'
     sources = {'com.android.tools:desugar_jdk_libs': parse_source_manifest(
         f'version=2.1.4\nrepository=https://github.com/google/desugar_jdk_libs\ncommit={commit}\nnote=a=b\n',
@@ -479,42 +679,79 @@ def self_test():
     output = render(libraries + desugaring, texts, cronet, sources=sources)
     assert '- androidx.core:core 1.18.0 (Apache-2.0)\n' \
            '- org.jetbrains.kotlin:kotlin-stdlib 2.4.0 (Apache-2.0)\n' \
-           '- `Abseil` (Apache-2.0) in cronet-embedded 143.7445.0\n\n```text\napache text\n```' in output, output
+           f'- `Abseil` (Apache-2.0) in {owner}\n\n```text\napache text\n```' in output, output
     assert '- androidx.glance:glance-appwidget-external-protobuf 1.2.0 (BSD-3-Clause)\n' \
-           '- `Protocol Buffers` (BSD-3-Clause) in cronet-embedded 143.7445.0\n\n```text\nprotobuf text\n```' \
-           in output, output
-    assert '- org.chromium.net:cronet-api 143.7445.0 (BSD-3-Clause)\n' \
-           '- org.chromium.net:cronet-embedded 143.7445.0 (BSD-3-Clause)\n' \
-           '- `Metrics Protos` (BSD-3-Clause) in cronet-embedded 143.7445.0\n\n```text\n' \
+           f'- `Protocol Buffers` (BSD-3-Clause) in {owner}\n\n```text\nprotobuf text\n```' in output, output
+    assert '- org.chromium.net:cronet 500.1.0 (BSD-3-Clause)\n' \
+           '- org.chromium.net:cronet-bundled 500.1.0 (BSD-3-Clause)\n' \
+           f'- `Metrics Protos` (BSD-3-Clause) in {owner}\n\n```text\n' \
            'Copyright 2015 The Chromium Authors' in output, output
     assert '- com.android.tools:desugar_jdk_libs 2.1.4 ' \
            '(GPL-2.0-only WITH Classpath-exception-2.0)' in output, output
-    assert f'- `CityHash` in cronet-embedded 143.7445.0\n\n```text\n// {mit}\n```' in output, output
-    assert f'- `memchr` in cronet-embedded 143.7445.0\n- `termcolor` in cronet-embedded 143.7445.0\n\n' \
-           f'```text\n{mit}\n```' in output, output
+    assert f'- `CityHash` in {owner}\n\n```text\n// {mit}\n```' in output, output
+    assert f'- `memchr` in {owner}\n- `termcolor` in {owner}\n\n```text\n{mit}\n```' in output, output
     assert output.count(mit) == 2, output
-    assert '- `zlib` in cronet-embedded 143.7445.0\n\n```text\nzlib text — 1995\n```' in output, output
-    assert '- `zlib (2)` in cronet-embedded 143.7445.0\n\n```text\nanother zlib text\n```' in output, output
-    assert 'Chromium Authors\n//' not in output, output
+    assert f'- `zlib` in {owner}\n\n```text\nzlib text — 1995\n```' in output, output
+    assert f'- `zlib (2)` in {owner}\n\n```text\nanother zlib text\n```' in output, output
+    assert 'Chromium Authors\n//' not in output and 'The Chromium Project' not in output, output
     order = [output.index(f'{key} text') for key in ('apache', 'protobuf', 'gpl-classpath')]
     assert order == sorted(order) and output.index('Redistribution') < order[2], order
-    assert output.index('```text\ngpl-classpath') < output.index('The other projects in cronet-embedded 143.7445.0 '
-                                                                   'whose licences') < output.index('CityHash`')
+    assert output.index('```text\ngpl-classpath') < output.index(f'The other projects in {owner} whose licences are '
+                                                                   'not above, as the licence files of its AARs list '
+                                                                   'them:') < output.index('CityHash`')
     assert render(list(reversed(libraries)) + libraries, texts, cronet) == render(libraries, texts, cronet)
 
-    # What the native library links but its LICENSE does not name.
+    # The AARs' other licence entries join Cronet's components.
+    entries = {'AndroidX annotation library': '\n   apache\ntext\n\n', 'Cronet': licence, 'JSR 305': 'JSR 305 text\n',
+               'Kotlin': mit, 'Protocol Buffers for Java': 'protobuf text\n', 'zlib': 'zlib text — 1995',
+               'CityHash ': 'another CityHash text'}
+    combined = render(libraries + desugaring, texts, stored(entries), sources=sources)
+    assert f'- `Abseil` (Apache-2.0) in {owner}\n- `AndroidX annotation library` (Apache-2.0) in {owner}\n\n' \
+           '```text\napache text\n```' in combined, combined
+    assert f'- `Protocol Buffers` (BSD-3-Clause) in {owner}\n' \
+           f'- `Protocol Buffers for Java` (BSD-3-Clause) in {owner}\n\n```text\nprotobuf text\n```' in combined
+    assert f'- `JSR 305` in {owner}\n\n```text\nJSR 305 text\n```' in combined, combined
+    assert f'- `Kotlin` in {owner}\n- `memchr` in {owner}\n- `termcolor` in {owner}\n\n```text\n{mit}\n```' \
+           in combined, combined
+    assert combined.count('zlib text — 1995') == 1, combined
+    assert f'- `CityHash (2)` in {owner}\n\n```text\nanother CityHash text\n```' in combined, combined
+    assert ' `Cronet` ' not in combined, combined
+    refused(lambda: render(libraries, texts, stored(dict(entries, **{'a `name`': 'text'}))),
+            'a backtick in the name of a licence entry')
+
+    # The licence files' index.
+    text, index = licence_files(entries)
+    assert licence_entries(text, index) == entries and list(licence_entries(text, index)) == list(entries)
+    bounds = json.loads(index)
+
+    def tampered(name, **change):
+        return json.dumps(dict(bounds, **{name: dict(bounds[name], **change)})).encode()
+
+    for description, other_text, other_index in [
+        ('an entry overlapping the one before', text, tampered('JSR 305', start=bounds['JSR 305']['start'] - 1)),
+        ('an entry beyond the text', text, tampered('CityHash ', length=bounds['CityHash ']['length'] + 1)),
+        ('a negative length', text, tampered('Kotlin', length=-1)),
+        ('a length that is no number', text, tampered('Kotlin', length='5')),
+        ('text the index leaves out', text + b'tail', index),
+        ('an entry under another name', text.replace(b'\n\nKotlin:\n\n', b'\n\nKotlix:\n\n'), index),
+        ('an index without the entry Cronet', *licence_files({'Chromium': licence})),
+        ('an index that is no JSON', text, b'{'),
+        ('an index that is a list', text, b'[]'),
+        ('an entry that is not UTF-8', text.replace('ü'.encode(), b'\xfc\xfc'), index),
+    ]:
+        refused(lambda: licence_entries(other_text, other_index), description)
+
+    # What the native library links but its licences do not name.
     supplement = {'libc++': 'llvm text', 'libc++abi': 'llvm text', 'Rust standard library': texts['apache'],
                   'zlib': 'zlib text of the supplement'}
     supplemented = render(libraries + desugaring, texts, cronet, supplement, sources)
-    assert '- `libc++` in cronet-embedded 143.7445.0\n- `libc++abi` in cronet-embedded 143.7445.0\n\n' \
-           '```text\nllvm text\n```' in supplemented, supplemented
-    assert '- `Abseil` (Apache-2.0) in cronet-embedded 143.7445.0\n' \
-           '- `Rust standard library` (Apache-2.0) in cronet-embedded 143.7445.0\n\n```text\napache text\n```' \
+    assert f'- `libc++` in {owner}\n- `libc++abi` in {owner}\n\n```text\nllvm text\n```' in supplemented, supplemented
+    assert f'- `Abseil` (Apache-2.0) in {owner}\n' \
+           f'- `Rust standard library` (Apache-2.0) in {owner}\n\n```text\napache text\n```' \
            in supplemented, supplemented
     assert 'zlib text of the supplement' not in supplemented and 'zlib text — 1995' in supplemented, supplemented
-    assert supplemented.replace('- `Rust standard library` (Apache-2.0) in cronet-embedded 143.7445.0\n', '') \
-        .replace('- `libc++` in cronet-embedded 143.7445.0\n- `libc++abi` in cronet-embedded 143.7445.0\n\n'
-                 '```text\nllvm text\n```\n\n', '') == output, supplemented
+    assert supplemented.replace(f'- `Rust standard library` (Apache-2.0) in {owner}\n', '') \
+        .replace(f'- `libc++` in {owner}\n- `libc++abi` in {owner}\n\n```text\nllvm text\n```\n\n', '') == output
 
     # The source offer follows the GPL licence.
     gpl = output.index('gpl-classpath text')
@@ -539,64 +776,130 @@ def self_test():
 
     without_cronet = [library for library in libraries if library[0] != CRONET_GROUP]
     plain = render(without_cronet, texts, None, supplement, sources)
-    assert 'org.chromium.net' not in plain and ' in cronet-embedded' not in plain, plain
+    assert 'org.chromium.net' not in plain and ' in cronet-bundled' not in plain, plain
     for group, name in [('com.example', 'library'), ('androidx.work', 'work-external-gson'),
                         ('com.android.tools', 'r8'), ('com.google.android.gms', 'play-services-cronet'),
                         ('com.google.android.gms', 'play-services-base')]:
         refused(lambda: licence_of(group, name), f'{group}:{name}')
     refused(lambda: render(libraries, dict(texts, apache='```\n'), cronet), 'a fence inside a text')
-    refused(lambda: render(libraries, texts, None), 'a locked Cronet without a stored LICENSE')
-    refused(lambda: render(without_cronet, texts, cronet), 'a stored LICENSE without a locked Cronet')
-    refused(lambda: render(libraries, texts, stored(licence, 'org.chromium.net:cronet-embedded:141.7340.3')),
-            'a LICENSE stored for another version')
-    refused(lambda: render(libraries, texts, (cronet[0], licence + 'edited')), 'a LICENSE edited after download')
-    api_only = [library for library in libraries if library[1] != CRONET_LIBRARY]
-    refused(lambda: render(api_only, texts, cronet), 'Cronet libraries without cronet-embedded')
-    mixed = libraries + [('org.chromium.net', 'cronet-shared', '141.7340.3')]
-    refused(lambda: render(mixed, texts, cronet), 'Cronet libraries of two builds')
+    refused(lambda: render(libraries, texts, None), 'a locked Cronet without stored licences')
+    refused(lambda: render(without_cronet, texts, cronet), 'stored licences without a locked Cronet')
+    refused(lambda: render(libraries, texts, stored({'Cronet': licence}, 'org.chromium.net:cronet-bundled:500.0.2')),
+            'licences stored for another version')
+    refused(lambda: render(libraries, texts, stored({'Cronet': licence}, coordinates=coordinates[:1])),
+            'licences stored for other libraries')
+    refused(lambda: render(libraries, texts, (cronet[0], cronet[1] + b' ', cronet[2])),
+            'a licence text edited after the copy')
+    refused(lambda: render(libraries, texts, (cronet[0], cronet[1], cronet[2] + b' ')),
+            'an index edited after the copy')
+    for description, change in [
+        ('a build that is no Chromium version', {'build': '155.0.8059'}),
+        ('a commit that is no full hash', {'commit': chromium_commit[:12]}),
+        ('a stable day that is no date', {'stable_since': '2026-02-30'}),
+        ('AAR hashes of another version', {'aar_sha256': {library.replace('500.1.0', '500.0.2'): 'a' * 64
+                                                          for library in coordinates}}),
+        ('an AAR hash that is no SHA-256', {'aar_sha256': dict.fromkeys(coordinates, 'A' * 64)}),
+        ("the bucket's LICENSE of another build",
+         {'chromium_licence': CRONET_BUILDS.format(build='155.0.8059.20') + 'LICENSE'}),
+    ]:
+        refused(lambda: render(libraries, texts, (dict(cronet[0], **change), cronet[1], cronet[2])), description)
+    for field in ('build', 'commit', 'stable_since', 'aar_sha256', 'chromium_licence'):
+        refused(lambda: render(libraries, texts, ({key: value for key, value in cronet[0].items() if key != field},
+                                                  cronet[1], cronet[2])), f'a source.json without {field}')
+    assert render(libraries, texts, (dict(cronet[0], chromium_licence=CRONET_BUILDS.format(build=build) + 'LICENSE'),
+                                     cronet[1], cronet[2])) == render(libraries, texts, cronet)
+    for description, locked in [
+        ('cronet-bundled without cronet', [library for library in libraries if library[1] != CRONET_JAVA]),
+        ('a transitional Cronet artifact', libraries + [(CRONET_GROUP, 'cronet-embedded', '500.1.0')]),
+        ('Cronet libraries of two versions', libraries + [(CRONET_GROUP, 'cronet', '500.0.2')]),
+    ]:
+        refused(lambda: locked_cronet(locked), description)
+        refused(lambda: render(locked, texts, cronet), description)
     other_head = licence.replace('Redistribution', 'Distribution')
-    refused(lambda: render(libraries, texts, stored(other_head)), 'another Chromium licence in the LICENSE')
+    refused(lambda: render(libraries, texts, stored({'Cronet': other_head})), 'another Chromium licence')
     fence = licence + section('fenced', '```\ntext')
-    refused(lambda: render(libraries, texts, stored(fence)), "a fence inside a component's text")
-    refused(lambda: cronet_components(licence + section('a `name`', 'text')), 'a backtick in a component name')
-    refused(lambda: cronet_components('// only the Chromium licence\n'), 'a LICENSE without components')
+    refused(lambda: render(libraries, texts, stored({'Cronet': fence})), "a fence inside a component's text")
 
-    # --refresh-cronet against a Gradle cache and a build folder made here.
-    classes = b'classes of cronet-embedded'
-    aar = fake_aar({'classes.jar': classes, 'jni/arm64-v8a/libcronet.143.0.7445.0.so': b'',
-                    'jni/x86_64/libcronet.143.0.7445.0.so': b''})
-    assert chromium_build_of(['jni/x86/libcronet.143.0.7445.0.so', 'classes.jar']) == '143.0.7445.0'
-    refused(lambda: chromium_build_of(['jni/x86/libcronet.143.0.7445.0.so', 'jni/x86_64/libcronet.143.0.7446.0.so']),
+    # --refresh-cronet against a Gradle cache, Google's Maven and Chromium's
+    # release data made here.
+    assert chromium_build_of([f'jni/x86/libcronet.{build}.so', 'classes.jar']) == build
+    refused(lambda: chromium_build_of([f'jni/x86/libcronet.{build}.so', 'jni/x86_64/libcronet.155.0.8059.20.so']),
             'native libraries of two builds')
-    folder = CRONET_BUILDS.format(build='143.0.7445.0')
-    with tempfile.TemporaryDirectory() as temporary:
-        cache = os.path.join(temporary, 'cache')
-        library = os.path.join(cache, 'org.chromium.net', 'cronet-embedded', '143.7445.0', 'abc')
-        os.makedirs(library)
-        with open(os.path.join(library, 'cronet-embedded-143.7445.0.aar'), 'wb') as f:
-            f.write(aar)
-        with open(os.path.join(temporary, 'gradle.lockfile'), 'w', encoding='utf-8') as f:
-            f.write(lockfile)
-        with open(os.path.join(temporary, 'build.gradle.kts'), 'w', encoding='utf-8') as f:
-            f.write('')
-        saved = LOCKFILE, BUILD_GRADLE
-        LOCKFILE, BUILD_GRADLE = os.path.join(temporary, 'gradle.lockfile'), os.path.join(temporary, 'build.gradle.kts')
-        try:
-            published = {folder + CRONET_CLASSES: classes, folder + 'LICENSE': licence.replace('\n', '\r\n').encode()}
+    refused(lambda: chromium_build_of(['classes.jar']), 'an AAR without a native library')
+
+    def implementation(build=build, commit=chromium_commit):
+        return fake_aar({IMPL_VERSION: f'\x01\x00\x0d{build}\x01\x00\x0e{build}@\x01\x00\x34{commit}'
+                                       '-refs/branch-heads/8059@{#465}\x0c'.encode()})
+
+    def bundled_aar(classes=fake_aar({SENTINEL: b'', 'cronet-bundled.properties': b''}), build=build):
+        return fake_aar({'classes.jar': classes, f'jni/arm64-v8a/libcronet.{build}.so': b'',
+                         f'jni/x86_64/libcronet.{build}.so': b'', LICENCE_TEXT: text, LICENCE_INDEX: index})
+
+    def java_aar(classes=implementation(), licence_text=text):
+        return fake_aar({'classes.jar': classes, LICENCE_TEXT: licence_text, LICENCE_INDEX: index})
+
+    good = {'cronet': java_aar(), 'cronet-bundled': bundled_aar()}
+    releases = RELEASES.format(milestone='155')
+    release = {'channel': 'Stable', 'platform': 'Android', 'version': build, 'time': 1790184739011,
+               'hashes': {'chromium': chromium_commit}}
+    chromium_licence = CRONET_BUILDS.format(build=build) + 'LICENSE'
+
+    def refresh(aars, changes=None, locked=libraries):
+        with tempfile.TemporaryDirectory() as temporary:
+            cache = os.path.join(temporary, 'cache')
+            for name, data in aars.items():
+                folder = os.path.join(cache, CRONET_GROUP, name, '500.1.0', hashlib.sha1(data).hexdigest())
+                os.makedirs(folder)
+                with open(os.path.join(folder, f'{name}-500.1.0.aar'), 'wb') as f:
+                    f.write(data)
+            published = {MAVEN_SHA256.format(name=name, version='500.1.0'): f'{sha256(data)}\n'.encode()
+                         for name, data in aars.items()}
+            published[releases] = json.dumps([dict(release, version='155.0.8059.20', time=1790800000000), release,
+                                              dict(release, channel='Beta', time=1789000000000)]).encode()
+            published[chromium_licence] = licence.replace('\n', '\r\n').encode()
+            published.update(changes or {})
             directory = os.path.join(temporary, 'cronet')
-            refresh_cronet(fetch=published.__getitem__, cache=cache, directory=directory)
-            source, stored_licence = read_cronet(directory)
-            assert stored_licence == licence, stored_licence
-            assert source['library'] == 'org.chromium.net:cronet-embedded:143.7445.0', source
-            assert source['licence'] == folder + 'LICENSE' and source['build'] == '143.0.7445.0', source
-            assert render(libraries + desugaring, texts, (source, stored_licence), sources=sources) == output
-            other = dict(published, **{folder + CRONET_CLASSES: b'classes of another build'})
-            refused(lambda: refresh_cronet(fetch=other.__getitem__, cache=cache, directory=directory),
-                    'a build folder whose classes differ from the AAR')
-            refused(lambda: refresh_cronet(fetch=published.__getitem__, cache=os.devnull, directory=directory),
-                    'an AAR missing from the cache')
-        finally:
-            LOCKFILE, BUILD_GRADLE = saved
+            refresh_cronet(fetch=published.get, cache=cache, directory=directory, libraries=locked)
+            return read_cronet(directory)
+
+    source, stored_text, stored_index = refresh(good)
+    assert (stored_text, stored_index) == (text, index)
+    assert source == {
+        'library': 'org.chromium.net:cronet-bundled:500.1.0', 'libraries': coordinates,
+        'aar_sha256': {f'org.chromium.net:{name}:500.1.0': sha256(data) for name, data in good.items()},
+        'build': build, 'commit': chromium_commit, 'stable_since': '2026-09-23', 'chromium_licence': chromium_licence,
+        'licence_sha256': sha256(text), 'index_sha256': sha256(index)}, source
+    assert render(libraries + desugaring, texts, (source, stored_text, stored_index), sources=sources) == combined
+    assert refresh(good, {chromium_licence: None})[0]['chromium_licence'] is None
+    maven = MAVEN_SHA256.format(name='cronet', version='500.1.0')
+    for description, aars, changes, locked in [
+        ("a Cronet entry that differs from Chromium's LICENSE", good, {chromium_licence: b'another licence'}, libraries),
+        ("an AAR that differs from Google's Maven", good, {maven: b'0' * 64}, libraries),
+        ("an AAR that Google's Maven does not have", good, {maven: None}, libraries),
+        ('a build that was no stable release', good, {releases: json.dumps([dict(release, version='155.0.8059.20')])
+                                                      .encode()}, libraries),
+        ('a stable release of another commit', good,
+         {releases: json.dumps([dict(release, hashes={'chromium': '0' * 40})]).encode()}, libraries),
+        ('a beta release', good, {releases: json.dumps([dict(release, channel='Beta')]).encode()}, libraries),
+        ('release data that is no list of releases', good, {releases: b'{"version": "155.0.8059.16"}'}, libraries),
+        ('classes of another build than the native library',
+         dict(good, cronet=java_aar(implementation(build='155.0.8059.20'))), {}, libraries),
+        ('classes without a commit', dict(good, cronet=java_aar(fake_aar({IMPL_VERSION: build.encode()}))), {},
+         libraries),
+        ('classes without ImplVersion', dict(good, cronet=java_aar(fake_aar({'a.class': b''}))), {}, libraries),
+        ('cronet-bundled without the provider sentinel',
+         dict(good, **{'cronet-bundled': bundled_aar(classes=fake_aar({'cronet-bundled.properties': b''}))}), {},
+         libraries),
+        ('licence files that differ between the AARs', dict(good, cronet=java_aar(licence_text=text + b' ')), {},
+         libraries),
+        ('an AAR without licence files', dict(good, cronet=fake_aar({'classes.jar': implementation()})), {},
+         libraries),
+        ('an AAR missing from the cache', {'cronet-bundled': good['cronet-bundled']}, {}, libraries),
+        ('a transitional Cronet artifact in the lockfile', good, {},
+         libraries + [(CRONET_GROUP, 'cronet-api', '500.1.0')]),
+        ('a lockfile without Cronet', good, {}, without_cronet),
+    ]:
+        refused(lambda: refresh(aars, changes, locked), description)
     print('Self-test passed.')
 
 

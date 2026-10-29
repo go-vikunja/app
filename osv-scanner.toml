@@ -1,7 +1,3 @@
 # Advisories accepted after review, read by tool/ci/osv.sh (GitLab job osv).
 # Each entry expires, so the weekly scan fails again and the entry gets reviewed.
-
-[[IgnoredVulns]]
-id = "GHSA-735f-pc8j-v9w8"
-ignoreUntil = 2027-01-31
-reason = "protobuf-javalite 3.22.3 comes with embedded Cronet (cronet-embedded and cronet-shared 143.7445.0). Its only parse in the app is of Cronet's HTTP flags file from a system-image package (HttpFlagsLoader), and the app turns that off (android.net.http.ReadHttpFlags=false in AndroidManifest.xml, pinned by a test), so nothing reaches the parser; Cronet only writes its engine and proxy options with it. Upgrade with the next dependency update."
+# None at the moment.

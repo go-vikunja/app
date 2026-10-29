@@ -1,6 +1,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Cronet follows network changes; its AARs declare no permission since
+         500.x, so this no longer comes with them (D67). -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Local reminders (flutter_local_notifications): the permission prompt
          on Android 13+, exact alarms (denied by default on 14+, never
          USE_EXACT_ALARM: Play restricts it to alarm and calendar apps) and

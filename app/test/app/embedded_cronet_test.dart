@@ -5,10 +5,25 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _repoRoot = '..';
 
-final _embeddedCronet = RegExp(r'org\.chromium\.net:cronet-embedded:([0-9.]+)');
+final _bundledCronet = RegExp(r'org\.chromium\.net:cronet-bundled:([0-9.]+)');
 
-String _embeddedVersion(String gradle) =>
-    _embeddedCronet.firstMatch(gradle)![1]!;
+// Google's empty transitional Cronet artifacts, which cronet-bundled's POMs
+// and cronet_http's cronetHttpNoPlay pull.
+const _cronetStubs = [
+  'cronet-api',
+  'cronet-common',
+  'cronet-embedded',
+  'cronet-fallback',
+  'cronet-shared',
+  'httpengine-native-provider',
+];
+
+// The first cronet-bundled built from a Chrome stable release (Chromium
+// 155.0.8059.16) and checked against cronet_http's Kotlin and JNI bindings.
+const _firstStableBundled = '500.1.0';
+const _firstStableChromium = '155.0.8059.16';
+
+String _bundledVersion(String gradle) => _bundledCronet.firstMatch(gradle)![1]!;
 
 int _compareVersions(String a, String b) {
   final left = a.split('.').map(int.parse).toList();
@@ -24,14 +39,19 @@ int _compareVersions(String a, String b) {
 void main() {
   final buildGradle = File('$_repoRoot/app/android/app/build.gradle.kts')
       .readAsStringSync();
+  final notices = jsonDecode(
+    File('$_repoRoot/tool/android_notices/cronet/source.json')
+        .readAsStringSync(),
+  ) as Map<String, Object?>;
 
-  test('the release build has embedded Cronet and no Play services '
-      'library', () {
+  test('the release build has embedded Cronet of one version and no Play '
+      'services library', () {
     final released = File('$_repoRoot/app/android/app/gradle.lockfile')
         .readAsLinesSync()
         .where((line) => line.contains('releaseRuntimeClasspath'))
         .map((line) => line.split('=').first)
         .toList();
+    final version = _bundledVersion(buildGradle);
 
     expect(released, isNotEmpty);
     expect(
@@ -41,14 +61,16 @@ void main() {
       isEmpty,
     );
     expect(
-      released,
-      contains(
-        'org.chromium.net:cronet-embedded:${_embeddedVersion(buildGradle)}',
-      ),
+      released.where((library) => library.startsWith('org.chromium.net:')),
+      unorderedEquals([
+        'org.chromium.net:cronet:$version',
+        'org.chromium.net:cronet-bundled:$version',
+      ]),
     );
   });
 
-  test('every configuration of the app leaves out Play services Cronet', () {
+  test('every configuration of the app leaves out Play services Cronet and '
+      'the transitional Cronet artifacts', () {
     expect(
       buildGradle,
       contains(
@@ -56,6 +78,13 @@ void main() {
         'module = "play-services-cronet")',
       ),
     );
+    expect(
+      buildGradle,
+      contains('exclude(group = "org.chromium.net", module = module)'),
+    );
+    for (final stub in _cronetStubs) {
+      expect(buildGradle, contains('"$stub"'));
+    }
   });
 
   test('Cronet reads no HTTP flags from the system and sends no '
@@ -78,6 +107,13 @@ void main() {
     expect(holder[1], contains('android:exported="false"'));
     expect(flag('ReadHttpFlags'), 'false');
     expect(flag('EnableTelemetry'), 'false');
+    expect(
+      manifest,
+      contains(
+        '<uses-permission '
+        'android:name="android.permission.ACCESS_NETWORK_STATE" />',
+      ),
+    );
   });
 
   test('versions compare by number', () {
@@ -85,12 +121,39 @@ void main() {
     expect(_compareVersions('143.10000.0', '143.7445.0'), isPositive);
     expect(_compareVersions('500.1', '143.7445.0'), isPositive);
     expect(_compareVersions('143.7445', '143.7445.1'), isNegative);
+    expect(_compareVersions('155.0.8059.16', '155.0.8059.9'), isPositive);
   });
 
-  // cronet_http's Kotlin is built and tested against that version; a newer
-  // one may be taken for Chromium's security fixes.
-  test('embedded Cronet is at least the version cronet_http names for '
-      'cronetHttpNoPlay', () {
+  test('embedded Cronet is a build of a Chrome stable release', () {
+    expect(
+      _compareVersions(_bundledVersion(buildGradle), _firstStableBundled),
+      greaterThanOrEqualTo(0),
+    );
+    expect(
+      _compareVersions(notices['build']! as String, _firstStableChromium),
+      greaterThanOrEqualTo(0),
+    );
+    expect(notices['stable_since'], matches(RegExp(r'^\d{4}-\d{2}-\d{2}$')));
+  });
+
+  test('the Cronet notices belong to the declared version', () {
+    final version = _bundledVersion(buildGradle);
+
+    expect(notices['library'], 'org.chromium.net:cronet-bundled:$version');
+    expect(
+      notices['libraries'],
+      unorderedEquals([
+        'org.chromium.net:cronet:$version',
+        'org.chromium.net:cronet-bundled:$version',
+      ]),
+    );
+  });
+
+  // cronet_http's Kotlin is built and tested against the cronet-embedded it
+  // names (MAJOR.BUILD.PATCH, Chromium MAJOR.0.BUILD.PATCH); the bundled
+  // Chromium may be newer.
+  test('embedded Cronet is at least the Chromium build cronet_http names '
+      'for cronetHttpNoPlay', () {
     final config = File('$_repoRoot/.dart_tool/package_config.json').absolute;
     final packages =
         (jsonDecode(config.readAsStringSync()) as Map)['packages'] as List;
@@ -103,6 +166,9 @@ void main() {
           .resolve(rootUri.endsWith('/') ? rootUri : '$rootUri/')
           .resolve('android/build.gradle'),
     ).readAsStringSync();
+    final named = RegExp(
+      r'org\.chromium\.net:cronet-embedded:(\d+)\.(\d+)\.(\d+)',
+    ).firstMatch(pluginGradle)!;
 
     expect(
       pluginGradle,
@@ -110,8 +176,8 @@ void main() {
     );
     expect(
       _compareVersions(
-        _embeddedVersion(buildGradle),
-        _embeddedVersion(pluginGradle),
+        notices['build']! as String,
+        '${named[1]}.0.${named[2]}.${named[3]}',
       ),
       greaterThanOrEqualTo(0),
     );

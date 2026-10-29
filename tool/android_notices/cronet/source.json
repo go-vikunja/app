@@ -1,8 +1,17 @@
 {
-  "build": "143.0.7445.0",
-  "classes": "https://storage.googleapis.com/chromium-cronet/android/143.0.7445.0/Release/cronet/cronet_impl_native_java.jar",
-  "classes_sha256": "491fa0eae8198a79dc329efa8d29a94e7ac6aa2100b9ef80452a17de0fe3d4b2",
-  "library": "org.chromium.net:cronet-embedded:143.7445.0",
-  "licence": "https://storage.googleapis.com/chromium-cronet/android/143.0.7445.0/Release/cronet/LICENSE",
-  "licence_sha256": "be9838eb10695d40d337a442d1c1921bdfe2d3df44f3827c350e810bb0670e65"
+  "aar_sha256": {
+    "org.chromium.net:cronet-bundled:500.1.0": "fa286aeebe66dcab4a64df017d566cb8ec563c3bb63af527997c3a4e056bf295",
+    "org.chromium.net:cronet:500.1.0": "d0cbb75a3e558166a1e21747d75b788b2650ddf8bec321b727b0878f01addcf8"
+  },
+  "build": "155.0.8059.16",
+  "chromium_licence": "https://storage.googleapis.com/chromium-cronet/android/155.0.8059.16/Release/cronet/LICENSE",
+  "commit": "eb81d1e9a7da2b5edae9a034166cbf1640ab8c55",
+  "index_sha256": "949f23777c3b987946c155067023595889ae9483a309db70947a1fd626ff3e3a",
+  "libraries": [
+    "org.chromium.net:cronet-bundled:500.1.0",
+    "org.chromium.net:cronet:500.1.0"
+  ],
+  "library": "org.chromium.net:cronet-bundled:500.1.0",
+  "licence_sha256": "df9654cc9b0879e04fbe5ad8e0e12fc8c1932384bab15c89af6080a86c48a5c3",
+  "stable_since": "2026-09-23"
 }
