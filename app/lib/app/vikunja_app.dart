@@ -6,7 +6,7 @@ import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
-import 'package:vikunja_mobile/app/theme/status_bar_style.dart';
+import 'package:vikunja_mobile/app/theme/system_bar_style.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/app/widgets/app_lock_gate.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
@@ -37,7 +37,7 @@ class VikunjaApp extends ConsumerWidget {
       localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: appSupportedLocales,
       routerConfig: ref.watch(appRouterProvider),
-      builder: (context, child) => _StatusBarFallback(
+      builder: (context, child) => _SystemBarFallback(
         child: _LargeWindowDialogs(
           child: AppLockGate(
             child: AnnouncerHost(
@@ -63,20 +63,30 @@ class VikunjaApp extends ConsumerWidget {
   }
 }
 
-/// The status bar's style for a page without an app bar or a region of its
-/// own. Flutter keeps the last style when it finds none, which after a
-/// Cupertino sheet is the light text of the sheet's top gap. App bars and
-/// the lock cover still decide where they are.
-class _StatusBarFallback extends StatelessWidget {
+/// The system bars' style for a page without an app bar or a region of its
+/// own: the status bar reads on the page, and Android's navigation bar has
+/// the colour of the app's bottom bar and icons that read on it, in the
+/// theme the app shows now.
+/// Flutter keeps the last style when it finds none, which after a Cupertino
+/// sheet is the light text of the sheet's top gap, and Android keeps the
+/// navigation bar of the theme the app started in. App bars and the lock
+/// cover still decide the status bar where they are.
+class _SystemBarFallback extends StatelessWidget {
   const new({required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
-    value: statusBarStyleOn(Theme.of(context).colorScheme.surface),
-    child: child,
-  );
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: systemBarStyleOn(
+        colors.surface,
+        navigationBar: colors.surfaceContainer,
+      ),
+      child: child,
+    );
+  }
 }
 
 /// Material dialogs at most [ReadableWidth.dialog] wide on large windows,

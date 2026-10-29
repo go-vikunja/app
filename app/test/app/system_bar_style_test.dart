@@ -4,7 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
-import 'package:vikunja_mobile/app/theme/status_bar_style.dart';
+import 'package:vikunja_mobile/app/theme/system_bar_style.dart';
+import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 
@@ -57,15 +58,40 @@ void _expectNoNavigationBarFields(SystemUiOverlayStyle? style) {
   expect(style.systemNavigationBarContrastEnforced, isNull);
 }
 
+/// Android's navigation bar in the colour of the bottom bar of the theme the
+/// app shows, [theme], with icons that read on it.
+void _expectNavigationBarOf(
+  WidgetTester tester,
+  Brightness theme,
+  SystemUiOverlayStyle? style,
+) {
+  final colors = Theme.of(tester.element(find.byType(Scaffold).first))
+      .colorScheme;
+  expect(colors.brightness, theme);
+  expect(style, isNotNull);
+  expect(style!.systemNavigationBarColor, colors.surfaceContainer);
+  expect(
+    style.systemNavigationBarIconBrightness,
+    ThemeData.estimateBrightnessForColor(colors.surfaceContainer) ==
+            Brightness.light
+        ? Brightness.dark
+        : Brightness.light,
+  );
+  expect(
+    style.systemNavigationBarIconBrightness,
+    theme == Brightness.light ? Brightness.dark : Brightness.light,
+  );
+}
+
 void main() {
-  test('statusBarStyleOn gives a transparent status bar that reads on the '
+  test('systemBarStyleOn gives a transparent status bar that reads on the '
       'background, and no navigation bar fields', () {
     for (final (background, page) in const [
       (Color(0xFFFFFFFF), Brightness.light),
       (Color(0xFF000000), Brightness.dark),
     ]) {
       expect(
-        statusBarStyleOn(background),
+        systemBarStyleOn(background),
         SystemUiOverlayStyle(
           statusBarColor: const Color(0x00000000),
           statusBarBrightness: page,
@@ -75,6 +101,23 @@ void main() {
         ),
       );
     }
+  });
+
+  test('systemBarStyleOn with a navigation bar gives it that colour and '
+      'icons that read on it', () {
+    for (final (bar, icons) in const [
+      (Color(0xFFF0F0F0), Brightness.dark),
+      (Color(0xFF202020), Brightness.light),
+    ]) {
+      final style = systemBarStyleOn(
+        const Color(0xFFFFFFFF),
+        navigationBar: bar,
+      );
+      expect(style.systemNavigationBarColor, bar);
+      expect(style.systemNavigationBarIconBrightness, icons);
+      expect(style.statusBarIconBrightness, Brightness.dark);
+    }
+    _expectNoNavigationBarFields(systemBarStyleOn(const Color(0xFF000000)));
   });
 
   for (final brightness in Brightness.values) {
@@ -120,16 +163,44 @@ void main() {
     });
   }
 
-  testWidgets("the fallback leaves Android's navigation bar as it is", (
-    tester,
-  ) async {
-    await pumpVikunjaApp(tester);
-    expect(find.byType(AppBar), findsNothing);
+  for (final brightness in Brightness.values) {
+    testWidgets("Android's navigation bar takes the bottom bar's colour with "
+        'icons that read on it (${brightness.name})', (tester) async {
+      _usePlatformBrightness(tester, brightness);
+      await pumpVikunjaApp(tester);
+      expect(find.byType(AppBar), findsNothing);
 
-    _expectReadableOn(Brightness.light, _atStatusBar(tester));
-    _expectNoNavigationBarFields(_atStatusBar(tester));
-    _expectNoNavigationBarFields(_atNavigationBar(tester));
-    _expectNoNavigationBarFields(SystemChrome.latestStyle);
+      _expectReadableOn(brightness, _atStatusBar(tester));
+      _expectNavigationBarOf(tester, brightness, _atNavigationBar(tester));
+      _expectNavigationBarOf(tester, brightness, SystemChrome.latestStyle);
+    }, variant: _android);
+  }
+
+  testWidgets("Android's navigation bar follows a change of the theme while "
+      'the app runs', (tester) async {
+    _usePlatformBrightness(tester, Brightness.light);
+    await pumpVikunjaApp(tester);
+    _expectNavigationBarOf(tester, Brightness.light, SystemChrome.latestStyle);
+
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    await tester.pumpAndSettle();
+    _expectNavigationBarOf(tester, Brightness.dark, SystemChrome.latestStyle);
+
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.light;
+    await tester.pumpAndSettle();
+    _expectNavigationBarOf(tester, Brightness.light, SystemChrome.latestStyle);
+  }, variant: _android);
+
+  testWidgets("the account's colour scheme decides Android's navigation bar, "
+      "not the system's", (tester) async {
+    _usePlatformBrightness(tester, Brightness.light);
+    await pumpVikunjaApp(
+      tester,
+      overrides: [themeModeProvider.overrideWithValue(ThemeMode.dark)],
+    );
+
+    _expectReadableOn(Brightness.dark, SystemChrome.latestStyle);
+    _expectNavigationBarOf(tester, Brightness.dark, SystemChrome.latestStyle);
   }, variant: _android);
 
   testWidgets('an app bar still decides the status bar where it is', (

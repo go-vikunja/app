@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- values/styles.xml with the navigation bar of Android 8.1 and later. -->
+    <style name="LaunchTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/launch_background</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+    <style name="NormalTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="android:windowBackground">@color/launch_background</item>
+        <!-- Until Flutter sets the bar (lib/app/theme/system_bar_style.dart),
+             the launch background shows through it with icons for this theme.
+             A colour the theme names also keeps Android 15 and later from
+             forcing light icons after the light window background, which they
+             would keep when the app turns dark while it runs. Android 8.0
+             has no windowLightNavigationBar and keeps its black bar. -->
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightNavigationBar">true</item>
+    </style>
+</resources>

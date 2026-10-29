@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
@@ -306,6 +307,39 @@ void main() {
       device.finish(DeviceAuthResult.success);
       await tester.pumpAndSettle();
       expect(statusBarIcons(), Brightness.light);
+    });
+
+    // Flutter applies the last style again when the app returns, which
+    // below Android 11 clears dark navigation bar icons it does not name.
+    testWidgets("gives Android's navigation bar the lock screen's colour and "
+        'icons that read on it, and so does the privacy cover', (tester) async {
+      await start(tester, settings: _immediately);
+
+      await lockAgain(tester);
+      final lockColour = Theme.of(tester.element(lockScreen))
+          .colorScheme
+          .surface;
+      expect(SystemChrome.latestStyle?.systemNavigationBarColor, lockColour);
+      expect(
+        SystemChrome.latestStyle?.systemNavigationBarIconBrightness,
+        Brightness.dark,
+      );
+
+      device.finish(DeviceAuthResult.success);
+      await tester.pumpAndSettle();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      expect(privacyCover, findsOneWidget);
+      expect(
+        SystemChrome.latestStyle?.systemNavigationBarColor,
+        AppTheme.brandScheme(Brightness.light).surface,
+      );
+      expect(
+        SystemChrome.latestStyle?.systemNavigationBarIconBrightness,
+        Brightness.dark,
+      );
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump();
     });
 
     testWidgets('keeps an unsaved page below and its state', (tester) async {

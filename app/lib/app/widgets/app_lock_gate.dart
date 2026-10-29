@@ -7,7 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
-import 'package:vikunja_mobile/app/theme/status_bar_style.dart';
+import 'package:vikunja_mobile/app/theme/system_bar_style.dart';
 import 'package:vikunja_mobile/core/platform/app_backgrounding.dart';
 import 'package:vikunja_mobile/core/platform/system_back.dart';
 import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
@@ -190,7 +190,7 @@ class _LockScreen extends ConsumerWidget {
       AppLockError.unavailable => l10n.appLockUnavailable,
       null => null,
     };
-    return _StatusBarFor(
+    return _SystemBarsFor(
       background: colors.surface,
       child: Semantics(
         scopesRoute: true,
@@ -299,7 +299,7 @@ class _PrivacyCover extends StatelessWidget {
   Widget build(BuildContext context) {
     final background = AppTheme.brandScheme(Theme.of(context).brightness)
         .surface;
-    return _StatusBarFor(
+    return _SystemBarsFor(
       background: background,
       child: ColoredBox(
         color: background,
@@ -316,9 +316,12 @@ class _PrivacyCover extends StatelessWidget {
   }
 }
 
-/// Status bar icons that read on [background]; without them the icons
-/// follow the page below, whose app bar may be dark on a light lock screen.
-class _StatusBarFor extends StatelessWidget {
+/// System bar icons that read on [background], which fills the window;
+/// without them the status bar follows the page below, whose app bar may be
+/// dark on a light lock screen, and Flutter applies a style without
+/// navigation bar icons again when the app returns, which below Android 11
+/// clears dark ones.
+class _SystemBarsFor extends StatelessWidget {
   const new({required this.background, required this.child});
 
   final Color background;
@@ -326,7 +329,7 @@ class _StatusBarFor extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
-    value: statusBarStyleOn(background),
+    value: systemBarStyleOn(background, navigationBar: background),
     child: child,
   );
 }
