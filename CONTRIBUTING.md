@@ -6,13 +6,15 @@ Thank you for helping. Rurana is free software under the AGPL-3.0-or-later with 
 
 Open an issue for a bug, with the app version, the platform, the Vikunja server version and the steps that show it, or for an idea before you build it. Larger changes are recorded in [docs/decisions.md](docs/decisions.md), so it helps to agree on the approach first.
 
-Report a security problem privately, through the repository's private vulnerability reporting, not in a public issue. The [threat model](docs/threat-model.md) explains what the app protects.
+Report a security problem privately, in a confidential issue on GitLab, not in a public one. The [threat model](docs/threat-model.md) explains what the app protects.
 
-## Pull requests
+## Merge requests
 
-- One topic per pull request, with tests for what changes.
+The repository is on GitLab: open a merge request against `main`, from a branch of your fork or, with access, of the project.
+
+- One topic per merge request, with tests for what changes.
 - Every commit is signed off ([Developer Certificate of Origin](#developer-certificate-of-origin)).
-- The checks of CI pass. The [README](README.md#common-commands) has every command; the usual ones, from the repository root:
+- The pipeline of the merge request passes: `checks`, `editor`, `contract`, `android`, `osv` and `dco` ([D73](docs/decisions.md#d73-gitlab-ci-from-scripts-that-run-the-same-locally-images-and-downloads-pinned-the-version-from-the-release-tag-release-signing-from-protected-ci-variables-the-source-link-from-the-build-a-gitlab-release-with-the-apk-its-checksums-and-the-desugar_jdk_libs-source)). Each job runs a script of `tool/ci/` that runs the same way on your machine (`tool/ci/checks.sh`, `tool/ci/test.sh` and so on). A fork's merge request runs in the fork with the fork's settings until a maintainer runs its pipeline in the project. The [README](README.md#common-commands) has every command; the usual ones, from the repository root:
 
   ```sh
   tool/check_format.sh                  # --fix formats in place
@@ -45,7 +47,7 @@ Other languages come later through a translation platform (roadmap step 36f).
 
 ## Name and logo
 
-The name "Rurana" and the llama logo are not under the AGPL ([NOTICE.md](NOTICE.md#name-and-logo)). Their files may be passed on unmodified only as part of a copy of this repository or its history, or of an unmodified build published by Benedikt Lesch. Pull requests that change the logo files are not accepted. A fork that distributes an app built from modified source must use its own name and logo.
+The name "Rurana" and the llama logo are not under the AGPL ([NOTICE.md](NOTICE.md#name-and-logo)). Their files may be passed on unmodified only as part of a copy of this repository or its history, or of an unmodified build published by Benedikt Lesch. Merge requests that change the logo files are not accepted. A fork that distributes an app built from modified source must use its own name and logo.
 
 ## Style
 
@@ -61,7 +63,7 @@ Sign off every commit with `git commit -s`. Git then adds a line with the name a
 Signed-off-by: Your Name <you@example.org>
 ```
 
-The name and email must be those of the commit's author. Merge commits need it too, because a merge can bring changes of its own: merge with `git merge --signoff`, or rebase onto the target branch instead of merging it in (GitHub's "Update branch" button makes a merge without a sign-off). A check in CI fails a pull request with a commit that is not signed off. To sign off commits you have already made, run `git rebase --signoff <base>` (for example `git rebase --signoff origin/main`; it also replaces merges by rebased commits) and push with `--force-with-lease`.
+The name and email must be those of the commit's author. Merge commits need it too, because a merge can bring changes of its own: merge with `git merge --signoff`, or rebase onto the target branch instead of merging it in. The job `dco` fails a merge request with a commit that is not signed off. It checks every commit from where your branch leaves the target branch to its head, with the target branch's current copy of `tool/check_dco.py`, not your branch's: a merge request cannot change the check that judges it. A change to the check, to `tool/ci/dco.sh` or to `.gitlab-ci.yml` shows in the merge request's diff for the reviewer. To sign off commits you have already made, run `git rebase --signoff <base>` (for example `git rebase --signoff origin/main`; it also replaces merges by rebased commits) and push with `--force-with-lease`.
 
 With the sign-off you certify the Developer Certificate of Origin 1.1:
 

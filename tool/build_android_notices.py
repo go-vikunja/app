@@ -6,6 +6,7 @@ app shows them on its licence page on Android.
   python3 -I tool/build_android_notices.py              write the file
   python3 -I tool/build_android_notices.py --check      fail when it is stale
   python3 -I tool/build_android_notices.py --refresh-cronet
+  python3 -I tool/build_android_notices.py --require-offer-contact
   python3 -I tool/build_android_notices.py --self-test
 
 The libraries are the releaseRuntimeClasspath of app/android/app/gradle.lockfile
@@ -26,6 +27,11 @@ cronet-embedded AAR in the Gradle cache, and writes the file. The other modes
 read only that copy, so they need neither Gradle nor the network, and fail
 when it does not belong to the locked Cronet version. CRONET_SUPPLEMENT adds
 what the native library links statically but that file does not name.
+
+The written offer for desugar_jdk_libs' source names the upstream commit from
+tool/android_notices/desugar_jdk_libs.source and WRITTEN_OFFER_CONTACT;
+--require-offer-contact fails while that contact is empty, which the release
+job checks (D73).
 """
 import glob
 import hashlib
@@ -103,21 +109,28 @@ ARTIFACTS = {
 }
 
 # Object code under the GPL-2.0 comes with its source code or a written offer
-# for it (section 3).
+# for it (section 3). Each note names the upstream commit from its manifest.
 SOURCE_NOTES = {
     'com.android.tools:desugar_jdk_libs': """\
 desugar_jdk_libs {version} is code from OpenJDK under the GNU General Public
 License, version 2, with the Classpath exception, compiled into the app. Its
-source code is published at https://github.com/google/desugar_jdk_libs
-(release {version}).
+source code is published at {repository}
+at commit {commit} (upstream has no
+tag for {version}), and a copy is attached to every release of this app.
 
 Written offer: for at least three years after he last distributes this
 version of the app, Benedikt Lesch gives anyone who asks a complete
 machine-readable copy of the corresponding source code of desugar_jdk_libs
 {version}, on a medium customarily used for software interchange, for a
 charge no more than the cost of physically performing that distribution.
-Ask through the contact given where the app's source code is published.""",
+{request}""",
 }
+SOURCE_MANIFESTS = {
+    'com.android.tools:desugar_jdk_libs': 'desugar_jdk_libs.source',
+}
+# How to ask for the source under the written offer. The owner sets it before
+# the first release; the release job fails while it is empty.
+WRITTEN_OFFER_CONTACT = ''
 
 DESUGARING = re.compile(r'^\s*coreLibraryDesugaring\("([^":]+):([^":]+):([^":]+)"\)', re.MULTILINE)
 # Cronet's LICENSE: Chromium's licence, then each component's under its name
@@ -174,6 +187,35 @@ def fenced(names, text, source):
     if re.search(r'^```', text, re.MULTILINE):
         raise NoticeError(f'{source} has a line starting with ```')
     return f'{names}\n\n```text\n{text}\n```'
+
+
+def offer_request(contact):
+    if contact:
+        return f'Ask Benedikt Lesch at {contact}.'
+    return "Ask through the contact given where the app's source code is published."
+
+
+def parse_source_manifest(text, source):
+    manifest = dict(line.partition('=')[::2] for line in text.splitlines() if '=' in line)
+    missing = [key for key in ('version', 'repository', 'commit') if not manifest.get(key)]
+    if missing:
+        raise NoticeError(f'{source} lacks {", ".join(missing)}')
+    return manifest
+
+
+def source_note(artifact, version, sources, contact):
+    template = SOURCE_NOTES.get(artifact)
+    if template is None:
+        return None
+    source = (sources or {}).get(artifact)
+    if source is None:
+        raise NoticeError(f'{artifact} has a source note but no manifest in SOURCE_MANIFESTS')
+    if source['version'] != version:
+        raise NoticeError(f'the source manifest of {artifact} is for {source["version"]}, the build has {version}: '
+                          f'record the upstream commit of {version} in tool/android_notices/'
+                          f'{SOURCE_MANIFESTS[artifact]}')
+    return template.format(version=version, repository=source['repository'], commit=source['commit'],
+                           request=offer_request(contact))
 
 
 def cronet_components(licence):
@@ -250,7 +292,7 @@ def bundled_components(owner, licence, texts, supplement):
     return section_items, blocks
 
 
-def render(libraries, texts, cronet_licence, supplement=None):
+def render(libraries, texts, cronet_licence, supplement=None, sources=None, contact=''):
     grouped = {key: [] for key in LICENCES}
     for group, name, version in sorted(set(libraries)):
         grouped[licence_of(group, name)].append((group, name, version))
@@ -266,9 +308,9 @@ def render(libraries, texts, cronet_licence, supplement=None):
             continue
         sections.append(fenced('\n'.join(names), texts[key].replace('\r\n', '\n').strip('\n'), file))
         for group, name, version in entries:
-            note = SOURCE_NOTES.get(f'{group}:{name}')
+            note = source_note(f'{group}:{name}', version, sources, contact)
             if note:
-                sections.append(fenced(f'- {group}:{name} {version} (source code offer)', note.format(version=version),
+                sections.append(fenced(f'- {group}:{name} {version} (source code offer)', note,
                                        f'the source note of {group}:{name}'))
     if component_blocks:
         sections.append(f'The other projects in {cronet[0]} whose licences are not above, as the LICENSE file '
@@ -361,10 +403,15 @@ def released_libraries():
     return libraries
 
 
+def read_sources():
+    return {artifact: parse_source_manifest(read(os.path.join(TEXTS, file)), file)
+            for artifact, file in SOURCE_MANIFESTS.items()}
+
+
 def build():
     texts = {key: read(os.path.join(TEXTS, file)) for key, (_, file) in LICENCES.items()}
     supplement = {component: read(os.path.join(TEXTS, file)) for component, file in CRONET_SUPPLEMENT.items()}
-    return render(released_libraries(), texts, read_cronet(), supplement)
+    return render(released_libraries(), texts, read_cronet(), supplement, read_sources(), WRITTEN_OFFER_CONTACT)
 
 
 def fake_aar(entries):
@@ -425,7 +472,11 @@ def self_test():
         return {'library': library, 'licence_sha256': hashlib.sha256(text.encode('utf-8')).hexdigest()}, text
 
     cronet = stored(licence)
-    output = render(libraries + desugaring, texts, cronet)
+    commit = '50d9c1fb3e85fa4c00161525a45484f712c1f003'
+    sources = {'com.android.tools:desugar_jdk_libs': parse_source_manifest(
+        f'version=2.1.4\nrepository=https://github.com/google/desugar_jdk_libs\ncommit={commit}\nnote=a=b\n',
+        'manifest')}
+    output = render(libraries + desugaring, texts, cronet, sources=sources)
     assert '- androidx.core:core 1.18.0 (Apache-2.0)\n' \
            '- org.jetbrains.kotlin:kotlin-stdlib 2.4.0 (Apache-2.0)\n' \
            '- `Abseil` (Apache-2.0) in cronet-embedded 143.7445.0\n\n```text\napache text\n```' in output, output
@@ -454,7 +505,7 @@ def self_test():
     # What the native library links but its LICENSE does not name.
     supplement = {'libc++': 'llvm text', 'libc++abi': 'llvm text', 'Rust standard library': texts['apache'],
                   'zlib': 'zlib text of the supplement'}
-    supplemented = render(libraries + desugaring, texts, cronet, supplement)
+    supplemented = render(libraries + desugaring, texts, cronet, supplement, sources)
     assert '- `libc++` in cronet-embedded 143.7445.0\n- `libc++abi` in cronet-embedded 143.7445.0\n\n' \
            '```text\nllvm text\n```' in supplemented, supplemented
     assert '- `Abseil` (Apache-2.0) in cronet-embedded 143.7445.0\n' \
@@ -470,11 +521,24 @@ def self_test():
     offer = output.index('- com.android.tools:desugar_jdk_libs 2.1.4 (source code offer)\n\n```text\n'
                          'desugar_jdk_libs 2.1.4 is code from OpenJDK')
     assert gpl < offer < output.index('The other projects'), output
-    assert 'https://github.com/google/desugar_jdk_libs\n(release 2.1.4)' in output, output
+    assert f'published at https://github.com/google/desugar_jdk_libs\nat commit {commit} (upstream has no\n' \
+           'tag for 2.1.4), and a copy is attached to every release of this app.' in output, output
     assert 'Written offer: for at least three years' in output, output
+    assert "distribution.\nAsk through the contact given where the app's source code is published.\n```" in output
+    with_contact = render(libraries + desugaring, texts, cronet, sources=sources, contact='rurana@example.org')
+    assert 'distribution.\nAsk Benedikt Lesch at rurana@example.org.\n```' in with_contact, with_contact
+    assert with_contact.replace('Ask Benedikt Lesch at rurana@example.org.',
+                                "Ask through the contact given where the app's source code is published.") == output
+    assert sources['com.android.tools:desugar_jdk_libs']['note'] == 'a=b'
+    other_version = {key: dict(value, version='2.1.3') for key, value in sources.items()}
+    refused(lambda: render(libraries + desugaring, texts, cronet, sources=other_version),
+            'a source manifest of another version')
+    refused(lambda: render(libraries + desugaring, texts, cronet), 'a source note without a manifest')
+    refused(lambda: parse_source_manifest('version=2.1.4\nrepository=https://example.org\n', 'manifest'),
+            'a source manifest without a commit')
 
     without_cronet = [library for library in libraries if library[0] != CRONET_GROUP]
-    plain = render(without_cronet, texts, None, supplement)
+    plain = render(without_cronet, texts, None, supplement, sources)
     assert 'org.chromium.net' not in plain and ' in cronet-embedded' not in plain, plain
     for group, name in [('com.example', 'library'), ('androidx.work', 'work-external-gson'),
                         ('com.android.tools', 'r8'), ('com.google.android.gms', 'play-services-cronet'),
@@ -525,7 +589,7 @@ def self_test():
             assert stored_licence == licence, stored_licence
             assert source['library'] == 'org.chromium.net:cronet-embedded:143.7445.0', source
             assert source['licence'] == folder + 'LICENSE' and source['build'] == '143.0.7445.0', source
-            assert render(libraries + desugaring, texts, (source, stored_licence)) == output
+            assert render(libraries + desugaring, texts, (source, stored_licence), sources=sources) == output
             other = dict(published, **{folder + CRONET_CLASSES: b'classes of another build'})
             refused(lambda: refresh_cronet(fetch=other.__getitem__, cache=cache, directory=directory),
                     'a build folder whose classes differ from the AAR')
@@ -540,6 +604,14 @@ def main():
     args = sys.argv[1:]
     if args == ['--self-test']:
         self_test()
+        return
+    if args == ['--require-offer-contact']:
+        if not WRITTEN_OFFER_CONTACT:
+            print('error: WRITTEN_OFFER_CONTACT in tool/build_android_notices.py is empty. The written offer for '
+                  "desugar_jdk_libs' source needs a contact before a release (D73): set it, then run this "
+                  'script to write app/assets/legal/android.md again', file=sys.stderr)
+            sys.exit(1)
+        print('OK: the written offer names a contact.')
         return
     if args not in ([], ['--check'], ['--refresh-cronet']):
         print(__doc__, file=sys.stderr)

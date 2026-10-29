@@ -1,0 +1,5 @@
+version=2.1.4
+repository=https://github.com/google/desugar_jdk_libs
+commit=50d9c1fb3e85fa4c00161525a45484f712c1f003
+tree=e324fc59e953fd7354137e63e446745b03d9adc2
+note=Upstream has no 2.1.4 tag; this commit sets VERSION_JDK11.txt to 2.1.4 (2024-12-18); Maven releaseTime 2024-12-20.

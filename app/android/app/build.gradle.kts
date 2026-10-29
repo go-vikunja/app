@@ -1,8 +1,45 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Release signing (D73): all four RURANA_SIGNING_* variables (the release
+// job sets them for each build), else all four keys of android/key.properties
+// (a local release build), else the debug key. Never committed.
+val releaseSigning: Map<String, String>? = run {
+    val variables = linkedMapOf(
+        "storeFile" to "RURANA_SIGNING_STORE_FILE",
+        "storePassword" to "RURANA_SIGNING_STORE_PASSWORD",
+        "keyAlias" to "RURANA_SIGNING_KEY_ALIAS",
+        "keyPassword" to "RURANA_SIGNING_KEY_PASSWORD",
+    )
+    val fromEnvironment = variables.mapValues { (_, name) ->
+        providers.environmentVariable(name).orNull?.takeIf(String::isNotEmpty)
+    }
+    val keyProperties = rootProject.file("key.properties")
+    when {
+        fromEnvironment.values.any { it != null } -> {
+            val missing = variables.filterKeys { fromEnvironment[it] == null }.values
+            if (missing.isNotEmpty()) {
+                throw GradleException("Release signing needs all four RURANA_SIGNING_* variables; missing: ${missing.joinToString()}")
+            }
+            fromEnvironment.mapValues { it.value!! }
+        }
+        keyProperties.isFile -> {
+            val properties = Properties().apply { keyProperties.inputStream().use { load(it) } }
+            val values = variables.keys.associateWith { properties.getProperty(it)?.takeIf(String::isNotEmpty) }
+            val missing = values.filterValues { it == null }.keys
+            if (missing.isNotEmpty()) {
+                throw GradleException("$keyProperties needs storeFile, storePassword, keyAlias and keyPassword; missing: ${missing.joinToString()}")
+            }
+            values.mapValues { it.value!! }
+        }
+        else -> null
+    }
 }
 
 android {
@@ -35,12 +72,34 @@ android {
         compose = true
     }
 
+    signingConfigs {
+        if (releaseSigning != null) {
+            create("release") {
+                // A relative path is relative to android/, like key.properties.
+                storeFile = rootProject.file(releaseSigning.getValue("storeFile"))
+                storePassword = releaseSigning.getValue("storePassword")
+                keyAlias = releaseSigning.getValue("keyAlias")
+                keyPassword = releaseSigning.getValue("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             proguardFiles("proguard-rules.pro")
+        }
+    }
+}
+
+// Flutter runs Gradle with -q, which shows quiet messages only.
+if (releaseSigning == null) {
+    tasks.matching { it.name == "packageRelease" || it.name == "signReleaseBundle" }.configureEach {
+        doFirst {
+            logger.quiet(
+                "warning: this release build is signed with the debug key: no RURANA_SIGNING_* " +
+                    "variables and no android/key.properties (docs/releasing.md)",
+            )
         }
     }
 }

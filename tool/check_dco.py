@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fails when a commit of a pull request is not signed off by its author.
+"""Fails when a commit of a merge request is not signed off by its author.
 
   python3 -I tool/check_dco.py [--repository PATH] BASE HEAD
   python3 -I tool/check_dco.py --self-test
@@ -10,8 +10,8 @@ with the commit's author name and email (letter case aside), as
 `git commit -s` and `git merge --signoff` write it. That line certifies the
 Developer Certificate of Origin in CONTRIBUTING.md. History before BASE is
 not checked. The repository is the one this script is in unless --repository
-names another, so that CI can run the base commit's copy of the script over
-a pull request. --self-test runs the check over commits made in a temporary
+names another, so that CI can run the target branch's copy of the script over
+a merge request. --self-test runs the check over commits made in a temporary
 repository.
 """
 import os
@@ -124,7 +124,7 @@ def main(arguments):
         for problem in problems:
             print(f'  {problem}')
         print('Sign off with `git commit -s`, and merges with `git merge --signoff`. To sign off the commits\n'
-              f'of a pull request, run `git rebase --signoff {base[:12]}` (it also replaces merges by\n'
+              f'of a merge request, run `git rebase --signoff {base[:12]}` (it also replaces merges by\n'
               'rebased commits) and push with --force-with-lease. CONTRIBUTING.md has the Developer\n'
               'Certificate of Origin that the sign-off certifies.')
         return 1

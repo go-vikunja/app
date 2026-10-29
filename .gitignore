@@ -7,7 +7,13 @@ coverage/
 .env
 *.keystore
 *.jks
+*.p12
+*.pfx
+*.pepk
+*.keystore.b64
 key.properties
+# The CI jobs' Flutter SDK and caches (tool/ci/lib.sh)
+.cache/
 # tool/gen_tls_test_certs.sh output for the Docker `tls` profile
 test_servers/tls/generated/
 

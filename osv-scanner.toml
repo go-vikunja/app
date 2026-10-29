@@ -1,5 +1,5 @@
-# Advisories accepted after review, read by .github/workflows/osv.yaml. Each
-# entry expires, so the weekly scan fails again and the entry gets reviewed.
+# Advisories accepted after review, read by tool/ci/osv.sh (GitLab job osv).
+# Each entry expires, so the weekly scan fails again and the entry gets reviewed.
 
 [[IgnoredVulns]]
 id = "GHSA-735f-pc8j-v9w8"

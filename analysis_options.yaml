@@ -6,6 +6,7 @@ analyzer:
     - "**/*.freezed.dart"
     - "**/l10n/generated/**"
     - "**/build/**"
+    - ".cache/**"
   language:
     strict-casts: true
     strict-inference: true

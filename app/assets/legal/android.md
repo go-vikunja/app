@@ -783,7 +783,8 @@ exception as provided by Oracle in the LICENSE file that accompanied this code."
 desugar_jdk_libs 2.1.4 is code from OpenJDK under the GNU General Public
 License, version 2, with the Classpath exception, compiled into the app. Its
 source code is published at https://github.com/google/desugar_jdk_libs
-(release 2.1.4).
+at commit 50d9c1fb3e85fa4c00161525a45484f712c1f003 (upstream has no
+tag for 2.1.4), and a copy is attached to every release of this app.
 
 Written offer: for at least three years after he last distributes this
 version of the app, Benedikt Lesch gives anyone who asks a complete

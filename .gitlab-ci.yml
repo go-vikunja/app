@@ -1,0 +1,182 @@
+# GitLab CI (D73). Each job runs a script in tool/ci/ that runs the same way
+# on a developer's Mac; tool/ci/test_gitlab_ci.py checks this file. The
+# release job's variables and project settings: docs/releasing.md.
+
+workflow:
+  auto_cancel:
+    on_new_commit: interruptible
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    # A branch with an open merge request runs as the merge request only.
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && $CI_PIPELINE_SOURCE == "push"
+      when: never
+    # tool/ci/release_version.py fails loudly on a malformed v* tag.
+    - if: $CI_COMMIT_TAG =~ /^v/
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+stages: [test, release]
+
+default:
+  interruptible: true
+
+# The weekly schedule runs the vulnerability scan only.
+.code_rules: &code_rules
+  - if: $CI_PIPELINE_SOURCE == "schedule"
+    when: never
+  - when: on_success
+
+# GitLab caches only paths inside the project, hence .cache/ (gitignored and
+# excluded from the analyzer).
+.flutter_cache: &flutter_cache
+  key:
+    files: [tool/ci/pins.sh]
+    prefix: flutter
+  paths: [.cache/flutter/]
+.pub_cache: &pub_cache
+  key:
+    files: [pubspec.lock]
+    prefix: pub
+  paths: [.cache/pub/]
+.gradle_cache: &gradle_cache
+  key:
+    files: [app/android/app/gradle.lockfile, app/android/gradle/wrapper/gradle-wrapper.properties]
+    prefix: gradle
+  paths: [.cache/gradle/caches/, .cache/gradle/wrapper/]
+
+# Ubuntu 24.04 with OpenJDK 21, the Android SDK (platform and build-tools 36),
+# git, curl, jq, python3, ruby and xz. Flutter comes from tool/ci/lib.sh.
+.linux:
+  stage: test
+  image: ghcr.io/cirruslabs/android-sdk:36@sha256:f9b3ea9ed2b5fc9522adae82c7b4622ab7aa54207ef532c8e615a347dca08f31
+  needs: []
+  variables:
+    PUB_CACHE: $CI_PROJECT_DIR/.cache/pub
+    GRADLE_USER_HOME: $CI_PROJECT_DIR/.cache/gradle
+
+# Checks and tests in one job: one Flutter setup fewer per pipeline. The
+# timeout is an estimate for a 2-vCPU runner; set it from real pipelines.
+checks:
+  extends: .linux
+  rules: *code_rules
+  timeout: 90m
+  cache: [*flutter_cache, *pub_cache]
+  script:
+    - tool/ci/checks.sh
+    - tool/ci/test.sh
+  after_script:
+    - tool/ci/outdated.sh
+
+editor:
+  stage: test
+  image: node:26.10.0-trixie-slim@sha256:930557a230abacbc3f4fd9b8648abf8f4bee1e17cb72195dcdfb2f709bc85b33
+  needs: []
+  rules: *code_rules
+  timeout: 10m
+  variables:
+    npm_config_cache: $CI_PROJECT_DIR/.cache/npm
+  cache:
+    - key:
+        files: [app/editor/package-lock.json]
+        prefix: npm
+      paths: [.cache/npm/]
+  script:
+    - tool/ci/editor.sh
+
+contract:
+  extends: .linux
+  rules: *code_rules
+  timeout: 30m
+  services:
+    - name: docker:29.9.2-dind@sha256:9e79b879b177fbd72c34376a3dd3d91747da5db49e1f560f76aea59561471977
+      alias: docker
+      command: ["--registry-mirror=https://mirror.gcr.io"]
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "/certs/client"
+    RURANA_TEST_PUBLISH_ADDRESS: "0.0.0.0"
+  cache: [*flutter_cache, *pub_cache]
+  script:
+    - tool/ci/contract.sh
+
+android:
+  extends: .linux
+  rules: *code_rules
+  timeout: 45m
+  cache: [*flutter_cache, *pub_cache, *gradle_cache]
+  script:
+    - tool/ci/android.sh
+
+# Judged by the target branch's current tool/check_dco.py; changes to
+# tool/ci/dco.sh or to this file show in the merge request's diff. HEAD is the
+# source branch's, not the merge commit of a merged results pipeline.
+dco:
+  extends: .linux
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  timeout: 5m
+  variables:
+    GIT_DEPTH: "0"
+  cache: []
+  script:
+    - tool/ci/dco.sh "$CI_MERGE_REQUEST_DIFF_BASE_SHA" "${CI_MERGE_REQUEST_SOURCE_BRANCH_SHA:-$CI_COMMIT_SHA}"
+
+# Every pipeline, the weekly schedule included: advisories appear after a
+# lockfile last changed.
+osv:
+  extends: .linux
+  timeout: 10m
+  interruptible: false
+  cache: []
+  script:
+    - tool/ci/osv.sh
+
+# Only with a Mac runner registered for the project (tag macos) and
+# RURANA_MACOS_RUNNER=true; without one, pipelines stay green. Unset the
+# variable while the Mac is away: GitLab cannot tell an absent runner from a
+# busy one, so the pending job holds the pipeline open (up to a day) and then
+# fails it.
+ios:
+  stage: test
+  needs: []
+  tags: [macos]
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    # The Mac runs no sandbox: only the protected main branch and v* tags,
+    # never a merge request's code (threat model R35).
+    - if: $CI_COMMIT_REF_PROTECTED != "true"
+      when: never
+    - if: $RURANA_MACOS_RUNNER == "true"
+  timeout: 45m
+  allow_failure: false
+  cache: []
+  script:
+    - tool/ci/ios.sh
+
+# The signing variables are protected and scoped to this environment, and
+# v* tags are protected (docs/releasing.md).
+release:
+  extends: .linux
+  stage: release
+  rules:
+    - if: $CI_COMMIT_TAG =~ /^v/
+  needs: [checks, editor, contract, android, osv]
+  timeout: 90m
+  interruptible: false
+  resource_group: release
+  environment:
+    name: release
+  # Flutter from its checksum-verified download and packages from their
+  # sources, never from a cache another pipeline wrote.
+  cache: []
+  script:
+    - tool/ci/release.sh --tag "$CI_COMMIT_TAG"
+  # The bundle for the manual Play upload; the APK is in the release.
+  artifacts:
+    paths: [build/release/app-release.aab, build/release/SHA256SUMS]
+    access: developer
+    expire_in: 30 days

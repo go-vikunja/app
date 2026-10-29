@@ -108,7 +108,7 @@ The project owner answered Q1–Q15 on 2026-10-09 and took up the deferred Q3 on
 **Open**, needed by step 36f.
 
 - **Asked:** which platform the community translates on, and when it is connected.
-- **Options:** Hosted Weblate (Libre plan; the repository prepared in 36f, the project connected in step 37 once the repository is public); Crowdin's open-source plan (commits as a bot, proprietary); self-hosted Weblate; no platform, pull requests only.
+- **Options:** Hosted Weblate (Libre plan; the repository prepared in 36f, the project connected in step 37 once the repository is public); Crowdin's open-source plan (commits as a bot, proprietary); self-hosted Weblate; no platform, merge requests only.
 - **Recommendation:** Hosted Weblate. It is libre, keeps each translator's authorship in git, offers contributor agreements, checks ICU messages and also handles the Android and Apple string formats of the widgets and permission texts.
 
 ## Q17: Licence path for community translations
@@ -123,8 +123,8 @@ The project owner answered Q1–Q15 on 2026-10-09 and took up the deferred Q3 on
 
 **Open**, needed by step 36f.
 
-- **Asked:** whether `app/lib/l10n/generated/` (about 210 KB per language) stays committed. Today every commit that changes only an ARB file fails CI's check for stale generated code, so every translation pull request would fail.
-- **Options:** stop committing it (gen-l10n runs on `pub get`, on every build and in every CI job); keep committing it and regenerate on every translation pull request; keep committing it and let a CI bot push the regenerated files to the platform's branch.
+- **Asked:** whether `app/lib/l10n/generated/` (about 210 KB per language) stays committed. Today every commit that changes only an ARB file fails CI's check for stale generated code, so every translation merge request would fail.
+- **Options:** stop committing it (gen-l10n runs on `pub get`, on every build and in every CI job); keep committing it and regenerate on every translation merge request; keep committing it and let a CI bot push the regenerated files to the platform's branch.
 - **Recommendation:** stop committing it.
 
 ## Q19: Device setup for the manual TalkBack pass
@@ -140,11 +140,12 @@ The project owner answered Q1–Q15 on 2026-10-09 and took up the deferred Q3 on
 
 ## Q20: Signing keys and the APK beside the Play build
 
-**Open**, needed by step 37d (37a reads the keys from CI variables whichever way this is decided).
+**Open**, needed before the first release tag (step 37d). Since step 37a the release job reads the keys from CI variables whichever way this is decided.
 
 - **Asked:** which key signs the APK in each GitLab release, and how it relates to the build Google Play delivers ([D72](decisions.md#d72-first-release-android-and-ios-together-on-google-play-with-an-apk-in-every-gitlab-release-the-repository-on-gitlab-version-100-after-a-beta)). Android installs an update only when its signature matches the installed app's.
 - **Options:** one app signing key that only the owner holds, uploaded to Play App Signing when the app is created, so Play's build and the repository's APK share one signature and update each other (CI signs with it from protected variables, or the owner signs the APK on their Mac); Play's own app signing key and a separate key for the APK under the same application id, so a phone keeps the channel it was installed from and changing it needs an uninstall; the APK under its own application id, installable beside the Play build.
 - **Recommendation:** one app signing key held by the owner and uploaded to Play App Signing, with a separate upload key for the Play bundle; the APK signed with the app signing key on the owner's Mac or a protected runner. Only the owner can create the keys and the Play app.
+- **Since step 37a** ([D73](decisions.md#d73-gitlab-ci-from-scripts-that-run-the-same-locally-images-and-downloads-pinned-the-version-from-the-release-tag-release-signing-from-protected-ci-variables-the-source-link-from-the-build-a-gitlab-release-with-the-apk-its-checksums-and-the-desugar_jdk_libs-source)): the release job signs the bundle with the `RURANA_UPLOAD_*` variables and the APK with the `RURANA_APK_*` variables, or with the upload key and a warning when those are not set; the variables are protected and scoped to the environment `release` ([releasing.md](releasing.md)). Option A, the main session's default, puts the app signing key into the APK set; the other options use the same variables. The application-id option would need a second application id in the build, which 37a does not have.
 
 ## Q21: A server for the store reviewers
 
@@ -156,8 +157,9 @@ The project owner answered Q1–Q15 on 2026-10-09 and took up the deferred Q3 on
 
 ## Q22: CI runners on GitLab
 
-**Open**, needed by step 37a.
+**Open**, needed before CI runs regularly on GitLab and before the first release tag (step 37d); step 37a works with every option.
 
 - **Asked:** where the pipelines run once CI moves to GitLab ([D72](decisions.md#d72-first-release-android-and-ios-together-on-google-play-with-an-apk-in-every-gitlab-release-the-repository-on-gitlab-version-100-after-a-beta)). A full pipeline with the contract tests takes about 25 to 30 minutes, GitLab.com's free tier has about 400 compute minutes a month, and iOS builds need a macOS runner, which GitLab.com offers only on paid tiers.
 - **Options:** GitLab's shared Linux runners with the GitLab for Open Source programme (free once the repository is public and under an OSI licence); a self-hosted runner on the owner's Mac for everything; both: shared Linux runners for the checks and the Android builds, the owner's Mac as a runner (or by hand) for the iOS builds and TestFlight.
 - **Recommendation:** both. Until the repository is public, the pipelines can run on the owner's Mac runner or by hand with the same scripts.
+- **Since step 37a** ([D73](decisions.md#d73-gitlab-ci-from-scripts-that-run-the-same-locally-images-and-downloads-pinned-the-version-from-the-release-tag-release-signing-from-protected-ci-variables-the-source-link-from-the-build-a-gitlab-release-with-the-apk-its-checksums-and-the-desugar_jdk_libs-source)): the jobs run on GitLab's small shared Linux runners with Gradle's memory capped; the job `ios` runs only on a project runner tagged `macos` while the variable `RURANA_MACOS_RUNNER` is `true`. A full pipeline is now estimated at about 100–150 compute minutes on the small shared runners, so the free 400 minutes a month cover only 3 or 4 pipelines: CI can run regularly only with GitLab for Open Source or with the owner's Mac as a runner for the heavy jobs, which 37a does not set up.
