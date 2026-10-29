@@ -717,7 +717,25 @@ void main() {
       expect(
         await failureOf(
           tester,
+          const DomainError(412, code: 3016),
+          title: 'Reports',
+          action: out,
+        ),
+        en.projectMoveArchived,
+      );
+      expect(
+        await failureOf(
+          tester,
           const ServerFailure(500),
+          title: 'Reports',
+          action: out,
+        ),
+        en.actionFailureServerError,
+      );
+      expect(
+        await failureOf(
+          tester,
+          const UnexpectedResponse(502),
           title: 'Reports',
           action: out,
         ),
@@ -738,6 +756,24 @@ void main() {
           action: de.projectMoveOut('Work'),
         ),
         de.projectMoveAdminOnly,
+      );
+      expect(
+        await failureOf(
+          tester,
+          const DomainError(412, code: 3016),
+          title: 'Admin',
+          action: de.projectMoveOut('Work'),
+        ),
+        de.projectMoveArchived,
+      );
+      expect(
+        await failureOf(
+          tester,
+          const ServerFailure(500),
+          title: 'Admin',
+          action: de.projectMoveOut('Work'),
+        ),
+        de.actionFailureServerError,
       );
     });
   });

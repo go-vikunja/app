@@ -97,9 +97,14 @@ class TimelineHeader extends StatelessWidget {
     }
 
     final width = days.dayWidth;
-    final weekdays = widthOf('Wed', weekdayStyle) > width - 4
+    final shortWeekdays = intl.DateFormat.E(locale);
+    final widestWeekday = [
+      for (var day = 1; day <= 7; day++)
+        widthOf(shortWeekdays.format(DateTime(2024, 1, day)), weekdayStyle),
+    ].reduce(math.max);
+    final weekdays = widestWeekday > width - 4
         ? intl.DateFormat.EEEEE(locale)
-        : intl.DateFormat.E(locale);
+        : shortWeekdays;
     // Too narrow for every number: every second one, and always today's.
     final numberStep = widthOf('28', numberStyle) > width - 2 ? 2 : 1;
     final months = intl.DateFormat.yMMMM(locale);

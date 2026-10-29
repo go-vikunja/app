@@ -10,7 +10,7 @@ struct TasksWidget: Widget {
       TasksWidgetView(entry: entry)
     }
     .configurationDisplayName("Tasks")
-    .description("Open tasks of a list. Tick one to mark it done.")
+    .description("Open tasks of a list. Tick one to mark it as done.")
     .supportedFamilies([
       .systemSmall, .systemMedium, .systemLarge, .systemExtraLarge,
       .accessoryRectangular, .accessoryInline, .accessoryCircular,

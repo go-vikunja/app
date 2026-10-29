@@ -204,5 +204,11 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- The App language row shows only where the system's per-app
+             language page resolves (DeviceChannel.kt). -->
+        <intent>
+            <action android:name="android.settings.APP_LOCALE_SETTINGS"/>
+            <data android:scheme="package"/>
+        </intent>
     </queries>
 </manifest>

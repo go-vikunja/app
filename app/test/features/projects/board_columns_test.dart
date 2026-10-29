@@ -969,11 +969,18 @@ void main() {
       expect(text(const DomainError(412, code: 3008)), en.boardColumnArchived);
       expect(text(const ValidationFailed()), en.boardColumnInvalid);
       expect(text(const DomainError(412, code: 2002)), en.boardColumnInvalid);
+      expect(text(const NotFound(code: 3014)), en.projectViewGone);
+      expect(text(const NotFound(code: 3001)), en.projectGone);
       expect(
-        text(const ServerFailure(500, message: ' Oops ')),
+        text(const DomainError(400, code: 9999, message: ' Oops ')),
         en.boardColumnChangeRefused('Oops'),
       );
-      expect(text(const ServerFailure(500)), en.boardColumnChangeFailed);
+      expect(
+        text(const ServerFailure(500, message: 'Internal Server Error')),
+        en.actionFailureServerError,
+      );
+      expect(text(const ServerFailure(500)), en.actionFailureServerError);
+      expect(text(const UnexpectedResponse(502)), en.boardColumnChangeFailed);
       expect(text(StateError('x')), en.boardColumnChangeFailed);
       expect(
         text(
@@ -988,12 +995,25 @@ void main() {
       );
       expect(
         de.boardDeleteColumnBecomesDefault('Doing'),
-        '„Doing“ wird zur Standard-Spalte.',
+        '„Doing“ wird zur Standardspalte.',
       );
       expect(
         de.boardColumnAdminOnly,
-        'Nur Projekt-Admins können die Erledigt- oder Standard-Spalte '
+        'Nur Projekt-Admins können die Erledigt- oder Standardspalte '
         'festlegen.',
+      );
+    });
+
+    test('mapped server codes in German', () {
+      String text(Object error) =>
+          columnChangeFailureText(de, error, ColumnChange.rename);
+
+      expect(text(const NotFound(code: 3014)), de.projectViewGone);
+      expect(text(const NotFound(code: 3001)), de.projectGone);
+      expect(text(const ServerFailure(503)), de.actionFailureServerError);
+      expect(
+        text(const DomainError(400, code: 9999, message: 'Oops')),
+        de.boardColumnChangeRefused('Oops'),
       );
     });
   });

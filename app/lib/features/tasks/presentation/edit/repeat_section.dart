@@ -95,6 +95,7 @@ class _RepeatSectionState extends State<RepeatSection> {
                   decoration: InputDecoration(
                     labelText: l10n.repeatAmountLabel,
                     errorText: value.isValid ? null : l10n.repeatAmountInvalid,
+                    errorMaxLines: 5,
                   ),
                   onChanged: (text) => widget.onChanged(
                     (setting) =>

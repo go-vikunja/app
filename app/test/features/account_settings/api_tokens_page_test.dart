@@ -312,7 +312,7 @@ void main() {
       expect(find.byType(DatePickerDialog), findsOneWidget);
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();
-      expect(find.textContaining('Through'), findsOneWidget);
+      expect(find.textContaining('Until'), findsOneWidget);
       expect(createButton(tester).onPressed, isNotNull);
 
       harness.clock = DateTime(2026, 11, 21, 0, 10);

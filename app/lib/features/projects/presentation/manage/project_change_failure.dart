@@ -1,6 +1,7 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/project_view_repository.dart';
+import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 
 enum ProjectChange {
   create,
@@ -40,6 +41,7 @@ String projectChangeFailureText(
     ProjectChange.delete => true,
     _ => false,
   };
+  final shared = actionFailureText(l10n, error);
   return switch (error) {
     LastViewNotDeletable() => l10n.projectViewLastOne,
     // The server may have made the change before the answer was lost.
@@ -55,13 +57,18 @@ String projectChangeFailureText(
       l10n.projectMoveAdminOnly,
     Forbidden() when createsUnderParent => l10n.projectCreateForbidden,
     Forbidden() => l10n.projectChangeForbidden,
-    VikunjaFailure(code: 4024 || 4019 || 4016, :final message) =>
+    VikunjaFailure(code: 4033) => l10n.filterErrorTooComplex,
+    VikunjaFailure(code: 4024 || 4019 || 4017 || 4016, :final message) =>
       l10n.projectViewFilterInvalid(message.trim()),
+    NotFound(code: 4034) when change == ProjectChange.duplicate =>
+      l10n.projectDuplicateFileMissing,
     NotFound() when change == ProjectChange.view => l10n.projectViewGone,
     NotFound() => l10n.projectGone,
     VikunjaFailure(code: 3007) => l10n.projectIdentifierTaken,
     VikunjaFailure(code: 3012) => l10n.projectDeleteDefault,
     VikunjaFailure(code: 3013) => l10n.projectArchiveDefault,
+    VikunjaFailure(code: 3016) when change == ProjectChange.editWithParent =>
+      l10n.projectParentArchived,
     VikunjaFailure(code: 3016) => l10n.projectUnarchiveParentFirst,
     VikunjaFailure(code: 3008) when createsUnderParent =>
       l10n.projectParentArchived,
@@ -74,7 +81,8 @@ String projectChangeFailureText(
     ValidationFailed() || VikunjaFailure(code: 2002) when titleTooLong =>
       l10n.projectTitleTooLongToChange,
     ValidationFailed() ||
-    VikunjaFailure(code: 2002) => l10n.projectChangeInvalid,
+    VikunjaFailure(code: 2002 || 3005) => l10n.projectChangeInvalid,
+    _ when shared != null => shared,
     VikunjaFailure(:final message) when message.trim().isNotEmpty =>
       l10n.projectChangeRefused(message.trim()),
     _ => l10n.projectChangeFailed,
@@ -84,4 +92,5 @@ String projectChangeFailureText(
 /// Whether [error] is the server refusing a view's filter, which its form
 /// shows at the filter field.
 bool isInvalidViewFilter(Object error) =>
-    error is VikunjaFailure && const {4024, 4019, 4016}.contains(error.code);
+    error is VikunjaFailure &&
+    const {4033, 4024, 4019, 4017, 4016}.contains(error.code);

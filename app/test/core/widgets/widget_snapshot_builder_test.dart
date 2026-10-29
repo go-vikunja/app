@@ -189,7 +189,7 @@ void main() {
         afternoon.semanticsLabel,
         'This afternoon\n#2 · Inbox\nDue Today, 15:00\nPriority: High',
       );
-      expect(afternoon.doneLabel, 'Mark “This afternoon” done');
+      expect(afternoon.doneLabel, 'Mark “This afternoon” as done');
       expect(
         afternoon.link,
         'vikunja-dev.coderoftime.vikunja://widget/task/2?account=$accountId',
@@ -625,7 +625,8 @@ void main() {
       expect(quickAdd.newTaskLink, isNull);
       expect(
         quickAdd.empty?.title,
-        "There's no project to add tasks to yet. Create one on the web first.",
+        "There's no project to add tasks to yet. "
+        'Create one on the Projects tab first.',
       );
     });
   });

@@ -13,9 +13,10 @@ import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 
 final _log = Logger('LocalNotificationGateway');
 
-/// What the OS shows outside the app: the Android channel and the action
+/// What the OS shows outside the app: the Android channels and the action
 /// buttons. Resolved for the device locale when the gateway is built, so a
-/// background isolate gets them without a widget tree.
+/// background isolate gets them without a widget tree, and again when the
+/// app's language changes ([LocalNotificationGateway.updateTexts]).
 @immutable
 final class LocalNotificationTexts {
   const new({
@@ -80,7 +81,7 @@ final class LocalNotificationGateway implements NotificationGateway {
   /// Neither platform reports "never asked", so the gateway remembers it.
   static const permissionAskedKey = 'notifications.permissionAsked';
 
-  final LocalNotificationTexts _texts;
+  LocalNotificationTexts _texts;
   final PreferencesStore _preferences;
   final NotificationResponseCallback? _onResponse;
   final DidReceiveBackgroundNotificationResponseCallback? _onBackgroundResponse;
@@ -138,6 +139,10 @@ final class LocalNotificationGateway implements NotificationGateway {
       onDidReceiveNotificationResponse: _onResponse,
       onDidReceiveBackgroundNotificationResponse: _onBackgroundResponse,
     );
+    await _createChannels();
+  }
+
+  Future<void> _createChannels() async {
     await _android?.createNotificationChannel(
       AndroidNotificationChannel(
         channelId,
@@ -153,6 +158,23 @@ final class LocalNotificationGateway implements NotificationGateway {
         description: _texts.activityChannelDescription,
       ),
     );
+  }
+
+  /// For what is shown and scheduled from now on. Android renames a
+  /// channel created again under its id and keeps the user's settings for
+  /// it; iOS restarts the app when its language changes, so the categories
+  /// keep the texts they were registered with. Never throws.
+  Future<void> updateTexts(LocalNotificationTexts texts) async {
+    _texts = texts;
+    if (_initialized == null) return;
+    try {
+      await initialize();
+      await _createChannels();
+    } on Object catch (error) {
+      _log.warning(
+        'Could not rename the notification channels: ${error.runtimeType}',
+      );
+    }
   }
 
   // No `foreground` option: the actions run in the background engine, like

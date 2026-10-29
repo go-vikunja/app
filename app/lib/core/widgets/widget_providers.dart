@@ -95,8 +95,9 @@ WidgetPublishers widgetPublishers(Ref ref) => WidgetPublishers(
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back to the front, when the
 /// account's registry entry changes, when the "Show task titles in
-/// widgets" switch changes and when its snapshots go stale; a headless
-/// container publishes on request ([widgetRefresherProvider]).
+/// widgets" switch changes, when the app's language changes and when its
+/// snapshots go stale; a headless container publishes on request
+/// ([widgetRefresherProvider]).
 @Riverpod(keepAlive: true)
 WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
   final registered = ref.watch(
@@ -145,6 +146,12 @@ WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
         if (previous != null && next != null) publisher.publishQuietly();
       },
     );
+  if (!headless) {
+    ref.listen(
+      deviceAppLocalizationsProvider,
+      (_, _) => publisher.publishQuietly(),
+    );
+  }
   final lifecycle = headless
       ? null
       : AppLifecycleListener(

@@ -4,6 +4,7 @@ import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 
@@ -43,8 +44,8 @@ void main() {
   Future<void> openPage(WidgetTester tester) =>
       openEditPageWith(tester, data: data, taskId: 1, now: now, users: users);
 
-  Future<void> openPicker(WidgetTester tester) async {
-    await tapVisible(tester, find.text(en.taskEditAssign));
+  Future<void> openPicker(WidgetTester tester, [AppLocalizations? l10n]) async {
+    await tapVisible(tester, find.text((l10n ?? en).taskEditAssign));
   }
 
   Finder picker() => find.byType(AssigneePicker);
@@ -277,16 +278,66 @@ void main() {
     testWidgets("another failure shows the server's message instead", (
       tester,
     ) async {
-      users.searchFailure = const Forbidden(message: 'Forbidden');
+      users.searchFailure = const DomainError(
+        400,
+        code: 9999,
+        message: 'Something odd',
+      );
       await openPage(tester);
       await openPicker(tester);
 
       expect(
-        inPicker(find.text(en.assigneePickerFallback('Forbidden'))),
+        inPicker(find.text(en.assigneePickerFallback('Something odd'))),
         findsOneWidget,
       );
       expect(rowNames(tester), ['Carol Writer', 'Dave Known']);
     });
+
+    testWidgets('a route-absent 404 keeps its message', (tester) async {
+      users.searchFailure = const NotFound(message: 'Not Found');
+      await openPage(tester);
+      await openPicker(tester);
+
+      expect(
+        inPicker(find.text(en.assigneePickerFallback('Not Found'))),
+        findsOneWidget,
+      );
+    });
+
+    for (final l10n in [en, de]) {
+      for (final (name, failure, reason) in [
+        (
+          'no access',
+          const Forbidden(message: 'Forbidden') as VikunjaFailure,
+          l10n.assigneePickerNoAccess,
+        ),
+        (
+          'a project gone',
+          const NotFound(code: 3001, message: 'The project does not exist.'),
+          l10n.assigneePickerNoAccess,
+        ),
+        (
+          'a server error',
+          const ServerFailure(500, message: 'Internal Server Error'),
+          l10n.assigneePickerSearchFailed,
+        ),
+      ]) {
+        testWidgets('${l10n.localeName}: $name in our own words', (
+          tester,
+        ) async {
+          useLocale(tester, Locale(l10n.localeName));
+          users.searchFailure = failure;
+          await openPage(tester);
+          await openPicker(tester, l10n);
+
+          expect(
+            inPicker(find.text(l10n.assigneePickerFallback(reason))),
+            findsOneWidget,
+          );
+          expect(rowNames(tester), ['Carol Writer', 'Dave Known']);
+        });
+      }
+    }
 
     testWidgets('someone ticked stays listed when the query hides them', (
       tester,

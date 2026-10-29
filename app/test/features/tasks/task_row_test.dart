@@ -419,6 +419,19 @@ void main() {
     ]);
   });
 
+  test('labels with an umlaut sort among their base letter', () {
+    final labels = [
+      sampleLabel(id: 1, title: 'Zahlung'),
+      sampleLabel(id: 2, title: 'Ärger'),
+      sampleLabel(id: 3, title: 'apfel'),
+    ];
+    expect(rowLabels(labels).map((label) => label.title), [
+      'apfel',
+      'Ärger',
+      'Zahlung',
+    ]);
+  });
+
   test("an editor's empty paragraph is no description", () {
     expect(hasDescription(sampleTask(id: 1, title: 'a')), isFalse);
     expect(

@@ -158,10 +158,10 @@ abstract class AppLocalizations {
   /// **'Connecting…'**
   String get connectConnecting;
 
-  /// No description provided for @connectConnectingTo.
+  /// Progress text on the connect screen while the app checks the typed server address; address is the address as typed.
   ///
   /// In en, this message translates to:
-  /// **'Looking for Vikunja at {address} …'**
+  /// **'Looking for Vikunja at {address}…'**
   String connectConnectingTo(String address);
 
   /// No description provided for @connectTryDemo.
@@ -170,10 +170,10 @@ abstract class AppLocalizations {
   /// **'Try the public demo'**
   String get connectTryDemo;
 
-  /// No description provided for @failureInvalidAddressTitle.
+  /// Title of the connect failure when the typed text is not a web address the app can open.
   ///
   /// In en, this message translates to:
-  /// **'That doesn’t look like a server address'**
+  /// **'That doesn\'t look like a server address'**
   String get failureInvalidAddressTitle;
 
   /// No description provided for @failureInvalidAddressExplanation.
@@ -236,16 +236,16 @@ abstract class AppLocalizations {
   /// **'This device does not trust the certificate of {host}. It may be self-signed, issued for a different address, or expired.'**
   String failureTlsExplanation(String host);
 
-  /// No description provided for @failureTlsHandshakeExplanation.
+  /// Explanation of the connect failure when the server did not complete a secure HTTPS connection; host is the server's address. Plain http means an unencrypted address starting with http://.
   ///
   /// In en, this message translates to:
-  /// **'{host} did not complete a secure (HTTPS) connection. The address may only speak plain http, or the server’s HTTPS setup is incomplete.'**
+  /// **'{host} did not complete a secure (HTTPS) connection. The address may only speak plain http, or the server\'s HTTPS setup is incomplete.'**
   String failureTlsHandshakeExplanation(String host);
 
-  /// No description provided for @failureTlsHandshakeSuggestion.
+  /// Suggestion of the connect failure explained by failureTlsHandshakeExplanation. Keep http:// and https:// as they are; the reverse proxy is the web server in front of Vikunja.
   ///
   /// In en, this message translates to:
-  /// **'Check the port and whether the address should start with http:// instead of https://. If HTTPS should work, check the reverse proxy’s TLS configuration.'**
+  /// **'Check the port and whether the address should start with http:// instead of https://. If HTTPS should work, check the reverse proxy\'s TLS configuration.'**
   String get failureTlsHandshakeSuggestion;
 
   /// No description provided for @failureNotVikunjaTitle.
@@ -284,10 +284,10 @@ abstract class AppLocalizations {
   /// **'Try again in a few minutes. If it keeps happening, ask whoever runs the server to check on it.'**
   String get failureUnavailableSuggestion;
 
-  /// No description provided for @failureLoginProxyTitle.
+  /// Title of the connect failure when a proxy in front of the server, such as Cloudflare Access, shows its own sign-in page instead of Vikunja.
   ///
   /// In en, this message translates to:
-  /// **'Server is behind a login page'**
+  /// **'Server is behind a sign-in page'**
   String get failureLoginProxyTitle;
 
   /// No description provided for @failureLoginProxyExplanation.
@@ -422,16 +422,16 @@ abstract class AppLocalizations {
   /// **'Ask whoever runs the server to update Vikunja.'**
   String get unsupportedSuggestion;
 
-  /// No description provided for @unsupportedUnknownVersionTitle.
+  /// Title of the card on the server overview screen when the server reports a version the app cannot read.
   ///
   /// In en, this message translates to:
-  /// **'Server version not recognized'**
+  /// **'Server version not recognised'**
   String get unsupportedUnknownVersionTitle;
 
-  /// No description provided for @unsupportedUnknownVersionBody.
+  /// Body of the card on the server overview screen when the server reports a version the app cannot read; minimum is the oldest Vikunja version the app supports.
   ///
   /// In en, this message translates to:
-  /// **'Rurana needs Vikunja {minimum} or newer. This server reports a version the app does not recognize.'**
+  /// **'Rurana needs Vikunja {minimum} or newer. This server reports a version the app does not recognise.'**
   String unsupportedUnknownVersionBody(String minimum);
 
   /// No description provided for @unsupportedUnknownVersionSuggestion.
@@ -452,16 +452,16 @@ abstract class AppLocalizations {
   /// **'Browser sign-in'**
   String get signInBrowserTitle;
 
-  /// No description provided for @signInBrowserSubtitle.
+  /// Subtitle of the browser sign-in option on the server overview screen when the server names no single sign-on providers.
   ///
   /// In en, this message translates to:
-  /// **'Uses the Vikunja login page, including single sign-on.'**
+  /// **'Uses the Vikunja sign-in page, including single sign-on.'**
   String get signInBrowserSubtitle;
 
-  /// No description provided for @signInBrowserProvidersSubtitle.
+  /// Subtitle of the browser sign-in option on the server overview screen; providers is a comma-separated list of the server's single sign-on providers, by their names on the server.
   ///
   /// In en, this message translates to:
-  /// **'Uses the Vikunja login page, including {providers}.'**
+  /// **'Uses the Vikunja sign-in page, including {providers}.'**
   String signInBrowserProvidersSubtitle(String providers);
 
   /// No description provided for @featuresHeading.
@@ -584,7 +584,7 @@ abstract class AppLocalizations {
   /// **'Use a different server'**
   String get useDifferentServer;
 
-  /// No description provided for @signInWaiting.
+  /// Text of the disabled sign-in button, next to a spinner, while the server's sign-in page is open in the browser.
   ///
   /// In en, this message translates to:
   /// **'Waiting for sign-in…'**
@@ -668,10 +668,10 @@ abstract class AppLocalizations {
   /// **'Sign-in discarded'**
   String get signInDiscardedTitle;
 
-  /// No description provided for @signInDiscardedExplanation.
+  /// Explanation of the sign-in failure when the browser returned a sign-in that does not match the attempt the app started, which the app rejects as a security check.
   ///
   /// In en, this message translates to:
-  /// **'The browser returned a sign-in that doesn’t belong to this attempt, so the app discarded it to protect your account.'**
+  /// **'The browser returned a sign-in that doesn\'t belong to this attempt, so the app discarded it to protect your account.'**
   String get signInDiscardedExplanation;
 
   /// No description provided for @signInIncompleteTitle.
@@ -686,10 +686,10 @@ abstract class AppLocalizations {
   /// **'The browser returned to the app without a finished sign-in.'**
   String get signInIncompleteExplanation;
 
-  /// No description provided for @signInIncompleteSuggestion.
+  /// Suggestion of the sign-in failure when the server's sign-in page returned to the app without a completed sign-in.
   ///
   /// In en, this message translates to:
-  /// **'Try again and finish signing in on the server’s page.'**
+  /// **'Try again and finish signing in on the server\'s page.'**
   String get signInIncompleteSuggestion;
 
   /// No description provided for @signInNoBrowserTitle.
@@ -710,10 +710,10 @@ abstract class AppLocalizations {
   /// **'Install or enable a browser, then try again.'**
   String get signInNoBrowserSuggestion;
 
-  /// No description provided for @signInBrowserFailedTitle.
+  /// Title of the sign-in failure when the device could not show the server's sign-in page.
   ///
   /// In en, this message translates to:
-  /// **'Sign-in page couldn’t be opened'**
+  /// **'Sign-in page couldn\'t be opened'**
   String get signInBrowserFailedTitle;
 
   /// No description provided for @signInBrowserFailedExplanation.
@@ -830,10 +830,10 @@ abstract class AppLocalizations {
   /// **'Sign out?'**
   String get signOutDialogTitle;
 
-  /// No description provided for @signOutDialogBody.
+  /// Body of the sign-out confirmation for an account; account is its username, or its name with the username as in signOutDialogAccount, and host is the server's address.
   ///
   /// In en, this message translates to:
-  /// **'Rurana will sign {account} out of {host} and delete this account’s tasks saved on this device. You can sign in again at any time.'**
+  /// **'Rurana will sign {account} out of {host} and delete this account\'s tasks saved on this device. You can sign in again at any time.'**
   String signOutDialogBody(String account, String host);
 
   /// How the sign-out dialog names an account whose display name differs from its username.
@@ -1010,16 +1010,16 @@ abstract class AppLocalizations {
   /// **'Your servers'**
   String get addAccountYourServers;
 
-  /// No description provided for @addAccountAlreadyAdded.
+  /// Snackbar after signing in to an account that is already signed in on this device: the app switched to it instead of adding it again.
   ///
   /// In en, this message translates to:
-  /// **'You’re already signed in to this account — switched to it'**
+  /// **'You\'re already signed in to this account — switched to it'**
   String get addAccountAlreadyAdded;
 
-  /// No description provided for @addAccountAlreadyActive.
+  /// Snackbar after signing in to an account that is already signed in on this device and is already the active one.
   ///
   /// In en, this message translates to:
-  /// **'You’re already signed in to this account'**
+  /// **'You\'re already signed in to this account'**
   String get addAccountAlreadyActive;
 
   /// No description provided for @overviewLoading.
@@ -1034,7 +1034,7 @@ abstract class AppLocalizations {
   /// **'All done'**
   String get overviewEmptyTitle;
 
-  /// No description provided for @overviewEmptyBody.
+  /// Body of the Overview's empty state when no task is open. New task is the name of the button that adds a task.
   ///
   /// In en, this message translates to:
   /// **'No open tasks right now. Enjoy the quiet, or add one with New task.'**
@@ -1082,7 +1082,7 @@ abstract class AppLocalizations {
   /// **'No projects yet'**
   String get projectsEmptyTitle;
 
-  /// No description provided for @projectsEmptyBody.
+  /// Body of the Projects tab's empty state when the account has no projects.
   ///
   /// In en, this message translates to:
   /// **'Create your first project to start adding tasks.'**
@@ -1094,7 +1094,7 @@ abstract class AppLocalizations {
   /// **'Favourites'**
   String get projectsFavouritesHeading;
 
-  /// The row of the Favorites list in the Favourites section of the Projects tab; the list's own title is projectFavouritesTitle.
+  /// The row of the Favourites list in the Favourites section of the Projects tab; the list's own title is projectFavouritesTitle.
   ///
   /// In en, this message translates to:
   /// **'Favourite tasks'**
@@ -1136,7 +1136,7 @@ abstract class AppLocalizations {
   /// **'Saved filter'**
   String get savedFilterUnknownTitle;
 
-  /// Under the Favorites list in the Projects tab.
+  /// Under the Favourites list in the Projects tab.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 open task} other{{count} open tasks}}'**
@@ -1148,7 +1148,7 @@ abstract class AppLocalizations {
   /// **'The server applies this filter. Shown as of {when}; new tasks and changes made elsewhere appear after the next download.'**
   String smartListFilterNotice(String when);
 
-  /// No description provided for @smartListFilterNotLoadedBody.
+  /// Body of a saved filter's empty state while offline, when its tasks were never downloaded; title is the saved filter's title.
   ///
   /// In en, this message translates to:
   /// **'The server applies the saved filter “{title}”. Its tasks download when you open it online.'**
@@ -1220,7 +1220,7 @@ abstract class AppLocalizations {
   /// **'The colours of your wallpaper instead of the app\'s blue'**
   String get appearanceSystemColorsSubtitle;
 
-  /// No description provided for @appearanceLightDarkHint.
+  /// Note under the Use system colours switch in the Appearance section of the Account tab: light or dark mode is not set here but by the account's colour scheme in Account settings.
   ///
   /// In en, this message translates to:
   /// **'Light or dark is your account\'s colour scheme, in Account settings.'**
@@ -1382,7 +1382,7 @@ abstract class AppLocalizations {
   /// **'No open tasks'**
   String get projectTasksEmptyTitle;
 
-  /// No description provided for @projectTasksEmptyBody.
+  /// Body of a project's empty state when all its tasks are done and done tasks are hidden. Show done is the name of the chip that shows them.
   ///
   /// In en, this message translates to:
   /// **'Everything in this project is done. Turn on “Show done” to see them.'**
@@ -1556,7 +1556,7 @@ abstract class AppLocalizations {
   /// **'{date} at {time}'**
   String momentDateAtTime(String date, String time);
 
-  /// No description provided for @taskDetailDueDate.
+  /// Name of a task's due date: label of the date field on the task edit page, section title on the new-task sheet and the table view's column.
   ///
   /// In en, this message translates to:
   /// **'Due date'**
@@ -1742,16 +1742,16 @@ abstract class AppLocalizations {
   /// **'end date'**
   String get reminderReferenceEndDate;
 
-  /// No description provided for @dataFailureLoadTitle.
+  /// Title of the error on a screen whose data could not be loaded from the server, with nothing older to show.
   ///
   /// In en, this message translates to:
-  /// **'Couldn’t load from the server'**
+  /// **'Couldn\'t load from the server'**
   String get dataFailureLoadTitle;
 
-  /// No description provided for @dataFailureRefreshTitle.
+  /// Title of the error on a screen whose refresh failed while the data loaded last stays on screen.
   ///
   /// In en, this message translates to:
-  /// **'Couldn’t refresh'**
+  /// **'Couldn\'t refresh'**
   String get dataFailureRefreshTitle;
 
   /// No description provided for @dataFailureStaleNote.
@@ -1808,7 +1808,7 @@ abstract class AppLocalizations {
   /// **'Rurana is saving everything from {host} on this device, so it works offline too.'**
   String firstSyncBody(String host);
 
-  /// No description provided for @firstSyncPreparing.
+  /// Progress text on the first-sync screen before the download of the account's data starts.
   ///
   /// In en, this message translates to:
   /// **'Preparing…'**
@@ -1880,7 +1880,7 @@ abstract class AppLocalizations {
   /// **'{count} so far'**
   String syncProgressCount(int count);
 
-  /// No description provided for @syncIndicatorLabel.
+  /// Screen reader: name of the thin progress bar at the top of a screen while the app syncs with the server.
   ///
   /// In en, this message translates to:
   /// **'Syncing with the server'**
@@ -1910,7 +1910,7 @@ abstract class AppLocalizations {
   /// **'Not synced yet'**
   String get accountNeverSynced;
 
-  /// No description provided for @accountSyncing.
+  /// In the sync section of the Account tab while a sync runs: label of the Sync now button, and announced once to screen readers when a sync starts.
   ///
   /// In en, this message translates to:
   /// **'Syncing…'**
@@ -1958,22 +1958,22 @@ abstract class AppLocalizations {
   /// **'iOS decides when apps may sync in the background.'**
   String get accountBackgroundSyncIosHint;
 
-  /// No description provided for @taskMarkDone.
+  /// Tooltip and screen reader label of the done checkbox of an open task, in a task list and in a task's Subtasks section. Done is the task's state.
   ///
   /// In en, this message translates to:
-  /// **'Mark done'**
+  /// **'Mark as done'**
   String get taskMarkDone;
 
-  /// No description provided for @taskMarkNotDone.
+  /// Tooltip and screen reader label of the done checkbox of a done task, in a task list and in a task's Subtasks section: makes the task open again. Done and open are states.
   ///
   /// In en, this message translates to:
-  /// **'Mark not done'**
+  /// **'Mark as not done'**
   String get taskMarkNotDone;
 
-  /// No description provided for @taskMarkedDone.
+  /// Snackbar after a task was marked as done, with an Undo action.
   ///
   /// In en, this message translates to:
-  /// **'Marked done'**
+  /// **'Marked as done'**
   String get taskMarkedDone;
 
   /// No description provided for @undo.
@@ -1982,13 +1982,13 @@ abstract class AppLocalizations {
   /// **'Undo'**
   String get undo;
 
-  /// No description provided for @taskAddFavourite.
+  /// Tooltip and screen reader label of the star button of a task that is not among the favourites.
   ///
   /// In en, this message translates to:
   /// **'Add to favourites'**
   String get taskAddFavourite;
 
-  /// No description provided for @taskRemoveFavourite.
+  /// Tooltip and screen reader label of the star button of a task that is among the favourites.
   ///
   /// In en, this message translates to:
   /// **'Remove from favourites'**
@@ -2186,7 +2186,7 @@ abstract class AppLocalizations {
   /// **'Discard'**
   String get syncProblemDiscard;
 
-  /// No description provided for @syncProblemCreateFailed.
+  /// Entry in the Sync problems section of the Account tab: a task created on this device could not be created on the server.
   ///
   /// In en, this message translates to:
   /// **'The task could not be created.'**
@@ -2264,7 +2264,7 @@ abstract class AppLocalizations {
   /// **'Project: {project}'**
   String taskEditProjectSemantics(String project);
 
-  /// No description provided for @taskEditDateNotSet.
+  /// Value of a date field (due, start or end date) on the task edit page when the task has no such date.
   ///
   /// In en, this message translates to:
   /// **'Not set'**
@@ -2534,7 +2534,7 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{Added 1 task} other{Added {count} tasks}}'**
   String newTaskCreatedMany(int count);
 
-  /// No description provided for @newTaskLabelsNotCreated.
+  /// Warning after adding a task when labels written with Quick Add could not be created; labels is a comma-separated list of their titles.
   ///
   /// In en, this message translates to:
   /// **'Some labels couldn\'t be created, so the task doesn\'t have them: {labels}'**
@@ -2546,10 +2546,10 @@ abstract class AppLocalizations {
   /// **'Nobody found for {names}, so they stay in the title.'**
   String newTaskNamesKept(String names);
 
-  /// No description provided for @newTaskNoProjectError.
+  /// Error on the new-task sheet, and the text of a home-screen widget, when the account has no project tasks can be added to.
   ///
   /// In en, this message translates to:
-  /// **'There\'s no project to add tasks to yet. Create one on the web first.'**
+  /// **'There\'s no project to add tasks to yet. Create one on the Projects tab first.'**
   String get newTaskNoProjectError;
 
   /// No description provided for @newTaskAddFailed.
@@ -2624,7 +2624,7 @@ abstract class AppLocalizations {
   /// **'{label} · new'**
   String quickAddNewLabel(String label);
 
-  /// No description provided for @quickAddNewLabelSemantics.
+  /// Screen reader: label of the preview chip under the Quick Add field for a label that does not exist yet; label is its title.
   ///
   /// In en, this message translates to:
   /// **'New label {label}, created when you add the task'**
@@ -2684,7 +2684,7 @@ abstract class AppLocalizations {
   /// **'Assign someone ({prefix})'**
   String quickAddInsertAssignee(String prefix);
 
-  /// No description provided for @quickAddSetPriority.
+  /// Tooltip of the priority chip above the keyboard on the new-task sheet. It opens a menu of priorities, and choosing one adds the priority prefix with its number to the title. prefix is the Quick Add priority prefix, for example !, kept as it is.
   ///
   /// In en, this message translates to:
   /// **'Set priority ({prefix})'**
@@ -2714,7 +2714,7 @@ abstract class AppLocalizations {
   /// **'Labels'**
   String get quickAddHelpLabelsTitle;
 
-  /// No description provided for @quickAddHelpLabelsBody.
+  /// Text of the Labels section of the Quick Add help sheet; prefix is the label prefix, for example *, kept as it is.
   ///
   /// In en, this message translates to:
   /// **'A word starting with {prefix}. Labels that don\'t exist yet are created when you add the task. Use quotes for spaces.'**
@@ -2726,7 +2726,7 @@ abstract class AppLocalizations {
   /// **'Project'**
   String get quickAddHelpProjectTitle;
 
-  /// No description provided for @quickAddHelpProjectBody.
+  /// Text of the Project section of the Quick Add help sheet, starting with the project prefix; prefix is that prefix, for example +, kept as it is.
   ///
   /// In en, this message translates to:
   /// **'{prefix} and a project\'s title or identifier. Without one, the task goes to the project shown below the field.'**
@@ -2804,7 +2804,7 @@ abstract class AppLocalizations {
   /// **'Put the whole title in quotes to switch the magic off for one task.'**
   String get quickAddHelpQuotes;
 
-  /// No description provided for @quickAddHelpLines.
+  /// Tip in the Good to know section of the Quick Add help sheet: pasting text with several lines adds one task for each line.
   ///
   /// In en, this message translates to:
   /// **'Paste several lines to add one task per line.'**
@@ -2888,28 +2888,28 @@ abstract class AppLocalizations {
   /// **'This reminder is already set.'**
   String get taskEditReminderDuplicate;
 
-  /// No description provided for @reminderDueDateNotSet.
+  /// Warning on a reminder in the reminders section of the task edit page when it is relative to the due date and the task has no due date.
   ///
   /// In en, this message translates to:
   /// **'Due date is not set'**
   String get reminderDueDateNotSet;
 
-  /// No description provided for @reminderStartDateNotSet.
+  /// Warning on a reminder in the reminders section of the task edit page when it is relative to the start date and the task has no start date.
   ///
   /// In en, this message translates to:
   /// **'Start date is not set'**
   String get reminderStartDateNotSet;
 
-  /// No description provided for @reminderEndDateNotSet.
+  /// Warning on a reminder in the reminders section of the task edit page when it is relative to the end date and the task has no end date.
   ///
   /// In en, this message translates to:
   /// **'End date is not set'**
   String get reminderEndDateNotSet;
 
-  /// No description provided for @taskEditRemindersCoincide.
+  /// Warning in the reminders section of the task edit page when two or more reminders fall at the same moment.
   ///
   /// In en, this message translates to:
-  /// **'Some reminders fall on the same moment. The server keeps only one of them.'**
+  /// **'Some reminders fall at the same moment. The server keeps only one of them.'**
   String get taskEditRemindersCoincide;
 
   /// No description provided for @labelPickerTitle.
@@ -2918,49 +2918,43 @@ abstract class AppLocalizations {
   /// **'Choose labels'**
   String get labelPickerTitle;
 
-  /// No description provided for @labelPickerSearch.
+  /// Label of the search field of the label picker; typing a title that does not exist offers to create that label.
   ///
   /// In en, this message translates to:
   /// **'Search or create a label'**
   String get labelPickerSearch;
 
-  /// No description provided for @labelPickerEmpty.
+  /// Text of the label picker when the account has no labels and nothing is typed.
   ///
   /// In en, this message translates to:
   /// **'No labels yet. Type a name to create one.'**
   String get labelPickerEmpty;
 
-  /// No description provided for @labelPickerCreate.
+  /// Row of the label picker that creates a label with the typed text; title is that text.
   ///
   /// In en, this message translates to:
   /// **'Create label “{title}”'**
   String labelPickerCreate(String title);
 
-  /// No description provided for @labelPickerCreating.
+  /// Under the create row of the label picker while the new label is sent to the server.
   ///
   /// In en, this message translates to:
   /// **'Creating the label…'**
   String get labelPickerCreating;
 
-  /// No description provided for @labelPickerCreateOffline.
-  ///
-  /// In en, this message translates to:
-  /// **'Creating a label needs a connection to the server.'**
-  String get labelPickerCreateOffline;
-
-  /// No description provided for @labelPickerCreateUnconfirmed.
+  /// Error in the label picker or on the new-label page when creating a label timed out; the server may have created it.
   ///
   /// In en, this message translates to:
   /// **'Couldn\'t confirm that the label was created. Check your connection and try again.'**
   String get labelPickerCreateUnconfirmed;
 
-  /// No description provided for @labelPickerCreateRejected.
+  /// Error in the label picker or on the new-label page when the server refused to create a label; message is the server's own error text, untranslated.
   ///
   /// In en, this message translates to:
   /// **'The server did not create the label: {message}'**
   String labelPickerCreateRejected(String message);
 
-  /// No description provided for @labelPickerCreateFailed.
+  /// Error in the label picker or on the new-label page when a label could not be created for any other reason.
   ///
   /// In en, this message translates to:
   /// **'The label could not be created.'**
@@ -3002,7 +2996,7 @@ abstract class AppLocalizations {
   /// **'Offline — showing people from your synced tasks'**
   String get assigneePickerOffline;
 
-  /// After a search that failed for another reason than a missing connection; the reason is the server's message or assigneePickerSearchFailed.
+  /// After a search that failed for another reason than a missing connection; the reason is the server's message, assigneePickerSearchFailed or assigneePickerNoAccess.
   ///
   /// In en, this message translates to:
   /// **'{reason} — showing people from your synced tasks'**
@@ -3032,13 +3026,13 @@ abstract class AppLocalizations {
   /// **'Date and time…'**
   String get reminderPickerDateTime;
 
-  /// No description provided for @reminderPickerAlreadySet.
+  /// Screen reader: label of the check mark on a quick choice of the reminder picker that the task already has as a reminder.
   ///
   /// In en, this message translates to:
   /// **'Already set'**
   String get reminderPickerAlreadySet;
 
-  /// No description provided for @reminderPickerNoDateHint.
+  /// Text of the reminder picker in place of its quick choices when the task has no due, start or end date.
   ///
   /// In en, this message translates to:
   /// **'Set a due, start or end date to get quick choices here.'**
@@ -3134,7 +3128,7 @@ abstract class AppLocalizations {
   /// **'End date'**
   String get reminderRelativeToEndDate;
 
-  /// No description provided for @reminderRelativeToUnset.
+  /// Chip of the reminder picker's Relative to choice for a date the task does not have; date is that date's name, such as Due date or Start date.
   ///
   /// In en, this message translates to:
   /// **'{date} (not set)'**
@@ -3158,10 +3152,10 @@ abstract class AppLocalizations {
   /// **'Loading notifications…'**
   String get inboxLoading;
 
-  /// No description provided for @inboxEmptyTitle.
+  /// Title of the empty state of the notifications page, which lists the server's notifications about comments, assignments and mentions.
   ///
   /// In en, this message translates to:
-  /// **'You’re all caught up'**
+  /// **'You\'re all caught up'**
   String get inboxEmptyTitle;
 
   /// No description provided for @inboxEmptyBody.
@@ -3326,10 +3320,10 @@ abstract class AppLocalizations {
   /// **'Stay on top of your tasks'**
   String get notificationSetupTitle;
 
-  /// No description provided for @notificationSetupBody.
+  /// Body of the notification setup screen, followed by a list of what the app notifies about (reminders, due dates, only the user's own tasks), hence the colon. The app schedules these notifications on the device itself.
   ///
   /// In en, this message translates to:
-  /// **'Rurana can notify you on this phone, without the server having to send anything:'**
+  /// **'Rurana can notify you on this device, without the server having to send anything:'**
   String get notificationSetupBody;
 
   /// No description provided for @notificationSetupReminders.
@@ -3416,7 +3410,7 @@ abstract class AppLocalizations {
   /// **'At the exact due time'**
   String get notificationsDueDatesSubtitle;
 
-  /// No description provided for @notificationsActivity.
+  /// Title of the switch in the Notifications section of the Account tab for notifications about comments, assignments and mentions. A noun.
   ///
   /// In en, this message translates to:
   /// **'Activity'**
@@ -3476,10 +3470,10 @@ abstract class AppLocalizations {
   /// **'Test notification'**
   String get notificationTestTitle;
 
-  /// No description provided for @notificationTestBody.
+  /// Body of the test notification sent by Send a test notification in the Notifications section of the Account tab.
   ///
   /// In en, this message translates to:
-  /// **'Notifications from Rurana work on this phone.'**
+  /// **'Notifications from Rurana work on this device.'**
   String get notificationTestBody;
 
   /// No description provided for @notificationTaskGone.
@@ -3624,7 +3618,7 @@ abstract class AppLocalizations {
   /// **'Sign in again to {host}'**
   String sessionEndedNotificationTitle(String host);
 
-  /// No description provided for @sessionEndedNotificationBody.
+  /// Body of the OS notification when the server ended an account's session; username is the account's username.
   ///
   /// In en, this message translates to:
   /// **'Your session as {username} has ended. Rurana cannot sync this account until you sign in again.'**
@@ -3636,13 +3630,13 @@ abstract class AppLocalizations {
   /// **'Done'**
   String get notificationActionDone;
 
-  /// No description provided for @notificationActionSnooze10Minutes.
+  /// Action button of a reminder notification that reminds again in 10 minutes. Keep it short; abbreviations are fine.
   ///
   /// In en, this message translates to:
   /// **'Snooze 10 min'**
   String get notificationActionSnooze10Minutes;
 
-  /// No description provided for @notificationActionSnooze1Hour.
+  /// Action button of a reminder notification that reminds again in one hour. Keep it short; abbreviations are fine.
   ///
   /// In en, this message translates to:
   /// **'Snooze 1 h'**
@@ -3810,10 +3804,10 @@ abstract class AppLocalizations {
   /// **'Remove relation?'**
   String get taskRelationRemoveTitle;
 
-  /// No description provided for @taskRelationRemoveBody.
+  /// Body of the confirmation for removing the relation between two tasks; title is the other task's title.
   ///
   /// In en, this message translates to:
-  /// **'The link to “{title}” will be removed on the server too. The task itself stays.'**
+  /// **'The relation to “{title}” will be removed on the server too. The task itself stays.'**
   String taskRelationRemoveBody(String title);
 
   /// No description provided for @taskRelationRemoveConfirm.
@@ -3828,13 +3822,13 @@ abstract class AppLocalizations {
   /// **'Relation'**
   String get addRelationKind;
 
-  /// No description provided for @addRelationSearch.
+  /// Label of the task search field when adding a related task, and when adding content shared from another app to an existing task.
   ///
   /// In en, this message translates to:
   /// **'Search by title or identifier'**
   String get addRelationSearch;
 
-  /// No description provided for @addRelationShowDone.
+  /// Switch on the add-relation sheet that also lists done tasks.
   ///
   /// In en, this message translates to:
   /// **'Show done tasks'**
@@ -3864,7 +3858,7 @@ abstract class AppLocalizations {
   /// **'Open'**
   String get taskDuplicateOpen;
 
-  /// No description provided for @taskDuplicateNeedsConnection.
+  /// Error when duplicating a task failed because there is no connection to the server.
   ///
   /// In en, this message translates to:
   /// **'Duplicating needs a connection to the server.'**
@@ -3912,7 +3906,7 @@ abstract class AppLocalizations {
   /// **'Unfollow project'**
   String get unfollowProject;
 
-  /// No description provided for @followNeedsConnection.
+  /// Error when following or unfollowing a task or project failed because there is no connection to the server. Following gets the user notified about its activity.
   ///
   /// In en, this message translates to:
   /// **'Following needs a connection to the server.'**
@@ -4032,10 +4026,10 @@ abstract class AppLocalizations {
   /// **'Show overdue tasks'**
   String get upcomingShowOverdue;
 
-  /// No description provided for @upcomingShowWithoutDate.
+  /// Checkable item in Upcoming's menu that also lists tasks without a due date, and tooltip of the Show undated chip of a Gantt view.
   ///
   /// In en, this message translates to:
-  /// **'Show tasks without date'**
+  /// **'Show tasks without a date'**
   String get upcomingShowWithoutDate;
 
   /// No description provided for @upcomingSelectRange.
@@ -4092,76 +4086,76 @@ abstract class AppLocalizations {
   /// **'Tomorrow'**
   String get rangeTomorrow;
 
-  /// No description provided for @rangeLastWeek.
+  /// Date range choice of Upcoming, also its range chip once chosen: the calendar week before this one.
   ///
   /// In en, this message translates to:
-  /// **'Last Week'**
+  /// **'Last week'**
   String get rangeLastWeek;
 
-  /// No description provided for @rangeThisWeek.
+  /// Date range choice of Upcoming, also its range chip once chosen: the current calendar week, including its past days.
   ///
   /// In en, this message translates to:
-  /// **'This Week'**
+  /// **'This week'**
   String get rangeThisWeek;
 
-  /// No description provided for @rangeRestOfThisWeek.
+  /// Date range choice of Upcoming, also its range chip once chosen: from now until the end of the current calendar week.
   ///
   /// In en, this message translates to:
-  /// **'The Rest of This Week'**
+  /// **'The rest of this week'**
   String get rangeRestOfThisWeek;
 
-  /// No description provided for @rangeNextWeek.
+  /// Date range choice of Upcoming, also its range chip once chosen: the calendar week after this one.
   ///
   /// In en, this message translates to:
-  /// **'Next Week'**
+  /// **'Next week'**
   String get rangeNextWeek;
 
-  /// No description provided for @rangeNext7Days.
+  /// Date range choice of Upcoming, also its range chip once chosen: from now until the same time in 7 days.
   ///
   /// In en, this message translates to:
-  /// **'Next 7 Days'**
+  /// **'Next 7 days'**
   String get rangeNext7Days;
 
-  /// No description provided for @rangeLastMonth.
+  /// Date range choice of Upcoming, also its range chip once chosen: the calendar month before this one.
   ///
   /// In en, this message translates to:
-  /// **'Last Month'**
+  /// **'Last month'**
   String get rangeLastMonth;
 
-  /// No description provided for @rangeThisMonth.
+  /// Date range choice of Upcoming, also its range chip once chosen: the current calendar month, including its past days.
   ///
   /// In en, this message translates to:
-  /// **'This Month'**
+  /// **'This month'**
   String get rangeThisMonth;
 
-  /// No description provided for @rangeRestOfThisMonth.
+  /// Date range choice of Upcoming, also its range chip once chosen: from now until the end of the current month.
   ///
   /// In en, this message translates to:
-  /// **'The Rest of This Month'**
+  /// **'The rest of this month'**
   String get rangeRestOfThisMonth;
 
-  /// No description provided for @rangeNextMonth.
+  /// Date range choice of Upcoming, also its range chip once chosen: the calendar month after this one.
   ///
   /// In en, this message translates to:
-  /// **'Next Month'**
+  /// **'Next month'**
   String get rangeNextMonth;
 
-  /// No description provided for @rangeNext30Days.
+  /// Date range choice of Upcoming, also its range chip once chosen: from now until the same time in 30 days.
   ///
   /// In en, this message translates to:
-  /// **'Next 30 Days'**
+  /// **'Next 30 days'**
   String get rangeNext30Days;
 
-  /// No description provided for @rangeThisYear.
+  /// Date range choice of Upcoming, also its range chip once chosen: the current calendar year, including its past days.
   ///
   /// In en, this message translates to:
-  /// **'This Year'**
+  /// **'This year'**
   String get rangeThisYear;
 
-  /// No description provided for @rangeRestOfThisYear.
+  /// Date range choice of Upcoming, also its range chip once chosen: from now until the end of the current year.
   ///
   /// In en, this message translates to:
-  /// **'The Rest of This Year'**
+  /// **'The rest of this year'**
   String get rangeRestOfThisYear;
 
   /// No description provided for @sectionTomorrow.
@@ -4176,7 +4170,7 @@ abstract class AppLocalizations {
   /// **'Filter: {title}'**
   String overviewFilterSubtitle(String title);
 
-  /// No description provided for @overviewFilterNotLoadedTitle.
+  /// Empty-state title while offline when a saved filter's tasks were never downloaded: on the Overview when it shows a saved filter, and on a saved filter's page.
   ///
   /// In en, this message translates to:
   /// **'This filter loads once you\'re online'**
@@ -4254,88 +4248,88 @@ abstract class AppLocalizations {
   /// **'Title (Z–A)'**
   String get sortTitleDesc;
 
-  /// No description provided for @sortPriorityDesc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by priority, highest first.
   ///
   /// In en, this message translates to:
-  /// **'Priority (Highest first)'**
+  /// **'Priority (highest first)'**
   String get sortPriorityDesc;
 
-  /// No description provided for @sortPriorityAsc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by priority, lowest first.
   ///
   /// In en, this message translates to:
-  /// **'Priority (Lowest first)'**
+  /// **'Priority (lowest first)'**
   String get sortPriorityAsc;
 
-  /// No description provided for @sortDueDateAsc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by due date, earliest first.
   ///
   /// In en, this message translates to:
-  /// **'Due date (Earliest first)'**
+  /// **'Due date (earliest first)'**
   String get sortDueDateAsc;
 
-  /// No description provided for @sortDueDateDesc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by due date, latest first.
   ///
   /// In en, this message translates to:
-  /// **'Due date (Latest first)'**
+  /// **'Due date (latest first)'**
   String get sortDueDateDesc;
 
-  /// No description provided for @sortStartDateAsc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by start date, earliest first.
   ///
   /// In en, this message translates to:
-  /// **'Start date (Earliest first)'**
+  /// **'Start date (earliest first)'**
   String get sortStartDateAsc;
 
-  /// No description provided for @sortStartDateDesc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by start date, latest first.
   ///
   /// In en, this message translates to:
-  /// **'Start date (Latest first)'**
+  /// **'Start date (latest first)'**
   String get sortStartDateDesc;
 
-  /// No description provided for @sortEndDateAsc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by end date, earliest first.
   ///
   /// In en, this message translates to:
-  /// **'End date (Earliest first)'**
+  /// **'End date (earliest first)'**
   String get sortEndDateAsc;
 
-  /// No description provided for @sortEndDateDesc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by end date, latest first.
   ///
   /// In en, this message translates to:
-  /// **'End date (Latest first)'**
+  /// **'End date (latest first)'**
   String get sortEndDateDesc;
 
-  /// No description provided for @sortPercentDoneDesc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by a task's progress in percent, most done first.
   ///
   /// In en, this message translates to:
-  /// **'% done (Most done first)'**
+  /// **'% done (most done first)'**
   String get sortPercentDoneDesc;
 
-  /// No description provided for @sortPercentDoneAsc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by a task's progress in percent, least done first.
   ///
   /// In en, this message translates to:
-  /// **'% done (Least done first)'**
+  /// **'% done (least done first)'**
   String get sortPercentDoneAsc;
 
-  /// No description provided for @sortCreatedDesc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by when a task was created, newest first.
   ///
   /// In en, this message translates to:
-  /// **'Created (Newest first)'**
+  /// **'Created (newest first)'**
   String get sortCreatedDesc;
 
-  /// No description provided for @sortCreatedAsc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by when a task was created, oldest first.
   ///
   /// In en, this message translates to:
-  /// **'Created (Oldest first)'**
+  /// **'Created (oldest first)'**
   String get sortCreatedAsc;
 
-  /// No description provided for @sortUpdatedDesc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by when a task was last changed, newest first.
   ///
   /// In en, this message translates to:
-  /// **'Updated (Newest first)'**
+  /// **'Updated (newest first)'**
   String get sortUpdatedDesc;
 
-  /// No description provided for @sortUpdatedAsc.
+  /// Sort option of a project's List and Table views, also shown on the sort chip: by when a task was last changed, oldest first.
   ///
   /// In en, this message translates to:
-  /// **'Updated (Oldest first)'**
+  /// **'Updated (oldest first)'**
   String get sortUpdatedAsc;
 
   /// No description provided for @projectTasksDoneSection.
@@ -4362,13 +4356,13 @@ abstract class AppLocalizations {
   /// **'The server applies this view\'s filter “{filter}”. Shown as of {when}; changes made elsewhere appear after the next download.'**
   String projectViewFilterNotice(String filter, String when);
 
-  /// No description provided for @projectViewNotLoadedTitle.
+  /// Empty-state title of a project view while offline, when its tasks were never downloaded: a List, Table or Gantt view with its own filter, or a kanban board.
   ///
   /// In en, this message translates to:
   /// **'This view loads once you\'re online'**
   String get projectViewNotLoadedTitle;
 
-  /// No description provided for @projectViewNotLoadedBody.
+  /// Body under projectViewNotLoadedTitle for a List, Table or Gantt view with its own filter; filter is the view's filter in the server's filter syntax, kept as it is.
   ///
   /// In en, this message translates to:
   /// **'The server applies this view\'s filter “{filter}”. Its tasks download when you open it online.'**
@@ -4464,7 +4458,7 @@ abstract class AppLocalizations {
   /// **'Downloading this view…'**
   String get projectViewDownloadingTitle;
 
-  /// No description provided for @projectViewDownloadingBody.
+  /// Body under projectViewDownloadingTitle for a List, Table or Gantt view with its own filter while its tasks download; filter is the view's filter in the server's filter syntax, kept as it is.
   ///
   /// In en, this message translates to:
   /// **'The server applies this view\'s filter “{filter}”. Its tasks are on their way.'**
@@ -4746,7 +4740,7 @@ abstract class AppLocalizations {
   /// **'Limit'**
   String get boardColumnLimitLabel;
 
-  /// Under the limit field of a kanban column.
+  /// Helper text under the limit field of a kanban column; count is how many tasks the column holds now.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 task is in this column now.} other{{count} tasks are in this column now.}} Leave it empty for no limit.'**
@@ -4758,10 +4752,10 @@ abstract class AppLocalizations {
   /// **'That\'s fewer than it holds now. It takes no new tasks until some move out.'**
   String get boardColumnLimitBelowCount;
 
-  /// No description provided for @boardDeleteColumnTitle.
+  /// Title of the confirmation for deleting a kanban column.
   ///
   /// In en, this message translates to:
-  /// **'Delete the column'**
+  /// **'Delete the column?'**
   String get boardDeleteColumnTitle;
 
   /// No description provided for @boardDeleteColumnBody.
@@ -4812,7 +4806,7 @@ abstract class AppLocalizations {
   /// **'Done column saved'**
   String get boardDoneColumnSaved;
 
-  /// No description provided for @boardDefaultColumnSaved.
+  /// Snackbar after a kanban board's default column (the one new tasks go to) was chosen or cleared.
   ///
   /// In en, this message translates to:
   /// **'Default column saved'**
@@ -4836,7 +4830,7 @@ abstract class AppLocalizations {
   /// **'Couldn\'t confirm the change. Check your connection and pull down to refresh the board.'**
   String get boardColumnUnconfirmed;
 
-  /// No description provided for @boardColumnAdminOnly.
+  /// Error when choosing a kanban board's done column (tasks moved there are marked done) or default column (new tasks go there) failed because the user is not an admin of the project.
   ///
   /// In en, this message translates to:
   /// **'Only project admins can choose the done or default column.'**
@@ -4848,7 +4842,7 @@ abstract class AppLocalizations {
   /// **'Only project admins can delete the column new tasks go to while it holds tasks.'**
   String get boardColumnDeleteAdminOnly;
 
-  /// Deleting a kanban column failed after the app had made another column the default for it, and putting the old default back failed too.
+  /// Deleting a kanban column failed after the app had made another column the default for it, and putting the old default back failed too; newDefault is the title of the column that is now the default, column the title of the column that was not deleted.
   ///
   /// In en, this message translates to:
   /// **'“{newDefault}” is now the default column; deleting “{column}” failed.'**
@@ -4926,13 +4920,13 @@ abstract class AppLocalizations {
   /// **'This image can\'t be shown here'**
   String get richTextImageUnsupported;
 
-  /// Screen reader hint on an image that opens full screen.
+  /// Screen reader: hint on an image in a description or comment that opens it full screen.
   ///
   /// In en, this message translates to:
   /// **'Show full screen'**
   String get richTextShowImage;
 
-  /// Screen reader hint on the stand-in for an image on another website.
+  /// Screen reader: hint on the stand-in for an image on another website, which opens the image in the browser.
   ///
   /// In en, this message translates to:
   /// **'Opens in the browser'**
@@ -5034,10 +5028,10 @@ abstract class AppLocalizations {
   /// **'Waiting to upload'**
   String get attachmentWaiting;
 
-  /// No description provided for @attachmentUploadFailed.
+  /// Status line of a file added to a task on this device whose upload failed. Sync problems is the name of the section on the Account tab that says why.
   ///
   /// In en, this message translates to:
-  /// **'Not uploaded: see Sync problems in the Account tab'**
+  /// **'Not uploaded: see Sync problems on the Account tab'**
   String get attachmentUploadFailed;
 
   /// No description provided for @attachmentUploadTooLarge.
@@ -5076,7 +5070,7 @@ abstract class AppLocalizations {
   /// **'Save to device'**
   String get attachmentSaveToDevice;
 
-  /// No description provided for @attachmentMakeCover.
+  /// Menu action of an image attachment that shows it as the task's cover image. An action.
   ///
   /// In en, this message translates to:
   /// **'Make cover'**
@@ -5094,10 +5088,10 @@ abstract class AppLocalizations {
   /// **'Delete attachment'**
   String get attachmentDelete;
 
-  /// No description provided for @attachmentDeleteTitle.
+  /// Title of the confirmation for deleting an attachment.
   ///
   /// In en, this message translates to:
-  /// **'Delete attachment'**
+  /// **'Delete attachment?'**
   String get attachmentDeleteTitle;
 
   /// No description provided for @attachmentDeleteBody.
@@ -5610,10 +5604,10 @@ abstract class AppLocalizations {
   /// **'For example, Groceries'**
   String get projectTitleHint;
 
-  /// No description provided for @projectTitleRequired.
+  /// Error of an empty title field: in the project forms, the view form and the saved filter form.
   ///
   /// In en, this message translates to:
-  /// **'Please specify a title.'**
+  /// **'Enter a title.'**
   String get projectTitleRequired;
 
   /// Row of the project forms that picks the parent, and the title of the picker.
@@ -5670,7 +5664,7 @@ abstract class AppLocalizations {
   /// **'Project identifier'**
   String get projectIdentifierLabel;
 
-  /// No description provided for @projectIdentifierHelp.
+  /// Helper text under the identifier field of the project edit page. A task's identifier is the project's identifier followed by the task's number, for example WORK-12.
   ///
   /// In en, this message translates to:
   /// **'Up to 10 characters, unique on the server. The identifiers of this project\'s tasks start with it and change with it. Leave it empty for none.'**
@@ -5772,7 +5766,7 @@ abstract class AppLocalizations {
   /// **'It becomes read-only: no edits and no new tasks while it is archived. Its subprojects are archived too.'**
   String get projectArchiveBody;
 
-  /// No description provided for @projectUnarchiveBody.
+  /// Body of the confirmation for unarchiving a project.
   ///
   /// In en, this message translates to:
   /// **'You can edit it and add tasks to it again. Its subprojects are unarchived too.'**
@@ -5850,7 +5844,7 @@ abstract class AppLocalizations {
   /// **'This deletes {tasks, plural, =0{no tasks} =1{1 task} other{{tasks} tasks}} and {subprojects, plural, =1{1 subproject} other{{subprojects} subprojects}}, for everyone.'**
   String projectDeleteTasksAndSubprojects(int tasks, int subprojects);
 
-  /// No description provided for @projectDeleteCannotBeUndone.
+  /// Last paragraph of the confirmation for deleting a project.
   ///
   /// In en, this message translates to:
   /// **'This can\'t be undone.'**
@@ -6006,7 +6000,7 @@ abstract class AppLocalizations {
   /// **'Delete “{view}”?'**
   String projectViewDeleteTitle(String view);
 
-  /// No description provided for @projectViewDeleteBody.
+  /// Body of the confirmation for deleting a view of a project.
   ///
   /// In en, this message translates to:
   /// **'Nobody can use it to look at this project\'s tasks any more. No task is deleted. This can\'t be undone.'**
@@ -6294,10 +6288,10 @@ abstract class AppLocalizations {
   /// **'Favourite'**
   String get savedFilterFavourite;
 
-  /// No description provided for @savedFilterFavouriteHint.
+  /// Subtitle of the Favourite switch on the saved filter form.
   ///
   /// In en, this message translates to:
-  /// **'Shows it among the favourites in the Projects tab.'**
+  /// **'Shows it among the favourites on the Projects tab.'**
   String get savedFilterFavouriteHint;
 
   /// No description provided for @savedFilterFilterRequired.
@@ -6330,7 +6324,7 @@ abstract class AppLocalizations {
   /// **'Delete “{title}”?'**
   String savedFilterDeleteTitle(String title);
 
-  /// No description provided for @savedFilterDeleteBody.
+  /// Body of the confirmation for deleting a saved filter.
   ///
   /// In en, this message translates to:
   /// **'No task is deleted, only the filter and its views. This can\'t be undone.'**
@@ -6354,13 +6348,13 @@ abstract class AppLocalizations {
   /// **'The saved filter couldn\'t be loaded.'**
   String get savedFilterLoadFailed;
 
-  /// No description provided for @savedFilterChangeNeedsConnection.
+  /// Error when creating, changing or deleting a saved filter failed because there is no connection to the server.
   ///
   /// In en, this message translates to:
   /// **'Managing saved filters needs a connection to the server.'**
   String get savedFilterChangeNeedsConnection;
 
-  /// No description provided for @savedFilterChangeForbidden.
+  /// Error when the server refused a change to a saved filter because only the person who made it may change it.
   ///
   /// In en, this message translates to:
   /// **'Only the person who made this saved filter can change it.'**
@@ -6438,7 +6432,7 @@ abstract class AppLocalizations {
   /// **'Nothing on this device matches “{query}”.'**
   String searchNoResultsBody(String query);
 
-  /// No description provided for @searchMoreTasks.
+  /// Note under the search results when more tasks match than are listed; count is how many more.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 more task matches. Type more to narrow it down.} other{{count} more tasks match. Type more to narrow it down.}}'**
@@ -6540,10 +6534,10 @@ abstract class AppLocalizations {
   /// **'The description changed meanwhile'**
   String get descriptionEditorChangedTitle;
 
-  /// No description provided for @descriptionEditorChangedBody.
+  /// Body of the dialog in the description editor when the description was changed on the web during editing; its buttons are Overwrite and Reload.
   ///
   /// In en, this message translates to:
-  /// **'It was changed on the web since you started editing. Overwrite that change with yours, or reload it and lose your edits?'**
+  /// **'It has been changed on the web since you started editing. Overwrite that change with yours, or reload it and lose your edits?'**
   String get descriptionEditorChangedBody;
 
   /// No description provided for @descriptionEditorOverwrite.
@@ -6978,7 +6972,7 @@ abstract class AppLocalizations {
   /// **'Name'**
   String get accountSettingsName;
 
-  /// No description provided for @accountSettingsNameHelp.
+  /// Helper text under the Name field of Account settings; username is the account's username, shown after an @.
   ///
   /// In en, this message translates to:
   /// **'Shown instead of your username. Leave it empty to show @{username}.'**
@@ -7092,7 +7086,7 @@ abstract class AppLocalizations {
   /// **'A project not on this device'**
   String get accountSettingsDefaultProjectUnknown;
 
-  /// No description provided for @accountSettingsDefaultProjectInvalid.
+  /// Error when the server refused the chosen default project because it is archived or the user cannot add tasks to it.
   ///
   /// In en, this message translates to:
   /// **'Choose a project you can add tasks to that is not archived.'**
@@ -7254,7 +7248,7 @@ abstract class AppLocalizations {
   /// **'As on this device'**
   String get accountSettingsDateDisplayDevice;
 
-  /// No description provided for @accountSettingsDateDisplayRelative.
+  /// Choice of the Date format setting in Account settings: dates shown relative to today.
   ///
   /// In en, this message translates to:
   /// **'Relative, e.g. in 3 days'**
@@ -7314,13 +7308,13 @@ abstract class AppLocalizations {
   /// **'As on this device'**
   String get accountSettingsTimeFormatDevice;
 
-  /// No description provided for @accountSettingsTimeFormat12.
+  /// Choice of the Time format setting in Account settings, followed by an example time.
   ///
   /// In en, this message translates to:
   /// **'12-hour'**
   String get accountSettingsTimeFormat12;
 
-  /// No description provided for @accountSettingsTimeFormat24.
+  /// Choice of the Time format setting in Account settings, followed by an example time.
   ///
   /// In en, this message translates to:
   /// **'24-hour'**
@@ -7866,10 +7860,10 @@ abstract class AppLocalizations {
   /// **'The server emails you a link to confirm. Once you confirm, your account is deleted after three days; until then you can change your mind.'**
   String get accountDeletionDialogEmail;
 
-  /// No description provided for @accountDeletionDialogNoEmail.
+  /// Paragraph of the account deletion dialog, after accountDeletionDialogEmail: the deletion needs the confirmation link the server emails.
   ///
   /// In en, this message translates to:
-  /// **'If your server does not send emails, ask its administrator to delete your account.'**
+  /// **'If your server does not send emails, ask whoever runs it to delete your account.'**
   String get accountDeletionDialogNoEmail;
 
   /// No description provided for @accountDeletionContinue.
@@ -8124,7 +8118,7 @@ abstract class AppLocalizations {
   /// **'New token'**
   String get apiTokensNew;
 
-  /// No description provided for @apiTokensExpires.
+  /// Expiry line of an API token that has not expired yet; date is the date and time it expires.
   ///
   /// In en, this message translates to:
   /// **'Expires {date}'**
@@ -8232,16 +8226,16 @@ abstract class AppLocalizations {
   /// **'Pick a day…'**
   String get apiTokenFormExpiryCustom;
 
-  /// No description provided for @apiTokenFormExpiryPick.
+  /// Title of the date picker that sets the last valid day of a new API token.
   ///
   /// In en, this message translates to:
-  /// **'Valid through'**
+  /// **'Last valid day'**
   String get apiTokenFormExpiryPick;
 
-  /// No description provided for @apiTokenFormExpiryThrough.
+  /// Value of the expiry field of the new API token form after a day was picked; date is that day, and the token is valid until the end of it.
   ///
   /// In en, this message translates to:
-  /// **'Through {date}'**
+  /// **'Until the end of {date}'**
   String apiTokenFormExpiryThrough(String date);
 
   /// No description provided for @apiTokenFormExpiryPast.
@@ -8310,7 +8304,7 @@ abstract class AppLocalizations {
   /// **'{selected} of {total}'**
   String apiTokenFormGroupSelected(int selected, int total);
 
-  /// No description provided for @apiTokenFormShowGroup.
+  /// Tooltip and screen reader label of the button that expands a permission group on the new API token form; group is the group's name from the server.
   ///
   /// In en, this message translates to:
   /// **'Show the permissions of {group}'**
@@ -8640,13 +8634,13 @@ abstract class AppLocalizations {
   /// **'{day}, {count, plural, =0{nothing open} =1{1 open} other{{count} open}}'**
   String upcomingDaySemantics(String day, int count);
 
-  /// Screen reader hint of a day in Upcoming's day strip that is not selected.
+  /// Screen reader: hint of a day in Upcoming's day strip that is not selected.
   ///
   /// In en, this message translates to:
   /// **'Show only this day'**
   String get upcomingShowDayHint;
 
-  /// Screen reader hint of the selected day in Upcoming's day strip: another tap shows every day again.
+  /// Screen reader: hint of the selected day in Upcoming's day strip: another tap shows every day again.
   ///
   /// In en, this message translates to:
   /// **'Show the whole range'**
@@ -8814,7 +8808,7 @@ abstract class AppLocalizations {
   /// **'Delete this comment?'**
   String get commentDeleteTitle;
 
-  /// No description provided for @commentDeleteBody.
+  /// Body of the confirmation for deleting a comment.
   ///
   /// In en, this message translates to:
   /// **'This can\'t be undone.'**
@@ -8970,7 +8964,7 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 comment, unread} other{{count} comments, unread}}'**
   String taskCommentCountUnread(int count);
 
-  /// Announced to screen readers when the quote above the comment field is dropped.
+  /// Screen reader: announced when the quote above the comment field is dropped.
   ///
   /// In en, this message translates to:
   /// **'No longer replying'**
@@ -9402,7 +9396,7 @@ abstract class AppLocalizations {
   /// **'Whoever opens the link has to enter it'**
   String get linkShareFormPasswordHelper;
 
-  /// No description provided for @linkShareFormShowPassword.
+  /// Tooltip and screen reader label of the button that shows the typed password, in the link share form and when opening a password-protected shared link.
   ///
   /// In en, this message translates to:
   /// **'Show password'**
@@ -9618,7 +9612,7 @@ abstract class AppLocalizations {
   /// **'New label'**
   String get labelsNew;
 
-  /// No description provided for @labelsNewOffline.
+  /// Tooltip of the dimmed New label button while offline, and error when creating a label failed because there is no connection to the server.
   ///
   /// In en, this message translates to:
   /// **'Creating a label needs a connection to the server.'**
@@ -9630,13 +9624,13 @@ abstract class AppLocalizations {
   /// **'No labels yet'**
   String get labelsEmptyTitle;
 
-  /// No description provided for @labelsEmptyBody.
+  /// Body of the empty state of the labels page.
   ///
   /// In en, this message translates to:
   /// **'Labels mark tasks across all projects. Create one here or while editing a task.'**
   String get labelsEmptyBody;
 
-  /// Screen reader hint of a label that opens its tasks.
+  /// Screen reader: name of a label on the task detail sheet that opens the label's tasks when tapped; title is the label's title.
   ///
   /// In en, this message translates to:
   /// **'Show tasks with label {title}'**
@@ -9672,10 +9666,10 @@ abstract class AppLocalizations {
   /// **'Title'**
   String get labelsTitleLabel;
 
-  /// No description provided for @labelsTitleRequired.
+  /// Error of the label form's title field when it is empty.
   ///
   /// In en, this message translates to:
-  /// **'Please specify a title.'**
+  /// **'Enter a title.'**
   String get labelsTitleRequired;
 
   /// Read out with the counter of a label title near its limit.
@@ -9738,13 +9732,13 @@ abstract class AppLocalizations {
   /// **'You can add a description once the label exists.'**
   String get labelsDescriptionAfterCreate;
 
-  /// No description provided for @labelsDescriptionCreatorOnly.
+  /// Note on the page of a label that someone else created.
   ///
   /// In en, this message translates to:
   /// **'Only the person who created this label can change it.'**
   String get labelsDescriptionCreatorOnly;
 
-  /// No description provided for @labelsCreate.
+  /// Button of the new-label page that creates the label. A verb.
   ///
   /// In en, this message translates to:
   /// **'Create'**
@@ -9762,7 +9756,7 @@ abstract class AppLocalizations {
   /// **'Saving…'**
   String get labelsSaving;
 
-  /// No description provided for @labelsCreated.
+  /// Snackbar after a label was created.
   ///
   /// In en, this message translates to:
   /// **'Label created'**
@@ -9792,7 +9786,7 @@ abstract class AppLocalizations {
   /// **'It may have been deleted, here or on the web.'**
   String get labelsGoneBody;
 
-  /// No description provided for @labelsNeedsConnection.
+  /// Subtitle of the dimmed Delete item in a label's menu while offline, and error when changing or deleting a label failed because there is no connection to the server.
   ///
   /// In en, this message translates to:
   /// **'Changing a label needs a connection to the server.'**
@@ -9804,7 +9798,7 @@ abstract class AppLocalizations {
   /// **'Couldn\'t confirm the change. Check your connection and pull down to refresh.'**
   String get labelsUnconfirmed;
 
-  /// No description provided for @labelsNotCreator.
+  /// Error when the server refused a change to a label because only the person who created it may change it.
   ///
   /// In en, this message translates to:
   /// **'Only the person who created this label can change it.'**
@@ -9864,7 +9858,7 @@ abstract class AppLocalizations {
   /// **'New team'**
   String get teamsNew;
 
-  /// No description provided for @teamsNewOffline.
+  /// Tooltip of the dimmed New team button while offline, and error when creating a team failed because there is no connection to the server.
   ///
   /// In en, this message translates to:
   /// **'Creating a team needs a connection to the server.'**
@@ -9912,10 +9906,10 @@ abstract class AppLocalizations {
   /// **'Name'**
   String get teamNameLabel;
 
-  /// No description provided for @teamNameRequired.
+  /// Error of a team's name field when it is empty, on the new-team sheet and when editing a team.
   ///
   /// In en, this message translates to:
-  /// **'Please specify a name.'**
+  /// **'Enter a name.'**
   String get teamNameRequired;
 
   /// No description provided for @teamPublicLabel.
@@ -9930,19 +9924,19 @@ abstract class AppLocalizations {
   /// **'Everyone on this server can find it and share projects with it.'**
   String get teamPublicHelp;
 
-  /// No description provided for @teamCreate.
+  /// Action button of the new-team sheet that creates the team. A verb.
   ///
   /// In en, this message translates to:
   /// **'Create'**
   String get teamCreate;
 
-  /// No description provided for @teamCreating.
+  /// Action button of the new-team sheet while the team is being created.
   ///
   /// In en, this message translates to:
   /// **'Creating the team…'**
   String get teamCreating;
 
-  /// No description provided for @teamCreated.
+  /// Snackbar after a team was created.
   ///
   /// In en, this message translates to:
   /// **'Team created'**
@@ -10002,16 +9996,16 @@ abstract class AppLocalizations {
   /// **'Team saved'**
   String get teamSaved;
 
-  /// No description provided for @teamExternalNote.
+  /// Note on the page of a team that comes from the server's single sign-on; provider is the sign-on provider's name on the server.
   ///
   /// In en, this message translates to:
-  /// **'This team is managed by {provider}. Its members change there.'**
+  /// **'This team is managed by {provider}. Its membership is managed there.'**
   String teamExternalNote(String provider);
 
-  /// No description provided for @teamExternalNoteGeneric.
+  /// Note on the page of a team that comes from the server's single sign-on when the provider's name is unknown.
   ///
   /// In en, this message translates to:
-  /// **'This team is managed by your organisation\'s sign-in. Its members change there.'**
+  /// **'This team is managed by your organisation\'s sign-in. Its membership is managed there.'**
   String get teamExternalNoteGeneric;
 
   /// No description provided for @teamMembersSection.
@@ -10188,13 +10182,13 @@ abstract class AppLocalizations {
   /// **'Team deleted'**
   String get teamDeleted;
 
-  /// No description provided for @teamAddMemberOffline.
+  /// Error when adding a member to a team failed because there is no connection to the server.
   ///
   /// In en, this message translates to:
   /// **'Adding members needs a connection to the server.'**
   String get teamAddMemberOffline;
 
-  /// No description provided for @teamNeedsConnection.
+  /// Error when a change to a team failed because there is no connection to the server.
   ///
   /// In en, this message translates to:
   /// **'Changing a team needs a connection to the server.'**
@@ -10260,7 +10254,7 @@ abstract class AppLocalizations {
   /// **'The server refused: {message}'**
   String teamRefused(String message);
 
-  /// No description provided for @teamFailed.
+  /// Error when a change to a team failed for a reason the app cannot name.
   ///
   /// In en, this message translates to:
   /// **'That didn\'t work. Try again.'**
@@ -10416,7 +10410,7 @@ abstract class AppLocalizations {
   /// **'dates from its subtasks'**
   String get projectTimelineDerivedSemantics;
 
-  /// Tooltip and screen reader action of a collapsed timeline row.
+  /// Tooltip and screen reader action of a collapsed row of a Gantt view (a task with subtasks); title is the task's title.
   ///
   /// In en, this message translates to:
   /// **'Show subtasks of {title}'**
@@ -10509,43 +10503,43 @@ abstract class AppLocalizations {
   /// The table's default sort, by number, highest first.
   ///
   /// In en, this message translates to:
-  /// **'Default (Highest number first)'**
+  /// **'Default (highest number first)'**
   String get projectTableSortDefault;
 
-  /// No description provided for @projectTableSortNumberDesc.
+  /// Sort option of a project's Table view, also shown on its sort chip: by task number, highest first.
   ///
   /// In en, this message translates to:
-  /// **'Number (Highest first)'**
+  /// **'Number (highest first)'**
   String get projectTableSortNumberDesc;
 
-  /// No description provided for @projectTableSortNumberAsc.
+  /// Sort option of a project's Table view, also shown on its sort chip: by task number, lowest first.
   ///
   /// In en, this message translates to:
-  /// **'Number (Lowest first)'**
+  /// **'Number (lowest first)'**
   String get projectTableSortNumberAsc;
 
-  /// No description provided for @projectTableSortDoneAsc.
+  /// Sort option of a project's Table view, also shown on its sort chip: by whether a task is done, open tasks first. Done and open are states.
   ///
   /// In en, this message translates to:
-  /// **'Done (Open first)'**
+  /// **'Done (open first)'**
   String get projectTableSortDoneAsc;
 
-  /// No description provided for @projectTableSortDoneDesc.
+  /// Sort option of a project's Table view, also shown on its sort chip: by whether a task is done, done tasks first. Done is the state.
   ///
   /// In en, this message translates to:
-  /// **'Done (Done first)'**
+  /// **'Done (done first)'**
   String get projectTableSortDoneDesc;
 
-  /// No description provided for @projectTableSortDoneAtDesc.
+  /// Sort option of a project's Table view, also shown on its sort chip: by when a task was marked done, newest first.
   ///
   /// In en, this message translates to:
-  /// **'Done at (Newest first)'**
+  /// **'Done at (newest first)'**
   String get projectTableSortDoneAtDesc;
 
-  /// No description provided for @projectTableSortDoneAtAsc.
+  /// Sort option of a project's Table view, also shown on its sort chip: by when a task was marked done, oldest first.
   ///
   /// In en, this message translates to:
-  /// **'Done at (Oldest first)'**
+  /// **'Done at (oldest first)'**
   String get projectTableSortDoneAtAsc;
 
   /// No description provided for @projectTableStartsSemantics.
@@ -10572,7 +10566,7 @@ abstract class AppLocalizations {
   /// **'{percent}%'**
   String projectTableCellPercent(int percent);
 
-  /// No description provided for @projectViewsIntro.
+  /// Intro at the top of a project's views page; project is the project's title.
   ///
   /// In en, this message translates to:
   /// **'The views of {project}, in the order the app and the web show them.'**
@@ -10764,10 +10758,10 @@ abstract class AppLocalizations {
   /// **'There\'s no text on the clipboard.'**
   String get guestLinkClipboardEmpty;
 
-  /// Connect screen while a shared link is being opened; the link's secret is cut short
+  /// Connect screen while a shared link is being opened; the link's secret is cut short.
   ///
   /// In en, this message translates to:
-  /// **'Opening the shared link {link} …'**
+  /// **'Opening the shared link {link}…'**
   String guestConnectingTo(String link);
 
   /// Password sheet title for a shared project protected by a password
@@ -10818,7 +10812,7 @@ abstract class AppLocalizations {
   /// **'Open as guest'**
   String get guestShareOpen;
 
-  /// Shared link sheet, signed in: makes a task of the shared text as with any other share
+  /// Shared link sheet, signed in: makes a task of the shared text as with any other share.
   ///
   /// In en, this message translates to:
   /// **'Make it a new task instead'**
@@ -10842,10 +10836,10 @@ abstract class AppLocalizations {
   /// **'Ask whoever shared the project for a new link.'**
   String get guestLinkGoneSuggestion;
 
-  /// Connect screen while an invitation link is checked
+  /// Progress text on the connect screen while an invitation link is checked; host is the address of the server that sent the invitation.
   ///
   /// In en, this message translates to:
-  /// **'Checking the invitation to {host} …'**
+  /// **'Checking the invitation to {host}…'**
   String inviteConnectingTo(String host);
 
   /// Connect screen: card title for a registration invitation an admin sent
@@ -10944,7 +10938,7 @@ abstract class AppLocalizations {
   /// **'The link points to {host}, but no Vikunja server answers there. The server may have an address of its own.'**
   String guestServerNeededExplanation(String host);
 
-  /// Connect screen card: what to do to open the shared link
+  /// Connect screen card: what to do to open the shared link.
   ///
   /// In en, this message translates to:
   /// **'Enter the server\'s address above and tap Continue to open the link.'**
@@ -11010,10 +11004,10 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{No tasks} =1{1 task} other{{count} tasks}}'**
   String widgetTaskCount(int count);
 
-  /// Screen reader text of the done control of a task row on a home-screen widget.
+  /// Screen reader: label of the done control of a task row on a home-screen widget; title is the task's title.
   ///
   /// In en, this message translates to:
-  /// **'Mark “{title}” done'**
+  /// **'Mark “{title}” as done'**
   String widgetMarkDone(String title);
 
   /// Title of a home-screen widget with the tasks due in the next days.
@@ -11067,7 +11061,7 @@ abstract class AppLocalizations {
   /// The widgets page's introduction.
   ///
   /// In en, this message translates to:
-  /// **'A widget shows one list of an account: today\'s tasks, the next days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.'**
+  /// **'A widget shows one list of an account: today\'s tasks, the coming days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.'**
   String get widgetsIntro;
 
   /// Heading above the platform's steps to place a widget.
@@ -11115,13 +11109,13 @@ abstract class AppLocalizations {
   /// A placed widget whose account was signed out.
   ///
   /// In en, this message translates to:
-  /// **'Account removed – choose another'**
+  /// **'Account removed — choose another'**
   String get widgetsPlacedAccountRemoved;
 
   /// Privacy note on the widgets page.
   ///
   /// In en, this message translates to:
-  /// **'Widgets show your task titles on the home screen, where anyone who sees your phone can read them.'**
+  /// **'Widgets show your task titles on the home screen, where anyone who sees your device can read them.'**
   String get widgetsPrivacyNote;
 
   /// Widget kind: overdue tasks and those due today.
@@ -11145,7 +11139,7 @@ abstract class AppLocalizations {
   /// What the Upcoming widget shows.
   ///
   /// In en, this message translates to:
-  /// **'Due in the next days'**
+  /// **'Due in the coming days'**
   String get widgetKindUpcomingHint;
 
   /// Widget kind: tasks past their due date.
@@ -11313,7 +11307,7 @@ abstract class AppLocalizations {
   /// A placed list widget that was never set up; it shows Today of the active account. Tapping opens its setup.
   ///
   /// In en, this message translates to:
-  /// **'Not set up yet – shows the active account'**
+  /// **'Not set up yet — shows the active account'**
   String get widgetsPlacedNotSetUp;
 
   /// Title of a reminder notification while the privacy setting hides task titles from notifications.
@@ -11463,7 +11457,7 @@ abstract class AppLocalizations {
   /// Under the Block screenshots switch.
   ///
   /// In en, this message translates to:
-  /// **'Also hides Rurana from screen recordings and the app overview.'**
+  /// **'Also hides Rurana from screen recordings and the app switcher.'**
   String get privacyBlockScreenshotsSubtitle;
 
   /// Heading of the choice how much reminders and activity notifications show.
@@ -11493,7 +11487,7 @@ abstract class AppLocalizations {
   /// Under the Hide on the lock screen choice.
   ///
   /// In en, this message translates to:
-  /// **'The content shows only while the phone is unlocked'**
+  /// **'The content shows only while the device is unlocked'**
   String get privacyNotificationContentHiddenSubtitle;
 
   /// Notification content choice: generic texts without task titles, names or comments.
@@ -11511,7 +11505,7 @@ abstract class AppLocalizations {
   /// iOS only, under the Hide on the lock screen choice: the app cannot hide the content itself; the system setting does. Use the names of the iOS Settings app.
   ///
   /// In en, this message translates to:
-  /// **'On iPhone, iOS decides this for each app: in Settings → Notifications → Rurana, set Show Previews to When Unlocked.'**
+  /// **'On iPhone, iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.'**
   String get privacyNotificationContentIosHint;
 
   /// Heading of the widget titles setting on the privacy page.
@@ -11814,7 +11808,7 @@ abstract class AppLocalizations {
   /// **'Replace client certificate'**
   String get connectionReplaceClientCertificate;
 
-  /// Snack bar when writing the connection settings failed.
+  /// Snackbar when writing the connection settings failed.
   ///
   /// In en, this message translates to:
   /// **'The connection settings could not be saved.'**
@@ -11847,7 +11841,7 @@ abstract class AppLocalizations {
   /// Note at the top of the connection screen.
   ///
   /// In en, this message translates to:
-  /// **'Used by this app for every account on this address. The browser that opens the sign-in page does not use them.'**
+  /// **'Used by this app for every account at this address. The browser that opens the sign-in page does not use them.'**
   String get connectionIntro;
 
   /// Heading of the server certificate section, and title of the screen that shows the server's certificate.
@@ -11985,7 +11979,7 @@ abstract class AppLocalizations {
   /// Warning in the access headers section and editor of a plain http address.
   ///
   /// In en, this message translates to:
-  /// **'Like everything else on this address, the headers travel unencrypted.'**
+  /// **'Like everything else at this address, the headers travel unencrypted.'**
   String get connectionHeadersUnencrypted;
 
   /// Access headers section of a plain http address without the permission.
@@ -12225,7 +12219,7 @@ abstract class AppLocalizations {
   /// The fetched certificate differs from the recorded one.
   ///
   /// In en, this message translates to:
-  /// **'The server now presents yet another certificate than the one seen then. Check it carefully before you accept it.'**
+  /// **'The server now presents yet another certificate, different from the one seen then. Check it carefully before you accept it.'**
   String get connectionReviewDiffers;
 
   /// The fetched certificate equals the trusted one.
@@ -12288,7 +12282,7 @@ abstract class AppLocalizations {
   /// **'The file could not be read.'**
   String get connectionFileUnreadable;
 
-  /// Snack bar when the system file picker failed.
+  /// Snackbar when the system file picker failed.
   ///
   /// In en, this message translates to:
   /// **'The file picker could not be opened.'**
@@ -12348,10 +12342,10 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get connectionSave;
 
-  /// Intro of the access headers editor.
+  /// Intro of the access headers editor; origin is the server's address with scheme and port, for example https://vikunja.example.com:443.
   ///
   /// In en, this message translates to:
-  /// **'Sent with every request of this app to {origin}, and to no other address.'**
+  /// **'Sent with every request this app makes to {origin}, and to no other address.'**
   String connectionHeadersIntro(String origin);
 
   /// Preset of the access headers editor: CF-Access-Client-Id and CF-Access-Client-Secret.
@@ -12483,7 +12477,7 @@ abstract class AppLocalizations {
   /// Browser hint when the server's address has access headers.
   ///
   /// In en, this message translates to:
-  /// **'The browser goes through the access login itself.'**
+  /// **'The browser goes through the access proxy\'s sign-in itself.'**
   String get connectionBrowserHintHeaders;
 
   /// Browser hint when the sign-in page is on another address than the API.
@@ -12731,6 +12725,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'More for {title}'**
   String taskDetailPaneMore(String title);
+
+  /// Snackbar or inline error after a change, download or search failed because the server answered with an internal error (HTTP 5xx). Shown instead of the server's English detail.
+  ///
+  /// In en, this message translates to:
+  /// **'The server answered with an error. Try again in a few minutes.'**
+  String get actionFailureServerError;
+
+  /// Snackbar or inline error after an action failed because the account's session on the server has ended; the Account tab has the way to sign in again. Like dataFailureSessionEnded without the server's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has ended. Sign in again on the Account tab.'**
+  String get actionFailureSessionEnded;
+
+  /// Snackbar or inline error after an action failed because the server's rate limit refused the request (HTTP 429).
+  ///
+  /// In en, this message translates to:
+  /// **'The server is limiting requests for now. Wait a minute, then try again.'**
+  String get actionFailureRateLimited;
+
+  /// Snackbar or inline error for a guest (someone who opened a shared link) after an action failed because the shared link no longer works. Like guestDataFailureAccessEnded without the server name.
+  ///
+  /// In en, this message translates to:
+  /// **'Your guest access has ended. Open the link again on the Account tab.'**
+  String get actionFailureGuestAccessEnded;
+
+  /// Snackbar after an attachment action (mostly a download) failed: the server still lists the attachment, but its file is gone from the server's storage.
+  ///
+  /// In en, this message translates to:
+  /// **'The file is missing from the server.'**
+  String get attachmentFileMissing;
+
+  /// Snackbar after downloading an attachment failed because the user no longer has access to its task.
+  ///
+  /// In en, this message translates to:
+  /// **'You no longer have access to this attachment.'**
+  String get attachmentDownloadForbidden;
+
+  /// Snackbar after duplicating a task failed because the user may not add tasks to the task's project (their access changed since the last sync).
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to add tasks to this project.'**
+  String get taskDuplicateForbidden;
+
+  /// Snackbar after duplicating a task failed because its project was archived meanwhile.
+  ///
+  /// In en, this message translates to:
+  /// **'This project is archived, so its tasks can\'t be duplicated.'**
+  String get taskDuplicateArchived;
+
+  /// Snackbar after duplicating a task failed because the file of one of its attachments is gone from the server's storage.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t duplicate the task: one of its attachments is missing from the server.'**
+  String get taskDuplicateFileMissing;
+
+  /// Error after duplicating a project failed because an attachment or background file in it is gone from the server's storage.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t duplicate the project: a file in it is missing from the server.'**
+  String get projectDuplicateFileMissing;
+
+  /// Fragment without a full stop, inserted as the reason into assigneePickerFallback when the people of the task's project can't be searched (no access, or the project is gone).
+  ///
+  /// In en, this message translates to:
+  /// **'No access to this project'**
+  String get assigneePickerNoAccess;
+
+  /// Row in the Account tab's device settings that opens the system's language settings for this app (Android 13+ per-app language, the app's page in iOS Settings).
+  ///
+  /// In en, this message translates to:
+  /// **'App language'**
+  String get appLanguageTitle;
+
+  /// The name of this translation's language in itself, shown as the subtitle of the App language row. Translate as your language's own name, e.g. Français.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get appLanguageName;
+
+  /// Label of the due date row in the task detail sheet, in a narrow label column beside the date. German uses the short 'Fällig am' here; the field elsewhere is taskDetailDueDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date'**
+  String get taskDetailDueDateRow;
 }
 
 class _AppLocalizationsDelegate

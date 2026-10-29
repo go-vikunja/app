@@ -42,10 +42,10 @@ NotificationPreferencesStore notificationPreferencesStore(Ref ref) {
 
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action) and when the app comes back to the
-/// front, and rescheduling everything when the notification content or
-/// the app lock changes; a content that shows less also withdraws what the
-/// account has in the tray. Null once the account is gone. Disposed with
-/// the account's database on sign-out, after which
+/// front, and rescheduling everything when the notification content, the
+/// app lock or the app's language changes; a content that shows less also
+/// withdraws what the account has in the tray. Null once the account is
+/// gone. Disposed with the account's database on sign-out, after which
 /// [NotificationSchedulers] still holds it for the wipe.
 @Riverpod(keepAlive: true)
 NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
@@ -55,7 +55,6 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
     ),
   );
   if (userId == null) return null;
-  final l10n = ref.watch(deviceAppLocalizationsProvider);
   final gateway = ref.watch(notificationGatewayProvider);
   final scheduler = NotificationScheduler(
     accountId: accountId,
@@ -63,20 +62,28 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
     db: ref.watch(appDatabaseProvider(accountId)),
     gateway: gateway,
     preferences: ref.watch(notificationPreferencesStoreProvider),
-    presentation: () async => _presentation(l10n, await _currentPrivacy(ref)),
+    presentation: () async {
+      final privacy = await _currentPrivacy(ref);
+      return _presentation(ref.read(deviceAppLocalizationsProvider), privacy);
+    },
     window: notificationWindow(),
     linkKey: () => readWidgetLinkKey(ref.read(preferencesStoreProvider)),
     now: ref.watch(clockProvider),
   );
   ref.watch(notificationSchedulersProvider).register(scheduler);
-  ref.listen(privacySettingsProvider, (previous, next) {
-    if (_changesWhatIsScheduled(previous?.value, next.value)) {
-      scheduler.reconcileQuietly(force: true);
-    }
-    if (_showsLess(previous?.value, next.value)) {
-      unawaited(_withdrawShown(gateway, accountId));
-    }
-  });
+  ref
+    ..listen(privacySettingsProvider, (previous, next) {
+      if (_changesWhatIsScheduled(previous?.value, next.value)) {
+        scheduler.reconcileQuietly(force: true);
+      }
+      if (_showsLess(previous?.value, next.value)) {
+        unawaited(_withdrawShown(gateway, accountId));
+      }
+    })
+    ..listen(
+      deviceAppLocalizationsProvider,
+      (_, _) => scheduler.reconcileQuietly(force: true),
+    );
   final lifecycle = AppLifecycleListener(onResume: scheduler.reconcileQuietly);
   ref.onDispose(() {
     lifecycle.dispose();

@@ -72,6 +72,8 @@ class ReminderPicker extends ConsumerStatefulWidget {
 }
 
 class _ReminderPickerState extends ConsumerState<ReminderPicker> {
+  static const _checkmarkBox = BoxConstraints.tightFor(width: 20, height: 20);
+
   late final ReminderRelativeTo? _defaultReference = defaultReminderReference(
     widget.dates,
   );
@@ -240,7 +242,7 @@ class _ReminderPickerState extends ConsumerState<ReminderPicker> {
                   decoration: InputDecoration(
                     labelText: l10n.reminderAmountLabel,
                     errorText: _amountValid ? null : l10n.reminderAmountInvalid,
-                    errorMaxLines: 3,
+                    errorMaxLines: 5,
                   ),
                   onChanged: _onAmountChanged,
                 ),
@@ -282,12 +284,20 @@ class _ReminderPickerState extends ConsumerState<ReminderPicker> {
                 children: [
                   for (final relativeTo in ReminderRelativeTo.values)
                     ChoiceChip(
+                      // The chip's own one-line style fades "(not set)" out
+                      // at large text. A wrapped label needs a checkmark box
+                      // of a fixed size: by default it is a square as tall
+                      // as the label.
+                      avatarBoxConstraints: _checkmarkBox,
                       label: Text(
                         referenceDate(relativeTo, widget.dates) == null
                             ? l10n.reminderRelativeToUnset(
                                 reminderReferenceLabel(l10n, relativeTo),
                               )
                             : reminderReferenceLabel(l10n, relativeTo),
+                        softWrap: true,
+                        maxLines: 4,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       selected: _relativeTo == relativeTo,
                       onSelected: (_) =>

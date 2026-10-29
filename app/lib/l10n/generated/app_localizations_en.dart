@@ -43,7 +43,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String connectConnectingTo(String address) {
-    return 'Looking for Vikunja at $address …';
+    return 'Looking for Vikunja at $address…';
   }
 
   @override
@@ -51,7 +51,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get failureInvalidAddressTitle =>
-      'That doesn’t look like a server address';
+      'That doesn\'t look like a server address';
 
   @override
   String failureInvalidAddressExplanation(String input) {
@@ -96,12 +96,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String failureTlsHandshakeExplanation(String host) {
-    return '$host did not complete a secure (HTTPS) connection. The address may only speak plain http, or the server’s HTTPS setup is incomplete.';
+    return '$host did not complete a secure (HTTPS) connection. The address may only speak plain http, or the server\'s HTTPS setup is incomplete.';
   }
 
   @override
   String get failureTlsHandshakeSuggestion =>
-      'Check the port and whether the address should start with http:// instead of https://. If HTTPS should work, check the reverse proxy’s TLS configuration.';
+      'Check the port and whether the address should start with http:// instead of https://. If HTTPS should work, check the reverse proxy\'s TLS configuration.';
 
   @override
   String get failureNotVikunjaTitle => 'No Vikunja server found';
@@ -128,7 +128,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Try again in a few minutes. If it keeps happening, ask whoever runs the server to check on it.';
 
   @override
-  String get failureLoginProxyTitle => 'Server is behind a login page';
+  String get failureLoginProxyTitle => 'Server is behind a sign-in page';
 
   @override
   String failureLoginProxyExplanation(String host) {
@@ -212,11 +212,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Ask whoever runs the server to update Vikunja.';
 
   @override
-  String get unsupportedUnknownVersionTitle => 'Server version not recognized';
+  String get unsupportedUnknownVersionTitle => 'Server version not recognised';
 
   @override
   String unsupportedUnknownVersionBody(String minimum) {
-    return 'Rurana needs Vikunja $minimum or newer. This server reports a version the app does not recognize.';
+    return 'Rurana needs Vikunja $minimum or newer. This server reports a version the app does not recognise.';
   }
 
   @override
@@ -231,11 +231,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signInBrowserSubtitle =>
-      'Uses the Vikunja login page, including single sign-on.';
+      'Uses the Vikunja sign-in page, including single sign-on.';
 
   @override
   String signInBrowserProvidersSubtitle(String providers) {
-    return 'Uses the Vikunja login page, including $providers.';
+    return 'Uses the Vikunja sign-in page, including $providers.';
   }
 
   @override
@@ -368,7 +368,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signInDiscardedExplanation =>
-      'The browser returned a sign-in that doesn’t belong to this attempt, so the app discarded it to protect your account.';
+      'The browser returned a sign-in that doesn\'t belong to this attempt, so the app discarded it to protect your account.';
 
   @override
   String get signInIncompleteTitle => 'Sign-in not completed';
@@ -379,7 +379,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get signInIncompleteSuggestion =>
-      'Try again and finish signing in on the server’s page.';
+      'Try again and finish signing in on the server\'s page.';
 
   @override
   String get signInNoBrowserTitle => 'No browser available';
@@ -393,7 +393,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Install or enable a browser, then try again.';
 
   @override
-  String get signInBrowserFailedTitle => 'Sign-in page couldn’t be opened';
+  String get signInBrowserFailedTitle => 'Sign-in page couldn\'t be opened';
 
   @override
   String get signInBrowserFailedExplanation =>
@@ -471,7 +471,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String signOutDialogBody(String account, String host) {
-    return 'Rurana will sign $account out of $host and delete this account’s tasks saved on this device. You can sign in again at any time.';
+    return 'Rurana will sign $account out of $host and delete this account\'s tasks saved on this device. You can sign in again at any time.';
   }
 
   @override
@@ -609,11 +609,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get addAccountAlreadyAdded =>
-      'You’re already signed in to this account — switched to it';
+      'You\'re already signed in to this account — switched to it';
 
   @override
   String get addAccountAlreadyActive =>
-      'You’re already signed in to this account';
+      'You\'re already signed in to this account';
 
   @override
   String get overviewLoading => 'Loading your tasks…';
@@ -1209,10 +1209,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get reminderReferenceEndDate => 'end date';
 
   @override
-  String get dataFailureLoadTitle => 'Couldn’t load from the server';
+  String get dataFailureLoadTitle => 'Couldn\'t load from the server';
 
   @override
-  String get dataFailureRefreshTitle => 'Couldn’t refresh';
+  String get dataFailureRefreshTitle => 'Couldn\'t refresh';
 
   @override
   String get dataFailureStaleNote => 'Showing what was loaded last.';
@@ -1350,13 +1350,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'iOS decides when apps may sync in the background.';
 
   @override
-  String get taskMarkDone => 'Mark done';
+  String get taskMarkDone => 'Mark as done';
 
   @override
-  String get taskMarkNotDone => 'Mark not done';
+  String get taskMarkNotDone => 'Mark as not done';
 
   @override
-  String get taskMarkedDone => 'Marked done';
+  String get taskMarkedDone => 'Marked as done';
 
   @override
   String get undo => 'Undo';
@@ -1694,7 +1694,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newTaskNoProjectError =>
-      'There\'s no project to add tasks to yet. Create one on the web first.';
+      'There\'s no project to add tasks to yet. Create one on the Projects tab first.';
 
   @override
   String newTaskAddFailed(String reason) {
@@ -1950,7 +1950,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get taskEditRemindersCoincide =>
-      'Some reminders fall on the same moment. The server keeps only one of them.';
+      'Some reminders fall at the same moment. The server keeps only one of them.';
 
   @override
   String get labelPickerTitle => 'Choose labels';
@@ -1968,10 +1968,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get labelPickerCreating => 'Creating the label…';
-
-  @override
-  String get labelPickerCreateOffline =>
-      'Creating a label needs a connection to the server.';
 
   @override
   String get labelPickerCreateUnconfirmed =>
@@ -2105,7 +2101,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inboxLoading => 'Loading notifications…';
 
   @override
-  String get inboxEmptyTitle => 'You’re all caught up';
+  String get inboxEmptyTitle => 'You\'re all caught up';
 
   @override
   String get inboxEmptyBody =>
@@ -2217,7 +2213,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationSetupBody =>
-      'Rurana can notify you on this phone, without the server having to send anything:';
+      'Rurana can notify you on this device, without the server having to send anything:';
 
   @override
   String get notificationSetupReminders => 'Reminders at their time';
@@ -2305,7 +2301,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationTestBody =>
-      'Notifications from Rurana work on this phone.';
+      'Notifications from Rurana work on this device.';
 
   @override
   String get notificationTaskGone => 'This task is gone';
@@ -2524,7 +2520,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String taskRelationRemoveBody(String title) {
-    return 'The link to “$title” will be removed on the server too. The task itself stays.';
+    return 'The relation to “$title” will be removed on the server too. The task itself stays.';
   }
 
   @override
@@ -2677,7 +2673,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get upcomingShowOverdue => 'Show overdue tasks';
 
   @override
-  String get upcomingShowWithoutDate => 'Show tasks without date';
+  String get upcomingShowWithoutDate => 'Show tasks without a date';
 
   @override
   String get upcomingSelectRange => 'Select a date range';
@@ -2711,40 +2707,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rangeTomorrow => 'Tomorrow';
 
   @override
-  String get rangeLastWeek => 'Last Week';
+  String get rangeLastWeek => 'Last week';
 
   @override
-  String get rangeThisWeek => 'This Week';
+  String get rangeThisWeek => 'This week';
 
   @override
-  String get rangeRestOfThisWeek => 'The Rest of This Week';
+  String get rangeRestOfThisWeek => 'The rest of this week';
 
   @override
-  String get rangeNextWeek => 'Next Week';
+  String get rangeNextWeek => 'Next week';
 
   @override
-  String get rangeNext7Days => 'Next 7 Days';
+  String get rangeNext7Days => 'Next 7 days';
 
   @override
-  String get rangeLastMonth => 'Last Month';
+  String get rangeLastMonth => 'Last month';
 
   @override
-  String get rangeThisMonth => 'This Month';
+  String get rangeThisMonth => 'This month';
 
   @override
-  String get rangeRestOfThisMonth => 'The Rest of This Month';
+  String get rangeRestOfThisMonth => 'The rest of this month';
 
   @override
-  String get rangeNextMonth => 'Next Month';
+  String get rangeNextMonth => 'Next month';
 
   @override
-  String get rangeNext30Days => 'Next 30 Days';
+  String get rangeNext30Days => 'Next 30 days';
 
   @override
-  String get rangeThisYear => 'This Year';
+  String get rangeThisYear => 'This year';
 
   @override
-  String get rangeRestOfThisYear => 'The Rest of This Year';
+  String get rangeRestOfThisYear => 'The rest of this year';
 
   @override
   String get sectionTomorrow => 'Tomorrow';
@@ -2801,46 +2797,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sortTitleDesc => 'Title (Z–A)';
 
   @override
-  String get sortPriorityDesc => 'Priority (Highest first)';
+  String get sortPriorityDesc => 'Priority (highest first)';
 
   @override
-  String get sortPriorityAsc => 'Priority (Lowest first)';
+  String get sortPriorityAsc => 'Priority (lowest first)';
 
   @override
-  String get sortDueDateAsc => 'Due date (Earliest first)';
+  String get sortDueDateAsc => 'Due date (earliest first)';
 
   @override
-  String get sortDueDateDesc => 'Due date (Latest first)';
+  String get sortDueDateDesc => 'Due date (latest first)';
 
   @override
-  String get sortStartDateAsc => 'Start date (Earliest first)';
+  String get sortStartDateAsc => 'Start date (earliest first)';
 
   @override
-  String get sortStartDateDesc => 'Start date (Latest first)';
+  String get sortStartDateDesc => 'Start date (latest first)';
 
   @override
-  String get sortEndDateAsc => 'End date (Earliest first)';
+  String get sortEndDateAsc => 'End date (earliest first)';
 
   @override
-  String get sortEndDateDesc => 'End date (Latest first)';
+  String get sortEndDateDesc => 'End date (latest first)';
 
   @override
-  String get sortPercentDoneDesc => '% done (Most done first)';
+  String get sortPercentDoneDesc => '% done (most done first)';
 
   @override
-  String get sortPercentDoneAsc => '% done (Least done first)';
+  String get sortPercentDoneAsc => '% done (least done first)';
 
   @override
-  String get sortCreatedDesc => 'Created (Newest first)';
+  String get sortCreatedDesc => 'Created (newest first)';
 
   @override
-  String get sortCreatedAsc => 'Created (Oldest first)';
+  String get sortCreatedAsc => 'Created (oldest first)';
 
   @override
-  String get sortUpdatedDesc => 'Updated (Newest first)';
+  String get sortUpdatedDesc => 'Updated (newest first)';
 
   @override
-  String get sortUpdatedAsc => 'Updated (Oldest first)';
+  String get sortUpdatedAsc => 'Updated (oldest first)';
 
   @override
   String get projectTasksDoneSection => 'Done';
@@ -3127,7 +3123,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'That\'s fewer than it holds now. It takes no new tasks until some move out.';
 
   @override
-  String get boardDeleteColumnTitle => 'Delete the column';
+  String get boardDeleteColumnTitle => 'Delete the column?';
 
   @override
   String boardDeleteColumnBody(String column) {
@@ -3303,7 +3299,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get attachmentUploadFailed =>
-      'Not uploaded: see Sync problems in the Account tab';
+      'Not uploaded: see Sync problems on the Account tab';
 
   @override
   String get attachmentUploadTooLarge => 'Not uploaded: too large';
@@ -3337,7 +3333,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get attachmentDelete => 'Delete attachment';
 
   @override
-  String get attachmentDeleteTitle => 'Delete attachment';
+  String get attachmentDeleteTitle => 'Delete attachment?';
 
   @override
   String attachmentDeleteBody(String name) {
@@ -3671,7 +3667,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectTitleHint => 'For example, Groceries';
 
   @override
-  String get projectTitleRequired => 'Please specify a title.';
+  String get projectTitleRequired => 'Enter a title.';
 
   @override
   String get projectParentLabel => 'Parent project';
@@ -4101,7 +4097,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get savedFilterFavouriteHint =>
-      'Shows it among the favourites in the Projects tab.';
+      'Shows it among the favourites on the Projects tab.';
 
   @override
   String get savedFilterFilterRequired => 'A saved filter needs a filter.';
@@ -4259,7 +4255,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get descriptionEditorChangedBody =>
-      'It was changed on the web since you started editing. Overwrite that change with yours, or reload it and lose your edits?';
+      'It has been changed on the web since you started editing. Overwrite that change with yours, or reload it and lose your edits?';
 
   @override
   String get descriptionEditorOverwrite => 'Overwrite';
@@ -5018,7 +5014,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountDeletionDialogNoEmail =>
-      'If your server does not send emails, ask its administrator to delete your account.';
+      'If your server does not send emails, ask whoever runs it to delete your account.';
 
   @override
   String get accountDeletionContinue => 'Continue in the browser';
@@ -5264,11 +5260,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiTokenFormExpiryCustom => 'Pick a day…';
 
   @override
-  String get apiTokenFormExpiryPick => 'Valid through';
+  String get apiTokenFormExpiryPick => 'Last valid day';
 
   @override
   String apiTokenFormExpiryThrough(String date) {
-    return 'Through $date';
+    return 'Until the end of $date';
   }
 
   @override
@@ -6178,7 +6174,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get labelsTitleLabel => 'Title';
 
   @override
-  String get labelsTitleRequired => 'Please specify a title.';
+  String get labelsTitleRequired => 'Enter a title.';
 
   @override
   String labelsTitleRemaining(int count) {
@@ -6326,7 +6322,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamNameLabel => 'Name';
 
   @override
-  String get teamNameRequired => 'Please specify a name.';
+  String get teamNameRequired => 'Enter a name.';
 
   @override
   String get teamPublicLabel => 'Public team';
@@ -6374,12 +6370,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String teamExternalNote(String provider) {
-    return 'This team is managed by $provider. Its members change there.';
+    return 'This team is managed by $provider. Its membership is managed there.';
   }
 
   @override
   String get teamExternalNoteGeneric =>
-      'This team is managed by your organisation\'s sign-in. Its members change there.';
+      'This team is managed by your organisation\'s sign-in. Its membership is managed there.';
 
   @override
   String get teamMembersSection => 'Members';
@@ -6685,25 +6681,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectTableColumnCreatedBy => 'Created by';
 
   @override
-  String get projectTableSortDefault => 'Default (Highest number first)';
+  String get projectTableSortDefault => 'Default (highest number first)';
 
   @override
-  String get projectTableSortNumberDesc => 'Number (Highest first)';
+  String get projectTableSortNumberDesc => 'Number (highest first)';
 
   @override
-  String get projectTableSortNumberAsc => 'Number (Lowest first)';
+  String get projectTableSortNumberAsc => 'Number (lowest first)';
 
   @override
-  String get projectTableSortDoneAsc => 'Done (Open first)';
+  String get projectTableSortDoneAsc => 'Done (open first)';
 
   @override
-  String get projectTableSortDoneDesc => 'Done (Done first)';
+  String get projectTableSortDoneDesc => 'Done (done first)';
 
   @override
-  String get projectTableSortDoneAtDesc => 'Done at (Newest first)';
+  String get projectTableSortDoneAtDesc => 'Done at (newest first)';
 
   @override
-  String get projectTableSortDoneAtAsc => 'Done at (Oldest first)';
+  String get projectTableSortDoneAtAsc => 'Done at (oldest first)';
 
   @override
   String projectTableStartsSemantics(String when) {
@@ -6857,7 +6853,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String guestConnectingTo(String link) {
-    return 'Opening the shared link $link …';
+    return 'Opening the shared link $link…';
   }
 
   @override
@@ -6905,7 +6901,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String inviteConnectingTo(String host) {
-    return 'Checking the invitation to $host …';
+    return 'Checking the invitation to $host…';
   }
 
   @override
@@ -7035,7 +7031,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String widgetMarkDone(String title) {
-    return 'Mark “$title” done';
+    return 'Mark “$title” as done';
   }
 
   @override
@@ -7075,7 +7071,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get widgetsIntro =>
-      'A widget shows one list of an account: today\'s tasks, the next days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.';
+      'A widget shows one list of an account: today\'s tasks, the coming days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.';
 
   @override
   String get widgetsHowToHeading => 'How to add one';
@@ -7102,11 +7098,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get widgetsPlacedHeading => 'On your home screen';
 
   @override
-  String get widgetsPlacedAccountRemoved => 'Account removed – choose another';
+  String get widgetsPlacedAccountRemoved => 'Account removed — choose another';
 
   @override
   String get widgetsPrivacyNote =>
-      'Widgets show your task titles on the home screen, where anyone who sees your phone can read them.';
+      'Widgets show your task titles on the home screen, where anyone who sees your device can read them.';
 
   @override
   String get widgetKindToday => 'Today';
@@ -7118,7 +7114,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get widgetKindUpcoming => 'Upcoming';
 
   @override
-  String get widgetKindUpcomingHint => 'Due in the next days';
+  String get widgetKindUpcomingHint => 'Due in the coming days';
 
   @override
   String get widgetKindOverdue => 'Overdue';
@@ -7215,7 +7211,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get widgetsPlacedNotSetUp =>
-      'Not set up yet – shows the active account';
+      'Not set up yet — shows the active account';
 
   @override
   String get notificationContentReminderTitle => 'Task reminder';
@@ -7314,7 +7310,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyBlockScreenshotsSubtitle =>
-      'Also hides Rurana from screen recordings and the app overview.';
+      'Also hides Rurana from screen recordings and the app switcher.';
 
   @override
   String get privacyNotificationContentHeading => 'Notification content';
@@ -7331,7 +7327,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyNotificationContentHiddenSubtitle =>
-      'The content shows only while the phone is unlocked';
+      'The content shows only while the device is unlocked';
 
   @override
   String get privacyNotificationContentNoTitles => 'Never show task titles';
@@ -7342,7 +7338,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyNotificationContentIosHint =>
-      'On iPhone, iOS decides this for each app: in Settings → Notifications → Rurana, set Show Previews to When Unlocked.';
+      'On iPhone, iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.';
 
   @override
   String get privacyWidgetsHeading => 'Widgets';
@@ -7561,7 +7557,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connectionIntro =>
-      'Used by this app for every account on this address. The browser that opens the sign-in page does not use them.';
+      'Used by this app for every account at this address. The browser that opens the sign-in page does not use them.';
 
   @override
   String get connectionServerCertificateHeading => 'Server certificate';
@@ -7644,7 +7640,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connectionHeadersUnencrypted =>
-      'Like everything else on this address, the headers travel unencrypted.';
+      'Like everything else at this address, the headers travel unencrypted.';
 
   @override
   String get connectionHeadersNeedCleartext =>
@@ -7786,7 +7782,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connectionReviewDiffers =>
-      'The server now presents yet another certificate than the one seen then. Check it carefully before you accept it.';
+      'The server now presents yet another certificate, different from the one seen then. Check it carefully before you accept it.';
 
   @override
   String get connectionReviewMatchesTrusted =>
@@ -7857,7 +7853,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String connectionHeadersIntro(String origin) {
-    return 'Sent with every request of this app to $origin, and to no other address.';
+    return 'Sent with every request this app makes to $origin, and to no other address.';
   }
 
   @override
@@ -7933,7 +7929,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connectionBrowserHintHeaders =>
-      'The browser goes through the access login itself.';
+      'The browser goes through the access proxy\'s sign-in itself.';
 
   @override
   String connectionBrowserHintOtherHost(String host) {
@@ -8105,4 +8101,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String taskDetailPaneMore(String title) {
     return 'More for $title';
   }
+
+  @override
+  String get actionFailureServerError =>
+      'The server answered with an error. Try again in a few minutes.';
+
+  @override
+  String get actionFailureSessionEnded =>
+      'Your session has ended. Sign in again on the Account tab.';
+
+  @override
+  String get actionFailureRateLimited =>
+      'The server is limiting requests for now. Wait a minute, then try again.';
+
+  @override
+  String get actionFailureGuestAccessEnded =>
+      'Your guest access has ended. Open the link again on the Account tab.';
+
+  @override
+  String get attachmentFileMissing => 'The file is missing from the server.';
+
+  @override
+  String get attachmentDownloadForbidden =>
+      'You no longer have access to this attachment.';
+
+  @override
+  String get taskDuplicateForbidden =>
+      'You don\'t have permission to add tasks to this project.';
+
+  @override
+  String get taskDuplicateArchived =>
+      'This project is archived, so its tasks can\'t be duplicated.';
+
+  @override
+  String get taskDuplicateFileMissing =>
+      'Couldn\'t duplicate the task: one of its attachments is missing from the server.';
+
+  @override
+  String get projectDuplicateFileMissing =>
+      'Couldn\'t duplicate the project: a file in it is missing from the server.';
+
+  @override
+  String get assigneePickerNoAccess => 'No access to this project';
+
+  @override
+  String get appLanguageTitle => 'App language';
+
+  @override
+  String get appLanguageName => 'English';
+
+  @override
+  String get taskDetailDueDateRow => 'Due date';
 }

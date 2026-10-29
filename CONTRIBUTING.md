@@ -33,7 +33,15 @@ Report a security problem privately, through the repository's private vulnerabil
 
 ## Translations
 
-Add new strings to `app/lib/l10n/arb/app_en.arb` only, each with a `description` that says where it appears; a string that is only spoken, never shown, starts its description with "Screen reader: ". A new plural puts the number in the singular branch too (`=1{{count} task}`). The project maintains the German file (`app_de.arb`) and adds the German text before a release. Other languages come later through a translation platform (roadmap step 36).
+English and German are complete on every commit ([D71](docs/decisions.md#d71-complete-english-and-german-british-english-as-the-base-a-glossary-a-wording-pass-over-every-string-more-server-error-codes-in-the-apps-own-words-with-the-servers-detail-as-the-fallback-the-devices-language-followed-while-the-app-runs-names-sorted-with-accents-folded-an-app-language-row-that-opens-the-systems-page)):
+
+- A new or changed string goes into both `app/lib/l10n/arb/app_en.arb` and `app_de.arb` in the same commit. The parity test (`app/test/l10n/arb_parity_test.dart`) fails when one file has a message the other lacks, or when a translation drops or renames a placeholder.
+- English is British and the base: `app_en.arb` is the template. Both languages follow the [glossary](docs/glossary.md) for their terms, spelling, quotes, ellipses and dashes; German uses "du".
+- Every new or changed message gets a `description` in `app_en.arb` that says where it appears; a string that is only spoken, never shown, starts its description with "Screen reader: ". The German file holds only the texts.
+- Placeholders: declare each one under the message's `placeholders` in `app_en.arb`, and keep its name and the ICU braces of a plural or select exactly the same in both files. A new plural puts the number in the singular branch too (`=1{{count} task}`). Add a key in both files at once, and leave the other entries and their order as they are.
+- A text of the Android widgets (`app/android/app/src/main/res/values*/strings.xml`) or of iOS changes in English and German too. On iOS the permission texts are in `app/ios/Runner/Info.plist` (English) and `app/ios/Runner/de.lproj/InfoPlist.strings`; the widget extension's English text is the key in its Swift sources (`app/ios/RuranaWidgets/*.swift`) and in `en.lproj` and `de.lproj` `Localizable.strings`, so changing it means changing all three.
+
+Other languages come later through a translation platform (roadmap step 36f).
 
 ## Name and logo
 

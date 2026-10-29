@@ -333,7 +333,7 @@ class _Form extends StatelessWidget {
               decoration: InputDecoration(
                 labelText: l10n.projectIdentifierLabel,
                 helperText: l10n.projectIdentifierHelp,
-                helperMaxLines: 6,
+                helperMaxLines: 10,
                 errorText: identifierError,
                 errorMaxLines: 4,
               ),

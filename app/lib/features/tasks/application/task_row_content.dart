@@ -1,4 +1,5 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/text/title_order.dart';
 
 /// The web row's labels: one per id (the last copy, where the first
 /// stood), by title.
@@ -8,8 +9,10 @@ List<Label> rowLabels(List<Label> labels) {
     byId[label.id] = label;
   }
   return byId.values.toList()..sort((a, b) {
-    final byTitle = a.title.toLowerCase().compareTo(b.title.toLowerCase());
-    return byTitle != 0 ? byTitle : a.title.compareTo(b.title);
+    final byTitle = compareTitles(a.title, b.title);
+    if (byTitle != 0) return byTitle;
+    final byCase = a.title.compareTo(b.title);
+    return byCase != 0 ? byCase : a.id.compareTo(b.id);
   });
 }
 

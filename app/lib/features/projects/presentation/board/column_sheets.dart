@@ -173,7 +173,7 @@ class _ColumnLimitSheetState extends State<ColumnLimitSheet> {
                 labelText: l10n.boardColumnLimitLabel,
                 hintText: l10n.boardColumnLimitNotSet,
                 helperText: l10n.boardColumnLimitHelp(widget.count),
-                helperMaxLines: 5,
+                helperMaxLines: 10,
               ),
               onChanged: (_) => setState(() {}),
               onSubmitted: (_) => _submit(),

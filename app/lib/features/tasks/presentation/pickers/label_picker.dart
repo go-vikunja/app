@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/labels/presentation/label_change_failure.dart';
 import 'package:vikunja_mobile/features/tasks/application/label_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/label_search.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
@@ -76,18 +77,10 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
       created = await repository.create(
         NewLabel(title: title, hexColor: randomLabelColor(_random)),
       );
-    } on NetworkFailure catch (failure) {
-      // A timeout may come after the server stored the label; the
-      // repository looks for it before the next create of this title.
-      error = failure.problem == NetworkProblem.timeout
-          ? l10n.labelPickerCreateUnconfirmed
-          : l10n.labelPickerCreateOffline;
-    } on VikunjaFailure catch (failure) {
-      error = failure.message.trim().isEmpty
-          ? l10n.labelPickerCreateFailed
-          : l10n.labelPickerCreateRejected(failure.message.trim());
-    } on Object {
-      error = l10n.labelPickerCreateFailed;
+    } on Object catch (failure) {
+      // After a timeout the repository looks for the label before the next
+      // create of this title, as the server may have stored it.
+      error = labelChangeFailureText(l10n, failure, LabelChange.create);
     }
     if (!mounted) return;
     setState(() {

@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/widgets.dart'
+    show AppLifecycleListener, WidgetsBinding, WidgetsBindingObserver;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway.dart';
@@ -12,14 +15,24 @@ import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
 part 'local_notification_gateway_provider.g.dart';
 
+final _log = Logger('DeviceLanguage');
+
 @Riverpod(keepAlive: true)
-NotificationGateway notificationGateway(Ref ref) => LocalNotificationGateway(
-  texts: localNotificationTexts(ref.watch(deviceAppLocalizationsProvider)),
-  preferences: ref.watch(preferencesStoreProvider),
-  onResponse: ref.watch(notificationResponsesProvider).add,
-  onBackgroundResponse: ref.watch(notificationBackgroundEntryPointProvider),
-  excursions: ref.watch(appExcursionsProvider),
-);
+NotificationGateway notificationGateway(Ref ref) {
+  final gateway = LocalNotificationGateway(
+    texts: localNotificationTexts(ref.read(deviceAppLocalizationsProvider)),
+    preferences: ref.watch(preferencesStoreProvider),
+    onResponse: ref.watch(notificationResponsesProvider).add,
+    onBackgroundResponse: ref.watch(notificationBackgroundEntryPointProvider),
+    excursions: ref.watch(appExcursionsProvider),
+  );
+  // Not rebuilt for a new language: the activity tray keeps this instance.
+  ref.listen(
+    deviceAppLocalizationsProvider,
+    (_, l10n) => unawaited(gateway.updateTexts(localNotificationTexts(l10n))),
+  );
+  return gateway;
+}
 
 /// The top-level `@pragma('vm:entry-point')` function the plugin runs in its
 /// own engine for an action that shows no UI. Overridden in bootstrap with
@@ -92,13 +105,64 @@ LocalNotificationTexts localNotificationTexts(AppLocalizations l10n) =>
 /// that gets no locales.
 const notificationLocaleKey = 'notifications.locale';
 
-/// The app's strings for the notification texts, without a widget tree.
-/// Bootstrap and the background entry point override this with what
-/// [loadDeviceAppLocalizations] resolved; the default serves the tests.
+/// The app's strings for what the OS shows outside the widget tree:
+/// notifications and their channels, widgets and the app lock prompt.
+/// Bootstrap overrides the build with what [loadDeviceAppLocalizations]
+/// resolved, and [deviceLanguageFollowerProvider] keeps it in the device's
+/// language; the headless entry points override it with a value. The
+/// default serves the tests.
 @Riverpod(keepAlive: true)
-AppLocalizations deviceAppLocalizations(Ref ref) =>
-    _supportedAppLocalizations(PlatformDispatcher.instance.locales) ??
-    lookupAppLocalizations(const Locale('en'));
+class DeviceAppLocalizations extends _$DeviceAppLocalizations {
+  @override
+  AppLocalizations build() =>
+      _resolveAppLocalizations(PlatformDispatcher.instance.locales);
+
+  /// Switches to the language [locales] resolve to, as
+  /// [loadDeviceAppLocalizations] resolves them, and notes it for the
+  /// headless isolates; nothing when that is the current one or when no
+  /// locale is reported.
+  Future<void> follow(Iterable<Locale> locales) async {
+    if (locales.isEmpty) return;
+    final l10n = _resolveAppLocalizations(locales);
+    if (l10n.localeName == state.localeName) return;
+    state = l10n;
+    await _noteLocale(ref.read(preferencesStoreProvider), l10n);
+  }
+}
+
+/// In the app: [deviceAppLocalizationsProvider] follows a change of the
+/// device or per-app language while the app runs, which Android reports
+/// without restarting the activity, and looks again on every resume. iOS
+/// restarts the app instead. Bootstrap listens.
+@Riverpod(keepAlive: true)
+void deviceLanguageFollower(Ref ref) {
+  void follow([List<Locale>? locales]) => unawaited(
+    ref
+        .read(deviceAppLocalizationsProvider.notifier)
+        .follow(locales ?? WidgetsBinding.instance.platformDispatcher.locales)
+        .catchError(
+          (Object error) => _log.warning(
+            'Could not note the device language: ${error.runtimeType}',
+          ),
+        ),
+  );
+  final observer = _LocalesObserver(follow);
+  WidgetsBinding.instance.addObserver(observer);
+  final lifecycle = AppLifecycleListener(onResume: follow);
+  ref.onDispose(() {
+    lifecycle.dispose();
+    WidgetsBinding.instance.removeObserver(observer);
+  });
+}
+
+final class _LocalesObserver with WidgetsBindingObserver {
+  new(this._onChange);
+
+  final void Function(List<Locale>? locales) _onChange;
+
+  @override
+  void didChangeLocales(List<Locale>? locales) => _onChange(locales);
+}
 
 /// The first of [locales] the app supports, else English when the engine
 /// reports any locale, the tag noted under [notificationLocaleKey] when it
@@ -111,13 +175,8 @@ Future<AppLocalizations> loadDeviceAppLocalizations(
 }) async {
   final reported = locales ?? PlatformDispatcher.instance.locales;
   if (reported.isNotEmpty) {
-    final l10n =
-        _supportedAppLocalizations(reported) ??
-        lookupAppLocalizations(const Locale('en'));
-    await preferences.setString(
-      notificationLocaleKey,
-      l10n.localeName.replaceAll('_', '-'),
-    );
+    final l10n = _resolveAppLocalizations(reported);
+    await _noteLocale(preferences, l10n);
     return l10n;
   }
   final noted = await preferences.getString(notificationLocaleKey);
@@ -134,11 +193,18 @@ Future<AppLocalizations> loadDeviceAppLocalizations(
   return lookupAppLocalizations(const Locale('en'));
 }
 
-AppLocalizations? _supportedAppLocalizations(Iterable<Locale> locales) {
+/// The first of [locales] the app supports, else English.
+AppLocalizations _resolveAppLocalizations(Iterable<Locale> locales) {
   for (final locale in locales) {
     if (AppLocalizations.delegate.isSupported(locale)) {
       return lookupAppLocalizations(locale);
     }
   }
-  return null;
+  return lookupAppLocalizations(const Locale('en'));
 }
+
+Future<void> _noteLocale(PreferencesStore preferences, AppLocalizations l10n) =>
+    preferences.setString(
+      notificationLocaleKey,
+      l10n.localeName.replaceAll('_', '-'),
+    );

@@ -3,7 +3,9 @@ import 'dart:ui' show Locale;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
@@ -14,6 +16,7 @@ import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 const _channel = MethodChannel('dexterous.com/flutter/local_notifications');
 
 final AppLocalizations en = lookupAppLocalizations(const Locale('en'));
+final AppLocalizations de = lookupAppLocalizations(const Locale('de'));
 
 @pragma('vm:entry-point')
 void _backgroundEntryPoint(NotificationResponse response) {}
@@ -195,6 +198,94 @@ void main() {
 
       final init = args(call('initialize'));
       expect(init.containsKey('callback_handle'), isFalse);
+    });
+  });
+
+  group('updateTexts', () {
+    List<Map<String, Object?>> channels() => [
+      for (final call in calls)
+        if (call.method == 'createNotificationChannel') args(call),
+    ];
+
+    test('Android, once initialised: both channels again under their ids '
+        'with the new names; what is scheduled later has the new action '
+        'titles', () async {
+      final gateway0 = gateway();
+      await gateway0.initialize();
+      calls.clear();
+
+      await gateway0.updateTexts(localNotificationTexts(de));
+
+      expect(calls.map((c) => c.method), [
+        'createNotificationChannel',
+        'createNotificationChannel',
+      ]);
+      expect(channels().map((c) => c['id']), [
+        LocalNotificationGateway.channelId,
+        LocalNotificationGateway.activityChannelId,
+      ]);
+      expect(channels().map((c) => c['name']), [
+        de.notificationChannelReminders,
+        de.notificationChannelActivity,
+      ]);
+      expect(channels().map((c) => c['description']), [
+        de.notificationChannelRemindersDescription,
+        de.notificationChannelActivityDescription,
+      ]);
+      expect(channels().first['importance'], Importance.high.value);
+
+      await gateway0.schedule(notification);
+      final specifics = platformSpecifics(call('zonedSchedule'));
+      expect(specifics['channelName'], de.notificationChannelReminders);
+      expect(
+        [
+          for (final action in specifics['actions']! as List)
+            (action as Map)['title'],
+        ],
+        [
+          de.notificationActionDone,
+          de.notificationActionSnooze10Minutes,
+          de.notificationActionSnooze1Hour,
+        ],
+      );
+    });
+
+    test('before the plugin is initialised nothing is called; the first '
+        'use creates the channels with the new names', () async {
+      final gateway0 = gateway();
+
+      await gateway0.updateTexts(localNotificationTexts(de));
+      expect(calls, isEmpty);
+
+      await gateway0.cancel(1);
+      expect(channels().map((c) => c['name']), [
+        de.notificationChannelReminders,
+        de.notificationChannelActivity,
+      ]);
+    });
+
+    test('a channel the plugin refuses is logged, not thrown', () async {
+      final gateway0 = gateway();
+      await gateway0.initialize();
+      throwing = (call) => call.method == 'createNotificationChannel'
+          ? PlatformException(code: 'error')
+          : null;
+
+      await expectLater(
+        gateway0.updateTexts(localNotificationTexts(de)),
+        completes,
+      );
+    });
+
+    test('iOS: nothing is called, since the app restarts for a new '
+        'language', () async {
+      final gateway0 = gateway(platform: TargetPlatform.iOS);
+      await gateway0.initialize();
+      calls.clear();
+
+      await gateway0.updateTexts(localNotificationTexts(de));
+
+      expect(calls, isEmpty);
     });
   });
 
@@ -596,6 +687,51 @@ void main() {
 
       expect(l10n.localeName, 'en');
       expect(preferences.values[notificationLocaleKey], 'en');
+    });
+
+    group('follow', () {
+      late ProviderContainer container;
+
+      setUp(() {
+        container = ProviderContainer(
+          overrides: [
+            preferencesStoreProvider.overrideWithValue(preferences),
+            deviceAppLocalizationsProvider.overrideWithBuild((_, _) => en),
+          ],
+        );
+        addTearDown(container.dispose);
+      });
+
+      DeviceAppLocalizations notifier() =>
+          container.read(deviceAppLocalizationsProvider.notifier);
+
+      test('switches to the first supported locale and notes it', () async {
+        final changes = <String>[];
+        container.listen(
+          deviceAppLocalizationsProvider,
+          (_, next) => changes.add(next.localeName),
+        );
+
+        await notifier().follow(const [Locale('fr'), Locale('de', 'AT')]);
+
+        expect(changes, ['de']);
+        expect(preferences.values[notificationLocaleKey], 'de');
+      });
+
+      test('the same language, or no locale at all, changes and notes '
+          'nothing', () async {
+        final changes = <String>[];
+        container.listen(
+          deviceAppLocalizationsProvider,
+          (_, next) => changes.add(next.localeName),
+        );
+
+        await notifier().follow(const [Locale('en', 'GB')]);
+        await notifier().follow(const []);
+
+        expect(changes, isEmpty);
+        expect(preferences.values, isEmpty);
+      });
     });
 
     test(

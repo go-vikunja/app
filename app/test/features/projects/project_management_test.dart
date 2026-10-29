@@ -240,11 +240,89 @@ void main() {
 
     test('another refusal with its message, else a fallback', () {
       expect(
-        text(const ServerFailure(500, message: 'Boom')),
+        text(const DomainError(400, code: 9999, message: 'Boom')),
         en.projectChangeRefused('Boom'),
       );
-      expect(text(const ServerFailure(500)), en.projectChangeFailed);
+      expect(
+        text(const ServerFailure(500, message: 'Internal Server Error')),
+        en.actionFailureServerError,
+      );
+      expect(text(const ServerFailure(500)), en.actionFailureServerError);
+      expect(text(const UnexpectedResponse(502)), en.projectChangeFailed);
       expect(text(StateError('x')), en.projectChangeFailed);
+    });
+
+    group('newly mapped server codes, in English and German', () {
+      for (final l10n in [en, de]) {
+        String text(
+          Object error, [
+          ProjectChange change = ProjectChange.edit,
+        ]) => projectChangeFailureText(l10n, error, change);
+
+        test('${l10n.localeName}: a file missing from storage while '
+            'duplicating', () {
+          expect(
+            text(const NotFound(code: 4034), ProjectChange.duplicate),
+            l10n.projectDuplicateFileMissing,
+          );
+          expect(text(const NotFound(code: 4034)), l10n.projectGone);
+          expect(
+            text(const NotFound(code: 3001), ProjectChange.duplicate),
+            l10n.projectGone,
+          );
+        });
+
+        test('${l10n.localeName}: an archived parent while editing, '
+            'unarchiving stays', () {
+          const parentArchived = DomainError(412, code: 3016);
+          expect(
+            text(parentArchived, ProjectChange.editWithParent),
+            l10n.projectParentArchived,
+          );
+          expect(
+            text(parentArchived, ProjectChange.unarchive),
+            l10n.projectUnarchiveParentFirst,
+          );
+        });
+
+        test('${l10n.localeName}: an empty title', () {
+          expect(
+            text(const DomainError(400, code: 3005, message: 'empty')),
+            l10n.projectChangeInvalid,
+          );
+        });
+
+        test('${l10n.localeName}: filter codes 4017 with the server detail '
+            'and 4033 in our words, both at the filter field', () {
+          const comparator = DomainError(
+            400,
+            code: 4017,
+            message: ' Invalid comparator. ',
+          );
+          const tooComplex = DomainError(
+            400,
+            code: 4033,
+            message: 'The filter is too complex.',
+          );
+          expect(
+            text(comparator, ProjectChange.view),
+            l10n.projectViewFilterInvalid('Invalid comparator.'),
+          );
+          expect(isInvalidViewFilter(comparator), isTrue);
+          expect(
+            text(tooComplex, ProjectChange.view),
+            l10n.filterErrorTooComplex,
+          );
+          expect(isInvalidViewFilter(tooComplex), isTrue);
+        });
+
+        test('${l10n.localeName}: a server error', () {
+          expect(
+            text(const ServerFailure(503, code: 4037, message: 'Busy')),
+            l10n.actionFailureServerError,
+          );
+        });
+      }
     });
   });
 }

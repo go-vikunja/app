@@ -67,6 +67,13 @@ private enum DeviceChannel {
           [[UTType.utf8PlainText.identifier: text]],
           options: [.localOnly: true, .expirationDate: Date(timeIntervalSinceNow: 120)])
         result(nil)
+      case "openAppSettings":
+        // The app's page in Settings, with its Language entry.
+        guard let url = URL(string: UIApplication.openSettingsURLString) else {
+          result(false)
+          return
+        }
+        UIApplication.shared.open(url) { opened in result(opened) }
       default:
         result(FlutterMethodNotImplemented)
       }

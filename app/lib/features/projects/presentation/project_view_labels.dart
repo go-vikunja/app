@@ -1,6 +1,7 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/text/title_order.dart';
 
 /// The server's default names are translated, any other title shown as
 /// is, like the web's view tabs.
@@ -36,16 +37,20 @@ String sortLabel(AppLocalizations l10n, TaskListSort sort) => switch (sort) {
 /// The web's sort popup order: "Manually" first, the rest by label.
 List<TaskListSort> sortsInMenuOrder(AppLocalizations l10n) => [
   TaskListSort.manual,
-  ...[
+  ...orderedByLabel([
     for (final sort in TaskListSort.values)
       if (sort != TaskListSort.manual) sort,
-  ]..sort(
-    (a, b) => sortLabel(
-      l10n,
-      a,
-    ).toLowerCase().compareTo(sortLabel(l10n, b).toLowerCase()),
-  ),
+  ], (sort) => sortLabel(l10n, sort)),
 ];
+
+List<T> orderedByLabel<T>(Iterable<T> items, String Function(T item) label) {
+  final labelled = [for (final item in items) (item, label(item))]
+    ..sort((a, b) {
+      final byTitle = compareTitles(a.$2, b.$2);
+      return byTitle != 0 ? byTitle : a.$2.compareTo(b.$2);
+    });
+  return [for (final (item, _) in labelled) item];
+}
 
 String tableSortLabel(AppLocalizations l10n, TableSort sort) =>
     switch ((sort.field, sort.descending)) {

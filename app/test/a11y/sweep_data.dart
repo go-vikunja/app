@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/platform/app_language_settings.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -178,6 +179,16 @@ List<Override> sweepRepositoryOverrides() => [
   ),
 ];
 
+/// The Account tab's App language row, as Android 13 and later and iOS
+/// show it.
+final class _ShownAppLanguageSettings implements AppLanguageSettings {
+  @override
+  Future<bool> available() async => true;
+
+  @override
+  Future<bool> open() async => false;
+}
+
 /// Signed in as alice on a 2.7 server whose data is [data].
 Future<AuthFakes> pumpSweepApp(
   WidgetTester tester, {
@@ -190,7 +201,11 @@ Future<AuthFakes> pumpSweepApp(
   sync: data ?? sweepData(),
   auth: auth,
   now: sweepNow,
-  overrides: [...sweepRepositoryOverrides(), ...overrides],
+  overrides: [
+    ...sweepRepositoryOverrides(),
+    appLanguageSettingsProvider.overrideWithValue(_ShownAppLanguageSettings()),
+    ...overrides,
+  ],
   settle: settle,
 );
 

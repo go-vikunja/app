@@ -13,8 +13,9 @@
   "connectContinue": "Continue",
   "connectCancel": "Cancel",
   "connectConnecting": "Connecting…",
-  "connectConnectingTo": "Looking for Vikunja at {address} …",
+  "connectConnectingTo": "Looking for Vikunja at {address}…",
   "@connectConnectingTo": {
+    "description": "Progress text on the connect screen while the app checks the typed server address; address is the address as typed.",
     "placeholders": {
       "address": {
         "type": "String",
@@ -23,7 +24,10 @@
     }
   },
   "connectTryDemo": "Try the public demo",
-  "failureInvalidAddressTitle": "That doesn’t look like a server address",
+  "failureInvalidAddressTitle": "That doesn't look like a server address",
+  "@failureInvalidAddressTitle": {
+    "description": "Title of the connect failure when the typed text is not a web address the app can open."
+  },
   "failureInvalidAddressExplanation": "“{input}” is not a web address the app can open.",
   "@failureInvalidAddressExplanation": {
     "placeholders": {
@@ -66,8 +70,9 @@
       }
     }
   },
-  "failureTlsHandshakeExplanation": "{host} did not complete a secure (HTTPS) connection. The address may only speak plain http, or the server’s HTTPS setup is incomplete.",
+  "failureTlsHandshakeExplanation": "{host} did not complete a secure (HTTPS) connection. The address may only speak plain http, or the server's HTTPS setup is incomplete.",
   "@failureTlsHandshakeExplanation": {
+    "description": "Explanation of the connect failure when the server did not complete a secure HTTPS connection; host is the server's address. Plain http means an unencrypted address starting with http://.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -75,7 +80,10 @@
       }
     }
   },
-  "failureTlsHandshakeSuggestion": "Check the port and whether the address should start with http:// instead of https://. If HTTPS should work, check the reverse proxy’s TLS configuration.",
+  "failureTlsHandshakeSuggestion": "Check the port and whether the address should start with http:// instead of https://. If HTTPS should work, check the reverse proxy's TLS configuration.",
+  "@failureTlsHandshakeSuggestion": {
+    "description": "Suggestion of the connect failure explained by failureTlsHandshakeExplanation. Keep http:// and https:// as they are; the reverse proxy is the web server in front of Vikunja."
+  },
   "failureNotVikunjaTitle": "No Vikunja server found",
   "failureNotVikunjaExplanation": "{host} answered, but not like a Vikunja server.",
   "@failureNotVikunjaExplanation": {
@@ -98,7 +106,10 @@
     }
   },
   "failureUnavailableSuggestion": "Try again in a few minutes. If it keeps happening, ask whoever runs the server to check on it.",
-  "failureLoginProxyTitle": "Server is behind a login page",
+  "failureLoginProxyTitle": "Server is behind a sign-in page",
+  "@failureLoginProxyTitle": {
+    "description": "Title of the connect failure when a proxy in front of the server, such as Cloudflare Access, shows its own sign-in page instead of Vikunja."
+  },
   "failureLoginProxyExplanation": "A proxy in front of {host} asks for its own sign-in before Vikunja can be reached.",
   "@failureLoginProxyExplanation": {
     "placeholders": {
@@ -165,9 +176,13 @@
     }
   },
   "unsupportedSuggestion": "Ask whoever runs the server to update Vikunja.",
-  "unsupportedUnknownVersionTitle": "Server version not recognized",
-  "unsupportedUnknownVersionBody": "Rurana needs Vikunja {minimum} or newer. This server reports a version the app does not recognize.",
+  "unsupportedUnknownVersionTitle": "Server version not recognised",
+  "@unsupportedUnknownVersionTitle": {
+    "description": "Title of the card on the server overview screen when the server reports a version the app cannot read."
+  },
+  "unsupportedUnknownVersionBody": "Rurana needs Vikunja {minimum} or newer. This server reports a version the app does not recognise.",
   "@unsupportedUnknownVersionBody": {
+    "description": "Body of the card on the server overview screen when the server reports a version the app cannot read; minimum is the oldest Vikunja version the app supports.",
     "placeholders": {
       "minimum": {
         "type": "String",
@@ -178,9 +193,13 @@
   "unsupportedUnknownVersionSuggestion": "Ask whoever runs the server which Vikunja version it runs.",
   "signInMethodsHeading": "Sign-in methods",
   "signInBrowserTitle": "Browser sign-in",
-  "signInBrowserSubtitle": "Uses the Vikunja login page, including single sign-on.",
-  "signInBrowserProvidersSubtitle": "Uses the Vikunja login page, including {providers}.",
+  "signInBrowserSubtitle": "Uses the Vikunja sign-in page, including single sign-on.",
+  "@signInBrowserSubtitle": {
+    "description": "Subtitle of the browser sign-in option on the server overview screen when the server names no single sign-on providers."
+  },
+  "signInBrowserProvidersSubtitle": "Uses the Vikunja sign-in page, including {providers}.",
   "@signInBrowserProvidersSubtitle": {
+    "description": "Subtitle of the browser sign-in option on the server overview screen; providers is a comma-separated list of the server's single sign-on providers, by their names on the server.",
     "placeholders": {
       "providers": {
         "type": "String",
@@ -220,6 +239,9 @@
   "continueToSignIn": "Continue to sign-in",
   "useDifferentServer": "Use a different server",
   "signInWaiting": "Waiting for sign-in…",
+  "@signInWaiting": {
+    "description": "Text of the disabled sign-in button, next to a spinner, while the server's sign-in page is open in the browser."
+  },
   "signInRateLimitedTitle": "Too many sign-in attempts",
   "signInRateLimitedExplanation": "{host} is limiting sign-ins from your network for now.",
   "@signInRateLimitedExplanation": {
@@ -281,14 +303,23 @@
   },
   "signInRejectedSuggestion": "Try again. If it keeps happening, ask whoever runs the server to check it.",
   "signInDiscardedTitle": "Sign-in discarded",
-  "signInDiscardedExplanation": "The browser returned a sign-in that doesn’t belong to this attempt, so the app discarded it to protect your account.",
+  "signInDiscardedExplanation": "The browser returned a sign-in that doesn't belong to this attempt, so the app discarded it to protect your account.",
+  "@signInDiscardedExplanation": {
+    "description": "Explanation of the sign-in failure when the browser returned a sign-in that does not match the attempt the app started, which the app rejects as a security check."
+  },
   "signInIncompleteTitle": "Sign-in not completed",
   "signInIncompleteExplanation": "The browser returned to the app without a finished sign-in.",
-  "signInIncompleteSuggestion": "Try again and finish signing in on the server’s page.",
+  "signInIncompleteSuggestion": "Try again and finish signing in on the server's page.",
+  "@signInIncompleteSuggestion": {
+    "description": "Suggestion of the sign-in failure when the server's sign-in page returned to the app without a completed sign-in."
+  },
   "signInNoBrowserTitle": "No browser available",
   "signInNoBrowserExplanation": "Signing in needs a web browser, but none is available on this device.",
   "signInNoBrowserSuggestion": "Install or enable a browser, then try again.",
-  "signInBrowserFailedTitle": "Sign-in page couldn’t be opened",
+  "signInBrowserFailedTitle": "Sign-in page couldn't be opened",
+  "@signInBrowserFailedTitle": {
+    "description": "Title of the sign-in failure when the device could not show the server's sign-in page."
+  },
   "signInBrowserFailedExplanation": "The app could not show the sign-in page of the server.",
   "signInBrowserFailedSuggestion": "Try again. If it keeps happening, restart the app.",
   "signInAccountDisabledTitle": "Account disabled",
@@ -364,8 +395,9 @@
   "homeSignOutOfThisAccount": "Sign out of this account",
   "homeSigningOut": "Signing out…",
   "signOutDialogTitle": "Sign out?",
-  "signOutDialogBody": "Rurana will sign {account} out of {host} and delete this account’s tasks saved on this device. You can sign in again at any time.",
+  "signOutDialogBody": "Rurana will sign {account} out of {host} and delete this account's tasks saved on this device. You can sign in again at any time.",
   "@signOutDialogBody": {
+    "description": "Body of the sign-out confirmation for an account; account is its username, or its name with the username as in signOutDialogAccount, and host is the server's address.",
     "placeholders": {
       "account": {
         "type": "String",
@@ -513,11 +545,20 @@
   },
   "addAccountTagline": "Sign in with another account, on one of your servers or a new one.",
   "addAccountYourServers": "Your servers",
-  "addAccountAlreadyAdded": "You’re already signed in to this account — switched to it",
-  "addAccountAlreadyActive": "You’re already signed in to this account",
+  "addAccountAlreadyAdded": "You're already signed in to this account — switched to it",
+  "@addAccountAlreadyAdded": {
+    "description": "Snackbar after signing in to an account that is already signed in on this device: the app switched to it instead of adding it again."
+  },
+  "addAccountAlreadyActive": "You're already signed in to this account",
+  "@addAccountAlreadyActive": {
+    "description": "Snackbar after signing in to an account that is already signed in on this device and is already the active one."
+  },
   "overviewLoading": "Loading your tasks…",
   "overviewEmptyTitle": "All done",
   "overviewEmptyBody": "No open tasks right now. Enjoy the quiet, or add one with New task.",
+  "@overviewEmptyBody": {
+    "description": "Body of the Overview's empty state when no task is open. New task is the name of the button that adds a task."
+  },
   "sectionOverdue": "Overdue",
   "sectionToday": "Today",
   "sectionNextSevenDays": "Next 7 days",
@@ -526,10 +567,13 @@
   "projectsLoading": "Loading your projects…",
   "projectsEmptyTitle": "No projects yet",
   "projectsEmptyBody": "Create your first project to start adding tasks.",
+  "@projectsEmptyBody": {
+    "description": "Body of the Projects tab's empty state when the account has no projects."
+  },
   "projectsFavouritesHeading": "Favourites",
   "projectsFavouriteTasks": "Favourite tasks",
   "@projectsFavouriteTasks": {
-    "description": "The row of the Favorites list in the Favourites section of the Projects tab; the list's own title is projectFavouritesTitle."
+    "description": "The row of the Favourites list in the Favourites section of the Projects tab; the list's own title is projectFavouritesTitle."
   },
   "projectsAllHeading": "All projects",
   "projectsShowArchived": "Show archived projects",
@@ -545,7 +589,7 @@
   },
   "smartListOpenTaskCount": "{count, plural, =1{1 open task} other{{count} open tasks}}",
   "@smartListOpenTaskCount": {
-    "description": "Under the Favorites list in the Projects tab.",
+    "description": "Under the Favourites list in the Projects tab.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -565,6 +609,7 @@
   },
   "smartListFilterNotLoadedBody": "The server applies the saved filter “{title}”. Its tasks download when you open it online.",
   "@smartListFilterNotLoadedBody": {
+    "description": "Body of a saved filter's empty state while offline, when its tasks were never downloaded; title is the saved filter's title.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -603,6 +648,9 @@
     "description": "Under the switch for Android's dynamic colours; the switch applies to the whole device."
   },
   "appearanceLightDarkHint": "Light or dark is your account's colour scheme, in Account settings.",
+  "@appearanceLightDarkHint": {
+    "description": "Note under the Use system colours switch in the Appearance section of the Account tab: light or dark mode is not set here but by the account's colour scheme in Account settings."
+  },
   "projectChildCount": "{count, plural, =1{1 subproject} other{{count} subprojects}}",
   "@projectChildCount": {
     "placeholders": {
@@ -723,6 +771,9 @@
   "projectTasksLoading": "Loading tasks…",
   "projectTasksEmptyTitle": "No open tasks",
   "projectTasksEmptyBody": "Everything in this project is done. Turn on “Show done” to see them.",
+  "@projectTasksEmptyBody": {
+    "description": "Body of a project's empty state when all its tasks are done and done tasks are hidden. Show done is the name of the chip that shows them."
+  },
   "projectTasksEmptyAllTitle": "No tasks",
   "projectTasksEmptyAllBody": "This project has no tasks yet.",
   "moreActions": "More",
@@ -886,6 +937,9 @@
     }
   },
   "taskDetailDueDate": "Due date",
+  "@taskDetailDueDate": {
+    "description": "Name of a task's due date: label of the date field on the task edit page, section title on the new-task sheet and the table view's column."
+  },
   "taskDetailStartDate": "Start date",
   "taskDetailEndDate": "End date",
   "taskDetailPriority": "Priority",
@@ -1044,8 +1098,14 @@
   "reminderReferenceDueDate": "due date",
   "reminderReferenceStartDate": "start date",
   "reminderReferenceEndDate": "end date",
-  "dataFailureLoadTitle": "Couldn’t load from the server",
-  "dataFailureRefreshTitle": "Couldn’t refresh",
+  "dataFailureLoadTitle": "Couldn't load from the server",
+  "@dataFailureLoadTitle": {
+    "description": "Title of the error on a screen whose data could not be loaded from the server, with nothing older to show."
+  },
+  "dataFailureRefreshTitle": "Couldn't refresh",
+  "@dataFailureRefreshTitle": {
+    "description": "Title of the error on a screen whose refresh failed while the data loaded last stays on screen."
+  },
   "dataFailureStaleNote": "Showing what was loaded last.",
   "dataFailureSessionEnded": "Your session on {host} has ended. Sign in again on the Account tab.",
   "@dataFailureSessionEnded": {
@@ -1104,6 +1164,9 @@
     }
   },
   "firstSyncPreparing": "Preparing…",
+  "@firstSyncPreparing": {
+    "description": "Progress text on the first-sync screen before the download of the account's data starts."
+  },
   "firstSyncCancel": "Cancel and sign out",
   "syncPhaseAccount": "Checking your account…",
   "syncPhaseProjects": "Loading projects…",
@@ -1139,6 +1202,9 @@
     }
   },
   "syncIndicatorLabel": "Syncing with the server",
+  "@syncIndicatorLabel": {
+    "description": "Screen reader: name of the thin progress bar at the top of a screen while the app syncs with the server."
+  },
   "offlineNotice": "Offline — showing saved data",
   "accountLastSynced": "Last synced {when}",
   "@accountLastSynced": {
@@ -1152,6 +1218,9 @@
   "accountLastSyncedJustNow": "Synced just now",
   "accountNeverSynced": "Not synced yet",
   "accountSyncing": "Syncing…",
+  "@accountSyncing": {
+    "description": "In the sync section of the Account tab while a sync runs: label of the Sync now button, and announced once to screen readers when a sync starts."
+  },
   "accountSyncFailed": "The last sync failed.",
   "accountSyncNow": "Sync now",
   "accountFullResync": "Full resync",
@@ -1168,12 +1237,27 @@
   "accountBackgroundSyncJustNow": "Background sync: just now",
   "accountBackgroundSyncNever": "Background sync has not run yet",
   "accountBackgroundSyncIosHint": "iOS decides when apps may sync in the background.",
-  "taskMarkDone": "Mark done",
-  "taskMarkNotDone": "Mark not done",
-  "taskMarkedDone": "Marked done",
+  "taskMarkDone": "Mark as done",
+  "@taskMarkDone": {
+    "description": "Tooltip and screen reader label of the done checkbox of an open task, in a task list and in a task's Subtasks section. Done is the task's state."
+  },
+  "taskMarkNotDone": "Mark as not done",
+  "@taskMarkNotDone": {
+    "description": "Tooltip and screen reader label of the done checkbox of a done task, in a task list and in a task's Subtasks section: makes the task open again. Done and open are states."
+  },
+  "taskMarkedDone": "Marked as done",
+  "@taskMarkedDone": {
+    "description": "Snackbar after a task was marked as done, with an Undo action."
+  },
   "undo": "Undo",
   "taskAddFavourite": "Add to favourites",
+  "@taskAddFavourite": {
+    "description": "Tooltip and screen reader label of the star button of a task that is not among the favourites."
+  },
   "taskRemoveFavourite": "Remove from favourites",
+  "@taskRemoveFavourite": {
+    "description": "Tooltip and screen reader label of the star button of a task that is among the favourites."
+  },
   "taskNotYetSynced": "Not yet synced",
   "taskDelete": "Delete task",
   "taskDeleteDialogTitle": "Delete task?",
@@ -1240,6 +1324,9 @@
   "syncProblemFailedJustNow": "Failed just now",
   "syncProblemDiscard": "Discard",
   "syncProblemCreateFailed": "The task could not be created.",
+  "@syncProblemCreateFailed": {
+    "description": "Entry in the Sync problems section of the Account tab: a task created on this device could not be created on the server."
+  },
   "taskEdit": "Edit",
   "taskEditTitle": "Edit task",
   "taskEditSave": "Save",
@@ -1261,6 +1348,9 @@
     }
   },
   "taskEditDateNotSet": "Not set",
+  "@taskEditDateNotSet": {
+    "description": "Value of a date field (due, start or end date) on the task edit page when the task has no such date."
+  },
   "taskEditClearDueDate": "Clear due date",
   "taskEditClearStartDate": "Clear start date",
   "taskEditClearEndDate": "Clear end date",
@@ -1353,6 +1443,7 @@
   },
   "newTaskLabelsNotCreated": "Some labels couldn't be created, so the task doesn't have them: {labels}",
   "@newTaskLabelsNotCreated": {
+    "description": "Warning after adding a task when labels written with Quick Add could not be created; labels is a comma-separated list of their titles.",
     "placeholders": {
       "labels": {
         "type": "String",
@@ -1369,7 +1460,10 @@
       }
     }
   },
-  "newTaskNoProjectError": "There's no project to add tasks to yet. Create one on the web first.",
+  "newTaskNoProjectError": "There's no project to add tasks to yet. Create one on the Projects tab first.",
+  "@newTaskNoProjectError": {
+    "description": "Error on the new-task sheet, and the text of a home-screen widget, when the account has no project tasks can be added to."
+  },
   "newTaskAddFailed": "The task could not be added: {reason}",
   "@newTaskAddFailed": {
     "placeholders": {
@@ -1489,6 +1583,7 @@
   },
   "quickAddNewLabelSemantics": "New label {label}, created when you add the task",
   "@quickAddNewLabelSemantics": {
+    "description": "Screen reader: label of the preview chip under the Quick Add field for a label that does not exist yet; label is its title.",
     "placeholders": {
       "label": {
         "type": "String",
@@ -1573,6 +1668,7 @@
   },
   "quickAddSetPriority": "Set priority ({prefix})",
   "@quickAddSetPriority": {
+    "description": "Tooltip of the priority chip above the keyboard on the new-task sheet. It opens a menu of priorities, and choosing one adds the priority prefix with its number to the title. prefix is the Quick Add priority prefix, for example !, kept as it is.",
     "placeholders": {
       "prefix": {
         "type": "String",
@@ -1586,6 +1682,7 @@
   "quickAddHelpLabelsTitle": "Labels",
   "quickAddHelpLabelsBody": "A word starting with {prefix}. Labels that don't exist yet are created when you add the task. Use quotes for spaces.",
   "@quickAddHelpLabelsBody": {
+    "description": "Text of the Labels section of the Quick Add help sheet; prefix is the label prefix, for example *, kept as it is.",
     "placeholders": {
       "prefix": {
         "type": "String",
@@ -1596,6 +1693,7 @@
   "quickAddHelpProjectTitle": "Project",
   "quickAddHelpProjectBody": "{prefix} and a project's title or identifier. Without one, the task goes to the project shown below the field.",
   "@quickAddHelpProjectBody": {
+    "description": "Text of the Project section of the Quick Add help sheet, starting with the project prefix; prefix is that prefix, for example +, kept as it is.",
     "placeholders": {
       "prefix": {
         "type": "String",
@@ -1632,6 +1730,9 @@
   "quickAddHelpMoreTitle": "Good to know",
   "quickAddHelpQuotes": "Put the whole title in quotes to switch the magic off for one task.",
   "quickAddHelpLines": "Paste several lines to add one task per line.",
+  "@quickAddHelpLines": {
+    "description": "Tip in the Good to know section of the Quick Add help sheet: pasting text with several lines adds one task for each line."
+  },
   "quickAddHelpExampleTitle": "Example",
   "quickAddHelpExampleTask": "Change tyres",
   "@quickAddHelpExampleTask": {
@@ -1687,14 +1788,33 @@
   },
   "taskEditReminderDuplicate": "This reminder is already set.",
   "reminderDueDateNotSet": "Due date is not set",
+  "@reminderDueDateNotSet": {
+    "description": "Warning on a reminder in the reminders section of the task edit page when it is relative to the due date and the task has no due date."
+  },
   "reminderStartDateNotSet": "Start date is not set",
+  "@reminderStartDateNotSet": {
+    "description": "Warning on a reminder in the reminders section of the task edit page when it is relative to the start date and the task has no start date."
+  },
   "reminderEndDateNotSet": "End date is not set",
-  "taskEditRemindersCoincide": "Some reminders fall on the same moment. The server keeps only one of them.",
+  "@reminderEndDateNotSet": {
+    "description": "Warning on a reminder in the reminders section of the task edit page when it is relative to the end date and the task has no end date."
+  },
+  "taskEditRemindersCoincide": "Some reminders fall at the same moment. The server keeps only one of them.",
+  "@taskEditRemindersCoincide": {
+    "description": "Warning in the reminders section of the task edit page when two or more reminders fall at the same moment."
+  },
   "labelPickerTitle": "Choose labels",
   "labelPickerSearch": "Search or create a label",
+  "@labelPickerSearch": {
+    "description": "Label of the search field of the label picker; typing a title that does not exist offers to create that label."
+  },
   "labelPickerEmpty": "No labels yet. Type a name to create one.",
+  "@labelPickerEmpty": {
+    "description": "Text of the label picker when the account has no labels and nothing is typed."
+  },
   "labelPickerCreate": "Create label “{title}”",
   "@labelPickerCreate": {
+    "description": "Row of the label picker that creates a label with the typed text; title is that text.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -1703,10 +1823,16 @@
     }
   },
   "labelPickerCreating": "Creating the label…",
-  "labelPickerCreateOffline": "Creating a label needs a connection to the server.",
+  "@labelPickerCreating": {
+    "description": "Under the create row of the label picker while the new label is sent to the server."
+  },
   "labelPickerCreateUnconfirmed": "Couldn't confirm that the label was created. Check your connection and try again.",
+  "@labelPickerCreateUnconfirmed": {
+    "description": "Error in the label picker or on the new-label page when creating a label timed out; the server may have created it."
+  },
   "labelPickerCreateRejected": "The server did not create the label: {message}",
   "@labelPickerCreateRejected": {
+    "description": "Error in the label picker or on the new-label page when the server refused to create a label; message is the server's own error text, untranslated.",
     "placeholders": {
       "message": {
         "type": "String",
@@ -1715,6 +1841,9 @@
     }
   },
   "labelPickerCreateFailed": "The label could not be created.",
+  "@labelPickerCreateFailed": {
+    "description": "Error in the label picker or on the new-label page when a label could not be created for any other reason."
+  },
   "labelPickerTitleTooLong": "A label title can have at most {max} characters.",
   "@labelPickerTitleTooLong": {
     "placeholders": {
@@ -1731,7 +1860,7 @@
   "assigneePickerOffline": "Offline — showing people from your synced tasks",
   "assigneePickerFallback": "{reason} — showing people from your synced tasks",
   "@assigneePickerFallback": {
-    "description": "After a search that failed for another reason than a missing connection; the reason is the server's message or assigneePickerSearchFailed.",
+    "description": "After a search that failed for another reason than a missing connection; the reason is the server's message, assigneePickerSearchFailed or assigneePickerNoAccess.",
     "placeholders": {
       "reason": {
         "type": "String",
@@ -1752,7 +1881,13 @@
   "reminderPickerCustom": "Custom…",
   "reminderPickerDateTime": "Date and time…",
   "reminderPickerAlreadySet": "Already set",
+  "@reminderPickerAlreadySet": {
+    "description": "Screen reader: label of the check mark on a quick choice of the reminder picker that the task already has as a reminder."
+  },
   "reminderPickerNoDateHint": "Set a due, start or end date to get quick choices here.",
+  "@reminderPickerNoDateHint": {
+    "description": "Text of the reminder picker in place of its quick choices when the task has no due, start or end date."
+  },
   "reminderPickerCustomTitle": "Custom reminder",
   "reminderAmountLabel": "Amount",
   "reminderAmountInvalid": "Enter a whole number, 0 or more.",
@@ -1770,6 +1905,7 @@
   "reminderRelativeToEndDate": "End date",
   "reminderRelativeToUnset": "{date} (not set)",
   "@reminderRelativeToUnset": {
+    "description": "Chip of the reminder picker's Relative to choice for a date the task does not have; date is that date's name, such as Due date or Start date.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -1790,7 +1926,10 @@
     }
   },
   "inboxLoading": "Loading notifications…",
-  "inboxEmptyTitle": "You’re all caught up",
+  "inboxEmptyTitle": "You're all caught up",
+  "@inboxEmptyTitle": {
+    "description": "Title of the empty state of the notifications page, which lists the server's notifications about comments, assignments and mentions."
+  },
   "inboxEmptyBody": "Comments, assignments and mentions from your Vikunja server show up here.",
   "inboxMarkAllRead": "Mark all as read",
   "inboxToday": "Today",
@@ -1997,7 +2136,10 @@
     }
   },
   "notificationSetupTitle": "Stay on top of your tasks",
-  "notificationSetupBody": "Rurana can notify you on this phone, without the server having to send anything:",
+  "notificationSetupBody": "Rurana can notify you on this device, without the server having to send anything:",
+  "@notificationSetupBody": {
+    "description": "Body of the notification setup screen, followed by a list of what the app notifies about (reminders, due dates, only the user's own tasks), hence the colon. The app schedules these notifications on the device itself."
+  },
   "notificationSetupReminders": "Reminders at their time",
   "notificationSetupDueDates": "Due dates at the exact time",
   "notificationSetupOnlyYours": "Only for tasks you created or are assigned to",
@@ -2013,6 +2155,9 @@
   "notificationsDueDates": "Due dates",
   "notificationsDueDatesSubtitle": "At the exact due time",
   "notificationsActivity": "Activity",
+  "@notificationsActivity": {
+    "description": "Title of the switch in the Notifications section of the Account tab for notifications about comments, assignments and mentions. A noun."
+  },
   "notificationsActivitySubtitle": "Comments, assignments and mentions",
   "notificationsOff": "Notifications are off",
   "notificationsOpenSettings": "Open settings",
@@ -2031,7 +2176,10 @@
   },
   "notificationsSendTest": "Send a test notification",
   "notificationTestTitle": "Test notification",
-  "notificationTestBody": "Notifications from Rurana work on this phone.",
+  "notificationTestBody": "Notifications from Rurana work on this device.",
+  "@notificationTestBody": {
+    "description": "Body of the test notification sent by Send a test notification in the Notifications section of the Account tab."
+  },
   "notificationTaskGone": "This task is gone",
   "notificationTestReceived": "Notifications work",
   "@notificationTestReceived": {
@@ -2231,6 +2379,7 @@
   },
   "sessionEndedNotificationBody": "Your session as {username} has ended. Rurana cannot sync this account until you sign in again.",
   "@sessionEndedNotificationBody": {
+    "description": "Body of the OS notification when the server ended an account's session; username is the account's username.",
     "placeholders": {
       "username": {
         "type": "String",
@@ -2243,7 +2392,13 @@
     "description": "Notification action that marks the task done."
   },
   "notificationActionSnooze10Minutes": "Snooze 10 min",
+  "@notificationActionSnooze10Minutes": {
+    "description": "Action button of a reminder notification that reminds again in 10 minutes. Keep it short; abbreviations are fine."
+  },
   "notificationActionSnooze1Hour": "Snooze 1 h",
+  "@notificationActionSnooze1Hour": {
+    "description": "Action button of a reminder notification that reminds again in one hour. Keep it short; abbreviations are fine."
+  },
   "notificationReminderBody": "Reminder · {project}",
   "@notificationReminderBody": {
     "description": "Body of a reminder notification; the title is the task's title.",
@@ -2331,8 +2486,9 @@
     "description": "Tooltip of the button that removes a relation; the task itself stays."
   },
   "taskRelationRemoveTitle": "Remove relation?",
-  "taskRelationRemoveBody": "The link to “{title}” will be removed on the server too. The task itself stays.",
+  "taskRelationRemoveBody": "The relation to “{title}” will be removed on the server too. The task itself stays.",
   "@taskRelationRemoveBody": {
+    "description": "Body of the confirmation for removing the relation between two tasks; title is the other task's title.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -2346,7 +2502,13 @@
     "description": "Label of the relation kind picker in the Add relation sheet."
   },
   "addRelationSearch": "Search by title or identifier",
+  "@addRelationSearch": {
+    "description": "Label of the task search field when adding a related task, and when adding content shared from another app to an existing task."
+  },
   "addRelationShowDone": "Show done tasks",
+  "@addRelationShowDone": {
+    "description": "Switch on the add-relation sheet that also lists done tasks."
+  },
   "addRelationNoMatches": "No matching tasks",
   "taskDuplicate": "Duplicate",
   "taskDuplicated": "Duplicated",
@@ -2355,6 +2517,9 @@
     "description": "Snackbar action that opens the copy just made."
   },
   "taskDuplicateNeedsConnection": "Duplicating needs a connection to the server.",
+  "@taskDuplicateNeedsConnection": {
+    "description": "Error when duplicating a task failed because there is no connection to the server."
+  },
   "taskDuplicateNotSynced": "You can duplicate this task once its changes are synced.",
   "taskDuplicateFailed": "Couldn't duplicate the task: {message}",
   "@taskDuplicateFailed": {
@@ -2371,6 +2536,9 @@
   "followProject": "Follow project",
   "unfollowProject": "Unfollow project",
   "followNeedsConnection": "Following needs a connection to the server.",
+  "@followNeedsConnection": {
+    "description": "Error when following or unfollowing a task or project failed because there is no connection to the server. Following gets the user notified about its activity."
+  },
   "followFailed": "Couldn't change whether you follow this. Try again.",
   "followTaskOnceSynced": "You can follow this task once it is synced.",
   "followTaskUnavailable": "Follow task (needs a connection)",
@@ -2443,7 +2611,10 @@
   "upcomingEmptyTitle": "Nothing due — enjoy your day!",
   "upcomingEmptyBody": "No open task is due in this date range.",
   "upcomingShowOverdue": "Show overdue tasks",
-  "upcomingShowWithoutDate": "Show tasks without date",
+  "upcomingShowWithoutDate": "Show tasks without a date",
+  "@upcomingShowWithoutDate": {
+    "description": "Checkable item in Upcoming's menu that also lists tasks without a due date, and tooltip of the Show undated chip of a Gantt view."
+  },
   "upcomingSelectRange": "Select a date range",
   "upcomingRangeCustom": "Custom",
   "upcomingRangeCustomEntry": "Custom…",
@@ -2481,18 +2652,54 @@
   "upcomingRangeTo": "To",
   "rangeToday": "Today",
   "rangeTomorrow": "Tomorrow",
-  "rangeLastWeek": "Last Week",
-  "rangeThisWeek": "This Week",
-  "rangeRestOfThisWeek": "The Rest of This Week",
-  "rangeNextWeek": "Next Week",
-  "rangeNext7Days": "Next 7 Days",
-  "rangeLastMonth": "Last Month",
-  "rangeThisMonth": "This Month",
-  "rangeRestOfThisMonth": "The Rest of This Month",
-  "rangeNextMonth": "Next Month",
-  "rangeNext30Days": "Next 30 Days",
-  "rangeThisYear": "This Year",
-  "rangeRestOfThisYear": "The Rest of This Year",
+  "rangeLastWeek": "Last week",
+  "@rangeLastWeek": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: the calendar week before this one."
+  },
+  "rangeThisWeek": "This week",
+  "@rangeThisWeek": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: the current calendar week, including its past days."
+  },
+  "rangeRestOfThisWeek": "The rest of this week",
+  "@rangeRestOfThisWeek": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: from now until the end of the current calendar week."
+  },
+  "rangeNextWeek": "Next week",
+  "@rangeNextWeek": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: the calendar week after this one."
+  },
+  "rangeNext7Days": "Next 7 days",
+  "@rangeNext7Days": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: from now until the same time in 7 days."
+  },
+  "rangeLastMonth": "Last month",
+  "@rangeLastMonth": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: the calendar month before this one."
+  },
+  "rangeThisMonth": "This month",
+  "@rangeThisMonth": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: the current calendar month, including its past days."
+  },
+  "rangeRestOfThisMonth": "The rest of this month",
+  "@rangeRestOfThisMonth": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: from now until the end of the current month."
+  },
+  "rangeNextMonth": "Next month",
+  "@rangeNextMonth": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: the calendar month after this one."
+  },
+  "rangeNext30Days": "Next 30 days",
+  "@rangeNext30Days": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: from now until the same time in 30 days."
+  },
+  "rangeThisYear": "This year",
+  "@rangeThisYear": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: the current calendar year, including its past days."
+  },
+  "rangeRestOfThisYear": "The rest of this year",
+  "@rangeRestOfThisYear": {
+    "description": "Date range choice of Upcoming, also its range chip once chosen: from now until the end of the current year."
+  },
   "sectionTomorrow": "Tomorrow",
   "overviewFilterSubtitle": "Filter: {title}",
   "@overviewFilterSubtitle": {
@@ -2505,6 +2712,9 @@
     }
   },
   "overviewFilterNotLoadedTitle": "This filter loads once you're online",
+  "@overviewFilterNotLoadedTitle": {
+    "description": "Empty-state title while offline when a saved filter's tasks were never downloaded: on the Overview when it shows a saved filter, and on a saved filter's page."
+  },
   "overviewFilterNotLoadedBody": "Your Overview shows the saved filter “{title}”, picked in your account settings. Its tasks download with the next sync.",
   "@overviewFilterNotLoadedBody": {
     "placeholders": {
@@ -2554,20 +2764,62 @@
   "sortManual": "Manually",
   "sortTitleAsc": "Title (A–Z)",
   "sortTitleDesc": "Title (Z–A)",
-  "sortPriorityDesc": "Priority (Highest first)",
-  "sortPriorityAsc": "Priority (Lowest first)",
-  "sortDueDateAsc": "Due date (Earliest first)",
-  "sortDueDateDesc": "Due date (Latest first)",
-  "sortStartDateAsc": "Start date (Earliest first)",
-  "sortStartDateDesc": "Start date (Latest first)",
-  "sortEndDateAsc": "End date (Earliest first)",
-  "sortEndDateDesc": "End date (Latest first)",
-  "sortPercentDoneDesc": "% done (Most done first)",
-  "sortPercentDoneAsc": "% done (Least done first)",
-  "sortCreatedDesc": "Created (Newest first)",
-  "sortCreatedAsc": "Created (Oldest first)",
-  "sortUpdatedDesc": "Updated (Newest first)",
-  "sortUpdatedAsc": "Updated (Oldest first)",
+  "sortPriorityDesc": "Priority (highest first)",
+  "@sortPriorityDesc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by priority, highest first."
+  },
+  "sortPriorityAsc": "Priority (lowest first)",
+  "@sortPriorityAsc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by priority, lowest first."
+  },
+  "sortDueDateAsc": "Due date (earliest first)",
+  "@sortDueDateAsc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by due date, earliest first."
+  },
+  "sortDueDateDesc": "Due date (latest first)",
+  "@sortDueDateDesc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by due date, latest first."
+  },
+  "sortStartDateAsc": "Start date (earliest first)",
+  "@sortStartDateAsc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by start date, earliest first."
+  },
+  "sortStartDateDesc": "Start date (latest first)",
+  "@sortStartDateDesc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by start date, latest first."
+  },
+  "sortEndDateAsc": "End date (earliest first)",
+  "@sortEndDateAsc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by end date, earliest first."
+  },
+  "sortEndDateDesc": "End date (latest first)",
+  "@sortEndDateDesc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by end date, latest first."
+  },
+  "sortPercentDoneDesc": "% done (most done first)",
+  "@sortPercentDoneDesc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by a task's progress in percent, most done first."
+  },
+  "sortPercentDoneAsc": "% done (least done first)",
+  "@sortPercentDoneAsc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by a task's progress in percent, least done first."
+  },
+  "sortCreatedDesc": "Created (newest first)",
+  "@sortCreatedDesc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by when a task was created, newest first."
+  },
+  "sortCreatedAsc": "Created (oldest first)",
+  "@sortCreatedAsc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by when a task was created, oldest first."
+  },
+  "sortUpdatedDesc": "Updated (newest first)",
+  "@sortUpdatedDesc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by when a task was last changed, newest first."
+  },
+  "sortUpdatedAsc": "Updated (oldest first)",
+  "@sortUpdatedAsc": {
+    "description": "Sort option of a project's List and Table views, also shown on the sort chip: by when a task was last changed, oldest first."
+  },
   "projectTasksDoneSection": "Done",
   "projectTasksEmptyDoneTitle": "No done tasks",
   "projectTasksEmptyDoneBody": "Nothing in this view is done yet.",
@@ -2585,8 +2837,12 @@
     }
   },
   "projectViewNotLoadedTitle": "This view loads once you're online",
+  "@projectViewNotLoadedTitle": {
+    "description": "Empty-state title of a project view while offline, when its tasks were never downloaded: a List, Table or Gantt view with its own filter, or a kanban board."
+  },
   "projectViewNotLoadedBody": "The server applies this view's filter “{filter}”. Its tasks download when you open it online.",
   "@projectViewNotLoadedBody": {
+    "description": "Body under projectViewNotLoadedTitle for a List, Table or Gantt view with its own filter; filter is the view's filter in the server's filter syntax, kept as it is.",
     "placeholders": {
       "filter": {
         "type": "String",
@@ -2672,6 +2928,7 @@
   "projectViewDownloadingTitle": "Downloading this view…",
   "projectViewDownloadingBody": "The server applies this view's filter “{filter}”. Its tasks are on their way.",
   "@projectViewDownloadingBody": {
+    "description": "Body under projectViewDownloadingTitle for a List, Table or Gantt view with its own filter while its tasks download; filter is the view's filter in the server's filter syntax, kept as it is.",
     "placeholders": {
       "filter": {
         "type": "String",
@@ -2884,7 +3141,7 @@
   "boardColumnLimitLabel": "Limit",
   "boardColumnLimitHelp": "{count, plural, =1{1 task is in this column now.} other{{count} tasks are in this column now.}} Leave it empty for no limit.",
   "@boardColumnLimitHelp": {
-    "description": "Under the limit field of a kanban column.",
+    "description": "Helper text under the limit field of a kanban column; count is how many tasks the column holds now.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -2896,7 +3153,10 @@
   "@boardColumnLimitBelowCount": {
     "description": "Under the limit field of a kanban column when the limit typed is below the tasks in it, which the server accepts."
   },
-  "boardDeleteColumnTitle": "Delete the column",
+  "boardDeleteColumnTitle": "Delete the column?",
+  "@boardDeleteColumnTitle": {
+    "description": "Title of the confirmation for deleting a kanban column."
+  },
   "boardDeleteColumnBody": "Are you sure you want to delete the column “{column}”?",
   "@boardDeleteColumnBody": {
     "placeholders": {
@@ -2935,6 +3195,9 @@
   "boardColumnLimitSaved": "Column limit saved",
   "boardDoneColumnSaved": "Done column saved",
   "boardDefaultColumnSaved": "Default column saved",
+  "@boardDefaultColumnSaved": {
+    "description": "Snackbar after a kanban board's default column (the one new tasks go to) was chosen or cleared."
+  },
   "boardColumnDeleted": "Column deleted",
   "boardColumnNeedsConnection": "Changing columns needs a connection to the server.",
   "boardColumnUnconfirmed": "Couldn't confirm the change. Check your connection and pull down to refresh the board.",
@@ -2942,13 +3205,16 @@
     "description": "A change to a kanban column timed out; the server may have made it."
   },
   "boardColumnAdminOnly": "Only project admins can choose the done or default column.",
+  "@boardColumnAdminOnly": {
+    "description": "Error when choosing a kanban board's done column (tasks moved there are marked done) or default column (new tasks go there) failed because the user is not an admin of the project."
+  },
   "boardColumnDeleteAdminOnly": "Only project admins can delete the column new tasks go to while it holds tasks.",
   "@boardColumnDeleteAdminOnly": {
     "description": "Deleting the column the server puts new tasks into, while it has tasks, needs another default column first, which only project admins may choose."
   },
   "boardColumnDeleteFailedNewDefault": "“{newDefault}” is now the default column; deleting “{column}” failed.",
   "@boardColumnDeleteFailedNewDefault": {
-    "description": "Deleting a kanban column failed after the app had made another column the default for it, and putting the old default back failed too.",
+    "description": "Deleting a kanban column failed after the app had made another column the default for it, and putting the old default back failed too; newDefault is the title of the column that is now the default, column the title of the column that was not deleted.",
     "placeholders": {
       "newDefault": {
         "type": "String",
@@ -3010,11 +3276,11 @@
   },
   "richTextShowImage": "Show full screen",
   "@richTextShowImage": {
-    "description": "Screen reader hint on an image that opens full screen."
+    "description": "Screen reader: hint on an image in a description or comment that opens it full screen."
   },
   "richTextOpensInBrowser": "Opens in the browser",
   "@richTextOpensInBrowser": {
-    "description": "Screen reader hint on the stand-in for an image on another website."
+    "description": "Screen reader: hint on the stand-in for an image on another website, which opens the image in the browser."
   },
   "richTextReplyTo": "Reply to {author}",
   "@richTextReplyTo": {
@@ -3075,7 +3341,10 @@
   "@attachmentWaiting": {
     "description": "A file added to a task that has not been uploaded yet, e.g. while offline."
   },
-  "attachmentUploadFailed": "Not uploaded: see Sync problems in the Account tab",
+  "attachmentUploadFailed": "Not uploaded: see Sync problems on the Account tab",
+  "@attachmentUploadFailed": {
+    "description": "Status line of a file added to a task on this device whose upload failed. Sync problems is the name of the section on the Account tab that says why."
+  },
   "attachmentUploadTooLarge": "Not uploaded: too large",
   "attachmentCancelUpload": "Cancel upload of {name}",
   "@attachmentCancelUpload": {
@@ -3099,9 +3368,15 @@
   "attachmentShare": "Share",
   "attachmentSaveToDevice": "Save to device",
   "attachmentMakeCover": "Make cover",
+  "@attachmentMakeCover": {
+    "description": "Menu action of an image attachment that shows it as the task's cover image. An action."
+  },
   "attachmentRemoveCover": "Remove cover",
   "attachmentDelete": "Delete attachment",
-  "attachmentDeleteTitle": "Delete attachment",
+  "attachmentDeleteTitle": "Delete attachment?",
+  "@attachmentDeleteTitle": {
+    "description": "Title of the confirmation for deleting an attachment."
+  },
   "attachmentDeleteBody": "“{name}” will be deleted from this task. This can't be undone.",
   "@attachmentDeleteBody": {
     "placeholders": {
@@ -3398,7 +3673,10 @@
     "description": "Title field of the project and view forms."
   },
   "projectTitleHint": "For example, Groceries",
-  "projectTitleRequired": "Please specify a title.",
+  "projectTitleRequired": "Enter a title.",
+  "@projectTitleRequired": {
+    "description": "Error of an empty title field: in the project forms, the view form and the saved filter form."
+  },
   "projectParentLabel": "Parent project",
   "@projectParentLabel": {
     "description": "Row of the project forms that picks the parent, and the title of the picker."
@@ -3421,6 +3699,9 @@
   "projectEditDiscardBody": "Your edits to this project will be lost.",
   "projectIdentifierLabel": "Project identifier",
   "projectIdentifierHelp": "Up to 10 characters, unique on the server. The identifiers of this project's tasks start with it and change with it. Leave it empty for none.",
+  "@projectIdentifierHelp": {
+    "description": "Helper text under the identifier field of the project edit page. A task's identifier is the project's identifier followed by the task's number, for example WORK-12."
+  },
   "projectIdentifierTaken": "This identifier is already in use. Identifiers are unique on the whole server.",
   "projectGoneTitle": "This project no longer exists",
   "projectGoneBody": "It may have been deleted, here or on the web.",
@@ -3444,6 +3725,9 @@
   "projectUnarchiveTitle": "Unarchive this project?",
   "projectArchiveBody": "It becomes read-only: no edits and no new tasks while it is archived. Its subprojects are archived too.",
   "projectUnarchiveBody": "You can edit it and add tasks to it again. Its subprojects are unarchived too.",
+  "@projectUnarchiveBody": {
+    "description": "Body of the confirmation for unarchiving a project."
+  },
   "projectArchivedDone": "Project archived",
   "projectUnarchivedDone": "Project unarchived",
   "projectArchiveDefaultHint": "Your default project can't be archived.",
@@ -3487,6 +3771,9 @@
     }
   },
   "projectDeleteCannotBeUndone": "This can't be undone.",
+  "@projectDeleteCannotBeUndone": {
+    "description": "Last paragraph of the confirmation for deleting a project."
+  },
   "projectIncludesDefault": "This includes your default project “{project}”.",
   "@projectIncludesDefault": {
     "description": "Added to the delete and archive confirmations when the user's default project is in the project's subtree.",
@@ -3558,6 +3845,9 @@
     }
   },
   "projectViewDeleteBody": "Nobody can use it to look at this project's tasks any more. No task is deleted. This can't be undone.",
+  "@projectViewDeleteBody": {
+    "description": "Body of the confirmation for deleting a view of a project."
+  },
   "projectViewLastOne": "A project needs at least one view.",
   "projectViewCreated": "View created",
   "projectViewSaved": "View saved",
@@ -3701,7 +3991,10 @@
   "savedFilterIncludeNulls": "Include tasks without a value",
   "savedFilterIncludeNullsHint": "Also lists tasks that have no value where the filter compares one, such as tasks without a due date.",
   "savedFilterFavourite": "Favourite",
-  "savedFilterFavouriteHint": "Shows it among the favourites in the Projects tab.",
+  "savedFilterFavouriteHint": "Shows it among the favourites on the Projects tab.",
+  "@savedFilterFavouriteHint": {
+    "description": "Subtitle of the Favourite switch on the saved filter form."
+  },
   "savedFilterFilterRequired": "A saved filter needs a filter.",
   "savedFilterCreated": "Saved filter created",
   "savedFilterSaved": "Saved filter saved",
@@ -3716,11 +4009,20 @@
     }
   },
   "savedFilterDeleteBody": "No task is deleted, only the filter and its views. This can't be undone.",
+  "@savedFilterDeleteBody": {
+    "description": "Body of the confirmation for deleting a saved filter."
+  },
   "savedFilterEditDiscardBody": "Your edits to this saved filter will be lost.",
   "savedFilterLoading": "Loading the saved filter…",
   "savedFilterLoadFailed": "The saved filter couldn't be loaded.",
   "savedFilterChangeNeedsConnection": "Managing saved filters needs a connection to the server.",
+  "@savedFilterChangeNeedsConnection": {
+    "description": "Error when creating, changing or deleting a saved filter failed because there is no connection to the server."
+  },
   "savedFilterChangeForbidden": "Only the person who made this saved filter can change it.",
+  "@savedFilterChangeForbidden": {
+    "description": "Error when the server refused a change to a saved filter because only the person who made it may change it."
+  },
   "savedFilterGone": "The saved filter no longer exists.",
   "savedFilterChangeInvalid": "The server didn't accept this saved filter.",
   "search": "Search",
@@ -3746,6 +4048,7 @@
   },
   "searchMoreTasks": "{count, plural, =1{1 more task matches. Type more to narrow it down.} other{{count} more tasks match. Type more to narrow it down.}}",
   "@searchMoreTasks": {
+    "description": "Note under the search results when more tasks match than are listed; count is how many more.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -3787,7 +4090,10 @@
   "descriptionEditorLeaveTitle": "Save the description?",
   "descriptionEditorLeaveBody": "Your changes to the description are not saved yet.",
   "descriptionEditorChangedTitle": "The description changed meanwhile",
-  "descriptionEditorChangedBody": "It was changed on the web since you started editing. Overwrite that change with yours, or reload it and lose your edits?",
+  "descriptionEditorChangedBody": "It has been changed on the web since you started editing. Overwrite that change with yours, or reload it and lose your edits?",
+  "@descriptionEditorChangedBody": {
+    "description": "Body of the dialog in the description editor when the description was changed on the web during editing; its buttons are Overwrite and Reload."
+  },
   "descriptionEditorOverwrite": "Overwrite",
   "descriptionEditorReload": "Reload",
   "descriptionEditorStoppedKept": "The editor stopped. Reload it to go on with your changes.",
@@ -3922,6 +4228,7 @@
   "accountSettingsName": "Name",
   "accountSettingsNameHelp": "Shown instead of your username. Leave it empty to show @{username}.",
   "@accountSettingsNameHelp": {
+    "description": "Helper text under the Name field of Account settings; username is the account's username, shown after an @.",
     "placeholders": {
       "username": {
         "type": "String",
@@ -3972,6 +4279,9 @@
   "accountSettingsDefaultProjectNone": "None",
   "accountSettingsDefaultProjectUnknown": "A project not on this device",
   "accountSettingsDefaultProjectInvalid": "Choose a project you can add tasks to that is not archived.",
+  "@accountSettingsDefaultProjectInvalid": {
+    "description": "Error when the server refused the chosen default project because it is archived or the user cannot add tasks to it."
+  },
   "accountSettingsDefaultView": "Default view",
   "accountSettingsDefaultViewFirst": "First view",
   "accountSettingsQuickAddMagic": "Quick Add Magic",
@@ -4016,6 +4326,9 @@
   "accountSettingsDateDisplay": "Date format",
   "accountSettingsDateDisplayDevice": "As on this device",
   "accountSettingsDateDisplayRelative": "Relative, e.g. in 3 days",
+  "@accountSettingsDateDisplayRelative": {
+    "description": "Choice of the Date format setting in Account settings: dates shown relative to today."
+  },
   "accountSettingsDateMonthDayYearDashed": "MM-DD-YYYY",
   "accountSettingsDateDayMonthYearDashed": "DD-MM-YYYY",
   "accountSettingsDateYearMonthDayDashed": "YYYY-MM-DD",
@@ -4034,7 +4347,13 @@
   "accountSettingsTimeFormat": "Time format",
   "accountSettingsTimeFormatDevice": "As on this device",
   "accountSettingsTimeFormat12": "12-hour",
+  "@accountSettingsTimeFormat12": {
+    "description": "Choice of the Time format setting in Account settings, followed by an example time."
+  },
   "accountSettingsTimeFormat24": "24-hour",
+  "@accountSettingsTimeFormat24": {
+    "description": "Choice of the Time format setting in Account settings, followed by an example time."
+  },
   "accountSettingsEmailNotifications": "Email notifications",
   "accountSettingsEmailsOff": "This server does not send reminder emails at the moment. The settings are kept for when it does.",
   "accountSettingsEmailReminders": "Task reminders by email",
@@ -4200,7 +4519,10 @@
   "accountDeletionDialogTitle": "Delete your account?",
   "accountDeletionDialogPermanent": "Deleting your account is permanent. All projects and tasks you own are deleted with it; what you shared with others passes to them.",
   "accountDeletionDialogEmail": "The server emails you a link to confirm. Once you confirm, your account is deleted after three days; until then you can change your mind.",
-  "accountDeletionDialogNoEmail": "If your server does not send emails, ask its administrator to delete your account.",
+  "accountDeletionDialogNoEmail": "If your server does not send emails, ask whoever runs it to delete your account.",
+  "@accountDeletionDialogNoEmail": {
+    "description": "Paragraph of the account deletion dialog, after accountDeletionDialogEmail: the deletion needs the confirmation link the server emails."
+  },
   "accountDeletionContinue": "Continue in the browser",
   "accountSecurityNeedsConnection": "This needs a connection to the server.",
   "accountSecurityUnconfirmed": "The server's answer did not arrive. Refresh to see whether it worked.",
@@ -4331,6 +4653,7 @@
   "apiTokensNew": "New token",
   "apiTokensExpires": "Expires {date}",
   "@apiTokensExpires": {
+    "description": "Expiry line of an API token that has not expired yet; date is the date and time it expires.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -4387,9 +4710,13 @@
     }
   },
   "apiTokenFormExpiryCustom": "Pick a day…",
-  "apiTokenFormExpiryPick": "Valid through",
-  "apiTokenFormExpiryThrough": "Through {date}",
+  "apiTokenFormExpiryPick": "Last valid day",
+  "@apiTokenFormExpiryPick": {
+    "description": "Title of the date picker that sets the last valid day of a new API token."
+  },
+  "apiTokenFormExpiryThrough": "Until the end of {date}",
   "@apiTokenFormExpiryThrough": {
+    "description": "Value of the expiry field of the new API token form after a day was picked; date is that day, and the token is valid until the end of it.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -4422,6 +4749,7 @@
   },
   "apiTokenFormShowGroup": "Show the permissions of {group}",
   "@apiTokenFormShowGroup": {
+    "description": "Tooltip and screen reader label of the button that expands a permission group on the new API token form; group is the group's name from the server.",
     "placeholders": {
       "group": {
         "type": "String",
@@ -4614,11 +4942,11 @@
   },
   "upcomingShowDayHint": "Show only this day",
   "@upcomingShowDayHint": {
-    "description": "Screen reader hint of a day in Upcoming's day strip that is not selected."
+    "description": "Screen reader: hint of a day in Upcoming's day strip that is not selected."
   },
   "upcomingShowRangeHint": "Show the whole range",
   "@upcomingShowRangeHint": {
-    "description": "Screen reader hint of the selected day in Upcoming's day strip: another tap shows every day again."
+    "description": "Screen reader: hint of the selected day in Upcoming's day strip: another tap shows every day again."
   },
   "upcomingNothingPlanned": "Nothing planned",
   "@upcomingNothingPlanned": {
@@ -4738,6 +5066,9 @@
   "commentDelete": "Delete",
   "commentDeleteTitle": "Delete this comment?",
   "commentDeleteBody": "This can't be undone.",
+  "@commentDeleteBody": {
+    "description": "Body of the confirmation for deleting a comment."
+  },
   "commentDeleted": "Comment deleted",
   "commentSaved": "Comment saved",
   "commentWorking": "Saving the change…",
@@ -4798,7 +5129,7 @@
   },
   "commentReplyDropped": "No longer replying",
   "@commentReplyDropped": {
-    "description": "Announced to screen readers when the quote above the comment field is dropped."
+    "description": "Screen reader: announced when the quote above the comment field is dropped."
   },
   "shareMenuItem": "Share",
   "@shareMenuItem": {
@@ -5022,6 +5353,9 @@
   "linkShareFormPassword": "Password (optional)",
   "linkShareFormPasswordHelper": "Whoever opens the link has to enter it",
   "linkShareFormShowPassword": "Show password",
+  "@linkShareFormShowPassword": {
+    "description": "Tooltip and screen reader label of the button that shows the typed password, in the link share form and when opening a password-protected shared link."
+  },
   "linkShareFormHidePassword": "Hide password",
   "linkShareFormSubmit": "Create",
   "linkShareCreated": "Link created",
@@ -5107,11 +5441,17 @@
   },
   "labelsNew": "New label",
   "labelsNewOffline": "Creating a label needs a connection to the server.",
+  "@labelsNewOffline": {
+    "description": "Tooltip of the dimmed New label button while offline, and error when creating a label failed because there is no connection to the server."
+  },
   "labelsEmptyTitle": "No labels yet",
   "labelsEmptyBody": "Labels mark tasks across all projects. Create one here or while editing a task.",
+  "@labelsEmptyBody": {
+    "description": "Body of the empty state of the labels page."
+  },
   "labelsShowTasks": "Show tasks with label {title}",
   "@labelsShowTasks": {
-    "description": "Screen reader hint of a label that opens its tasks.",
+    "description": "Screen reader: name of a label on the task detail sheet that opens the label's tasks when tapped; title is the label's title.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -5132,7 +5472,10 @@
   "labelsDeleted": "Label deleted",
   "labelsEditTitle": "Edit label",
   "labelsTitleLabel": "Title",
-  "labelsTitleRequired": "Please specify a title.",
+  "labelsTitleRequired": "Enter a title.",
+  "@labelsTitleRequired": {
+    "description": "Error of the label form's title field when it is empty."
+  },
   "labelsTitleRemaining": "{count, plural, =1{1 character left} other{{count} characters left}}",
   "@labelsTitleRemaining": {
     "description": "Read out with the counter of a label title near its limit.",
@@ -5153,17 +5496,32 @@
   "labelsAddDescription": "Add description",
   "labelsDescriptionAfterCreate": "You can add a description once the label exists.",
   "labelsDescriptionCreatorOnly": "Only the person who created this label can change it.",
+  "@labelsDescriptionCreatorOnly": {
+    "description": "Note on the page of a label that someone else created."
+  },
   "labelsCreate": "Create",
+  "@labelsCreate": {
+    "description": "Button of the new-label page that creates the label. A verb."
+  },
   "labelsSave": "Save",
   "labelsSaving": "Saving…",
   "labelsCreated": "Label created",
+  "@labelsCreated": {
+    "description": "Snackbar after a label was created."
+  },
   "labelsSaved": "Label saved",
   "labelsDiscardBody": "Your edits to this label will be lost.",
   "labelsGoneTitle": "This label no longer exists",
   "labelsGoneBody": "It may have been deleted, here or on the web.",
   "labelsNeedsConnection": "Changing a label needs a connection to the server.",
+  "@labelsNeedsConnection": {
+    "description": "Subtitle of the dimmed Delete item in a label's menu while offline, and error when changing or deleting a label failed because there is no connection to the server."
+  },
   "labelsUnconfirmed": "Couldn't confirm the change. Check your connection and pull down to refresh.",
   "labelsNotCreator": "Only the person who created this label can change it.",
+  "@labelsNotCreator": {
+    "description": "Error when the server refused a change to a label because only the person who created it may change it."
+  },
   "labelsGone": "This label no longer exists.",
   "labelsInvalid": "The server did not accept this label. Check its title and colour.",
   "labelsRefused": "The server refused: {message}",
@@ -5185,6 +5543,9 @@
   "teamsEmptyBody": "With a team you share projects with several people at once.",
   "teamsNew": "New team",
   "teamsNewOffline": "Creating a team needs a connection to the server.",
+  "@teamsNewOffline": {
+    "description": "Tooltip of the dimmed New team button while offline, and error when creating a team failed because there is no connection to the server."
+  },
   "teamMemberCount": "{count, plural, =1{1 member} other{{count} members}}",
   "@teamMemberCount": {
     "placeholders": {
@@ -5218,12 +5579,24 @@
   },
   "teamNewTitle": "New team",
   "teamNameLabel": "Name",
-  "teamNameRequired": "Please specify a name.",
+  "teamNameRequired": "Enter a name.",
+  "@teamNameRequired": {
+    "description": "Error of a team's name field when it is empty, on the new-team sheet and when editing a team."
+  },
   "teamPublicLabel": "Public team",
   "teamPublicHelp": "Everyone on this server can find it and share projects with it.",
   "teamCreate": "Create",
+  "@teamCreate": {
+    "description": "Action button of the new-team sheet that creates the team. A verb."
+  },
   "teamCreating": "Creating the team…",
+  "@teamCreating": {
+    "description": "Action button of the new-team sheet while the team is being created."
+  },
   "teamCreated": "Team created",
+  "@teamCreated": {
+    "description": "Snackbar after a team was created."
+  },
   "teamLoading": "Loading the team…",
   "teamGoneTitle": "This team is not available",
   "teamGoneBody": "It may have been deleted, or you are no longer a member.",
@@ -5233,8 +5606,9 @@
   "teamSave": "Save",
   "teamSaving": "Saving…",
   "teamSaved": "Team saved",
-  "teamExternalNote": "This team is managed by {provider}. Its members change there.",
+  "teamExternalNote": "This team is managed by {provider}. Its membership is managed there.",
   "@teamExternalNote": {
+    "description": "Note on the page of a team that comes from the server's single sign-on; provider is the sign-on provider's name on the server.",
     "placeholders": {
       "provider": {
         "type": "String",
@@ -5242,7 +5616,10 @@
       }
     }
   },
-  "teamExternalNoteGeneric": "This team is managed by your organisation's sign-in. Its members change there.",
+  "teamExternalNoteGeneric": "This team is managed by your organisation's sign-in. Its membership is managed there.",
+  "@teamExternalNoteGeneric": {
+    "description": "Note on the page of a team that comes from the server's single sign-on when the provider's name is unknown."
+  },
   "teamMembersSection": "Members",
   "teamMemberYou": "{name} (you)",
   "@teamMemberYou": {
@@ -5354,7 +5731,13 @@
   "teamDeleteBody": "All members lose access to every project shared with this team. This can't be undone.",
   "teamDeleted": "Team deleted",
   "teamAddMemberOffline": "Adding members needs a connection to the server.",
+  "@teamAddMemberOffline": {
+    "description": "Error when adding a member to a team failed because there is no connection to the server."
+  },
   "teamNeedsConnection": "Changing a team needs a connection to the server.",
+  "@teamNeedsConnection": {
+    "description": "Error when a change to a team failed because there is no connection to the server."
+  },
   "teamUnconfirmed": "Couldn't confirm the change. Check your connection and pull down to refresh.",
   "teamForbidden": "Only team admins can do this.",
   "teamAlreadyMember": "This person is already a member of the team.",
@@ -5374,6 +5757,9 @@
     }
   },
   "teamFailed": "That didn't work. Try again.",
+  "@teamFailed": {
+    "description": "Error when a change to a team failed for a reason the app cannot name."
+  },
   "teamOk": "OK",
   "shareLowerOwnAccessTitle": "Lower your own access?",
   "@shareLowerOwnAccessTitle": {
@@ -5513,7 +5899,7 @@
   },
   "projectTimelineExpand": "Show subtasks of {title}",
   "@projectTimelineExpand": {
-    "description": "Tooltip and screen reader action of a collapsed timeline row.",
+    "description": "Tooltip and screen reader action of a collapsed row of a Gantt view (a task with subtasks); title is the task's title.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -5578,16 +5964,34 @@
   "projectTableColumnCreated": "Created",
   "projectTableColumnUpdated": "Updated",
   "projectTableColumnCreatedBy": "Created by",
-  "projectTableSortDefault": "Default (Highest number first)",
+  "projectTableSortDefault": "Default (highest number first)",
   "@projectTableSortDefault": {
     "description": "The table's default sort, by number, highest first."
   },
-  "projectTableSortNumberDesc": "Number (Highest first)",
-  "projectTableSortNumberAsc": "Number (Lowest first)",
-  "projectTableSortDoneAsc": "Done (Open first)",
-  "projectTableSortDoneDesc": "Done (Done first)",
-  "projectTableSortDoneAtDesc": "Done at (Newest first)",
-  "projectTableSortDoneAtAsc": "Done at (Oldest first)",
+  "projectTableSortNumberDesc": "Number (highest first)",
+  "@projectTableSortNumberDesc": {
+    "description": "Sort option of a project's Table view, also shown on its sort chip: by task number, highest first."
+  },
+  "projectTableSortNumberAsc": "Number (lowest first)",
+  "@projectTableSortNumberAsc": {
+    "description": "Sort option of a project's Table view, also shown on its sort chip: by task number, lowest first."
+  },
+  "projectTableSortDoneAsc": "Done (open first)",
+  "@projectTableSortDoneAsc": {
+    "description": "Sort option of a project's Table view, also shown on its sort chip: by whether a task is done, open tasks first. Done and open are states."
+  },
+  "projectTableSortDoneDesc": "Done (done first)",
+  "@projectTableSortDoneDesc": {
+    "description": "Sort option of a project's Table view, also shown on its sort chip: by whether a task is done, done tasks first. Done is the state."
+  },
+  "projectTableSortDoneAtDesc": "Done at (newest first)",
+  "@projectTableSortDoneAtDesc": {
+    "description": "Sort option of a project's Table view, also shown on its sort chip: by when a task was marked done, newest first."
+  },
+  "projectTableSortDoneAtAsc": "Done at (oldest first)",
+  "@projectTableSortDoneAtAsc": {
+    "description": "Sort option of a project's Table view, also shown on its sort chip: by when a task was marked done, oldest first."
+  },
   "projectTableStartsSemantics": "Starts {when}",
   "@projectTableStartsSemantics": {
     "placeholders": {
@@ -5627,6 +6031,7 @@
   },
   "projectViewsIntro": "The views of {project}, in the order the app and the web show them.",
   "@projectViewsIntro": {
+    "description": "Intro at the top of a project's views page; project is the project's title.",
     "placeholders": {
       "project": {
         "type": "String",
@@ -5782,9 +6187,9 @@
   "@guestLinkClipboardEmpty": {
     "description": "Open a shared link sheet: Paste found nothing to paste"
   },
-  "guestConnectingTo": "Opening the shared link {link} …",
+  "guestConnectingTo": "Opening the shared link {link}…",
   "@guestConnectingTo": {
-    "description": "Connect screen while a shared link is being opened; the link's secret is cut short",
+    "description": "Connect screen while a shared link is being opened; the link's secret is cut short.",
     "placeholders": {
       "link": {
         "type": "String",
@@ -5832,7 +6237,7 @@
   },
   "guestShareNewTask": "Make it a new task instead",
   "@guestShareNewTask": {
-    "description": "Shared link sheet, signed in: makes a task of the shared text as with any other share"
+    "description": "Shared link sheet, signed in: makes a task of the shared text as with any other share."
   },
   "guestLinkGoneTitle": "This link doesn't work",
   "@guestLinkGoneTitle": {
@@ -5852,9 +6257,9 @@
   "@guestLinkGoneSuggestion": {
     "description": "Connect screen error: what to do about a shared link that doesn't work"
   },
-  "inviteConnectingTo": "Checking the invitation to {host} …",
+  "inviteConnectingTo": "Checking the invitation to {host}…",
   "@inviteConnectingTo": {
-    "description": "Connect screen while an invitation link is checked",
+    "description": "Progress text on the connect screen while an invitation link is checked; host is the address of the server that sent the invitation.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -5952,7 +6357,7 @@
   },
   "guestServerNeededSuggestion": "Enter the server's address above and tap Continue to open the link.",
   "@guestServerNeededSuggestion": {
-    "description": "Connect screen card: what to do to open the shared link"
+    "description": "Connect screen card: what to do to open the shared link."
   },
   "guestAlreadyAdded": "This shared project was already on this device. Switched to it.",
   "@guestAlreadyAdded": {
@@ -6031,9 +6436,9 @@
       }
     }
   },
-  "widgetMarkDone": "Mark “{title}” done",
+  "widgetMarkDone": "Mark “{title}” as done",
   "@widgetMarkDone": {
-    "description": "Screen reader text of the done control of a task row on a home-screen widget.",
+    "description": "Screen reader: label of the done control of a task row on a home-screen widget; title is the task's title.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -6088,7 +6493,7 @@
   "@widgetsEntrySubtitle": {
     "description": "Subtitle of the Account tab entry to the widgets page."
   },
-  "widgetsIntro": "A widget shows one list of an account: today's tasks, the next days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.",
+  "widgetsIntro": "A widget shows one list of an account: today's tasks, the coming days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.",
   "@widgetsIntro": {
     "description": "The widgets page's introduction."
   },
@@ -6120,11 +6525,11 @@
   "@widgetsPlacedHeading": {
     "description": "Heading of the widgets already placed (Android); a tap sets one up."
   },
-  "widgetsPlacedAccountRemoved": "Account removed – choose another",
+  "widgetsPlacedAccountRemoved": "Account removed — choose another",
   "@widgetsPlacedAccountRemoved": {
     "description": "A placed widget whose account was signed out."
   },
-  "widgetsPrivacyNote": "Widgets show your task titles on the home screen, where anyone who sees your phone can read them.",
+  "widgetsPrivacyNote": "Widgets show your task titles on the home screen, where anyone who sees your device can read them.",
   "@widgetsPrivacyNote": {
     "description": "Privacy note on the widgets page."
   },
@@ -6140,7 +6545,7 @@
   "@widgetKindUpcoming": {
     "description": "Widget kind: tasks due in the next days."
   },
-  "widgetKindUpcomingHint": "Due in the next days",
+  "widgetKindUpcomingHint": "Due in the coming days",
   "@widgetKindUpcomingHint": {
     "description": "What the Upcoming widget shows."
   },
@@ -6257,7 +6662,7 @@
   "@widgetsHowToAndroid": {
     "description": "Android steps to place and set up a widget. Below Android 12 and on some launchers the widgets page is the only way to set one up."
   },
-  "widgetsPlacedNotSetUp": "Not set up yet – shows the active account",
+  "widgetsPlacedNotSetUp": "Not set up yet — shows the active account",
   "@widgetsPlacedNotSetUp": {
     "description": "A placed list widget that was never set up; it shows Today of the active account. Tapping opens its setup."
   },
@@ -6375,7 +6780,7 @@
   "@privacyBlockScreenshots": {
     "description": "Switch (Android only) that keeps the app out of screenshots, screen recordings and the app overview."
   },
-  "privacyBlockScreenshotsSubtitle": "Also hides Rurana from screen recordings and the app overview.",
+  "privacyBlockScreenshotsSubtitle": "Also hides Rurana from screen recordings and the app switcher.",
   "@privacyBlockScreenshotsSubtitle": {
     "description": "Under the Block screenshots switch."
   },
@@ -6395,7 +6800,7 @@
   "@privacyNotificationContentHidden": {
     "description": "Notification content choice: the content shows only while the phone is unlocked."
   },
-  "privacyNotificationContentHiddenSubtitle": "The content shows only while the phone is unlocked",
+  "privacyNotificationContentHiddenSubtitle": "The content shows only while the device is unlocked",
   "@privacyNotificationContentHiddenSubtitle": {
     "description": "Under the Hide on the lock screen choice."
   },
@@ -6407,7 +6812,7 @@
   "@privacyNotificationContentNoTitlesSubtitle": {
     "description": "Under the Never show task titles choice."
   },
-  "privacyNotificationContentIosHint": "On iPhone, iOS decides this for each app: in Settings → Notifications → Rurana, set Show Previews to When Unlocked.",
+  "privacyNotificationContentIosHint": "On iPhone, iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.",
   "@privacyNotificationContentIosHint": {
     "description": "iOS only, under the Hide on the lock screen choice: the app cannot hide the content itself; the system setting does. Use the names of the iOS Settings app."
   },
@@ -6661,7 +7066,7 @@
   },
   "connectionSaveFailed": "The connection settings could not be saved.",
   "@connectionSaveFailed": {
-    "description": "Snack bar when writing the connection settings failed."
+    "description": "Snackbar when writing the connection settings failed."
   },
   "connectionOptions": "Connection options",
   "@connectionOptions": {
@@ -6685,7 +7090,7 @@
   "@connectionTitle": {
     "description": "Title of the connection settings screen of a server address, and the Account tab entry to it."
   },
-  "connectionIntro": "Used by this app for every account on this address. The browser that opens the sign-in page does not use them.",
+  "connectionIntro": "Used by this app for every account at this address. The browser that opens the sign-in page does not use them.",
   "@connectionIntro": {
     "description": "Note at the top of the connection screen."
   },
@@ -6805,7 +7210,7 @@
   "@connectionCleartextAllow": {
     "description": "Button that asks before allowing plain http for this address."
   },
-  "connectionHeadersUnencrypted": "Like everything else on this address, the headers travel unencrypted.",
+  "connectionHeadersUnencrypted": "Like everything else at this address, the headers travel unencrypted.",
   "@connectionHeadersUnencrypted": {
     "description": "Warning in the access headers section and editor of a plain http address."
   },
@@ -7005,7 +7410,7 @@
   "@connectionReviewSame": {
     "description": "The fetched certificate equals the recorded one."
   },
-  "connectionReviewDiffers": "The server now presents yet another certificate than the one seen then. Check it carefully before you accept it.",
+  "connectionReviewDiffers": "The server now presents yet another certificate, different from the one seen then. Check it carefully before you accept it.",
   "@connectionReviewDiffers": {
     "description": "The fetched certificate differs from the recorded one."
   },
@@ -7057,7 +7462,7 @@
   },
   "connectionPickerFailed": "The file picker could not be opened.",
   "@connectionPickerFailed": {
-    "description": "Snack bar when the system file picker failed."
+    "description": "Snackbar when the system file picker failed."
   },
   "connectionChooseFile": "Choose file",
   "@connectionChooseFile": {
@@ -7095,9 +7500,9 @@
   "@connectionSave": {
     "description": "Saves the connection settings being edited."
   },
-  "connectionHeadersIntro": "Sent with every request of this app to {origin}, and to no other address.",
+  "connectionHeadersIntro": "Sent with every request this app makes to {origin}, and to no other address.",
   "@connectionHeadersIntro": {
-    "description": "Intro of the access headers editor.",
+    "description": "Intro of the access headers editor; origin is the server's address with scheme and port, for example https://vikunja.example.com:443.",
     "placeholders": {
       "origin": {
         "type": "String",
@@ -7189,7 +7594,7 @@
   "@connectionBrowserHintClientCertificate": {
     "description": "Browser hint when the server's address has a client certificate."
   },
-  "connectionBrowserHintHeaders": "The browser goes through the access login itself.",
+  "connectionBrowserHintHeaders": "The browser goes through the access proxy's sign-in itself.",
   "@connectionBrowserHintHeaders": {
     "description": "Browser hint when the server's address has access headers."
   },
@@ -7466,5 +7871,61 @@
         "example": "Buy milk"
       }
     }
+  },
+  "actionFailureServerError": "The server answered with an error. Try again in a few minutes.",
+  "@actionFailureServerError": {
+    "description": "Snackbar or inline error after a change, download or search failed because the server answered with an internal error (HTTP 5xx). Shown instead of the server's English detail."
+  },
+  "actionFailureSessionEnded": "Your session has ended. Sign in again on the Account tab.",
+  "@actionFailureSessionEnded": {
+    "description": "Snackbar or inline error after an action failed because the account's session on the server has ended; the Account tab has the way to sign in again. Like dataFailureSessionEnded without the server's name."
+  },
+  "actionFailureRateLimited": "The server is limiting requests for now. Wait a minute, then try again.",
+  "@actionFailureRateLimited": {
+    "description": "Snackbar or inline error after an action failed because the server's rate limit refused the request (HTTP 429)."
+  },
+  "actionFailureGuestAccessEnded": "Your guest access has ended. Open the link again on the Account tab.",
+  "@actionFailureGuestAccessEnded": {
+    "description": "Snackbar or inline error for a guest (someone who opened a shared link) after an action failed because the shared link no longer works. Like guestDataFailureAccessEnded without the server name."
+  },
+  "attachmentFileMissing": "The file is missing from the server.",
+  "@attachmentFileMissing": {
+    "description": "Snackbar after an attachment action (mostly a download) failed: the server still lists the attachment, but its file is gone from the server's storage."
+  },
+  "attachmentDownloadForbidden": "You no longer have access to this attachment.",
+  "@attachmentDownloadForbidden": {
+    "description": "Snackbar after downloading an attachment failed because the user no longer has access to its task."
+  },
+  "taskDuplicateForbidden": "You don't have permission to add tasks to this project.",
+  "@taskDuplicateForbidden": {
+    "description": "Snackbar after duplicating a task failed because the user may not add tasks to the task's project (their access changed since the last sync)."
+  },
+  "taskDuplicateArchived": "This project is archived, so its tasks can't be duplicated.",
+  "@taskDuplicateArchived": {
+    "description": "Snackbar after duplicating a task failed because its project was archived meanwhile."
+  },
+  "taskDuplicateFileMissing": "Couldn't duplicate the task: one of its attachments is missing from the server.",
+  "@taskDuplicateFileMissing": {
+    "description": "Snackbar after duplicating a task failed because the file of one of its attachments is gone from the server's storage."
+  },
+  "projectDuplicateFileMissing": "Couldn't duplicate the project: a file in it is missing from the server.",
+  "@projectDuplicateFileMissing": {
+    "description": "Error after duplicating a project failed because an attachment or background file in it is gone from the server's storage."
+  },
+  "assigneePickerNoAccess": "No access to this project",
+  "@assigneePickerNoAccess": {
+    "description": "Fragment without a full stop, inserted as the reason into assigneePickerFallback when the people of the task's project can't be searched (no access, or the project is gone)."
+  },
+  "appLanguageTitle": "App language",
+  "@appLanguageTitle": {
+    "description": "Row in the Account tab's device settings that opens the system's language settings for this app (Android 13+ per-app language, the app's page in iOS Settings)."
+  },
+  "appLanguageName": "English",
+  "@appLanguageName": {
+    "description": "The name of this translation's language in itself, shown as the subtitle of the App language row. Translate as your language's own name, e.g. Français."
+  },
+  "taskDetailDueDateRow": "Due date",
+  "@taskDetailDueDateRow": {
+    "description": "Label of the due date row in the task detail sheet, in a narrow label column beside the date. German uses the short 'Fällig am' here; the field elsewhere is taskDetailDueDate."
   }
 }

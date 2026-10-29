@@ -27,6 +27,7 @@ import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
+import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/motion.dart';
@@ -840,14 +841,21 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     }
   }
 
-  static String _duplicateFailureText(AppLocalizations l10n, Object error) =>
-      switch (error) {
-        NetworkFailure() => l10n.taskDuplicateNeedsConnection,
-        TaskNotSyncedYet() => l10n.taskDuplicateNotSynced,
-        VikunjaFailure(:final message) when message.trim().isNotEmpty =>
-          l10n.taskDuplicateFailed(message.trim()),
-        _ => l10n.taskDuplicateFailedUnknown,
-      };
+  static String _duplicateFailureText(AppLocalizations l10n, Object error) {
+    final shared = actionFailureText(l10n, error);
+    return switch (error) {
+      NetworkFailure() => l10n.taskDuplicateNeedsConnection,
+      TaskNotSyncedYet() => l10n.taskDuplicateNotSynced,
+      Forbidden() => l10n.taskDuplicateForbidden,
+      NotFound(code: 4034) => l10n.taskDuplicateFileMissing,
+      NotFound(code: 4002) => l10n.syncProblemTaskMissing,
+      VikunjaFailure(code: 3008) => l10n.taskDuplicateArchived,
+      _ when shared != null => shared,
+      VikunjaFailure(:final message) when message.trim().isNotEmpty =>
+        l10n.taskDuplicateFailed(message.trim()),
+      _ => l10n.taskDuplicateFailedUnknown,
+    };
+  }
 
   Future<void> _toggleFollow(Task task, Map<int, String> projectTitles) async {
     final l10n = context.l10n;
@@ -1124,7 +1132,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
           dueTone == DueTone.overdue
               ? Icons.error_outline
               : Icons.event_outlined,
-          l10n.taskDetailDueDate,
+          l10n.taskDetailDueDateRow,
           dueDate,
           semanticsText: dueTone == DueTone.overdue
               ? l10n.taskOverdueSemantics(formatter.spokenAbsolute(dueDate))

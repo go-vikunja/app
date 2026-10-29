@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
+import 'package:vikunja_mobile/core/text/title_order.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
@@ -468,11 +469,12 @@ class _TeamView extends StatelessWidget {
     final guards = this.guards;
     final provider = team.isExternal ? externalTeamProvider(team.name) : null;
     final members = [...team.members]
-      ..sort(
-        (a, b) => a.user.displayName.toLowerCase().compareTo(
-          b.user.displayName.toLowerCase(),
-        ),
-      );
+      ..sort((a, b) {
+        final byName = compareTitles(a.user.displayName, b.user.displayName);
+        if (byName != 0) return byName;
+        final byUsername = a.user.username.compareTo(b.user.username);
+        return byUsername != 0 ? byUsername : a.user.id.compareTo(b.user.id);
+      });
     final leave = guards?.leave ?? TeamLeaveRule.unavailable;
     final canDelete = guards?.canDelete ?? false;
     final hasDescription = htmlToPlainText(team.description).trim().isNotEmpty;

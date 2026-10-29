@@ -1,5 +1,6 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 
 /// The controls of the Account settings page; a refusal of the server is
 /// shown at the one whose change it refused.
@@ -47,17 +48,20 @@ String? accountSettingsFieldError(
 
 /// A change of the account's settings that failed for another reason
 /// than its value.
-String accountSettingsFailureText(AppLocalizations l10n, Object error) =>
-    switch (error) {
-      // The server may have made the change before the answer was lost.
-      NetworkFailure(problem: NetworkProblem.timeout) =>
-        l10n.accountSettingsUnconfirmed,
-      NetworkFailure() => l10n.accountSettingsNeedsConnection,
-      SessionEnded() || TokenRejected() => l10n.accountSettingsSignInAgain,
-      VikunjaFailure(:final message) when message.trim().isNotEmpty =>
-        l10n.accountSettingsRefused(message.trim()),
-      _ => l10n.accountSettingsFailed,
-    };
+String accountSettingsFailureText(AppLocalizations l10n, Object error) {
+  final shared = actionFailureText(l10n, error);
+  return switch (error) {
+    // The server may have made the change before the answer was lost.
+    NetworkFailure(problem: NetworkProblem.timeout) =>
+      l10n.accountSettingsUnconfirmed,
+    NetworkFailure() => l10n.accountSettingsNeedsConnection,
+    SessionEnded() || TokenRejected() => l10n.accountSettingsSignInAgain,
+    _ when shared != null => shared,
+    VikunjaFailure(:final message) when message.trim().isNotEmpty =>
+      l10n.accountSettingsRefused(message.trim()),
+    _ => l10n.accountSettingsFailed,
+  };
+}
 
 /// An avatar upload the server or this device could not take: the
 /// picture itself, else as [accountSettingsFailureText].

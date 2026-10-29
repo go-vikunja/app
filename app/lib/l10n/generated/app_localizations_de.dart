@@ -44,7 +44,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String connectConnectingTo(String address) {
-    return 'Suche Vikunja unter $address …';
+    return 'Vikunja wird unter $address gesucht …';
   }
 
   @override
@@ -304,7 +304,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get useDifferentServer => 'Anderen Server verwenden';
 
   @override
-  String get signInWaiting => 'Warte auf Anmeldung …';
+  String get signInWaiting => 'Anmeldung läuft …';
 
   @override
   String get signInRateLimitedTitle => 'Zu viele Anmeldeversuche';
@@ -628,7 +628,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get overviewEmptyBody =>
-      'Gerade gibt es keine offenen Aufgaben. Genieß die Ruhe oder leg mit „Neue Aufgabe“ eine an.';
+      'Gerade gibt es keine offenen Aufgaben. Genieße die Ruhe oder erstelle eine mit „Neue Aufgabe“.';
 
   @override
   String get sectionOverdue => 'Überfällig';
@@ -653,7 +653,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectsEmptyBody =>
-      'Leg dein erstes Projekt an, um Aufgaben hinzuzufügen.';
+      'Erstelle dein erstes Projekt, um Aufgaben hinzuzufügen.';
 
   @override
   String get projectsFavouritesHeading => 'Favoriten';
@@ -698,7 +698,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String smartListFilterNotLoadedBody(String title) {
-    return 'Der Server wendet den gespeicherten Filter „$title“ an. Seine Aufgaben laden, wenn du ihn online öffnest.';
+    return 'Der Server wendet den gespeicherten Filter „$title“ an. Seine Aufgaben werden geladen, wenn du ihn online öffnest.';
   }
 
   @override
@@ -745,7 +745,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get appearanceLightDarkHint =>
-      'Hell oder dunkel ist das Farbschema deines Kontos, in den Kontoeinstellungen.';
+      'Hell oder Dunkel legst du in den Kontoeinstellungen unter „Farbschema“ fest.';
 
   @override
   String projectChildCount(int count) {
@@ -856,7 +856,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectTasksEmptyBody =>
-      'In diesem Projekt ist alles erledigt. Schalte „Erledigte zeigen“ ein, um sie zu sehen.';
+      'In diesem Projekt ist alles erledigt. Schalte „Erledigte anzeigen“ ein, um sie zu sehen.';
 
   @override
   String get projectTasksEmptyAllTitle => 'Keine Aufgaben';
@@ -1034,7 +1034,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get taskDetailDueDate => 'Fällig am';
+  String get taskDetailDueDate => 'Fälligkeitsdatum';
 
   @override
   String get taskDetailStartDate => 'Startdatum';
@@ -1263,7 +1263,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get firstSyncPreparing => 'Vorbereiten …';
+  String get firstSyncPreparing => 'Wird vorbereitet …';
 
   @override
   String get firstSyncCancel => 'Abbrechen und abmelden';
@@ -1315,7 +1315,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get syncIndicatorLabel => 'Synchronisiert mit dem Server';
+  String get syncIndicatorLabel => 'Wird mit dem Server synchronisiert';
 
   @override
   String get offlineNotice => 'Offline – gespeicherte Daten werden angezeigt';
@@ -1332,7 +1332,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get accountNeverSynced => 'Noch nicht synchronisiert';
 
   @override
-  String get accountSyncing => 'Synchronisiert …';
+  String get accountSyncing => 'Wird synchronisiert …';
 
   @override
   String get accountSyncFailed =>
@@ -1374,10 +1374,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get undo => 'Rückgängig';
 
   @override
-  String get taskAddFavourite => 'Zu den Favoriten hinzufügen';
+  String get taskAddFavourite => 'Zu Favoriten hinzufügen';
 
   @override
-  String get taskRemoveFavourite => 'Aus den Favoriten entfernen';
+  String get taskRemoveFavourite => 'Aus Favoriten entfernen';
 
   @override
   String get taskNotYetSynced => 'Noch nicht synchronisiert';
@@ -1501,7 +1501,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get syncProblemCreateFailed =>
-      'Die Aufgabe konnte nicht angelegt werden.';
+      'Die Aufgabe konnte nicht erstellt werden.';
 
   @override
   String get taskEdit => 'Bearbeiten';
@@ -1543,7 +1543,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get taskEditDateNotSet => 'Nicht gesetzt';
+  String get taskEditDateNotSet => 'Nicht festgelegt';
 
   @override
   String get taskEditClearDueDate => 'Fälligkeitsdatum entfernen';
@@ -1702,7 +1702,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String newTaskLabelsNotCreated(String labels) {
-    return 'Diese Labels konnten nicht angelegt werden und fehlen deshalb: $labels';
+    return 'Diese Labels konnten nicht erstellt werden und fehlen deshalb: $labels';
   }
 
   @override
@@ -1712,7 +1712,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get newTaskNoProjectError =>
-      'Es gibt noch kein Projekt für neue Aufgaben. Leg zuerst im Web eins an.';
+      'Es gibt noch kein Projekt für neue Aufgaben. Erstelle zuerst eins im Tab „Projekte“.';
 
   @override
   String newTaskAddFailed(String reason) {
@@ -1772,7 +1772,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String quickAddProjectAmbiguous(String project) {
-    return 'Mehrere Projekte heißen „$project“. Entferne es und wähl das Projekt unten.';
+    return 'Mehrere Projekte heißen „$project“. Entferne es und wähle das Projekt unten.';
   }
 
   @override
@@ -1787,7 +1787,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String quickAddNewLabelSemantics(String label) {
-    return 'Neues Label $label, wird beim Hinzufügen angelegt';
+    return 'Neues Label $label, wird beim Hinzufügen erstellt';
   }
 
   @override
@@ -1835,7 +1835,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String quickAddSetPriority(String prefix) {
-    return 'Priorität setzen ($prefix)';
+    return 'Priorität festlegen ($prefix)';
   }
 
   @override
@@ -1853,7 +1853,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String quickAddHelpLabelsBody(String prefix) {
-    return 'Ein Wort, das mit $prefix beginnt. Labels, die es noch nicht gibt, werden beim Hinzufügen angelegt. Für Leerzeichen nimm Anführungszeichen.';
+    return 'Ein Wort, das mit $prefix beginnt. Labels, die es noch nicht gibt, werden beim Hinzufügen erstellt. Für Leerzeichen nimm Anführungszeichen.';
   }
 
   @override
@@ -1861,7 +1861,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String quickAddHelpProjectBody(String prefix) {
-    return '$prefix und Titel oder Kennung eines Projekts. Ohne landet die Aufgabe im Projekt, das unter dem Feld steht.';
+    return '$prefix und Titel oder Bezeichner eines Projekts. Ohne Angabe landet die Aufgabe im Projekt, das unter dem Feld steht.';
   }
 
   @override
@@ -1909,7 +1909,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get quickAddHelpLines =>
-      'Füg mehrere Zeilen ein, um pro Zeile eine Aufgabe anzulegen.';
+      'Füg mehrere Zeilen ein, um pro Zeile eine Aufgabe zu erstellen.';
 
   @override
   String get quickAddHelpExampleTitle => 'Beispiel';
@@ -1959,13 +1959,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get taskEditReminderDuplicate => 'Diese Erinnerung gibt es schon.';
 
   @override
-  String get reminderDueDateNotSet => 'Kein Fälligkeitsdatum gesetzt';
+  String get reminderDueDateNotSet => 'Kein Fälligkeitsdatum festgelegt';
 
   @override
-  String get reminderStartDateNotSet => 'Kein Startdatum gesetzt';
+  String get reminderStartDateNotSet => 'Kein Startdatum festgelegt';
 
   @override
-  String get reminderEndDateNotSet => 'Kein Enddatum gesetzt';
+  String get reminderEndDateNotSet => 'Kein Enddatum festgelegt';
 
   @override
   String get taskEditRemindersCoincide =>
@@ -1975,36 +1975,32 @@ class AppLocalizationsDe extends AppLocalizations {
   String get labelPickerTitle => 'Labels wählen';
 
   @override
-  String get labelPickerSearch => 'Label suchen oder anlegen';
+  String get labelPickerSearch => 'Label suchen oder erstellen';
 
   @override
   String get labelPickerEmpty =>
-      'Noch keine Labels. Gib einen Namen ein, um eins anzulegen.';
+      'Noch keine Labels. Gib einen Namen ein, um eins zu erstellen.';
 
   @override
   String labelPickerCreate(String title) {
-    return 'Label „$title“ anlegen';
+    return 'Label „$title“ erstellen';
   }
 
   @override
-  String get labelPickerCreating => 'Label wird angelegt …';
-
-  @override
-  String get labelPickerCreateOffline =>
-      'Zum Anlegen eines Labels brauchst du eine Verbindung zum Server.';
+  String get labelPickerCreating => 'Label wird erstellt …';
 
   @override
   String get labelPickerCreateUnconfirmed =>
-      'Ob das Label angelegt wurde, ließ sich nicht bestätigen. Prüf deine Verbindung und versuch es noch mal.';
+      'Ob das Label erstellt wurde, ließ sich nicht bestätigen. Prüf deine Verbindung und versuch es noch einmal.';
 
   @override
   String labelPickerCreateRejected(String message) {
-    return 'Der Server hat das Label nicht angelegt: $message';
+    return 'Der Server hat das Label nicht erstellt: $message';
   }
 
   @override
   String get labelPickerCreateFailed =>
-      'Das Label konnte nicht angelegt werden.';
+      'Das Label konnte nicht erstellt werden.';
 
   @override
   String labelPickerTitleTooLong(int max) {
@@ -2047,11 +2043,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get reminderPickerDateTime => 'Datum und Uhrzeit …';
 
   @override
-  String get reminderPickerAlreadySet => 'Schon gesetzt';
+  String get reminderPickerAlreadySet => 'Schon vorhanden';
 
   @override
   String get reminderPickerNoDateHint =>
-      'Setze ein Fälligkeits-, Start- oder Enddatum, um hier eine schnelle Auswahl zu bekommen.';
+      'Leg ein Fälligkeits-, Start- oder Enddatum fest, um hier eine schnelle Auswahl zu bekommen.';
 
   @override
   String get reminderPickerCustomTitle => 'Eigene Erinnerung';
@@ -2100,7 +2096,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String reminderRelativeToUnset(String date) {
-    return '$date (nicht gesetzt)';
+    return '$date (nicht festgelegt)';
   }
 
   @override
@@ -2239,7 +2235,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get notificationSetupBody =>
-      'Rurana kann dich auf diesem Handy benachrichtigen, ohne dass der Server etwas senden muss:';
+      'Rurana kann dich auf diesem Gerät benachrichtigen, ohne dass der Server etwas senden muss:';
 
   @override
   String get notificationSetupReminders => 'Erinnerungen zu ihrer Zeit';
@@ -2286,7 +2282,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get notificationsDueDatesSubtitle => 'Zur genauen Fälligkeitszeit';
 
   @override
-  String get notificationsActivity => 'Aktivität';
+  String get notificationsActivity => 'Aktivitäten';
 
   @override
   String get notificationsActivitySubtitle =>
@@ -2327,7 +2323,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get notificationTestBody =>
-      'Benachrichtigungen von Rurana funktionieren auf diesem Handy.';
+      'Benachrichtigungen von Rurana funktionieren auf diesem Gerät.';
 
   @override
   String get notificationTaskGone => 'Diese Aufgabe gibt es nicht mehr';
@@ -2442,17 +2438,17 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String sessionEndedNotificationBody(String username) {
-    return 'Deine Sitzung als $username ist abgelaufen. Rurana kann dieses Konto erst wieder synchronisieren, wenn du dich neu anmeldest.';
+    return 'Deine Sitzung als $username ist beendet. Rurana kann dieses Konto erst wieder synchronisieren, wenn du dich neu anmeldest.';
   }
 
   @override
   String get notificationActionDone => 'Erledigt';
 
   @override
-  String get notificationActionSnooze10Minutes => '10 Min. später';
+  String get notificationActionSnooze10Minutes => '10 Min. später';
 
   @override
-  String get notificationActionSnooze1Hour => '1 Std. später';
+  String get notificationActionSnooze1Hour => '1 Std. später';
 
   @override
   String notificationReminderBody(String project) {
@@ -2557,10 +2553,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addRelationKind => 'Art der Verknüpfung';
 
   @override
-  String get addRelationSearch => 'Nach Titel oder Kennung suchen';
+  String get addRelationSearch => 'Nach Titel oder Bezeichner suchen';
 
   @override
-  String get addRelationShowDone => 'Erledigte Aufgaben zeigen';
+  String get addRelationShowDone => 'Erledigte Aufgaben anzeigen';
 
   @override
   String get addRelationNoMatches => 'Keine passenden Aufgaben';
@@ -2576,7 +2572,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get taskDuplicateNeedsConnection =>
-      'Duplizieren braucht eine Verbindung zum Server.';
+      'Zum Duplizieren brauchst du eine Verbindung zum Server.';
 
   @override
   String get taskDuplicateNotSynced =>
@@ -2605,7 +2601,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get followNeedsConnection =>
-      'Folgen braucht eine Verbindung zum Server.';
+      'Zum Folgen brauchst du eine Verbindung zum Server.';
 
   @override
   String get followFailed =>
@@ -2620,7 +2616,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Aufgabe folgen (braucht eine Verbindung)';
 
   @override
-  String get followChecking => 'Prüfe, ob du folgst …';
+  String get followChecking => 'Wird geprüft, ob du folgst …';
 
   @override
   String followingViaProject(String project) {
@@ -2770,7 +2766,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get rangeThisYear => 'Dieses Jahr';
 
   @override
-  String get rangeRestOfThisYear => 'Der Rest des Jahres';
+  String get rangeRestOfThisYear => 'Der Rest dieses Jahres';
 
   @override
   String get sectionTomorrow => 'Morgen';
@@ -2782,7 +2778,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get overviewFilterNotLoadedTitle =>
-      'Dieser Filter lädt, sobald du online bist';
+      'Dieser Filter wird geladen, sobald du online bist';
 
   @override
   String overviewFilterNotLoadedBody(String title) {
@@ -2885,11 +2881,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectViewNotLoadedTitle =>
-      'Diese Ansicht lädt, sobald du online bist';
+      'Diese Ansicht wird geladen, sobald du online bist';
 
   @override
   String projectViewNotLoadedBody(String filter) {
-    return 'Der Server wendet den Filter „$filter“ dieser Ansicht an. Ihre Aufgaben laden, wenn du sie online öffnest.';
+    return 'Der Server wendet den Filter „$filter“ dieser Ansicht an. Die Aufgaben werden geladen, wenn du die Ansicht online öffnest.';
   }
 
   @override
@@ -2957,7 +2953,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String projectViewDownloadingBody(String filter) {
-    return 'Der Server wendet den Filter „$filter“ dieser Ansicht an. Ihre Aufgaben sind unterwegs.';
+    return 'Der Server wendet den Filter „$filter“ dieser Ansicht an. Die Aufgaben sind unterwegs.';
   }
 
   @override
@@ -2971,10 +2967,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get boardNotLoadedBody =>
-      'Ihre Spalten und Karten laden, wenn du sie online öffnest.';
+      'Spalten und Karten werden geladen, wenn du die Ansicht online öffnest.';
 
   @override
-  String get boardDownloadingBody => 'Ihre Spalten und Karten sind unterwegs.';
+  String get boardDownloadingBody => 'Spalten und Karten sind unterwegs.';
 
   @override
   String get boardDownloadFailedBody =>
@@ -3090,7 +3086,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Verschiebst du eine Aufgabe in diese Spalte, ist sie damit erledigt, und eine anderswo als erledigt markierte Aufgabe wandert hierher.';
 
   @override
-  String get boardDefaultColumn => 'Standard-Spalte';
+  String get boardDefaultColumn => 'Standardspalte';
 
   @override
   String get boardDefaultColumnHint =>
@@ -3113,7 +3109,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get boardColumnDeleteLast =>
-      'Du kannst die letzte Spalte nicht entfernen.';
+      'Du kannst die letzte Spalte nicht löschen.';
 
   @override
   String get boardColumnRenameTitle => 'Spalte umbenennen';
@@ -3153,7 +3149,7 @@ class AppLocalizationsDe extends AppLocalizations {
       other: 'Gerade sind $count Aufgaben in dieser Spalte.',
       one: 'Gerade ist 1 Aufgabe in dieser Spalte.',
     );
-    return '$_temp0 Lass das Feld leer für kein Limit.';
+    return '$_temp0 Lass das Feld leer, wenn die Spalte kein Limit haben soll.';
   }
 
   @override
@@ -3161,7 +3157,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Das ist weniger, als sie gerade enthält. Bis Aufgaben herausgenommen werden, nimmt sie keine neuen auf.';
 
   @override
-  String get boardDeleteColumnTitle => 'Spalte löschen';
+  String get boardDeleteColumnTitle => 'Spalte löschen?';
 
   @override
   String boardDeleteColumnBody(String column) {
@@ -3170,12 +3166,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String boardDeleteColumnTasksMove(String column) {
-    return 'Ihre Aufgaben werden nicht gelöscht, sondern kommen nach „$column“.';
+    return 'Die Aufgaben darin werden nicht gelöscht, sondern kommen nach „$column“.';
   }
 
   @override
   String boardDeleteColumnBecomesDefault(String column) {
-    return '„$column“ wird zur Standard-Spalte.';
+    return '„$column“ wird zur Standardspalte.';
   }
 
   @override
@@ -3194,7 +3190,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get boardDoneColumnSaved => 'Erledigt-Spalte gespeichert';
 
   @override
-  String get boardDefaultColumnSaved => 'Standard-Spalte gespeichert';
+  String get boardDefaultColumnSaved => 'Standardspalte gespeichert';
 
   @override
   String get boardColumnDeleted => 'Spalte gelöscht';
@@ -3209,7 +3205,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get boardColumnAdminOnly =>
-      'Nur Projekt-Admins können die Erledigt- oder Standard-Spalte festlegen.';
+      'Nur Projekt-Admins können die Erledigt- oder Standardspalte festlegen.';
 
   @override
   String get boardColumnDeleteAdminOnly =>
@@ -3217,7 +3213,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String boardColumnDeleteFailedNewDefault(String newDefault, String column) {
-    return '„$newDefault“ ist jetzt die Standard-Spalte, aber „$column“ ließ sich nicht löschen.';
+    return '„$newDefault“ ist jetzt die Standardspalte, aber „$column“ ließ sich nicht löschen.';
   }
 
   @override
@@ -3268,10 +3264,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dieses Bild kann hier nicht angezeigt werden';
 
   @override
-  String get richTextShowImage => 'Im Vollbild zeigen';
+  String get richTextShowImage => 'Im Vollbild anzeigen';
 
   @override
-  String get richTextOpensInBrowser => 'Öffnet im Browser';
+  String get richTextOpensInBrowser => 'Öffnet sich im Browser';
 
   @override
   String richTextReplyTo(String author) {
@@ -3340,7 +3336,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get attachmentUploadFailed =>
-      'Nicht hochgeladen: siehe Synchronisierungsprobleme im Tab Konto';
+      'Nicht hochgeladen: siehe „Synchronisierungsprobleme“ im Tab „Konto“';
 
   @override
   String get attachmentUploadTooLarge => 'Nicht hochgeladen: zu groß';
@@ -3365,7 +3361,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get attachmentSaveToDevice => 'Auf dem Gerät speichern';
 
   @override
-  String get attachmentMakeCover => 'Als Titelbild setzen';
+  String get attachmentMakeCover => 'Als Titelbild festlegen';
 
   @override
   String get attachmentRemoveCover => 'Titelbild entfernen';
@@ -3374,7 +3370,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get attachmentDelete => 'Anhang löschen';
 
   @override
-  String get attachmentDeleteTitle => 'Anhang löschen';
+  String get attachmentDeleteTitle => 'Anhang löschen?';
 
   @override
   String attachmentDeleteBody(String name) {
@@ -3684,7 +3680,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get taskOpening => 'Aufgabe wird geöffnet…';
+  String get taskOpening => 'Aufgabe wird geöffnet …';
 
   @override
   String get deepLinkSwitchAccountTitle => 'Konto wechseln?';
@@ -3712,7 +3708,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get projectTitleHint => 'Zum Beispiel Einkäufe';
 
   @override
-  String get projectTitleRequired => 'Bitte gib einen Titel an.';
+  String get projectTitleRequired => 'Gib einen Titel ein.';
 
   @override
   String get projectParentLabel => 'Übergeordnetes Projekt';
@@ -3744,7 +3740,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectIdentifierHelp =>
-      'Bis zu 10 Zeichen, eindeutig auf dem Server. Die Bezeichner der Aufgaben dieses Projekts beginnen damit und ändern sich mit ihm. Lass das Feld leer für keinen.';
+      'Bis zu 10 Zeichen, eindeutig auf dem Server. Die Bezeichner der Aufgaben dieses Projekts beginnen damit und ändern sich mit ihm. Lass das Feld leer, wenn das Projekt keinen haben soll.';
 
   @override
   String get projectIdentifierTaken =>
@@ -3801,7 +3797,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectUnarchiveBody =>
-      'Du kannst es wieder bearbeiten und Aufgaben darin anlegen. Auch bei seinen Unterprojekten wird die Archivierung aufgehoben.';
+      'Du kannst es wieder bearbeiten und Aufgaben darin erstellen. Auch bei seinen Unterprojekten wird die Archivierung aufgehoben.';
 
   @override
   String get projectArchivedDone => 'Projekt archiviert';
@@ -3868,7 +3864,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectDeleteCannotBeUndone =>
-      'Das kann nicht rückgängig gemacht werden.';
+      'Das lässt sich nicht rückgängig machen.';
 
   @override
   String projectIncludesDefault(String project) {
@@ -3888,7 +3884,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectFormUnconfirmed =>
-      'Die Änderung ließ sich nicht bestätigen. Vielleicht ist sie trotzdem angekommen, also prüf das, bevor du es noch mal versuchst.';
+      'Die Änderung ließ sich nicht bestätigen. Vielleicht ist sie trotzdem angekommen, also prüf das, bevor du es noch einmal versuchst.';
 
   @override
   String get projectChangeForbidden => 'Du darfst dieses Projekt nicht ändern.';
@@ -3934,11 +3930,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectTitleTooLong =>
-      'Ein Titel darf höchstens 250 Zeichen lang sein, und ein Emoji kann mehrere zählen. Kürz diesen, um zu speichern.';
+      'Ein Titel darf höchstens 250 Zeichen lang sein, und ein Emoji kann als mehrere zählen. Kürz diesen, um zu speichern.';
 
   @override
   String get projectTitleTooLongToChange =>
-      'Der Titel dieses Projekts ist länger, als der Server annimmt. Kürz ihn zuerst unter Bearbeiten.';
+      'Der Titel dieses Projekts ist länger, als der Server annimmt. Kürz ihn zuerst unter „Bearbeiten“.';
 
   @override
   String projectChangeRefused(String message) {
@@ -3970,7 +3966,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectViewDeleteBody =>
-      'Niemand kann sie dann noch verwenden, um die Aufgaben dieses Projekts anzusehen. Es werden keine Aufgaben gelöscht. Das kann nicht rückgängig gemacht werden.';
+      'Niemand kann sie dann noch verwenden, um die Aufgaben dieses Projekts anzusehen. Es werden keine Aufgaben gelöscht. Das lässt sich nicht rückgängig machen.';
 
   @override
   String get projectViewLastOne =>
@@ -4147,7 +4143,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get savedFilterFavouriteHint =>
-      'Zeigt ihn bei den Favoriten im Tab Projekte.';
+      'Zeigt ihn bei den Favoriten im Tab „Projekte“.';
 
   @override
   String get savedFilterFilterRequired =>
@@ -4169,7 +4165,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get savedFilterDeleteBody =>
-      'Es werden keine Aufgaben gelöscht, nur der Filter und seine Ansichten. Das kann nicht rückgängig gemacht werden.';
+      'Es werden keine Aufgaben gelöscht, nur der Filter und seine Ansichten. Das lässt sich nicht rückgängig machen.';
 
   @override
   String get savedFilterEditDiscardBody =>
@@ -4184,11 +4180,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get savedFilterChangeNeedsConnection =>
-      'Zum Verwalten gespeicherter Filter braucht es eine Verbindung zum Server.';
+      'Zum Verwalten gespeicherter Filter brauchst du eine Verbindung zum Server.';
 
   @override
   String get savedFilterChangeForbidden =>
-      'Nur wer diesen gespeicherten Filter angelegt hat, kann ihn ändern.';
+      'Nur wer diesen gespeicherten Filter erstellt hat, kann ihn ändern.';
 
   @override
   String get savedFilterGone => 'Den gespeicherten Filter gibt es nicht mehr.';
@@ -4235,8 +4231,9 @@ class AppLocalizationsDe extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count weitere Aufgaben passen. Tipp mehr, um einzugrenzen.',
-      one: '1 weitere Aufgabe passt. Tipp mehr, um einzugrenzen.',
+      other:
+          '$count weitere Aufgaben passen. Tipp mehr, um die Suche einzugrenzen.',
+      one: '1 weitere Aufgabe passt. Tipp mehr, um die Suche einzugrenzen.',
     );
     return '$_temp0';
   }
@@ -4550,7 +4547,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String accountSettingsNameHelp(String username) {
-    return 'Wird statt deines Benutzernamens angezeigt. Leer lassen, um @$username anzuzeigen.';
+    return 'Wird statt deines Benutzernamens angezeigt. Lass das Feld leer, um @$username anzuzeigen.';
   }
 
   @override
@@ -4620,7 +4617,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get accountSettingsDefaultProjectInvalid =>
-      'Wähle ein Projekt, in dem du Aufgaben anlegen darfst und das nicht archiviert ist.';
+      'Wähle ein Projekt, in dem du Aufgaben erstellen darfst und das nicht archiviert ist.';
 
   @override
   String get accountSettingsDefaultView => 'Standardansicht';
@@ -4707,7 +4704,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get accountSettingsDateDisplayDevice => 'Wie auf diesem Gerät';
 
   @override
-  String get accountSettingsDateDisplayRelative => 'Relativ, z. B. in 3 Tagen';
+  String get accountSettingsDateDisplayRelative => 'Relativ, z. B. in 3 Tagen';
 
   @override
   String get accountSettingsDateMonthDayYearDashed => 'MM-TT-JJJJ';
@@ -4739,10 +4736,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get accountSettingsTimeFormatDevice => 'Wie auf diesem Gerät';
 
   @override
-  String get accountSettingsTimeFormat12 => '12 Stunden';
+  String get accountSettingsTimeFormat12 => '12-Stunden-Format';
 
   @override
-  String get accountSettingsTimeFormat24 => '24 Stunden';
+  String get accountSettingsTimeFormat24 => '24-Stunden-Format';
 
   @override
   String get accountSettingsEmailNotifications => 'E-Mail-Benachrichtigungen';
@@ -5076,7 +5073,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get accountDeletionDialogNoEmail =>
-      'Verschickt dein Server keine E-Mails, bitte seine Administration, dein Konto zu löschen.';
+      'Verschickt dein Server keine E-Mails, bitte die Person, die ihn betreut, dein Konto zu löschen.';
 
   @override
   String get accountDeletionContinue => 'Im Browser fortfahren';
@@ -5249,7 +5246,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String apiTokensExpires(String date) {
-    return 'Läuft ab am $date';
+    return 'Läuft am $date ab';
   }
 
   @override
@@ -5373,7 +5370,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String apiTokenFormShowGroup(String group) {
-    return 'Berechtigungen von $group zeigen';
+    return 'Berechtigungen von $group anzeigen';
   }
 
   @override
@@ -5611,10 +5608,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get upcomingShowDayHint => 'Nur diesen Tag zeigen';
+  String get upcomingShowDayHint => 'Nur diesen Tag anzeigen';
 
   @override
-  String get upcomingShowRangeHint => 'Ganzen Zeitraum zeigen';
+  String get upcomingShowRangeHint => 'Ganzen Zeitraum anzeigen';
 
   @override
   String get upcomingNothingPlanned => 'Nichts geplant';
@@ -5629,7 +5626,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get taskDetailStatusOpen => 'Offen';
 
   @override
-  String get projectShowDoneChip => 'Erledigte zeigen';
+  String get projectShowDoneChip => 'Erledigte anzeigen';
 
   @override
   String projectProgressDone(int done, int total) {
@@ -5711,7 +5708,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get commentDeleteTitle => 'Diesen Kommentar löschen?';
 
   @override
-  String get commentDeleteBody => 'Das kann nicht rückgängig gemacht werden.';
+  String get commentDeleteBody => 'Das lässt sich nicht rückgängig machen.';
 
   @override
   String get commentDeleted => 'Kommentar gelöscht';
@@ -5751,7 +5748,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get commentFailedUnconfirmed =>
-      'Der Server hat nicht geantwortet. Schau in die Kommentare, bevor du nochmal sendest.';
+      'Der Server hat nicht geantwortet. Schau in die Kommentare, bevor du noch einmal sendest.';
 
   @override
   String get commentFailedSend =>
@@ -5813,7 +5810,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get commentReplyDropped => 'Keine Antwort mehr';
+  String get commentReplyDropped => 'Du antwortest nicht mehr';
 
   @override
   String get shareMenuItem => 'Teilen';
@@ -6081,7 +6078,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wer den Link öffnet, muss es eingeben';
 
   @override
-  String get linkShareFormShowPassword => 'Passwort zeigen';
+  String get linkShareFormShowPassword => 'Passwort anzeigen';
 
   @override
   String get linkShareFormHidePassword => 'Passwort verbergen';
@@ -6213,18 +6210,18 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get labelsNewOffline =>
-      'Ein Label anzulegen braucht eine Verbindung zum Server.';
+      'Zum Erstellen eines Labels brauchst du eine Verbindung zum Server.';
 
   @override
   String get labelsEmptyTitle => 'Noch keine Labels';
 
   @override
   String get labelsEmptyBody =>
-      'Labels markieren Aufgaben über alle Projekte hinweg. Leg hier eins an oder beim Bearbeiten einer Aufgabe.';
+      'Labels markieren Aufgaben über alle Projekte hinweg. Erstelle hier eins oder beim Bearbeiten einer Aufgabe.';
 
   @override
   String labelsShowTasks(String title) {
-    return 'Aufgaben mit dem Label $title zeigen';
+    return 'Aufgaben mit dem Label $title anzeigen';
   }
 
   @override
@@ -6246,7 +6243,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get labelsTitleLabel => 'Titel';
 
   @override
-  String get labelsTitleRequired => 'Bitte gib einen Titel an.';
+  String get labelsTitleRequired => 'Gib einen Titel ein.';
 
   @override
   String labelsTitleRemaining(int count) {
@@ -6290,10 +6287,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get labelsDescriptionCreatorOnly =>
-      'Nur wer dieses Label angelegt hat, kann es ändern.';
+      'Nur wer dieses Label erstellt hat, kann es ändern.';
 
   @override
-  String get labelsCreate => 'Anlegen';
+  String get labelsCreate => 'Erstellen';
 
   @override
   String get labelsSave => 'Speichern';
@@ -6302,7 +6299,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get labelsSaving => 'Wird gespeichert …';
 
   @override
-  String get labelsCreated => 'Label angelegt';
+  String get labelsCreated => 'Label erstellt';
 
   @override
   String get labelsSaved => 'Label gespeichert';
@@ -6320,7 +6317,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get labelsNeedsConnection =>
-      'Ein Label zu ändern braucht eine Verbindung zum Server.';
+      'Zum Ändern eines Labels brauchst du eine Verbindung zum Server.';
 
   @override
   String get labelsUnconfirmed =>
@@ -6328,7 +6325,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get labelsNotCreator =>
-      'Nur wer dieses Label angelegt hat, kann es ändern.';
+      'Nur wer dieses Label erstellt hat, kann es ändern.';
 
   @override
   String get labelsGone => 'Dieses Label gibt es nicht mehr.';
@@ -6363,7 +6360,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get teamsNewOffline =>
-      'Ein Team anzulegen braucht eine Verbindung zum Server.';
+      'Zum Erstellen eines Teams brauchst du eine Verbindung zum Server.';
 
   @override
   String teamMemberCount(int count) {
@@ -6397,7 +6394,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get teamNameLabel => 'Name';
 
   @override
-  String get teamNameRequired => 'Bitte gib einen Namen an.';
+  String get teamNameRequired => 'Gib einen Namen ein.';
 
   @override
   String get teamPublicLabel => 'Öffentliches Team';
@@ -6407,13 +6404,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Alle auf diesem Server können es finden und Projekte mit ihm teilen.';
 
   @override
-  String get teamCreate => 'Anlegen';
+  String get teamCreate => 'Erstellen';
 
   @override
-  String get teamCreating => 'Team wird angelegt …';
+  String get teamCreating => 'Team wird erstellt …';
 
   @override
-  String get teamCreated => 'Team angelegt';
+  String get teamCreated => 'Team erstellt';
 
   @override
   String get teamLoading => 'Team wird geladen …';
@@ -6445,12 +6442,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String teamExternalNote(String provider) {
-    return 'Dieses Team wird von $provider verwaltet. Die Mitglieder ändern sich dort.';
+    return 'Dieses Team wird von $provider verwaltet. Wer Mitglied ist, wird dort festgelegt.';
   }
 
   @override
   String get teamExternalNoteGeneric =>
-      'Dieses Team wird von der Anmeldung deiner Organisation verwaltet. Die Mitglieder ändern sich dort.';
+      'Dieses Team wird von der Anmeldung deiner Organisation verwaltet. Wer Mitglied ist, wird dort festgelegt.';
 
   @override
   String get teamMembersSection => 'Mitglieder';
@@ -6565,11 +6562,11 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get teamAddMemberOffline =>
-      'Mitglieder hinzuzufügen braucht eine Verbindung zum Server.';
+      'Zum Hinzufügen von Mitgliedern brauchst du eine Verbindung zum Server.';
 
   @override
   String get teamNeedsConnection =>
-      'Ein Team zu ändern braucht eine Verbindung zum Server.';
+      'Zum Ändern eines Teams brauchst du eine Verbindung zum Server.';
 
   @override
   String get teamUnconfirmed =>
@@ -6609,13 +6606,13 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get teamFailed => 'Das hat nicht geklappt. Versuch es noch mal.';
+  String get teamFailed => 'Das hat nicht geklappt. Versuch es noch einmal.';
 
   @override
   String get teamOk => 'OK';
 
   @override
-  String get shareLowerOwnAccessTitle => 'Deine eigenen Rechte senken?';
+  String get shareLowerOwnAccessTitle => 'Deinen eigenen Zugriff einschränken?';
 
   @override
   String get shareLowerOwnAccessAdminBody =>
@@ -6626,7 +6623,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Danach kannst du dieses Projekt und seine Aufgaben womöglich nicht mehr ändern.';
 
   @override
-  String get shareLowerOwnAccessConfirm => 'Rechte senken';
+  String get shareLowerOwnAccessConfirm => 'Zugriff einschränken';
 
   @override
   String get shareRemovedSelf => 'Du hast dich entfernt';
@@ -6705,7 +6702,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String projectTimelineExpand(String title) {
-    return 'Unteraufgaben von $title einblenden';
+    return 'Unteraufgaben von $title anzeigen';
   }
 
   @override
@@ -6794,16 +6791,16 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String projectTableCellPercent(int percent) {
-    return '$percent %';
+    return '$percent %';
   }
 
   @override
   String projectViewsIntro(String project) {
-    return 'Die Ansichten von $project in der Reihenfolge, in der App und Web sie zeigen.';
+    return 'Die Ansichten von $project in der Reihenfolge, in der die App und das Web sie anzeigen.';
   }
 
   @override
-  String get projectTimelineShowUndated => 'Undatierte zeigen';
+  String get projectTimelineShowUndated => 'Ohne Datum anzeigen';
 
   @override
   String get overviewCreateAccount => 'Konto erstellen';
@@ -6929,7 +6926,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String guestConnectingTo(String link) {
-    return 'Öffne den geteilten Link $link …';
+    return 'Geteilter Link $link wird geöffnet …';
   }
 
   @override
@@ -6962,7 +6959,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get guestShareOpen => 'Als Gast öffnen';
 
   @override
-  String get guestShareNewTask => 'Stattdessen als neue Aufgabe anlegen';
+  String get guestShareNewTask => 'Stattdessen als neue Aufgabe erstellen';
 
   @override
   String get guestLinkGoneTitle => 'Dieser Link funktioniert nicht';
@@ -6978,7 +6975,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String inviteConnectingTo(String host) {
-    return 'Prüfe die Einladung zu $host …';
+    return 'Einladung zu $host wird geprüft …';
   }
 
   @override
@@ -7048,7 +7045,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get guestServerNeededSuggestion =>
-      'Gib oben die Adresse des Servers ein und tippe auf Weiter, um den Link zu öffnen.';
+      'Gib oben die Adresse des Servers ein und tippe auf „Weiter“, um den Link zu öffnen.';
 
   @override
   String get guestAlreadyAdded =>
@@ -7156,7 +7153,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get widgetsHowToIos =>
-      'Halte eine freie Stelle auf dem Home-Bildschirm gedrückt, tippe auf „Bearbeiten“ und dann auf „Widget hinzufügen“ und such nach Rurana. Um Konto und Liste zu wählen, halte das Widget gedrückt und tippe auf „Widget bearbeiten“.';
+      'Halte eine freie Stelle auf dem Home-Bildschirm gedrückt, tippe auf „Bearbeiten“ und dann auf „Widget hinzufügen“ und suche nach Rurana. Um Konto und Liste zu wählen, halte das Widget gedrückt und tippe auf „Widget bearbeiten“.';
 
   @override
   String get widgetsAddHeading => 'Widget hinzufügen';
@@ -7181,7 +7178,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get widgetsPrivacyNote =>
-      'Widgets zeigen die Titel deiner Aufgaben auf dem Startbildschirm, wo jeder sie lesen kann, der dein Handy sieht.';
+      'Widgets zeigen die Titel deiner Aufgaben auf dem Startbildschirm, wo jeder sie lesen kann, der dein Gerät sieht.';
 
   @override
   String get widgetKindToday => 'Heute';
@@ -7286,7 +7283,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get widgetsHowToAndroid =>
-      'Halte eine freie Stelle auf dem Startbildschirm gedrückt, tippe auf „Widgets“ und such nach Rurana. Um Konto und Liste zu wählen, tippe unten unter „Auf deinem Startbildschirm“ auf das Widget. Manche Startbildschirme bieten das auch in den Einstellungen des Widgets an, wenn du es gedrückt hältst.';
+      'Halte eine freie Stelle auf dem Startbildschirm gedrückt, tippe auf „Widgets“ und suche nach Rurana. Um Konto und Liste zu wählen, tippe unten unter „Auf deinem Startbildschirm“ auf das Widget. Manche Startbildschirme bieten das auch in den Einstellungen des Widgets an, wenn du es gedrückt hältst.';
 
   @override
   String get widgetsPlacedNotSetUp =>
@@ -7410,7 +7407,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyNotificationContentHiddenSubtitle =>
-      'Der Inhalt erscheint nur, wenn das Handy entsperrt ist';
+      'Der Inhalt erscheint nur, wenn das Gerät entsperrt ist';
 
   @override
   String get privacyNotificationContentNoTitles => 'Nie Aufgabentitel anzeigen';
@@ -7421,7 +7418,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyNotificationContentIosHint =>
-      'Auf dem iPhone legt iOS das für jede App fest: Stelle unter Einstellungen → Mitteilungen → Rurana „Vorschauen zeigen“ auf „Wenn entsperrt“.';
+      'Auf dem iPhone legt iOS das für jede App fest: Stelle unter Einstellungen › Mitteilungen › Rurana „Vorschauen zeigen“ auf „Wenn entsperrt“.';
 
   @override
   String get privacyWidgetsHeading => 'Widgets';
@@ -7901,7 +7898,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Datei ist keine PEM-Zertifikatsdatei oder enthält auch einen privaten Schlüssel.';
 
   @override
-  String get connectionFileTooLarge => 'Die Datei ist größer als 64 KB.';
+  String get connectionFileTooLarge => 'Die Datei ist größer als 64 KB.';
 
   @override
   String get connectionFileEmpty => 'Die Datei ist leer.';
@@ -7938,7 +7935,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get connectionClientCertificatePrivateCaHint =>
-      'Wenn das Zertifikat des Servers von deiner eigenen Zertifizierungsstelle stammt, vertraue ihm auch unter Serverzertifikat: In den Geräteeinstellungen installierte Zertifikate gelten nicht für Verbindungen mit Client-Zertifikat.';
+      'Wenn das Zertifikat des Servers von deiner eigenen Zertifizierungsstelle stammt, vertraue ihm auch unter „Serverzertifikat“: In den Geräteeinstellungen installierte Zertifikate gelten nicht für Verbindungen mit Client-Zertifikat.';
 
   @override
   String get connectionSave => 'Speichern';
@@ -7999,7 +7996,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Nur sichtbare ASCII-Zeichen sind erlaubt.';
 
   @override
-  String get connectionHeaderValueTooLong => 'Höchstens 4 KB.';
+  String get connectionHeaderValueTooLong => 'Höchstens 4 KB.';
 
   @override
   String get connectionHeadersTooMany => 'Höchstens 10 Header.';
@@ -8009,7 +8006,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get connectionBrowserHintPinned =>
-      'Dein Browser wird vor dem Zertifikat dieses Servers warnen. Prüfe, ob er denselben SHA-256-Fingerabdruck zeigt wie den hier vertrauten:';
+      'Dein Browser wird vor dem Zertifikat dieses Servers warnen. Prüfe, ob er denselben SHA-256-Fingerabdruck zeigt, dem du hier vertraust:';
 
   @override
   String get connectionBrowserHintCa =>
@@ -8195,4 +8192,55 @@ class AppLocalizationsDe extends AppLocalizations {
   String taskDetailPaneMore(String title) {
     return 'Mehr zu „$title“';
   }
+
+  @override
+  String get actionFailureServerError =>
+      'Der Server hat mit einem Fehler geantwortet. Versuche es in ein paar Minuten noch einmal.';
+
+  @override
+  String get actionFailureSessionEnded =>
+      'Deine Sitzung ist beendet. Melde dich im Tab „Konto“ neu an.';
+
+  @override
+  String get actionFailureRateLimited =>
+      'Der Server begrenzt Anfragen gerade. Warte eine Minute und versuche es dann noch einmal.';
+
+  @override
+  String get actionFailureGuestAccessEnded =>
+      'Dein Gastzugang ist beendet. Öffne den Link im Tab „Konto“ erneut.';
+
+  @override
+  String get attachmentFileMissing => 'Die Datei fehlt auf dem Server.';
+
+  @override
+  String get attachmentDownloadForbidden =>
+      'Du hast keinen Zugriff mehr auf diesen Anhang.';
+
+  @override
+  String get taskDuplicateForbidden =>
+      'Du darfst diesem Projekt keine Aufgaben hinzufügen.';
+
+  @override
+  String get taskDuplicateArchived =>
+      'Dieses Projekt ist archiviert, deshalb lassen sich seine Aufgaben nicht duplizieren.';
+
+  @override
+  String get taskDuplicateFileMissing =>
+      'Die Aufgabe konnte nicht dupliziert werden: Einer ihrer Anhänge fehlt auf dem Server.';
+
+  @override
+  String get projectDuplicateFileMissing =>
+      'Das Projekt konnte nicht dupliziert werden: Eine Datei darin fehlt auf dem Server.';
+
+  @override
+  String get assigneePickerNoAccess => 'Kein Zugriff auf dieses Projekt';
+
+  @override
+  String get appLanguageTitle => 'App-Sprache';
+
+  @override
+  String get appLanguageName => 'Deutsch';
+
+  @override
+  String get taskDetailDueDateRow => 'Fällig am';
 }

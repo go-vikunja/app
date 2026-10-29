@@ -592,6 +592,52 @@ void main() {
     });
   });
 
+  group('deleteApiToken beyond the captures', () {
+    test('a token deleted elsewhere already (404 code 14017) counts as '
+        'deleted', () async {
+      final v1 = fakeDio({
+        '$_v1/tokens/92': json({
+          'code': 14017,
+          'message': 'The api token does not exist.',
+        }, status: 404),
+      });
+      final v2 = fakeDio({
+        '$_v2/tokens/92': _problem(404, {
+          'status': 404,
+          'detail': 'The api token does not exist.',
+          'code': 14017,
+        }),
+      });
+
+      await _port(v1, 'v1').deleteApiToken(92);
+      await _port(v2, 'v2').deleteApiToken(92);
+
+      expect(_calls(v1), ['DELETE $_v1/tokens/92']);
+      expect(_calls(v2), ['DELETE $_v2/tokens/92']);
+    });
+
+    test('another 404 is not taken for a deleted token', () async {
+      final routeAbsent = fakeDio({
+        '$_v2/tokens/92': json({'message': 'Not Found'}, status: 404),
+      });
+      final otherCode = fakeDio({
+        '$_v1/tokens/92': json({
+          'code': 3001,
+          'message': 'The project does not exist.',
+        }, status: 404),
+      });
+
+      await expectLater(
+        _port(routeAbsent, 'v2').deleteApiToken(92),
+        throwsA(isA<NotFound>()),
+      );
+      await expectLater(
+        _port(otherCode, 'v1').deleteApiToken(92),
+        throwsA(isA<NotFound>().having((f) => f.code, 'code', 3001)),
+      );
+    });
+  });
+
   group('createApiToken beyond the captures', () {
     test('a blank title or an expiry that is not in the future never reaches '
         'the server, which would accept both', () async {

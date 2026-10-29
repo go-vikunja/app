@@ -59,6 +59,29 @@ void main() {
       expect(labels.map((label) => label.title), ['Home', 'urgent']);
     });
 
+    test(
+      'lists an umlaut among its base letter, the same title by id',
+      () async {
+        await db.labelsDao.upsertAll([
+          sampleLabel(id: 3, title: 'Zahlung'),
+          sampleLabel(id: 4, title: 'Ärger'),
+          sampleLabel(id: 5, title: 'apfel'),
+          sampleLabel(id: 6, title: 'HOME'),
+        ]);
+
+        final labels = await repository.watchAll().first;
+
+        expect(labels.map((label) => label.title), [
+          'apfel',
+          'Ärger',
+          'Home',
+          'HOME',
+          'urgent',
+          'Zahlung',
+        ]);
+      },
+    );
+
     test('a created label is stored as the server answered it', () async {
       final created = await repository.create(
         const NewLabel(title: 'errand', hexColor: '0ead69'),

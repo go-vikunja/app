@@ -4,6 +4,7 @@ import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/tasks/application/label_search.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
@@ -35,8 +36,8 @@ void main() {
   Future<void> openPage(WidgetTester tester) =>
       openEditPageWith(tester, data: data, taskId: 1, now: now, labels: labels);
 
-  Future<void> openPicker(WidgetTester tester) async {
-    await tapVisible(tester, find.text(en.taskEditAddLabel));
+  Future<void> openPicker(WidgetTester tester, [AppLocalizations? l10n]) async {
+    await tapVisible(tester, find.text((l10n ?? en).taskEditAddLabel));
   }
 
   Finder picker() => find.byType(LabelPicker);
@@ -305,7 +306,7 @@ void main() {
       await tester.tap(createRow('Groceries'));
       await tester.pumpAndSettle();
 
-      expect(inPicker(find.text(en.labelPickerCreateOffline)), findsOneWidget);
+      expect(inPicker(find.text(en.labelsNewOffline)), findsOneWidget);
       expect(createRow('Groceries'), findsOneWidget);
       await tapPickerDone(tester);
       expect(editSaveEnabled(tester), isFalse);
@@ -325,13 +326,15 @@ void main() {
         inPicker(find.text(en.labelPickerCreateUnconfirmed)),
         findsOneWidget,
       );
-      expect(inPicker(find.text(en.labelPickerCreateOffline)), findsNothing);
+      expect(inPicker(find.text(en.labelsNewOffline)), findsNothing);
     });
 
     testWidgets("another failure shows the server's message until the "
         'query changes', (tester) async {
-      labels.createFailure = const ValidationFailed(
-        message: 'The label title is invalid.',
+      labels.createFailure = const DomainError(
+        400,
+        code: 9999,
+        message: 'The label title is odd.',
       );
       await openPage(tester);
       await openPicker(tester);
@@ -341,14 +344,54 @@ void main() {
       await tester.tap(createRow('Groceries'));
       await tester.pumpAndSettle();
 
-      final message = en.labelPickerCreateRejected(
-        'The label title is invalid.',
-      );
+      final message = en.labelPickerCreateRejected('The label title is odd.');
       expect(inPicker(find.text(message)), findsOneWidget);
       await tester.enterText(searchField(), 'Grocery');
       await tester.pumpAndSettle();
       expect(inPicker(find.text(message)), findsNothing);
     });
+
+    for (final l10n in [en, de]) {
+      for (final (name, failure, message) in [
+        (
+          'a refused label',
+          const ValidationFailed(message: 'The label title is invalid.')
+              as VikunjaFailure,
+          l10n.labelsInvalid,
+        ),
+        (
+          'a server error',
+          const ServerFailure(500, message: 'Internal Server Error'),
+          l10n.actionFailureServerError,
+        ),
+      ]) {
+        testWidgets('${l10n.localeName}: $name in our own words', (
+          tester,
+        ) async {
+          useLocale(tester, Locale(l10n.localeName));
+          labels.createFailure = failure;
+          await openPage(tester);
+          await openPicker(tester, l10n);
+
+          await tester.enterText(
+            find.widgetWithText(TextField, l10n.labelPickerSearch),
+            'Groceries',
+          );
+          await tester.pumpAndSettle();
+          await tester.tap(
+            inPicker(
+              find.widgetWithText(
+                ListTile,
+                l10n.labelPickerCreate('Groceries'),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
+
+          expect(inPicker(find.text(message)), findsOneWidget);
+        });
+      }
+    }
 
     testWidgets('refuses a title over 250 characters', (tester) async {
       await openPage(tester);

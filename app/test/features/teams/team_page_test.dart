@@ -113,6 +113,31 @@ void main() {
       expect(find.text(en.teamDelete), findsOneWidget);
     });
 
+    testWidgets('lists the members by name, an umlaut among its base letter '
+        'and whatever the case', (tester) async {
+      harness.teams.teams = [
+        design(
+          members: const [
+            TeamMember(user: alice, admin: true),
+            TeamMember(
+              user: User(id: 21, username: 'z', name: 'Zahlung'),
+            ),
+            TeamMember(
+              user: User(id: 22, username: 'ae', name: 'Ärger'),
+            ),
+            TeamMember(user: User(id: 23, username: 'apfel')),
+          ],
+        ),
+      ];
+      await openTeam(tester);
+
+      final tops = [
+        for (final name in const ['apfel', 'Ärger', 'Zahlung'])
+          tester.getTopLeft(find.text(name)).dy,
+      ];
+      expect(tops, orderedEquals([...tops]..sort()));
+    });
+
     testWidgets('makes a member admin and back', (tester) async {
       await openTeam(tester);
 

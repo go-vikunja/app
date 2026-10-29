@@ -1,5 +1,5 @@
 "Tasks" = "Tasks";
-"Open tasks of a list. Tick one to mark it done." = "Open tasks of a list. Tick one to mark it done.";
+"Open tasks of a list. Tick one to mark it as done." = "Open tasks of a list. Tick one to mark it as done.";
 "New task" = "New task";
 "Opens a new task in Rurana." = "Opens a new task in Rurana.";
 "Choose a list" = "Choose a list";
@@ -18,7 +18,7 @@
 "Next 3 days" = "Next 3 days";
 "Next 7 days" = "Next 7 days";
 "Next 14 days" = "Next 14 days";
-"Mark task done" = "Mark task done";
+"Mark task as done" = "Mark task as done";
 "Account removed" = "Account removed";
 "Not available" = "Not available";
 "in %@" = "in %@";

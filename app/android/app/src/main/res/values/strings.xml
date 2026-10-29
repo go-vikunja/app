@@ -9,7 +9,7 @@
     <string name="widget_new_task">New task</string>
     <string name="widget_set_up">Tap to choose what this widget shows</string>
     <string name="widget_not_loaded">Open Rurana to load this list</string>
-    <string name="widget_empty">Nothing to do</string>
+    <string name="widget_empty">All done</string>
     <plurals name="widget_more">
         <item quantity="one">+%d more</item>
         <item quantity="other">+%d more</item>

@@ -12,6 +12,8 @@ import 'package:vikunja_mobile/core/files/link_share_actions.dart';
 import 'package:vikunja_mobile/core/files/platform_file_actions.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
+import 'package:vikunja_mobile/core/platform/app_language_settings.dart';
+import 'package:vikunja_mobile/core/platform/device_channel.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/features/attachments/application/channel_document_picker.dart';
 import 'package:vikunja_mobile/features/attachments/application/plugin_attachment_picker.dart';
@@ -151,6 +153,45 @@ void main() {
       expect(shared, [true]);
       expect(excursions.active, isFalse);
     });
+  });
+
+  testWidgets('the app language page lasts until the app is back, on '
+      'Android and iOS; one that did not open ends at once', (tester) async {
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    var opened = true;
+    final seen = mockChannel(deviceChannel.name, (_) => opened);
+
+    for (final (android, ios) in [(true, false), (false, true)]) {
+      final settings = PlatformAppLanguageSettings(
+        excursions: excursions,
+        android: android,
+        ios: ios,
+      );
+      expect(await settings.open(), isTrue);
+      expect(excursions.active, isTrue);
+      [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ].forEach(tester.binding.handleAppLifecycleStateChanged);
+      await tester.pump();
+      expect(excursions.active, isFalse);
+    }
+
+    opened = false;
+    await PlatformAppLanguageSettings(
+      excursions: excursions,
+      android: true,
+    ).open();
+    await tester.pump();
+
+    expect(seen, [
+      'openAppLocaleSettings true',
+      'openAppSettings true',
+      'openAppLocaleSettings true',
+    ]);
+    expect(excursions.active, isFalse);
   });
 
   group('notifications', () {

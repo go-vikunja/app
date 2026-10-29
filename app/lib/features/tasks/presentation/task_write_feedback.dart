@@ -34,7 +34,7 @@ Future<void> writeTaskFavorite(
   return repository.setFavorite(task.id, favorite: favorite);
 }
 
-/// "Marked done · Undo", replacing a snackbar still up. Completes with how
+/// "Marked as done · Undo", replacing a snackbar still up. Completes with how
 /// it closed; [onUndo] runs when Undo is tapped.
 Future<SnackBarClosedReason> showMarkedDoneSnackBar(
   BuildContext context, {

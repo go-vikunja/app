@@ -44,9 +44,10 @@ import 'package:vikunja_mobile/features/widgets/presentation/widgets_section.dar
 /// a session that needs a new sign-in, the account's labels and teams, the
 /// other accounts, the server with its connection settings, the sync state
 /// and the changes still waiting for it, what is set on this device only
-/// (the home-screen widgets, notifications, privacy, colours), sign-out and
-/// the app's version, which opens the About page. A link-share guest gets a
-/// note on what it may do instead of the settings and the labels and teams.
+/// (the home-screen widgets, notifications, privacy, language, colours),
+/// sign-out and the app's version, which opens the About page. A
+/// link-share guest gets a note on what it may do instead of the settings
+/// and the labels and teams.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 

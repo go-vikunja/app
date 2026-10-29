@@ -33,15 +33,14 @@ Future<void> bootstrap() async {
   configureLogging();
   registerAppLicenses();
   final clientIdentity = await ClientIdentity.load();
+  final deviceL10n = await loadDeviceAppLocalizations(SharedPreferencesStore());
   final container = ProviderContainer(
     overrides: [
       clientIdentityProvider.overrideWithValue(clientIdentity),
       notificationBackgroundEntryPointProvider.overrideWithValue(
         onNotificationActionInBackground,
       ),
-      deviceAppLocalizationsProvider.overrideWithValue(
-        await loadDeviceAppLocalizations(SharedPreferencesStore()),
-      ),
+      deviceAppLocalizationsProvider.overrideWithBuild((_, _) => deviceL10n),
     ],
   );
   // Awaited even when the rest fails, so that the first frame is already
@@ -71,6 +70,7 @@ Future<void> bootstrap() async {
     _log.severe('Could not read the privacy settings: ${error.runtimeType}');
   }
   container
+    ..listen(deviceLanguageFollowerProvider, (_, _) {})
     ..listen(foregroundHeartbeatProvider, (_, _) {})
     ..listen(appLockControllerProvider, (_, _) {});
   runApp(

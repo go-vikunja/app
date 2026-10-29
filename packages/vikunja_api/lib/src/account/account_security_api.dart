@@ -8,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 const _maxPages = 20;
 const _totpNotSetUp = 1016;
 const _sessionMissing = 16001;
+const _apiTokenMissing = 14017;
 const _totp = '/user/settings/totp';
 const _sessions = '/user/sessions';
 const _apiTokens = '/tokens';
@@ -82,7 +83,11 @@ final class AccountSecurityApi implements AccountSecurityPort {
 
   @override
   Future<void> deleteApiToken(int id) async {
-    await _transport.send('DELETE', '$_apiTokens/$id');
+    try {
+      await _transport.send('DELETE', '$_apiTokens/$id');
+    } on NotFound catch (failure) {
+      if (failure.code != _apiTokenMissing) rethrow;
+    }
   }
 
   @override

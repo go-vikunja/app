@@ -7,6 +7,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
+import 'package:vikunja_mobile/core/text/title_order.dart';
 
 final _log = Logger('AccountData');
 
@@ -39,7 +40,10 @@ final class LocalLabelRepository implements LabelRepository {
   @override
   Stream<List<Label>> watchAll() => _db.labelsDao.watchAll().map(
     (labels) => [...labels]
-      ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase())),
+      ..sort((a, b) {
+        final byTitle = compareTitles(a.title, b.title);
+        return byTitle != 0 ? byTitle : a.id.compareTo(b.id);
+      }),
   );
 
   @override

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/relation_row.dart';
@@ -212,10 +213,14 @@ void main() {
   });
 
   group('duplicate', () {
-    Future<void> duplicate(WidgetTester tester) async {
-      await tester.tap(inSheet(find.byTooltip(en.moreActions)));
+    Future<void> duplicate(
+      WidgetTester tester, [
+      AppLocalizations? l10n,
+    ]) async {
+      final words = l10n ?? en;
+      await tester.tap(inSheet(find.byTooltip(words.moreActions)));
       await tester.pumpAndSettle();
-      await tester.tap(find.text(en.taskDuplicate));
+      await tester.tap(find.text(words.taskDuplicate));
       await tester.pumpAndSettle();
     }
 
@@ -259,8 +264,8 @@ void main() {
         en.taskDuplicateNotSynced,
       ),
       (
-        'a refusal names the reason',
-        const Forbidden(message: 'No access'),
+        'a refusal without our own words names the reason',
+        const DomainError(400, code: 9999, message: 'No access'),
         en.taskDuplicateFailed('No access'),
       ),
     ]) {
@@ -274,6 +279,49 @@ void main() {
         expect(inSheet(find.text(en.taskDuplicated)), findsNothing);
         expect(find.byType(TaskDetailSheet), findsOneWidget);
       });
+    }
+
+    for (final l10n in [en, de]) {
+      for (final (name, failure, message) in [
+        (
+          'no permission to add tasks',
+          const Forbidden(message: 'Forbidden') as Exception,
+          l10n.taskDuplicateForbidden,
+        ),
+        (
+          'an archived project',
+          const DomainError(412, code: 3008, message: 'archived'),
+          l10n.taskDuplicateArchived,
+        ),
+        (
+          "an attachment's file missing from storage",
+          const NotFound(code: 4034, message: 'file does not exist'),
+          l10n.taskDuplicateFileMissing,
+        ),
+        (
+          'the task gone from the server',
+          const NotFound(code: 4002, message: 'task does not exist'),
+          l10n.syncProblemTaskMissing,
+        ),
+        (
+          'a server error',
+          const ServerFailure(500, message: 'Internal Server Error'),
+          l10n.actionFailureServerError,
+        ),
+      ]) {
+        testWidgets('${l10n.localeName}: $name in our own words', (
+          tester,
+        ) async {
+          useLocale(tester, Locale(l10n.localeName));
+          data.tasks.duplicateFailure = failure;
+          await openDetail(tester, 'Bare task');
+
+          await duplicate(tester, l10n);
+
+          expect(inSheet(find.text(message)), findsOneWidget);
+          expect(inSheet(find.text(l10n.taskDuplicated)), findsNothing);
+        });
+      }
     }
   });
 }

@@ -1,5 +1,6 @@
 package dev.coderoftime.vikunja
 
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -37,6 +38,8 @@ internal class DeviceChannel(
             "moveTaskToBack" -> result.success(activity?.moveTaskToBack(true) ?: false)
             "setBackMovesTaskToBack" ->
                 setBackMovesTaskToBack(call.argument<Boolean>("enabled"), result)
+            "canOpenAppLocaleSettings" -> result.success(canOpenAppLocaleSettings())
+            "openAppLocaleSettings" -> result.success(openAppLocaleSettings())
             else -> result.notImplemented()
         }
     }
@@ -84,6 +87,23 @@ internal class DeviceChannel(
         windowState.backMovesTaskToBack = enabled
         activity?.applyWindowState()
         result.success(null)
+    }
+
+    private fun canOpenAppLocaleSettings(): Boolean =
+        AppLocaleSettings.canOpen(Build.VERSION.SDK_INT) {
+            AppLocaleSettings.intent(context.packageName)
+                .resolveActivity(context.packageManager) != null
+        }
+
+    private fun openAppLocaleSettings(): Boolean {
+        val activity = activity ?: return false
+        if (!AppLocaleSettings.supported(Build.VERSION.SDK_INT)) return false
+        return try {
+            activity.startActivity(AppLocaleSettings.intent(activity.packageName))
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        }
     }
 
     private companion object {

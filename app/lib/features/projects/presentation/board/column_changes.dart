@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository.dart';
+import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 
 enum ColumnChange {
@@ -22,29 +23,35 @@ String columnChangeFailureText(
   AppLocalizations l10n,
   Object error,
   ColumnChange change,
-) => switch (error) {
-  DeleteFailedAfterNewDefault(:final bucket, :final newDefault) =>
-    l10n.boardColumnDeleteFailedNewDefault(newDefault.title, bucket.title),
-  // The server may have made the change before the answer was lost.
-  NetworkFailure(problem: NetworkProblem.timeout) =>
-    l10n.boardColumnUnconfirmed,
-  NetworkFailure() => l10n.boardColumnNeedsConnection,
-  // Project write access is enough for the buckets themselves; the view's
-  // done and default bucket need admin access.
-  Forbidden() when change == ColumnChange.done => l10n.boardColumnAdminOnly,
-  Forbidden() when change == ColumnChange.defaultColumn =>
-    l10n.boardColumnAdminOnly,
-  Forbidden() when change == ColumnChange.deleteAfterNewDefault =>
-    l10n.boardColumnDeleteAdminOnly,
-  Forbidden() => l10n.boardColumnForbidden,
-  VikunjaFailure(code: 10003) => l10n.boardColumnLastOne,
-  VikunjaFailure(code: 10001) => l10n.syncProblemColumnMissing,
-  VikunjaFailure(code: 3008) => l10n.boardColumnArchived,
-  ValidationFailed() || VikunjaFailure(code: 2002) => l10n.boardColumnInvalid,
-  VikunjaFailure(:final message) when message.trim().isNotEmpty =>
-    l10n.boardColumnChangeRefused(message.trim()),
-  _ => l10n.boardColumnChangeFailed,
-};
+) {
+  final shared = actionFailureText(l10n, error);
+  return switch (error) {
+    DeleteFailedAfterNewDefault(:final bucket, :final newDefault) =>
+      l10n.boardColumnDeleteFailedNewDefault(newDefault.title, bucket.title),
+    // The server may have made the change before the answer was lost.
+    NetworkFailure(problem: NetworkProblem.timeout) =>
+      l10n.boardColumnUnconfirmed,
+    NetworkFailure() => l10n.boardColumnNeedsConnection,
+    // Project write access is enough for the buckets themselves; the view's
+    // done and default bucket need admin access.
+    Forbidden() when change == ColumnChange.done => l10n.boardColumnAdminOnly,
+    Forbidden() when change == ColumnChange.defaultColumn =>
+      l10n.boardColumnAdminOnly,
+    Forbidden() when change == ColumnChange.deleteAfterNewDefault =>
+      l10n.boardColumnDeleteAdminOnly,
+    Forbidden() => l10n.boardColumnForbidden,
+    VikunjaFailure(code: 10003) => l10n.boardColumnLastOne,
+    VikunjaFailure(code: 10001) => l10n.syncProblemColumnMissing,
+    NotFound(code: 3014) => l10n.projectViewGone,
+    NotFound(code: 3001) => l10n.projectGone,
+    VikunjaFailure(code: 3008) => l10n.boardColumnArchived,
+    ValidationFailed() || VikunjaFailure(code: 2002) => l10n.boardColumnInvalid,
+    _ when shared != null => shared,
+    VikunjaFailure(:final message) when message.trim().isNotEmpty =>
+      l10n.boardColumnChangeRefused(message.trim()),
+    _ => l10n.boardColumnChangeFailed,
+  };
+}
 
 /// The web's question before a delete; [tasksGoTo] names the column the
 /// server moves the column's tasks to, null when it holds none. When

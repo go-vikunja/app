@@ -122,6 +122,15 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
       _fallbackNotice = switch (failure) {
         null => null,
         NetworkFailure() => l10n.assigneePickerOffline,
+        Forbidden() || NotFound(routeAbsent: false) =>
+          l10n.assigneePickerFallback(l10n.assigneePickerNoAccess),
+        ServerFailure() ||
+        RateLimited() ||
+        SessionEnded() ||
+        TokenRejected() ||
+        RefreshRaceLost() => l10n.assigneePickerFallback(
+          l10n.assigneePickerSearchFailed,
+        ),
         VikunjaFailure(:final message) when message.trim().isNotEmpty =>
           l10n.assigneePickerFallback(message.trim()),
         _ => l10n.assigneePickerFallback(l10n.assigneePickerSearchFailed),

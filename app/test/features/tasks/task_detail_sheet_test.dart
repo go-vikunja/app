@@ -76,7 +76,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(inSheet(en.taskDetailDueDate), findsOneWidget);
+    expect(inSheet(en.taskDetailDueDateRow), findsOneWidget);
     expect(inSheet('Oct 12, 2026 9:30 AM'), findsOneWidget);
     expect(inSheet('Oct 11, 2026 8:00 AM'), findsOneWidget);
     expect(inSheet(en.priorityHigh), findsOneWidget);
@@ -119,7 +119,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: sheet, matching: find.text(en.taskDetailDueDate)),
+      find.descendant(of: sheet, matching: find.text(en.taskDetailDueDateRow)),
       findsNothing,
     );
     expect(
@@ -295,7 +295,7 @@ void main() {
   ) async {
     await openDetail(tester, 'Quarterly report');
 
-    final name = tester.getRect(find.text(en.taskDetailDueDate));
+    final name = tester.getRect(find.text(en.taskDetailDueDateRow));
     final value = tester.getRect(find.text('Oct 12, 2026 9:30 AM'));
     expect(value.left, greaterThan(name.right));
     expect(value.center.dy, closeTo(name.center.dy, 1));
@@ -307,7 +307,7 @@ void main() {
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await openDetail(tester, 'Quarterly report');
 
-    final name = tester.getRect(find.text(en.taskDetailDueDate));
+    final name = tester.getRect(find.text(en.taskDetailDueDateRow));
     final value = tester.getRect(find.text('Oct 12, 2026 9:30 AM'));
     expect(value.top, greaterThanOrEqualTo(name.bottom));
     expect(value.left, closeTo(name.left, 1));

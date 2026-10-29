@@ -55,7 +55,7 @@ final class NotificationGatewayProvider
 }
 
 String _$notificationGatewayHash() =>
-    r'fcad7229944aaacdec9da7d857f3dd9a5feb5e0c';
+    r'295c1a7ce19d50b21d9b4a05595a804c047e3852';
 
 /// The top-level `@pragma('vm:entry-point')` function the plugin runs in its
 /// own engine for an action that shows no UI. Overridden in bootstrap with
@@ -223,28 +223,30 @@ final class NotificationLaunchResponseProvider
 String _$notificationLaunchResponseHash() =>
     r'f8e2ea0aa493c9ea2eabedd4c989cde44e492bda';
 
-/// The app's strings for the notification texts, without a widget tree.
-/// Bootstrap and the background entry point override this with what
-/// [loadDeviceAppLocalizations] resolved; the default serves the tests.
+/// The app's strings for what the OS shows outside the widget tree:
+/// notifications and their channels, widgets and the app lock prompt.
+/// Bootstrap overrides the build with what [loadDeviceAppLocalizations]
+/// resolved, and [deviceLanguageFollowerProvider] keeps it in the device's
+/// language; the headless entry points override it with a value. The
+/// default serves the tests.
 
-@ProviderFor(deviceAppLocalizations)
+@ProviderFor(DeviceAppLocalizations)
 final deviceAppLocalizationsProvider = DeviceAppLocalizationsProvider._();
 
-/// The app's strings for the notification texts, without a widget tree.
-/// Bootstrap and the background entry point override this with what
-/// [loadDeviceAppLocalizations] resolved; the default serves the tests.
-
+/// The app's strings for what the OS shows outside the widget tree:
+/// notifications and their channels, widgets and the app lock prompt.
+/// Bootstrap overrides the build with what [loadDeviceAppLocalizations]
+/// resolved, and [deviceLanguageFollowerProvider] keeps it in the device's
+/// language; the headless entry points override it with a value. The
+/// default serves the tests.
 final class DeviceAppLocalizationsProvider
-    extends
-        $FunctionalProvider<
-          AppLocalizations,
-          AppLocalizations,
-          AppLocalizations
-        >
-    with $Provider<AppLocalizations> {
-  /// The app's strings for the notification texts, without a widget tree.
-  /// Bootstrap and the background entry point override this with what
-  /// [loadDeviceAppLocalizations] resolved; the default serves the tests.
+    extends $NotifierProvider<DeviceAppLocalizations, AppLocalizations> {
+  /// The app's strings for what the OS shows outside the widget tree:
+  /// notifications and their channels, widgets and the app lock prompt.
+  /// Bootstrap overrides the build with what [loadDeviceAppLocalizations]
+  /// resolved, and [deviceLanguageFollowerProvider] keeps it in the device's
+  /// language; the headless entry points override it with a value. The
+  /// default serves the tests.
   DeviceAppLocalizationsProvider._()
     : super(
         from: null,
@@ -261,13 +263,7 @@ final class DeviceAppLocalizationsProvider
 
   @$internal
   @override
-  $ProviderElement<AppLocalizations> $createElement($ProviderPointer pointer) =>
-      $ProviderElement(pointer);
-
-  @override
-  AppLocalizations create(Ref ref) {
-    return deviceAppLocalizations(ref);
-  }
+  DeviceAppLocalizations create() => DeviceAppLocalizations();
 
   /// {@macro riverpod.override_with_value}
   Override overrideWithValue(AppLocalizations value) {
@@ -279,4 +275,85 @@ final class DeviceAppLocalizationsProvider
 }
 
 String _$deviceAppLocalizationsHash() =>
-    r'57a592750d5ac402099a562826af06fc9f0d41a3';
+    r'ce542f98bd466720dd0de28b82a40d081b060e01';
+
+/// The app's strings for what the OS shows outside the widget tree:
+/// notifications and their channels, widgets and the app lock prompt.
+/// Bootstrap overrides the build with what [loadDeviceAppLocalizations]
+/// resolved, and [deviceLanguageFollowerProvider] keeps it in the device's
+/// language; the headless entry points override it with a value. The
+/// default serves the tests.
+
+abstract class _$DeviceAppLocalizations extends $Notifier<AppLocalizations> {
+  AppLocalizations build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AppLocalizations, AppLocalizations>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AppLocalizations, AppLocalizations>,
+              AppLocalizations,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// In the app: [deviceAppLocalizationsProvider] follows a change of the
+/// device or per-app language while the app runs, which Android reports
+/// without restarting the activity, and looks again on every resume. iOS
+/// restarts the app instead. Bootstrap listens.
+
+@ProviderFor(deviceLanguageFollower)
+final deviceLanguageFollowerProvider = DeviceLanguageFollowerProvider._();
+
+/// In the app: [deviceAppLocalizationsProvider] follows a change of the
+/// device or per-app language while the app runs, which Android reports
+/// without restarting the activity, and looks again on every resume. iOS
+/// restarts the app instead. Bootstrap listens.
+
+final class DeviceLanguageFollowerProvider
+    extends $FunctionalProvider<void, void, void>
+    with $Provider<void> {
+  /// In the app: [deviceAppLocalizationsProvider] follows a change of the
+  /// device or per-app language while the app runs, which Android reports
+  /// without restarting the activity, and looks again on every resume. iOS
+  /// restarts the app instead. Bootstrap listens.
+  DeviceLanguageFollowerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'deviceLanguageFollowerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$deviceLanguageFollowerHash();
+
+  @$internal
+  @override
+  $ProviderElement<void> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  void create(Ref ref) {
+    return deviceLanguageFollower(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(void value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<void>(value),
+    );
+  }
+}
+
+String _$deviceLanguageFollowerHash() =>
+    r'd5884a23e67440d90cd1333dd969b76d39a90be2';
