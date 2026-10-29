@@ -5366,6 +5366,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get oneTimeSecretLeave => 'Leave';
 
   @override
+  String get secretHiddenWhileCaptured =>
+      'Hidden while your screen is being recorded or mirrored.';
+
+  @override
   String get caldavTitle => 'CalDAV';
 
   @override
@@ -7338,7 +7342,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyNotificationContentIosHint =>
-      'On iPhone, iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.';
+      'iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.';
 
   @override
   String get privacyWidgetsHeading => 'Widgets';

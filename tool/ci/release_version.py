@@ -8,12 +8,16 @@ TAG is vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-beta.N; it prints
   BUILD_NAME=1.2.3-beta.4
   BUILD_NUMBER=1020304
   CHANNEL=beta
+  IOS_BUILD_NAME=1.2.3
+  IOS_BUILD_NUMBER=1020304
 
 The build number is major * 1,000,000 + minor * 10,000 + patch * 100 + n,
 with n the beta number (1-98) or 99 for the final release, so that every beta
-orders below its release and Play's limit of 2,100,000,000 holds. Fails on any
-other tag and when the pubspec's version name (before the +) is not the build
-name: the release commit bumps the pubspec.
+orders below its release and Play's limit of 2,100,000,000 holds. iOS takes
+only MAJOR.MINOR.PATCH as CFBundleShortVersionString, so the betas of a
+release share its version there and differ by CFBundleVersion, the same build
+number. Fails on any other tag and when the pubspec's version name (before
+the +) is not the build name: the release commit bumps the pubspec.
 """
 import os
 import re
@@ -46,6 +50,12 @@ def release_version(tag):
     return tag[1:], number, 'final' if beta is None else 'beta'
 
 
+def ios_version(tag):
+    """(CFBundleShortVersionString, CFBundleVersion) of a release tag."""
+    build_name, build_number, _ = release_version(tag)
+    return build_name.split('-', 1)[0], build_number
+
+
 def pubspec_version_name(pubspec):
     match = PUBSPEC_VERSION.search(pubspec)
     if not match:
@@ -70,6 +80,7 @@ def main(arguments):
         return 2
     try:
         build_name, build_number, channel = release_version(arguments[0])
+        ios_build_name, ios_build_number = ios_version(arguments[0])
         with open(pubspec, encoding='utf-8') as f:
             check_pubspec(build_name, f.read())
     except (VersionError, OSError) as error:
@@ -78,6 +89,8 @@ def main(arguments):
     print(f'BUILD_NAME={build_name}')
     print(f'BUILD_NUMBER={build_number}')
     print(f'CHANNEL={channel}')
+    print(f'IOS_BUILD_NAME={ios_build_name}')
+    print(f'IOS_BUILD_NUMBER={ios_build_number}')
     return 0
 
 

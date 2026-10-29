@@ -65,14 +65,33 @@ final class FakeRecentsScreenshots implements RecentsScreenshots {
 }
 
 /// [secure] as last set; every call in [changes].
+/// Android's window by default; with `capturable` iOS's, which shows in
+/// captures and tells whether the screen is captured: [setSecure] answers
+/// [captured], and [setCaptured] reports a change.
 final class FakeSecureWindow implements SecureWindow {
+  new({bool capturable = false})
+    : _captures = capturable ? StreamController<bool>.broadcast() : null;
+
   bool secure = false;
+  bool captured = false;
   final List<bool> changes = [];
+  final StreamController<bool>? _captures;
 
   @override
-  Future<void> setSecure(bool secure) async {
+  Stream<bool>? get captures => _captures?.stream;
+
+  @override
+  Future<bool> setSecure(bool secure) async {
     changes.add(secure);
     this.secure = secure;
+    return _captures != null && captured;
+  }
+
+  // Like setSecure.
+  // ignore: avoid_positional_boolean_parameters
+  void setCaptured(bool captured) {
+    this.captured = captured;
+    _captures!.add(captured);
   }
 }
 

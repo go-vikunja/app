@@ -4,7 +4,7 @@ import os
 import tempfile
 import unittest
 
-from release_version import VersionError, check_pubspec, main, pubspec_version_name, release_version
+from release_version import VersionError, check_pubspec, ios_version, main, pubspec_version_name, release_version
 
 
 def number(tag):
@@ -32,6 +32,25 @@ class ReleaseVersionTest(unittest.TestCase):
         self.assertLess(number('v1.0.0-beta.98'), number('v1.0.0'))
         self.assertLess(number('v1.0.0'), number('v1.0.1-beta.1'))
         self.assertLess(number('v1.99.99'), number('v2.0.0-beta.1'))
+
+    def test_ios(self):
+        self.assertEqual(ios_version('v1.0.0-beta.1'), ('1.0.0', 1_000_001))
+        self.assertEqual(ios_version('v1.2.3-beta.4'), ('1.2.3', 1_020_304))
+        self.assertEqual(ios_version('v1.2.3'), ('1.2.3', 1_020_399))
+        self.assertEqual(ios_version('v2099.99.99'), ('2099.99.99', 2_099_999_999))
+        with self.assertRaises(VersionError):
+            ios_version('v1.0.0-rc.1')
+
+    def test_ios_build_numbers_grow(self):
+        tags = ['v1.0.0-beta.1', 'v1.0.0-beta.2', 'v1.0.0-beta.98', 'v1.0.0', 'v1.0.1-beta.1', 'v1.1.0']
+        versions = [ios_version(tag) for tag in tags]
+        self.assertEqual([name for name, _ in versions[:4]], ['1.0.0'] * 4)
+        builds = [build for _, build in versions]
+        self.assertEqual(builds, sorted(set(builds)))
+        for name, build in versions:
+            with self.subTest(name=name, build=build):
+                self.assertRegex(name, r'\A(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\Z')
+                self.assertRegex(str(build), r'\A[1-9][0-9]{0,9}\Z')
 
     def test_bad_tags(self):
         for tag in ['v1.0', '1.0.0', 'v1.0.0-rc.1', 'v01.0.0', 'v1.01.0', 'v1.0.01', 'v1.100.0', 'v1.0.100',
@@ -64,7 +83,8 @@ class ReleaseVersionTest(unittest.TestCase):
                 self.assertEqual(main(['v1.2.3', '--pubspec', pubspec]), 1)
                 self.assertEqual(main(['v1.2', '--pubspec', pubspec]), 1)
                 self.assertEqual(main([]), 2)
-            self.assertEqual(out.getvalue(), 'BUILD_NAME=1.2.3-beta.4\nBUILD_NUMBER=1020304\nCHANNEL=beta\n')
+            self.assertEqual(out.getvalue(), 'BUILD_NAME=1.2.3-beta.4\nBUILD_NUMBER=1020304\nCHANNEL=beta\n'
+                             'IOS_BUILD_NAME=1.2.3\nIOS_BUILD_NUMBER=1020304\n')
             self.assertIn('bump the pubspec', err.getvalue())
 
 

@@ -12,6 +12,8 @@ import 'package:vikunja_mobile/features/inbox/application/inbox_providers.dart';
 class InboxButton extends ConsumerWidget {
   const new({super.key});
 
+  static const maxBadgeTextScale = 1.3;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
@@ -29,7 +31,11 @@ class InboxButton extends ConsumerWidget {
         tooltip: l10n.inboxTitle,
         icon: Badge(
           isLabelVisible: unread > 0,
-          label: Text(unread > 99 ? '99+' : '$unread'),
+          // Like the tab bar's labels; the button's label speaks the count.
+          label: MediaQuery.withClampedTextScaling(
+            maxScaleFactor: maxBadgeTextScale,
+            child: Text(unread > 99 ? '99+' : '$unread'),
+          ),
           child: Icon(
             unread > 0 ? Icons.notifications : Icons.notifications_none,
           ),

@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:material_ui/material_ui.dart';
@@ -65,7 +64,6 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final colors = Theme.of(context).colorScheme;
     final overview = ref.watch(overviewTasksProvider);
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final projectsById = {for (final project in projects) project.id: project};
@@ -81,59 +79,51 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
       onRefresh: refreshing ? null : () => unawaited(refresh()),
     );
 
-    // Without an app bar, the status bar's icons follow the screen's colour.
-    final overlayStyle =
-        ThemeData.estimateBrightnessForColor(colors.surface) == Brightness.dark
-        ? SystemUiOverlayStyle.light
-        : SystemUiOverlayStyle.dark;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: overlayStyle.copyWith(statusBarColor: const Color(0x00000000)),
-      child: Scaffold(
-        floatingActionButton: FloatingActionButton.extended(
-          // A page over the shell (the inbox, the edit page) finds the
-          // heroes of every tab's top route; the project screen's button
-          // would share the default tag.
-          heroTag: null,
-          onPressed: () => unawaited(showNewTaskSheet(context)),
-          icon: const Icon(Icons.add),
-          label: Text(l10n.newTask),
-        ),
-        body: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              const SyncProgressBar(),
-              Expanded(
-                child: buildRefreshable(
-                  overview,
-                  loadingLabel: l10n.overviewLoading,
-                  header: header(),
-                  maxWidth: ReadableWidth.list,
-                  builder: (value, notice) {
-                    final sections = groupTasksByDueDate(
-                      withLeavingTasks(value.tasks),
-                      now,
-                    );
-                    return _TaskSections(
-                      overview: value,
-                      sections: sections,
-                      projectsById: projectsById,
-                      pendingIds: pendingIds,
-                      now: now,
-                      minimumPriority: minimumPriority,
-                      offline: offline,
-                      header: header(tasksLeft: _tasksLeftToday(sections)),
-                      notice: notice,
-                      onDoneChanged: (task, {required done}) =>
-                          unawaited(setTaskDone(task, done: done)),
-                      onFavoriteChanged: (task, {required favorite}) =>
-                          unawaited(setTaskFavorite(task, favorite: favorite)),
-                    );
-                  },
-                ),
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        // A page over the shell (the inbox, the edit page) finds the
+        // heroes of every tab's top route; the project screen's button
+        // would share the default tag.
+        heroTag: null,
+        onPressed: () => unawaited(showNewTaskSheet(context)),
+        icon: const Icon(Icons.add),
+        label: Text(l10n.newTask),
+      ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            const SyncProgressBar(),
+            Expanded(
+              child: buildRefreshable(
+                overview,
+                loadingLabel: l10n.overviewLoading,
+                header: header(),
+                maxWidth: ReadableWidth.list,
+                builder: (value, notice) {
+                  final sections = groupTasksByDueDate(
+                    withLeavingTasks(value.tasks),
+                    now,
+                  );
+                  return _TaskSections(
+                    overview: value,
+                    sections: sections,
+                    projectsById: projectsById,
+                    pendingIds: pendingIds,
+                    now: now,
+                    minimumPriority: minimumPriority,
+                    offline: offline,
+                    header: header(tasksLeft: _tasksLeftToday(sections)),
+                    notice: notice,
+                    onDoneChanged: (task, {required done}) =>
+                        unawaited(setTaskDone(task, done: done)),
+                    onFavoriteChanged: (task, {required favorite}) =>
+                        unawaited(setTaskFavorite(task, favorite: favorite)),
+                  );
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

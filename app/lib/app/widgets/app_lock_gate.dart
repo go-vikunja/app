@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
+import 'package:vikunja_mobile/app/theme/status_bar_style.dart';
 import 'package:vikunja_mobile/core/platform/app_backgrounding.dart';
 import 'package:vikunja_mobile/core/platform/system_back.dart';
 import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
@@ -324,14 +325,8 @@ class _StatusBarFor extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final style =
-        ThemeData.estimateBrightnessForColor(background) == Brightness.dark
-        ? SystemUiOverlayStyle.light
-        : SystemUiOverlayStyle.dark;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: style.copyWith(statusBarColor: const Color(0x00000000)),
-      child: child,
-    );
-  }
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+    value: statusBarStyleOn(background),
+    child: child,
+  );
 }

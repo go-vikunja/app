@@ -3,8 +3,10 @@
 
 # Adds the RuranaWidgets WidgetKit extension to the Flutter iOS project and keeps
 # the project's file list in sync with app/ios/RuranaWidgets (Swift files, the asset
-# catalog, Localizable.strings per language). Re-running it changes nothing unless
-# files were added or removed. Needs only the xcodeproj gem, which ships with CocoaPods.
+# catalog, Localizable.strings and Localizable.stringsdict per language, the privacy
+# manifest). It also gives the Runner its entitlements and its privacy manifest.
+# Re-running it changes nothing unless files were added or removed. Needs only the
+# xcodeproj gem, which ships with CocoaPods.
 #
 #   ruby tool/add_widget_extension.rb [path/to/Runner.xcodeproj]
 require 'fileutils'
@@ -15,6 +17,8 @@ NAME = 'RuranaWidgets'
 BUNDLE_ID = 'dev.coderoftime.vikunja.RuranaWidgets'
 DEPLOYMENT_TARGET = '17.0'
 EMBED_PHASE = 'Embed Foundation Extensions'
+PRIVACY_MANIFEST = 'PrivacyInfo.xcprivacy'
+LOCALIZED_FILES = %w[Localizable.strings Localizable.stringsdict].freeze
 
 EXTENSION_SETTINGS = {
   'PRODUCT_BUNDLE_IDENTIFIER' => BUNDLE_ID,
@@ -59,6 +63,11 @@ def file_reference(group, path)
   group.files.find { |f| f.path == path } || group.new_reference(path)
 end
 
+# xcodeproj leaves the type of an .xcprivacy file empty; Xcode writes text.xml.
+def privacy_manifest_reference(group)
+  file_reference(group, PRIVACY_MANIFEST).tap { |ref| ref.last_known_file_type = 'text.xml' }
+end
+
 def add_to_phase(phase, ref)
   phase.add_file_reference(ref, true) unless phase.include?(ref)
 end
@@ -79,22 +88,30 @@ def sync_resources(ext, group, ext_dir)
   if Dir.exist?(File.join(ext_dir, 'Assets.xcassets'))
     add_to_phase(ext.resources_build_phase, file_reference(group, 'Assets.xcassets'))
   end
+  add_to_phase(ext.resources_build_phase, privacy_manifest_reference(group))
+  LOCALIZED_FILES.each { |name| sync_localized(ext, group, ext_dir, name) }
+end
 
-  paths = Dir.glob('*.lproj/Localizable.strings', base: ext_dir).sort
-  strings = group.children.find { |c| c.is_a?(Xcodeproj::Project::Object::PBXVariantGroup) && c.name == 'Localizable.strings' }
-  strings&.files&.to_a&.each { |ref| ref.remove_from_project unless paths.include?(ref.path) }
+def sync_localized(ext, group, ext_dir, name)
+  paths = Dir.glob("*.lproj/#{name}", base: ext_dir).sort
+  variants = group.children.find { |c| c.is_a?(Xcodeproj::Project::Object::PBXVariantGroup) && c.name == name }
+  variants&.files&.to_a&.each { |ref| ref.remove_from_project unless paths.include?(ref.path) }
   if paths.empty?
-    strings&.remove_from_project
+    variants&.remove_from_project
     return
   end
 
-  strings ||= group.new_variant_group('Localizable.strings')
+  variants ||= group.new_variant_group(name)
   paths.each do |path|
-    next if strings.files.any? { |f| f.path == path }
-
-    strings.new_reference(path).name = File.basename(File.dirname(path), '.lproj')
+    ref = variants.files.find { |f| f.path == path }
+    unless ref
+      ref = variants.new_reference(path)
+      ref.name = File.basename(File.dirname(path), '.lproj')
+    end
+    # xcodeproj leaves the type of a .stringsdict file empty; Xcode writes this one.
+    ref.last_known_file_type = 'text.plist.stringsdict' if path.end_with?('.stringsdict')
   end
-  add_to_phase(ext.resources_build_phase, strings)
+  add_to_phase(ext.resources_build_phase, variants)
 end
 
 def configure_extension(project, ext)
@@ -131,6 +148,10 @@ def add_runner_entitlements(project, runner)
   end
 end
 
+def add_runner_privacy_manifest(project, runner)
+  add_to_phase(runner.resources_build_phase, privacy_manifest_reference(project.main_group['Runner']))
+end
+
 # Writes only when the serialised project differs, so a re-run leaves the file untouched.
 def save_if_changed(project, project_path)
   Dir.mktmpdir do |dir|
@@ -147,10 +168,13 @@ end
 project_path = File.expand_path(ARGV[0] || File.join(__dir__, '..', 'app', 'ios', 'Runner.xcodeproj'))
 ios_dir = File.dirname(project_path)
 ext_dir = File.join(ios_dir, NAME)
-%w[Info.plist RuranaWidgets.entitlements].each do |name|
+['Info.plist', 'RuranaWidgets.entitlements', PRIVACY_MANIFEST].each do |name|
   abort "#{File.join(ext_dir, name)} missing" unless File.exist?(File.join(ext_dir, name))
 end
-abort "#{ios_dir}/Runner/Runner.entitlements missing" unless File.exist?(File.join(ios_dir, 'Runner', 'Runner.entitlements'))
+['Runner.entitlements', PRIVACY_MANIFEST].each do |name|
+  path = File.join(ios_dir, 'Runner', name)
+  abort "#{path} missing" unless File.exist?(path)
+end
 
 project = Xcodeproj::Project.open(project_path)
 runner = project.targets.find { |t| t.name == 'Runner' } || abort('Runner target missing')
@@ -164,5 +188,6 @@ sync_resources(ext, group, ext_dir)
 configure_extension(project, ext)
 embed_in_runner(runner, ext)
 add_runner_entitlements(project, runner)
+add_runner_privacy_manifest(project, runner)
 
 puts(save_if_changed(project, project_path) ? "Updated #{NAME} in #{project_path}" : "#{NAME} is up to date")

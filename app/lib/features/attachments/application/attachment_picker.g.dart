@@ -53,4 +53,4 @@ final class AttachmentPickerProvider
   }
 }
 
-String _$attachmentPickerHash() => r'df0a55fa60934a63badde13b6e08c9f5b415d3bf';
+String _$attachmentPickerHash() => r'e71b05091735625fcc771ad9272379cd9584f0b0';

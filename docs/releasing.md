@@ -1,6 +1,6 @@
 # Releasing
 
-How a release of Rurana is cut ([D73](decisions.md#d73-gitlab-ci-from-scripts-that-run-the-same-locally-images-and-downloads-pinned-the-version-from-the-release-tag-release-signing-from-protected-ci-variables-the-source-link-from-the-build-a-gitlab-release-with-the-apk-its-checksums-and-the-desugar_jdk_libs-source)). Every build that is distributed comes from the GitLab job `release` of a `v*` tag pipeline; nothing is signed on a laptop. The job builds the Play bundle and one APK, signs them with keys from protected CI variables, checks them, and publishes a GitLab release with the APK, `SHA256SUMS` and the desugar_jdk_libs source. The bundle goes to Google Play by hand.
+How a release of Rurana is cut ([D73](decisions.md#d73-gitlab-ci-from-scripts-that-run-the-same-locally-images-and-downloads-pinned-the-version-from-the-release-tag-release-signing-from-protected-ci-variables-the-source-link-from-the-build-a-gitlab-release-with-the-apk-its-checksums-and-the-desugar_jdk_libs-source)). Every Android build that is distributed comes from the GitLab job `release` of a `v*` tag pipeline; no Android build is signed on a laptop. The job builds the Play bundle and one APK, signs them with keys from protected CI variables, checks them, and publishes a GitLab release with the APK, `SHA256SUMS` and the desugar_jdk_libs source. The bundle goes to Google Play by hand. The iOS build of the same tag is signed on the owner's Mac and uploaded to App Store Connect for TestFlight ([iOS](#ios-testflight-from-the-mac)).
 
 ## Once, before the first release
 
@@ -57,6 +57,7 @@ How a release of Rurana is cut ([D73](decisions.md#d73-gitlab-ci-from-scripts-th
    - keeps `app-release.aab` and `SHA256SUMS` as job artifacts for members with the Developer role.
 4. **Check the release** on the project's Releases page: the three files open signed out, `SHA256SUMS` matches the APK, and the certificate's SHA-256 is the expected one. GitLab has no pre-release flag, so a beta becomes the project's latest release: link a specific release from the README and elsewhere, never `/-/releases/permalink/latest`.
 5. **Upload the bundle to Google Play** by hand (step 37d): download `build/release/app-release.aab` from the release job's artifacts, compare its SHA-256 with the line "Bundle for Play" in the job's log, and upload it in the Play Console to the closed test for a beta or to production for a final release.
+6. **Upload the iOS build** from the Mac: [each TestFlight build](#each-testflight-build).
 
 ## Raising Cronet
 
@@ -83,11 +84,11 @@ The app embeds Cronet, Chromium's network stack, which only an app update brings
 
 ## The Mac as a runner
 
-The job `ios` builds the iOS app unsigned on a Mac. It is the only job such a runner takes; the Linux jobs stay on the shared runners. To run it:
+The job `ios` builds the iOS app unsigned on a Mac and checks the notices of its licence page ([below](#licence-notices)). It is the only job such a runner takes; the Linux jobs stay on the shared runners. To run it:
 
 - Register the Mac as a project runner with the tag `macos`, "Run untagged jobs" off and the shell executor, so the job runs directly on the Mac.
 - Run the runner under a macOS user of its own that cannot read the keystores, the owner's other files or the owner's Keychain. The job runs whatever `tool/ci/ios.sh`, `tool/ci/lib.sh`, `.gitlab-ci.yml` and the build itself (build hooks, CocoaPods, Xcode's build phases) say on the protected main branch or the tag: the job never runs in a merge request pipeline, so only reviewed and merged code runs on this Mac ([threat model](threat-model.md) R35).
-- Point `xcode-select` at Xcode: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. `ios.sh` sets `DEVELOPER_DIR` when `xcode-select` points to the Command Line Tools, but the native-asset build hooks ignore it ([README](../README.md#prerequisites)), so expect the job to fail without the switch.
+- Point `xcode-select` at Xcode: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. `ios.sh` refuses to run otherwise, as the native-asset build hooks ignore `DEVELOPER_DIR` ([README](../README.md#prerequisites)).
 - Put exactly the Flutter that `tool/ci/pins.sh` pins (3.47.7) on the runner's PATH: the runner sets `CI=true`, and there another version is an error.
 - Set the project variable `RURANA_MACOS_RUNNER` to `true`.
 
@@ -103,3 +104,94 @@ tool/ci/release.sh --dry-run --tag v1.0.0-beta.1   # the pubspec must have that 
 It runs the whole release locally except the upload: two throwaway keystores, valid for one day, stand in for the keys, and `https://gitlab.example/rurana` for the project's URL. The visibility and contact guards only warn. It prints the files it would upload and the release it would create, and ends with `DRY RUN: NOT RELEASABLE (…)`. It needs Flutter, the Android SDK's build-tools, a JDK and access to GitHub for the desugar_jdk_libs source; the files land in `build/release/`.
 
 A local `flutter build apk --release` is signed with the debug key and prints a warning, unless `app/android/key.properties` (gitignored) names a keystore with `storeFile`, `storePassword`, `keyAlias` and `keyPassword`. Such builds are for testing only.
+
+## iOS: TestFlight from the Mac
+
+`tool/ci/ios_release.sh` builds the iOS app of a release tag on the owner's Mac, signs it with Xcode's automatic signing for the owner's team, checks it and uploads it to App Store Connect, which hands it to TestFlight and later to App Review. No GitLab job runs it yet: `.gitlab-ci.yml` keeps only the unsigned build `ios`, and the owner runs the release by hand once the tag pipeline is green. Running it from the Mac runner on a tag would need the team's signing and the API key in the runner's macOS account, which [the runner's separate user](#the-mac-as-a-runner) is meant not to have.
+
+### Once, before the first upload
+
+1. **The Apple Developer Program:** the account that publishes Rurana, enrolled as an individual or an organisation; the App Store shows the enrolled name as the seller.
+2. **The team id:** ten capital letters and digits, under Membership details in the developer account. The script reads it from `DEVELOPMENT_TEAM`. It is not secret (every signed build carries it, and Flutter prints it while signing), but it stays out of the repository so that a fork signs with its own team.
+3. **Xcode signed in, with a device:** add the account under Xcode > Settings > Accounts, and register an iPhone with the team once: connect it to the Mac with Xcode open, or add its UDID under Certificates, Identifiers & Profiles > Devices. Automatic signing archives with a development profile, which Xcode cannot create for a team without a device ("Your team has no devices from which to generate a provisioning profile"); the export then signs for distribution. Automatic signing also needs the App IDs `dev.coderoftime.vikunja` and `dev.coderoftime.vikunja.RuranaWidgets`, both with the App Groups capability and only the group `group.dev.coderoftime.vikunja`, a distribution certificate and the profiles; Xcode creates what is missing on the first signed build (`flutter build ipa` passes `-allowProvisioningUpdates`). If it cannot, create the App IDs and the group under Certificates, Identifiers & Profiles > Identifiers.
+4. **The app record:** in App Store Connect, Apps > + > New App: iOS, the name from [branding](../branding/README.md#name-rurana), the bundle id `dev.coderoftime.vikunja`, a SKU of your choice (for example `rurana`). The listing, the screenshots and the privacy labels are step 37c.
+5. **The API key:** the Account Holder requests API access once under Users and Access > Integrations > App Store Connect API. Then generate a team key with the Developer role (it covers delivering builds; App Manager only if Apple refuses the upload with it) and download `AuthKey_<id>.p8`; Apple offers the file only once. Keep it outside the repository (`*.p8` is gitignored) with `chmod 600`: the script refuses a key file that other users can read. It reads three variables, prints none of them and takes them out of the environment before Flutter or Xcode runs, so that only altool gets them; altool gets the file's path, never its content:
+
+   | Variable | Value |
+   |---|---|
+   | `RURANA_ASC_KEY_ID` | the key's id |
+   | `RURANA_ASC_ISSUER_ID` | the issuer id shown above the team keys |
+   | `RURANA_ASC_KEY_FILE` | the path of `AuthKey_<id>.p8` |
+
+6. **The source link:** `RURANA_SOURCE_CODE_URL`, the project's https URL on GitLab, as `CI_PROJECT_URL` gives it to the Android release; the About page links it ([D67](decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-contributions-under-the-dco-the-name-and-the-logo-reserved-no-f-droid-the-legal-notices-on-an-about-page-and-the-licence-page-the-source-code-published-before-the-first-store-release)). The script checks that `<URL>/-/tree/<tag>` opens signed out.
+
+### Each TestFlight build
+
+After the tag pipeline is green ([cutting a release](#cutting-a-release), step 3), on the Mac:
+
+```sh
+git fetch --tags && git checkout v1.0.0-beta.1
+export DEVELOPMENT_TEAM=… RURANA_ASC_KEY_ID=… RURANA_ASC_ISSUER_ID=… RURANA_ASC_KEY_FILE=…/AuthKey_….p8
+export RURANA_SOURCE_CODE_URL=https://gitlab.com/…
+tool/ci/ios_release.sh --tag v1.0.0-beta.1
+```
+
+The script:
+
+- refuses to run unless `xcode-select` points to Xcode (the native-asset build hooks ignore `DEVELOPER_DIR`), Flutter is exactly the version `tool/ci/pins.sh` pins, HEAD is the tag with a clean working tree, the source link opens signed out at the tag, the team id and the three key variables are set, and the App Store icon is 1024 × 1024, RGB without an alpha channel and untagged or sRGB;
+- computes the version from the tag with `release_version.py` and runs the release-only source-link test;
+- builds with `flutter build ipa --release`, the tag's version, `SOURCE_CODE_URL` and generated export options: method `app-store-connect`, automatic signing, the team, and `manageAppVersionAndBuildNumber` off so that Xcode never changes the version;
+- checks the archived `Runner.app` and `RuranaWidgets.appex`: both carry the tag's version, the app declares `ITSAppUsesNonExemptEncryption` false, both privacy manifests are the committed ones, every required-reason API that a binary in them uses is declared (`tool/ci/required_reason_apis.py`, [below](#privacy-manifests)), and the licence page has every notice (`tool/ci/ios_notices.py`, [below](#licence-notices));
+- requires exactly one IPA, since `flutter build ipa` reports success even when the export fails, prints its SHA-256 and uploads it with `xcrun altool --upload-package` and the key.
+
+App Store Connect takes only `MAJOR.MINOR.PATCH` as the version (`CFBundleShortVersionString`), so every beta of a release has the release's version and the Android version code as its build number (`CFBundleVersion`), which grows with every tag:
+
+| Tag | Version | Build |
+|---|---|---|
+| `v1.0.0-beta.1` | 1.0.0 | 1000001 |
+| `v1.0.0-beta.2` | 1.0.0 | 1000002 |
+| `v1.0.0` | 1.0.0 | 1000099 |
+| `v1.0.1-beta.1` | 1.0.1 | 1000101 |
+
+On iOS the app therefore reports 1.0.0 with the build number for every beta of 1.0.0, for example the User-Agent `Rurana/1.0.0+1000002`. A build number goes to App Store Connect only once per version, even when processing fails, and a version released in the App Store takes no more builds: a fix needs the next tag, as on Android.
+
+The build shows up under TestFlight in App Store Connect after processing; Apple emails a problem found while processing, for example a missing API declaration. Internal testers (members of the team in App Store Connect) can install it at once; external testers, by invitation or a public link, only after Beta App Review has passed the first build of a version, which needs test information with a server and an account for the reviewers ([Q21](open-questions.md#q21-a-server-for-the-store-reviewers)).
+
+### The iOS dry run
+
+```sh
+tool/ci/ios_release.sh --dry-run                       # the tag defaults to v<the pubspec's version name>
+tool/ci/ios_release.sh --dry-run --tag v1.0.0-beta.1   # the pubspec must have that version
+```
+
+It builds the archive unsigned (`--no-codesign`) with the same checks, the licence notices included, and stops before the export and the upload. Without `RURANA_SOURCE_CODE_URL` it uses `https://gitlab.example/rurana`. The tag, the clean tree, the team id, the key variables, Flutter's version and an undeclared required-reason API only warn; it needs neither the Apple account nor the key, and checks them when they are set. It prints the export options it would use and ends with `DRY RUN: NOT RELEASABLE (unsigned build, …)`.
+
+### Export compliance
+
+`ITSAppUsesNonExemptEncryption` is `false` in `Runner/Info.plist`, so App Store Connect asks no encryption questions for each build. The extension needs no such key; App Store Connect reads the app's. The app uses encryption only through standard protocols: HTTPS through the system's `URLSession`, and for servers with a pinned certificate, a private CA or a client certificate the TLS of Dart's `dart:io` (BoringSSL in the Flutter engine, [D65](decisions.md#d65-connection-settings-per-server-address-in-the-apps-transport-a-certificate-pinned-in-the-tls-handshake-or-a-trusted-ca-certificate-a-client-certificate-access-headers-and-unencrypted-connections-only-with-consent-failing-closed)); the Keychain for tokens and secrets; SHA-256 for PKCE, account ids and certificate fingerprints. None of it is proprietary encryption, which is what Apple counts as exempt from the export documentation. Apple's page adds that an app with exempt encryption may still owe the U.S. government a year-end self-classification report: check that once before the App Store release (step 37d). If App Store Connect asks anyway, the answer is that the app uses only exempt encryption.
+
+### Privacy manifests
+
+`Runner/PrivacyInfo.xcprivacy` and `RuranaWidgets/PrivacyInfo.xcprivacy` sit at the root of the app and of the extension, each in its target's resources (`tool/add_widget_extension.rb` adds them; rerun it after renaming either). Both say no tracking, no tracking domains and no collected data: Apple counts data as collected when it leaves the device in a way that the developer or the developer's partners can access, and Rurana sends data only to the Vikunja server the user chooses. That is usually the user's own or their organisation's; the onboarding's "Try the public demo" fills in `https://try.vikunja.io`, which the Vikunja project runs, but the user picks it, and the developer has no access to it and no partnership with its operator. The app has no analytics, crash reporting or advertising SDK. The App Store privacy labels of step 37c answer the same question.
+
+The required-reason APIs, from the code and from the symbols the release binaries import (`nm -u`), checked against [Apple's list](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api) on 2026-10-29:
+
+| Bundle | Category | Reason | Why |
+|---|---|---|---|
+| `Runner.app` | File timestamp | `C617.1` | Timestamps and sizes of files in the app container and the App Group container: the attachment cache pruned by modification date (`dart:io` `stat`, which the Flutter engine declares as a wrapper, `0A2A.1`), package_info_plus reading the creation date of the app's Documents folder and the modification date of the app bundle (its own manifest declares nothing), picked files copied into the container |
+| `Runner.app` | User defaults | `CA92.1` | The app's own preferences through shared_preferences in the standard defaults; no App Group defaults |
+| `RuranaWidgets.appex` | File timestamp | `C617.1` | The extension prunes its list selections by the modification date of files in the App Group container |
+
+Not declared: system boot time (Dart's `Stopwatch` reads `clock_gettime_nsec_np`, which is not on the list; the engine declares its own `systemUptime`), disk space and active keyboards. Apple asks the bundle that holds a binary to declare its APIs, so a framework needs a manifest of its own. The extension uses no user defaults. The plugin `rurana_widgets` uses none of these APIs; its Swift code is linked into the Runner and has no manifest of its own.
+
+The plugins the app links bring their manifests as resource bundles inside the app: file_selector_ios, flutter_secure_storage_darwin, image_picker_ios, local_auth_darwin, package_info_plus, quick_actions_ios, share_plus, url_launcher_ios and webview_flutter_wkwebview declare no tracking, no collected data and no API; flutter_local_notifications and workmanager_apple declare user defaults `CA92.1`; shared_preferences_foundation declares user defaults `1C8F.1`; `Flutter.framework` declares file timestamp `0A2A.1` and `C617.1` and system boot time `35F9.1`. flutter_web_auth_2 has none and needs none (it uses no listed API).
+
+**SQLite on iOS is the system's.** The frameworks that Flutter makes from the packages' build hooks have no manifest, and Flutter offers no way to give them one yet ([flutter/flutter#140966](https://github.com/flutter/flutter/issues/140966), [dart-lang/native#878](https://github.com/dart-lang/native/issues/878)). The SQLite that sqlite3's hook bundles (`sqlite3.framework`) imports `stat`, `fstat` and `lstat` and also `statfs` and `fstatfs`, disk space APIs: SQLite reads the file system's type to choose its locking, which none of Apple's disk space reasons describes ([sqlite3.dart#410](https://github.com/simolus3/sqlite3.dart/issues/410)). Since 1 May 2024 App Store Connect does not accept an app that uses such an API without declaring it, and a build refused in processing still uses up the tag's build number. The workspace's `pubspec.yaml` therefore has sqlite3's hook load the system's SQLite on iOS (`hooks.user_defines.sqlite3`, `/usr/lib/libsqlite3.dylib`, by its full path since `dlopen` searches `/usr/lib` only for old binaries); system libraries need no manifest, and Android keeps the bundled build. The app's SQL needs SQLite 3.30 (`NULLS LAST`; upserts 3.24), and iOS 15, the oldest the app supports, ships 3.36; the app's database tests pass on Apple's SQLite of macOS (3.51), but no build has run on iOS 15 itself yet. Apple's build keeps the WAL file (empty) and the shared-memory file after the last connection closes; the sign-out wipe deletes both with the database. `cupertino_http.framework` and `objective_c.framework` use none of the listed APIs. `tool/ci/required_reason_apis.py` checks this for every binary of the archive (`nm -u`, and the two listed Objective-C selectors in the bytes) against the manifests of its framework, or for the app's and the extension's executables against their bundle's and the plugins' resource bundles, and the release refuses an undeclared category.
+
+### Licence notices
+
+On iOS the licence page shows Flutter's `NOTICES` of the pub packages and the app's legal assets ([D67](decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-contributions-under-the-dco-the-name-and-the-logo-reserved-no-f-droid-the-legal-notices-on-an-about-page-and-the-licence-page-the-source-code-published-before-the-first-store-release)). Flutter leaves out a package without a `NOTICES` or `LICENSE` file without a word, and the page leaves out an asset it cannot read, so `tool/ci/ios_notices.py` checks the built `Runner.app` ([D74](decisions.md#d74-the-ios-phase-privacy-manifests-and-the-system-sqlite-on-ios-testflight-from-the-owners-mac-the-ipad-and-iphone-checked-in-the-simulator-photo-locations-stripped-one-time-secrets-covered-while-the-screen-is-captured-the-share-extension-after-10)): every licence in each package's file is in `App.framework/flutter_assets/NOTICES.Z` (a package without one must be the repository's, under its `LICENSE`, or the Flutter SDK's, under the SDK's), the repository's `LICENSE` is listed under the name the app's own notice joins, the only frameworks are Flutter's, `App.framework` and the native assets of `NativeAssetsManifest.json`, and every legal asset of `app/lib/core/legal/app_licenses.dart` is bundled and equal to its source. The Android notice is bundled on iOS too but not shown. The script does not see Swift packages fetched by URL, which would be linked statically; no plugin uses one (2026-10-29). The job `ios`, each TestFlight build and the iOS dry run run it:
+
+```sh
+python3 -I tool/ci/ios_notices.py app/build/ios/iphoneos/Runner.app   # after flutter build ios --release --no-codesign
+```

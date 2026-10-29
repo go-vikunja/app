@@ -89,4 +89,4 @@ final class SecureDisplayProvider
   }
 }
 
-String _$secureDisplayHash() => r'9e84a63b7395759f46f9deca1f743cf0cf458808';
+String _$secureDisplayHash() => r'bc0861aff0f2cd2182a2eed2810fccbffe0d89c9';

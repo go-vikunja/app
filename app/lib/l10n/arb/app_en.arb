@@ -4789,6 +4789,10 @@
   "oneTimeSecretLeaveBody": "The token is shown only now. Without it, you will have to create a new one.",
   "oneTimeSecretStay": "Stay",
   "oneTimeSecretLeave": "Leave",
+  "secretHiddenWhileCaptured": "Hidden while your screen is being recorded or mirrored.",
+  "@secretHiddenWhileCaptured": {
+    "description": "Shown (iOS only) in place of a new token, and under a revealed secret field (an access header's value or a certificate file's password), while the screen is recorded or mirrored."
+  },
   "caldavTitle": "CalDAV",
   "caldavIntro": "Connect calendar and task apps that speak CalDAV to see and change your tasks there. Enter this address in the app:",
   "caldavAddress": "CalDAV address",
@@ -6812,7 +6816,7 @@
   "@privacyNotificationContentNoTitlesSubtitle": {
     "description": "Under the Never show task titles choice."
   },
-  "privacyNotificationContentIosHint": "On iPhone, iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.",
+  "privacyNotificationContentIosHint": "iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.",
   "@privacyNotificationContentIosHint": {
     "description": "iOS only, under the Hide on the lock screen choice: the app cannot hide the content itself; the system setting does. Use the names of the iOS Settings app."
   },

@@ -1,10 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
 
 /// A field for a header value or a certificate file's password: masked,
 /// no suggestions or autofill, paste but no copy or cut, and out of
-/// screenshots and the Recents thumbnail while revealed.
+/// screenshots and the Recents thumbnail while revealed (on iOS masked
+/// again while the screen is recorded or mirrored).
 class SecretTextField extends ConsumerStatefulWidget {
   const new({
     required this.controller,
@@ -72,36 +74,46 @@ class _SecretTextFieldState extends ConsumerState<SecretTextField> {
       );
 
   @override
-  Widget build(BuildContext context) => TextField(
-    controller: widget.controller,
-    focusNode: widget.focusNode,
-    enabled: widget.enabled,
-    obscureText: !_revealed,
-    autocorrect: false,
-    enableSuggestions: false,
-    // The default is an empty list, which still turns autofill on.
-    autofillHints: null,
-    enableIMEPersonalizedLearning: false,
-    smartDashesType: SmartDashesType.disabled,
-    smartQuotesType: SmartQuotesType.disabled,
-    keyboardType: TextInputType.visiblePassword,
-    textInputAction: widget.textInputAction,
-    onChanged: widget.onChanged,
-    onSubmitted: widget.onSubmitted,
-    contextMenuBuilder: _menu,
-    decoration: InputDecoration(
-      labelText: widget.label,
-      errorText: widget.errorText,
-      errorMaxLines: 4,
-      helperText: widget.helperText,
-      helperMaxLines: 4,
-      suffixIcon: IconButton(
-        tooltip: _revealed ? widget.hideTooltip : widget.revealTooltip,
-        onPressed: widget.enabled ? _toggle : null,
-        icon: Icon(
-          _revealed ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+  Widget build(BuildContext context) {
+    final display = ref.watch(secureDisplayProvider);
+    return ListenableBuilder(
+      listenable: display,
+      builder: (context, _) => TextField(
+        controller: widget.controller,
+        focusNode: widget.focusNode,
+        enabled: widget.enabled,
+        obscureText: !_revealed || display.hidesSecrets,
+        autocorrect: false,
+        enableSuggestions: false,
+        // The default is an empty list, which still turns autofill on.
+        autofillHints: null,
+        enableIMEPersonalizedLearning: false,
+        smartDashesType: SmartDashesType.disabled,
+        smartQuotesType: SmartQuotesType.disabled,
+        keyboardType: TextInputType.visiblePassword,
+        textInputAction: widget.textInputAction,
+        onChanged: widget.onChanged,
+        onSubmitted: widget.onSubmitted,
+        contextMenuBuilder: _menu,
+        decoration: InputDecoration(
+          labelText: widget.label,
+          errorText: widget.errorText,
+          errorMaxLines: 4,
+          helperText: _revealed && display.screenCaptured
+              ? context.l10n.secretHiddenWhileCaptured
+              : widget.helperText,
+          helperMaxLines: 4,
+          suffixIcon: IconButton(
+            tooltip: _revealed ? widget.hideTooltip : widget.revealTooltip,
+            onPressed: widget.enabled ? _toggle : null,
+            icon: Icon(
+              _revealed
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+            ),
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

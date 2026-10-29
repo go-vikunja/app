@@ -181,11 +181,7 @@ private struct CountText: View {
   var content: ListContent
 
   var body: some View {
-    if let countLabel = content.countLabel {
-      Text(content.total, format: .number).accessibilityLabel(Text(countLabel))
-    } else {
-      Text(content.total, format: .number)
-    }
+    Text(content.total, format: .number).accessibilityLabel(Text(content.spokenCount))
   }
 }
 
@@ -380,6 +376,7 @@ private struct InlineView: View {
     } icon: {
       Image(systemName: "checklist")
     }
+    .accessibilityLabel(Text(verbatim: "\(content.title), \(content.spokenCount)"))
   }
 }
 
@@ -396,7 +393,7 @@ private struct CircularView: View {
     }
     .accessibilityElement(children: .ignore)
     .accessibilityLabel(
-      Text(verbatim: "\(content.title), \(content.countLabel ?? String(content.total))"))
+      Text(verbatim: "\(content.title), \(content.spokenCount)"))
   }
 }
 
@@ -411,6 +408,11 @@ extension DueTone {
 }
 
 extension ListContent {
+  /// The app's plural; the extension's own where there is none, as after a Done tap.
+  var spokenCount: String {
+    countLabel ?? String(localized: "\(total) tasks")
+  }
+
   /// For the placeholder and the gallery before the app has written data.
   static var sample: ListContent {
     let titles = [

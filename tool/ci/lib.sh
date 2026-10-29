@@ -123,6 +123,21 @@ org.gradle.workers.max=2
 PROPERTIES
 }
 
+# Fails unless xcode-select points into an Xcode app, then prints its version.
+# The native-asset build hooks ignore DEVELOPER_DIR (README), so the selection
+# itself has to be Xcode; DEVELOPER_DIR is unset so nothing else uses another.
+use_selected_xcode() {
+  local selected
+  selected="$(env -u DEVELOPER_DIR xcode-select -p 2>/dev/null || true)"
+  if [[ "$selected" != *.app/Contents/Developer ]]; then
+    echo "error: xcode-select points to ${selected:-nothing}, not to Xcode:" \
+      "sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer" >&2
+    return 1
+  fi
+  unset DEVELOPER_DIR
+  printf '%s at %s\n' "$(xcodebuild -version | tr '\n' ' ' | sed 's/ *$//')" "$selected"
+}
+
 android_sdk_dir() {
   if [[ -n "${ANDROID_HOME:-}" ]]; then
     echo "$ANDROID_HOME"

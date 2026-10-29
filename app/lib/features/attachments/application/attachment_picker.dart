@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/platform/location_removal.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/features/attachments/application/channel_document_picker.dart';
 import 'package:vikunja_mobile/features/attachments/application/plugin_attachment_picker.dart';
@@ -85,5 +86,8 @@ AttachmentPicker attachmentPicker(Ref ref) {
         ? ChannelDocumentPicker(excursions: excursions)
         : null,
     excursions: excursions,
+    locations: defaultTargetPlatform == TargetPlatform.iOS
+        ? PlatformLocationRemoval()
+        : null,
   );
 }

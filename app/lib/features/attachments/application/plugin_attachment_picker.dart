@@ -3,18 +3,26 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart' hide PickedFile;
 import 'package:intl/intl.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:vikunja_mobile/core/platform/app_round_trips.dart';
+import 'package:vikunja_mobile/core/platform/location_removal.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/attachments/application/channel_document_picker.dart';
+
+final _log = Logger('AttachmentPicker');
 
 /// [AttachmentPicker] through file_selector (the document picker; on
 /// Android the app's own [documents] instead) and image_picker (the photo
 /// picker and the camera). Leaving the app for a picker does not lock it.
 final class PluginAttachmentPicker implements AttachmentPicker {
-  new({this.documents, this.excursions, DateTime Function()? now})
-    : _now = now ?? DateTime.now;
+  new({
+    this.documents,
+    this.excursions,
+    this.locations,
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   static const lostPickPoll = Duration(milliseconds: 500);
 
@@ -23,6 +31,9 @@ final class PluginAttachmentPicker implements AttachmentPicker {
 
   final ChannelDocumentPicker? documents;
   final AppExcursions? excursions;
+
+  /// On iOS, whose photo picker and camera hand on a photo's location.
+  final LocationRemoval? locations;
   final DateTime Function() _now;
 
   static const _images = XTypeGroup(
@@ -78,7 +89,16 @@ final class PluginAttachmentPicker implements AttachmentPicker {
           ? await picker.pickMultipleMedia(requestFullMetadata: false)
           : [?await picker.pickMedia(requestFullMetadata: false)];
     }, recover: _lostPick);
-    return files.map(_picked).toList();
+    final names = defaultTargetPlatform == TargetPlatform.iOS
+        ? iosLibraryFileNames([
+            for (final file in files) file.name,
+          ], pickedAt: _now())
+        : [for (final file in files) file.name];
+    await _removeLocations([for (final file in files) file.path]);
+    return [
+      for (final (index, file) in files.indexed)
+        _picked(file, name: names[index]),
+    ];
   }
 
   @override
@@ -91,11 +111,26 @@ final class PluginAttachmentPicker implements AttachmentPicker {
       recover: () async => (await _lostPick()).firstOrNull,
     );
     if (file == null) return null;
+    final takenAt = _now();
+    await _removeLocations([file.path]);
     return PickedFile(
       path: file.path,
-      name: cameraFileName(file.path, takenAt: _now()),
+      name: cameraFileName(file.path, takenAt: takenAt),
       mimeType: file.mimeType ?? mediaTypeOf(file.path),
     );
+  }
+
+  // A file that keeps its location is still handed on.
+  Future<void> _removeLocations(List<String> paths) async {
+    final locations = this.locations;
+    if (locations == null) return;
+    for (final path in paths) {
+      try {
+        await locations.removeFrom(path);
+      } on Object catch (error) {
+        _log.warning('A picked file keeps its location: ${error.runtimeType}');
+      }
+    }
   }
 
   // image_picker keeps lost picks on Android only, and iOS does not
@@ -133,20 +168,60 @@ final class PluginAttachmentPicker implements AttachmentPicker {
     }
   }
 
-  static PickedFile _picked(XFile file) => PickedFile(
+  static PickedFile _picked(XFile file, {String? name}) => PickedFile(
     path: file.path,
-    name: file.name,
+    name: name ?? file.name,
     mimeType: file.mimeType ?? mediaTypeOf(file.path),
   );
 }
 
 /// A camera shot's name the way cameras write it, `IMG_20261020_143005.jpg`,
-/// instead of the picker's random temporary name.
-String cameraFileName(String path, {required DateTime takenAt}) {
+/// instead of the picker's random temporary name; [number] tells apart
+/// several of the same second.
+String cameraFileName(String path, {required DateTime takenAt, int? number}) {
   final extension = p.extension(path);
   return 'IMG_${DateFormat('yyyyMMdd_HHmmss').format(takenAt)}'
+      '${number == null ? '' : '_$number'}'
       '${extension.isEmpty ? '.jpg' : extension.toLowerCase()}';
 }
+
+// image_picker's copy on iOS: `image_picker_`, a unique id (a UUID, the
+// process id and 16 hex digits), then a photo's extension or a video's own
+// name.
+final _iosPickerCopy = RegExp(
+  r'^image_picker_[0-9A-F]{8}(?:-[0-9A-F]{4}){3}-[0-9A-F]{12}-\d+-[0-9A-F]{16}'
+  r'(.*)$',
+);
+
+/// The names of photos and videos picked from the library on iOS: a photo
+/// in image_picker's copy is named like a camera shot taken at [pickedAt],
+/// numbered when there are several; a video keeps its own name, and so
+/// does a file the picker named itself.
+List<String> iosLibraryFileNames(
+  List<String> names, {
+  required DateTime pickedAt,
+}) {
+  final rests = [
+    for (final name in names) _iosPickerCopy.firstMatch(name)?.group(1),
+  ];
+  bool isPhoto(String? rest) => rest != null && !_isOwnName(rest);
+  final numbered = rests.where(isPhoto).length > 1;
+  var number = 0;
+  return [
+    for (final (index, name) in names.indexed)
+      switch (rests[index]) {
+        null => name,
+        final rest when _isOwnName(rest) => rest,
+        _ => cameraFileName(
+          name,
+          takenAt: pickedAt,
+          number: numbered ? ++number : null,
+        ),
+      },
+  ];
+}
+
+bool _isOwnName(String rest) => rest.isNotEmpty && !rest.startsWith('.');
 
 /// The type of a photo or video by its extension, for pickers that name
 /// none: the icon of a queued file needs it.

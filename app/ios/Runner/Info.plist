@@ -46,6 +46,8 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -59,6 +61,8 @@
 	<string>Rurana uses Face ID to unlock the app when the app lock is on.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Rurana connects to the Vikunja server you enter, which may run on your local network.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Rurana saves attachments you choose to your photos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Rurana lets you choose photos to attach to tasks or use as your avatar.</string>
 	<key>UIApplicationSceneManifest</key>

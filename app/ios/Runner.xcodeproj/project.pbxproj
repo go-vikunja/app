@@ -11,10 +11,12 @@
 		14684F259A9527449EE0B7D8 /* QuickAddWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA666BD697837E356CAAAD31 /* QuickAddWidget.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		14E0A00D987E9E46E8FA7B3B /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 641868F34AC1937AF0EFB691 /* Localizable.strings */; };
+		2DC33F622F68F677A4497F58 /* Localizable.stringsdict in Resources */ = {isa = PBXBuildFile; fileRef = 95646BCD886EF3B33DC3723D /* Localizable.stringsdict */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		3C0D680EC2807289F51A8715 /* DoneTaps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95298CE85693C845A592E150 /* DoneTaps.swift */; };
 		5D33EE8FD05B84B69778B8DD /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = BC2B8CAB680C75E787831D84 /* InfoPlist.strings */; };
+		67B52034727166CA39E62D8F /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 190253E2FCEE37FDF37D3A2E /* PrivacyInfo.xcprivacy */; };
 		7203F1F792A49E21B2BBCA43 /* ListConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D808A2078B99FAE0CA85A328 /* ListConfiguration.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		7795F69CBED24F5DB4C1C168 /* TasksTimeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADEC68A4297DAD832534A3F /* TasksTimeline.swift */; };
@@ -26,6 +28,7 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A13FD33318467313B5D0830D /* TasksWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EC78A226878B4EB9CD72A09 /* TasksWidget.swift */; };
+		A55E9AA172BB4615A35C451D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7707320A996DB2163F59015E /* PrivacyInfo.xcprivacy */; };
 		A8C1D59F2D7A41F1EFC958B3 /* MarkDoneIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E487AEBDC87C2E471E0D878 /* MarkDoneIntent.swift */; };
 		B50B64F5FABEFD983BA75B2E /* RuranaWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = CB32EB9549894E98AD5159D9 /* RuranaWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		C2CFDE6CB9590F5415254FB1 /* AppGroupStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D48ED279119280F5C2DA8256 /* AppGroupStore.swift */; };
@@ -77,14 +80,17 @@
 		0EC78A226878B4EB9CD72A09 /* TasksWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TasksWidget.swift; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		190253E2FCEE37FDF37D3A2E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3ADEC68A4297DAD832534A3F /* TasksTimeline.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TasksTimeline.swift; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
 		41318BA8774FB96831E9C6CF /* RuranaWidgetsBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RuranaWidgetsBundle.swift; sourceTree = "<group>"; };
 		635D4630D0F7E9070752A0BC /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		72B7A65439A472E8EAB5DA5B /* en */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.stringsdict; name = en; path = en.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		7707320A996DB2163F59015E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
@@ -109,6 +115,7 @@
 		D48ED279119280F5C2DA8256 /* AppGroupStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppGroupStore.swift; sourceTree = "<group>"; };
 		D808A2078B99FAE0CA85A328 /* ListConfiguration.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ListConfiguration.swift; sourceTree = "<group>"; };
 		EA666BD697837E356CAAAD31 /* QuickAddWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuickAddWidget.swift; sourceTree = "<group>"; };
+		FB9D563630DC3D4D10C6165F /* de */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.stringsdict; name = de; path = de.lproj/Localizable.stringsdict; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -155,6 +162,8 @@
 				CA232269523BADBB390955C5 /* WidgetData.swift */,
 				635D4630D0F7E9070752A0BC /* Assets.xcassets */,
 				641868F34AC1937AF0EFB691 /* Localizable.strings */,
+				190253E2FCEE37FDF37D3A2E /* PrivacyInfo.xcprivacy */,
+				95646BCD886EF3B33DC3723D /* Localizable.stringsdict */,
 			);
 			name = RuranaWidgets;
 			path = RuranaWidgets;
@@ -207,6 +216,7 @@
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				B78CCCB721027B72C03ACC68 /* Runner.entitlements */,
+				7707320A996DB2163F59015E /* PrivacyInfo.xcprivacy */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -334,6 +344,7 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				5D33EE8FD05B84B69778B8DD /* InfoPlist.strings in Resources */,
+				A55E9AA172BB4615A35C451D /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -343,6 +354,8 @@
 			files = (
 				F47F65F01136F1BC3562E37E /* Assets.xcassets in Resources */,
 				14E0A00D987E9E46E8FA7B3B /* Localizable.strings in Resources */,
+				67B52034727166CA39E62D8F /* PrivacyInfo.xcprivacy in Resources */,
+				2DC33F622F68F677A4497F58 /* Localizable.stringsdict in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -442,6 +455,15 @@
 				9A854B00FB65A3BE4E560685 /* en */,
 			);
 			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		95646BCD886EF3B33DC3723D /* Localizable.stringsdict */ = {
+			isa = PBXVariantGroup;
+			children = (
+				FB9D563630DC3D4D10C6165F /* de */,
+				72B7A65439A472E8EAB5DA5B /* en */,
+			);
+			name = Localizable.stringsdict;
 			sourceTree = "<group>";
 		};
 		97C146FA1CF9000F007C117D /* Main.storyboard */ = {

@@ -13,3 +13,18 @@ workspace:
 
 dev_dependencies:
   very_good_analysis: ^11.0.0
+
+# Flutter reads hook options from the workspace root only. iOS uses the
+# system's SQLite: the bundled build imports statfs and fstatfs, which App
+# Store Connect counts as disk space access that needs a reason, and none of
+# Apple's reasons fits SQLite (docs/releasing.md, privacy manifests).
+# The full path: dlopen searches /usr/lib for a bare name only for old
+# binaries (man dlopen).
+hooks:
+  user_defines:
+    sqlite3:
+      source:
+        ios: system
+        default: sqlite3
+      name:
+        ios: /usr/lib/libsqlite3.dylib

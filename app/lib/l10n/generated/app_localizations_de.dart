@@ -5430,6 +5430,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get oneTimeSecretLeave => 'Verlassen';
 
   @override
+  String get secretHiddenWhileCaptured =>
+      'Ausgeblendet, solange dein Bildschirm aufgenommen oder gespiegelt wird.';
+
+  @override
   String get caldavTitle => 'CalDAV';
 
   @override
@@ -7418,7 +7422,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyNotificationContentIosHint =>
-      'Auf dem iPhone legt iOS das für jede App fest: Stelle unter Einstellungen › Mitteilungen › Rurana „Vorschauen zeigen“ auf „Wenn entsperrt“.';
+      'iOS legt das für jede App fest: Stelle unter Einstellungen › Mitteilungen › Rurana „Vorschauen zeigen“ auf „Wenn entsperrt“.';
 
   @override
   String get privacyWidgetsHeading => 'Widgets';

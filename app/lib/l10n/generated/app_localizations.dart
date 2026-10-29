@@ -8406,6 +8406,12 @@ abstract class AppLocalizations {
   /// **'Leave'**
   String get oneTimeSecretLeave;
 
+  /// Shown (iOS only) in place of a new token, and under a revealed secret field (an access header's value or a certificate file's password), while the screen is recorded or mirrored.
+  ///
+  /// In en, this message translates to:
+  /// **'Hidden while your screen is being recorded or mirrored.'**
+  String get secretHiddenWhileCaptured;
+
   /// No description provided for @caldavTitle.
   ///
   /// In en, this message translates to:
@@ -11505,7 +11511,7 @@ abstract class AppLocalizations {
   /// iOS only, under the Hide on the lock screen choice: the app cannot hide the content itself; the system setting does. Use the names of the iOS Settings app.
   ///
   /// In en, this message translates to:
-  /// **'On iPhone, iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.'**
+  /// **'iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.'**
   String get privacyNotificationContentIosHint;
 
   /// Heading of the widget titles setting on the privacy page.

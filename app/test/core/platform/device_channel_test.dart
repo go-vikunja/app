@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/platform/app_backgrounding.dart';
 import 'package:vikunja_mobile/core/platform/backup_exclusion.dart';
 import 'package:vikunja_mobile/core/platform/device_channel.dart';
+import 'package:vikunja_mobile/core/platform/location_removal.dart';
 import 'package:vikunja_mobile/core/platform/recents_screenshots.dart';
 import 'package:vikunja_mobile/core/platform/secure_display.dart';
 import 'package:vikunja_mobile/core/platform/sensitive_clipboard.dart';
@@ -115,7 +116,7 @@ void main() {
 
   group('the secure window', () {
     test("on Android sets and clears the window's flag", () async {
-      final display = PlatformSecureWindow(android: true);
+      final display = PlatformSecureWindow(android: true, ios: false);
 
       await display.setSecure(true);
       await display.setSecure(false);
@@ -130,11 +131,68 @@ void main() {
       ]);
     });
 
-    test('on iOS does nothing for now', () async {
-      await PlatformSecureWindow(android: false).setSecure(true);
+    test('on Android keeps itself out of captures', () async {
+      final window = PlatformSecureWindow(android: true, ios: false);
 
+      expect(await window.setSecure(true), isFalse);
+      expect(window.captures, isNull);
+    });
+
+    test('on iOS asks the app to watch for captures and answers whether '
+        'the screen is captured', () async {
+      messenger.setMockMethodCallHandler(deviceChannel, (call) async {
+        deviceCalls.add(call);
+        return (call.arguments as Map<Object?, Object?>)['secure'];
+      });
+      final window = PlatformSecureWindow(android: false, ios: true);
+
+      expect(await window.setSecure(true), isTrue);
+      expect(await window.setSecure(false), isFalse);
+
+      expect(deviceCalls.map((call) => call.method), [
+        'setSecure',
+        'setSecure',
+      ]);
+      expect(deviceCalls.map((call) => call.arguments), [
+        {'secure': true},
+        {'secure': false},
+      ]);
+    });
+
+    test('on iOS passes on what the app says about captures', () async {
+      final window = PlatformSecureWindow(android: false, ios: true);
+      addTearDown(() => deviceChannel.setMethodCallHandler(null));
+      final heard = <bool>[];
+      window.captures!.listen(heard.add);
+
+      for (final captured in [true, false]) {
+        await messenger.handlePlatformMessage(
+          deviceChannel.name,
+          deviceChannel.codec.encodeMethodCall(
+            MethodCall('screenCaptureChanged', captured),
+          ),
+          (_) {},
+        );
+      }
+      await pumpEventQueue();
+
+      expect(heard, [true, false]);
+    });
+
+    test('elsewhere does nothing', () async {
+      final window = PlatformSecureWindow(android: false, ios: false);
+
+      expect(await window.setSecure(true), isFalse);
+      expect(window.captures, isNull);
       expect(deviceCalls, isEmpty);
     });
+  });
+
+  test('the location removal hands the path to the app', () async {
+    await PlatformLocationRemoval().removeFrom('/tmp/image_picker_1.jpg');
+
+    expect(deviceCalls.single.method, 'removeLocation');
+    expect(deviceCalls.single.arguments, {'path': '/tmp/image_picker_1.jpg'});
   });
 
   group('the Recents screenshot', () {

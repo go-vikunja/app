@@ -17,9 +17,10 @@ final _log = Logger('OneTimeSecret');
 
 /// A token's value right after the server made it, the only time it can
 /// be seen: copied to a clipboard that keeps it out of previews, kept out
-/// of screenshots and the Recents thumbnail while it shows, and asked
-/// about once when the user leaves without copying it. The value lives
-/// only in this widget and the one that received it.
+/// of screenshots and the Recents thumbnail while it shows (on iOS hidden
+/// while the screen is recorded or mirrored), and asked about once when
+/// the user leaves without copying it. The value lives only in this widget
+/// and the one that received it.
 class OneTimeSecretView extends ConsumerStatefulWidget {
   const new({
     required this.secret,
@@ -39,6 +40,7 @@ class OneTimeSecretView extends ConsumerStatefulWidget {
 }
 
 class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
+  late final SecureDisplay _display;
   late final SecureHold _secureHold;
   bool _copied = false;
   bool _askedBeforeLeaving = false;
@@ -47,7 +49,8 @@ class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
   @override
   void initState() {
     super.initState();
-    _secureHold = ref.read(secureDisplayProvider).hold();
+    _display = ref.read(secureDisplayProvider);
+    _secureHold = _display.hold();
   }
 
   @override
@@ -124,6 +127,36 @@ class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
     if ((leave ?? false) && mounted) navigator.pop();
   }
 
+  Widget _secretOrCover(BuildContext context) {
+    final theme = Theme.of(context);
+    if (_display.screenCaptured) {
+      return Text(
+        context.l10n.secretHiddenWhileCaptured,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+    // Invisible, in the same space, until iOS has said whether the screen
+    // is captured.
+    return Opacity(
+      opacity: _display.hidesSecrets ? 0 : 1,
+      child: Actions(
+        actions: {
+          CopySelectionTextIntent: CallbackAction<CopySelectionTextIntent>(
+            onInvoke: (_) => _copySelection(),
+          ),
+        },
+        child: SelectableText(
+          widget.secret,
+          style: theme.textTheme.titleMedium?.merge(AppTheme.monospace),
+          onSelectionChanged: (selection, _) => _selection = selection,
+          contextMenuBuilder: _selectionMenu,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -154,22 +187,9 @@ class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
                 padding: const EdgeInsets.all(16),
                 child: Semantics(
                   label: l10n.oneTimeSecretLabel,
-                  child: Actions(
-                    actions: {
-                      CopySelectionTextIntent:
-                          CallbackAction<CopySelectionTextIntent>(
-                            onInvoke: (_) => _copySelection(),
-                          ),
-                    },
-                    child: SelectableText(
-                      widget.secret,
-                      style: theme.textTheme.titleMedium?.merge(
-                        AppTheme.monospace,
-                      ),
-                      onSelectionChanged: (selection, _) =>
-                          _selection = selection,
-                      contextMenuBuilder: _selectionMenu,
-                    ),
+                  child: ListenableBuilder(
+                    listenable: _display,
+                    builder: (context, _) => _secretOrCover(context),
                   ),
                 ),
               ),

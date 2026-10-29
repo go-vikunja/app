@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -94,6 +95,33 @@ Future<void> _showListSheet(WidgetTester tester) async {
                         SizedBox(height: 48, child: Text('Row $index')),
                   ),
                 ),
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.tap(find.text('Open'));
+  await tester.pumpAndSettle();
+}
+
+/// A sheet over a plain page whose [content] by default takes no taps, so a
+/// tap on the card goes on to whatever lies below it.
+Future<void> _showSheet(
+  WidgetTester tester, {
+  Widget content = const SizedBox.expand(),
+}) async {
+  await tester.pumpWidget(
+    MaterialApp(
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: TextButton(
+              onPressed: () => showReadableCupertinoSheet<void>(
+                context: context,
+                scrollableBuilder: (context, controller) => content,
               ),
               child: const Text('Open'),
             ),
@@ -365,6 +393,145 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ReadableSheetWidth), findsNothing);
     }, variant: _iOS);
+
+    for (final (side, x) in [('left', 96.0), ('right', 928.0)]) {
+      testWidgets('close on a tap beside the card on the $side', (
+        tester,
+      ) async {
+        useWindow(tester, iPad13Portrait);
+        await _showSheet(tester);
+
+        await tester.tapAt(Offset(x, 600));
+        await tester.pumpAndSettle();
+        expect(find.byType(ReadableSheetWidth), findsNothing);
+      }, variant: _iOS);
+    }
+
+    testWidgets('stay open on a tap on the card where its content takes '
+        'none', (tester) async {
+      useWindow(tester, iPad13Portrait);
+      await _showSheet(tester);
+
+      final card = iOSSheetContentRect(tester);
+      for (final x in [card.left + 1, card.center.dx, card.right - 1]) {
+        await tester.tapAt(Offset(x, 600));
+        await tester.pumpAndSettle();
+      }
+      expect(find.byType(ReadableSheetWidth), findsOneWidget);
+    }, variant: _iOS);
+
+    testWidgets('a sheet that guards its input stays open on a tap beside '
+        'the card, and its guard hears of it', (tester) async {
+      useWindow(tester, iPad13Portrait);
+      var refused = 0;
+      await _showSheet(
+        tester,
+        content: PopScope<Object?>(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) {
+            if (!didPop) refused++;
+          },
+          child: const SizedBox.expand(),
+        ),
+      );
+
+      await tester.tapAt(const Offset(96, 600));
+      await tester.pumpAndSettle();
+      expect(find.byType(ReadableSheetWidth), findsOneWidget);
+      expect(refused, 1);
+    }, variant: _iOS);
+
+    testWidgets('the area beside the card is no stop for a screen reader, '
+        'as the barrier of a Cupertino popup', (tester) async {
+      final semantics = tester.ensureSemantics();
+      useWindow(tester, iPad13Portrait);
+      await _showSheet(tester);
+
+      expect(find.semantics.byAction(SemanticsAction.tap), findsNothing);
+      expect(find.semantics.byAction(SemanticsAction.dismiss), findsNothing);
+      semantics.dispose();
+    }, variant: _iOS);
+
+    for (final size in [iPhone, _iPadHalf]) {
+      testWidgets('no area beside the sheet at ${sizeName(size)}, where it '
+          'spans the window', (tester) async {
+        useWindow(tester, size);
+        await _showSheet(tester);
+
+        expect(
+          find.descendant(
+            of: find.byType(ReadableSheetWidth),
+            matching: find.byType(GestureDetector),
+          ),
+          findsNothing,
+        );
+        await tester.tapAt(Offset(10, size.height / 2));
+        await tester.pumpAndSettle();
+        expect(find.byType(ReadableSheetWidth), findsOneWidget);
+      }, variant: _iOS);
+    }
+
+    testWidgets('a bottom popup whose barrier does not close it stays open '
+        'on a tap beside its card', (tester) async {
+      useWindow(tester, iPad13Portrait);
+      await tester.pumpWidget(const MaterialApp(home: Scaffold()));
+      showCupertinoModalPopup<void>(
+        context: tester.element(find.byType(Scaffold)),
+        barrierDismissible: false,
+        builder: (context) => const ReadableSheetWidth(
+          child: ColoredBox(
+            color: Color(0xFFFFFFFF),
+            child: SizedBox(width: double.infinity, height: 300),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final card = iOSSheetContentRect(tester);
+      expect(card.left, 192);
+      await tester.tapAt(Offset(card.left / 2, card.center.dy));
+      await tester.pumpAndSettle();
+      expect(find.byType(ReadableSheetWidth), findsOneWidget);
+    }, variant: _iOS);
+
+    for (final (name, open)
+        in <(String, Future<Object?> Function(BuildContext))>[
+          (
+            'wheel',
+            (context) => showCupertinoPickerSheet(
+              context,
+              mode: CupertinoDatePickerMode.date,
+              initial: sweepNow,
+              use24Hour: true,
+            ),
+          ),
+          (
+            'day range',
+            (context) => pickDayRange(
+              context,
+              first: sweepNow,
+              last: sweepNow,
+              now: sweepNow,
+              firstDayOfWeekIndex: null,
+            ),
+          ),
+        ]) {
+      testWidgets('the $name popup closes on a tap beside its card, by its '
+          'own barrier', (tester) async {
+        useWindow(tester, iPad13Portrait);
+        await pumpSweepApp(tester);
+
+        Object? result = 'open';
+        unawaited(open(_page(tester)).then((value) => result = value));
+        await tester.pumpAndSettle();
+
+        final card = iOSSheetContentRect(tester);
+        await tester.tapAt(Offset(card.left / 2, card.center.dy));
+        await tester.pumpAndSettle();
+        expect(find.byType(ReadableSheetWidth), findsNothing);
+        expect(result, isNull);
+      }, variant: _iOS);
+    }
 
     testWidgets("the wheel popup's Cancel and Done lie in its card", (
       tester,
