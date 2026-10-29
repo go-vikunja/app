@@ -138,3 +138,26 @@ The project owner answered Q1–Q15 on 2026-10-09 and took up the deferred Q3 on
 - **2026-10-28, later:** the owner accepted step 36a with this pass still open; the question stays open for the pass itself.
 - **2026-10-28, step 36c:** the pass also covers the task detail pane on the tablet in landscape: opening, a task inside the pane, closing, and the selected row ([D70](decisions.md#d70-task-detail-pane-on-windows-at-least-840-dp-wide-and-480-dp-high-a-task-opens-beside-the-list-one-pane-per-tab-with-a-back-stack-and-a-selected-row-the-sheet-everywhere-else-back-through-the-pane-first-and-pages-in-a-tab-without-androids-predictive-back), [checklist](accessibility-checklist.md) section 2.4). It was not checked with TalkBack in step 36c; the question stays open.
 
+## Q20: Signing keys and the APK beside the Play build
+
+**Open**, needed by step 37d (37a reads the keys from CI variables whichever way this is decided).
+
+- **Asked:** which key signs the APK in each GitLab release, and how it relates to the build Google Play delivers ([D72](decisions.md#d72-first-release-android-and-ios-together-on-google-play-with-an-apk-in-every-gitlab-release-the-repository-on-gitlab-version-100-after-a-beta)). Android installs an update only when its signature matches the installed app's.
+- **Options:** one app signing key that only the owner holds, uploaded to Play App Signing when the app is created, so Play's build and the repository's APK share one signature and update each other (CI signs with it from protected variables, or the owner signs the APK on their Mac); Play's own app signing key and a separate key for the APK under the same application id, so a phone keeps the channel it was installed from and changing it needs an uninstall; the APK under its own application id, installable beside the Play build.
+- **Recommendation:** one app signing key held by the owner and uploaded to Play App Signing, with a separate upload key for the Play bundle; the APK signed with the app signing key on the owner's Mac or a protected runner. Only the owner can create the keys and the Play app.
+
+## Q21: A server for the store reviewers
+
+**Open**, needed by step 37c.
+
+- **Asked:** Google's and Apple's reviewers have to sign in to try the app, and Rurana works only against a Vikunja server.
+- **Options:** a small public Vikunja server run by the owner with a review account and demo data (`tool/seed_demo_data.py`), named in the review notes; a link share on such a server, so reviewers need no password (the guest flow of [D62](decisions.md#d62-create-account-password-reset-and-invite-links-through-the-browser-sign-in-page-link-share-guests-as-an-account-kind-with-token-renewal-and-a-reduced-ui)); no server, with a video of the app in the notes.
+- **Recommendation:** the owner's demo server with a review account and seeded data, kept online through the review and the beta.
+
+## Q22: CI runners on GitLab
+
+**Open**, needed by step 37a.
+
+- **Asked:** where the pipelines run once CI moves to GitLab ([D72](decisions.md#d72-first-release-android-and-ios-together-on-google-play-with-an-apk-in-every-gitlab-release-the-repository-on-gitlab-version-100-after-a-beta)). A full pipeline with the contract tests takes about 25 to 30 minutes, GitLab.com's free tier has about 400 compute minutes a month, and iOS builds need a macOS runner, which GitLab.com offers only on paid tiers.
+- **Options:** GitLab's shared Linux runners with the GitLab for Open Source programme (free once the repository is public and under an OSI licence); a self-hosted runner on the owner's Mac for everything; both: shared Linux runners for the checks and the Android builds, the owner's Mac as a runner (or by hand) for the iOS builds and TestFlight.
+- **Recommendation:** both. Until the repository is public, the pipelines can run on the owner's Mac runner or by hand with the same scripts.
