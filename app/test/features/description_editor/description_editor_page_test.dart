@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
@@ -946,6 +947,27 @@ void main() {
       expect(data.tasks.descriptionUpdates, [
         (1, '<p>Draft</p>', '<p>Numbers</p>'),
       ]);
+      expect(auth.preferences.values[DescriptionDrafts.key], isNull);
+    });
+
+    testWidgets('signed out with the editor still up, going to the '
+        'background keeps no draft', (tester) async {
+      await openEditor(tester);
+      bridges.last.edit('<p>Draft</p>');
+      await tester.pump();
+      final container = containerOf(tester);
+      final account = container.read(activeAccountIdProvider)!;
+
+      // As a sign-out does, with no frame drawn before the app is hidden.
+      await container.read(accountRegistryProvider).remove(account);
+      await container.read(descriptionDraftsProvider).discardAll(account);
+      expect(find.byType(DescriptionEditorPage), findsOneWidget);
+      tester.binding
+        ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+        ..handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      addTearDown(() => toForeground(tester));
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+
       expect(auth.preferences.values[DescriptionDrafts.key], isNull);
     });
 

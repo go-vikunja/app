@@ -11,7 +11,8 @@ import 'package:vikunja_mobile/core/logging/redaction.dart';
 final _log = Logger('SignOut');
 
 /// Removes what an account keeps on this device besides its tokens and its
-/// registry entry: the local database.
+/// registry entry: its database and files, drafts, notifications and
+/// widget content.
 typedef AccountDataWiper = Future<void> Function(String accountId);
 
 /// Ends the server session if it can, then forgets the account on this

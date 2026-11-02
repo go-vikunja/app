@@ -1855,11 +1855,11 @@ String _$userRepositoryHash() => r'28da8498a99ef2100dbc72f90b776490a8e9c948';
 /// The last step of a sign-out: makes a background run in another isolate
 /// let go of the account, drops its avatars and attachment images from
 /// memory, cancels the account's notifications (scheduled and in the
-/// tray) and forgets their preferences, the background notes and the
-/// unsent comments, replaces its home-screen widgets' content with "Account
-/// removed", stops its outbox sender and sync engine, closes its
-/// database and deletes the files: the database, the stored copies of
-/// queued uploads and the downloaded attachments.
+/// tray) and forgets their preferences, the background notes, the unsent
+/// comments and the description draft, replaces its home-screen widgets'
+/// content with "Account removed", stops its outbox sender and sync
+/// engine, closes its database and deletes the files: the database, the
+/// stored copies of queued uploads and the downloaded attachments.
 
 @ProviderFor(accountDataWiper)
 final accountDataWiperProvider = AccountDataWiperProvider._();
@@ -1867,11 +1867,11 @@ final accountDataWiperProvider = AccountDataWiperProvider._();
 /// The last step of a sign-out: makes a background run in another isolate
 /// let go of the account, drops its avatars and attachment images from
 /// memory, cancels the account's notifications (scheduled and in the
-/// tray) and forgets their preferences, the background notes and the
-/// unsent comments, replaces its home-screen widgets' content with "Account
-/// removed", stops its outbox sender and sync engine, closes its
-/// database and deletes the files: the database, the stored copies of
-/// queued uploads and the downloaded attachments.
+/// tray) and forgets their preferences, the background notes, the unsent
+/// comments and the description draft, replaces its home-screen widgets'
+/// content with "Account removed", stops its outbox sender and sync
+/// engine, closes its database and deletes the files: the database, the
+/// stored copies of queued uploads and the downloaded attachments.
 
 final class AccountDataWiperProvider
     extends
@@ -1884,11 +1884,11 @@ final class AccountDataWiperProvider
   /// The last step of a sign-out: makes a background run in another isolate
   /// let go of the account, drops its avatars and attachment images from
   /// memory, cancels the account's notifications (scheduled and in the
-  /// tray) and forgets their preferences, the background notes and the
-  /// unsent comments, replaces its home-screen widgets' content with "Account
-  /// removed", stops its outbox sender and sync engine, closes its
-  /// database and deletes the files: the database, the stored copies of
-  /// queued uploads and the downloaded attachments.
+  /// tray) and forgets their preferences, the background notes, the unsent
+  /// comments and the description draft, replaces its home-screen widgets'
+  /// content with "Account removed", stops its outbox sender and sync
+  /// engine, closes its database and deletes the files: the database, the
+  /// stored copies of queued uploads and the downloaded attachments.
   AccountDataWiperProvider._()
     : super(
         from: null,
@@ -1922,4 +1922,4 @@ final class AccountDataWiperProvider
   }
 }
 
-String _$accountDataWiperHash() => r'3e98a93e325a879335b8e4634a937671ac5a8c09';
+String _$accountDataWiperHash() => r'c9965dbafd9505c2092ce358fbc9f414c13e8532';

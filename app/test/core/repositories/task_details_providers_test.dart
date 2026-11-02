@@ -16,6 +16,8 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
+import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
+import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';
@@ -173,5 +175,29 @@ void main() {
 
     expect(await drafts.read(account: alice.id, taskId: 3), isNull);
     expect(await drafts.read(account: 'someone-else', taskId: 3), draft);
+  });
+
+  test("signing out drops the account's description draft only", () async {
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: noon),
+    );
+    await container.read(accountsProvider.future);
+    final drafts = container.read(descriptionDraftsProvider);
+    const target = TaskDescriptionTarget(3);
+    const draft = DescriptionDraft(html: '<p>Half written</p>', base: '');
+    final wipe = container.read(accountDataWiperProvider);
+
+    // One slot: another account's draft first, then alice's.
+    await drafts.save(draft, account: 'someone-else', target: target);
+    await wipe(alice.id);
+    expect(
+      await drafts.read(account: 'someone-else', target: target),
+      isNotNull,
+    );
+
+    await drafts.save(draft, account: alice.id, target: target);
+    await wipe(alice.id);
+    expect(await drafts.read(account: alice.id, target: target), isNull);
   });
 }

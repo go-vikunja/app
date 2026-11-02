@@ -55,6 +55,26 @@ void main() {
     expect(store.values, isEmpty);
   });
 
+  test("discardAll removes only the account's draft", () async {
+    await drafts.save(draft, account: 'a', target: task);
+
+    await drafts.discardAll('b');
+    expect(await drafts.read(account: 'a', target: task), isNotNull);
+
+    await drafts.discardAll('a');
+    expect(store.values, isEmpty);
+  });
+
+  test('discardAll removes a stored value that names no account', () async {
+    for (final value in ['not json', '{}', '{"account":5}']) {
+      store.values[DescriptionDrafts.key] = value;
+
+      await drafts.discardAll('a');
+
+      expect(store.values, isEmpty, reason: value);
+    }
+  });
+
   test('a stored value that is not a draft reads as none', () async {
     store.values[DescriptionDrafts.key] = 'not json';
     expect(await drafts.read(account: 'a', target: task), isNull);

@@ -48,6 +48,7 @@ import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
+import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
 
 part 'repository_providers.g.dart';
 
@@ -517,11 +518,11 @@ UserRepository? userRepository(Ref ref) {
 /// The last step of a sign-out: makes a background run in another isolate
 /// let go of the account, drops its avatars and attachment images from
 /// memory, cancels the account's notifications (scheduled and in the
-/// tray) and forgets their preferences, the background notes and the
-/// unsent comments, replaces its home-screen widgets' content with "Account
-/// removed", stops its outbox sender and sync engine, closes its
-/// database and deletes the files: the database, the stored copies of
-/// queued uploads and the downloaded attachments.
+/// tray) and forgets their preferences, the background notes, the unsent
+/// comments and the description draft, replaces its home-screen widgets'
+/// content with "Account removed", stops its outbox sender and sync
+/// engine, closes its database and deletes the files: the database, the
+/// stored copies of queued uploads and the downloaded attachments.
 @Riverpod(keepAlive: true)
 AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
   BackgroundRunnerChannel.release(accountId);
@@ -538,6 +539,11 @@ AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
     'Comment drafts',
     accountId,
     () => ref.read(commentDraftsProvider).discardAll(accountId),
+  );
+  await _disposeQuietly(
+    'Description draft',
+    accountId,
+    () => ref.read(descriptionDraftsProvider).discardAll(accountId),
   );
   await _disposeQuietly(
     'Notification scheduler',

@@ -24,7 +24,7 @@ final class DescriptionDraft {
 /// The unsaved edit of the editor that was open when the app last went to
 /// the background, so that it outlives the system ending the app meanwhile.
 /// One slot, as one editor is open at a time; this is no autosave, the
-/// task or project changes only on Save.
+/// task or project changes only on Save. Signing out drops it.
 final class DescriptionDrafts {
   new(this._store);
 
@@ -77,6 +77,14 @@ final class DescriptionDrafts {
             stored['target'] == _targetKey(target))) {
       await _store.remove(key);
     }
+  }
+
+  /// Removes the draft when it is [account]'s, as the account signs out.
+  /// A stored value that names no account is no one's and goes too.
+  Future<void> discardAll(String account) async {
+    if (await _store.getString(key) == null) return;
+    final owner = (await _decoded())?['account'];
+    if (owner is! String || owner == account) await _store.remove(key);
   }
 
   Future<Map<String, Object?>?> _decoded() async {

@@ -414,7 +414,14 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         _log.fine('Reading the edit for a draft failed: ${error.runtimeType}');
       }
     }
-    if (html == null || !mounted || _closing) return;
+    // Signed out, the page stays until the next frame, which a hidden app
+    // does not draw; the sign-out has wiped this account's draft by then.
+    if (html == null ||
+        !mounted ||
+        _closing ||
+        ref.read(activeAccountIdProvider) != account) {
+      return;
+    }
     try {
       await _drafts.save(
         DescriptionDraft(html: html, base: opened),
