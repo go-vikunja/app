@@ -2384,6 +2384,12 @@ abstract class AppLocalizations {
   /// **'{label}, {date}'**
   String shortcutSemantics(String label, String date);
 
+  /// The new-task sheet's selected date shortcut chip with the time the due date gets.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} at {time}'**
+  String shortcutAtTime(String label, String time);
+
   /// No description provided for @taskEditColour.
   ///
   /// In en, this message translates to:

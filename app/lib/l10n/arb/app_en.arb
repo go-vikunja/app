@@ -1407,6 +1407,20 @@
       }
     }
   },
+  "shortcutAtTime": "{label} at {time}",
+  "@shortcutAtTime": {
+    "description": "The new-task sheet's selected date shortcut chip with the time the due date gets.",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Tomorrow"
+      },
+      "time": {
+        "type": "String",
+        "example": "9:00 AM"
+      }
+    }
+  },
   "taskEditColour": "Colour",
   "taskEditNoColour": "No colour",
   "taskEditColourSemantics": "Colour {hex}",

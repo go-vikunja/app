@@ -381,6 +381,7 @@
   "shortcutEndOfMonth": "Monatsende",
   "shortcutInAMonth": "In einem Monat",
   "shortcutSemantics": "{label}, {date}",
+  "shortcutAtTime": "{label} um {time}",
   "taskEditColour": "Farbe",
   "taskEditNoColour": "Keine Farbe",
   "taskEditColourSemantics": "Farbe {hex}",

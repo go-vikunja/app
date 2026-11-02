@@ -1604,6 +1604,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String shortcutAtTime(String label, String time) {
+    return '$label um $time';
+  }
+
+  @override
   String get taskEditColour => 'Farbe';
 
   @override

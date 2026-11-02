@@ -734,7 +734,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             subtaskCount: subtaskCount,
             dueFromSheet: _due != null,
           ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: ProjectField(
@@ -752,22 +752,24 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
                 : () => unawaited(_pickProject(projects, fallback?.id)),
           ),
         ),
-        const SizedBox(height: 4),
+        // Closer to the chips than to the project field above; a row of
+        // chips already leaves a gap with its tap targets.
+        _SectionTitle(
+          icon: Icons.calendar_today_outlined,
+          text: l10n.taskDetailDueDate,
+          top: 10,
+          bottom: 0,
+        ),
         DateShortcutChips(
           options: shortcuts,
           selectedDay: dueDay,
+          selectedTime: shownDue == null ? null : formatter.timeOfDay(shownDue),
           enabled: !dueLocked,
           onSelected: (option) => setState(
             () => _due = option == null
                 ? null
                 : dayWithTime(option.day, current: _due, now: now).toUtc(),
           ),
-          leading: [
-            _SectionLabel(
-              icon: Icons.calendar_today_outlined,
-              text: l10n.taskDetailDueDate,
-            ),
-          ],
           trailing: [
             if (shownDue case final due? when !dueOnShortcut)
               InputChip(
@@ -792,12 +794,13 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             ),
           ],
         ),
+        _SectionTitle(
+          icon: Icons.flag_outlined,
+          text: l10n.taskDetailPriority,
+          bottom: 0,
+        ),
         _ChipRow(
           children: [
-            _SectionLabel(
-              icon: Icons.flag_outlined,
-              text: l10n.taskDetailPriority,
-            ),
             for (final priority in _priorities)
               ChoiceChip(
                 label: Text(
@@ -961,49 +964,44 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   }
 }
 
-/// A muted label with its icon, which names the chips after it.
-class _SectionLabel extends StatelessWidget {
-  const new({required this.icon, required this.text});
+/// A muted label with its icon over the group it names.
+class _SectionTitle extends StatelessWidget {
+  const new({
+    required this.icon,
+    required this.text,
+    this.top = 6,
+    this.bottom = 2,
+  });
 
   final IconData icon;
   final String text;
+  final double top;
+  final double bottom;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = theme.colorScheme.onSurfaceVariant;
-    return Semantics(
-      header: true,
-      headingLevel: 2,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              text,
-              style: theme.textTheme.labelLarge?.copyWith(color: color),
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, top, 16, bottom),
+      child: Semantics(
+        header: true,
+        headingLevel: 2,
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                text,
+                style: theme.textTheme.labelMedium?.copyWith(color: color),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-}
-
-/// A [_SectionLabel] over the group it names.
-class _SectionTitle extends StatelessWidget {
-  const new({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-    child: _SectionLabel(icon: icon, text: text),
-  );
 }
 
 /// One line of chips that scrolls sideways, as [DateShortcutChips] lays

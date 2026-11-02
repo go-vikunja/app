@@ -72,8 +72,11 @@ void main() {
     matching: find.byType(ActionChip),
   );
 
-  Finder choiceChip(String label) =>
-      find.ancestor(of: find.text(label), matching: find.byType(ChoiceChip));
+  /// The chip [label] names, also while it shows its time after it.
+  Finder choiceChip(String label) => find.ancestor(
+    of: find.textContaining(RegExp('^${RegExp.escape(label)}( |\$)')),
+    matching: find.byType(ChoiceChip),
+  );
 
   group('highlighting', () {
     testWidgets('each recognised part in its colour and a heavier weight', (

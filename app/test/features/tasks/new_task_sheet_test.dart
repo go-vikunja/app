@@ -38,8 +38,14 @@ void main() {
   Finder projectField(String title) =>
       find.ancestor(of: find.text(title), matching: find.byType(ProjectField));
 
+  /// A chip's text [label], also while it shows its time after it.
+  Finder chipText(String label) => find.descendant(
+    of: find.byType(NewTaskSheet),
+    matching: find.textContaining(RegExp('^${RegExp.escape(label)}( |\$)')),
+  );
+
   Finder choiceChip(String label) =>
-      find.ancestor(of: inSheet(label), matching: find.byType(ChoiceChip));
+      find.ancestor(of: chipText(label), matching: find.byType(ChoiceChip));
 
   Finder moreOptionsButton() => find.ancestor(
     of: find.text(en.newTaskMoreOptions),
@@ -201,6 +207,34 @@ void main() {
     expect(find.text(en.newTaskCreated('Buy milk')), findsOneWidget);
   });
 
+  testWidgets('the headings sit above their rows, and the chosen day shows '
+      'the time the due date gets', (tester) async {
+    await harness.open(tester);
+    for (final (heading, chip) in [
+      (en.taskDetailDueDate, en.shortcutToday),
+      (en.taskDetailPriority, en.priorityLow),
+    ]) {
+      expect(
+        tester.getRect(inSheet(heading)).bottom,
+        lessThanOrEqualTo(tester.getRect(choiceChip(chip)).top),
+      );
+    }
+
+    await tapInSheet(tester, en.shortcutTomorrow);
+    expect(
+      chipText(en.shortcutAtTime(en.shortcutTomorrow, '12:00 PM')),
+      findsOneWidget,
+    );
+    expect(chipText(en.shortcutToday), findsOneWidget);
+    await typeLine(tester, 'Buy milk');
+    await tester.tap(addButton());
+    await tester.pumpAndSettle();
+    expect(
+      harness.service.submits.single.fallbackDueDate,
+      DateTime(2026, 10, 11, 12).toUtc(),
+    );
+  });
+
   testWidgets('tapping a selected shortcut again clears the due date', (
     tester,
   ) async {
@@ -210,7 +244,8 @@ void main() {
     await typeLine(tester, 'Buy milk');
     await tapInSheet(tester, en.shortcutTomorrow);
     expect(tester.widget<ChoiceChip>(tomorrowChip()).selected, isTrue);
-    await tapInSheet(tester, en.shortcutTomorrow);
+    await tester.tap(tomorrowChip());
+    await tester.pumpAndSettle();
 
     expect(tester.widget<ChoiceChip>(tomorrowChip()).selected, isFalse);
     await tester.tap(addButton());
@@ -323,7 +358,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final content = contentViewport(tester);
-    void expectRowsInView() {
+    void expectRowsInView({bool priority = true}) {
       for (final row in [
         [
           en.shortcutToday,
@@ -331,15 +366,18 @@ void main() {
           en.shortcutNextWeek,
           en.newTaskPickDate,
         ],
-        [
-          en.priorityLow,
-          en.priorityMedium,
-          en.priorityHigh,
-          en.priorityUrgent,
-          en.priorityDoNow,
-        ],
+        if (priority)
+          [
+            en.priorityLow,
+            en.priorityMedium,
+            en.priorityHigh,
+            en.priorityUrgent,
+            en.priorityDoNow,
+          ],
       ]) {
-        final rects = [for (final label in row) tester.getRect(inSheet(label))];
+        final rects = [
+          for (final label in row) tester.getRect(chipText(label)),
+        ];
         for (final rect in rects) {
           expect(rect.center.dy, moreOrLessEquals(rects.first.center.dy));
         }
@@ -360,11 +398,12 @@ void main() {
     await typeLine(tester, 'Buy milk');
     await tester.pumpAndSettle();
     expectRowsInView();
-    // A date in the text adds a chip under the field; the sheet's own
+    // A date in the text adds a chip under the field, which on this phone
+    // moves the priority row out of view under its heading; the sheet's own
     // priority and date repeat none.
     await typeLine(tester, 'Buy milk tomorrow');
     await tester.pumpAndSettle();
-    expectRowsInView();
+    expectRowsInView(priority: false);
     await typeLine(tester, '');
     await tester.pumpAndSettle();
     await tapInSheet(tester, en.priorityHigh);
@@ -372,10 +411,12 @@ void main() {
     await typeLine(tester, 'Buy milk');
     await tester.pumpAndSettle();
     expect(find.byType(Chip), findsNothing);
-    expectRowsInView();
+    // Scrolled up to the field for the date's chip, the sheet stays there:
+    // on this phone the priority row is a short scroll away.
+    expectRowsInView(priority: false);
     await typeLine(tester, 'Buy milk tomorrow');
     await tester.pumpAndSettle();
-    expectRowsInView();
+    expectRowsInView(priority: false);
   });
 
   testWidgets('the buttons clear the navigation bar, and the keyboard while it '

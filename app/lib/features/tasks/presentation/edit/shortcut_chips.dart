@@ -17,16 +17,17 @@ String shortcutLabel(AppLocalizations l10n, DateShortcut shortcut) =>
 
 /// Date shortcut toggles: the chip whose day the current value falls on is
 /// selected, and tapping it again clears ([onSelected] gets null). Each
-/// chip reads out its day. One row scrolling sideways, between [leading]
-/// and [trailing]. Without [enabled] they only show the value.
+/// chip reads out its day; the selected one also shows [selectedTime]. One
+/// row scrolling sideways, followed by [trailing]. Without [enabled] they
+/// only show the value.
 class DateShortcutChips extends StatelessWidget {
   const new({
     required this.options,
     required this.selectedDay,
     required this.onSelected,
-    this.leading = const [],
     this.trailing = const [],
     this.enabled = true,
+    this.selectedTime,
     super.key,
   });
 
@@ -35,30 +36,14 @@ class DateShortcutChips extends StatelessWidget {
   /// The start of the current value's local day, if any.
   final DateTime? selectedDay;
   final ValueChanged<DateShortcutOption?> onSelected;
-  final List<Widget> leading;
   final List<Widget> trailing;
   final bool enabled;
+  final String? selectedTime;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final materialL10n = MaterialLocalizations.of(context);
     final chips = [
-      ...leading,
-      for (final option in options)
-        ChoiceChip(
-          label: Text(
-            shortcutLabel(l10n, option.shortcut),
-            semanticsLabel: l10n.shortcutSemantics(
-              shortcutLabel(l10n, option.shortcut),
-              materialL10n.formatMediumDate(option.day),
-            ),
-          ),
-          selected: option.day == selectedDay,
-          onSelected: enabled
-              ? (selected) => onSelected(selected ? option : null)
-              : null,
-        ),
+      for (final option in options) _chip(context, option),
       ...trailing,
     ];
     return SingleChildScrollView(
@@ -69,6 +54,29 @@ class DateShortcutChips extends StatelessWidget {
           for (final chip in chips) ...[chip, const SizedBox(width: 8)],
         ],
       ),
+    );
+  }
+
+  Widget _chip(BuildContext context, DateShortcutOption option) {
+    final l10n = context.l10n;
+    final selected = option.day == selectedDay;
+    final shortcut = shortcutLabel(l10n, option.shortcut);
+    final label = switch (selectedTime) {
+      final time? when selected => l10n.shortcutAtTime(shortcut, time),
+      _ => shortcut,
+    };
+    return ChoiceChip(
+      label: Text(
+        label,
+        semanticsLabel: l10n.shortcutSemantics(
+          label,
+          MaterialLocalizations.of(context).formatMediumDate(option.day),
+        ),
+      ),
+      selected: selected,
+      onSelected: enabled
+          ? (selected) => onSelected(selected ? option : null)
+          : null,
     );
   }
 }
