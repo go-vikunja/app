@@ -7,15 +7,13 @@
 # Usage: tool/ci/ios_release.sh [--tag TAG] [--dry-run]
 #
 # --dry-run builds the archive unsigned (--no-codesign) with a placeholder
-# source URL unless one is set and a placeholder site URL unless
-# site/site.json has one, runs the same checks, and stops before the export
-# and the upload; the tag defaults to v<the pubspec's version name>.
+# source URL unless one is set, runs the same checks, and stops before the
+# export and the upload; the tag defaults to v<the pubspec's version name>.
 #
 # Environment (docs/releasing.md): DEVELOPMENT_TEAM, the Apple team id;
 # RURANA_ASC_KEY_ID, RURANA_ASC_ISSUER_ID and RURANA_ASC_KEY_FILE, the App
 # Store Connect API key's id, its issuer id and the path of its .p8 file;
-# RURANA_SOURCE_CODE_URL, the source link, else CI_PROJECT_URL. The site URL
-# is the site_url of site/site.json.
+# RURANA_SOURCE_CODE_URL, the source link, else CI_PROJECT_URL.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -123,27 +121,6 @@ else
   fi
 fi
 
-# The website with the privacy policy and the legal notice, which the About
-# page links (D76).
-if ! site_url="$(python3 -I -c '
-import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
-    value = json.load(f).get("site_url")
-print(value if isinstance(value, str) else "")' site/site.json)"; then
-  echo "error: site/site.json cannot be read" >&2
-  exit 1
-fi
-if [[ -z "$site_url" ]] && ((dry_run)); then
-  site_url=https://rurana.example
-  not_releasable+=("placeholder site URL")
-elif [[ "$site_url" != https://?* ]]; then
-  refuse "the site URL (${site_url:-empty}) is not an https URL: set site_url in site/site.json, the address of the website with the privacy policy" \
-    "site URL"
-elif ! python3 -I tool/build_site.py --check >/dev/null; then
-  refuse "the website the app links cannot be built from site/site.json: fill it in until python3 -I tool/build_site.py --check passes" \
-    "website incomplete"
-fi
-
 team="${DEVELOPMENT_TEAM:-}"
 if [[ ! "$team" =~ ^[A-Z0-9]{10}$ ]]; then
   refuse "DEVELOPMENT_TEAM is not a team id (ten capital letters and digits)" "no team id"
@@ -204,14 +181,13 @@ cat >"${work}/ExportOptions.plist" <<PLIST
 PLIST
 plutil -lint "${work}/ExportOptions.plist" >/dev/null
 
-(cd app && flutter test --run-skipped --tags release --dart-define=SOURCE_CODE_URL="$source_url" \
-  --dart-define=SITE_URL="$site_url")
+(cd app && flutter test --run-skipped --tags release --dart-define=SOURCE_CODE_URL="$source_url")
 
 archive=app/build/ios/archive/Runner.xcarchive
 ipa_dir=app/build/ios/ipa
 rm -rf "$archive" "$ipa_dir"
 build=(flutter build ipa --release --build-name="$build_name" --build-number="$build_number"
-  --dart-define=SOURCE_CODE_URL="$source_url" --dart-define=SITE_URL="$site_url")
+  --dart-define=SOURCE_CODE_URL="$source_url")
 if ((dry_run)); then
   (cd app && "${build[@]}" --no-codesign)
 else

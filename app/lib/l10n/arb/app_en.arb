@@ -7803,11 +7803,11 @@
   },
   "aboutWebsiteHeading": "Privacy and legal notice",
   "@aboutWebsiteHeading": {
-    "description": "Section header on the About page over the links to Rurana's own website; only builds that know the website show it."
+    "description": "Section header on the About page over the links to Rurana's privacy policy and legal notice on the developer's website, coderoftime.dev."
   },
   "aboutPrivacyPolicy": "Privacy policy",
   "@aboutPrivacyPolicy": {
-    "description": "Opens Rurana's privacy policy on its website in the browser; the server's own legal links are elsewhere (legalPrivacy)."
+    "description": "Opens Rurana's privacy policy on coderoftime.dev in the browser; the server's own legal links are elsewhere (legalPrivacy)."
   },
   "aboutPrivacyPolicySubtitle": "How Rurana handles your data",
   "@aboutPrivacyPolicySubtitle": {
@@ -7815,7 +7815,7 @@
   },
   "aboutLegalNotice": "Legal notice",
   "@aboutLegalNotice": {
-    "description": "Opens Rurana's legal notice (the German Impressum) on its website in the browser; the server's own is legalImprint."
+    "description": "Opens the legal notice (the German Impressum) on coderoftime.dev in the browser; the server's own is legalImprint."
   },
   "aboutLegalNoticeSubtitle": "Who publishes Rurana",
   "@aboutLegalNoticeSubtitle": {

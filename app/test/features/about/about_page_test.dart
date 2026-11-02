@@ -36,7 +36,8 @@ void main() {
     expect(find.text(copyrightNotice), findsOneWidget);
     expect(find.text(en.aboutUnofficial), findsOneWidget);
     for (final text in [
-      if (siteUrl != null) ...[en.aboutPrivacyPolicy, en.aboutLegalNotice],
+      en.aboutPrivacyPolicy,
+      en.aboutLegalNotice,
       en.aboutLicence,
       en.aboutNoWarranty,
       en.aboutLicences,
@@ -179,12 +180,9 @@ void main() {
     expect(english.backButtonTooltip, 'Back');
   });
 
-  group('with the website', () {
-    const site = 'https://rurana.example.org';
-
+  group('the privacy policy and the legal notice', () {
     Future<FakeExternalLinkOpener> pumpAbout(
       WidgetTester tester, {
-      String? site = site,
       bool opens = true,
     }) async {
       final opener = FakeExternalLinkOpener(succeeds: opens);
@@ -195,10 +193,10 @@ void main() {
             appVersionProvider.overrideWithValue(testAppVersion),
             externalLinkOpenerProvider.overrideWithValue(opener),
           ],
-          child: MaterialApp(
+          child: const MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: appSupportedLocales,
-            home: AboutPage(site: site),
+            home: AboutPage(),
           ),
         ),
       );
@@ -206,19 +204,7 @@ void main() {
       return opener;
     }
 
-    testWidgets('a build without it has no links to it', (tester) async {
-      await pumpAbout(tester, site: null);
-
-      expect(find.text(en.aboutWebsiteHeading), findsNothing);
-      expect(find.text(en.aboutPrivacyPolicy), findsNothing);
-      expect(find.text(en.aboutLegalNotice), findsNothing);
-      await scrollTo(tester, find.text(en.aboutNameAndLogo));
-      expect(find.text(en.aboutPrivacyPolicy), findsNothing);
-    });
-
-    testWidgets('the privacy policy and the legal notice open in English', (
-      tester,
-    ) async {
+    testWidgets('open in English', (tester) async {
       final opener = await pumpAbout(tester);
 
       expect(find.text(en.aboutWebsiteHeading), findsOneWidget);
@@ -228,15 +214,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(opener.opened, [
-        Uri.parse('$site/en/privacy/'),
-        Uri.parse('$site/en/legal/'),
+        Uri.parse('https://coderoftime.dev/rurana/privacy/'),
+        Uri.parse('https://coderoftime.dev/impressum/#en'),
       ]);
       expect(find.text(en.legalOpenFailed), findsNothing);
     });
 
-    testWidgets('they open in German when the app is in German', (
-      tester,
-    ) async {
+    testWidgets('open in German when the app is in German', (tester) async {
       useLocale(tester, const Locale('de'));
       final opener = await pumpAbout(tester);
 
@@ -247,8 +231,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(opener.opened, [
-        Uri.parse('$site/de/privacy/'),
-        Uri.parse('$site/de/legal/'),
+        Uri.parse('https://coderoftime.dev/rurana/privacy/#de'),
+        Uri.parse('https://coderoftime.dev/impressum/#de'),
       ]);
     });
 
@@ -261,15 +245,17 @@ void main() {
       expect(find.text(en.legalOpenFailed), findsOneWidget);
     });
 
-    test('its pages are English for every language but German', () {
-      expect(
-        sitePageUri(site, SitePage.privacy, languageCode: 'fr'),
-        Uri.parse('$site/en/privacy/'),
-      );
-      expect(
-        sitePageUri('$site/', SitePage.legal, languageCode: 'de'),
-        Uri.parse('$site/de/legal/'),
-      );
+    test('are English for every language but German', () {
+      for (final languageCode in ['en', 'fr', 'nl']) {
+        expect(
+          WebsitePage.privacy.uri(languageCode: languageCode),
+          Uri.parse('https://coderoftime.dev/rurana/privacy/'),
+        );
+        expect(
+          WebsitePage.legalNotice.uri(languageCode: languageCode),
+          Uri.parse('https://coderoftime.dev/impressum/#en'),
+        );
+      }
     });
   });
 

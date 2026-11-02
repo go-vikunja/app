@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/platform/location_removal.dart';
 import 'package:vikunja_mobile/core/share/channel_share_intent_source.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 
@@ -15,6 +17,14 @@ ShareIntentSource shareIntentSource(Ref ref) {
   ref.onDispose(source.dispose);
   return source;
 }
+
+/// Takes the location out of shared photos and videos; only Android takes
+/// shares so far.
+@Riverpod(keepAlive: true)
+LocationRemoval? shareLocationRemoval(Ref ref) =>
+    defaultTargetPlatform == TargetPlatform.android
+    ? PlatformLocationRemoval()
+    : null;
 
 final class NoShareIntentSource implements ShareIntentSource {
   const new();

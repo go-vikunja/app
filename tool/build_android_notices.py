@@ -32,9 +32,9 @@ does not belong to the locked Cronet version. CRONET_SUPPLEMENT adds what the
 native library links statically but the licences do not name.
 
 The written offer for desugar_jdk_libs' source names the upstream commit from
-tool/android_notices/desugar_jdk_libs.source and the contact_email of
-site/site.json; --require-offer-contact fails while that contact is empty,
-which the release job checks (D73, D76).
+tool/android_notices/desugar_jdk_libs.source and WRITTEN_OFFER_CONTACT;
+--require-offer-contact fails while that contact is empty, which the release
+job checks (D73).
 """
 import datetime
 import glob
@@ -54,10 +54,6 @@ LOCKFILE = os.path.join(ROOT, 'app/android/app/gradle.lockfile')
 BUILD_GRADLE = os.path.join(ROOT, 'app/android/app/build.gradle.kts')
 TEXTS = os.path.join(ROOT, 'tool/android_notices')
 OUTPUT = os.path.join(ROOT, 'app/assets/legal/android.md')
-# Its contact_email is how to ask for the source under the written offer. The
-# owner fills it before the first release; the release job fails while it is
-# empty.
-SITE = os.path.join(ROOT, 'site/site.json')
 CONFIGURATION = 'releaseRuntimeClasspath'
 CRONET_GROUP = 'org.chromium.net'
 # The native library and its provider's sentinel; it brings CRONET_JAVA of
@@ -150,7 +146,10 @@ charge no more than the cost of physically performing that distribution.
 SOURCE_MANIFESTS = {
     'com.android.tools:desugar_jdk_libs': 'desugar_jdk_libs.source',
 }
-EMAIL = re.compile(r'[^@\s]+@[^@\s]+\.[^@\s]+')
+# How to ask for the source under the written offer; the release job fails
+# while it is empty.
+WRITTEN_OFFER_CONTACT = 'coderoftime@gmail.com'
+
 DESUGARING = re.compile(r'^\s*coreLibraryDesugaring\("([^":]+):([^":]+):([^":]+)"\)', re.MULTILINE)
 # Cronet's licence file: Chromium's licence under CHROMIUM_HEADING, then each
 # component's, every name between two lines of 20 hyphens.
@@ -209,21 +208,6 @@ def fenced(names, text, source):
     if re.search(r'^```', text, re.MULTILINE):
         raise NoticeError(f'{source} has a line starting with ```')
     return f'{names}\n\n```text\n{text}\n```'
-
-
-def offer_contact(path=SITE):
-    name = os.path.relpath(path, ROOT)
-    try:
-        with open(path, encoding='utf-8') as f:
-            site = json.load(f)
-    except (OSError, ValueError) as error:
-        raise NoticeError(f'{name} cannot be read: {error}') from error
-    contact = site.get('contact_email', '') if isinstance(site, dict) else None
-    if not isinstance(contact, str):
-        raise NoticeError(f'{name} has no contact_email text')
-    if contact and not EMAIL.fullmatch(contact):
-        raise NoticeError(f'the contact_email of {name} is not an email address: {contact!r}')
-    return contact
 
 
 def offer_request(contact):
@@ -600,7 +584,7 @@ def read_sources():
 def build():
     texts = {key: read(os.path.join(TEXTS, file)) for key, (_, file) in LICENCES.items()}
     supplement = {component: read(os.path.join(TEXTS, file)) for component, file in CRONET_SUPPLEMENT.items()}
-    return render(released_libraries(), texts, read_cronet(), supplement, read_sources(), offer_contact())
+    return render(released_libraries(), texts, read_cronet(), supplement, read_sources(), WRITTEN_OFFER_CONTACT)
 
 
 def fake_aar(entries):
@@ -783,26 +767,6 @@ def self_test():
     assert with_contact.replace('Ask Benedikt Lesch at rurana@example.org.',
                                 "Ask through the contact given where the app's source code is published.") == output
     assert sources['com.android.tools:desugar_jdk_libs']['note'] == 'a=b'
-    with tempfile.TemporaryDirectory() as directory:
-        site = os.path.join(directory, 'site.json')
-
-        def contact_of(site_json):
-            with open(site, 'w', encoding='utf-8') as f:
-                f.write(site_json)
-            return offer_contact(site)
-
-        assert contact_of('{"site_url": "", "contact_email": ""}') == ''
-        assert contact_of('{"site_url": ""}') == ''
-        assert contact_of('{"contact_email": "rurana@example.org"}') == 'rurana@example.org'
-        for site_json, description in [
-            ('{"contact_email": null}', 'a contact_email that is not text'),
-            ('["rurana@example.org"]', 'a site.json that is not an object'),
-            ('{"contact_email": "rurana"}', 'a contact_email that is not an email address'),
-            ('{"contact_email": "Ask rurana@example.org"}', 'a contact_email with more than the address'),
-            ('{"contact_email": ', 'a site.json that is not JSON'),
-        ]:
-            refused(lambda: contact_of(site_json), description)
-        refused(lambda: offer_contact(os.path.join(directory, 'missing.json')), 'a missing site.json')
     other_version = {key: dict(value, version='2.1.3') for key, value in sources.items()}
     refused(lambda: render(libraries + desugaring, texts, cronet, sources=other_version),
             'a source manifest of another version')
@@ -945,15 +909,10 @@ def main():
         self_test()
         return
     if args == ['--require-offer-contact']:
-        try:
-            contact = offer_contact()
-        except NoticeError as error:
-            print(f'error: {error}', file=sys.stderr)
-            sys.exit(1)
-        if not contact:
-            print(f'error: contact_email in {os.path.relpath(SITE, ROOT)} is empty. The written offer for '
-                  "desugar_jdk_libs' source needs a contact before a release (D73, D76): fill it in, then run "
-                  'this script to write app/assets/legal/android.md again', file=sys.stderr)
+        if not WRITTEN_OFFER_CONTACT:
+            print('error: WRITTEN_OFFER_CONTACT in tool/build_android_notices.py is empty. The written offer for '
+                  "desugar_jdk_libs' source needs a contact before a release (D73): set it, then run this "
+                  'script to write app/assets/legal/android.md again', file=sys.stderr)
             sys.exit(1)
         print('OK: the written offer names a contact.')
         return

@@ -3,15 +3,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart' hide PickedFile;
 import 'package:intl/intl.dart';
-import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:vikunja_mobile/core/platform/app_round_trips.dart';
 import 'package:vikunja_mobile/core/platform/location_removal.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/attachments/application/channel_document_picker.dart';
-
-final _log = Logger('AttachmentPicker');
 
 /// [AttachmentPicker] through file_selector (the document picker; on
 /// Android the app's own [documents] instead) and image_picker (the photo
@@ -32,7 +29,8 @@ final class PluginAttachmentPicker implements AttachmentPicker {
   final ChannelDocumentPicker? documents;
   final AppExcursions? excursions;
 
-  /// On iOS, whose photo picker and camera hand on a photo's location.
+  /// Takes the location out of photos and videos from the photo picker and
+  /// the camera; files from the document picker keep theirs.
   final LocationRemoval? locations;
   final DateTime Function() _now;
 
@@ -94,7 +92,7 @@ final class PluginAttachmentPicker implements AttachmentPicker {
             for (final file in files) file.name,
           ], pickedAt: _now())
         : [for (final file in files) file.name];
-    await _removeLocations([for (final file in files) file.path]);
+    await locations?.removeFromAll([for (final file in files) file.path]);
     return [
       for (final (index, file) in files.indexed)
         _picked(file, name: names[index]),
@@ -112,25 +110,12 @@ final class PluginAttachmentPicker implements AttachmentPicker {
     );
     if (file == null) return null;
     final takenAt = _now();
-    await _removeLocations([file.path]);
+    await locations?.removeFromAll([file.path]);
     return PickedFile(
       path: file.path,
       name: cameraFileName(file.path, takenAt: takenAt),
       mimeType: file.mimeType ?? mediaTypeOf(file.path),
     );
-  }
-
-  // A file that keeps its location is still handed on.
-  Future<void> _removeLocations(List<String> paths) async {
-    final locations = this.locations;
-    if (locations == null) return;
-    for (final path in paths) {
-      try {
-        await locations.removeFrom(path);
-      } on Object catch (error) {
-        _log.warning('A picked file keeps its location: ${error.runtimeType}');
-      }
-    }
   }
 
   // image_picker keeps lost picks on Android only, and iOS does not

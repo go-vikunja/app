@@ -4,6 +4,7 @@ import 'dart:ui' show Rect;
 
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/files/file_actions.dart';
+import 'package:vikunja_mobile/core/platform/location_removal.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 
@@ -217,5 +218,29 @@ final class FakeShareIntentSource implements ShareIntentSource {
   Future<void> _call(String call) async {
     calls.add(call);
     await beforeCall?.call(call);
+  }
+}
+
+/// Every path asked for in [paths], and in [removed] once its removal is
+/// done; a removal waits while [block]ed and throws the path's entry in
+/// [failures], if it has one.
+final class RecordingLocationRemoval implements LocationRemoval {
+  final List<String> paths = [];
+  final List<String> removed = [];
+  final Map<String, Exception> failures = {};
+  Future<void>? _blocked;
+
+  Completer<void> block() {
+    final blocked = Completer<void>();
+    _blocked = blocked.future;
+    return blocked;
+  }
+
+  @override
+  Future<void> removeFrom(String path) async {
+    paths.add(path);
+    await _blocked;
+    if (failures[path] case final failure?) throw failure;
+    removed.add(path);
   }
 }

@@ -7,16 +7,14 @@
 #
 # Usage: tool/ci/release.sh [--tag TAG] [--dry-run]
 #
-# --dry-run runs everything but the upload, with two throwaway keystores, a
-# placeholder source URL and, while site/site.json has none, a placeholder
-# site URL, and prints the release it would create; the tag defaults to
-# v<the pubspec's version name>.
+# --dry-run runs everything but the upload, with two throwaway keystores and a
+# placeholder source URL, and prints the release it would create; the tag
+# defaults to v<the pubspec's version name>.
 #
 # CI variables (docs/releasing.md): RURANA_UPLOAD_KEYSTORE_BASE64,
 # RURANA_UPLOAD_STORE_PASSWORD, RURANA_UPLOAD_KEY_ALIAS and
 # RURANA_UPLOAD_KEY_PASSWORD sign the bundle, and the APK unless the four
-# RURANA_APK_* variables are set too. The site URL is the site_url of
-# site/site.json.
+# RURANA_APK_* variables are set too.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -108,28 +106,6 @@ else
     fi
   done
 fi
-
-# The website with the privacy policy and the legal notice, which the About
-# page links (D76).
-if ! site_url="$(python3 -I -c '
-import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
-    value = json.load(f).get("site_url")
-print(value if isinstance(value, str) else "")' site/site.json)"; then
-  echo "error: site/site.json cannot be read" >&2
-  exit 1
-fi
-if [[ -z "$site_url" ]] && ((dry_run)); then
-  site_url=https://rurana.example
-  not_releasable+=("placeholder site URL")
-elif [[ "$site_url" != https://?* ]]; then
-  refuse "the site URL (${site_url:-empty}) is not an https URL: set site_url in site/site.json, the address of the website with the privacy policy" \
-    "site URL"
-elif ! python3 -I tool/build_site.py --check >/dev/null; then
-  refuse "the website the app links cannot be built from site/site.json: fill it in until python3 -I tool/build_site.py --check passes" \
-    "website incomplete"
-fi
-
 api="${CI_API_V4_URL:-https://gitlab.example/api/v4}/projects/${CI_PROJECT_ID:-0}"
 
 # Out of the environment into unexported copies: no step but the build that a
@@ -163,7 +139,7 @@ else
   public_feature "package registry" "packages?per_page=1"
 fi
 if ! python3 -I tool/build_android_notices.py --require-offer-contact >/dev/null 2>&1; then
-  refuse "the written offer has no contact: set contact_email in site/site.json, then run python3 -I tool/build_android_notices.py to write app/assets/legal/android.md again" \
+  refuse "the written offer has no contact: set WRITTEN_OFFER_CONTACT in tool/build_android_notices.py, then run it to write app/assets/legal/android.md again" \
     "no written-offer contact"
 fi
 
@@ -282,15 +258,14 @@ signed_build() {
     export RURANA_SIGNING_KEY_PASSWORD="${!key_password}"
     cd app
     flutter build "$@" --release --build-name="$build_name" --build-number="$build_number" \
-      --dart-define=SOURCE_CODE_URL="$source_url" --dart-define=SITE_URL="$site_url"
+      --dart-define=SOURCE_CODE_URL="$source_url"
   )
 }
 
 setup_flutter
 ci_gradle_memory
 
-(cd app && flutter test --run-skipped --tags release --dart-define=SOURCE_CODE_URL="$source_url" \
-  --dart-define=SITE_URL="$site_url")
+(cd app && flutter test --run-skipped --tags release --dart-define=SOURCE_CODE_URL="$source_url")
 python3 -I tool/build_android_notices.py --self-test
 python3 -I tool/build_android_notices.py --check
 

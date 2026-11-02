@@ -9,7 +9,10 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/core/platform/location_removal.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
+import 'package:vikunja_mobile/features/attachments/application/channel_document_picker.dart';
 import 'package:vikunja_mobile/features/attachments/application/plugin_attachment_picker.dart';
+
+import '../../helpers/attachment_fakes.dart';
 
 // image_picker's default platform channel, which a test host keeps.
 const _imagePicker = MethodChannel('plugins.flutter.io/image_picker');
@@ -21,6 +24,12 @@ const _iosPng =
     '/tmp/image_picker_F0E0133E-E515-48AF-A7D8-759814A89BCA-55885-00000DCCD9B5D0DD.png';
 const _iosVideo =
     '/tmp/image_picker_5B37F082-66DE-4679-A924-C00FBDAD5831-55885-00000DCCD9B5D102IMG_0042.MOV';
+
+// image_picker's copies on Android: the photo picker's in a folder of their
+// own, a camera shot's a temporary file.
+const _androidPhoto = '/data/cache/5f0c2a/IMG_20261102_101500.jpg';
+const _androidVideo = '/data/cache/9a1e7b/VID_20261102_101800.mp4';
+const _androidShot = '/data/cache/image_picker1234567890.jpg';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -117,11 +126,11 @@ void main() {
   });
 
   group('the location of picked photos', () {
-    late _RecordingRemoval removal;
+    late RecordingLocationRemoval removal;
     late List<LogRecord> records;
 
     setUp(() {
-      removal = _RecordingRemoval();
+      removal = RecordingLocationRemoval();
       records = [];
       final previousLevel = Logger.root.level;
       Logger.root.level = Level.ALL;
@@ -204,11 +213,11 @@ void main() {
 
     testWidgets(
       'stays in a file it could not be removed from, which is still handed '
-      'on; the log names the type only',
+      'on; the log names no file',
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
       (tester) async {
         answerPicks((_) => [_iosPhoto]);
-        removal.failure = PlatformException(
+        removal.failures[_iosPhoto] = PlatformException(
           code: 'remove_location_failed',
           message: 'Failure',
           details: _iosPhoto,
@@ -228,6 +237,49 @@ void main() {
     );
 
     testWidgets(
+      'stays only in a file it could not be removed from, and is removed '
+      'from the files after it',
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+      (tester) async {
+        answerPicks((_) => [_androidPhoto, _androidVideo, _androidShot]);
+        removal.failures[_androidPhoto] = PlatformException(
+          code: 'remove_location_failed',
+          message: 'GPS in compressed XMP',
+        );
+
+        final files = await picker().pickPhotos();
+
+        expect(removal.paths, [_androidPhoto, _androidVideo, _androidShot]);
+        expect(removal.removed, [_androidVideo, _androidShot]);
+        expect(files.map((file) => file.path), [
+          _androidPhoto,
+          _androidVideo,
+          _androidShot,
+        ]);
+      },
+    );
+
+    testWidgets(
+      'stays in a file whose removal fails unexpectedly; the log names only '
+      'the type of the failure',
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+      (tester) async {
+        answerPicks((_) => [_androidPhoto]);
+        removal.failures[_androidPhoto] = MissingPluginException(
+          'No implementation found for method removeLocation: $_androidPhoto',
+        );
+
+        final files = await picker().pickPhotos();
+
+        expect(files.single.path, _androidPhoto);
+        expect(
+          records.single.message,
+          'A file keeps its location: MissingPluginException',
+        );
+      },
+    );
+
+    testWidgets(
       'and the names are left to the photo picker on Android',
       variant: TargetPlatformVariant.only(TargetPlatform.android),
       (tester) async {
@@ -240,10 +292,82 @@ void main() {
     );
 
     testWidgets(
-      'is removed by the app on iOS only',
+      'is removed on Android too, from photos and videos of the photo picker '
+      'and from camera shots, before they are handed on',
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+      (tester) async {
+        answerPicks(
+          (call) => call.method == 'pickImage'
+              ? _androidShot
+              : [_androidPhoto, _androidVideo],
+        );
+        final removing = removal.block();
+        List<PickedFile>? files;
+        unawaited(picker().pickPhotos().then((value) => files = value));
+        await tester.pump();
+        expect(removal.paths, [_androidPhoto]);
+        expect(files, isNull);
+
+        removing.complete();
+        await tester.pump();
+
+        expect(removal.removed, [_androidPhoto, _androidVideo]);
+        expect(files?.map((file) => (file.path, file.name, file.mimeType)), [
+          (_androidPhoto, 'IMG_20261102_101500.jpg', 'image/jpeg'),
+          (_androidVideo, 'VID_20261102_101800.mp4', 'video/mp4'),
+        ]);
+
+        final shot = await picker().takePhoto();
+
+        expect(removal.removed.last, _androidShot);
+        expect(shot?.path, _androidShot);
+      },
+    );
+
+    testWidgets(
+      'stays in files from the file picker',
       variant: const TargetPlatformVariant({
         TargetPlatform.iOS,
         TargetPlatform.android,
+      }),
+      (tester) async {
+        final android = defaultTargetPlatform == TargetPlatform.android;
+        final channel = android
+            ? const MethodChannel(ChannelDocumentPicker.channelName)
+            : const MethodChannel('plugins.flutter.io/file_selector');
+        messenger.setMockMethodCallHandler(
+          channel,
+          (call) async => switch (call.method) {
+            'pick' => [
+              {
+                'uri': 'content://media/1',
+                'name': 'IMG_0042.jpg',
+                'size': 10,
+                'mime': 'image/jpeg',
+              },
+            ],
+            'copy' => {'path': '/data/cache/picked/IMG_0042.jpg', 'size': 10},
+            _ => ['/tmp/IMG_0042.jpg'],
+          },
+        );
+        addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+
+        final picked = await PluginAttachmentPicker(
+          documents: android ? ChannelDocumentPicker() : null,
+          locations: removal,
+        ).pickFiles(maxBytes: 100, imagesOnly: true);
+
+        expect(picked.files.single.name, 'IMG_0042.jpg');
+        expect(removal.paths, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'is removed by the app on Android and iOS only',
+      variant: const TargetPlatformVariant({
+        TargetPlatform.iOS,
+        TargetPlatform.android,
+        TargetPlatform.macOS,
       }),
       (tester) async {
         final container = ProviderContainer.test();
@@ -253,9 +377,9 @@ void main() {
 
         expect(
           picker.locations,
-          defaultTargetPlatform == TargetPlatform.iOS
-              ? isA<PlatformLocationRemoval>()
-              : isNull,
+          defaultTargetPlatform == TargetPlatform.macOS
+              ? isNull
+              : isA<PlatformLocationRemoval>(),
         );
       },
     );
@@ -488,27 +612,4 @@ void main() {
       },
     );
   });
-}
-
-/// Every path asked for in [paths], and in [removed] once its removal is
-/// done; a removal waits while [block]ed.
-final class _RecordingRemoval implements LocationRemoval {
-  final List<String> paths = [];
-  final List<String> removed = [];
-  Exception? failure;
-  Future<void>? _blocked;
-
-  Completer<void> block() {
-    final blocked = Completer<void>();
-    _blocked = blocked.future;
-    return blocked;
-  }
-
-  @override
-  Future<void> removeFrom(String path) async {
-    paths.add(path);
-    await _blocked;
-    if (failure case final failure?) throw failure;
-    removed.add(path);
-  }
 }

@@ -155,6 +155,8 @@ dependencies {
     // FileProvider and IntentCompat for attachments and shares; declared
     // here rather than relied on through the plugins.
     implementation("androidx.core:core:1.18.0")
+    // Location removal; the version image_picker_android resolves to.
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
     // Home-screen widgets. The Compose compiler plugin above fails the build
     // without the Compose runtime that Glance brings.
     implementation("androidx.glance:glance-appwidget:1.2.0")

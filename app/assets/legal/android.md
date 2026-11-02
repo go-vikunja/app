@@ -791,7 +791,7 @@ version of the app, Benedikt Lesch gives anyone who asks a complete
 machine-readable copy of the corresponding source code of desugar_jdk_libs
 2.1.4, on a medium customarily used for software interchange, for a
 charge no more than the cost of physically performing that distribution.
-Ask through the contact given where the app's source code is published.
+Ask Benedikt Lesch at coderoftime@gmail.com.
 ```
 
 The other projects in cronet-bundled 500.1.0 whose licences are not above, as the licence files of its AARs list them:

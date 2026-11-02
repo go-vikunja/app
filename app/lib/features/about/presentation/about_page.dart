@@ -19,10 +19,9 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_
 /// code is, and the name and logo, which the licence does not cover; and
 /// Rurana's privacy policy and legal notice. Open signed out and to guests.
 class AboutPage extends ConsumerWidget {
-  const new({this.sourceCode = sourceCodeUrl, this.site = siteUrl, super.key});
+  const new({this.sourceCode = sourceCodeUrl, super.key});
 
   final String? sourceCode;
-  final String? site;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -32,7 +31,6 @@ class AboutPage extends ConsumerWidget {
         ? l10n.aboutVersionWithoutBuild(version)
         : l10n.aboutVersion(version, build);
     final sourceCode = this.sourceCode;
-    final site = this.site;
     final languageCode = Localizations.localeOf(context).languageCode;
 
     return Scaffold(
@@ -45,39 +43,38 @@ class AboutPage extends ConsumerWidget {
             padding: EdgeInsets.fromLTRB(inset, 8, inset, 24),
             children: [
               _Header(version: versionText),
-              if (site != null)
-                SectionCard(
-                  title: l10n.aboutWebsiteHeading,
-                  children: [
-                    for (final (page, icon, title, subtitle) in [
-                      (
-                        SitePage.privacy,
-                        Icons.privacy_tip_outlined,
-                        l10n.aboutPrivacyPolicy,
-                        l10n.aboutPrivacyPolicySubtitle,
-                      ),
-                      (
-                        SitePage.legal,
-                        Icons.contact_mail_outlined,
-                        l10n.aboutLegalNotice,
-                        l10n.aboutLegalNoticeSubtitle,
-                      ),
-                    ])
-                      ListTile(
-                        leading: Icon(icon),
-                        title: Text(title),
-                        subtitle: Text(subtitle),
-                        trailing: const Icon(Icons.open_in_new),
-                        onTap: () => unawaited(
-                          _open(
-                            context,
-                            ref,
-                            sitePageUri(site, page, languageCode: languageCode),
-                          ),
+              SectionCard(
+                title: l10n.aboutWebsiteHeading,
+                children: [
+                  for (final (page, icon, title, subtitle) in [
+                    (
+                      WebsitePage.privacy,
+                      Icons.privacy_tip_outlined,
+                      l10n.aboutPrivacyPolicy,
+                      l10n.aboutPrivacyPolicySubtitle,
+                    ),
+                    (
+                      WebsitePage.legalNotice,
+                      Icons.contact_mail_outlined,
+                      l10n.aboutLegalNotice,
+                      l10n.aboutLegalNoticeSubtitle,
+                    ),
+                  ])
+                    ListTile(
+                      leading: Icon(icon),
+                      title: Text(title),
+                      subtitle: Text(subtitle),
+                      trailing: const Icon(Icons.open_in_new),
+                      onTap: () => unawaited(
+                        _open(
+                          context,
+                          ref,
+                          page.uri(languageCode: languageCode),
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
+              ),
               SectionCard(
                 title: l10n.aboutLicenceHeading,
                 children: [

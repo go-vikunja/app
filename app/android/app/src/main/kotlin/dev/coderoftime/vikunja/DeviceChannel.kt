@@ -5,10 +5,15 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.os.PersistableBundle
+import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import java.util.concurrent.Executors
 
 // The engine outlives the activity, so the channel stays registered after
 // detach: what Dart sets on the window until the next activity shows the
@@ -19,6 +24,8 @@ internal class DeviceChannel(
     private val windowState: WindowState,
     private var activity: MainActivity?,
 ) : MethodChannel.MethodCallHandler {
+
+    private val main = Handler(Looper.getMainLooper())
 
     init {
         MethodChannel(messenger, CHANNEL).setMethodCallHandler(this)
@@ -40,6 +47,7 @@ internal class DeviceChannel(
                 setBackMovesTaskToBack(call.argument<Boolean>("enabled"), result)
             "canOpenAppLocaleSettings" -> result.success(canOpenAppLocaleSettings())
             "openAppLocaleSettings" -> result.success(openAppLocaleSettings())
+            "removeLocation" -> removeLocation(call.argument<String>("path"), result)
             else -> result.notImplemented()
         }
     }
@@ -89,6 +97,26 @@ internal class DeviceChannel(
         result.success(null)
     }
 
+    // Dart waits for the answer, so it comes whatever goes wrong.
+    private fun removeLocation(path: String?, result: MethodChannel.Result) {
+        if (path == null) {
+            result.error("invalid_arguments", "path is missing", null)
+            return
+        }
+        removals.execute {
+            val failure = LocationRemoval.failureOf { LocationRemoval.removeFrom(File(path)) }
+            main.post {
+                if (failure == null) {
+                    result.success(null)
+                } else {
+                    // The reason goes to Dart, whose log keeps it.
+                    Log.w(TAG, "A location stays in a file")
+                    result.error("remove_location_failed", failure, null)
+                }
+            }
+        }
+    }
+
     private fun canOpenAppLocaleSettings(): Boolean =
         AppLocaleSettings.canOpen(Build.VERSION.SDK_INT) {
             AppLocaleSettings.intent(context.packageName)
@@ -108,6 +136,9 @@ internal class DeviceChannel(
 
     private companion object {
         const val CHANNEL = "dev.coderoftime.vikunja/device"
+        const val TAG = "Rurana"
+
+        val removals = Executors.newSingleThreadExecutor()
 
         // ClipDescription.EXTRA_IS_SENSITIVE from API 33; Android 13 hides the
         // clipboard preview of a clip marked with it, older versions ignore it.

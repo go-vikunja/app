@@ -1,7 +1,6 @@
-# GitLab CI (D73). Each job runs a script in tool/ (the job scripts in
-# tool/ci/) that runs the same way on a developer's Mac;
-# tool/ci/test_gitlab_ci.py checks this file. The release job's variables and
-# project settings: docs/releasing.md.
+# GitLab CI (D73). Each job runs a script in tool/ci/ that runs the same way
+# on a developer's Mac; tool/ci/test_gitlab_ci.py checks this file. The
+# release job's variables and project settings: docs/releasing.md.
 
 workflow:
   auto_cancel:
@@ -157,24 +156,6 @@ ios:
   cache: []
   script:
     - tool/ci/ios.sh
-
-# The website (site/, D76) on GitLab Pages, from the default branch only. The
-# build refuses while site/site.json lacks a value, so this job fails until the
-# owner has filled it in.
-pages:
-  stage: test
-  image: python:3.14.9-slim-trixie@sha256:35caba83af2fe6da9a5d922f9b0156f21d1246a48278c58a08bd253303ba42e8
-  needs: []
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-  timeout: 5m
-  cache: []
-  script:
-    - python3 -I tool/build_site.py --out public
-  artifacts:
-    paths: [public]
 
 # The signing variables are protected and scoped to this environment, and
 # v* tags are protected (docs/releasing.md).

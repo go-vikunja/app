@@ -64,9 +64,9 @@ void main() {
       semantics.dispose();
     });
 
-    testWidgets('the About page of a release, with the website and the '
-        'source code, at 200 % in dark mode, its tap targets labelled and '
-        'large enough (${locale.languageCode})', (tester) async {
+    testWidgets('the About page of a release, with the source code, at '
+        '200 % in dark mode, its tap targets labelled and large enough '
+        '(${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);
       final l10n = lookupAppLocalizations(locale);
       final semantics = tester.ensureSemantics();
@@ -85,7 +85,6 @@ void main() {
             supportedLocales: appSupportedLocales,
             home: const AboutPage(
               sourceCode: 'https://code.example.org/rurana',
-              site: 'https://rurana.example.org',
             ),
           ),
         ),

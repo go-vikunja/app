@@ -1845,6 +1845,7 @@ final class SyncFakes {
 
   /// No share is waiting unless a test puts one there.
   final shareSource = FakeShareIntentSource();
+  final shareLocations = RecordingLocationRemoval();
   final fileActions = FakeFileActions();
 
   /// What a one-time secret view or a link share copied, and whether it hid
@@ -1942,6 +1943,7 @@ final class SyncFakes {
       (ref, accountId) => forAccount(accountId).attachments,
     ),
     shareIntentSourceProvider.overrideWithValue(shareSource),
+    shareLocationRemovalProvider.overrideWithValue(shareLocations),
     fileActionsProvider.overrideWithValue(fileActions),
     // The real one syncs the activity on the foreground ticks, which opens
     // the inactive accounts' databases.

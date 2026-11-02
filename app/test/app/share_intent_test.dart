@@ -111,6 +111,7 @@ void main() {
       'pending',
       'copy content://files.example/1 max ${20 * _mib}',
     ]);
+    expect(data.shareLocations.removed, ['/cache/share-inbox/1']);
 
     await tapAction(tester, en.shareCreate);
 

@@ -86,8 +86,9 @@ AttachmentPicker attachmentPicker(Ref ref) {
         ? ChannelDocumentPicker(excursions: excursions)
         : null,
     excursions: excursions,
-    locations: defaultTargetPlatform == TargetPlatform.iOS
-        ? PlatformLocationRemoval()
-        : null,
+    locations: switch (defaultTargetPlatform) {
+      TargetPlatform.android || TargetPlatform.iOS => PlatformLocationRemoval(),
+      _ => null,
+    },
   );
 }

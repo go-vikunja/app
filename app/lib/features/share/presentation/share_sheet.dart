@@ -165,6 +165,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       files: widget.share.files,
       uploadsEnabled: attachments?.uploadsEnabled ?? false,
       maxBytes: attachments?.maxUploadBytes ?? 0,
+      locations: ref.read(shareLocationRemovalProvider),
     );
     unawaited(_files.prepare());
     for (final controller in [_title, _appended]) {

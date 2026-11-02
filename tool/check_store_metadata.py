@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 """Checks the store listings in fastlane/ against the stores' limits and the
-project's rules (docs/store-listing.md), and fills the values that come from
-site/site.json.
+project's rules (docs/store-listing.md).
 
-Usage: python3 -I tool/check_store_metadata.py [--fill] [--strict] [--root DIR]
-  --fill    write the URL, email and copyright files from site/site.json first
-  --strict  also fail on an empty or stale value from site/site.json and on
-            missing screenshots, i.e. check that the listing can be submitted
+Usage: python3 -I tool/check_store_metadata.py [--strict] [--root DIR]
+  --strict  also fail on missing screenshots, i.e. check that the listing can
+            be submitted
 """
 import argparse
-import json
 import os
 import re
 import struct
@@ -33,8 +30,17 @@ REVIEW_NOTES_BYTES = 4000
 CHANGELOG_LIMIT = 500
 MULTILINE = {'full_description.txt', 'description.txt', 'promotional_text.txt', 'release_notes.txt', 'notes.txt'}
 OPTIONAL = {'release_notes.txt'}
-FROM_SITE = {'support_url.txt', 'privacy_url.txt', 'marketing_url.txt', 'copyright.txt', 'email_address.txt'}
-SITE_KEYS = {'copyright.txt': 'legal_name', 'email_address.txt': 'contact_email'}
+# Rurana's pages on the owner's website per listing language, the contact and
+# the App Store copyright (D76).
+WEBSITE_HOST = 'coderoftime.dev'
+URLS = {
+    'support_url.txt': {'en': 'https://coderoftime.dev/rurana/support/',
+                        'de': 'https://coderoftime.dev/de/rurana/support/'},
+    'privacy_url.txt': {'en': 'https://coderoftime.dev/rurana/privacy/',
+                        'de': 'https://coderoftime.dev/rurana/privacy/#de'},
+    'marketing_url.txt': {'en': 'https://coderoftime.dev/rurana/', 'de': 'https://coderoftime.dev/de/rurana/'},
+}
+FIXED = {'email_address.txt': 'coderoftime@gmail.com', 'copyright.txt': f'{COPYRIGHT_YEAR} Benedikt Lesch'}
 # App Store Connect's category ids, as fastlane deliver takes them.
 CATEGORIES = {
     'BOOKS', 'BUSINESS', 'DEVELOPER_TOOLS', 'EDUCATION', 'ENTERTAINMENT', 'FINANCE', 'FOOD_AND_DRINK', 'GAMES',
@@ -93,66 +99,6 @@ def read_value(path):
     return text[:-1] if text.endswith('\n') else text
 
 
-def read_site(root):
-    path = os.path.join(root, 'site', 'site.json')
-    try:
-        with open(path, encoding='utf-8') as f:
-            site = json.load(f)
-    except (OSError, ValueError) as error:
-        raise MetadataError(f'site/site.json: {error}')
-    if not isinstance(site, dict):
-        raise MetadataError('site/site.json: not an object')
-    expected = {'site_url': str, 'contact_email': str, 'legal_name': str, 'address_lines': list, 'country': str}
-    for key, kind in expected.items():
-        if not isinstance(site.get(key), kind):
-            raise MetadataError(f'site/site.json: {key} must be a {kind.__name__}')
-    url = site['site_url'].strip()
-    if url:
-        parts = urllib.parse.urlsplit(url)
-        if parts.scheme != 'https' or not parts.hostname or parts.query or parts.fragment or '@' in parts.netloc:
-            raise MetadataError(f'site/site.json: site_url must be an https address without query or fragment: {url}')
-    email = site['contact_email'].strip()
-    if email and not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s.]+', email):
-        raise MetadataError(f'site/site.json: contact_email is not an email address: {email}')
-    return {'site_url': url.rstrip('/'), 'contact_email': email, 'legal_name': site['legal_name'].strip()}
-
-
-def site_values(site):
-    """The files filled from site/site.json, relative to fastlane/metadata."""
-    url, email, name = site['site_url'], site['contact_email'], site['legal_name']
-    values = {}
-    for locale, lang in LOCALES.items():
-        values[f'{locale}/support_url.txt'] = f'{url}/{lang}/support/' if url else ''
-        values[f'{locale}/privacy_url.txt'] = f'{url}/{lang}/privacy/' if url else ''
-        values[f'{locale}/marketing_url.txt'] = f'{url}/{lang}/' if url else ''
-    values['copyright.txt'] = f'{COPYRIGHT_YEAR} {name} and the Rurana contributors' if name else ''
-    values['review_information/email_address.txt'] = email
-    return values
-
-
-def console_values(site):
-    url, email = site['site_url'], site['contact_email']
-    return {
-        'Play privacy policy': f'{url}/en/privacy/' if url else '',
-        'Play account deletion URL': f'{url}/en/delete-account/' if url else '',
-        'Play website': f'{url}/en/' if url else '',
-        'Play and TestFlight email': email,
-    }
-
-
-def fill(root):
-    site = read_site(root)
-    metadata = os.path.join(root, 'fastlane', 'metadata')
-    written = []
-    for name, value in site_values(site).items():
-        path = os.path.join(metadata, name)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, 'w', encoding='utf-8') as f:
-            f.write(value + '\n' if value else '')
-        written.append((f'fastlane/metadata/{name}', value))
-    return written, console_values(site)
-
-
 def png_or_jpeg_size(path):
     """(width, height, has_alpha) from the file's header."""
     with open(path, 'rb') as f:
@@ -189,20 +135,11 @@ class Checker:
         self.metadata = os.path.join(root, 'fastlane', 'metadata')
         self.strict = strict
         self.errors = []
-        self.notes = []
 
     def error(self, path, message):
         self.errors.append(f'{os.path.relpath(path, self.root)}: {message}')
 
-    def note(self, path, message):
-        self.notes.append(f'{os.path.relpath(path, self.root)}: {message}')
-
     def run(self):
-        try:
-            site = read_site(self.root)
-        except MetadataError as error:
-            self.errors.append(str(error))
-            site = None
         for locale, lang in LOCALES.items():
             self.check_directory(os.path.join(self.metadata, 'android', locale), ANDROID_FIELDS, 'android', lang,
                                  extra={'changelogs', 'images'})
@@ -214,10 +151,8 @@ class Checker:
                              {name: (REVIEW_NOTES_BYTES if name == 'notes.txt' else 255) for name in REVIEW_FIELDS},
                              'ios', None)
         self.check_category()
-        if site is not None:
-            self.check_site_values(site)
         self.check_screenshots()
-        return self.errors, self.notes
+        return self.errors
 
     def check_directory(self, directory, fields, platform, lang, extra=()):
         if not os.path.isdir(directory):
@@ -235,7 +170,7 @@ class Checker:
 
     def check_value(self, path, name, value, limit, platform, lang):
         if not value:
-            if name not in FROM_SITE and name not in OPTIONAL:
+            if name not in OPTIONAL:
                 self.error(path, 'empty')
             return
         if value != value.strip():
@@ -258,8 +193,17 @@ class Checker:
             self.error(path, f'lacks the line "{UNOFFICIAL[lang]}"')
         if name == 'keywords.txt':
             self.check_keywords(path, value)
-        if name.endswith('_url.txt') and not value.startswith('https://'):
-            self.error(path, 'must be an https URL')
+        if name in URLS:
+            self.check_url(path, value, URLS[name][lang])
+        if name in FIXED and value != FIXED[name]:
+            self.error(path, f'must be "{FIXED[name]}"')
+
+    def check_url(self, path, value, expected):
+        parts = urllib.parse.urlsplit(value)
+        if parts.scheme != 'https' or parts.hostname != WEBSITE_HOST:
+            self.error(path, f'must be an https URL on {WEBSITE_HOST}')
+        elif value != expected:
+            self.error(path, f'must be {expected}')
 
     def check_keywords(self, path, value):
         keywords = value.split(',')
@@ -294,22 +238,6 @@ class Checker:
         path = os.path.join(self.metadata, 'primary_category.txt')
         if os.path.isfile(path) and read_value(path) and read_value(path) not in CATEGORIES:
             self.error(path, f'not an App Store category id: {read_value(path)}')
-
-    def check_site_values(self, site):
-        for name, expected in site_values(site).items():
-            path = os.path.join(self.metadata, name)
-            if not os.path.isfile(path):
-                continue
-            value = read_value(path)
-            key = SITE_KEYS.get(os.path.basename(name), 'site_url')
-            if not expected:
-                if value:
-                    self.error(path, f'set, but site/site.json has no {key}')
-                else:
-                    (self.error if self.strict else self.note)(path, f'empty while site/site.json has no {key}')
-            elif value != expected:
-                (self.error if value or self.strict else self.note)(
-                    path, f'differs from site/site.json, run --fill: "{value}" instead of "{expected}"')
 
     def check_screenshots(self):
         for locale in LOCALES:
@@ -402,30 +330,17 @@ class Checker:
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
-    parser.add_argument('--fill', action='store_true')
     parser.add_argument('--strict', action='store_true')
     parser.add_argument('--root', default=ROOT)
     args = parser.parse_args(argv)
-    if args.fill:
-        try:
-            written, console = fill(args.root)
-        except MetadataError as error:
-            print(f'error: {error}', file=sys.stderr)
-            return 1
-        for path, value in written:
-            print(f'wrote {path}: {value or "(empty)"}')
-        for label, value in console.items():
-            print(f'{label} (enter by hand): {value or "(empty)"}')
-    errors, notes = Checker(args.root, args.strict).run()
-    for message in notes:
-        print(f'note: {message}')
+    errors = Checker(args.root, args.strict).run()
     for message in errors:
         print(f'error: {message}', file=sys.stderr)
     mode = 'strict' if args.strict else 'normal'
     if errors:
         print(f'store metadata ({mode}): {len(errors)} errors', file=sys.stderr)
         return 1
-    print(f'store metadata ({mode}): OK' + (f', {len(notes)} notes' if notes else ''))
+    print(f'store metadata ({mode}): OK')
     return 0
 
 

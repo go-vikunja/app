@@ -1,7 +1,6 @@
 import contextlib
 import importlib.util
 import io
-import json
 import os
 import shutil
 import struct
@@ -17,9 +16,14 @@ _spec.loader.exec_module(check_store_metadata)
 Checker = check_store_metadata.Checker
 
 UNOFFICIAL = check_store_metadata.UNOFFICIAL
-SITE = {'site_url': 'https://rurana.example/', 'contact_email': 'hello@rurana.example', 'legal_name': 'Erika Muster',
-        'address_lines': ['c/o Service', '12345 Stadt'], 'country': 'Deutschland'}
-EMPTY_SITE = {'site_url': '', 'contact_email': '', 'legal_name': '', 'address_lines': [], 'country': ''}
+URLS = {
+    'en-GB': {'support_url.txt': 'https://coderoftime.dev/rurana/support/',
+              'privacy_url.txt': 'https://coderoftime.dev/rurana/privacy/',
+              'marketing_url.txt': 'https://coderoftime.dev/rurana/'},
+    'de-DE': {'support_url.txt': 'https://coderoftime.dev/de/rurana/support/',
+              'privacy_url.txt': 'https://coderoftime.dev/rurana/privacy/#de',
+              'marketing_url.txt': 'https://coderoftime.dev/de/rurana/'},
+}
 
 
 def chunk(kind, data):
@@ -41,9 +45,8 @@ def jpeg(width, height):
 class Tree:
     """A complete, valid listing in a temporary repository root."""
 
-    def __init__(self, site=EMPTY_SITE):
+    def __init__(self):
         self.root = tempfile.mkdtemp()
-        self.write('site/site.json', json.dumps(site))
         for locale, lang in check_store_metadata.LOCALES.items():
             android = f'fastlane/metadata/android/{locale}'
             self.write(f'{android}/title.txt', 'Rurana\n')
@@ -56,14 +59,15 @@ class Tree:
             self.write(f'{ios}/description.txt', f'{UNOFFICIAL[lang]}\n')
             self.write(f'{ios}/keywords.txt', 'kanban,offline,reminders\n')
             self.write(f'{ios}/promotional_text.txt', 'Your tasks, offline.\n')
-            for name in ('release_notes.txt', 'support_url.txt', 'privacy_url.txt', 'marketing_url.txt'):
-                self.write(f'{ios}/{name}', '')
-        self.write('fastlane/metadata/copyright.txt', '')
+            self.write(f'{ios}/release_notes.txt', '')
+            for name, url in URLS[locale].items():
+                self.write(f'{ios}/{name}', url + '\n')
+        self.write('fastlane/metadata/copyright.txt', '2026 Benedikt Lesch\n')
         self.write('fastlane/metadata/primary_category.txt', 'PRODUCTIVITY\n')
         self.write('fastlane/metadata/review_information/notes.txt', 'Tap "Try the public demo".\n')
         self.write('fastlane/metadata/review_information/demo_user.txt', 'demo\n')
         self.write('fastlane/metadata/review_information/demo_password.txt', 'demo\n')
-        self.write('fastlane/metadata/review_information/email_address.txt', '')
+        self.write('fastlane/metadata/review_information/email_address.txt', 'coderoftime@gmail.com\n')
 
     def write(self, name, content):
         path = os.path.join(self.root, name)
@@ -93,29 +97,25 @@ class CheckerTest(unittest.TestCase):
         self.addCleanup(self.tree.remove)
 
     def errors(self, strict=False):
-        return self.tree.check(strict)[0]
+        return self.tree.check(strict)
 
     def assertError(self, fragment, strict=False):
         errors = self.errors(strict)
         self.assertTrue(any(fragment in error for error in errors), errors)
 
     def test_the_repository_s_listing_passes(self):
-        errors, _ = Checker(ROOT, strict=False).run()
-        self.assertEqual(errors, [])
+        self.assertEqual(Checker(ROOT, strict=False).run(), [])
 
-    def test_a_complete_listing_passes_with_notes_for_the_site_values(self):
-        errors, notes = self.tree.check()
-        self.assertEqual(errors, [])
-        self.assertEqual(len(notes), 8)
-        self.assertIn('fastlane/metadata/en-GB/privacy_url.txt: empty while site/site.json has no site_url', notes)
+    def test_a_complete_listing_passes(self):
+        self.assertEqual(self.errors(), [])
 
-    def test_strict_fails_on_empty_site_values_and_missing_screenshots(self):
+    def test_strict_fails_only_on_missing_screenshots(self):
         errors = self.errors(strict=True)
-        self.assertIn('fastlane/metadata/copyright.txt: empty while site/site.json has no legal_name', errors)
-        self.assertIn('fastlane/metadata/review_information/email_address.txt: empty while site/site.json has no '
-                      'contact_email', errors)
+        self.assertEqual(len(errors), 8, errors)
         self.assertIn('fastlane/metadata/android/de-DE/images: 0 phone screenshots, Play needs at least 2', errors)
         self.assertIn('fastlane/screenshots/en-GB: no iPad 13" screenshots', errors)
+        self.tree.screenshots()
+        self.assertEqual(self.errors(strict=True), [])
 
     def test_limits(self):
         cases = {
@@ -131,7 +131,7 @@ class CheckerTest(unittest.TestCase):
                 tree = Tree()
                 self.addCleanup(tree.remove)
                 tree.write(name, value + '\n')
-                errors = tree.check()[0]
+                errors = tree.check()
                 self.assertEqual(len(errors), 1, errors)
                 self.assertIn(', the limit is ', errors[0])
 
@@ -148,7 +148,7 @@ class CheckerTest(unittest.TestCase):
                 self.addCleanup(tree.remove)
                 tree.write(f'fastlane/metadata/{name}', 'Rurana for Vikunja\n' if 'keywords' not in name
                            else 'tasks,vikunja\n')
-                self.assertIn('names another product or company: ', ' '.join(tree.check()[0]))
+                self.assertIn('names another product or company: ', ' '.join(tree.check()))
 
     def test_vikunja_is_fine_in_descriptions(self):
         self.tree.write('fastlane/metadata/android/en-GB/short_description.txt',
@@ -173,7 +173,7 @@ class CheckerTest(unittest.TestCase):
                 tree = Tree()
                 self.addCleanup(tree.remove)
                 tree.write(name, value + '\n')
-                self.assertIn(message, ' '.join(tree.check()[0]))
+                self.assertIn(message, ' '.join(tree.check()))
 
     def test_layout(self):
         os.remove(os.path.join(self.tree.root, 'fastlane/metadata/de-DE/name.txt'))
@@ -206,67 +206,39 @@ class CheckerTest(unittest.TestCase):
                         'repeated keyword'):
             self.assertIn(message, errors)
 
-    def test_a_value_set_without_the_site_is_an_error(self):
-        self.tree.write('fastlane/metadata/en-GB/support_url.txt', 'https://elsewhere.example/\n')
-        self.assertError('en-GB/support_url.txt: set, but site/site.json has no site_url')
+    def test_the_urls_are_the_website_s_pages_for_the_language(self):
+        on_the_website = 'must be an https URL on coderoftime.dev'
+        for name, value, message in [
+            ('en-GB/privacy_url.txt', 'http://coderoftime.dev/rurana/privacy/', on_the_website),
+            ('en-GB/support_url.txt', 'https://rurana.example/en/support/', on_the_website),
+            ('de-DE/support_url.txt', 'https://coderoftime.dev.example/de/rurana/support/', on_the_website),
+            ('en-GB/privacy_url.txt', 'https://coderoftime.dev/rurana/privacy/#de',
+             'must be https://coderoftime.dev/rurana/privacy/'),
+            ('de-DE/privacy_url.txt', 'https://coderoftime.dev/rurana/privacy/',
+             'must be https://coderoftime.dev/rurana/privacy/#de'),
+            ('de-DE/marketing_url.txt', 'https://coderoftime.dev/rurana/',
+             'must be https://coderoftime.dev/de/rurana/'),
+            ('en-GB/marketing_url.txt', '', 'empty'),
+        ]:
+            with self.subTest(name=name, value=value):
+                tree = Tree()
+                self.addCleanup(tree.remove)
+                tree.write(f'fastlane/metadata/{name}', value + '\n' if value else '')
+                self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: {message}'])
 
-
-class FillTest(unittest.TestCase):
-    def setUp(self):
-        self.tree = Tree(site=SITE)
-        self.addCleanup(self.tree.remove)
-
-    def read(self, name):
-        with open(os.path.join(self.tree.root, 'fastlane/metadata', name), encoding='utf-8') as f:
-            return f.read()
-
-    def test_fill_writes_the_site_values(self):
-        written, console = check_store_metadata.fill(self.tree.root)
-        self.assertEqual(self.read('de-DE/privacy_url.txt'), 'https://rurana.example/de/privacy/\n')
-        self.assertEqual(self.read('en-GB/support_url.txt'), 'https://rurana.example/en/support/\n')
-        self.assertEqual(self.read('en-GB/marketing_url.txt'), 'https://rurana.example/en/\n')
-        self.assertEqual(self.read('copyright.txt'), '2026 Erika Muster and the Rurana contributors\n')
-        self.assertEqual(self.read('review_information/email_address.txt'), 'hello@rurana.example\n')
-        self.assertEqual(len(written), 8)
-        self.assertEqual(console['Play account deletion URL'], 'https://rurana.example/en/delete-account/')
-        self.assertEqual(console['Play privacy policy'], 'https://rurana.example/en/privacy/')
-        self.assertEqual(self.tree.check(), ([], []))
-
-    def test_strict_passes_once_filled_and_with_screenshots(self):
-        check_store_metadata.fill(self.tree.root)
-        self.tree.screenshots()
-        self.assertEqual(self.tree.check(strict=True), ([], []))
-
-    def test_unfilled_values_are_notes_and_stale_ones_errors(self):
-        errors, notes = self.tree.check()
-        self.assertEqual(errors, [])
-        self.assertIn('fastlane/metadata/en-GB/support_url.txt: differs from site/site.json, run --fill: "" instead '
-                      'of "https://rurana.example/en/support/"', notes)
-        check_store_metadata.fill(self.tree.root)
-        self.tree.write('site/site.json', json.dumps(dict(SITE, site_url='https://new.example')))
-        errors, _ = self.tree.check()
-        self.assertEqual(len(errors), 6, errors)
-
-    def test_fill_without_values_leaves_the_files_empty(self):
-        self.tree.write('site/site.json', json.dumps(EMPTY_SITE))
-        check_store_metadata.fill(self.tree.root)
-        self.assertEqual(self.read('en-GB/privacy_url.txt'), '')
-        self.assertEqual(self.read('copyright.txt'), '')
-
-    def test_bad_site_values_are_refused(self):
-        for key, value in [('site_url', 'http://rurana.example'), ('site_url', 'https://rurana.example/?a=1'),
-                           ('site_url', 'rurana.example'), ('contact_email', 'not an address'),
-                           ('address_lines', 'c/o Service')]:
-            with self.subTest(key=key, value=value):
-                self.tree.write('site/site.json', json.dumps(dict(SITE, **{key: value})))
-                with self.assertRaises(check_store_metadata.MetadataError):
-                    check_store_metadata.fill(self.tree.root)
-        self.tree.write('site/site.json', '[]')
-        with self.assertRaisesRegex(check_store_metadata.MetadataError, 'not an object'):
-            check_store_metadata.fill(self.tree.root)
-        os.remove(os.path.join(self.tree.root, 'site/site.json'))
-        with self.assertRaisesRegex(check_store_metadata.MetadataError, 'site/site.json'):
-            check_store_metadata.fill(self.tree.root)
+    def test_the_contact_and_the_copyright(self):
+        cases = {
+            'review_information/email_address.txt': ('hello@rurana.example', 'must be "coderoftime@gmail.com"'),
+            'copyright.txt': ('2026 Benedikt Lesch and the Rurana contributors', 'must be "2026 Benedikt Lesch"'),
+        }
+        for name, (value, message) in cases.items():
+            with self.subTest(name=name):
+                tree = Tree()
+                self.addCleanup(tree.remove)
+                tree.write(f'fastlane/metadata/{name}', value + '\n')
+                self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: {message}'])
+                tree.write(f'fastlane/metadata/{name}', '')
+                self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: empty'])
 
 
 class ScreenshotTest(unittest.TestCase):
@@ -296,7 +268,7 @@ class ScreenshotTest(unittest.TestCase):
         self.tree.write('fastlane/metadata/android/en-GB/images/tenInchScreenshots/01.png', png(1024, 600))
         self.tree.write('fastlane/metadata/android/en-GB/images/featureGraphic.png', png(1024, 500, colour_type=6))
         self.tree.write('fastlane/metadata/android/en-GB/images/icon.png', png(512, 512, colour_type=6))
-        errors = self.tree.check()[0]
+        errors = self.tree.check()
         self.assertEqual(sorted(errors), sorted([
             f'{shots}/01.png: has an alpha channel',
             f'{shots}/02.png: 1080x2400: sides 320-3840 px, the long side at most twice the short',
@@ -311,7 +283,7 @@ class ScreenshotTest(unittest.TestCase):
         self.tree.write('fastlane/screenshots/en-GB/02.png', png(1080, 1920))
         self.tree.write('fastlane/screenshots/en-GB/03.png', png(2064, 2752, colour_type=6))
         self.tree.write('fastlane/screenshots/fr-FR/01.png', png(1320, 2868))
-        errors = self.tree.check()[0]
+        errors = self.tree.check()
         self.assertEqual(sorted(errors), sorted([
             'fastlane/screenshots/en-GB/02.png: 1080x1920 is none of the App Store sizes used here',
             'fastlane/screenshots/en-GB/03.png: has an alpha channel',
@@ -331,24 +303,19 @@ class MainTest(unittest.TestCase):
         self.addCleanup(tree.remove)
         status, out, _ = self.run_main('--root', tree.root)
         self.assertEqual(status, 0)
-        self.assertIn('store metadata (normal): OK, 8 notes', out)
+        self.assertIn('store metadata (normal): OK', out)
         status, _, err = self.run_main('--root', tree.root, '--strict')
         self.assertEqual(status, 1)
-        self.assertIn('store metadata (strict): 16 errors', err)
-
-    def test_fill(self):
-        tree = Tree(site=SITE)
-        self.addCleanup(tree.remove)
+        self.assertIn('store metadata (strict): 8 errors', err)
         tree.screenshots()
-        status, out, _ = self.run_main('--root', tree.root, '--fill', '--strict')
+        status, out, _ = self.run_main('--root', tree.root, '--strict')
         self.assertEqual(status, 0)
-        self.assertIn('wrote fastlane/metadata/copyright.txt: 2026 Erika Muster and the Rurana contributors', out)
-        self.assertIn('Play account deletion URL (enter by hand): https://rurana.example/en/delete-account/', out)
         self.assertIn('store metadata (strict): OK', out)
-        tree.write('site/site.json', '{')
-        status, _, err = self.run_main('--root', tree.root, '--fill')
+        tree.write('fastlane/metadata/review_information/email_address.txt', 'hello@rurana.example\n')
+        status, _, err = self.run_main('--root', tree.root)
         self.assertEqual(status, 1)
-        self.assertIn('error: site/site.json: ', err)
+        self.assertIn('error: fastlane/metadata/review_information/email_address.txt: must be '
+                      '"coderoftime@gmail.com"', err)
 
 
 if __name__ == '__main__':

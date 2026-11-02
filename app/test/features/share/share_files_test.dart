@@ -1,7 +1,13 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logging/logging.dart';
+import 'package:vikunja_mobile/core/platform/location_removal.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
+import 'package:vikunja_mobile/core/share/share_providers.dart';
 import 'package:vikunja_mobile/features/share/application/share_files.dart';
 
 import '../../helpers/attachment_fakes.dart';
@@ -18,12 +24,14 @@ void main() {
     List<SharedFile> files, {
     bool enabled = true,
     int maxBytes = 100,
+    LocationRemoval? locations,
   }) {
     final controller = ShareFilesController(
       source: source,
       files: files,
       uploadsEnabled: enabled,
       maxBytes: maxBytes,
+      locations: locations,
     );
     addTearDown(controller.dispose);
     return controller;
@@ -103,5 +111,95 @@ void main() {
       everyElement(isA<ShareFileNotTaken>()),
     );
     expect(controller.value.first.name, '.._.._databases_x.db');
+  });
+
+  group('the location', () {
+    SharedFile media(int n, String name, String? mimeType) => SharedFile(
+      uri: 'content://f/$n',
+      displayName: name,
+      size: 10,
+      mimeType: mimeType,
+    );
+
+    test('goes through the removal for every copy before it is ready, '
+        'whatever type the other app gives, so that a photo sent as '
+        'application/octet-stream loses it too', () async {
+      final files = [
+        media(1, 'IMG_1.jpg', 'image/jpeg'),
+        media(2, 'clip', 'video/mp4'),
+        media(3, 'list.pdf', 'application/pdf'),
+        media(4, 'IMG_4.png', null),
+        media(5, 'notes', null),
+        media(6, 'photo.jpg', 'application/octet-stream'),
+      ];
+      final source = FakeShareIntentSource(
+        initial: IncomingShare(files: files),
+      );
+      final removal = RecordingLocationRemoval();
+      final removing = removal.block();
+      final controller = controllerFor(source, files, locations: removal);
+
+      final preparing = controller.prepare();
+      await pumpEventQueue();
+      expect(removal.paths, ['/cache/share-inbox/1']);
+      expect(controller.value.first.status, isA<ShareFilePreparing>());
+      expect(controller.ready, isEmpty);
+
+      removing.complete();
+      await preparing;
+
+      expect(removal.removed, [
+        for (var n = 1; n <= 6; n++) '/cache/share-inbox/$n',
+      ]);
+      expect(controller.ready, hasLength(6));
+    });
+
+    test('stays in a copy it could not be removed from, which is still '
+        'ready; the log names no file', () async {
+      final files = [media(1, 'IMG_1.jpg', 'image/jpeg')];
+      final source = FakeShareIntentSource(
+        initial: IncomingShare(files: files),
+      );
+      final removal = RecordingLocationRemoval()
+        ..failures['/cache/share-inbox/1'] = PlatformException(
+          code: 'remove_location_failed',
+          message: 'GPS in compressed XMP',
+          details: '/cache/share-inbox/1',
+        );
+      final records = <LogRecord>[];
+      final previousLevel = Logger.root.level;
+      Logger.root.level = Level.ALL;
+      final subscription = Logger.root.onRecord.listen(records.add);
+      addTearDown(() async {
+        Logger.root.level = previousLevel;
+        await subscription.cancel();
+      });
+      final controller = controllerFor(source, files, locations: removal);
+
+      await controller.prepare();
+
+      expect(controller.ready.single.$2.path, '/cache/share-inbox/1');
+      final record = records.single;
+      expect(record.level, Level.WARNING);
+      expect(
+        record.message,
+        'A file keeps its location: PlatformException(remove_location_failed, '
+        'GPS in compressed XMP)',
+      );
+      expect(record.error, isNull);
+    });
+
+    testWidgets(
+      'is removed on Android only',
+      variant: TargetPlatformVariant.all(),
+      (tester) async {
+        expect(
+          ProviderContainer.test().read(shareLocationRemovalProvider),
+          defaultTargetPlatform == TargetPlatform.android
+              ? isA<PlatformLocationRemoval>()
+              : isNull,
+        );
+      },
+    );
   });
 }

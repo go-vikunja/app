@@ -184,8 +184,9 @@ private final class ScreenCapture {
   }
 }
 
-/// Takes the location out of a picked photo or video in place, as Android's photo picker does,
-/// without encoding a JPEG, HEIC or video again. A file without a location stays untouched.
+/// Takes the location out of a picked photo or video in place, as `LocationRemoval.kt` does on
+/// Android, without encoding a JPEG, HEIC or video again. A file without a location stays
+/// untouched.
 private enum LocationRemoval {
   enum Failure: Error {
     case unreadable

@@ -12684,13 +12684,13 @@ abstract class AppLocalizations {
   /// **'View the source code'**
   String get aboutSourceCodeOpen;
 
-  /// Section header on the About page over the links to Rurana's own website; only builds that know the website show it.
+  /// Section header on the About page over the links to Rurana's privacy policy and legal notice on the developer's website, coderoftime.dev.
   ///
   /// In en, this message translates to:
   /// **'Privacy and legal notice'**
   String get aboutWebsiteHeading;
 
-  /// Opens Rurana's privacy policy on its website in the browser; the server's own legal links are elsewhere (legalPrivacy).
+  /// Opens Rurana's privacy policy on coderoftime.dev in the browser; the server's own legal links are elsewhere (legalPrivacy).
   ///
   /// In en, this message translates to:
   /// **'Privacy policy'**
@@ -12702,7 +12702,7 @@ abstract class AppLocalizations {
   /// **'How Rurana handles your data'**
   String get aboutPrivacyPolicySubtitle;
 
-  /// Opens Rurana's legal notice (the German Impressum) on its website in the browser; the server's own is legalImprint.
+  /// Opens the legal notice (the German Impressum) on coderoftime.dev in the browser; the server's own is legalImprint.
   ///
   /// In en, this message translates to:
   /// **'Legal notice'**

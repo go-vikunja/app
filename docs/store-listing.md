@@ -7,8 +7,9 @@ The owner's decisions behind it (2026-11-02):
 - The name in both stores is always **Rurana**: never "Vikunja" in the name, the subtitle or the keywords. The descriptions say that Rurana is an unofficial app for Vikunja servers and that it is not affiliated with or endorsed by the Vikunja project.
 - The reviewers use **Vikunja's public demo** (`try.vikunja.io`, account `demo`, password `demo`) through the app's "Try the public demo" ([Q21](open-questions.md#q21-a-server-for-the-store-reviewers)).
 - Play's Data safety form is answered **cautiously**: what the app sends to the user's server counts as collected for app functionality, not shared; encryption in transit is "No", because plain `http` can be allowed ([D65](decisions.md#d65-connection-settings-per-server-address-in-the-apps-transport-a-certificate-pinned-in-the-tls-handshake-or-a-trusted-ca-certificate-a-client-certificate-access-headers-and-unencrypted-connections-only-with-consent-failing-closed)). Apple's label is "Data Not Collected".
-- The website (privacy policy, legal notice, support, deleting your account) runs on the owner's own domain; the owner is a **non-trader** in both stores; the legal notice gives a c/o address; one new public email address serves Play, support, privacy, TestFlight and the written source offer.
-- Defaults the owner did not object to: no exact-alarm and no foreground-service declaration, target audience 18 and over, content rating for all ages (4+) with "users interact", all countries except mainland China, free without ads, purchases or donations, listings in British English and German, "Create account" kept, with a deletion page on the website.
+- Rurana's pages are part of the owner's website, **coderoftime.dev**: the privacy policy, the support page, which also says how to delete an account, and the site's Impressum as the legal notice ([The website](#the-website)). The owner is a **non-trader** in both stores; the Impressum gives a c/o address; `coderoftime@gmail.com` serves Play, support, privacy, TestFlight and the written source offer.
+- **No location** in Play's Data safety: Rurana has no location permission and never reads the device's location, and it removes the location from photos and videos from the photo picker, the camera and, on Android, shares; a location that stays in an attachment is part of content the user chose ([Data safety](#app-content)). [uncertain]
+- Defaults the owner did not object to: no exact-alarm and no foreground-service declaration, target audience 18 and over, content rating for all ages (4+) with "users interact", all countries except mainland China, free without ads, purchases or donations, listings in British English and German, "Create account" kept, with the deletion steps on the support page.
 
 ## The files
 
@@ -27,35 +28,37 @@ The listings live in `fastlane/` in the layout of fastlane's [supply][fastlane-s
 | `…/description.txt` | App Store description | 4000 characters |
 | `…/keywords.txt` | App Store keywords, comma-separated, no spaces | 100 bytes |
 | `…/release_notes.txt` | "What's New"; empty, because a first version has none | 4000 characters |
-| `…/support_url.txt`, `privacy_url.txt`, `marketing_url.txt` | from `site/site.json` | |
-| `fastlane/metadata/copyright.txt` | from `site/site.json` | |
+| `…/support_url.txt`, `privacy_url.txt`, `marketing_url.txt` | Rurana's pages on coderoftime.dev in the listing's language ([The website](#the-website)) | |
+| `fastlane/metadata/copyright.txt` | `2026 Benedikt Lesch` | |
 | `fastlane/metadata/primary_category.txt` | `PRODUCTIVITY` | |
-| `fastlane/metadata/review_information/` | App Review: `notes.txt` (4000 bytes), `demo_user.txt` and `demo_password.txt` (`demo`, public: the demo server shows them itself), `email_address.txt` from `site/site.json` | |
+| `fastlane/metadata/review_information/` | App Review: `notes.txt` (4000 bytes), `demo_user.txt` and `demo_password.txt` (`demo`, public: the demo server shows them itself), `email_address.txt` (`coderoftime@gmail.com`) | |
 | `fastlane/screenshots/<locale>/` | App Store screenshots, from `tool/store_screenshots.sh`; App Store Connect sorts them by size | 10 per size |
 
 The limits are the stores' ([Play listing][play-listing], [Play assets][play-assets], [App information][apple-app-info], [Platform version information][apple-version-info]); `tool/check_store_metadata.py` checks them:
 
 ```sh
-python3 -I tool/check_store_metadata.py            # the texts; values still missing from site/site.json are notes
-python3 -I tool/check_store_metadata.py --fill     # writes the URLs, the copyright and the email from site/site.json first
-python3 -I tool/check_store_metadata.py --strict   # before submitting: every value set and current, the screenshots there
+python3 -I tool/check_store_metadata.py            # the texts, the URLs, the email and the copyright
+python3 -I tool/check_store_metadata.py --strict   # before submitting: the screenshots too
 ```
 
-It checks that both languages have every file and nothing else, the limits (the keywords and the review notes in bytes, as Apple counts them), that the name, subtitle and keywords name no other product or company (Vikunja included), that the short fields make no ranking, price or call-to-action claim and contain no emoji, that neither store's texts name the other platform ([App Review Guideline 2.3.10][apple-guidelines]), that both descriptions carry the "not affiliated" line, the keyword format, the category, and every screenshot's size and alpha channel. `--strict` also fails while `site/site.json` lacks a value, while a filled file differs from it, and while a store's minimum set of screenshots is missing. The checks job runs its tests (`tool/ci/test_check_store_metadata.py`), and one of them checks the committed listing.
+It checks that both languages have every file and nothing else, the limits (the keywords and the review notes in bytes, as Apple counts them), that the name, subtitle and keywords name no other product or company (Vikunja included), that the short fields make no ranking, price or call-to-action claim and contain no emoji, that neither store's texts name the other platform ([App Review Guideline 2.3.10][apple-guidelines]), that both descriptions carry the "not affiliated" line, the keyword format, the category, that the URLs, the email and the copyright are those under [The website](#the-website), and every screenshot's size and alpha channel. `--strict` also fails while a store's minimum set of screenshots is missing. The checks job runs its tests (`tool/ci/test_check_store_metadata.py`), and one of them checks the committed listing.
 
-### Values from `site/site.json`
+### The website
 
-`site/site.json` holds the owner's values; nothing else in the repository repeats them. `--fill` writes:
+Rurana's pages are part of the owner's website, https://coderoftime.dev, which the owner's separate `webpage` repository builds and publishes on GitLab Pages (its README covers the hosting and the legal texts): the privacy policy from `src/content/legal/rurana-privacy.en.md` and `.de.md`, the support pages from `src/content/support/rurana.en.md` and `.de.md`, and the Impressum, whose name, c/o address and phone come from its `src/site.config.ts`. This repository only links them:
 
-| File | Value |
-|---|---|
-| `fastlane/metadata/<locale>/support_url.txt` | `<site_url>/<lang>/support/` (`lang` is `en` or `de`) |
-| `…/privacy_url.txt` | `<site_url>/<lang>/privacy/` |
-| `…/marketing_url.txt` | `<site_url>/<lang>/` |
-| `fastlane/metadata/copyright.txt` | `2026 <legal_name> and the Rurana contributors` (the app's own copyright line) |
-| `fastlane/metadata/review_information/email_address.txt` | `<contact_email>` |
+| What | URL | Used by |
+|---|---|---|
+| Privacy policy | `https://coderoftime.dev/rurana/privacy/`: one page, English, then German at `#de` | `en-GB/privacy_url.txt`, Play, the About page in every language but German |
+| | `https://coderoftime.dev/rurana/privacy/#de` | `de-DE/privacy_url.txt`, the About page in German |
+| Legal notice | `https://coderoftime.dev/impressum/`: German first, English at `#en` | the About page: `#de` in German, `#en` in every other language; no store asks for it |
+| Support | `https://coderoftime.dev/rurana/support/`, `https://coderoftime.dev/de/rurana/support/` | `support_url.txt` (en-GB, de-DE) |
+| Account deletion | `https://coderoftime.dev/rurana/support/#how-do-i-delete-my-account`, the question "How do I delete my account?" (German page: "Wie lösche ich mein Konto?") | Play's deletion URL |
+| Website | `https://coderoftime.dev/rurana/`, `https://coderoftime.dev/de/rurana/` | `marketing_url.txt` (en-GB, de-DE); the English one in Play's contact details |
+| Email | `coderoftime@gmail.com` | `review_information/email_address.txt`, Play's developer email, App Review, TestFlight feedback, the written source offer (`tool/build_android_notices.py`) |
+| Copyright | `2026 Benedikt Lesch` | `copyright.txt` (App Store) |
 
-and prints the values that Play takes in its forms: the privacy policy `<site_url>/en/privacy/`, the account deletion URL `<site_url>/en/delete-account/`, the website `<site_url>/en/` and the email.
+The About page's links are in `app/lib/app/legal.dart`, and `tool/check_store_metadata.py` holds the store values; a change goes into both and this table. The anchor of the deletion question comes from its heading, so the English heading keeps its words. Once the URLs are in the stores, they must not change.
 
 ### Texts
 
@@ -112,8 +115,8 @@ Play shows the developer's legal name, the developer email and the country on th
 |---|---|---|
 | Main store listing | the files above: en-GB default, de-DE added as a translation; icon, feature graphic, phone (and tablet) screenshots | [Listing][play-listing], [assets][play-assets] |
 | Store settings › App category | App, Productivity | a task manager |
-| Store settings › Contact details | email: `contact_email`; website: `<site_url>/en/`; no phone | the email is required and shown; the website is recommended ([listing][play-listing]) |
-| Privacy policy | `<site_url>/en/privacy/` (one URL; the English page links the binding German one) | public, not a PDF, names the app; also linked on the app's About page ([User Data policy][play-user-data]) |
+| Store settings › Contact details | email: `coderoftime@gmail.com`; website: `https://coderoftime.dev/rurana/`; no phone | the email is required and shown; the website is recommended ([listing][play-listing]) |
+| Privacy policy | `https://coderoftime.dev/rurana/privacy/` (one URL; the page holds the English and the German text) | public, not a PDF, names the app; also linked on the app's About page ([User Data policy][play-user-data]) |
 | Countries and pricing | all countries; free; no in-app products | owner decision; a free app cannot become paid later |
 
 ### App content
@@ -147,7 +150,7 @@ Play shows the developer's legal name, the developer email and the country on th
 | Category | Utility, Productivity, Communication or Other |
 | Violence, fear, sexuality, nudity, language, drugs, alcohol, tobacco, gambling, crude humour, hate | No |
 | Users can interact or exchange content | Yes: comments, @mentions, shared projects and attachments among the people on one server |
-| Shares the user's location | No: Rurana has no location feature and never reads the device's location; only a photo or file the user attaches can carry one in its metadata |
+| Shares the user's location | No: Rurana has no location permission, never reads the device's location and has no feature that shares a location; only an attachment the user chose can still carry one in its metadata, in the cases "Why no location" names (see Data safety) |
 | Digital purchases | No |
 | Unrestricted internet or browser | No: links open in the external browser |
 
@@ -159,19 +162,18 @@ Expected: PEGI 3, USK 0, ESRB Everyone, with "Users interact", like Vikunja's ow
 |---|---|---|---|---|---|
 | Personal info › Name | yes | no | yes | App functionality | the display name, changeable in Account settings |
 | Personal info › User IDs | yes | no | no | App functionality | usernames and user ids in every request, share, assignment and mention |
-| Photos and videos › Photos, Videos | yes | no | yes | App functionality | attachments and the avatar |
-| Files and docs | yes | no | yes | App functionality | attachments |
+| Photos and videos › Photos, Videos | yes | no | yes | App functionality | attachments and the avatar; their location is removed where Rurana can (see "Why no location") |
+| Files and docs | yes | no | yes | App functionality | attachments, uploaded unchanged; on Android a photo or video shared into Rurana loses its location where Rurana can remove it, whatever type the other app gave it; a document that embeds a photo, such as a PDF, keeps that photo's (see "Why no location") |
 | Messages › Other in-app messages | yes | no | yes | App functionality | comments and reactions |
 | App activity › Other user-generated content | yes | no | no | App functionality | tasks, projects, descriptions, labels, saved filters, teams |
-| Location › Precise location | yes | no | yes | App functionality | only inside attachments: on Android, files picked as files or shared to Rurana and photos from the camera app are uploaded with their metadata, which can hold where they were taken; the app itself never reads the device's location [uncertain] |
 
 - **Why "collected":** Google counts any transmission off the device as collection, with no exception for a server the user chooses; its closest FAQ, uploads to the user's own cloud drive, needs the app never to access the data, which a task client does. Over-declaring breaks no rule, under-declaring does ([Data safety][play-data-safety]). The privacy policy says that the developer receives none of it.
 - **Why not "shared":** what reaches other people (shared projects, comments, assignments) goes there through the user's own action on the user's server, which Google exempts.
 - **Purpose:** App functionality only; Account management means an account with the developer.
-- **Why location:** Rurana has no location permission, but D74 removes photo locations on iOS only; on Android, camera photos, files and shared files go up as they are, as the privacy policy says. Following the cautious line, the location such metadata can carry is declared; whether Google counts metadata inside a file the user chose is not stated anywhere. Leaving it out would rest on that metadata being part of the photo or file, already declared. [uncertain]
+- **Why no location:** Rurana has no location permission and never reads the device's location. On Android and iOS it removes the location from photos and videos the user picks in the photo picker or takes with the camera, and on Android also from photos and videos shared into Rurana from another app, before they are stored for upload. On Android it writes a JPEG, PNG or WebP again without its GPS tags and otherwise blanks the GPS values, GPS in XMP and a video's location boxes in place, as Android's own MediaProvider does for apps without the media location permission, without encoding or remuxing anything; the zeros left behind are no location, though some apps show a zeroed photo at 0° N, 0° E. Where it cannot, the file is uploaded with its location, as the privacy policy says: on Android for example a location that a video records in a track of its own (action cameras, dashcams), the video in a motion photo and further images after a photo's first, place names such as the city or the country, a location in a camera maker's own metadata or in compressed metadata, and formats Rurana does not read (GIF, WebM, MKV); on iOS photos and videos the system cannot copy that way. A file picked with the file picker ("as a file") is uploaded unchanged and can contain a location if the file has one. What stays is content the user chose to attach, declared under Photos and videos or Files and docs (owner decision of 2026-11-02); whether Google counts location metadata inside user-chosen media as location data is not stated anywhere. [uncertain]
 - **Not declared:** device or other ids (the User-Agent names only the app and the system), app info and performance (no crash reporting or analytics), contacts, calendar, audio, health, financial info, web browsing. **Email address** is not declared either: the app never sends the user's own address (sign-in and email changes happen on the server's web pages); only a typed address of someone else, when looking people up to share with, reaches the server as a search. Declaring "Email address, optional" costs nothing if the owner prefers. [uncertain]
 - **Security practices:** data encrypted in transit: **No** (the user can allow plain `http` for a server). Users can request deletion: **Yes**.
-- **Account creation:** the app lets users create an account, because "Create account" leads to the server's registration ([account deletion][play-account-deletion]): username and password, and OAuth where the server offers a sign-in provider (confirm the labels). Deletion URL: `<site_url>/en/delete-account/` (the website's page, with the German one beside it); in the app: Account tab › Account settings › Delete account, which opens the server's own deletion page. Deleting some data without the account: Yes (tasks, comments, attachments).
+- **Account creation:** the app lets users create an account, because "Create account" leads to the server's registration ([account deletion][play-account-deletion]): username and password, and OAuth where the server offers a sign-in provider (confirm the labels). Deletion URL: `https://coderoftime.dev/rurana/support/#how-do-i-delete-my-account` (the support page's question, also on the German page); in the app: Account tab › Account settings › Delete account, which opens the server's own deletion page. Deleting some data without the account: Yes (tasks, comments, attachments).
 
 ### Testing and production
 
@@ -187,13 +189,13 @@ The seller is the owner's legal name; individual members cannot use another name
 | App information › Category | Productivity; no secondary category | |
 | App information › Content rights | Yes, it accesses third-party content (the user's own server), and the rights to it exist | the content is the user's own [uncertain: the question's exact wording] |
 | App information › Age rating | the answers below, 4+ | |
-| App Privacy › Privacy policy URL | per language: `<site_url>/en/privacy/`, `<site_url>/de/privacy/` | required for iOS ([Manage app privacy][apple-manage-privacy]); also linked on the About page ([Guideline 5.1.1(i)][apple-guidelines]) |
+| App Privacy › Privacy policy URL | per language: `https://coderoftime.dev/rurana/privacy/`, `https://coderoftime.dev/rurana/privacy/#de` | required for iOS ([Manage app privacy][apple-manage-privacy]); also linked on the About page ([Guideline 5.1.1(i)][apple-guidelines]) |
 | App Privacy › Data collection | "No, we do not collect data from this app" | below |
 | Pricing and availability | free; all countries and regions except China mainland | China mainland needs an ICP filing number, unrealistic for a private person ([China mainland][apple-china], from search results) |
 | DSA trader status | "not a trader" | Apple's own example: a hobbyist without intention to commercialise may not be a trader ([DSA][apple-dsa]). A trader's address, phone and email would show on EU product pages. |
 | Export compliance | nothing per build | `ITSAppUsesNonExemptEncryption` is false in `Runner/Info.plist` ([releasing](releasing.md#export-compliance)) |
 | Version › texts, URLs, screenshots, copyright | the files above; What's New stays empty for the first version | [Platform version information][apple-version-info] |
-| Version › App Review information | Sign-in required: `demo` / `demo`; notes: `review_information/notes.txt`; contact: the owner's name, the contact email and a phone number in `+49…` form (not in the repository; customers do not see it) | the credentials must not expire ([complete review][apple-complete-review]) |
+| Version › App Review information | Sign-in required: `demo` / `demo`; notes: `review_information/notes.txt`; contact: the owner's name, `coderoftime@gmail.com` and a phone number in `+49…` form (not in the repository; customers do not see it) | the credentials must not expire ([complete review][apple-complete-review]) |
 
 **App Privacy, "Data Not Collected":** Apple counts data as collected when it leaves the device so that the developer or the developer's third-party partners (analytics, ads, SDKs, vendors) can access it ([App privacy details][apple-privacy-details]). Rurana has no backend, analytics, ads, crash reporting or SDK that sends data; it talks only to the server the user enters, or to `try.vikunja.io`, which the Vikunja project runs; neither is the developer's or a partner's. The privacy manifests say the same ([releasing](releasing.md#privacy-manifests)), and Nextcloud's, Immich's and Swiftfin's labels say "Data Not Collected" too. The answer has to change if the app ever offers a server of the owner's (a preset, a button), gains crash reporting, analytics or a "send logs" feature. Play's answer differs because Google's definition has no "accessible to the developer" part.
 
@@ -216,7 +218,7 @@ Result: 4+.
 
 **App Transport Security:** `NSAllowsArbitraryLoads` stays ([D8](decisions.md#d8-cleartext-policy)). Apple asks for a justification for it ([preventing insecure connections][apple-ats]); there is no field for it, so it is part of the review notes.
 
-**TestFlight test information** ([test information][apple-testflight-info]): beta app description "Rurana is an unofficial app for Vikunja servers: your tasks and projects offline, with reminders, widgets and Kanban boards. Sign in to your own Vikunja server or try the public demo. Please report problems by email."; feedback email: `contact_email`; the Beta App Review gets the same sign-in and notes as App Review.
+**TestFlight test information** ([test information][apple-testflight-info]): beta app description "Rurana is an unofficial app for Vikunja servers: your tasks and projects offline, with reminders, widgets and Kanban boards. Sign in to your own Vikunja server or try the public demo. Please report problems by email."; feedback email: `coderoftime@gmail.com`; the Beta App Review gets the same sign-in and notes as App Review.
 
 ## The reviewers' server
 
@@ -235,14 +237,12 @@ Both stores review with Vikunja's public demo: "Try the public demo", then `demo
 
 In this order:
 
-1. **Domain and DNS:** register the domain, add it to the GitLab project's Pages (Deploy › Pages › Domains), create the DNS records GitLab names (the verification TXT record and the address record) and turn on Let's Encrypt.
-2. **Email:** create the dedicated public address for Play's developer contact, support, privacy questions, TestFlight feedback and the written source offer.
-3. **c/o address:** an address service with authority to accept service (Zustellungsvollmacht) for the legal notice; a P.O. box is not enough.
-4. **`site/site.json`:** fill `site_url` (https, no trailing slash), `contact_email`, `legal_name`, `address_lines` and `country`; run `python3 -I tool/build_site.py --check`, `python3 -I tool/check_store_metadata.py --fill` and `python3 -I tool/build_android_notices.py` (the written offer names `contact_email`, so `app/assets/legal/android.md` changes and the `checks` job fails until it is committed), and commit `site/site.json`, the filled metadata files and `app/assets/legal/android.md` together.
-5. **Play Console forms:** create the app, then everything under [Google Play Console](#google-play-console): store settings and contact details, the main store listing in both languages with the graphics, the privacy policy, App access, Ads, Content rating, Target audience, News, Data safety, Government, Financial features, Health, Advertising ID, and confirm that App content asks for no foreground-service or exact-alarm declaration.
-6. **App Store Connect forms:** everything under [App Store Connect](#app-store-connect): app information, category, content rights, age rating, App Privacy with the privacy policy URLs, pricing and availability, version texts and URLs, App Review information with the phone number, TestFlight test information.
-7. **Trader declarations:** non-trader on Google Play (asked when the developer account is created) and "not a trader" on App Store Connect.
-8. **Screenshots session:** sign in once per device (Android phone and tablet emulators, iPhone 17 Pro Max, iPhone 17 Pro, iPad Pro 13-inch simulators) to the seeded local server; the rest follows [Screenshots](#screenshots). Then `python3 -I tool/check_store_metadata.py --strict` passes.
+1. **c/o address and phone:** for the Impressum, an address service with authority to accept service (Zustellungsvollmacht; a P.O. box is not enough) and a phone number as the second fast contact channel; both go into `src/site.config.ts` of the `webpage` repository, where the address is not final yet.
+2. **Website:** deploy the `webpage` repository to coderoftime.dev (its README, "Hosting") with Rurana's privacy policy and support pages, and check that every URL under [The website](#the-website) loads, with its anchor.
+3. **Play Console forms:** create the app, then everything under [Google Play Console](#google-play-console): store settings and contact details, the main store listing in both languages with the graphics, the privacy policy, App access, Ads, Content rating, Target audience, News, Data safety, Government, Financial features, Health, Advertising ID, and confirm that App content asks for no foreground-service or exact-alarm declaration.
+4. **App Store Connect forms:** everything under [App Store Connect](#app-store-connect): app information, category, content rights, age rating, App Privacy with the privacy policy URLs, pricing and availability, version texts and URLs, App Review information with the phone number, TestFlight test information.
+5. **Trader declarations:** non-trader on Google Play (asked when the developer account is created) and "not a trader" on App Store Connect.
+6. **Screenshots session:** sign in once per device (Android phone and tablet emulators, iPhone 17 Pro Max, iPhone 17 Pro, iPad Pro 13-inch simulators) to the seeded local server; the rest follows [Screenshots](#screenshots). Then `python3 -I tool/check_store_metadata.py --strict` passes.
 
 ## Sources
 
