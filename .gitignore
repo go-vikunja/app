@@ -21,3 +21,6 @@ test_servers/tls/generated/
 
 # Python bytecode from tool/ scripts
 __pycache__/
+
+# tool/build_site.py output, published by the GitLab Pages job
+/public/

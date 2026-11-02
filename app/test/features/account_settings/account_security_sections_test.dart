@@ -354,16 +354,63 @@ void main() {
       );
     });
 
-    testWidgets('not offered where the server does not allow it', (
-      tester,
-    ) async {
+    testWidgets('where the server does not allow it, says whom to ask and '
+        'opens nothing', (tester) async {
       await harness.pump(
         tester,
         connection: securityServer(userDeletion: false),
       );
 
-      await scrollTo(tester, find.text(en.accountSettingsExport));
-      expect(find.text(en.accountSettingsDeleteAccount), findsNothing);
+      await scrollTo(tester, find.text(en.accountSettingsDeleteAccount));
+      expect(find.text(en.accountDeletionNotAllowedRow), findsOneWidget);
+      expect(find.text(en.accountSettingsOpensWeb), findsNothing);
+      await tapRow(tester, en.accountSettingsDeleteAccount);
+
+      expect(find.text(en.accountDeletionNotAllowedTitle), findsOneWidget);
+      expect(find.text(en.accountDeletionNotAllowedBody), findsOneWidget);
+      expect(find.text(en.accountDeletionDialogTitle), findsNothing);
+      await tester.tap(find.text(en.accountDeletionNotAllowedOk));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.accountDeletionNotAllowedTitle), findsNothing);
+      expect(harness.links.opened, isEmpty);
+    });
+
+    testWidgets('where the server does not allow it, says so in German', (
+      tester,
+    ) async {
+      useLocale(tester, const Locale('de'));
+      await harness.pump(
+        tester,
+        connection: securityServer(userDeletion: false),
+      );
+
+      await tapRow(tester, de.accountSettingsDeleteAccount);
+
+      expect(find.text(de.accountDeletionNotAllowedTitle), findsOneWidget);
+      expect(find.text(de.accountDeletionNotAllowedBody), findsOneWidget);
+      await tester.tap(find.text(de.accountDeletionNotAllowedOk));
+      await tester.pumpAndSettle();
+      expect(harness.links.opened, isEmpty);
+    });
+
+    testWidgets('a deletion scheduled before the server stopped allowing it '
+        'is still cancelled on the web', (tester) async {
+      await harness.pump(
+        tester,
+        connection: securityServer(userDeletion: false),
+        state: fakeAccountSettingsState(
+          deletionScheduledAt: harness.now.add(const Duration(days: 3)),
+        ),
+      );
+
+      await scrollTo(tester, find.text(en.accountSettingsDeleteAccount));
+      expect(find.textContaining('Deletion on'), findsOneWidget);
+      await tester.tap(find.text(en.accountSettingsDeleteAccount));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.accountDeletionNotAllowedTitle), findsNothing);
+      expect(harness.links.opened, [webPage('user/settings/deletion')]);
     });
 
     testWidgets('once scheduled, the page and the Account tab say when, and '

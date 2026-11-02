@@ -205,8 +205,8 @@ Widget yourDataSection({
   );
 }
 
-/// Deleting the account, last and in the error colour, where the server
-/// allows it; once scheduled, the row names the date.
+/// Deleting the account, last and in the error colour; once scheduled, the
+/// row names the date.
 List<Widget> deleteAccountSection({
   required AppLocalizations l10n,
   required ThemeData theme,
@@ -217,11 +217,7 @@ List<Widget> deleteAccountSection({
   required VoidCallback onDelete,
 }) {
   final scheduled = profile?.deletionScheduledAt;
-  // v2 ignores the server's switch, so the app must respect it.
-  if (!connection.capabilities.has(Capability.userDeletion) &&
-      scheduled == null) {
-    return const [];
-  }
+  final allowed = scheduled != null || allowsAccountDeletion(connection);
   final error = theme.colorScheme.error;
   return [
     const Divider(height: 1),
@@ -240,9 +236,13 @@ List<Widget> deleteAccountSection({
         final date? => l10n.accountDeletionScheduledRow(
           deletionDate(formatter, date),
         ),
+        null when !allowed => l10n.accountDeletionNotAllowedRow,
         null => l10n.accountSettingsOpensWeb,
       }),
-      trailing: Icon(Icons.open_in_new, color: error),
+      trailing: Icon(
+        allowed ? Icons.open_in_new : Icons.info_outline,
+        color: error,
+      ),
       onTap: onDelete,
     ),
   ];

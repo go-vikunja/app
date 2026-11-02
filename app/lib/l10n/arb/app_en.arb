@@ -4519,6 +4519,22 @@
     "description": "Paragraph of the account deletion dialog, after accountDeletionDialogEmail: the deletion needs the confirmation link the server emails."
   },
   "accountDeletionContinue": "Continue in the browser",
+  "accountDeletionNotAllowedRow": "Not allowed by this server",
+  "@accountDeletionNotAllowedRow": {
+    "description": "Under Delete account on the Account settings page when the server does not let users delete their accounts; tapping the row opens accountDeletionNotAllowedTitle."
+  },
+  "accountDeletionNotAllowedTitle": "Ask whoever runs the server",
+  "@accountDeletionNotAllowedTitle": {
+    "description": "Title of the dialog that Delete account opens when the server does not let users delete their accounts."
+  },
+  "accountDeletionNotAllowedBody": "This server does not allow deleting accounts in the app. Whoever runs it can delete your account for you.",
+  "@accountDeletionNotAllowedBody": {
+    "description": "Text of the dialog under accountDeletionNotAllowedTitle."
+  },
+  "accountDeletionNotAllowedOk": "OK",
+  "@accountDeletionNotAllowedOk": {
+    "description": "Closes the dialog under accountDeletionNotAllowedTitle."
+  },
   "accountSecurityNeedsConnection": "This needs a connection to the server.",
   "accountSecurityUnconfirmed": "The server's answer did not arrive. Refresh to see whether it worked.",
   "accountSecuritySignInAgain": "Sign in again first.",
@@ -7749,6 +7765,10 @@
       }
     }
   },
+  "aboutUnofficial": "Rurana is an unofficial app for Vikunja servers. It is not affiliated with or endorsed by the Vikunja project.",
+  "@aboutUnofficial": {
+    "description": "Under the copyright line at the top of the About page; the same wording as the store descriptions and the website."
+  },
   "aboutLicenceHeading": "Licence",
   "@aboutLicenceHeading": {
     "description": "Section header on the About page."
@@ -7780,6 +7800,26 @@
   "aboutSourceCodeOpen": "View the source code",
   "@aboutSourceCodeOpen": {
     "description": "Opens the repository in the browser; the address is shown below it."
+  },
+  "aboutWebsiteHeading": "Privacy and legal notice",
+  "@aboutWebsiteHeading": {
+    "description": "Section header on the About page over the links to Rurana's own website; only builds that know the website show it."
+  },
+  "aboutPrivacyPolicy": "Privacy policy",
+  "@aboutPrivacyPolicy": {
+    "description": "Opens Rurana's privacy policy on its website in the browser; the server's own legal links are elsewhere (legalPrivacy)."
+  },
+  "aboutPrivacyPolicySubtitle": "How Rurana handles your data",
+  "@aboutPrivacyPolicySubtitle": {
+    "description": "Under aboutPrivacyPolicy on the About page."
+  },
+  "aboutLegalNotice": "Legal notice",
+  "@aboutLegalNotice": {
+    "description": "Opens Rurana's legal notice (the German Impressum) on its website in the browser; the server's own is legalImprint."
+  },
+  "aboutLegalNoticeSubtitle": "Who publishes Rurana",
+  "@aboutLegalNoticeSubtitle": {
+    "description": "Under aboutLegalNotice on the About page."
   },
   "aboutNameAndLogoHeading": "Name and logo",
   "@aboutNameAndLogoHeading": {

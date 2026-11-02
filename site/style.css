@@ -1,0 +1,173 @@
+:root {
+  color-scheme: light dark;
+  --background: #ffffff;
+  --text: #1c1f23;
+  --muted: #4f5761;
+  --link: #1257c2;
+  --rule: #d6dbe1;
+  --mark: #ffeaa0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #121519;
+    --text: #e6e8eb;
+    --muted: #a8b0ba;
+    --link: #8cb8ff;
+    --rule: #2f353d;
+    --mark: #5a4a00;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+  font: 1.0625rem/1.6 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+header.site,
+main,
+footer.site {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+header.site {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem 1rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--rule);
+}
+
+.brand {
+  color: var(--text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+main {
+  padding-bottom: 2rem;
+  overflow-wrap: break-word;
+}
+
+a {
+  color: var(--link);
+  text-underline-offset: 0.15em;
+}
+
+a:focus-visible {
+  outline: 3px solid var(--link);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+h1 {
+  font-size: 1.75rem;
+  line-height: 1.25;
+  margin: 1.5rem 0 0.75rem;
+}
+
+h2 {
+  font-size: 1.3rem;
+  line-height: 1.3;
+  margin: 2rem 0 0.5rem;
+}
+
+h3 {
+  font-size: 1.1rem;
+  line-height: 1.35;
+  margin: 1.5rem 0 0.25rem;
+}
+
+.lead {
+  font-size: 1.15rem;
+}
+
+.meta {
+  color: var(--muted);
+}
+
+address {
+  font-style: normal;
+}
+
+dt {
+  font-weight: 600;
+  margin-top: 0.75rem;
+}
+
+dd {
+  margin: 0;
+}
+
+li + li {
+  margin-top: 0.25rem;
+}
+
+footer.site {
+  border-top: 1px solid var(--rule);
+  padding-top: 1rem;
+  padding-bottom: 2rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+footer.site ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+}
+
+footer.site li + li {
+  margin-top: 0;
+}
+
+[aria-current="page"] {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip {
+  position: absolute;
+  left: -100vw;
+}
+
+.skip:focus {
+  left: 1rem;
+  top: 1rem;
+  padding: 0.5rem;
+  background: var(--background);
+}
+
+.preview {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  background: var(--mark);
+  text-align: center;
+}
+
+mark.placeholder {
+  background: var(--mark);
+  color: var(--text);
+}

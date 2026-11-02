@@ -1,0 +1,32 @@
+Rurana is an unofficial, open-source (AGPL-3.0) client for Vikunja, a task manager that people run on their own servers. The developer runs no backend, and the app has no analytics, ads, tracking or crash reporting: it talks only to the Vikunja server the user enters. For the review, please use Vikunja's public demo server, which the Vikunja project runs.
+
+HOW TO SIGN IN
+1. Open the app and tap "Try the public demo". The app connects to https://try.vikunja.io and shows the server with its message, which names the demo account.
+2. Tap "Continue to sign-in". The server's own sign-in page opens in the system sign-in sheet.
+3. Sign in with the username demo and the password demo (also in the sign-in fields). Two-factor authentication is off.
+4. After the first sync the Overview opens.
+
+The demo account is shared by everyone who tries the demo, and the Vikunja project resets the server at irregular intervals. You may therefore see tasks that other visitors created, or an empty account after a reset. Everything works with an empty account too: "New task" on the Overview creates a task, and "New project" in the Projects tab a project.
+
+WHAT TO TRY
+- Overview and Upcoming; a project's List, Kanban, Table and Gantt views (Projects tab, then a project, then the view switcher).
+- Tap a task for its details; Edit changes its dates, priority, labels and reminders.
+- Offline first: every screen reads from a copy of the account on the device. Turn on Airplane Mode, tick off or edit a task, turn Airplane Mode off; the change is sent by itself.
+- Reminders: give a task a reminder a few minutes ahead. The notification is scheduled on the device; there is no push service.
+- Widgets: add a Rurana widget to the Home Screen.
+- App lock with Face ID: Account tab, App lock and privacy.
+
+ACCOUNTS (5.1.1(v))
+Accounts belong to the user's Vikunja server and are created on its web page: "Create account" on the server screen opens the server's sign-in page, whose own link leads to its registration. To delete an account: Account tab, Account settings, Delete account. The app explains what happens and opens the server's own deletion page, where the user confirms with the password; the server then emails a confirmation link and deletes the account three days after it was confirmed. Where a server does not allow deleting accounts, the row says so and tells the user to ask whoever runs the server. Please do not delete the shared demo account: other visitors use it, and the confirmation link goes to the demo account's email address, which reviewers cannot read, so the deletion cannot be completed there. Delete account shows the flow up to the server's page.
+
+LOGIN SERVICES (4.8)
+The app has no account system of its own and offers no third-party login. Users sign in to their Vikunja server, the third-party service whose content the app shows.
+
+USER CONTENT
+Tasks, comments and attachments are stored on the user's Vikunja server and are visible only to people the user shares a project with on that server, whose operator moderates it. There is no public content and no way to find strangers.
+
+APP TRANSPORT SECURITY
+The app sets NSAllowsArbitraryLoads because users connect to Vikunja servers they run themselves (home servers, NAS, LAN or VPN hosts) whose addresses are only known at run time, and some of them speak only HTTP. Per-domain exceptions are impossible, and NSAllowsLocalNetworking would not cover fully qualified LAN or VPN host names. The app always tries HTTPS first, uses HTTP only after the user confirms an "Unencrypted connection" warning for that server, and marks that server as unencrypted. Certificate validation is never turned off. The demo server uses HTTPS with a public certificate.
+
+PERMISSIONS
+Notifications (reminders, scheduled on the device), camera and photos (attachments, avatar), Face ID (optional app lock), local network (servers on the user's network). None is required to use the app.

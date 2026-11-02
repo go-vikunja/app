@@ -43,6 +43,11 @@ const overlayInventory = <String, OverlayCoverage>{
     '$_sameAlertAsDelete; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
+  'features/account_settings/presentation/account_deletion.dart '
+      'explainAccountDeletionNotAllowed showAdaptiveDialog': Exempt(
+    '$_sameAlertAsDelete; opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
   'features/account_settings/presentation/avatar_page.dart '
       '_AvatarPageState._uploadPhoto MaterialPageRoute': Swept(
     'avatar crop page',

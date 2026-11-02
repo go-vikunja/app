@@ -5005,6 +5005,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountDeletionContinue => 'Continue in the browser';
 
   @override
+  String get accountDeletionNotAllowedRow => 'Not allowed by this server';
+
+  @override
+  String get accountDeletionNotAllowedTitle => 'Ask whoever runs the server';
+
+  @override
+  String get accountDeletionNotAllowedBody =>
+      'This server does not allow deleting accounts in the app. Whoever runs it can delete your account for you.';
+
+  @override
+  String get accountDeletionNotAllowedOk => 'OK';
+
+  @override
   String get accountSecurityNeedsConnection =>
       'This needs a connection to the server.';
 
@@ -8016,6 +8029,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get aboutUnofficial =>
+      'Rurana is an unofficial app for Vikunja servers. It is not affiliated with or endorsed by the Vikunja project.';
+
+  @override
   String get aboutLicenceHeading => 'Licence';
 
   @override
@@ -8042,6 +8059,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutSourceCodeOpen => 'View the source code';
+
+  @override
+  String get aboutWebsiteHeading => 'Privacy and legal notice';
+
+  @override
+  String get aboutPrivacyPolicy => 'Privacy policy';
+
+  @override
+  String get aboutPrivacyPolicySubtitle => 'How Rurana handles your data';
+
+  @override
+  String get aboutLegalNotice => 'Legal notice';
+
+  @override
+  String get aboutLegalNoticeSubtitle => 'Who publishes Rurana';
 
   @override
   String get aboutNameAndLogoHeading => 'Name and logo';

@@ -1,0 +1,41 @@
+Rurana ist eine inoffizielle App für Vikunja, die quelloffene Aufgabenverwaltung, die du auf deinem eigenen Server betreiben kannst. Sie gehört nicht zum Vikunja-Projekt und wird von ihm weder unterstützt noch empfohlen.
+
+Melde dich bei deinem Vikunja-Server an (Version 2.3 oder neuer) – deinem eigenen, dem deiner Organisation oder einem gehosteten – oder probiere die öffentliche Demo aus. Rurana hält eine Kopie deines Kontos auf deinem iPhone oder iPad, damit deine Projekte und Aufgaben auch ohne Verbindung da sind.
+
+Funktioniert offline
+• Jeder Bildschirm liest aus der Kopie auf deinem Gerät.
+• Aufgaben, die du offline erstellst, bearbeitest, als erledigt markierst oder auf einem Board verschiebst, werden gesendet, sobald der Server wieder antwortet.
+• Die App synchronisiert beim Start, solange sie offen ist, und im Hintergrund.
+
+Deine Aufgaben im Überblick
+• Überblick: deine offenen Aufgaben, gruppiert nach „Überfällig“, „Heute“, „Nächste 7 Tage“, „Später“ und „Ohne Fälligkeit“.
+• Anstehend: die Aufgaben eines Zeitraums, Tag für Tag.
+• Projekte mit Unterprojekten, Favoriten, gespeicherten Filtern und archivierten Projekten.
+• Jedes Projekt in den Ansichten „Liste“, „Kanban“, „Tabelle“ und „Gantt“.
+
+Alles zu einer Aufgabe
+• Fälligkeits-, Start- und Enddatum, Priorität, Fortschritt, Farbe, Wiederholung und Erinnerungen.
+• Labels, zugewiesene Personen, Unteraufgaben und verknüpfte Aufgaben.
+• Beschreibungen im Editor des Webs, mit Checklisten, Links und Tabellen, auch offline.
+• Kommentare mit @-Erwähnungen und Reaktionen.
+• Anhänge: Dateien, Fotos oder ein neues Foto mit der Kamera.
+• Quick Add Magic: Tippe eine Aufgabe mit Projekt, Labels, Personen, Priorität und Datum in eine Zeile, so wie das Web sie liest.
+
+Erinnerungen und Widgets
+• Benachrichtigungen zu jeder Erinnerung und zur Fälligkeit, auf dem Gerät geplant: Erledige die Aufgabe direkt dort oder lass dich in zehn Minuten oder einer Stunde erneut erinnern.
+• Widgets für den Home-Bildschirm und den Sperrbildschirm: „Heute“, die nächsten Tage, „Überfällig“, „Favoriten“, ein Projekt, ein Label oder ein gespeicherter Filter; Aufgaben hakst du direkt auf dem Home-Bildschirm ab. Ein zweites Widget erstellt eine neue Aufgabe.
+
+Außerdem
+• Mehrere Konten, auf einem Server oder auf mehreren, und Gastzugang über einen geteilten Link.
+• Labels, Teams und Projekte, die du mit Personen und Teams teilst.
+• Deine Kontoeinstellungen, der Status der Zwei-Faktor-Authentifizierung und die Sitzungen, die bei deinem Konto angemeldet sind.
+• Auf einem iPad im Querformat, auf einem 13-Zoll-iPad auch im Hochformat, öffnet sich eine Aufgabe neben der Liste.
+• Heller und dunkler Modus, Deutsch und britisches Englisch.
+• Für selbst gehostete Server: Vertraue dem eigenen Zertifikat oder CA-Zertifikat deines Servers, nutze ein Client-Zertifikat oder Zugangs-Header und erlaube unverschlüsseltes http erst nach deiner Bestätigung.
+
+Privatsphäre
+• Eine optionale App-Sperre mit Face ID, Touch ID oder deinem Code; Aufgabentitel lassen sich in Benachrichtigungen und Widgets ausblenden.
+• Keine Werbung, keine Analyse, kein Tracking, keine Absturzberichte. Rurana spricht nur mit den Servern, die du hinzufügst. Der Entwickler betreibt keinen Server und erhält keine deiner Daten.
+
+Open Source
+Rurana ist freie Software unter der GNU Affero General Public License, Version 3 oder neuer.

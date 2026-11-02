@@ -3208,6 +3208,36 @@ void main() {
       await tester.pumpAndSettle();
     });
 
+    testWidgets('account deletion on a server that does not allow it, with '
+        'its dialog, at 200 % in dark mode (${locale.languageCode})', (
+      tester,
+    ) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      final auth = AuthFakes();
+      await auth.seedAccount(
+        fullServer270(userDeletion: false),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      final data = richData();
+      data.shared.accountSettings.state = fakeAccountSettingsState();
+      await pumpVikunjaApp(tester, auth: auth, sync: data);
+      await pushOverShell(tester, AppRoutes.accountSettings);
+      await scrollToEnd(tester, settingsList());
+      expect(
+        find.text(l10n.accountDeletionNotAllowedRow, skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+
+      await openSettingsRow(tester, l10n.accountSettingsDeleteAccount);
+      expect(find.text(l10n.accountDeletionNotAllowedTitle), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(dialogAction(l10n.accountDeletionNotAllowedOk));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.accountDeletionNotAllowedTitle), findsNothing);
+    });
+
     testWidgets('account tab with the server notices at 200 % in dark mode '
         '(${locale.languageCode})', (tester) async {
       useWorstCase(tester, locale);

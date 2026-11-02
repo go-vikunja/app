@@ -4,8 +4,8 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/app/legal.dart';
 
-// Skipped in ordinary runs (dart_test.yaml); the release job runs it with
-// `flutter test --run-skipped --tags release` and the build's define.
+// Skipped in ordinary runs (dart_test.yaml); the release jobs run it with
+// `flutter test --run-skipped --tags release` and the build's defines.
 void main() {
   test('a release says where its source code is (AGPL section 6)', () {
     expect(
@@ -16,6 +16,22 @@ void main() {
           'repository>, as tool/ci/release.sh does (D73)',
     );
     final address = Uri.parse(sourceCodeUrl!);
+    expect(
+      address.isScheme('https') && address.host.isNotEmpty,
+      isTrue,
+      reason: '$address is not an https URL',
+    );
+  });
+
+  test('a release links the privacy policy and the legal notice', () {
+    expect(
+      siteUrl,
+      isNotNull,
+      reason:
+          'Pass --dart-define=SITE_URL=<site_url of site/site.json>, as '
+          'tool/ci/release.sh and tool/ci/ios_release.sh do (D76)',
+    );
+    final address = Uri.parse(siteUrl!);
     expect(
       address.isScheme('https') && address.host.isNotEmpty,
       isTrue,

@@ -11,7 +11,7 @@ The name was chosen by the owner on 2026-10-09 from the shortlist in [`explorati
 ## Name: Rurana
 
 - **Home screen:** `Rurana` (6 characters)
-- **Store listing:** `Rurana – client for Vikunja` (de: `Rurana – Client für Vikunja`)
+- **Store listing:** `Rurana` in both stores and languages; never "Vikunja" in the name, subtitle or keywords (owner decision of 2026-11-02, [docs/store-listing.md](../docs/store-listing.md))
 - **Store description:** must say that the app is unofficial and that the Vikunja project does not make or endorse it, and can explain the name: *"Rurana" is Quechua for "what is to be done".* Have a Quechua speaker confirm the wording before publishing.
 
 Why Rurana:
@@ -52,6 +52,7 @@ A white, front-facing llama bust with tall ears on a blue-to-teal gradient, and 
 | `source/logo-llama.jpg` | The logo as supplied, 2000 × 2000 px; the only source |
 | `build-icons.sh` | Regenerates every PNG in `png/` from the source (ImageMagick 7 and python3) |
 | `preview.sh` | Renders `png/preview-sheet.png` from the PNGs (ImageMagick 7 and a TrueType font) |
+| `build-store-graphics.sh` | Builds the two Google Play graphics below from `png/icon-ios-1024.png` and `png/icon-ios-dark-1024.png` (ImageMagick 7) |
 | `png/icon-foreground-1024.png` | Android adaptive icon foreground, RGBA: 108 dp canvas, the head inside the 66 dp safe zone, the neck running past the bottom, the badge on the lower right |
 | `png/icon-background-1024.png` | Android adaptive icon background, RGB: the gradient |
 | `png/icon-monochrome-1024.png` | Android 13+ themed icon layer, white with alpha (only alpha counts), same layout as the foreground |
@@ -61,6 +62,8 @@ A white, front-facing llama bust with tall ears on a blue-to-teal gradient, and 
 | `png/logo-1024.png` | In-app logo: the illustration as a rounded square |
 | `png/notification-960.png` | Status bar icon source: the monochrome head, white on transparent, inside the 22 dp live area |
 | `png/preview-sheet.png` | Preview of every variant |
+| `png/play-icon-512.png` | Google Play icon, 512 × 512, 32-bit PNG with an opaque alpha channel: the iOS icon scaled down, full bleed, because Play rounds the corners and adds the shadow itself |
+| `png/feature-graphic-1024x500.png` | Google Play feature graphic, 1024 × 500, RGB without alpha: the llama and the badge of the iOS dark icon, centred and flush with the bottom, on the icon's gradient; no text, so it serves every language |
 | `explorations-v2/` | Round 2 of the first branding: six concepts, blind tests, the four finalists, the checkbox-ears sources, `names.md` |
 | `explorations-v1/` | Round 1 (rejected) |
 
@@ -69,6 +72,7 @@ A white, front-facing llama bust with tall ears on a blue-to-teal gradient, and 
 ```sh
 ./branding/build-icons.sh
 ./branding/preview.sh
+./branding/build-store-graphics.sh
 ```
 
 ## Using the assets in the app
@@ -102,6 +106,6 @@ for d in mdpi:24 hdpi:36 xhdpi:48 xxhdpi:72 xxxhdpi:96; do n=${d%%:*}; px=${d##*
 
 ## Open points
 
-- **Vikunja maintainers:** [D15](../docs/decisions.md#d15-app-id-devcoderoftimevikunja) says to check the use of the name and logo with them before the store release (step 37).
+- **Vikunja maintainers:** [D15](../docs/decisions.md#d15-app-id-devcoderoftimevikunja) says to check the use of the name and logo with them before the store release (step 37). The store name no longer uses "Vikunja"; the icon still leans on Vikunja's artwork, which Apple's guideline 4.1(c) ties to the other developer's approval.
 - **A vector source** would keep the small sizes and the glyph crisper than a raster derivation; worth commissioning before the store release.
 - **Licence:** no licence is chosen for these assets ([Q3](../docs/open-questions.md#q3-licence-and-distribution) is deferred); the owner confirms the rights to the illustration.

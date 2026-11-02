@@ -165,7 +165,8 @@ class GitLabCiTest(unittest.TestCase):
         cases = [
             ('merge request', dict(CI_PIPELINE_SOURCE='merge_request_event', CI_MERGE_REQUEST_IID='1'),
              FIVE | {'dco'}),
-            ('push to main', dict(CI_PIPELINE_SOURCE='push', CI_COMMIT_BRANCH='main', CI_COMMIT_REF_PROTECTED='true'), FIVE),
+            ('push to main', dict(CI_PIPELINE_SOURCE='push', CI_COMMIT_BRANCH='main', CI_COMMIT_REF_PROTECTED='true'),
+             FIVE | {'pages'}),
             ('feature branch without a merge request', dict(CI_PIPELINE_SOURCE='push', CI_COMMIT_BRANCH='feature'),
              None),
             ('feature branch with an open merge request',
@@ -178,7 +179,10 @@ class GitLabCiTest(unittest.TestCase):
              FIVE | {'release'}),
             ('tag foo', dict(CI_PIPELINE_SOURCE='push', CI_COMMIT_TAG='foo'), None),
             ('schedule on main', dict(CI_PIPELINE_SOURCE='schedule', CI_COMMIT_BRANCH='main'), {'osv'}),
-            ('web on main', dict(CI_PIPELINE_SOURCE='web', CI_COMMIT_BRANCH='main', CI_COMMIT_REF_PROTECTED='true'), FIVE),
+            ('web on main', dict(CI_PIPELINE_SOURCE='web', CI_COMMIT_BRANCH='main', CI_COMMIT_REF_PROTECTED='true'),
+             FIVE | {'pages'}),
+            ('web on another branch',
+             dict(CI_PIPELINE_SOURCE='web', CI_COMMIT_BRANCH='feature', CI_COMMIT_REF_PROTECTED='true'), FIVE),
         ]
         for description, variables, expected in cases:
             with self.subTest(description):
@@ -247,7 +251,7 @@ class GitLabCiTest(unittest.TestCase):
             references.append(image if isinstance(image, str) else image['name'])
             references += [service if isinstance(service, str) else service['name']
                            for service in job.get('services', [])]
-        self.assertEqual(len(references), 8)
+        self.assertEqual(len(references), 9)
         for reference in references:
             with self.subTest(reference):
                 self.assertRegex(reference, r'^[^@\s]+:[^@\s]+@sha256:[0-9a-f]{64}$')
@@ -299,6 +303,20 @@ class GitLabCiTest(unittest.TestCase):
         self.assertEqual(release['artifacts']['access'], 'developer')
         self.assertIn('build/release/app-release.aab', release['artifacts']['paths'])
         self.assertEqual(release['cache'], [])
+
+    def test_the_pages_job(self):
+        pages = self.jobs['pages']
+        self.assertEqual(pages['script'], ['python3 -I tool/build_site.py --out public'])
+        self.assertTrue(os.access(os.path.join(ROOT, 'tool/build_site.py'), os.X_OK))
+        self.assertEqual(pages['artifacts'], {'paths': ['public']})
+        self.assertEqual(pages['cache'], [])
+        self.assertNotIn('allow_failure', pages)
+        self.assertRegex(pages['image'], r'^python:[\d.]+-slim-\w+@sha256:[0-9a-f]{64}$')
+        for variables in (dict(CI_PIPELINE_SOURCE='schedule', CI_COMMIT_BRANCH='main'),
+                          dict(CI_PIPELINE_SOURCE='merge_request_event', CI_MERGE_REQUEST_IID='1'),
+                          dict(CI_PIPELINE_SOURCE='push', CI_COMMIT_TAG='v1.0.0', CI_COMMIT_REF_PROTECTED='true')):
+            with self.subTest(variables):
+                self.assertNotIn('pages', pipeline(self.config, **variables))
 
     def test_interruptible(self):
         self.assertIs(self.config['default']['interruptible'], True)

@@ -14,13 +14,15 @@ import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
 
 /// The app's legal notices (AGPL section 5(d)): its version and copyright,
-/// the licence with the app store permission and no warranty, the licence
-/// page, where the source code is, and the name and logo, which the licence
-/// does not cover. Open signed out and to guests.
+/// that it is unofficial and not the Vikunja project's, the licence with the
+/// app store permission and no warranty, the licence page, where the source
+/// code is, and the name and logo, which the licence does not cover; and
+/// Rurana's privacy policy and legal notice. Open signed out and to guests.
 class AboutPage extends ConsumerWidget {
-  const new({this.sourceCode = sourceCodeUrl, super.key});
+  const new({this.sourceCode = sourceCodeUrl, this.site = siteUrl, super.key});
 
   final String? sourceCode;
+  final String? site;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,6 +32,8 @@ class AboutPage extends ConsumerWidget {
         ? l10n.aboutVersionWithoutBuild(version)
         : l10n.aboutVersion(version, build);
     final sourceCode = this.sourceCode;
+    final site = this.site;
+    final languageCode = Localizations.localeOf(context).languageCode;
 
     return Scaffold(
       appBar: AppBar(title: ScreenTitle(l10n.aboutTitle)),
@@ -41,6 +45,39 @@ class AboutPage extends ConsumerWidget {
             padding: EdgeInsets.fromLTRB(inset, 8, inset, 24),
             children: [
               _Header(version: versionText),
+              if (site != null)
+                SectionCard(
+                  title: l10n.aboutWebsiteHeading,
+                  children: [
+                    for (final (page, icon, title, subtitle) in [
+                      (
+                        SitePage.privacy,
+                        Icons.privacy_tip_outlined,
+                        l10n.aboutPrivacyPolicy,
+                        l10n.aboutPrivacyPolicySubtitle,
+                      ),
+                      (
+                        SitePage.legal,
+                        Icons.contact_mail_outlined,
+                        l10n.aboutLegalNotice,
+                        l10n.aboutLegalNoticeSubtitle,
+                      ),
+                    ])
+                      ListTile(
+                        leading: Icon(icon),
+                        title: Text(title),
+                        subtitle: Text(subtitle),
+                        trailing: const Icon(Icons.open_in_new),
+                        onTap: () => unawaited(
+                          _open(
+                            context,
+                            ref,
+                            sitePageUri(site, page, languageCode: languageCode),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               SectionCard(
                 title: l10n.aboutLicenceHeading,
                 children: [
@@ -75,7 +112,8 @@ class AboutPage extends ConsumerWidget {
                       title: Text(l10n.aboutSourceCodeOpen),
                       subtitle: Text(sourceCode),
                       trailing: const Icon(Icons.open_in_new),
-                      onTap: () => unawaited(_open(context, ref, sourceCode)),
+                      onTap: () =>
+                          unawaited(_open(context, ref, Uri.parse(sourceCode))),
                     ),
                 ],
               ),
@@ -119,12 +157,10 @@ class AboutPage extends ConsumerWidget {
     );
   }
 
-  Future<void> _open(BuildContext context, WidgetRef ref, String url) async {
+  Future<void> _open(BuildContext context, WidgetRef ref, Uri address) async {
     final messenger = ScaffoldMessenger.of(context);
     final failed = context.l10n.legalOpenFailed;
-    final opened = await ref
-        .read(externalLinkOpenerProvider)
-        .open(Uri.parse(url));
+    final opened = await ref.read(externalLinkOpenerProvider).open(address);
     if (!opened) {
       messenger
         ..hideCurrentSnackBar()
@@ -163,6 +199,12 @@ class _Header extends StatelessWidget {
           Text(
             copyrightNotice,
             style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            context.l10n.aboutUnofficial,
+            style: theme.textTheme.bodyMedium?.copyWith(color: muted),
             textAlign: TextAlign.center,
           ),
         ],

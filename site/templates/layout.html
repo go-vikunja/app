@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="{{lang}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="referrer" content="no-referrer">
+{{robots}}<title>{{page_title}}</title>
+<meta name="description" content="{{description}}">
+<link rel="stylesheet" href="{{root}}style.css">
+</head>
+<body>
+{{preview_banner}}<a class="skip" href="#main">{{skip}}</a>
+<header class="site">
+<a class="brand" href="{{home}}">Rurana</a>
+<a href="{{other_page}}" hreflang="{{other_lang}}" lang="{{other_lang}}">{{other_language_name}}</a>
+</header>
+<main id="main">
+{{content}}
+</main>
+<footer class="site">
+<nav aria-label="{{pages}}">
+<ul>
+{{footer_links}}
+</ul>
+</nav>
+<p>{{unofficial}}</p>
+</footer>
+</body>
+</html>

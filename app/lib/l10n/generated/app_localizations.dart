@@ -7860,6 +7860,30 @@ abstract class AppLocalizations {
   /// **'Continue in the browser'**
   String get accountDeletionContinue;
 
+  /// Under Delete account on the Account settings page when the server does not let users delete their accounts; tapping the row opens accountDeletionNotAllowedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Not allowed by this server'**
+  String get accountDeletionNotAllowedRow;
+
+  /// Title of the dialog that Delete account opens when the server does not let users delete their accounts.
+  ///
+  /// In en, this message translates to:
+  /// **'Ask whoever runs the server'**
+  String get accountDeletionNotAllowedTitle;
+
+  /// Text of the dialog under accountDeletionNotAllowedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This server does not allow deleting accounts in the app. Whoever runs it can delete your account for you.'**
+  String get accountDeletionNotAllowedBody;
+
+  /// Closes the dialog under accountDeletionNotAllowedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get accountDeletionNotAllowedOk;
+
   /// No description provided for @accountSecurityNeedsConnection.
   ///
   /// In en, this message translates to:
@@ -12606,6 +12630,12 @@ abstract class AppLocalizations {
   /// **'Version {version}'**
   String aboutVersionWithoutBuild(String version);
 
+  /// Under the copyright line at the top of the About page; the same wording as the store descriptions and the website.
+  ///
+  /// In en, this message translates to:
+  /// **'Rurana is an unofficial app for Vikunja servers. It is not affiliated with or endorsed by the Vikunja project.'**
+  String get aboutUnofficial;
+
   /// Section header on the About page.
   ///
   /// In en, this message translates to:
@@ -12653,6 +12683,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View the source code'**
   String get aboutSourceCodeOpen;
+
+  /// Section header on the About page over the links to Rurana's own website; only builds that know the website show it.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy and legal notice'**
+  String get aboutWebsiteHeading;
+
+  /// Opens Rurana's privacy policy on its website in the browser; the server's own legal links are elsewhere (legalPrivacy).
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get aboutPrivacyPolicy;
+
+  /// Under aboutPrivacyPolicy on the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'How Rurana handles your data'**
+  String get aboutPrivacyPolicySubtitle;
+
+  /// Opens Rurana's legal notice (the German Impressum) on its website in the browser; the server's own is legalImprint.
+  ///
+  /// In en, this message translates to:
+  /// **'Legal notice'**
+  String get aboutLegalNotice;
+
+  /// Under aboutLegalNotice on the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'Who publishes Rurana'**
+  String get aboutLegalNoticeSubtitle;
 
   /// Section header on the About page.
   ///

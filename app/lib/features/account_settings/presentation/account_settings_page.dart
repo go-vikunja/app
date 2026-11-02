@@ -211,6 +211,10 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   Future<void> _deleteAccount(RegisteredAccount entry) async {
     final profile = ref.read(accountSettingsProvider).value?.profile;
     if (profile?.deletionScheduledAt == null) {
+      if (!allowsAccountDeletion(entry.connection)) {
+        await explainAccountDeletionNotAllowed(context);
+        return;
+      }
       final confirmed = await confirmAccountDeletion(
         context,
         isLocalUser: profile?.isLocalUser ?? true,

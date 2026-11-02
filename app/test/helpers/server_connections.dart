@@ -13,6 +13,7 @@ ServerInfo _info({
   LegalLinks legal = const LegalLinks(),
   bool localAuth = true,
   bool registration = true,
+  bool userDeletion = true,
   Uri? frontendUrl,
 }) => ServerInfo(
   version: ServerVersion.tryParse(version),
@@ -35,7 +36,7 @@ ServerInfo _info({
     openIdProviders: openIdProviders,
   ),
   emailRemindersEnabled: true,
-  userDeletionEnabled: true,
+  userDeletionEnabled: userDeletion,
   taskCommentsEnabled: true,
   demoModeEnabled: demoMode,
   webhooksEnabled: true,
@@ -74,6 +75,7 @@ ServerConnection oauthServer230({
 ServerConnection fullServer270({
   String root = 'https://tasks.example.org/vikunja',
   bool demoMode = false,
+  bool userDeletion = true,
 }) => _connect(
   root,
   _info(
@@ -88,6 +90,7 @@ ServerConnection fullServer270({
     backgroundProviders: const ['upload', 'unsplash'],
     publicTeams: true,
     demoMode: demoMode,
+    userDeletion: userDeletion,
     legal: LegalLinks(
       imprintUrl: Uri.parse('https://example.org/imprint'),
       privacyPolicyUrl: Uri.parse('javascript:alert(1)'),

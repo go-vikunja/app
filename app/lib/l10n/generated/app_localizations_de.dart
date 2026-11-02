@@ -5064,6 +5064,20 @@ class AppLocalizationsDe extends AppLocalizations {
   String get accountDeletionContinue => 'Im Browser fortfahren';
 
   @override
+  String get accountDeletionNotAllowedRow => 'Von diesem Server nicht erlaubt';
+
+  @override
+  String get accountDeletionNotAllowedTitle =>
+      'Frage die Person, die den Server betreut';
+
+  @override
+  String get accountDeletionNotAllowedBody =>
+      'Dieser Server erlaubt nicht, Konten in der App zu löschen. Die Person, die ihn betreut, kann dein Konto für dich löschen.';
+
+  @override
+  String get accountDeletionNotAllowedOk => 'OK';
+
+  @override
   String get accountSecurityNeedsConnection =>
       'Dafür ist eine Verbindung zum Server nötig.';
 
@@ -8107,6 +8121,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get aboutUnofficial =>
+      'Rurana ist eine inoffizielle App für Vikunja-Server. Sie gehört nicht zum Vikunja-Projekt und wird von ihm weder unterstützt noch empfohlen.';
+
+  @override
   String get aboutLicenceHeading => 'Lizenz';
 
   @override
@@ -8133,6 +8151,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get aboutSourceCodeOpen => 'Quellcode ansehen';
+
+  @override
+  String get aboutWebsiteHeading => 'Datenschutz und Impressum';
+
+  @override
+  String get aboutPrivacyPolicy => 'Datenschutzerklärung';
+
+  @override
+  String get aboutPrivacyPolicySubtitle => 'Wie Rurana mit deinen Daten umgeht';
+
+  @override
+  String get aboutLegalNotice => 'Impressum';
+
+  @override
+  String get aboutLegalNoticeSubtitle => 'Wer Rurana veröffentlicht';
 
   @override
   String get aboutNameAndLogoHeading => 'Name und Logo';

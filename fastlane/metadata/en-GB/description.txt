@@ -1,0 +1,41 @@
+Rurana is an unofficial app for Vikunja, the open-source task manager you can run on your own server. It is not affiliated with or endorsed by the Vikunja project.
+
+Sign in to your Vikunja server (version 2.3 or newer) — your own, your organisation's or a hosted one — or try the public demo. Rurana keeps a copy of your account on your iPhone or iPad, so your projects and tasks are there even without a connection.
+
+Works offline
+• Every screen reads from the copy on your device.
+• Tasks you create, edit, tick off or move on a board while offline are sent as soon as the server answers again.
+• The app syncs when it starts, while it is open and in the background.
+
+Your tasks at a glance
+• Overview: your open tasks, grouped into Overdue, Today, Next 7 days, Later and No due date.
+• Upcoming: the tasks due in a date range, day by day.
+• Projects with subprojects, favourites, saved filters and archived projects.
+• Each project in its List, Kanban, Table and Gantt views.
+
+Everything about a task
+• Due, start and end dates, priority, progress, colour, repeat and reminders.
+• Labels, assignees, subtasks and related tasks.
+• Descriptions in the web's own editor, with checklists, links and tables, offline too.
+• Comments with @mentions, and reactions.
+• Attachments: files, photos or a new photo from the camera.
+• Quick Add Magic: type a task with its project, labels, people, priority and date in one line, the way the web reads it.
+
+Reminders and widgets
+• Notifications at each reminder and at the due time, planned on the device: mark the task done right there, or be reminded again in ten minutes or an hour.
+• Widgets for the Home Screen and the Lock Screen: Today, the next days, Overdue, Favourites, a project, a label or a saved filter; tick tasks off right on the Home Screen. A second widget adds a new task.
+
+Also
+• Several accounts, on one server or on several, and guest access through a shared link.
+• Labels, teams, and projects shared with people and teams.
+• Your account settings, the two-factor status and the sessions signed in to your account.
+• On an iPad in landscape, and on a 13-inch iPad in portrait too, a task opens beside the list.
+• Light and dark mode, British English and German.
+• For self-hosted setups: trust your server's own certificate or CA certificate, use a client certificate or access headers, and allow plain http only after you confirm it.
+
+Privacy
+• An optional app lock with Face ID, Touch ID or your passcode; task titles can be hidden in notifications and widgets.
+• No ads, no analytics, no tracking, no crash reporting. Rurana talks only to the servers you add. The developer runs no server and receives none of your data.
+
+Open source
+Rurana is free software under the GNU Affero General Public License, version 3 or later.
