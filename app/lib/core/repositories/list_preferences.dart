@@ -8,15 +8,11 @@ abstract interface class ListPreferences {
   Stream<ViewPreferences> watchView(String listKey);
   Future<void> saveView(String listKey, ViewPreferences preferences);
 
-  /// The list view last shown for the project, if any.
-  Future<int?> lastViewOf(int projectId);
-  Future<void> rememberView(int projectId, int viewId);
-
   Stream<UpcomingPreferences> watchUpcoming();
   Future<void> saveUpcoming(UpcomingPreferences preferences);
 
-  /// The Projects tab: whether archived projects show and which projects
-  /// are collapsed.
+  /// The Projects tab: whether archived projects and saved filters show and
+  /// which projects are collapsed.
   Stream<ProjectTreePreferences> watchProjectTree();
   Future<void> saveProjectTree(ProjectTreePreferences preferences);
 
@@ -30,28 +26,41 @@ abstract interface class ListPreferences {
 
 @immutable
 final class ProjectTreePreferences {
-  const new({this.showArchived = false, this.collapsed = const {}});
+  const new({
+    this.showArchived = false,
+    this.showSavedFilters = true,
+    this.collapsed = const {},
+  });
 
   final bool showArchived;
+  final bool showSavedFilters;
 
   /// Ids of the projects whose subprojects are hidden; open by default.
   final Set<int> collapsed;
 
-  ProjectTreePreferences copyWith({bool? showArchived, Set<int>? collapsed}) =>
-      ProjectTreePreferences(
-        showArchived: showArchived ?? this.showArchived,
-        collapsed: collapsed ?? this.collapsed,
-      );
+  ProjectTreePreferences copyWith({
+    bool? showArchived,
+    bool? showSavedFilters,
+    Set<int>? collapsed,
+  }) => ProjectTreePreferences(
+    showArchived: showArchived ?? this.showArchived,
+    showSavedFilters: showSavedFilters ?? this.showSavedFilters,
+    collapsed: collapsed ?? this.collapsed,
+  );
 
   @override
   bool operator ==(Object other) =>
       other is ProjectTreePreferences &&
       other.showArchived == showArchived &&
+      other.showSavedFilters == showSavedFilters &&
       setEquals(other.collapsed, collapsed);
 
   @override
-  int get hashCode =>
-      Object.hash(showArchived, Object.hashAllUnordered(collapsed));
+  int get hashCode => Object.hash(
+    showArchived,
+    showSavedFilters,
+    Object.hashAllUnordered(collapsed),
+  );
 }
 
 /// [viewId] 0 stands for a project without a list view.

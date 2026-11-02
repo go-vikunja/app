@@ -7,11 +7,10 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/avatar_stack.dart';
-import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
@@ -53,7 +52,7 @@ void main() {
     Task task, {
     required Set<TableColumn> columns,
     String? projectTitle,
-    Color? projectColor,
+    String? projectHexColor,
     bool pending = false,
   }) async {
     await tester.pumpWidget(
@@ -73,7 +72,7 @@ void main() {
                   minimumPriority: 2,
                   columns: columns,
                   projectTitle: projectTitle,
-                  projectColor: projectColor,
+                  projectHexColor: projectHexColor,
                   pending: pending,
                   onTap: () {},
                   onDoneChanged: (_) {},
@@ -91,8 +90,8 @@ void main() {
   Color? colorOf(WidgetTester tester, Finder text) =>
       tester.widget<Text>(text).style?.color;
 
-  testWidgets("the web's default columns: number, done, title, labels, "
-      'assignees and the due date, in a neutral tone', (tester) async {
+  testWidgets("the web's default columns without its number: done, title, "
+      'labels, assignees and the due date, in a neutral tone', (tester) async {
     await pumpRow(
       tester,
       fullTask(done: true),
@@ -100,7 +99,7 @@ void main() {
       projectTitle: 'Work',
     );
 
-    expect(find.widgetWithText(IdentifierText, 'WORK-7'), findsOneWidget);
+    expect(find.textContaining('WORK-7'), findsNothing);
     expect(find.byType(DoneBadge), findsOneWidget);
     expect(find.text('Pay the bill'), findsOneWidget);
     expect(find.widgetWithText(LabelPill, 'Bills'), findsOneWidget);
@@ -143,12 +142,23 @@ void main() {
       fullTask(done: true),
       columns: TableColumn.values.toSet(),
       projectTitle: 'Work',
-      projectColor: const Color(0xFF1973FF),
+      projectHexColor: '1973ff',
       pending: true,
     );
 
+    expect(find.textContaining('WORK-7'), findsNothing);
     expect(find.text('Work'), findsOneWidget);
-    expect(find.byType(ColorDot), findsOneWidget);
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.byType(ProjectIcon),
+              matching: find.byType(Icon),
+            ),
+          )
+          .color,
+      const Color(0xFF1973FF),
+    );
     expect(find.text(en.priorityUnset), findsOneWidget);
     expect(find.byType(CommentCount), findsOneWidget);
     expect(find.byKey(const ValueKey('unread-dot')), findsOneWidget);
@@ -257,15 +267,6 @@ void main() {
     expect(find.byType(TableDateItem), findsNothing);
   });
 
-  testWidgets('without the number column the identifier is left out', (
-    tester,
-  ) async {
-    await pumpRow(tester, fullTask(), columns: const {TableColumn.title});
-
-    expect(find.byType(IdentifierText), findsNothing);
-    expect(find.text('Pay the bill'), findsOneWidget);
-  });
-
   testWidgets('the row is one semantics node naming every shown field', (
     tester,
   ) async {
@@ -281,7 +282,7 @@ void main() {
     expect(node.label.split('\n'), [
       'Pay the bill',
       en.taskDoneSemantics,
-      'WORK-7 · Work',
+      'Work',
       en.prioritySemantics(en.priorityHigh),
       en.labelSemantics('Bills'),
       en.taskAssigneesSemantics('Anna'),
@@ -314,7 +315,7 @@ void main() {
       fullTask(done: true, priority: TaskPriority.doNow),
       columns: TableColumn.values.toSet(),
       projectTitle: 'A project with a rather long title',
-      projectColor: const Color(0xFF1973FF),
+      projectHexColor: '1973ff',
     );
 
     expect(tester.takeException(), isNull);

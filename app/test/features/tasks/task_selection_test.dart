@@ -123,10 +123,8 @@ void _expectNoRowSelected(WidgetTester tester) {
 }
 
 Future<void> _openView(WidgetTester tester, int viewId) async {
-  final data = sweepData();
-  data.listPreferences.lastViews[workProjectId] = viewId;
-  await pumpSweepApp(tester, data: data);
-  goTo(tester, AppRoutes.project(workProjectId));
+  await pumpSweepApp(tester);
+  goTo(tester, AppRoutes.project(workProjectId, viewId: viewId));
   await tester.pumpAndSettle();
 }
 

@@ -114,7 +114,9 @@ SyncFakes sweepData({SyncStatus? status}) {
       identifier: 'WORK-4',
       priority: TaskPriority.low,
       relatedTasks: {
-        TaskRelationKind.blocking: [sampleTask(id: 3, title: '')],
+        TaskRelationKind.blocking: [
+          sampleTask(id: 3, title: 'Write the report'),
+        ],
       },
     ),
     sampleTask(id: 5, title: 'Water the roses', projectId: gardenProjectId),

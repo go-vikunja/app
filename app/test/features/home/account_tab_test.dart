@@ -126,16 +126,50 @@ void main() {
   ) async {
     await pumpHome(tester);
 
-    await scrollTo(tester, find.text(en.overviewVikunjaVersion('2.7.0')));
+    await scrollTo(tester, find.text(en.accountAdd));
     double left(Finder finder) => tester.getTopLeft(finder).dx;
     expect(
       left(find.byIcon(Icons.person_add_alt_1_outlined)),
-      left(find.byIcon(Icons.dns_outlined)),
+      left(find.byIcon(Icons.groups_outlined)),
     );
     expect(
       left(find.text(en.accountAdd)),
-      left(find.text(en.overviewVikunjaVersion('2.7.0'))),
+      left(find.text(en.accountTeamsEntry)),
     );
+  });
+
+  testWidgets('the sync follows the accounts; the server comes after the '
+      "device's own settings and the appearance, above Sign out", (
+    tester,
+  ) async {
+    // Tall enough for the whole tab, which the list builds lazily.
+    usePhoneSurface(tester, logicalSize: const Size(400, 3200));
+    await pumpHome(tester);
+
+    double top(Finder finder) => tester.getTopLeft(finder).dy;
+    Finder heading(String title) =>
+        find.widgetWithText(ListSectionHeader, title);
+    final order = [
+      heading(en.accountsHeading),
+      heading(en.accountSyncHeading),
+      find.text(en.accountSyncNow),
+      find.text(en.accountFullResync),
+      heading(en.widgetsHeading),
+      heading(en.notificationsHeading),
+      heading(en.privacyTitle),
+      heading(en.appearanceHeading),
+      heading(en.accountServerHeading),
+      find.text(en.overviewVikunjaVersion('2.7.0')),
+      find.text(en.connectionTitle),
+      find.widgetWithText(OutlinedButton, en.homeSignOut),
+    ];
+    for (final (index, finder) in order.indexed.skip(1)) {
+      expect(
+        top(finder),
+        greaterThan(top(order[index - 1])),
+        reason: '${order[index]} after ${order[index - 1]}',
+      );
+    }
   });
 
   testWidgets("ends with the app's version", (tester) async {

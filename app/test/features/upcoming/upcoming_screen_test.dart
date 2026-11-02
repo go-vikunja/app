@@ -122,11 +122,15 @@ void main() {
     ]);
     expect(
       find.descendant(
-        of: find.ancestor(of: find.text('#3'), matching: find.byType(TaskRow)),
+        of: find.ancestor(
+          of: find.text('Call mum'),
+          matching: find.byType(TaskRow),
+        ),
         matching: find.text('Work'),
       ),
       findsOneWidget,
     );
+    expect(find.textContaining('#3'), findsNothing);
     expect(data.listPreferences.saves, isEmpty);
   });
 

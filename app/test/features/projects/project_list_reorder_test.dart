@@ -67,10 +67,12 @@ void main() {
     );
   });
 
-  Future<void> pumpProject(WidgetTester tester) async {
+  Future<void> pumpProject(WidgetTester tester, {int? viewId}) async {
     usePhoneSurface(tester, logicalSize: const Size(400, 1600));
     await pumpSignedInApp(tester, sync: data, now: now);
-    containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+    containerOf(tester)
+        .read(appRouterProvider)
+        .go(AppRoutes.project(1, viewId: viewId));
     await tester.pumpAndSettle();
   }
 
@@ -386,12 +388,11 @@ void main() {
     testWidgets('a server-only filter view is put in order like the others', (
       tester,
     ) async {
-      data.listPreferences.lastViews[1] = 13;
       data.tasks.setSnapshot(
         'view:13',
         ListSnapshot(positions: const {5: 10, 3: 20, 4: 30}, loadedAt: now),
       );
-      await pumpProject(tester);
+      await pumpProject(tester, viewId: 13);
       expect(rows(tester), [('Delta', 0), ('Bravo', 0), ('Charlie', 0)]);
 
       await dragRow(tester, 'Charlie', aboveRow(tester, 'Bravo'));

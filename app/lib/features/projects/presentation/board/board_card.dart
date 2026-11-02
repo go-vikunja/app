@@ -5,7 +5,6 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/common/presentation/avatar_stack.dart';
-import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/selected_task_highlight.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
@@ -57,13 +56,10 @@ class BoardCard extends ConsumerWidget {
     );
     Widget metaIcon(IconData icon) =>
         Icon(icon, size: 14, color: colors.onSurfaceVariant);
-    final identifier = summary.identifier;
     final taskColor = summary.taskColor;
 
     final meta = [
       if (task.done) const DoneBadge(),
-      if (identifier != null)
-        IdentifierText(identifier, style: const TextStyle(fontSize: 11)),
       if (summary.showsPriority) PriorityFlag(priority: task.priority),
       if (summary.dueText case final due?)
         DueBadge(text: due, tone: summary.dueTone),

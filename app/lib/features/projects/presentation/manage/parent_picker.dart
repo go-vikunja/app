@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/projects/application/project_management.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
@@ -98,11 +98,8 @@ class _ParentList extends StatelessWidget {
                   id: candidate.node.project.id,
                   title: candidate.node.project.displayTitle(l10n),
                   depth: candidate.depth,
-                  leading: Icon(
-                    Icons.folder_outlined,
-                    color:
-                        parseHexColor(candidate.node.project.hexColor) ??
-                        colors.onSurfaceVariant,
+                  leading: ProjectIcon(
+                    hexColor: candidate.node.project.hexColor,
                   ),
                 ),
             ],

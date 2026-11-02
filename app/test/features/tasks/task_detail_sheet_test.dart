@@ -1,5 +1,5 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
-import 'package:flutter/gestures.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -50,9 +50,13 @@ void main() {
     ];
   });
 
-  Future<void> openDetail(WidgetTester tester, String title) async {
+  Future<void> openDetail(
+    WidgetTester tester,
+    String title, {
+    double width = 360,
+  }) async {
     // Tall enough for the whole sheet, which builds its rows lazily.
-    usePhoneSurface(tester, logicalSize: const Size(360, 1800));
+    usePhoneSurface(tester, logicalSize: Size(width, 1800));
     await pumpSignedInApp(tester, sync: data, now: now);
     await tester.tap(find.text(title));
     await tester.pumpAndSettle();
@@ -66,7 +70,10 @@ void main() {
     Finder inSheet(String text) =>
         find.descendant(of: sheet, matching: find.text(text));
     expect(inSheet('Quarterly report'), findsOneWidget);
-    expect(inSheet('WORK-1'), findsOneWidget);
+    expect(
+      find.descendant(of: sheet, matching: find.textContaining('WORK-1')),
+      findsNothing,
+    );
     expect(inSheet('Work'), findsOneWidget);
     expect(inSheet(en.taskDetailStatusOpen), findsOneWidget);
     expect(
@@ -108,7 +115,7 @@ void main() {
 
     final sheet = find.byType(TaskDetailSheet);
     expect(
-      find.descendant(of: sheet, matching: find.text('WORK-2')),
+      find.descendant(of: sheet, matching: find.text(en.taskDetailStatusOpen)),
       findsOneWidget,
     );
     expect(
@@ -184,7 +191,96 @@ void main() {
     expect(find.byType(TaskDetailSheet), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
-  testWidgets('offers Edit and hides the identifier of a task not yet sent', (
+  testWidgets("the project's chip leads the header, beside the actions; the "
+      'state and the pending note follow the title', (tester) async {
+    data.tasks.pendingTaskIds = {1};
+    // Room for the chip beside five actions.
+    await openDetail(tester, 'Quarterly report', width: 480);
+
+    final sheet = find.byType(TaskDetailSheet);
+    Finder inSheet(Finder finder) =>
+        find.descendant(of: sheet, matching: finder);
+    final chip = inSheet(find.widgetWithText(ActionChip, 'Work'));
+    final title = inSheet(find.text('Quarterly report'));
+    expect(chip, findsOneWidget);
+    expect(
+      tester.getCenter(chip).dy,
+      closeTo(tester.getCenter(inSheet(find.byTooltip(en.taskEdit))).dy, 1),
+    );
+    expect(
+      tester.getCenter(chip).dx,
+      lessThan(tester.getTopLeft(inSheet(find.byTooltip(en.taskEdit))).dx),
+    );
+    expect(
+      tester.getBottomLeft(chip).dy,
+      lessThan(tester.getTopLeft(title).dy),
+    );
+    for (final text in [en.taskDetailStatusOpen, en.taskNotYetSynced]) {
+      expect(
+        tester.getTopLeft(inSheet(find.text(text))).dy,
+        greaterThanOrEqualTo(tester.getBottomLeft(title).dy),
+        reason: text,
+      );
+    }
+  });
+
+  group('a project path too long for the header', () {
+    // On the test font's square glyphs a phone has room for this one below
+    // the actions, but not beside them.
+    Future<void> expectOwnLineUncut(WidgetTester tester, String title) async {
+      data.projects.all = [
+        sampleProject(id: 2, title: 'Personal'),
+        sampleProject(id: 3, title: title, parent: 2),
+      ];
+      data.tasks.all = [
+        sampleTask(id: 3, title: 'Clean the kitchen', projectId: 3),
+      ];
+      await openDetail(tester, 'Clean the kitchen');
+
+      final sheet = find.byType(TaskDetailSheet);
+      Finder inSheet(Finder finder) =>
+          find.descendant(of: sheet, matching: finder);
+      final chip = inSheet(find.widgetWithText(ActionChip, title));
+      final label = tester.renderObject<RenderParagraph>(
+        find.descendant(
+          of: find.descendant(of: chip, matching: find.text(title)),
+          matching: find.byType(RichText),
+        ),
+      );
+      expect(label.debugHasOverflowShader, isFalse);
+      expect(label.didExceedMaxLines, isFalse);
+      final edit = tester.getRect(inSheet(find.byTooltip(en.taskEdit)));
+      final close = tester.getRect(inSheet(find.byTooltip(en.taskDetailClose)));
+      expect(edit.center.dy, closeTo(close.center.dy, 1));
+      final parent = inSheet(find.text('Personal'));
+      final taskTitle = inSheet(find.text('Clean the kitchen'));
+      for (final part in [parent, chip]) {
+        expect(tester.getTopLeft(part).dy, greaterThanOrEqualTo(edit.bottom));
+        expect(
+          tester.getBottomLeft(part).dy,
+          lessThanOrEqualTo(tester.getTopLeft(taskTitle).dy),
+        );
+      }
+      expect(
+        tester.getTopLeft(parent).dx,
+        closeTo(tester.getTopLeft(taskTitle).dx, 4),
+      );
+      expect(tester.takeException(), isNull);
+    }
+
+    testWidgets('goes on a line of its own below the actions, uncut', (
+      tester,
+    ) async {
+      await expectOwnLineUncut(tester, 'Household chores');
+    });
+
+    testWidgets('at 200 % text too', (tester) async {
+      useAccessibilityExtremes(tester);
+      await expectOwnLineUncut(tester, 'Chores');
+    });
+  });
+
+  testWidgets('offers Edit and the project of a task not yet sent', (
     tester,
   ) async {
     await data.tasks.createTask(
@@ -193,19 +289,12 @@ void main() {
     await openDetail(tester, 'Just added');
 
     final sheet = find.byType(TaskDetailSheet);
-    expect(
-      find.descendant(of: sheet, matching: find.byTooltip(en.taskEdit)),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: sheet, matching: find.text('Work')),
-      findsOneWidget,
-    );
-    expect(find.descendant(of: sheet, matching: find.text('#0')), findsNothing);
-    expect(
-      find.descendant(of: sheet, matching: find.text('WORK-0')),
-      findsNothing,
-    );
+    Finder inSheet(Finder finder) =>
+        find.descendant(of: sheet, matching: finder);
+    expect(inSheet(find.byTooltip(en.taskEdit)), findsOneWidget);
+    expect(inSheet(find.widgetWithText(ActionChip, 'Work')), findsOneWidget);
+    expect(inSheet(find.textContaining('#0')), findsNothing);
+    expect(inSheet(find.textContaining('WORK-0')), findsNothing);
   });
 
   testWidgets('follows the task to the id the server assigns', (tester) async {
@@ -214,15 +303,18 @@ void main() {
     );
     await openDetail(tester, 'Just added');
 
-    // The fake keeps index 0; the identifier line appears once the id is
-    // the server's.
     data.tasks.remapTask(localId, 77);
+    await tester.pumpAndSettle();
+    data.tasks.all = [
+      for (final task in data.tasks.all)
+        if (task.id == 77) task.copyWith(title: 'Renamed later') else task,
+    ];
     await tester.pumpAndSettle();
 
     expect(
       find.descendant(
         of: find.byType(TaskDetailSheet),
-        matching: find.text('WORK-0'),
+        matching: find.text('Renamed later'),
       ),
       findsOneWidget,
     );

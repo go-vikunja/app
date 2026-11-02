@@ -1,11 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/app/theme/app_theme.dart';
 
 /// One related task in a section card: its title, struck through when
-/// done, and identifier; a tap opens it and the trailing button removes the
-/// relation. [leading] is a subtask's done control.
+/// done; a tap opens it and the trailing button removes the relation.
+/// [leading] is a subtask's done control.
 class RelationRow extends StatelessWidget {
   const new({
     required this.task,
@@ -30,11 +29,6 @@ class RelationRow extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final projectTitle = this.projectTitle;
-    // A task not yet sent has no identifier until the server assigns one.
-    final identifier = task.id > 0 ? task.displayIdentifier : null;
-    final muted = theme.textTheme.bodySmall?.copyWith(
-      color: colors.onSurfaceVariant,
-    );
     return ListTile(
       contentPadding: EdgeInsetsDirectional.only(
         // The done control brings its own padding, as does the button.
@@ -52,19 +46,13 @@ class RelationRow extends StatelessWidget {
               )
             : null,
       ),
-      subtitle: identifier == null && projectTitle == null
+      subtitle: projectTitle == null
           ? null
-          : Text.rich(
-              TextSpan(
-                children: [
-                  if (identifier != null)
-                    TextSpan(text: identifier, style: AppTheme.monospace),
-                  if (identifier != null && projectTitle != null)
-                    const TextSpan(text: ' · '),
-                  if (projectTitle != null) TextSpan(text: projectTitle),
-                ],
+          : Text(
+              projectTitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
               ),
-              style: muted,
             ),
       onTap: onOpen,
       trailing: onRemove == null

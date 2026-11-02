@@ -69,6 +69,7 @@ final class LocalQuickAddService implements QuickAddService {
     String line, {
     int? fallbackProjectId,
     DateTime? fallbackDueDate,
+    int? fallbackPriority,
   }) {
     final settings = _snapshot.settings;
     final mode = settings.quickAddMagicMode;
@@ -89,6 +90,7 @@ final class LocalQuickAddService implements QuickAddService {
         title: magicOnly ? line.trim() : parsed.text.trim(),
         project: fallback,
         dueDate: dueDate,
+        priority: fallbackPriority,
         reminders: dueDate == null ? const [] : _defaultReminders,
         magicOnly: magicOnly,
       );
@@ -143,7 +145,7 @@ final class LocalQuickAddService implements QuickAddService {
       unresolvedAssignees: unresolved,
       dueDate: dueDate,
       repeat: parsed.repeats,
-      priority: parsed.priority,
+      priority: parsed.priority ?? fallbackPriority,
       reminders: dueDate == null ? const [] : _defaultReminders,
     );
   }
@@ -161,6 +163,8 @@ final class LocalQuickAddService implements QuickAddService {
     String text, {
     int? fallbackProjectId,
     DateTime? fallbackDueDate,
+    int? fallbackPriority,
+    QuickAddExtras extras = const QuickAddExtras(),
   }) async {
     final lines = quickAddTaskLines(
       text,
@@ -173,6 +177,7 @@ final class LocalQuickAddService implements QuickAddService {
           line.text,
           fallbackProjectId: _inheritedProjectId(line) ?? fallbackProjectId,
           fallbackDueDate: fallbackDueDate,
+          fallbackPriority: fallbackPriority,
         ),
     ];
     if (plans.any((plan) => plan.project == null)) {
@@ -188,6 +193,7 @@ final class LocalQuickAddService implements QuickAddService {
       for (final plan in plans) await _resolveAssignees(plan, submission),
     ];
     await submission.createLabels([
+      ...extras.newLabels,
       for (final plan in plans)
         if (!plan.magicOnly) ...plan.newLabels,
     ]);
@@ -219,11 +225,19 @@ final class LocalQuickAddService implements QuickAddService {
           NewTask(
             projectId: plan.project!.id,
             title: title,
+            description: extras.description,
             dueDate: plan.dueDate,
             priority: TaskPriority.fromValue(plan.priority ?? 0),
-            repeatAfter: repeat?.repeatAfter ?? Duration.zero,
-            repeatMode: repeat?.mode ?? RepeatMode.afterAmount,
-            reminders: plan.reminders,
+            repeatAfter: repeat?.repeatAfter ?? extras.repeatAfter,
+            repeatMode: repeat?.mode ?? extras.repeatMode,
+            reminders: [
+              ...extras.reminders,
+              for (final reminder in plan.reminders)
+                if (!extras.reminders.any(
+                  (other) => sameReminder(other, reminder),
+                ))
+                  reminder,
+            ],
           ),
         );
       } on Object catch (error, stackTrace) {
@@ -231,6 +245,9 @@ final class LocalQuickAddService implements QuickAddService {
       }
       ids.add(id);
       final labelIds = {
+        for (final label in extras.labels) label.id,
+        for (final title in extras.newLabels)
+          ?submission.createdLabel(title)?.id,
         for (final label in plan.labels) label.id,
         for (final newLabel in plan.newLabels)
           ?submission.createdLabel(newLabel)?.id,

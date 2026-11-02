@@ -29,7 +29,6 @@ import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
-import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
@@ -43,7 +42,6 @@ import 'package:vikunja_mobile/features/tasks/application/account_context_provid
 import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
 import 'package:vikunja_mobile/features/tasks/application/reaction_toggle.dart';
 import 'package:vikunja_mobile/features/tasks/application/relation_search.dart';
-import 'package:vikunja_mobile/features/tasks/application/task_identifier.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
     show taskByIdProvider;
 import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
@@ -55,6 +53,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/details/comment_compo
 import 'package:vikunja_mobile/features/tasks/presentation/details/comment_messages.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_section.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/detail_header_layout.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/details_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/project_breadcrumb.dart';
@@ -1314,117 +1313,115 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   start: back == null ? 16 : 4,
                   end: 4,
                 ),
-                child: Row(
-                  children: [
-                    if (back != null)
-                      IconButton(
-                        onPressed: back,
-                        tooltip: l10n.taskDetailPaneBack(pane?.backTitle ?? ''),
-                        // The tooltip names the task; the icon's own "Back"
-                        // would be read before it.
-                        icon: const ExcludeSemantics(child: BackButtonIcon()),
-                      ),
-                    if (color != null) ...[
-                      ColorDot(color: color),
-                      const SizedBox(width: 8),
-                    ],
-                    // A task not yet sent has no identifier until the
-                    // server assigns one. Beside five actions in large
-                    // text it shrinks rather than break in two.
-                    Expanded(
-                      child: task.id > 0
-                          ? FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: AlignmentDirectional.centerStart,
-                              child: IdentifierText(
-                                taskIdentifierIn(task, project),
-                                style: const TextStyle(fontSize: 16),
-                              ),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                    if (!readOnly)
-                      IconButton(
-                        onPressed: repository == null
-                            ? null
-                            : () => _edit(task),
-                        tooltip: l10n.taskEdit,
-                        icon: const Icon(Icons.edit_outlined),
-                      ),
-                    if (!guest) ...[
-                      ValueListenableBuilder(
-                        valueListenable: _follow,
-                        builder: (context, state, _) => FollowButton(
-                          state: task.id < 0 ? const FollowUnknown() : state,
-                          onPressed: () =>
-                              unawaited(_toggleFollow(task, projectTitles)),
+                child: DetailHeaderLayout(
+                  // Below the back arrow, in line with the title.
+                  breadcrumbIndent: back == null ? 0 : 12,
+                  back: back == null
+                      ? null
+                      : IconButton(
+                          onPressed: back,
+                          tooltip: l10n.taskDetailPaneBack(
+                            pane?.backTitle ?? '',
+                          ),
+                          // The tooltip names the task; the icon's own
+                          // "Back" would be read before it.
+                          icon: const ExcludeSemantics(child: BackButtonIcon()),
                         ),
-                      ),
-                      FavouriteButton(
-                        isFavorite: task.isFavorite,
-                        onChanged: changer == null
-                            ? null
-                            : (favorite) => unawaited(
-                                writeTaskFavorite(
-                                  changer,
-                                  task,
-                                  favorite: favorite,
-                                ),
-                              ),
-                      ),
-                    ],
-                    if (!readOnly)
-                      PopupMenuButton<_SheetAction>(
-                        // Beside the screen's own More in the pane.
-                        tooltip: pane == null
-                            ? l10n.moreActions
-                            : l10n.taskDetailPaneMore(task.title),
-                        enabled: repository != null,
-                        onSelected: (action) => switch (action) {
-                          _SheetAction.duplicate => unawaited(
-                            _duplicate(repository!, task),
+                  breadcrumb: project == null
+                      ? null
+                      : ProjectBreadcrumb(
+                          path: projectPath(project, projects),
+                          onOpen: (project) => unawaited(_openProject(project)),
+                        ),
+                  actions: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (!readOnly)
+                        IconButton(
+                          onPressed: repository == null
+                              ? null
+                              : () => _edit(task),
+                          tooltip: l10n.taskEdit,
+                          icon: const Icon(Icons.edit_outlined),
+                        ),
+                      if (!guest) ...[
+                        ValueListenableBuilder(
+                          valueListenable: _follow,
+                          builder: (context, state, _) => FollowButton(
+                            state: task.id < 0 ? const FollowUnknown() : state,
+                            onPressed: () =>
+                                unawaited(_toggleFollow(task, projectTitles)),
                           ),
-                          _SheetAction.delete => unawaited(
-                            _delete(repository!, task),
-                          ),
-                        },
-                        itemBuilder: (context) => [
-                          PopupMenuItem(
-                            value: _SheetAction.duplicate,
-                            enabled: !_duplicating,
-                            child: Row(
-                              children: [
-                                const Icon(Icons.content_copy_outlined),
-                                const SizedBox(width: 12),
-                                Flexible(child: Text(l10n.taskDuplicate)),
-                              ],
-                            ),
-                          ),
-                          const PopupMenuDivider(),
-                          PopupMenuItem(
-                            value: _SheetAction.delete,
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete_outline, color: colors.error),
-                                const SizedBox(width: 12),
-                                Flexible(
-                                  child: Text(
-                                    l10n.taskDelete,
-                                    style: TextStyle(color: colors.error),
+                        ),
+                        FavouriteButton(
+                          isFavorite: task.isFavorite,
+                          onChanged: changer == null
+                              ? null
+                              : (favorite) => unawaited(
+                                  writeTaskFavorite(
+                                    changer,
+                                    task,
+                                    favorite: favorite,
                                   ),
                                 ),
-                              ],
+                        ),
+                      ],
+                      if (!readOnly)
+                        PopupMenuButton<_SheetAction>(
+                          // Beside the screen's own More in the pane.
+                          tooltip: pane == null
+                              ? l10n.moreActions
+                              : l10n.taskDetailPaneMore(task.title),
+                          enabled: repository != null,
+                          onSelected: (action) => switch (action) {
+                            _SheetAction.duplicate => unawaited(
+                              _duplicate(repository!, task),
                             ),
-                          ),
-                        ],
+                            _SheetAction.delete => unawaited(
+                              _delete(repository!, task),
+                            ),
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: _SheetAction.duplicate,
+                              enabled: !_duplicating,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.content_copy_outlined),
+                                  const SizedBox(width: 12),
+                                  Flexible(child: Text(l10n.taskDuplicate)),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            PopupMenuItem(
+                              value: _SheetAction.delete,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.delete_outline,
+                                    color: colors.error,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Flexible(
+                                    child: Text(
+                                      l10n.taskDelete,
+                                      style: TextStyle(color: colors.error),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      IconButton(
+                        onPressed:
+                            pane?.close ?? () => Navigator.of(context).pop(),
+                        tooltip: l10n.taskDetailClose,
+                        icon: const Icon(Icons.close),
                       ),
-                    IconButton(
-                      onPressed:
-                          pane?.close ?? () => Navigator.of(context).pop(),
-                      tooltip: l10n.taskDetailClose,
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               );
               final progress = SizedBox(
@@ -1442,27 +1439,6 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
                   if (pane == null) ...[header, progress],
-                  _Inset(
-                    child: Wrap(
-                      spacing: 8,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        if (project != null)
-                          ProjectBreadcrumb(
-                            path: projectPath(project, projects),
-                            onOpen: (project) =>
-                                unawaited(_openProject(project)),
-                          ),
-                        Text(
-                          task.done ? l10n.taskDone : l10n.taskDetailStatusOpen,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant,
-                          ),
-                        ),
-                        if (pending) const _PendingNote(),
-                      ],
-                    ),
-                  ),
                   ValueListenableBuilder(
                     valueListenable: _follow,
                     builder: (context, state, _) => switch (state) {
@@ -1480,7 +1456,23 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   _Inset(
                     child: _Title(
                       task: task,
+                      color: color,
                       onEdit: changer == null ? null : () => _edit(task),
+                    ),
+                  ),
+                  _Inset(
+                    child: Wrap(
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          task.done ? l10n.taskDone : l10n.taskDetailStatusOpen,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
+                        if (pending) const _PendingNote(),
+                      ],
                     ),
                   ),
                   if (details != null &&
@@ -1707,12 +1699,13 @@ class _Inset extends StatelessWidget {
   );
 }
 
-/// The title, which opens the edit page; one node with the heading, its
-/// tap and the hint.
+/// The title after the task's [color], which opens the edit page; one
+/// node with the heading, its tap and the hint.
 class _Title extends StatelessWidget {
-  const new({required this.task, required this.onEdit});
+  const new({required this.task, required this.color, required this.onEdit});
 
   final Task task;
+  final Color? color;
   final VoidCallback? onEdit;
 
   @override
@@ -1720,6 +1713,15 @@ class _Title extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final style = theme.textTheme.headlineSmall;
+    final title = Text(
+      task.title,
+      style: task.done
+          ? style?.copyWith(
+              decoration: TextDecoration.lineThrough,
+              color: theme.colorScheme.onSurfaceVariant,
+            )
+          : style,
+    );
     return MergeSemantics(
       child: Semantics(
         header: true,
@@ -1733,15 +1735,28 @@ class _Title extends StatelessWidget {
             constraints: const BoxConstraints(minHeight: 48),
             alignment: AlignmentDirectional.centerStart,
             padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Text(
-              task.title,
-              style: task.done
-                  ? style?.copyWith(
-                      decoration: TextDecoration.lineThrough,
-                      color: theme.colorScheme.onSurfaceVariant,
-                    )
-                  : style,
-            ),
+            child: switch (color) {
+              null => title,
+              final color => Row(
+                crossAxisAlignment: CrossAxisAlignment.baseline,
+                textBaseline: TextBaseline.alphabetic,
+                children: [
+                  // One line of the title's height, so the dot sits on its
+                  // first.
+                  ExcludeSemantics(
+                    child: Text.rich(
+                      WidgetSpan(
+                        alignment: PlaceholderAlignment.middle,
+                        child: ColorDot(color: color),
+                      ),
+                      style: style,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: title),
+                ],
+              ),
+            },
           ),
         ),
       ),

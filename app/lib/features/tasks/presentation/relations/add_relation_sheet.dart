@@ -153,10 +153,7 @@ class _CandidateRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
-    final details = [
-      if (task.id > 0) task.displayIdentifier,
-      ?projectTitle,
-    ].join(' · ');
+    final projectTitle = this.projectTitle;
     return ListTile(
       leading: Icon(
         task.done ? Icons.check_circle : Icons.radio_button_unchecked,
@@ -172,7 +169,7 @@ class _CandidateRow extends StatelessWidget {
               )
             : null,
       ),
-      subtitle: details.isEmpty ? null : Text(details),
+      subtitle: projectTitle == null ? null : Text(projectTitle),
       onTap: onTap,
     );
   }

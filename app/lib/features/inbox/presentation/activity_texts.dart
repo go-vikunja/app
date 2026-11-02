@@ -4,11 +4,11 @@ import 'package:vikunja_mobile/core/activity/activity_item.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 
 /// The web's notification texts with the doer's name in front, e.g.
-/// "Anna commented on #12"; a name the payload lacks falls back like the
-/// OS notification's text does.
+/// "Anna commented on Pay rent"; a name the payload lacks falls back like
+/// the OS notification's text does.
 String describeInboxRow(AppLocalizations l10n, ActivityItem item) {
   final doer = item.doerName ?? l10n.inboxSomeone;
-  final task = item.taskIdentifier ?? item.taskTitle ?? l10n.inboxATask;
+  final task = item.taskTitle ?? l10n.inboxATask;
   final team = item.teamName ?? l10n.inboxUnnamed;
   return switch (item.kind) {
     ActivityKind.comment => l10n.inboxCommented(doer, task),

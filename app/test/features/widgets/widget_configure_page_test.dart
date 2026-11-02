@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/platform/app_backgrounding.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/widgets/presentation/widget_configure_page.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -141,14 +142,28 @@ void main() {
     );
   });
 
-  testWidgets('a project comes from the tree without archived ones', (
-    tester,
-  ) async {
+  testWidgets('a project comes from the tree without archived ones, each '
+      'with its coloured folder', (tester) async {
+    harness.data.projects.all = [
+      sampleProject(id: 1, title: 'Work', position: 1, hexColor: '1973ff'),
+      ...harness.data.projects.all.skip(1),
+    ];
     await harness.pump(tester, location: AppRoutes.widgetConfigure(3));
 
     await tapInPage(tester, en.widgetKindProject);
     expect(find.text('Old stuff'), findsNothing);
     expect(find.text('Work'), findsOneWidget);
+    expect(
+      tester
+          .widgetList<ProjectIcon>(
+            find.descendant(
+              of: find.byType(BottomSheet),
+              matching: find.byType(ProjectIcon),
+            ),
+          )
+          .map((icon) => icon.hexColor),
+      ['1973ff', '', ''],
+    );
     await pick(tester, 'Garage Sale');
 
     expect(
@@ -166,6 +181,8 @@ void main() {
     await harness.pump(tester, location: AppRoutes.widgetConfigure(3));
 
     await tapInPage(tester, en.widgetKindLabel);
+    expect(find.byIcon(Icons.circle), findsOneWidget);
+    expect(find.byType(ProjectIcon), findsNothing);
     await pick(tester, 'Errands');
     expect(
       find.descendant(of: page, matching: find.text('Errands')),

@@ -105,9 +105,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(connector.inputs, [base]);
-      expect(find.byType(ProjectTasksScreen), findsOneWidget);
+      expect(
+        tester.widget<ProjectTasksScreen>(find.byType(ProjectTasksScreen)),
+        isA<ProjectTasksScreen>()
+            .having((screen) => screen.projectId, 'projectId', 1378)
+            .having((screen) => screen.viewId, 'viewId', 12),
+      );
       expect(find.text('Garden'), findsWidgets);
-      expect(data.listPreferences.saves, contains('remember 1378 12'));
       final registry = await auth.registry.load();
       expect(registry.activeAccountId, guestId);
     });

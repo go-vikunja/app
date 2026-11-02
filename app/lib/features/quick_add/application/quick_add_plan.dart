@@ -70,6 +70,53 @@ final class QuickAddPlan {
 
   /// Whether [dueDate] comes from a date phrase of the line.
   bool get dueDateFromText => !magicOnly && parsed.date != null;
+
+  /// Whether [priority] comes from the line's own priority.
+  bool get priorityFromText => !magicOnly && parsed.priority != null;
+}
+
+/// What the sheet's further fields give every task of a submit: the
+/// line's labels and reminders add to these, its repeat replaces this one.
+@immutable
+final class QuickAddExtras {
+  const new({
+    this.description = '',
+    this.labels = const [],
+    this.newLabels = const [],
+    this.reminders = const [],
+    this.repeatAfter = Duration.zero,
+    this.repeatMode = RepeatMode.afterAmount,
+  });
+
+  /// HTML, or empty.
+  final String description;
+  final List<Label> labels;
+
+  /// Titles of labels to create on submit, like a line's new labels.
+  final List<String> newLabels;
+  final List<TaskReminder> reminders;
+  final Duration repeatAfter;
+  final RepeatMode repeatMode;
+
+  @override
+  bool operator ==(Object other) =>
+      other is QuickAddExtras &&
+      other.description == description &&
+      listEquals(other.labels, labels) &&
+      listEquals(other.newLabels, newLabels) &&
+      listEquals(other.reminders, reminders) &&
+      other.repeatAfter == repeatAfter &&
+      other.repeatMode == repeatMode;
+
+  @override
+  int get hashCode => Object.hash(
+    description,
+    Object.hashAll(labels),
+    Object.hashAll(newLabels),
+    Object.hashAll(reminders),
+    repeatAfter,
+    repeatMode,
+  );
 }
 
 /// The outcome of a submit, for the snackbar.
@@ -84,7 +131,7 @@ final class QuickAddResult {
   /// Local ids (negative until each create is sent), in input order.
   final List<int> createdTaskIds;
 
-  /// `*label` titles whose label could not be created (offline, or the
+  /// New label titles whose label could not be created (offline, or the
   /// server refused); the tasks were created without them.
   final List<String> labelsNotCreated;
 
@@ -97,11 +144,13 @@ abstract interface class QuickAddService {
   /// The plan for one line from local data only, cheap enough for every
   /// keystroke. [fallbackProjectId] is the screen's project;
   /// [fallbackDueDate] (the sheet's own date) dates a line without a date
-  /// phrase, with the user's default reminders.
+  /// phrase, with the user's default reminders; [fallbackPriority] (1 to 5)
+  /// is the priority of a line without one.
   QuickAddPlan plan(
     String line, {
     int? fallbackProjectId,
     DateTime? fallbackDueDate,
+    int? fallbackPriority,
   });
 
   /// Creates one task per non-empty line of [text] through the outbox
@@ -109,15 +158,19 @@ abstract interface class QuickAddService {
   /// the one before becomes a subtask of the nearest line above it with
   /// less indent, in that line's project unless it names its own (the
   /// `parenttask` relation queued behind both creates); `*label`s that do
-  /// not exist are created online first, `@names` are resolved with the
-  /// server's user search in the task's project when it is reachable and
-  /// with the known users otherwise. Throws [QuickAddNoProject] before creating
-  /// anything when a line has no project, and [QuickAddPartlyFailed] when
-  /// a line fails after earlier ones were created.
+  /// not exist and the new labels of [extras] are created online first,
+  /// `@names` are resolved with the server's user search in the task's
+  /// project when it is reachable and with the known users otherwise;
+  /// every task also gets [extras]. Throws
+  /// [QuickAddNoProject] before creating anything when a line has no
+  /// project, and [QuickAddPartlyFailed] when a line fails after earlier
+  /// ones were created.
   Future<QuickAddResult> submit(
     String text, {
     int? fallbackProjectId,
     DateTime? fallbackDueDate,
+    int? fallbackPriority,
+    QuickAddExtras extras = const QuickAddExtras(),
   });
 }
 

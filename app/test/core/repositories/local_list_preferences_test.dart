@@ -97,6 +97,7 @@ void main() {
       for (final field in TableSortField.values) {
         for (final descending in [false, true]) {
           final sort = TableSort(field, descending: descending);
+          if (field == TableSortField.taskIndex && !descending) continue;
           await preferences.saveView(
             'view:72',
             ViewPreferences(tableSort: sort),
@@ -115,8 +116,10 @@ void main() {
     });
 
     test('an unknown sort falls back to the default, not to manual, and '
-        'leaves the other fields', () async {
+        'leaves the other fields; so does the number lowest first, no longer '
+        'offered', () async {
       for (final stored in [
+        '{"table_sort": "index:asc", "show_done": true}',
         '{"table_sort": "position:asc", "show_done": true}',
         '{"table_sort": "index", "show_done": true}',
         '{"table_sort": "due_date:up", "show_done": true}',
@@ -272,9 +275,8 @@ void main() {
   });
 
   group('table columns', () {
-    test("start at the web's six", () async {
+    test("start at the web's defaults without its number", () async {
       expect(await preferences.watchTableColumns().first, {
-        TableColumn.taskIndex,
         TableColumn.done,
         TableColumn.title,
         TableColumn.labels,
@@ -339,6 +341,9 @@ void main() {
           '["dueDate", "mood", "doneAt"]',
           {TableColumn.dueDate, TableColumn.doneAt},
         ),
+        // The number column the app no longer shows.
+        ('["index", "done", "title"]', {TableColumn.done, TableColumn.title}),
+        ('["index"]', TableColumn.defaults),
       ]) {
         await db.listPreferencesDao.write('table_columns', stored);
         expect(
@@ -356,27 +361,14 @@ void main() {
     });
   });
 
-  group('last view', () {
-    test('is remembered per project', () async {
-      expect(await preferences.lastViewOf(7), isNull);
+  test("a forgotten project's last view from an older version goes", () async {
+    await db.listPreferencesDao.write('last_view:7', '{"view_id":70}');
+    await db.listPreferencesDao.write('last_view:8', '{"view_id":80}');
 
-      await preferences.rememberView(7, 70);
-      await preferences.rememberView(8, 0);
+    await preferences.forget(projectIds: {7});
 
-      expect(await preferences.lastViewOf(7), 70);
-      expect(await preferences.lastViewOf(8), 0);
-
-      await preferences.rememberView(7, 72);
-
-      expect(await preferences.lastViewOf(7), 72);
-    });
-
-    test('an unreadable value is none', () async {
-      for (final stored in ['x', '{"view_id": "70"}', '{"view_id": -3}']) {
-        await db.listPreferencesDao.write('last_view:7', stored);
-        expect(await preferences.lastViewOf(7), isNull, reason: stored);
-      }
-    });
+    expect(await db.listPreferencesDao.read('last_view:7'), isNull);
+    expect(await db.listPreferencesDao.read('last_view:8'), '{"view_id":80}');
   });
 
   group('Upcoming', () {
@@ -474,18 +466,21 @@ void main() {
   });
 
   group('project tree', () {
-    test('starts without archived projects, every project open', () async {
+    test('starts without archived projects, with the saved filters, every '
+        'project open', () async {
       final tree = await preferences.watchProjectTree().first;
 
       expect(tree, const ProjectTreePreferences());
       expect(tree.showArchived, isFalse);
+      expect(tree.showSavedFilters, isTrue);
       expect(tree.collapsed, isEmpty);
     });
 
-    test('the toggle and the collapsed projects survive the round '
+    test('the toggles and the collapsed projects survive the round '
         'trip', () async {
       const saved = ProjectTreePreferences(
         showArchived: true,
+        showSavedFilters: false,
         collapsed: {12, 3, 40},
       );
 
@@ -494,7 +489,21 @@ void main() {
       expect(await preferences.watchProjectTree().first, saved);
       expect(
         await db.listPreferencesDao.read('projects'),
-        '{"show_archived":true,"collapsed":[3,12,40]}',
+        '{"show_archived":true,"show_saved_filters":false,'
+        '"collapsed":[3,12,40]}',
+      );
+    });
+
+    test('a value stored before the saved filters toggle shows '
+        'them', () async {
+      await db.listPreferencesDao.write(
+        'projects',
+        '{"show_archived":true,"collapsed":[3]}',
+      );
+
+      expect(
+        await preferences.watchProjectTree().first,
+        const ProjectTreePreferences(showArchived: true, collapsed: {3}),
       );
     });
 
@@ -528,8 +537,13 @@ void main() {
         ('', const ProjectTreePreferences()),
         ('[true]', const ProjectTreePreferences()),
         (
-          '{"show_archived": "yes", "collapsed": "7"}',
+          '{"show_archived": "yes", "show_saved_filters": "no", '
+              '"collapsed": "7"}',
           const ProjectTreePreferences(),
+        ),
+        (
+          '{"show_saved_filters": false}',
+          const ProjectTreePreferences(showSavedFilters: false),
         ),
         (
           '{"show_archived": true, "collapsed": {"7": true}}',

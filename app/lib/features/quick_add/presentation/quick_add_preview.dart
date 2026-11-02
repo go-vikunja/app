@@ -31,6 +31,7 @@ class QuickAddPreview extends ConsumerWidget {
     this.projectLabel,
     this.lineCount = 1,
     this.subtaskCount = 0,
+    this.dueFromSheet = false,
     super.key,
   });
 
@@ -48,6 +49,11 @@ class QuickAddPreview extends ConsumerWidget {
 
   /// How many of them become subtasks, by their indentation.
   final int subtaskCount;
+
+  /// Whether the sheet's own due date dates a line without a date phrase.
+  /// The sheet shows that date and its own priority itself, so only the
+  /// text's get a chip here.
+  final bool dueFromSheet;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -99,7 +105,9 @@ class QuickAddPreview extends ConsumerWidget {
 
     final projectTitle = projectLabel ?? plan.project?.displayTitle(l10n) ?? '';
     return [
-      if (plan.dueDate case final due?) _dueChip(context, due, formatter),
+      if (plan.dueDate case final due?
+          when plan.dueDateFromText || !dueFromSheet)
+        _dueChip(context, due, formatter),
       if (plan.repeat case final repeat?)
         if (describeQuickAddRepeat(l10n, repeat) case final text?)
           _PartChip(
@@ -174,7 +182,7 @@ class QuickAddPreview extends ConsumerWidget {
           semanticsLabel: l10n.quickAddLookedUpSemantics(name),
           onRemove: () => onRemove(MagicSpanKind.assignee, items: [name]),
         ),
-      if (plan.priority case final priority?)
+      if (plan.priority case final priority? when plan.priorityFromText)
         _PartChip(
           kind: MagicSpanKind.priority,
           icon: const Icon(Icons.flag_outlined),

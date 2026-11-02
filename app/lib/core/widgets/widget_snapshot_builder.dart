@@ -512,8 +512,6 @@ final class _AccountBuild {
     final projectTitle = project != null && task.projectId != listProjectId
         ? project.displayTitle(l10n)
         : null;
-    final identifier = task.id > 0 ? task.displayIdentifier : null;
-    final details = [?identifier, ?projectTitle].join(' · ');
     return WidgetRow(
       taskId: task.id,
       title: task.title,
@@ -530,7 +528,7 @@ final class _AccountBuild {
           ProjectAccess.of(project).canChangeTasks,
       semanticsLabel: [
         task.title,
-        if (details.isNotEmpty) details,
+        ?projectTitle,
         if (dueLabel != null && tone == WidgetDueTone.overdue)
           l10n.taskOverdueSemantics(dueLabel)
         else if (dueLabel != null)

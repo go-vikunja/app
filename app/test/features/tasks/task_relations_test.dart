@@ -96,9 +96,8 @@ void main() {
   }
 
   group('subtasks', () {
-    testWidgets('list each with its done state, identifier and the progress', (
-      tester,
-    ) async {
+    testWidgets('list each with its done state and the progress, no '
+        'identifier', (tester) async {
       await openDetail(tester, 'Plan the trip');
 
       expect(inSheet(find.text(en.taskDetailSubtasks)), findsOneWidget);
@@ -108,8 +107,11 @@ void main() {
       );
       expect(rowOf('Book flights'), findsOneWidget);
       expect(
-        find.descendant(of: rowOf('Book flights'), matching: find.text('W-2')),
-        findsOneWidget,
+        find.descendant(
+          of: rowOf('Book flights'),
+          matching: find.textContaining('W-2'),
+        ),
+        findsNothing,
       );
       expect(
         find.descendant(
@@ -335,14 +337,16 @@ void main() {
       expect(
         find.descendant(
           of: rowOf('Renew passport'),
-          matching: find.text('H-4 · Home'),
+          matching: find.text('Home'),
         ),
         findsOneWidget,
       );
       expect(
-        find.descendant(of: rowOf('Get a visa'), matching: find.text('W-5')),
+        find.descendant(of: rowOf('Get a visa'), matching: find.byType(Text)),
         findsOneWidget,
       );
+      expect(inSheet(find.textContaining('H-4')), findsNothing);
+      expect(inSheet(find.textContaining('W-5')), findsNothing);
       final related = tester.getTopLeft(
         inSheet(find.text(en.taskRelationRelated)),
       );
@@ -485,6 +489,19 @@ void main() {
       expect(inPicker(find.text('Renew passport')), findsNothing);
       expect(inPicker(find.text('Buy a suitcase')), findsNothing);
       expect(inPicker(find.text('Pack the bags')), findsNothing);
+      // A task of the same project has no subtitle, and none shows its
+      // identifier.
+      expect(
+        find.descendant(
+          of: find.ancestor(
+            of: inPicker(find.text('Get a visa')),
+            matching: find.byType(ListTile),
+          ),
+          matching: find.byType(Text),
+        ),
+        findsOneWidget,
+      );
+      expect(inPicker(find.textContaining('W-')), findsNothing);
     });
 
     testWidgets('searches title and identifier and can include done tasks', (

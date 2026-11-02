@@ -42,10 +42,10 @@ import 'package:vikunja_mobile/features/widgets/presentation/widgets_section.dar
 
 /// Who is signed in with the way to the account's settings on the server,
 /// a session that needs a new sign-in, the account's labels and teams, the
-/// other accounts, the server with its connection settings, the sync state
-/// and the changes still waiting for it, what is set on this device only
-/// (the home-screen widgets, notifications, privacy, language, colours),
-/// sign-out and the app's version, which opens the About page. A
+/// other accounts, the sync state and the changes still waiting for it,
+/// what is set on this device only (the home-screen widgets,
+/// notifications, privacy), the appearance, the server with its connection
+/// settings, sign-out and the app's version, which opens the About page. A
 /// link-share guest gets a note on what it may do instead of the settings
 /// and the labels and teams.
 class AccountTab extends ConsumerWidget {
@@ -183,6 +183,21 @@ class AccountTab extends ConsumerWidget {
               if (!guest) OrganiseSection(busy: busy),
               AccountsSection(busy: busy),
               SettingsSection(
+                title: l10n.accountSyncHeading,
+                children: [
+                  SyncStatusSection(entry: entry, signingOut: signingOut),
+                  PendingChangesLine(
+                    entry: entry,
+                    canSend: !signingOut && !entry.account.needsReauth,
+                  ),
+                  SyncProblemsSection(entry: entry),
+                ],
+              ),
+              const WidgetsSection(),
+              NotificationsSection(entry: entry),
+              const PrivacySection(),
+              AppearanceSection(entry: entry, signingOut: signingOut),
+              SettingsSection(
                 title: l10n.accountServerHeading,
                 children: [
                   if (serverVersion.isNotEmpty)
@@ -195,18 +210,8 @@ class AccountTab extends ConsumerWidget {
                     enabled: !signingOut,
                   ),
                   ServerNotices(info: connection.info),
-                  SyncStatusSection(entry: entry, signingOut: signingOut),
-                  PendingChangesLine(
-                    entry: entry,
-                    canSend: !signingOut && !entry.account.needsReauth,
-                  ),
-                  SyncProblemsSection(entry: entry),
                 ],
               ),
-              const WidgetsSection(),
-              NotificationsSection(entry: entry),
-              const PrivacySection(),
-              const AppearanceSection(),
               const SizedBox(height: 16),
               Center(
                 child: OutlinedButton.icon(

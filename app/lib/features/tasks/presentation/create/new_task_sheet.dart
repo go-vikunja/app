@@ -1,20 +1,19 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/app/router/app_router.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/application/project_references.dart';
@@ -25,25 +24,34 @@ import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart'
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_text_controller.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_tokens.dart';
-import 'package:vikunja_mobile/features/quick_add/presentation/magic_toolbar.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sheet.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_preview.dart';
+import 'package:vikunja_mobile/features/share/application/share_text.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/default_project.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
+import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
+import 'package:vikunja_mobile/features/tasks/application/repeat_editor.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/labels_section.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/reminders_section.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/repeat_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/shortcut_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/date_time_picker.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/project_picker.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/pickers/reminder_picker.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
 final _log = Logger('NewTaskSheet');
 
 /// The quick way to new tasks: one line per task with Quick Add Magic, the
-/// project the tasks go to unless a line names one, and optionally a due
-/// date for lines without a date. [projectId] preselects the list's own
-/// project; with [column] the tasks that go to it are placed on top of that
-/// board column.
+/// project the tasks go to unless a line names one, optionally a due date
+/// and a priority for lines without their own, and under "More options" a
+/// description, labels, reminders and a repeat for every task. [projectId]
+/// preselects the list's own project; with [column] the tasks that go to
+/// it are placed on top of that board column.
 Future<void> showNewTaskSheet(
   BuildContext context, {
   int? projectId,
@@ -98,9 +106,14 @@ const Set<DateShortcut> _quickShortcuts = {
   DateShortcut.nextWeek,
 };
 
-// By default the icon boxes are squares as tall as the label, which leaves
-// a wrapped label ever less width.
+// The checkmark goes in the avatar's fixed box; without an avatar it takes
+// a square as tall as the label, which grows with the text size.
 const _chipIconBox = BoxConstraints.tightFor(width: 20, height: 20);
+
+final List<TaskPriority> _priorities = [
+  for (final priority in TaskPriority.values)
+    if (priority != TaskPriority.unset) priority,
+];
 
 class NewTaskSheet extends ConsumerStatefulWidget {
   const new({this.projectId, this.column, super.key});
@@ -114,9 +127,18 @@ class NewTaskSheet extends ConsumerStatefulWidget {
 
 class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   final _text = MagicTextEditingController();
+  final _description = TextEditingController();
   final _focus = FocusNode();
+  final _scroll = ScrollController();
+  final GlobalKey _moreOptionsKey = GlobalKey();
+  final GlobalKey _repeatAmountKey = GlobalKey();
   int? _pickedProjectId;
   DateTime? _due;
+  int? _priority;
+  bool _moreOptions = false;
+  List<Label> _labels = const [];
+  List<TaskReminder> _reminders = const [];
+  RepeatSetting _repeat = RepeatSetting.none;
   bool _adding = false;
   String? _error;
 
@@ -131,6 +153,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   QuickAddPrefixes? _prefixes;
   int? _fallbackId;
   DateTime? _plannedDue;
+  int? _plannedPriority;
   DateTime? _plannedAt;
   final _plans = <String, QuickAddPlan>{};
 
@@ -143,7 +166,9 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   @override
   void dispose() {
     _text.dispose();
+    _description.dispose();
     _focus.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -161,6 +186,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         prefixes != _prefixes ||
         fallbackId != _fallbackId ||
         _due != _plannedDue ||
+        _priority != _plannedPriority ||
         minute != _plannedAt ||
         _plans.length > 500) {
       _plans.clear();
@@ -170,6 +196,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     _prefixes = prefixes;
     _fallbackId = fallbackId;
     _plannedDue = _due;
+    _plannedPriority = _priority;
     _plannedAt = minute;
     _text.highlighter = service == null || prefixes == null ? null : _highlight;
   }
@@ -181,6 +208,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       line,
       fallbackProjectId: _fallbackId,
       fallbackDueDate: _due,
+      fallbackPriority: _priority,
     );
     if (plan != null) _plans[line] = plan;
     return plan;
@@ -217,45 +245,6 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     if (spans.isNotEmpty) _edit(removeMagicSpans(_text.value, spans));
   }
 
-  void _setPriority(int priority) {
-    final prefixes = _prefixes;
-    if (prefixes == null) return;
-    final token = '${prefixes.priority}$priority';
-    // A selection stays text; the priority goes after it.
-    final value = _text.value.selection.isValid
-        ? _text.value.copyWith(
-            selection: TextSelection.collapsed(
-              offset: _text.value.selection.end,
-            ),
-          )
-        : _text.value;
-    final caret = value.selection.isValid
-        ? value.selection.baseOffset
-        : value.text.length;
-    MagicLine? current;
-    for (final line in magicLines(value.text)) {
-      if (line.offset <= caret) current = line;
-    }
-    final existing = current == null
-        ? null
-        : _lineSpans(current.text)
-              .where((span) => span.kind == MagicSpanKind.priority)
-              .firstOrNull
-              ?.shifted(current.offset);
-    if (existing == null) {
-      _edit(insertMagicText(value, token, trailingSpace: true));
-      return;
-    }
-    _edit(
-      TextEditingValue(
-        text: value.text.replaceRange(existing.start, existing.end, token),
-        selection: TextSelection.collapsed(
-          offset: existing.start + token.length,
-        ),
-      ),
-    );
-  }
-
   Future<void> _showHelp(
     QuickAddMagicMode mode,
     QuickAddPrefixes prefixes,
@@ -284,11 +273,104 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     if (picked != null && mounted) setState(() => _due = picked.toUtc());
   }
 
-  Future<void> _add({required bool openEditor}) async {
+  /// What a relative reminder refers to: the first line's due date.
+  ReminderDates get _reminderDates {
+    final lines = magicLines(_text.text);
+    final plan = lines.isEmpty ? null : _plan(lines.first.text);
+    return (due: plan?.dueDate ?? _due, start: null, end: null);
+  }
+
+  /// A new label is created on Add, like a typed one.
+  Future<void> _pickLabels() async {
+    final picked = await pickLabels(
+      context,
+      selected: _labels,
+      createLater: true,
+    );
+    if (picked != null && mounted) setState(() => _labels = picked);
+  }
+
+  /// Adds a reminder, or replaces the one at [index]; one the list already
+  /// has is not added twice.
+  Future<void> _pickReminder({int? index}) async {
+    final picked = await pickReminder(
+      context,
+      dates: _reminderDates,
+      now: ref.read(clockProvider)(),
+      editing: index == null ? null : _reminders[index],
+      existing: _reminders,
+    );
+    if (picked == null || !mounted) return;
+    final reminders = withReminder(_reminders, picked, replacing: index);
+    if (reminders != null) setState(() => _reminders = reminders);
+  }
+
+  void _toggleMoreOptions() {
+    _setMoreOptions(expanded: !_moreOptions);
+    if (!_moreOptions) return;
+    // The first field comes into view under the rows above it.
+    _afterLayout(() {
+      final context = _moreOptionsKey.currentContext;
+      if (context == null || !context.mounted) return;
+      Scrollable.ensureVisible(
+        context,
+        duration: kThemeAnimationDuration,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    });
+  }
+
+  void _setMoreOptions({required bool expanded}) {
+    // The scroll direction flips with the form; each starts at its anchor.
+    if (_scroll.hasClients) _scroll.jumpTo(0);
+    setState(() => _moreOptions = expanded);
+  }
+
+  void _afterLayout(VoidCallback callback) => WidgetsBinding.instance
+    ..addPostFrameCallback((_) => callback())
+    ..ensureVisualUpdate();
+
+  /// Shows the invalid repeat that keeps the tasks from being added.
+  void _revealInvalidRepeat() {
+    final error = context.l10n.repeatAmountInvalid;
+    if (_moreOptions) {
+      announce(context, error);
+    } else {
+      _setMoreOptions(expanded: true);
+      // The field's error, shown now, is a live region of its own.
+      Announcer.of(context).say(error, onlyIfPlatformAnnounces: true);
+    }
+    _afterLayout(
+      () => _repeatAmountKey.currentContext?.findRenderObject()?.showOnScreen(
+        duration: kThemeAnimationDuration,
+      ),
+    );
+  }
+
+  QuickAddExtras get _extras => QuickAddExtras(
+    description: sharedTextHtml(_description.text),
+    labels: [
+      for (final label in _labels)
+        if (!isLabelToCreate(label)) label,
+    ],
+    newLabels: [
+      for (final label in _labels)
+        if (isLabelToCreate(label)) label.title,
+    ],
+    reminders: _reminders,
+    repeatAfter: _repeat.repeatAfter,
+    repeatMode: _repeat.repeatMode,
+  );
+
+  Future<void> _add() async {
     final service = _service;
     final text = _text.text;
     final lines = splitQuickAddLines(text, mode: _mode);
     if (_adding || service == null || lines.isEmpty) return;
+    if (!_repeat.isValid) {
+      _revealInvalidRepeat();
+      return;
+    }
     final l10n = context.l10n;
     final fallbackId = _fallbackId;
     final plans = [for (final line in lines) _plan(line)!];
@@ -298,7 +380,6 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     }
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    final router = GoRouter.of(context);
     final repository = ref.read(taskRepositoryProvider);
     final prefixes = _prefixes;
     setState(() {
@@ -312,6 +393,8 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         text,
         fallbackProjectId: fallbackId,
         fallbackDueDate: _due,
+        fallbackPriority: _priority,
+        extras: _extras,
       );
     } on QuickAddPartlyFailed catch (partly) {
       _log.warning(
@@ -364,10 +447,6 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         ),
     ];
     final created = result.createdTaskIds;
-    if (openEditor && created.isNotEmpty) {
-      unawaited(router.push(AppRoutes.taskEdit(created.first)));
-      if (warnings.isEmpty) return;
-    }
     messenger.showSnackBar(
       SnackBar(
         duration: Duration(seconds: warnings.isEmpty ? 4 : 8),
@@ -375,14 +454,13 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (!openEditor)
-              Text(
-                created.length == 1
-                    ? l10n.newTaskCreated(
-                        _createdTitle(plans.first, result, prefixes),
-                      )
-                    : l10n.newTaskCreatedMany(created.length),
-              ),
+            Text(
+              created.length == 1
+                  ? l10n.newTaskCreated(
+                      _createdTitle(plans.first, result, prefixes),
+                    )
+                  : l10n.newTaskCreatedMany(created.length),
+            ),
             for (final warning in warnings) Text(warning),
           ],
         ),
@@ -558,11 +636,13 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     final token = prefixes == null
         ? null
         : activeMagicToken(_text.value, prefixes);
+    // Out of sight, an invalid repeat does not disable Add: Add shows it.
     final canAdd =
         service != null &&
         taskCount > 0 &&
         !_adding &&
-        (plan?.project ?? project) != null;
+        (plan?.project ?? project) != null &&
+        (_repeat.isValid || !_moreOptions);
     final noProject = projectsValue.hasValue && project == null;
     final errorText = _error ?? (noProject ? l10n.newTaskNoProjectError : null);
 
@@ -577,6 +657,11 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         : DateTime(dueLocal.year, dueLocal.month, dueLocal.day);
     final dueOnShortcut = shortcuts.any((option) => option.day == dueDay);
     final dueLocked = textDue != null;
+    final textPriority = everyLine((plan) => plan.priorityFromText)
+        ? taskPlans.first.priority
+        : null;
+    final priorityLocked = textPriority != null;
+    final shownPriority = textPriority ?? _priority;
     String titleOf(Project project) => project.displayTitle(l10n);
     final projectTitle = project == null
         ? l10n.newTaskNoProject
@@ -588,7 +673,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
           child: Semantics(
             header: true,
             headingLevel: 1,
@@ -611,15 +696,29 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             smartQuotesType: SmartQuotesType.disabled,
             smartDashesType: SmartDashesType.disabled,
             inputFormatters: [FilteringTextInputFormatter.deny('\r')],
+            // Revealing the caret with the default margin would scroll the
+            // rows below out of view on a small phone.
+            scrollPadding: const EdgeInsets.symmetric(horizontal: 20),
             decoration: InputDecoration(
               labelText: l10n.taskEditTitleLabel,
               hintText: l10n.newTaskTitleHint,
+              // With the help button a hint of as many lines as the field
+              // takes makes the empty field 24 dp taller.
+              hintMaxLines: 1,
               errorText: errorText,
               errorMaxLines: 4,
+              suffixIcon: prefixes == null
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.help_outline),
+                      tooltip: l10n.quickAddHelp,
+                      onPressed: () =>
+                          unawaited(_showHelp(mode, prefixes, now)),
+                    ),
             ),
             // Keeps the keyboard up when there is nothing to add yet.
             onEditingComplete: () {},
-            onSubmitted: (_) => unawaited(_add(openEditor: false)),
+            onSubmitted: (_) => unawaited(_add()),
           ),
         ),
         if (plan != null)
@@ -633,13 +732,14 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
                 : projectLabel(plan.project!, projects, titleOf: titleOf),
             lineCount: taskCount,
             subtaskCount: subtaskCount,
+            dueFromSheet: _due != null,
           ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: ProjectField(
             title: projectTitle,
-            color: parseHexColor(project?.hexColor ?? ''),
+            hexColor: project?.hexColor ?? '',
             // A +project in the text decides until it is removed.
             leading: matchedProject == null
                 ? null
@@ -652,39 +752,31 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
                 : () => unawaited(_pickProject(projects, fallback?.id)),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-          child: _SectionTitle(
-            icon: Icons.calendar_today_outlined,
-            text: l10n.taskDetailDueDate,
-          ),
-        ),
+        const SizedBox(height: 4),
         DateShortcutChips(
           options: shortcuts,
           selectedDay: dueDay,
-          wrap: true,
           enabled: !dueLocked,
           onSelected: (option) => setState(
             () => _due = option == null
                 ? null
                 : dayWithTime(option.day, current: _due, now: now).toUtc(),
           ),
+          leading: [
+            _SectionLabel(
+              icon: Icons.calendar_today_outlined,
+              text: l10n.taskDetailDueDate,
+            ),
+          ],
           trailing: [
             if (shownDue case final due? when !dueOnShortcut)
               InputChip(
-                // A label on one line fades out the written date displays
-                // before their time at large text. The checkmark goes in
-                // the avatar's fixed box; without an avatar it takes a
-                // square as tall as the wrapped label.
                 avatar: const SizedBox.shrink(),
                 avatarBoxConstraints: _chipIconBox,
                 deleteIconBoxConstraints: _chipIconBox,
                 label: Text(
                   formatter.absolute(due),
                   semanticsLabel: formatter.semanticsLabel(due),
-                  softWrap: true,
-                  maxLines: 4,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 selected: true,
                 onDeleted: dueLocked ? null : () => setState(() => _due = null),
@@ -700,6 +792,79 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             ),
           ],
         ),
+        _ChipRow(
+          children: [
+            _SectionLabel(
+              icon: Icons.flag_outlined,
+              text: l10n.taskDetailPriority,
+            ),
+            for (final priority in _priorities)
+              ChoiceChip(
+                label: Text(
+                  priorityLabel(l10n, priority),
+                  semanticsLabel: l10n.prioritySemantics(
+                    priorityLabel(l10n, priority),
+                  ),
+                ),
+                selected: shownPriority == priority.value,
+                // Tapping the chosen one again unsets it.
+                onSelected: priorityLocked
+                    ? null
+                    : (selected) => setState(
+                        () => _priority = selected ? priority.value : null,
+                      ),
+              ),
+          ],
+        ),
+        if (_moreOptions) ...[
+          Padding(
+            key: _moreOptionsKey,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: TextField(
+              controller: _description,
+              minLines: 2,
+              maxLines: 6,
+              keyboardType: TextInputType.multiline,
+              textCapitalization: TextCapitalization.sentences,
+              decoration: InputDecoration(
+                labelText: l10n.taskDetailDescription,
+                alignLabelWithHint: true,
+              ),
+            ),
+          ),
+          _SectionTitle(icon: Icons.label_outline, text: l10n.taskDetailLabels),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: LabelsSection(
+              labels: _labels,
+              onRemove: (label) => setState(
+                () => _labels = [
+                  for (final kept in _labels)
+                    if (kept.id != label.id) kept,
+                ],
+              ),
+              onAdd: () => unawaited(_pickLabels()),
+            ),
+          ),
+          _SectionTitle(icon: Icons.alarm, text: l10n.taskDetailReminders),
+          RemindersSection(
+            reminders: _reminders,
+            dates: _reminderDates,
+            onEdit: (index) => unawaited(_pickReminder(index: index)),
+            onRemove: (index) =>
+                setState(() => _reminders = [..._reminders]..removeAt(index)),
+            onAdd: () => unawaited(_pickReminder()),
+          ),
+          _SectionTitle(icon: Icons.repeat, text: l10n.taskEditRepeat),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: RepeatSection(
+              amountKey: _repeatAmountKey,
+              value: _repeat,
+              onChanged: (change) => setState(() => _repeat = change(_repeat)),
+            ),
+          ),
+        ],
         const SizedBox(height: 8),
       ],
     );
@@ -719,14 +884,6 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             onSelected: (item) =>
                 _edit(completeMagicToken(_text.value, token, item)),
           ),
-        if (prefixes != null)
-          MagicToolbar(
-            prefixes: prefixes,
-            onInsertPrefix: (prefix) =>
-                _edit(insertMagicPrefix(_text.value, prefix)),
-            onPriority: _setPriority,
-            onHelp: () => unawaited(_showHelp(mode, prefixes, now)),
-          ),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
           // Stacks the two buttons at large text scales.
@@ -735,16 +892,24 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             overflowAlignment: OverflowBarAlignment.end,
             overflowSpacing: 8,
             children: [
-              TextButton(
-                onPressed: canAdd
-                    ? () => unawaited(_add(openEditor: true))
-                    : null,
-                child: Text(l10n.newTaskMoreOptions),
+              MergeSemantics(
+                child: Semantics(
+                  expanded: _moreOptions,
+                  child: TextButton.icon(
+                    onPressed: _toggleMoreOptions,
+                    icon: Icon(
+                      _moreOptions ? Icons.expand_less : Icons.expand_more,
+                    ),
+                    label: Text(
+                      _moreOptions
+                          ? l10n.newTaskFewerOptions
+                          : l10n.newTaskMoreOptions,
+                    ),
+                  ),
+                ),
               ),
               FilledButton(
-                onPressed: canAdd
-                    ? () => unawaited(_add(openEditor: false))
-                    : null,
+                onPressed: canAdd ? () => unawaited(_add()) : null,
                 child: Text(
                   taskCount > 1
                       ? l10n.newTaskAddMany(taskCount)
@@ -757,15 +922,30 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       ],
     );
 
+    // The sheet reaches under the navigation bar or home indicator, which
+    // the keyboard covers while it is up.
+    final bottom = math.max(
+      MediaQuery.viewInsetsOf(context).bottom,
+      MediaQuery.viewPaddingOf(context).bottom,
+    );
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      // The suggestions, the toolbar and the buttons stay above the keyboard
-      // while the rest scrolls; with little room left they scroll too.
+      padding: EdgeInsets.only(bottom: bottom),
+      // The suggestions and the buttons stay above the keyboard while the
+      // rest scrolls; with little room left they scroll too.
       child: LayoutBuilder(
         builder: (context, constraints) => Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Flexible(child: SingleChildScrollView(child: content)),
+            Flexible(
+              child: SingleChildScrollView(
+                controller: _scroll,
+                // Short of room, the headline goes out of view before the
+                // due date and priority rows do; the field keeps its caret
+                // in view itself. The longer form starts at its top.
+                reverse: !_moreOptions,
+                child: content,
+              ),
+            ),
             ConstrainedBox(
               constraints: BoxConstraints(
                 maxHeight: constraints.maxHeight.isFinite
@@ -781,8 +961,8 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   }
 }
 
-/// A muted label with its icon over a group of chips.
-class _SectionTitle extends StatelessWidget {
+/// A muted label with its icon, which names the chips after it.
+class _SectionLabel extends StatelessWidget {
   const new({required this.icon, required this.text});
 
   final IconData icon;
@@ -792,17 +972,55 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = theme.colorScheme.onSurfaceVariant;
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            text,
-            style: theme.textTheme.labelLarge?.copyWith(color: color),
+    return Semantics(
+      header: true,
+      headingLevel: 2,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              text,
+              style: theme.textTheme.labelLarge?.copyWith(color: color),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
+}
+
+/// A [_SectionLabel] over the group it names.
+class _SectionTitle extends StatelessWidget {
+  const new({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+    child: _SectionLabel(icon: icon, text: text),
+  );
+}
+
+/// One line of chips that scrolls sideways, as [DateShortcutChips] lays
+/// out its own.
+class _ChipRow extends StatelessWidget {
+  const new({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Row(
+      children: [
+        for (final child in children) ...[child, const SizedBox(width: 8)],
+      ],
+    ),
+  );
 }

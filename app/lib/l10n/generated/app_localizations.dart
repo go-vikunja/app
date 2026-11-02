@@ -1106,6 +1106,12 @@ abstract class AppLocalizations {
   /// **'All projects'**
   String get projectsAllHeading;
 
+  /// Checked item in the Projects tab's menu: whether the Saved filters section and favourite saved filters show.
+  ///
+  /// In en, this message translates to:
+  /// **'Show saved filters'**
+  String get projectsShowSavedFilters;
+
   /// No description provided for @projectsShowArchived.
   ///
   /// In en, this message translates to:
@@ -1202,11 +1208,47 @@ abstract class AppLocalizations {
   /// **'Mark a task as a favourite with its star to find it here.'**
   String get favoritesEmptyBody;
 
-  /// No description provided for @appearanceHeading.
+  /// Account tab section with the theme (saved to the account), Use system colours and App language (both on this device).
   ///
   /// In en, this message translates to:
   /// **'Appearance'**
   String get appearanceHeading;
+
+  /// Title of the row in the Account tab's Appearance section that picks light, dark or the system's mode for the account (the web's colour scheme), with appearanceThemeLight, appearanceThemeSystem and appearanceThemeDark side by side below it.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get appearanceTheme;
+
+  /// Segment of the Theme row: always the light mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get appearanceThemeLight;
+
+  /// Segment of the Theme row: light or dark as the device's system setting is.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get appearanceThemeSystem;
+
+  /// Segment of the Theme row: always the dark mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get appearanceThemeDark;
+
+  /// Small line under the Theme row's title in the Account tab's Appearance section: the choice is saved on the server and applies on all the account's devices. Pairs with appearanceOnThisDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to your account'**
+  String get appearanceSavedToAccount;
+
+  /// Small line under the Use system colours and App language rows in the Account tab's Appearance section: the setting stays on this device. Pairs with appearanceSavedToAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'On this device'**
+  String get appearanceOnThisDevice;
 
   /// No description provided for @appearanceSystemColors.
   ///
@@ -1219,12 +1261,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The colours of your wallpaper instead of the app\'s blue'**
   String get appearanceSystemColorsSubtitle;
-
-  /// Note under the Use system colours switch in the Appearance section of the Account tab: light or dark mode is not set here but by the account's colour scheme in Account settings.
-  ///
-  /// In en, this message translates to:
-  /// **'Light or dark is your account\'s colour scheme, in Account settings.'**
-  String get appearanceLightDarkHint;
 
   /// No description provided for @projectChildCount.
   ///
@@ -1628,10 +1664,10 @@ abstract class AppLocalizations {
   /// **'No description'**
   String get taskDetailNoDescription;
 
-  /// No description provided for @taskDetailClose.
+  /// Tooltip of the close button of the task detail sheet and pane. It names the details, not the task, which would read as marking it done; the sheet's drag handle already reads as the system's Dismiss, which is “Schließen” in German.
   ///
   /// In en, this message translates to:
-  /// **'Close'**
+  /// **'Close details'**
   String get taskDetailClose;
 
   /// No description provided for @repeatMonthly.
@@ -2498,11 +2534,17 @@ abstract class AppLocalizations {
   /// **'Add'**
   String get newTaskAdd;
 
-  /// No description provided for @newTaskMoreOptions.
+  /// Button on the new-task sheet that shows further fields for the new tasks below the priority: description, labels, reminders and repeat.
   ///
   /// In en, this message translates to:
   /// **'More options'**
   String get newTaskMoreOptions;
+
+  /// Button on the new-task sheet while the further fields (description, labels, reminders, repeat) are shown; it hides them again. In place of newTaskMoreOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer options'**
+  String get newTaskFewerOptions;
 
   /// No description provided for @newTaskPickDate.
   ///
@@ -2665,30 +2707,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Suggestions'**
   String get quickAddSuggestions;
-
-  /// No description provided for @quickAddInsertLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Add a label ({prefix})'**
-  String quickAddInsertLabel(String prefix);
-
-  /// No description provided for @quickAddInsertProject.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose a project ({prefix})'**
-  String quickAddInsertProject(String prefix);
-
-  /// No description provided for @quickAddInsertAssignee.
-  ///
-  /// In en, this message translates to:
-  /// **'Assign someone ({prefix})'**
-  String quickAddInsertAssignee(String prefix);
-
-  /// Tooltip of the priority chip above the keyboard on the new-task sheet. It opens a menu of priorities, and choosing one adds the priority prefix with its number to the title. prefix is the Quick Add priority prefix, for example !, kept as it is.
-  ///
-  /// In en, this message translates to:
-  /// **'Set priority ({prefix})'**
-  String quickAddSetPriority(String prefix);
 
   /// No description provided for @quickAddHelp.
   ///
@@ -3212,7 +3230,7 @@ abstract class AppLocalizations {
   /// **'Someone'**
   String get inboxSomeone;
 
-  /// Stands in for a task without an identifier or title, as in “Anna commented on a task”.
+  /// Stands in for a task without a title, as in “Anna commented on a task”.
   ///
   /// In en, this message translates to:
   /// **'a task'**
@@ -3224,7 +3242,7 @@ abstract class AppLocalizations {
   /// **'unnamed'**
   String get inboxUnnamed;
 
-  /// A comment on a task, named by its identifier, e.g. #12 or PROJ-12.
+  /// A comment on a task, named by its title.
   ///
   /// In en, this message translates to:
   /// **'{doer} commented on {task}'**
@@ -3666,12 +3684,6 @@ abstract class AppLocalizations {
   /// **'Due now'**
   String get notificationDueBodyNoProject;
 
-  /// A notification body followed by the task's identifier, when its project has a prefix.
-  ///
-  /// In en, this message translates to:
-  /// **'{body} · {identifier}'**
-  String notificationBodyWithIdentifier(String body, String identifier);
-
   /// No description provided for @cancel.
   ///
   /// In en, this message translates to:
@@ -3825,7 +3837,7 @@ abstract class AppLocalizations {
   /// Label of the task search field when adding a related task, and when adding content shared from another app to an existing task.
   ///
   /// In en, this message translates to:
-  /// **'Search by title or identifier'**
+  /// **'Search by title'**
   String get addRelationSearch;
 
   /// Switch on the add-relation sheet that also lists done tasks.
@@ -5664,10 +5676,10 @@ abstract class AppLocalizations {
   /// **'Project identifier'**
   String get projectIdentifierLabel;
 
-  /// Helper text under the identifier field of the project edit page. A task's identifier is the project's identifier followed by the task's number, for example WORK-12.
+  /// Helper text under the identifier field of the project edit page. The web's task links name a task by the project's identifier followed by the task's number; the app does not show them.
   ///
   /// In en, this message translates to:
-  /// **'Up to 10 characters, unique on the server. The identifiers of this project\'s tasks start with it and change with it. Leave it empty for none.'**
+  /// **'Up to 10 characters, unique on the server. Used in task links such as PROJ-12. Leave it empty for none.'**
   String get projectIdentifierHelp;
 
   /// No description provided for @projectIdentifierTaken.
@@ -6417,7 +6429,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchStartBody.
   ///
   /// In en, this message translates to:
-  /// **'Tasks by title, description, #12 or PROJ-12; projects, saved filters and labels by name. Works offline.'**
+  /// **'Tasks by title or description; projects, saved filters and labels by name. Works offline.'**
   String get searchStartBody;
 
   /// No description provided for @searchNoResultsTitle.
@@ -6903,7 +6915,7 @@ abstract class AppLocalizations {
   /// No description provided for @accountSettingsEntrySubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Name, avatar, colour scheme and preferences, saved on the server for all your devices'**
+  /// **'Name, avatar and preferences, saved on the server for all your devices'**
   String get accountSettingsEntrySubtitle;
 
   /// Screen readers say it after 'Double tap to' on the profile header.
@@ -6912,7 +6924,7 @@ abstract class AppLocalizations {
   /// **'open the account settings'**
   String get accountHeaderTapHint;
 
-  /// Heads the Account tab's settings that stay on the phone (notifications, colours).
+  /// At the end of the headers of the Account tab's sections whose settings stay on the device (home screen, notifications, privacy).
   ///
   /// In en, this message translates to:
   /// **'On this device'**
@@ -6954,7 +6966,7 @@ abstract class AppLocalizations {
   /// **'Saved'**
   String get accountSettingsSaved;
 
-  /// Screen readers' name for the progress bar while a change is sent to the server.
+  /// Screen readers' name for the progress bar of the Account settings page, and for the spinner of the Account tab's Theme row, while a change is sent to the server.
   ///
   /// In en, this message translates to:
   /// **'Saving'**
@@ -7397,36 +7409,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Others can add you to teams and projects by searching for your full email address'**
   String get accountSettingsDiscoverableByEmailSubtitle;
-
-  /// No description provided for @accountSettingsAppearance.
-  ///
-  /// In en, this message translates to:
-  /// **'Appearance'**
-  String get accountSettingsAppearance;
-
-  /// No description provided for @accountSettingsColorScheme.
-  ///
-  /// In en, this message translates to:
-  /// **'Colour scheme'**
-  String get accountSettingsColorScheme;
-
-  /// No description provided for @accountSettingsColorSchemeLight.
-  ///
-  /// In en, this message translates to:
-  /// **'Light'**
-  String get accountSettingsColorSchemeLight;
-
-  /// No description provided for @accountSettingsColorSchemeSystem.
-  ///
-  /// In en, this message translates to:
-  /// **'System'**
-  String get accountSettingsColorSchemeSystem;
-
-  /// No description provided for @accountSettingsColorSchemeDark.
-  ///
-  /// In en, this message translates to:
-  /// **'Dark'**
-  String get accountSettingsColorSchemeDark;
 
   /// No description provided for @accountSettingsNothingFound.
   ///
@@ -8670,7 +8652,7 @@ abstract class AppLocalizations {
   /// **'Mark as not done'**
   String get taskDetailMarkNotDone;
 
-  /// The status of a task that is not done, beside its project in the detail sheet.
+  /// The status of a task that is not done, under its title in the detail sheet.
   ///
   /// In en, this message translates to:
   /// **'Open'**
@@ -8700,7 +8682,13 @@ abstract class AppLocalizations {
   /// **'Edit'**
   String get accountHeaderEdit;
 
-  /// Account tab section with the server's version, the sync status and the changes waiting for the server.
+  /// Account tab section with the sync status, Sync now and Full resync, the changes waiting for the server and the sync problems.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync'**
+  String get accountSyncHeading;
+
+  /// Account tab section near the end with the server's Vikunja version, its connection settings and the server's notices.
   ///
   /// In en, this message translates to:
   /// **'Server'**
@@ -10470,12 +10458,6 @@ abstract class AppLocalizations {
   /// **'Every row shows it'**
   String get projectTableColumnTitleAlways;
 
-  /// The table column of a task's number or identifier, # on the web.
-  ///
-  /// In en, this message translates to:
-  /// **'Number'**
-  String get projectTableColumnNumber;
-
   /// The table column of a task's comment count.
   ///
   /// In en, this message translates to:
@@ -10506,23 +10488,11 @@ abstract class AppLocalizations {
   /// **'Created by'**
   String get projectTableColumnCreatedBy;
 
-  /// The table's default sort, by number, highest first.
+  /// The table's default sort, also shown on its sort chip: by the task's number in its project, highest first, which puts the newest tasks first.
   ///
   /// In en, this message translates to:
-  /// **'Default (highest number first)'**
+  /// **'Default (newest first)'**
   String get projectTableSortDefault;
-
-  /// Sort option of a project's Table view, also shown on its sort chip: by task number, highest first.
-  ///
-  /// In en, this message translates to:
-  /// **'Number (highest first)'**
-  String get projectTableSortNumberDesc;
-
-  /// Sort option of a project's Table view, also shown on its sort chip: by task number, lowest first.
-  ///
-  /// In en, this message translates to:
-  /// **'Number (lowest first)'**
-  String get projectTableSortNumberAsc;
 
   /// Sort option of a project's Table view, also shown on its sort chip: by whether a task is done, open tasks first. Done and open are states.
   ///
@@ -12798,7 +12768,7 @@ abstract class AppLocalizations {
   /// **'No access to this project'**
   String get assigneePickerNoAccess;
 
-  /// Row in the Account tab's device settings that opens the system's language settings for this app (Android 13+ per-app language, the app's page in iOS Settings).
+  /// Row in the Account tab's Appearance section that opens the system's language settings for this app (Android 13+ per-app language, the app's page in iOS Settings).
   ///
   /// In en, this message translates to:
   /// **'App language'**

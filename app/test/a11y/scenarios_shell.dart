@@ -40,12 +40,9 @@ SweepScenario _projectView(
 }) => SweepScenario.route(
   '${AppRoutes.projects}/:id',
   variant: variant,
-  setUp: (tester, _) async {
-    final data = sweepData();
-    data.listPreferences.lastViews[workProjectId] = viewId;
-    await pumpSweepApp(tester, data: data);
-  },
-  navigate: (tester, _) async => goTo(tester, AppRoutes.project(workProjectId)),
+  setUp: (tester, _) => pumpSweepApp(tester),
+  navigate: (tester, _) async =>
+      goTo(tester, AppRoutes.project(workProjectId, viewId: viewId)),
   expectScreen: (_) => find.byType(body),
 );
 

@@ -8,7 +8,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/avatar_stack.dart';
-import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
@@ -32,8 +32,7 @@ class TaskRow extends ConsumerWidget {
     required this.now,
     required this.minimumPriority,
     this.projectTitle,
-    this.projectColor,
-    this.identifierBeforeTitle = false,
+    this.projectHexColor,
     this.depth = 0,
     this.parentTitle,
     this.columns,
@@ -54,12 +53,7 @@ class TaskRow extends ConsumerWidget {
   /// For a task from another project than the list's; in a table, for
   /// every task, shown while [columns] has the project.
   final String? projectTitle;
-  final Color? projectColor;
-
-  /// The identifier leads the title, as in a project's own list, instead
-  /// of standing in the line below. The list decides it for all of its rows
-  /// with [identifiersFitBeforeTitle].
-  final bool identifierBeforeTitle;
+  final String? projectHexColor;
 
   /// As a subtask: indented under its parent, 4 levels at most.
   final int depth;
@@ -81,30 +75,8 @@ class TaskRow extends ConsumerWidget {
   static const _indentPerLevel = 22.0;
   static const _maxIndentedLevels = 4;
 
-  static const double _horizontalPadding = 4 + 4;
-
   /// The checkbox, the star and the gaps beside the texts.
   static const double _controlsWidth = 48 + 4 + 8 + 48;
-
-  /// Whether the identifiers of [tasks] lead their titles in rows
-  /// [rowWidth] wide: while the longest takes a fifth of an unindented row
-  /// at most, as a longer one, or one in large text, would squeeze the
-  /// title. Decided once for a list, so that all of its rows agree.
-  static bool identifiersFitBeforeTitle(
-    BuildContext context,
-    Iterable<Task> tasks, {
-    required double rowWidth,
-  }) {
-    String? longest;
-    for (final task in tasks) {
-      final identifier = task.displayIdentifier;
-      if (identifier.length > (longest?.length ?? 0)) longest = identifier;
-    }
-    // Monospaced: the longest is the widest.
-    return longest == null ||
-        IdentifierText.widthOf(context, longest) <=
-            (rowWidth - _horizontalPadding) * 0.2;
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -125,8 +97,6 @@ class TaskRow extends ConsumerWidget {
     );
     // The server ignores a link-share guest's favourites.
     final guest = ref.watch(activeAccountIsGuestProvider);
-    final identifier = summary.identifier;
-    final identifierLeads = identifierBeforeTitle && identifier != null;
     final mutedSmall = theme.textTheme.bodySmall?.copyWith(
       color: colors.onSurfaceVariant,
     );
@@ -154,10 +124,6 @@ class TaskRow extends ConsumerWidget {
           ),
           const SizedBox(width: 6),
         ],
-        if (identifierLeads) ...[
-          IdentifierText(identifier),
-          const SizedBox(width: 6),
-        ],
         Flexible(child: Text(task.title, style: titleStyle)),
       ],
     );
@@ -166,10 +132,8 @@ class TaskRow extends ConsumerWidget {
       final project? => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (projectColor case final color?) ...[
-            ColorDot(color: color),
-            const SizedBox(width: 4),
-          ],
+          ProjectIcon(hexColor: projectHexColor ?? '', size: 14),
+          const SizedBox(width: 4),
           Flexible(child: Text(project, style: mutedSmall)),
         ],
       ),
@@ -178,16 +142,12 @@ class TaskRow extends ConsumerWidget {
     final comments = summary.showsCommentCount
         ? CommentCount(count: task.commentCount, unread: task.isUnread)
         : null;
-    final identifierBelow = identifier != null && !identifierLeads
-        ? IdentifierText(identifier)
-        : null;
     final pendingIcon = pending ? metaIcon(Icons.cloud_off_outlined) : null;
     final meta = columns == null
         ? [
             if (summary.showsPriority) PriorityFlag(priority: task.priority),
             if (summary.dueText case final due?)
               DueBadge(text: due, tone: summary.dueTone),
-            ?identifierBelow,
             ?project,
             for (final label in summary.labels) LabelPill(label: label),
             if (!summary.checklist.isEmpty)
@@ -198,7 +158,6 @@ class TaskRow extends ConsumerWidget {
             ?pendingIcon,
           ]
         : [
-            ?identifierBelow,
             if (summary.showsDoneBadge) const DoneBadge(),
             ?project,
             if (summary.showsPriority)

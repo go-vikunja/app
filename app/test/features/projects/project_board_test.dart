@@ -27,6 +27,10 @@ import '../../helpers/task_edits.dart';
 void main() {
   final now = DateTime(2026, 10, 10, 12);
   late SyncFakes data;
+
+  /// The view the project opens on; the kanban view unless a test clears it.
+  int? openViewId;
+
   final listView = sampleListView(id: 11, projectId: 1);
   final kanban = sampleKanbanView(
     id: 14,
@@ -107,7 +111,7 @@ void main() {
     data = SyncFakes(now: now);
     data.projects.all = [work()];
     data.tasks.all = tasks();
-    data.listPreferences.lastViews[1] = 14;
+    openViewId = 14;
     storeBoard();
   });
 
@@ -129,7 +133,9 @@ void main() {
         userRepositoryProvider.overrideWithValue(FakeUserRepository()),
       ],
     );
-    containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+    containerOf(tester)
+        .read(appRouterProvider)
+        .go(AppRoutes.project(1, viewId: openViewId));
     if (settle) await tester.pumpAndSettle();
   }
 
@@ -244,7 +250,7 @@ void main() {
     testWidgets('the tabs offer the kanban view among the list views, the '
         'default name translated', (tester) async {
       useLocale(tester, const Locale('de'));
-      data.listPreferences.lastViews.clear();
+      openViewId = null;
       await pumpBoard(tester);
 
       expect(find.widgetWithText(Tab, de.projectViewList), findsOne);
@@ -256,11 +262,11 @@ void main() {
 
       expect(find.byType(TaskRow), findsNothing);
       expect(columnTitles(tester), ['To-Do', 'Doing', 'Done']);
-      expect(data.listPreferences.saves, ['remember 1 14']);
+      expect(data.listPreferences.saves, isEmpty);
     });
 
     testWidgets('default_view kanban opens the board', (tester) async {
-      data.listPreferences.lastViews.clear();
+      openViewId = null;
       data.shared.settings = const UserSettings(
         defaultViewKind: ProjectViewKind.kanban,
       );
@@ -432,9 +438,13 @@ void main() {
       final card = cardOf('Write report');
       final colors = Theme.of(tester.element(card)).colorScheme;
 
-      for (final text in ['WORK-1', 'Office', en.priorityHigh, '1/2']) {
+      for (final text in ['Office', en.priorityHigh, '1/2']) {
         expect(find.descendant(of: card, matching: find.text(text)), findsOne);
       }
+      expect(
+        find.descendant(of: card, matching: find.textContaining('WORK-1')),
+        findsNothing,
+      );
       final due = find.descendant(
         of: card,
         matching: find.text(en.relativeDaysAgo(1)),
@@ -469,10 +479,16 @@ void main() {
       expect(find.byType(TaskDoneControl), findsNothing);
 
       final node = tester.getSemantics(find.text('Write report'));
-      expect(tester.getSemantics(find.text('WORK-1')), same(node));
+      expect(tester.getSemantics(find.text('Office')), same(node));
       final label = node.getSemanticsData().label;
-      expect(label, startsWith('Write report\nWORK-1\n'));
-      expect(label, contains(en.taskOverdueSemantics(en.relativeDaysAgo(1))));
+      expect(
+        label,
+        startsWith(
+          'Write report\n'
+          '${en.taskOverdueSemantics(en.relativeDaysAgo(1))}\n',
+        ),
+      );
+      expect(label, isNot(contains('WORK-1')));
       expect(label, contains(en.taskAssigneesSemantics('Anna')));
       expect(label, contains(en.taskPercentDone(50)));
       expect(

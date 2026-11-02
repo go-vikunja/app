@@ -2,8 +2,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 
-/// The controls of the Account settings page; a refusal of the server is
-/// shown at the one whose change it refused.
+/// The controls of the account's settings (on the Account settings page,
+/// the theme on the Account tab); a refusal of the server is shown at the
+/// one whose change it refused.
 enum AccountSettingsField {
   name,
   defaultProject,

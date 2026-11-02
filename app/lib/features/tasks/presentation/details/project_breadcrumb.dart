@@ -1,9 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 
 /// [project] and its ancestors from the root, as far up as [projects] has
 /// them: the web stops at the first parent the user cannot see.
@@ -22,8 +21,8 @@ List<Project> projectPath(Project project, List<Project> projects) {
 }
 
 /// "Work › Clients › (Acme)": the task's project as an outlined chip with
-/// its colour, after its ancestors; each one a link that leaves the sheet
-/// for that project's screen.
+/// its coloured folder, after its ancestors; each one a link that leaves the
+/// sheet for that project's screen.
 class ProjectBreadcrumb extends StatelessWidget {
   const new({required this.path, required this.onOpen, super.key});
 
@@ -39,7 +38,6 @@ class ProjectBreadcrumb extends StatelessWidget {
       color: colors.onSurfaceVariant,
     );
     final project = path.last;
-    final color = parseHexColor(project.hexColor);
     return Wrap(
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
@@ -70,9 +68,7 @@ class ProjectBreadcrumb extends StatelessWidget {
             link: true,
             hint: l10n.taskDetailOpenProjectHint,
             child: ActionChip(
-              avatar: color == null
-                  ? Icon(Icons.folder_outlined, color: colors.onSurfaceVariant)
-                  : ColorDot(color: color),
+              avatar: ProjectIcon(hexColor: project.hexColor),
               label: Text(project.displayTitle(l10n)),
               labelStyle: theme.textTheme.labelMedium,
               visualDensity: VisualDensity.compact,

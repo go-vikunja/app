@@ -40,7 +40,7 @@ void main() {
     expect(top(heading), lessThan(top(tile(en.accountLabelsEntry))));
     expect(
       top(tile(en.accountTeamsEntry)),
-      lessThan(top(find.text(en.accountServerHeading))),
+      lessThan(top(find.widgetWithText(ListSectionHeader, en.accountsHeading))),
     );
     expect(
       find.descendant(

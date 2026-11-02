@@ -2,14 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
-import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_landing.dart';
-
-final _log = Logger('GuestLanding');
 
 /// Shows the shared project of a link the guest entry just opened, in the
 /// view the link named, once the router has reached the shell for that
@@ -56,24 +52,13 @@ class _GuestLandingListenerState extends ConsumerState<GuestLandingListener> {
   }
 
   Future<void> _land(String accountId, GuestLanding landing) async {
-    // The project screen opens the view it showed last, when it still has
-    // it.
-    if (landing.viewId case final viewId?) {
-      try {
-        await ref
-            .read(listPreferencesProvider)
-            ?.rememberView(landing.projectId, viewId);
-      } on Object catch (error) {
-        _log.info("Could not keep the link's view: ${error.runtimeType}");
-      }
-    }
     // A guest added beside another account is a switch, whose reset of the
     // tabs leaves them out for one frame and puts them back in the next;
     // the project goes on top of that.
     await WidgetsBinding.instance.endOfFrame;
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || ref.read(activeAccountIdProvider) != accountId) return;
-    _router.go(AppRoutes.project(landing.projectId));
+    _router.go(AppRoutes.project(landing.projectId, viewId: landing.viewId));
   }
 
   @override

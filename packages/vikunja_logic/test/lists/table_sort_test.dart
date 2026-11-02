@@ -67,7 +67,6 @@ final List<Task> _probeTasks = [
 // The server's orders by task number, except for the titles (below).
 const Map<String, List<int>> _serverOrders = {
   'index:desc': [8, 7, 6, 5, 4, 3, 2, 1],
-  'index:asc': [1, 2, 3, 4, 5, 6, 7, 8],
   'done:asc': [8, 7, 6, 4, 2, 1, 5, 3],
   'done:desc': [5, 3, 8, 7, 6, 4, 2, 1],
   'priority:asc': [8, 2, 4, 6, 5, 1, 7, 3],
@@ -121,7 +120,9 @@ void main() {
             ],
           }
           ..remove('title:asc')
-          ..remove('title:desc'),
+          ..remove('title:desc')
+          // Only sorted by as the default.
+          ..remove('index:asc'),
       );
     });
   });
@@ -227,13 +228,6 @@ void main() {
 
     test('are numbered after every server task, the newest highest', () {
       expect(_sorted(tasks, TableSort.defaultSort), [-2, -1, 12, 11, 10]);
-      expect(_sorted(tasks, TableSort.fromWireName('index:asc')), [
-        10,
-        11,
-        12,
-        -1,
-        -2,
-      ]);
     });
 
     test('come first among equal values, as the newest', () {
@@ -248,19 +242,24 @@ void main() {
   });
 
   group('wire names', () {
-    test('every field and direction reads back', () {
+    test('every field and direction reads back, the number only as the '
+        'default', () {
       for (final field in TableSortField.values) {
         for (final descending in [false, true]) {
           final sort = TableSort(field, descending: descending);
-          expect(TableSort.fromWireName(sort.wireName), sort);
+          expect(
+            TableSort.fromWireName(sort.wireName),
+            field == TableSortField.taskIndex ? TableSort.defaultSort : sort,
+            reason: sort.wireName,
+          );
         }
       }
     });
 
-    test('the default is the highest number first', () {
+    test('the default is the highest number first; the lowest first, no '
+        'longer offered, reads as the default', () {
       expect(TableSort.defaultSort.wireName, 'index:desc');
-      expect(TableSort.defaultSort.isDefault, isTrue);
-      expect(TableSort.fromWireName('index:asc').isDefault, isFalse);
+      expect(TableSort.fromWireName('index:asc'), TableSort.defaultSort);
     });
 
     test('anything else falls back to the default, not to manual', () {
@@ -308,11 +307,10 @@ void main() {
   });
 
   group('columns', () {
-    test("the web's 16 in its chooser order", () {
+    test("the web's in its chooser order, without its number", () {
       expect(
         [for (final column in TableColumn.values) column.wireName],
         [
-          'index',
           'done',
           'project',
           'title',
@@ -332,9 +330,8 @@ void main() {
       );
     });
 
-    test("the web's six by default", () {
+    test("the web's defaults without its number", () {
       expect(TableColumn.defaults, {
-        TableColumn.taskIndex,
         TableColumn.done,
         TableColumn.title,
         TableColumn.labels,
@@ -343,12 +340,15 @@ void main() {
       });
     });
 
-    test('eleven sort, each by its own field', () {
+    test('ten sort, each by its own field; the number has no column', () {
       final sortable = [
         for (final column in TableColumn.values) ?column.sortField,
       ];
 
-      expect(sortable, TableSortField.values);
+      expect(sortable, [
+        for (final field in TableSortField.values)
+          if (field != TableSortField.taskIndex) field,
+      ]);
     });
 
     test('a sort on a hidden column gives way to the default', () {
@@ -368,6 +368,13 @@ void main() {
         TableSort.defaultSort.forColumns({TableColumn.title}),
         TableSort.defaultSort,
       );
+      expect(
+        const TableSort(
+          TableSortField.taskIndex,
+          descending: false,
+        ).forColumns(TableColumn.values.toSet()),
+        TableSort.defaultSort,
+      );
     });
 
     test('read back from their keys only', () {
@@ -375,6 +382,7 @@ void main() {
         expect(TableColumn.fromWire(column.wireName), column);
       }
       expect(TableColumn.fromWire('due_date'), isNull);
+      expect(TableColumn.fromWire('index'), isNull);
       expect(TableColumn.fromWire(null), isNull);
     });
   });

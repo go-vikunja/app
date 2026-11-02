@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -50,20 +51,23 @@ void main() {
       );
       await container.read(accountsProvider.future);
       container.listen(listPreferencesProvider, (_, _) {});
+      const shown = ViewPreferences(showDone: true);
 
       final forAlice = container.read(listPreferencesProvider);
       expect(forAlice, isA<LocalListPreferences>());
-      await forAlice!.rememberView(1, 70);
+      await forAlice!.saveView('view:70', shown);
 
       await container.read(accountRegistryProvider).setActive(bob.id);
       await container.read(accountsProvider.future);
       await pumpEventQueue();
       final forBob = container.read(listPreferencesProvider)!;
 
-      expect(await forBob.lastViewOf(1), isNull);
+      expect(await forBob.watchView('view:70').first, isNot(shown));
       expect(
-        await LocalListPreferences(databases[alice.id]!).lastViewOf(1),
-        70,
+        await LocalListPreferences(databases[alice.id]!)
+            .watchView('view:70')
+            .first,
+        shown,
       );
     },
   );

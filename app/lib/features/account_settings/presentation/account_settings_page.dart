@@ -1,8 +1,5 @@
 import 'dart:async';
-import 'dart:math' as math;
 
-import 'package:cupertino_ui/cupertino_ui.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart' as intl;
@@ -29,12 +26,12 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_de
 import 'package:vikunja_mobile/features/account_settings/presentation/account_security_sections.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_failure.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_save.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/avatar_labels.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/default_project_picker.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/searchable_option_sheet.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/sign_in_provider_name.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
-import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
@@ -229,42 +226,33 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   ) async {
     final repository = ref.read(accountSettingsRepositoryProvider);
     if (repository == null || _saving != null || changes.isEmpty) return false;
-    final l10n = context.l10n;
-    final messenger = ScaffoldMessenger.of(context);
-    final announcer = Announcer.of(context);
     setState(() {
       _saving = field;
       _pending = changes;
       _errors.remove(field);
     });
     try {
-      await repository.update(changes);
-      if (mounted) setState(() => _reachable = true);
-      announcer.say(l10n.accountSettingsSaved);
-      return true;
-    } on Object catch (error) {
-      _log.warning('Saving an account setting failed: ${error.runtimeType}');
-      unawaited(HapticFeedback.heavyImpact());
-      if (!mounted) return false;
-      final fieldError = accountSettingsFieldError(l10n, error, field, changes);
-      if (fieldError != null) {
-        setState(() => _errors[field] = fieldError);
-        // Only the name shows its error in the field's decoration.
-        announcer.say(
-          fieldError,
-          onlyIfPlatformAnnounces: field == AccountSettingsField.name,
-        );
-      } else {
-        if (error case NetworkFailure(problem: NetworkProblem.unreachable)) {
-          setState(() => _reachable = false);
+      final outcome = await saveAccountSettings(
+        context,
+        repository,
+        field,
+        changes,
+      );
+      if (mounted) {
+        switch (outcome) {
+          case AccountSettingsSaved():
+            setState(() => _reachable = true);
+          case AccountSettingsRefused(:final message):
+            setState(() => _errors[field] = message);
+          case AccountSettingsNotSaved(
+            error: NetworkFailure(problem: NetworkProblem.unreachable),
+          ):
+            setState(() => _reachable = false);
+          case AccountSettingsNotSaved():
+            break;
         }
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(content: Text(accountSettingsFailureText(l10n, error))),
-          );
       }
-      return false;
+      return outcome is AccountSettingsSaved;
     } finally {
       if (mounted) {
         setState(() {
@@ -967,21 +955,6 @@ class _Settings extends ConsumerWidget {
           ),
         ],
       ),
-      SettingsSection(
-        title: l10n.accountSettingsAppearance,
-        children: [
-          _ColorSchemeChoice(
-            value: settings.colorSchema,
-            error: errors[AccountSettingsField.colorScheme],
-            onChanged: canChange
-                ? (schema) => onSave(
-                    AccountSettingsField.colorScheme,
-                    UserSettingsChanges(colorSchema: schema),
-                  )
-                : null,
-          ),
-        ],
-      ),
       integrationsSection(
         l10n: l10n,
         connection: entry.connection,
@@ -1050,125 +1023,6 @@ class _SettingSwitch extends StatelessWidget {
       ),
       value: value,
       onChanged: onChanged,
-    );
-  }
-}
-
-/// Light, dark or the system's, side by side: a pick saves at once.
-class _ColorSchemeChoice extends StatelessWidget {
-  const new({
-    required this.value,
-    required this.error,
-    required this.onChanged,
-  });
-
-  final ColorSchema value;
-  final String? error;
-
-  /// Null shows the choice disabled.
-  final ValueChanged<ColorSchema>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final error = this.error;
-    final onChanged = this.onChanged;
-    final enabled = onChanged != null;
-    final segments = [
-      (ColorSchema.light, Icons.light_mode_outlined),
-      (ColorSchema.dark, Icons.dark_mode_outlined),
-      (ColorSchema.auto, Icons.brightness_auto_outlined),
-    ];
-    final control = switch (theme.platform) {
-      TargetPlatform.iOS || TargetPlatform.macOS => SizedBox(
-        width: double.infinity,
-        child: CupertinoSlidingSegmentedControl<ColorSchema>(
-          groupValue: value,
-          disabledChildren: enabled
-              ? const {}
-              : {for (final (schema, _) in segments) schema},
-          onValueChanged: (schema) {
-            if (schema != null) onChanged?.call(schema);
-          },
-          children: {
-            for (final (schema, _) in segments)
-              schema: Text(
-                _colorSchemaLabel(l10n, schema),
-                textAlign: TextAlign.center,
-              ),
-          },
-        ),
-      ),
-      _ => LayoutBuilder(
-        builder: (context, constraints) {
-          // The icons go first when the labels would have to wrap.
-          final labelStyle = theme.textTheme.labelLarge;
-          final scaler = MediaQuery.textScalerOf(context);
-          final widestLabel = segments
-              .map((segment) {
-                final painter = TextPainter(
-                  text: TextSpan(
-                    text: _colorSchemaLabel(l10n, segment.$1),
-                    style: labelStyle,
-                  ),
-                  textDirection: Directionality.of(context),
-                  textScaler: scaler,
-                  maxLines: 1,
-                )..layout();
-                final width = painter.width;
-                painter.dispose();
-                return width;
-              })
-              .reduce(math.max);
-          const iconAndPadding = 12 + 18 + 8 + 16;
-          final withIcons =
-              constraints.maxWidth / segments.length >=
-              widestLabel + iconAndPadding + 2;
-          return SegmentedButton<ColorSchema>(
-            segments: [
-              for (final (schema, icon) in segments)
-                ButtonSegment(
-                  value: schema,
-                  icon: withIcons ? Icon(icon) : null,
-                  label: Text(_colorSchemaLabel(l10n, schema)),
-                ),
-            ],
-            selected: {value},
-            // The check takes the icon's place; the fill alone is too
-            // faint a sign of the choice.
-            showSelectedIcon: withIcons,
-            expandedInsets: EdgeInsets.zero,
-            onSelectionChanged: onChanged == null
-                ? null
-                : (selected) => onChanged(selected.single),
-          );
-        },
-      ),
-    };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SettingsBlock(
-          icon: Icons.contrast,
-          child: Text(
-            l10n.accountSettingsColorScheme,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: enabled ? null : colors.onSurface.withValues(alpha: 0.38),
-            ),
-          ),
-        ),
-        // Across the whole width, below the icon too: inset like the
-        // title, a segment has no room for its icon and the check.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [control, if (error != null) SettingErrorText(error)],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -1290,10 +1144,3 @@ String _timeFormatLabel(
       '${l10n.accountSettingsTimeFormat24} · ${example('HH:mm')}',
   };
 }
-
-String _colorSchemaLabel(AppLocalizations l10n, ColorSchema schema) =>
-    switch (schema) {
-      ColorSchema.light => l10n.accountSettingsColorSchemeLight,
-      ColorSchema.auto => l10n.accountSettingsColorSchemeSystem,
-      ColorSchema.dark => l10n.accountSettingsColorSchemeDark,
-    };

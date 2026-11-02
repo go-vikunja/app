@@ -8,9 +8,9 @@ import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/avatar_stack.dart';
 import 'package:vikunja_mobile/features/common/presentation/count_badge.dart';
-import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/common/presentation/search_pill.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
@@ -382,13 +382,29 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets('an identifier is small, muted and monospaced', (tester) async {
-    final colors = await pump(tester, const IdentifierText('WORK-12'));
+  testWidgets("a project's icon is a folder in its colour, muted without "
+      'one, at the given size; only decoration', (tester) async {
+    final colors = await pump(
+      tester,
+      const Row(
+        children: [
+          ProjectIcon(hexColor: '#1973ff', size: 14),
+          ProjectIcon(hexColor: ''),
+          ProjectIcon(hexColor: 'nonsense'),
+        ],
+      ),
+    );
 
-    final style = tester.widget<Text>(find.text('WORK-12')).style!;
-    expect(style.fontFamily, 'monospace');
-    expect(style.fontSize, 12);
-    expect(style.color, colors.onSurfaceVariant);
+    final icons = tester.widgetList<Icon>(find.byType(Icon)).toList();
+    expect(icons.map((icon) => icon.icon), everyElement(Icons.folder_outlined));
+    expect(icons.map((icon) => icon.color), [
+      const Color(0xFF1973FF),
+      colors.onSurfaceVariant,
+      colors.onSurfaceVariant,
+    ]);
+    expect(tester.getSize(find.byType(Icon).first), const Size.square(14));
+    expect(tester.getSize(find.byType(Icon).at(1)), const Size.square(24));
+    expect(icons.map((icon) => icon.semanticLabel), everyElement(isNull));
   });
 
   group('avatar stack', () {

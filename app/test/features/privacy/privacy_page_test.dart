@@ -427,6 +427,8 @@ void main() {
       const PrivacySettings(appLock: true, lockAfter: LockAfter.fiveMinutes),
     );
     useResumedLifecycle(tester);
+    // Tall enough for the sections around it, which the list builds lazily.
+    usePhoneSurface(tester, logicalSize: const Size(400, 2000));
     await pumpSignedInApp(
       tester,
       auth: auth,
@@ -467,13 +469,12 @@ void main() {
         top(find.widgetWithText(ListSectionHeader, en.notificationsHeading)),
       ),
     );
-    final appearance = find.widgetWithText(
-      ListSectionHeader,
-      en.appearanceHeading,
+    expect(
+      top(header),
+      lessThan(
+        top(find.widgetWithText(ListSectionHeader, en.appearanceHeading)),
+      ),
     );
-    if (appearance.evaluate().isNotEmpty) {
-      expect(top(header), lessThan(top(appearance)));
-    }
 
     await tester.tap(entry);
     await tester.pumpAndSettle();

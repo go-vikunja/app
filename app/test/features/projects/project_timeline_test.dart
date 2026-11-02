@@ -105,7 +105,6 @@ void main() {
       sampleProject(id: 1, title: 'Work', views: [listView, gantt]),
     ];
     data.tasks.all = tasks();
-    data.listPreferences.lastViews[1] = gantt.id;
   });
 
   Future<void> pumpTimeline(
@@ -114,7 +113,9 @@ void main() {
   }) async {
     usePhoneSurface(tester, logicalSize: size);
     await pumpSignedInApp(tester, sync: data, now: now);
-    containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+    containerOf(tester)
+        .read(appRouterProvider)
+        .go(AppRoutes.project(1, viewId: gantt.id));
     await tester.pumpAndSettle();
   }
 
@@ -840,7 +841,9 @@ void main() {
       sync: data,
       overrides: [clockProvider.overrideWithValue(() => current)],
     );
-    containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+    containerOf(tester)
+        .read(appRouterProvider)
+        .go(AppRoutes.project(1, viewId: gantt.id));
     await tester.pumpAndSettle();
     expect(
       find.byTooltip(en.projectTimelineRangeCurrent('Oct 11 – Dec 20')),
@@ -1155,7 +1158,9 @@ void main() {
     );
     usePhoneSurface(tester, logicalSize: const Size(400, 800));
     await pumpSignedInApp(tester, sync: data, now: now);
-    containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+    containerOf(tester)
+        .read(appRouterProvider)
+        .go(AppRoutes.project(1, viewId: gantt.id));
 
     final dayCells = find.descendant(
       of: find.byType(TimelineHeader),

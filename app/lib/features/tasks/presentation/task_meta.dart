@@ -98,7 +98,6 @@ class TablePriorityLabel extends StatelessWidget {
 /// A table column's icon in the columns sheet; a row's dates lead with
 /// theirs.
 IconData tableColumnIcon(TableColumn column) => switch (column) {
-  TableColumn.taskIndex => Icons.tag,
   TableColumn.done => Icons.check_circle_outline,
   TableColumn.project => Icons.folder_outlined,
   TableColumn.title => Icons.title,

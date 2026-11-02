@@ -28,6 +28,14 @@ Future<void> refreshFromMenu(WidgetTester tester) async {
   await tester.tap(find.text(en.refresh));
 }
 
+CheckedPopupMenuItem<Object?> checkedItem(WidgetTester tester, String label) =>
+    tester.widget<CheckedPopupMenuItem<Object?>>(
+      find.ancestor(
+        of: find.text(label),
+        matching: find.byWidgetPredicate((w) => w is CheckedPopupMenuItem),
+      ),
+    );
+
 void main() {
   final now = DateTime(2026, 10, 10, 12);
   late SyncFakes data;
@@ -385,6 +393,86 @@ void main() {
       expect(find.byType(ProjectTasksScreen), findsNothing);
     });
 
+    testWidgets('the menu hides the saved filters, favourite ones too, and '
+        'shows them again; the choice is kept for the account', (tester) async {
+      usePhoneSurface(tester, logicalSize: const Size(360, 1600));
+      data.projects.savedFilters = filters;
+      data.tasks.all = [sampleTask(id: 1, title: 'Starred', favorite: true)];
+      await pumpProjects(tester);
+      await tester.tap(find.byTooltip(en.moreActions));
+      await tester.pumpAndSettle();
+      expect(checkedItem(tester, en.projectsShowSavedFilters).checked, isTrue);
+
+      await tester.tap(find.text(en.projectsShowSavedFilters));
+      await tester.pumpAndSettle();
+
+      expect(headings(tester), [
+        en.projectsFavouritesHeading,
+        en.projectsAllHeading,
+      ]);
+      expect(rows(tester), [
+        en.projectsFavouriteTasks,
+        'Home',
+        'Home',
+        'Work',
+        'Admin',
+        'Reports',
+      ]);
+      expect(find.byIcon(Icons.filter_list), findsNothing);
+      expect(data.listPreferences.projectTree.showSavedFilters, isFalse);
+      expect(data.listPreferences.saves, ['projectTree']);
+
+      await tester.tap(find.byTooltip(en.moreActions));
+      await tester.pumpAndSettle();
+      expect(find.text(en.savedFilterNew), findsOneWidget);
+      expect(checkedItem(tester, en.projectsShowSavedFilters).checked, isFalse);
+      await tester.tap(find.text(en.projectsShowSavedFilters));
+      await tester.pumpAndSettle();
+
+      expect(headings(tester), [
+        en.projectsFavouritesHeading,
+        en.savedFiltersHeading,
+        en.projectsAllHeading,
+      ]);
+      expect(data.listPreferences.projectTree.showSavedFilters, isTrue);
+    });
+
+    testWidgets('hidden, the tree does not wait for them', (tester) async {
+      data.listPreferences.setProjectTree(
+        const ProjectTreePreferences(showSavedFilters: false),
+      );
+      final filters = StreamController<List<SavedFilterRef>>();
+      addTearDown(filters.close);
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        now: now,
+        overrides: [savedFiltersProvider.overrideWith((ref) => filters.stream)],
+      );
+      await openTab(tester, en.tabProjects);
+
+      expect(find.text(en.projectsLoading), findsNothing);
+      expect(rowTitles(tester), ['Home', 'Home', 'Work', 'Admin', 'Reports']);
+    });
+
+    testWidgets('hidden, only saved filters are the empty state, which '
+        'leaves a new saved filter to the menu', (tester) async {
+      data.projects.all = [];
+      data.projects.savedFilters = filters;
+      data.listPreferences.setProjectTree(
+        const ProjectTreePreferences(showSavedFilters: false),
+      );
+      await pumpProjects(tester);
+
+      expect(find.text(en.projectsEmptyTitle), findsOneWidget);
+      expect(find.text(en.projectNew), findsOneWidget);
+      expect(find.text(en.savedFilterNew), findsNothing);
+
+      await tester.tap(find.byTooltip(en.moreActions));
+      await tester.pumpAndSettle();
+      expect(find.text(en.savedFilterNew), findsOneWidget);
+    });
+
     testWidgets('are in German', (tester) async {
       useLocale(tester, const Locale('de'));
       data.projects.savedFilters = filters;
@@ -400,6 +488,10 @@ void main() {
       expect(find.text(de.projectsFavouriteTasks), findsOneWidget);
       expect(find.text(de.savedFilterMyOpenTasks), findsOneWidget);
       expect(find.text(de.smartListOpenTaskCount(1)), findsOneWidget);
+
+      await tester.tap(find.byTooltip(de.moreActions));
+      await tester.pumpAndSettle();
+      expect(find.text(de.projectsShowSavedFilters), findsOneWidget);
     });
   });
 
@@ -460,17 +552,8 @@ void main() {
 
       await tester.tap(find.byTooltip(en.moreActions));
       await tester.pumpAndSettle();
-      expect(
-        tester
-            .widget<CheckedPopupMenuItem<Object?>>(
-              find.byWidgetPredicate((w) => w is CheckedPopupMenuItem),
-            )
-            .checked,
-        isTrue,
-      );
-      await tester.tap(
-        find.byWidgetPredicate((w) => w is CheckedPopupMenuItem),
-      );
+      expect(checkedItem(tester, en.projectsShowArchived).checked, isTrue);
+      await tester.tap(find.text(en.projectsShowArchived));
       await tester.pumpAndSettle();
 
       expect(find.text('Old'), findsNothing);

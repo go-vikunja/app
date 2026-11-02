@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/filters/presentation/filter_field.dart';
 import 'package:vikunja_mobile/features/filters/presentation/filter_text_controller.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/view_form_sheet.dart';
@@ -245,6 +246,33 @@ void main() {
     expect(
       data.savedFilters.drafts.single.filter.filter,
       'project = 2 && assignees = anna',
+    );
+  });
+
+  testWidgets('project suggestions have their coloured folders, archived '
+      'ones the archive icon', (tester) async {
+    data.projects.all = [
+      data.projects.all.first,
+      sampleProject(id: 2, title: 'Garden', hexColor: '4caf50'),
+      sampleProject(id: 3, title: 'Attic', archived: true),
+    ];
+    await openNewSavedFilter(tester);
+
+    await type(tester, 'project = ');
+
+    expect(chipLabels(tester), ['Office', 'Garden', 'Attic']);
+    expect(
+      tester
+          .widgetList<ProjectIcon>(find.byType(ProjectIcon))
+          .map((icon) => icon.hexColor),
+      ['', '4caf50'],
+    );
+    expect(
+      find.descendant(
+        of: find.widgetWithText(ActionChip, 'Attic'),
+        matching: find.byIcon(Icons.archive_outlined),
+      ),
+      findsOneWidget,
     );
   });
 

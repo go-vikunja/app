@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/task_search_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/common/presentation/motion.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/filters/application/filter_check.dart';
 import 'package:vikunja_mobile/features/filters/application/filter_syntax.dart';
 import 'package:vikunja_mobile/features/filters/presentation/filter_error_text.dart';
@@ -592,11 +593,9 @@ class _FilterFieldState extends ConsumerState<FilterField>
             for (final project in _projectCandidates(projects))
               if (fits(project.title))
                 _SuggestionChip(
-                  avatar: Icon(
-                    project.isArchived
-                        ? Icons.archive_outlined
-                        : Icons.folder_outlined,
-                  ),
+                  avatar: project.isArchived
+                      ? const Icon(Icons.archive_outlined)
+                      : ProjectIcon(hexColor: project.hexColor),
                   label: project.title,
                   onPressed: () {
                     if (canBeFilterValue(project.title, list: list) &&

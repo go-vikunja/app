@@ -14,10 +14,13 @@ final class LocalListPreferences implements ListPreferences {
   final AppDatabase _db;
 
   static String viewKey(String listKey) => 'list:$listKey';
-  static String lastViewKey(int projectId) => 'last_view:$projectId';
   static const upcomingKey = 'upcoming';
   static const projectTreeKey = 'projects';
   static const tableColumnsKey = 'table_columns';
+
+  /// Written by versions that reopened a project on the view it showed
+  /// last; nothing reads it now, [forget] still removes it.
+  static String lastViewKey(int projectId) => 'last_view:$projectId';
 
   @override
   Stream<ViewPreferences> watchView(String listKey) => _db.listPreferencesDao
@@ -29,18 +32,6 @@ final class LocalListPreferences implements ListPreferences {
   Future<void> saveView(String listKey, ViewPreferences preferences) => _db
       .listPreferencesDao
       .write(viewKey(listKey), encodeViewPreferences(preferences));
-
-  @override
-  Future<int?> lastViewOf(int projectId) async => switch (_decode(
-    await _db.listPreferencesDao.read(lastViewKey(projectId)),
-  )) {
-    {'view_id': final int viewId} when viewId >= 0 => viewId,
-    _ => null,
-  };
-
-  @override
-  Future<void> rememberView(int projectId, int viewId) => _db.listPreferencesDao
-      .write(lastViewKey(projectId), jsonEncode({'view_id': viewId}));
 
   @override
   Stream<UpcomingPreferences> watchUpcoming() => _db.listPreferencesDao
@@ -76,8 +67,8 @@ final class LocalListPreferences implements ListPreferences {
       .write(tableColumnsKey, encodeTableColumns(columns));
 
   /// Drops what is kept for deleted projects and views: their lists' sort
-  /// and done preferences, a table's sort, a timeline's range and zoom, the
-  /// view last shown and the collapsed state.
+  /// and done preferences, a table's sort, a timeline's range and zoom, an
+  /// old version's last view and the collapsed state.
   Future<void> forget({
     Set<int> projectIds = const {},
     Set<int> viewIds = const {},
@@ -206,6 +197,7 @@ UpcomingPreferences decodeUpcomingPreferences(String? stored) {
 String encodeProjectTreePreferences(ProjectTreePreferences preferences) =>
     jsonEncode({
       'show_archived': preferences.showArchived,
+      'show_saved_filters': preferences.showSavedFilters,
       'collapsed': preferences.collapsed.toList()..sort(),
     });
 
@@ -213,6 +205,7 @@ ProjectTreePreferences decodeProjectTreePreferences(String? stored) {
   final json = _decode(stored);
   return ProjectTreePreferences(
     showArchived: json['show_archived'] == true,
+    showSavedFilters: json['show_saved_filters'] != false,
     collapsed: switch (json['collapsed']) {
       final List<Object?> ids => Set.unmodifiable(ids.whereType<int>()),
       _ => const {},

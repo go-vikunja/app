@@ -15,7 +15,6 @@ import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_s
 import 'package:vikunja_mobile/features/accounts/presentation/remove_account_dialog.dart';
 import 'package:vikunja_mobile/features/common/presentation/day_range_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
-import 'package:vikunja_mobile/features/quick_add/presentation/magic_toolbar.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
@@ -45,6 +44,7 @@ import 'sweep_harness.dart';
 const overlayRegistry = <String>[
   'detail sheet',
   'new-task sheet',
+  'new-task sheet, more options',
   'account switcher',
   'date-time picker',
   'time picker',
@@ -56,7 +56,6 @@ const overlayRegistry = <String>[
   'option sheet',
   'delete-task dialog',
   'sign-out dialog',
-  'quick-add menu',
   'done snackbar',
   'one-time secret page',
   'avatar crop page',
@@ -113,6 +112,17 @@ final List<SweepScenario> overlayScenarios = [
     show: (context, _) =>
         unawaited(showNewTaskSheet(context, projectId: workProjectId)),
     expectScreen: (_) => find.byType(NewTaskSheet),
+  ),
+  _overlay(
+    'new-task sheet, more options',
+    show: (context, _) =>
+        unawaited(showNewTaskSheet(context, projectId: workProjectId)),
+    after: (tester, l10n) async {
+      await tester.enterText(find.byType(TextField).first, 'Plan ');
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.newTaskMoreOptions));
+    },
+    expectScreen: (l10n) => find.text(l10n.newTaskFewerOptions),
   ),
   _overlay(
     'account switcher',
@@ -239,22 +249,6 @@ final List<SweepScenario> overlayScenarios = [
       ),
     ),
     expectScreen: (_) => alertDialog,
-  ),
-  _overlay(
-    'quick-add menu',
-    show: (context, _) =>
-        unawaited(showNewTaskSheet(context, projectId: workProjectId)),
-    after: (tester, _) async {
-      await tester.enterText(find.byType(TextField).first, 'Plan ');
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.descendant(
-          of: find.byType(MagicToolbar),
-          matching: find.byIcon(Icons.flag_outlined),
-        ),
-      );
-    },
-    expectScreen: (_) => find.byType(MenuItemButton).first,
   ),
   _overlay(
     'done snackbar',

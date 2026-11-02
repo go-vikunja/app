@@ -665,6 +665,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get projectsAllHeading => 'Alle Projekte';
 
   @override
+  String get projectsShowSavedFilters => 'Gespeicherte Filter anzeigen';
+
+  @override
   String get projectsShowArchived => 'Archivierte Projekte anzeigen';
 
   @override
@@ -737,15 +740,29 @@ class AppLocalizationsDe extends AppLocalizations {
   String get appearanceHeading => 'Darstellung';
 
   @override
+  String get appearanceTheme => 'Design';
+
+  @override
+  String get appearanceThemeLight => 'Hell';
+
+  @override
+  String get appearanceThemeSystem => 'System';
+
+  @override
+  String get appearanceThemeDark => 'Dunkel';
+
+  @override
+  String get appearanceSavedToAccount => 'In deinem Konto gespeichert';
+
+  @override
+  String get appearanceOnThisDevice => 'Auf diesem Gerät';
+
+  @override
   String get appearanceSystemColors => 'Systemfarben verwenden';
 
   @override
   String get appearanceSystemColorsSubtitle =>
       'Die Farben deines Hintergrundbilds statt des App-Blaus';
-
-  @override
-  String get appearanceLightDarkHint =>
-      'Hell oder Dunkel legst du in den Kontoeinstellungen unter „Farbschema“ fest.';
 
   @override
   String projectChildCount(int count) {
@@ -1072,7 +1089,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get taskDetailNoDescription => 'Keine Beschreibung';
 
   @override
-  String get taskDetailClose => 'Schließen';
+  String get taskDetailClose => 'Details schließen';
 
   @override
   String get repeatMonthly => 'Jeden Monat';
@@ -1668,6 +1685,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get newTaskMoreOptions => 'Mehr Optionen';
 
   @override
+  String get newTaskFewerOptions => 'Weniger Optionen';
+
+  @override
   String get newTaskPickDate => 'Datum wählen …';
 
   @override
@@ -1817,26 +1837,6 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get quickAddSuggestions => 'Vorschläge';
-
-  @override
-  String quickAddInsertLabel(String prefix) {
-    return 'Label hinzufügen ($prefix)';
-  }
-
-  @override
-  String quickAddInsertProject(String prefix) {
-    return 'Projekt wählen ($prefix)';
-  }
-
-  @override
-  String quickAddInsertAssignee(String prefix) {
-    return 'Jemanden zuweisen ($prefix)';
-  }
-
-  @override
-  String quickAddSetPriority(String prefix) {
-    return 'Priorität festlegen ($prefix)';
-  }
 
   @override
   String get quickAddHelp => 'So funktioniert Quick Add Magic';
@@ -2467,11 +2467,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get notificationDueBodyNoProject => 'Jetzt fällig';
 
   @override
-  String notificationBodyWithIdentifier(String body, String identifier) {
-    return '$body · $identifier';
-  }
-
-  @override
   String get cancel => 'Abbrechen';
 
   @override
@@ -2553,7 +2548,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get addRelationKind => 'Art der Verknüpfung';
 
   @override
-  String get addRelationSearch => 'Nach Titel oder Bezeichner suchen';
+  String get addRelationSearch => 'Nach Titel suchen';
 
   @override
   String get addRelationShowDone => 'Erledigte Aufgaben anzeigen';
@@ -3740,7 +3735,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get projectIdentifierHelp =>
-      'Bis zu 10 Zeichen, eindeutig auf dem Server. Die Bezeichner der Aufgaben dieses Projekts beginnen damit und ändern sich mit ihm. Lass das Feld leer, wenn das Projekt keinen haben soll.';
+      'Bis zu 10 Zeichen, eindeutig auf dem Server. Wird in Aufgabenlinks wie PROJ-12 verwendet. Lass das Feld leer, wenn das Projekt keinen haben soll.';
 
   @override
   String get projectIdentifierTaken =>
@@ -4216,7 +4211,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get searchStartBody =>
-      'Aufgaben nach Titel, Beschreibung, #12 oder PROJ-12; Projekte, gespeicherte Filter und Labels nach Namen. Funktioniert offline.';
+      'Aufgaben nach Titel oder Beschreibung; Projekte, gespeicherte Filter und Labels nach Namen. Funktioniert offline.';
 
   @override
   String get searchNoResultsTitle => 'Nichts gefunden';
@@ -4506,7 +4501,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get accountSettingsEntrySubtitle =>
-      'Name, Avatar, Farbschema und Vorlieben, auf dem Server für alle deine Geräte gespeichert';
+      'Name, Avatar und Vorlieben, auf dem Server für alle deine Geräte gespeichert';
 
   @override
   String get accountHeaderTapHint => 'Kontoeinstellungen öffnen';
@@ -4787,21 +4782,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get accountSettingsDiscoverableByEmailSubtitle =>
       'Andere können dich über die Suche nach deiner vollständigen E-Mail-Adresse zu Teams und Projekten hinzufügen';
-
-  @override
-  String get accountSettingsAppearance => 'Darstellung';
-
-  @override
-  String get accountSettingsColorScheme => 'Farbschema';
-
-  @override
-  String get accountSettingsColorSchemeLight => 'Hell';
-
-  @override
-  String get accountSettingsColorSchemeSystem => 'System';
-
-  @override
-  String get accountSettingsColorSchemeDark => 'Dunkel';
 
   @override
   String get accountSettingsNothingFound => 'Nichts gefunden';
@@ -5644,6 +5624,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get accountHeaderEdit => 'Bearbeiten';
+
+  @override
+  String get accountSyncHeading => 'Synchronisierung';
 
   @override
   String get accountServerHeading => 'Server';
@@ -6740,9 +6723,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get projectTableColumnTitleAlways => 'Jede Zeile zeigt ihn';
 
   @override
-  String get projectTableColumnNumber => 'Nummer';
-
-  @override
   String get projectTableColumnComments => 'Kommentare';
 
   @override
@@ -6758,13 +6738,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get projectTableColumnCreatedBy => 'Erstellt von';
 
   @override
-  String get projectTableSortDefault => 'Standard (höchste Nummer zuerst)';
-
-  @override
-  String get projectTableSortNumberDesc => 'Nummer (höchste zuerst)';
-
-  @override
-  String get projectTableSortNumberAsc => 'Nummer (niedrigste zuerst)';
+  String get projectTableSortDefault => 'Standard (neueste zuerst)';
 
   @override
   String get projectTableSortDoneAsc => 'Erledigt (offene zuerst)';

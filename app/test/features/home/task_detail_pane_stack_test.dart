@@ -123,14 +123,15 @@ void main() {
       await tester.tap(back);
       await tester.pump();
       expect(_paneList(tester).pixels, offset);
-      // As far as the task's local content reaches before its details load.
+      // Back towards the end of the task's local content, until its details
+      // load and make room again.
       final known = _paneList(tester).maxScrollExtent;
       await tester.pumpAndSettle();
       expect(paneTaskId(tester), 4);
       expect(inPane(find.byType(BackButtonIcon)), findsNothing);
       expect(
         _paneList(tester).pixels,
-        moreOrLessEquals(math.min(offset, known), epsilon: 1),
+        inInclusiveRange(math.min(offset, known) - 1, offset),
       );
       expect(related.hitTestable(), findsWidgets);
 

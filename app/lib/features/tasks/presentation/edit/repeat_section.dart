@@ -28,9 +28,17 @@ String repeatPresetLabel(AppLocalizations l10n, RepeatPreset preset) =>
 /// The web's repeat editor: a mode, an amount with its unit for the modes
 /// that count, and the three presets.
 class RepeatSection extends StatefulWidget {
-  const new({required this.value, required this.onChanged, super.key});
+  const new({
+    required this.value,
+    required this.onChanged,
+    this.amountKey,
+    super.key,
+  });
 
   final RepeatSetting value;
+
+  /// The amount field's key, e.g. to bring its error into view.
+  final Key? amountKey;
 
   /// Gets an updater over the latest setting, so edits in one frame add up.
   final void Function(RepeatSetting Function(RepeatSetting setting) change)
@@ -89,6 +97,7 @@ class _RepeatSectionState extends State<RepeatSection> {
               SizedBox(
                 width: 112,
                 child: TextField(
+                  key: widget.amountKey,
                   controller: _amount,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],

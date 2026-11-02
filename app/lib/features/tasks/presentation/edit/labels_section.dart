@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
 
 /// The draft's labels in their colours, each removable, and the way to the
 /// label picker.
@@ -44,16 +45,25 @@ class _RemovableLabelChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final color = parseHexColor(label.hexColor);
     final foreground = color == null ? null : contrastingTextColor(color);
+    final toCreate = isLabelToCreate(label);
     return InputChip(
-      label: Text(label.title, maxLines: 2, overflow: TextOverflow.ellipsis),
+      label: Text(
+        toCreate ? l10n.quickAddNewLabel(label.title) : label.title,
+        semanticsLabel: toCreate
+            ? l10n.quickAddNewLabelSemantics(label.title)
+            : null,
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
       labelStyle: foreground == null ? null : TextStyle(color: foreground),
       backgroundColor: color,
       side: color == null ? null : BorderSide(color: color),
       deleteIconColor: foreground,
       onDeleted: () => onRemove(label),
-      deleteButtonTooltipMessage: context.l10n.taskEditRemoveLabel(label.title),
+      deleteButtonTooltipMessage: l10n.taskEditRemoveLabel(label.title),
     );
   }
 }

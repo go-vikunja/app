@@ -7,8 +7,8 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/avatar_stack.dart';
-import 'package:vikunja_mobile/features/common/presentation/identifier_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
@@ -58,11 +58,10 @@ void main() {
     Task task, {
     int minimumPriority = 2,
     String? projectTitle,
-    Color? projectColor,
+    String? projectHexColor,
     int depth = 0,
     String? parentTitle,
     bool pending = false,
-    bool identifierBeforeTitle = false,
     ValueChanged<bool>? onDoneChanged,
     bool inCard = false,
   }) async {
@@ -71,8 +70,7 @@ void main() {
       now: now,
       minimumPriority: minimumPriority,
       projectTitle: projectTitle,
-      projectColor: projectColor,
-      identifierBeforeTitle: identifierBeforeTitle,
+      projectHexColor: projectHexColor,
       depth: depth,
       parentTitle: parentTitle,
       pending: pending,
@@ -109,13 +107,13 @@ void main() {
       tester,
       richTask(),
       projectTitle: 'Work',
-      projectColor: const Color(0xFF1973FF),
+      projectHexColor: '1973ff',
       pending: true,
     );
 
-    expect(find.widgetWithText(IdentifierText, 'WORK-7'), findsOneWidget);
     expect(find.text('Work'), findsOneWidget);
-    expect(find.byType(ColorDot), findsNWidgets(2));
+    expect(find.byType(ProjectIcon), findsOneWidget);
+    expect(find.byType(ColorDot), findsOneWidget);
     expect(find.text('1 day ago'), findsOneWidget);
     final context = tester.element(find.text('1 day ago'));
     expect(
@@ -178,7 +176,7 @@ void main() {
     expect(find.byIcon(Icons.check_box_outlined), findsNothing);
     expect(find.byType(ColorDot), findsNothing);
     expect(find.byType(AvatarStack), findsNothing);
-    expect(find.text('#1'), findsOneWidget);
+    expect(find.byType(ProjectIcon), findsNothing);
 
     await pumpRow(
       tester,
@@ -194,10 +192,49 @@ void main() {
     expect(find.text(en.priorityLow), findsOneWidget);
   });
 
-  testWidgets('a task not yet sent shows no identifier', (tester) async {
-    await pumpRow(tester, sampleTask(id: -3, title: 'New'));
+  testWidgets('shows and reads no identifier', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpRow(tester, richTask(), projectTitle: 'Work');
+    expect(find.textContaining('WORK-7'), findsNothing);
+    expect(
+      tester.getSemantics(find.text('Pay the bill')).label,
+      isNot(contains('WORK-7')),
+    );
 
-    expect(find.textContaining('#'), findsNothing);
+    await pumpRow(tester, sampleTask(id: 1, title: 'Plain'));
+    expect(find.textContaining('#1'), findsNothing);
+    expect(tester.getSemantics(find.text('Plain')).label, 'Plain');
+    semantics.dispose();
+  });
+
+  testWidgets('the project is marked by a folder in its colour, muted '
+      'without one', (tester) async {
+    await pumpRow(
+      tester,
+      sampleTask(id: 1, title: 'Plain'),
+      projectTitle: 'Work',
+      projectHexColor: '1973ff',
+    );
+    Icon folder() => tester.widget<Icon>(
+      find.descendant(
+        of: find.byType(ProjectIcon),
+        matching: find.byType(Icon),
+      ),
+    );
+    expect(folder().icon, Icons.folder_outlined);
+    expect(folder().color, const Color(0xFF1973FF));
+    expect(
+      tester.getCenter(find.byType(ProjectIcon)).dx,
+      lessThan(tester.getCenter(find.text('Work')).dx),
+    );
+
+    await pumpRow(
+      tester,
+      sampleTask(id: 1, title: 'Plain'),
+      projectTitle: 'Home',
+    );
+    final context = tester.element(find.text('Home'));
+    expect(folder().color, Theme.of(context).colorScheme.onSurfaceVariant);
   });
 
   testWidgets('an overdue due date has its own icon, a done one the calendar', (
@@ -222,7 +259,7 @@ void main() {
     expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
     expect(node.label.split('\n'), [
       'Pay the bill',
-      'WORK-7 · Work',
+      'Work',
       en.taskOverdueSemantics('1 day ago'),
       en.prioritySemantics(en.priorityMedium),
       en.labelSemantics('alpha'),
@@ -275,59 +312,6 @@ void main() {
     expect(
       Theme.of(tester.element(find.byType(TaskRow))).brightness,
       Brightness.dark,
-    );
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets("in a project's own list the identifier leads the title", (
-    tester,
-  ) async {
-    await pumpRow(tester, richTask(), identifierBeforeTitle: true);
-
-    final identifier = find.widgetWithText(IdentifierText, 'WORK-7');
-    expect(identifier, findsOneWidget);
-    final title = find.text('Pay the bill');
-    expect(
-      tester.getTopRight(identifier).dx,
-      lessThan(tester.getTopLeft(title).dx),
-    );
-    expect(
-      tester.getBottomLeft(identifier).dy,
-      closeTo(tester.getBottomLeft(title).dy, 4),
-    );
-    expect(
-      tester.getTopLeft(find.text('1 day ago')).dy,
-      greaterThan(tester.getBottomLeft(title).dy),
-    );
-  });
-
-  testWidgets("a list's identifiers lead the titles while the longest takes "
-      'a fifth of a row at most', (tester) async {
-    await pumpRow(tester, richTask());
-    final context = tester.element(find.byType(TaskRow));
-    final short = sampleTask(id: 8, title: 'Short');
-    final long = sampleTask(id: 7, title: 'Long', identifier: 'LONGIDENT-7');
-
-    bool fit(List<Task> tasks) =>
-        TaskRow.identifiersFitBeforeTitle(context, tasks, rowWidth: 320);
-    expect(fit([short]), isTrue);
-    expect(fit([short, long]), isFalse);
-    expect(fit(const []), isTrue);
-  });
-
-  testWidgets('without it the identifier goes to the line below the title', (
-    tester,
-  ) async {
-    usePhoneSurface(tester, logicalSize: const Size(320, 640));
-    useAccessibilityExtremes(tester);
-    await pumpRow(
-      tester,
-      sampleTask(id: 7, title: 'Pay the bill', identifier: 'LONGIDENT-7'),
-    );
-
-    expect(
-      tester.getTopLeft(find.text('LONGIDENT-7')).dy,
-      greaterThan(tester.getBottomLeft(find.text('Pay the bill')).dy),
     );
     expect(tester.takeException(), isNull);
   });

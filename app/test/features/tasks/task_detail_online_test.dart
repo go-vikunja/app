@@ -92,8 +92,8 @@ void main() {
   }
 
   group('the heading', () {
-    testWidgets('the identifier from the project, the colour bubble, the '
-        'project path and the checklist', (tester) async {
+    testWidgets('the colour bubble, the project path and the checklist, no '
+        'identifier', (tester) async {
       data.tasks.all = [
         data.tasks
             .find(4)!
@@ -112,11 +112,15 @@ void main() {
       ];
       await openDetail(tester, 4);
 
-      // The server's identifier is stale after a move; the project's is not.
-      expect(inSheet(find.text('ACME-4')), findsOneWidget);
-      expect(inSheet(find.text('OLD-4')), findsNothing);
+      expect(inSheet(find.textContaining('ACME-4')), findsNothing);
+      expect(inSheet(find.textContaining('OLD-4')), findsNothing);
       final dot = tester.widget<ColorDot>(inSheet(find.byType(ColorDot)));
       expect(dot.color, const Color(0xFFFF0000));
+      // The task's colour leads its title; the header holds the project.
+      final title = inSheet(find.text('Ship the order'));
+      final dotRect = tester.getRect(inSheet(find.byType(ColorDot)));
+      expect(dotRect.right, lessThan(tester.getTopLeft(title).dx));
+      expect(dotRect.top, greaterThanOrEqualTo(tester.getTopLeft(title).dy));
       for (final title in ['Work', 'Clients', 'Acme']) {
         expect(inSheet(find.text(title)), findsOneWidget);
       }
@@ -165,7 +169,6 @@ void main() {
 
       expect(inSheet(find.text('Acme Corp')), findsOneWidget);
       expect(inSheet(find.text('Clients')), findsNothing);
-      expect(inSheet(find.text('AC-4')), findsOneWidget);
     });
 
     testWidgets('labels once each by title, assignees with their avatars', (
@@ -715,7 +718,7 @@ void main() {
 
       await tester.tap(inSheet(find.byTooltip(en.taskDetailClose)));
       await tester.pumpAndSettle();
-      await tester.tap(inSheet(find.text('ACME-8 Invoice')));
+      await tester.tap(inSheet(find.text('Invoice')));
       await tester.pumpAndSettle();
       expect(find.byType(TaskDetailSheet), findsNWidgets(2));
       expect(linkOpener.opened, isEmpty);

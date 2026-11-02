@@ -110,7 +110,7 @@ void main() {
   String location(WidgetTester tester) =>
       containerOf(tester).read(appRouterProvider).state.matchedLocation;
 
-  final commentText = en.inboxCommented('Anna Example', '#12');
+  final commentText = en.inboxCommented('Anna Example', 'Water the plants');
 
   group('the bell', () {
     testWidgets('shows the unread count and names it', (tester) async {
@@ -193,13 +193,13 @@ void main() {
     final texts = [
       en.inboxToday,
       commentText,
-      en.inboxAssignedYou('Anna Example', '#12'),
+      en.inboxAssignedYou('Anna Example', 'Water the plants'),
       en.inboxYesterday,
       en.inboxProjectCreated('Anna Example', 'Garden'),
       en.inboxAddedYouToTeam('Anna Example', 'Family'),
       en.inboxEarlier,
-      en.inboxTaskDeleted('Anna Example', '#3'),
-      en.inboxMentioned('Anna Example', '#3'),
+      en.inboxTaskDeleted('Anna Example', 'Old chore'),
+      en.inboxMentioned('Anna Example', 'Old chore'),
     ];
     final tops = [
       for (final text in texts) tester.getTopLeft(inInbox(find.text(text))).dy,
@@ -209,8 +209,16 @@ void main() {
       inInbox(find.text(en.inboxQuoted('Done with the balcony'))),
       findsOne,
     );
+    // The row's text names the task; the line below only says when.
+    expect(inInbox(find.textContaining('Water the plants · ')), findsNothing);
     expect(
-      inInbox(find.text('Water the plants · ${en.relativeHoursAgo(1)}')),
+      find.descendant(
+        of: find.ancestor(
+          of: inInbox(find.text(commentText)),
+          matching: find.byType(ListTile),
+        ),
+        matching: find.text(en.relativeHoursAgo(1)),
+      ),
       findsOneWidget,
     );
   });
@@ -268,7 +276,7 @@ void main() {
       await openInbox(tester);
 
       await tester.tap(
-        inInbox(find.text(en.inboxMentioned('Anna Example', '#3'))),
+        inInbox(find.text(en.inboxMentioned('Anna Example', 'Old chore'))),
       );
       await tester.pumpAndSettle();
 
@@ -309,7 +317,7 @@ void main() {
         await openInbox(tester);
 
         await tester.tap(
-          inInbox(find.text(en.inboxMentioned('Anna Example', '#3'))),
+          inInbox(find.text(en.inboxMentioned('Anna Example', 'Old chore'))),
         );
         await tester.pumpAndSettle();
 
@@ -326,7 +334,7 @@ void main() {
       await openInbox(tester);
 
       await tester.tap(
-        inInbox(find.text(en.inboxTaskDeleted('Anna Example', '#3'))),
+        inInbox(find.text(en.inboxTaskDeleted('Anna Example', 'Old chore'))),
       );
       await tester.pumpAndSettle();
 
@@ -474,7 +482,10 @@ void main() {
 
     await tester.tap(find.byType(InboxButton));
     await tester.pumpAndSettle();
-    expect(inInbox(find.text(en.inboxReminder('#12'))), findsOneWidget);
+    expect(
+      inInbox(find.text(en.inboxReminder('Water the plants'))),
+      findsOneWidget,
+    );
     await tester.tap(find.byTooltip(en.moreActions));
     await tester.pumpAndSettle();
     final entry = tester.widget<PopupMenuItem<Object?>>(
@@ -590,7 +601,10 @@ void main() {
 
     expect(find.text(de.inboxTitle), findsWidgets);
     expect(find.text(de.inboxToday), findsOneWidget);
-    expect(find.text(de.inboxCommented('Anna Example', '#12')), findsOneWidget);
+    expect(
+      find.text(de.inboxCommented('Anna Example', 'Water the plants')),
+      findsOneWidget,
+    );
     expect(find.text(de.inboxQuoted('Done with the balcony')), findsOneWidget);
   });
 }

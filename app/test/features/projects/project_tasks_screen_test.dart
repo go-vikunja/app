@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
@@ -86,10 +87,16 @@ void main() {
     );
   });
 
-  Future<void> pumpProject(WidgetTester tester, {int id = 1}) async {
+  Future<void> pumpProject(
+    WidgetTester tester, {
+    int id = 1,
+    int? viewId,
+  }) async {
     usePhoneSurface(tester, logicalSize: const Size(400, 2400));
     await pumpSignedInApp(tester, sync: data, now: now);
-    containerOf(tester).read(appRouterProvider).go(AppRoutes.project(id));
+    containerOf(tester)
+        .read(appRouterProvider)
+        .go(AppRoutes.project(id, viewId: viewId));
     await tester.pumpAndSettle();
   }
 
@@ -151,15 +158,39 @@ void main() {
       ('Eight', 0),
       ('Orphan', 0),
     ]);
-    // A subtask from another project names it.
+    // A subtask from another project names it, after a folder in its
+    // colour.
+    final grandchild = find.ancestor(
+      of: find.text('Grandchild'),
+      matching: find.byType(TaskRow),
+    );
+    expect(
+      find.descendant(of: grandchild, matching: find.text('Home')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<Icon>(
+            find.descendant(
+              of: find.descendant(
+                of: grandchild,
+                matching: find.byType(ProjectIcon),
+              ),
+              matching: find.byType(Icon),
+            ),
+          )
+          .color,
+      const Color(0xFF1973FF),
+    );
     expect(
       find.descendant(
-        of: find.ancestor(of: find.text('#4'), matching: find.byType(TaskRow)),
-        matching: find.text('Home'),
+        of: find.byType(TaskRow),
+        matching: find.byType(ProjectIcon),
       ),
       findsOneWidget,
     );
-    expect(find.text('#2'), findsOneWidget);
+    // No row shows its identifier.
+    expect(find.textContaining('#'), findsNothing);
     expect(
       tester.widget<Text>(find.text('Done child')).style?.decoration,
       TextDecoration.lineThrough,
@@ -169,8 +200,9 @@ void main() {
     expect(data.tasks.projectListRefreshes, isEmpty);
   });
 
-  testWidgets("under the title the project's own tasks show its progress; "
-      'rows lead with their identifier', (tester) async {
+  testWidgets("under the title the project's own tasks show its progress", (
+    tester,
+  ) async {
     final semantics = tester.ensureSemantics();
     await pumpProject(tester);
 
@@ -192,12 +224,6 @@ void main() {
       findsOneWidget,
     );
     expect(
-      tester
-          .widgetList<TaskRow>(find.byType(TaskRow))
-          .map((row) => row.identifierBeforeTitle),
-      everyElement(isTrue),
-    );
-    expect(
       find.widgetWithText(FloatingActionButton, en.newTask),
       findsOneWidget,
     );
@@ -209,21 +235,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(en.projectProgressDone(4, 8)), findsOneWidget);
     semantics.dispose();
-  });
-
-  testWidgets('a long identifier sends every identifier of the list to the '
-      'line below its title, so that the rows agree', (tester) async {
-    data.tasks.all = [
-      sampleTask(id: 7, title: 'Seven', identifier: 'LONGIDENT-7'),
-      sampleTask(id: 8, title: 'Eight'),
-    ];
-    await pumpProject(tester);
-
-    bool leads(String identifier, String title) =>
-        tester.getTopLeft(find.text(identifier)).dy <
-        tester.getBottomLeft(find.text(title)).dy;
-    expect(leads('LONGIDENT-7', 'Seven'), isFalse);
-    expect(leads('#8', 'Eight'), isFalse);
   });
 
   testWidgets('the tabs follow views added and removed while open', (
@@ -376,8 +387,8 @@ void main() {
     expect(find.byType(DataFailureCard), findsNothing);
   });
 
-  testWidgets('the tabs offer the list and kanban views and remember the one '
-      'picked', (tester) async {
+  testWidgets('the tabs offer the list and kanban views and keep the one '
+      'picked without saving it', (tester) async {
     await pumpProject(tester);
 
     expect(find.byType(Tab), findsNWidgets(4));
@@ -387,7 +398,7 @@ void main() {
 
     await selectView(tester, 'Everything');
 
-    expect(data.listPreferences.saves, ['remember 1 12']);
+    expect(data.listPreferences.saves, isEmpty);
     expect(selectedView(tester), 'Everything');
     // Without a filter the done tasks show below, the open child of the
     // done parent under it.
@@ -439,15 +450,35 @@ void main() {
     expect(rows(tester).first, ('Seven', 0));
   });
 
-  testWidgets('opens on the view last picked', (tester) async {
-    data.listPreferences.lastViews[1] = 12;
+  testWidgets('opened again, a project starts on its first view', (
+    tester,
+  ) async {
     await pumpProject(tester);
+    await selectView(tester, 'Everything');
+
+    containerOf(tester).read(appRouterProvider).go(AppRoutes.projects);
+    await tester.pumpAndSettle();
+    containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+    await tester.pumpAndSettle();
+
+    expect(selectedView(tester), en.projectViewList);
+  });
+
+  testWidgets('opens on the view the route names', (tester) async {
+    await pumpProject(tester, viewId: 12);
 
     // Only the view shown downloads.
     expect(data.tasks.projectListRefreshes, [(1, 12)]);
 
     expect(selectedView(tester), 'Everything');
     expect(sectionTitles(tester), [en.projectTasksDoneSection]);
+  });
+
+  testWidgets('a view the project lacks opens its first view', (tester) async {
+    await pumpProject(tester, viewId: 99);
+
+    expect(selectedView(tester), en.projectViewList);
+    expect(rows(tester).first, ('Seven', 0));
   });
 
   testWidgets('a view whose filter the device evaluates lists its matches '
@@ -458,8 +489,7 @@ void main() {
         ListSnapshot(positions: const {8: 1, 7: 2, 9: 3}, loadedAt: now),
       )
       ..setViewMatches(13, {7, 8, 9});
-    data.listPreferences.lastViews[1] = 13;
-    await pumpProject(tester);
+    await pumpProject(tester, viewId: 13);
 
     expect(rows(tester), [('Eight', 0), ('Seven', 0), ('Done nine', 0)]);
     expect(find.textContaining('priority >= 4'), findsNothing);
@@ -472,8 +502,7 @@ void main() {
         NetworkProblem.unreachable,
       )
       ..setViewMatches(13, {7});
-    data.listPreferences.lastViews[1] = 13;
-    await pumpProject(tester);
+    await pumpProject(tester, viewId: 13);
 
     expect(rows(tester), [('Seven', 0)]);
     expect(find.text(en.projectViewNotLoadedTitle), findsNothing);
@@ -516,8 +545,7 @@ void main() {
         loadedAt: now.add(const Duration(seconds: 50)),
       ),
     );
-    data.listPreferences.lastViews[1] = 13;
-    await pumpProject(tester);
+    await pumpProject(tester, viewId: 13);
 
     expect(
       find.text(en.projectViewFilterNotice('priority >= 4', en.relativeNow)),
@@ -531,8 +559,7 @@ void main() {
     data.tasks.refreshProjectListFailure = const NetworkFailure(
       NetworkProblem.unreachable,
     );
-    data.listPreferences.lastViews[1] = 13;
-    await pumpProject(tester);
+    await pumpProject(tester, viewId: 13);
 
     expect(find.text(en.projectViewNotLoadedTitle), findsOneWidget);
     expect(
@@ -546,8 +573,7 @@ void main() {
       'back online', (tester) async {
     data.engine.onRefresh = () async =>
         throw const NetworkFailure(NetworkProblem.unreachable);
-    data.listPreferences.lastViews[1] = 13;
-    await pumpProject(tester);
+    await pumpProject(tester, viewId: 13);
     expect(find.text(en.projectViewNotLoadedTitle), findsOneWidget);
 
     data.engine.onRefresh = null;
@@ -567,8 +593,7 @@ void main() {
       'not be downloaded', (tester) async {
     final download = Completer<void>();
     data.tasks.onRefreshProjectList = (_, _) => download.future;
-    data.listPreferences.lastViews[1] = 13;
-    await pumpProject(tester);
+    await pumpProject(tester, viewId: 13);
 
     expect(find.text(en.projectViewDownloadingTitle), findsOneWidget);
     expect(find.text(en.projectViewNotLoadedTitle), findsNothing);

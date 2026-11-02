@@ -126,8 +126,11 @@ void main() {
 
       await tester.drag(find.byType(InboxScreen), const Offset(0, 20000));
       await tester.pumpAndSettle();
-      // The newest row, the comment.
-      await tester.tap(find.textContaining('HOUSEHOLD-1234').first);
+      // The newest row, the comment; its text runs past the screen.
+      final comment = find.textContaining('Water the plants on the balcony');
+      await tester.ensureVisible(comment.first);
+      await tester.pumpAndSettle();
+      await tester.tapAt(tester.getTopLeft(comment.first) + const Offset(8, 8));
       await tester.pumpAndSettle();
       expect(find.byType(TaskDetailSheet), findsOneWidget);
       expect(tester.takeException(), isNull);

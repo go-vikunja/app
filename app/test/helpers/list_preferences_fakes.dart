@@ -8,13 +8,12 @@ import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 /// and follow every save, like the database's.
 final class FakeListPreferences implements ListPreferences {
   final Map<String, ViewPreferences> views = {};
-  final Map<int, int> lastViews = {};
   UpcomingPreferences upcoming = const UpcomingPreferences();
   ProjectTreePreferences projectTree = const ProjectTreePreferences();
   Set<TableColumn> tableColumns = TableColumn.defaults;
 
-  /// Every save, in order: `view <listKey>`, `remember <projectId> <viewId>`,
-  /// `upcoming`, `projectTree` or `tableColumns`.
+  /// Every save, in order: `view <listKey>`, `upcoming`, `projectTree` or
+  /// `tableColumns`.
   final List<String> saves = [];
 
   final _changes = StreamController<void>.broadcast();
@@ -28,15 +27,6 @@ final class FakeListPreferences implements ListPreferences {
     saves.add('view $listKey');
     views[listKey] = preferences;
     _changes.add(null);
-  }
-
-  @override
-  Future<int?> lastViewOf(int projectId) async => lastViews[projectId];
-
-  @override
-  Future<void> rememberView(int projectId, int viewId) async {
-    saves.add('remember $projectId $viewId');
-    lastViews[projectId] = viewId;
   }
 
   @override

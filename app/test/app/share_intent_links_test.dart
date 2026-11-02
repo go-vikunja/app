@@ -119,8 +119,12 @@ void main() {
     final registry = await auth.registry.load();
     expect(registry.activeAccountId, guestId);
     expect(registry.find(userId), isNotNull);
-    expect(find.byType(ProjectTasksScreen), findsOneWidget);
-    expect(data.listPreferences.saves, contains('remember 1378 4'));
+    expect(
+      tester.widget<ProjectTasksScreen>(find.byType(ProjectTasksScreen)),
+      isA<ProjectTasksScreen>()
+          .having((screen) => screen.projectId, 'projectId', 1378)
+          .having((screen) => screen.viewId, 'viewId', 4),
+    );
   });
 
   testWidgets('signed out, an invite goes to its check', (tester) async {

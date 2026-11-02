@@ -16,7 +16,9 @@ import '../a11y/sweep_data.dart';
 /// Phones in both orientations and the 800×600 test surface lay out as
 /// they did before step 36b (decision 6): every rect here was recorded at
 /// 2d70ef1, from a `git archive` export. Self-contained, so it still runs
-/// there.
+/// there. The overview rows lost a line or two pixels with the task
+/// identifiers, and the Account settings tile a subtitle line with the
+/// colour scheme (D75).
 const Map<TargetPlatform, List<Size>> _sizes = {
   TargetPlatform.android: [
     Size(360, 740),
@@ -28,11 +30,11 @@ const Map<TargetPlatform, List<Size>> _sizes = {
 };
 
 const _expected = <String, Rect>{
-  'android 360×740 overview card': Rect.fromLTRB(16, 372, 344, 526),
-  'android 360×740 overview row': Rect.fromLTRB(16, 372, 344, 526),
+  'android 360×740 overview card': Rect.fromLTRB(16, 372, 344, 524),
+  'android 360×740 overview row': Rect.fromLTRB(16, 372, 344, 524),
   'android 360×740 task sheet': Rect.fromLTRB(0, 242.2, 360, 740),
   'android 360×740 long dialog': Rect.fromLTRB(40, 24, 320, 716),
-  'android 360×740 account tile': Rect.fromLTRB(0, 236, 360, 420),
+  'android 360×740 account tile': Rect.fromLTRB(0, 236, 360, 400),
   'android 360×740 task edit field': Rect.fromLTRB(16, 64, 344, 120),
   'android 740×360 overview card': Rect.fromLTRB(144, 260, 724, 350),
   'android 740×360 overview row': Rect.fromLTRB(144, 260, 724, 350),
@@ -51,16 +53,16 @@ const _expected = <String, Rect>{
   'android 952×427 long dialog': Rect.fromLTRB(40, 24, 912, 403),
   'android 952×427 account tile': Rect.fromLTRB(128, 148, 952, 228),
   'android 952×427 task edit field': Rect.fromLTRB(16, 64, 936, 120),
-  'android 800×600 overview card': Rect.fromLTRB(144, 260, 784, 350),
-  'android 800×600 overview row': Rect.fromLTRB(144, 260, 784, 350),
+  'android 800×600 overview card': Rect.fromLTRB(144, 260, 784, 330),
+  'android 800×600 overview row': Rect.fromLTRB(144, 260, 784, 330),
   'android 800×600 task sheet': Rect.fromLTRB(80, 193.2, 720, 600),
   'android 800×600 long dialog': Rect.fromLTRB(40, 24, 760, 576),
-  'android 800×600 account tile': Rect.fromLTRB(128, 148, 800, 248),
+  'android 800×600 account tile': Rect.fromLTRB(128, 148, 800, 228),
   'android 800×600 task edit field': Rect.fromLTRB(16, 64, 784, 120),
-  'iOS 375×667 overview card': Rect.fromLTRB(16, 352, 359, 506),
-  'iOS 375×667 overview row': Rect.fromLTRB(16, 352, 359, 506),
+  'iOS 375×667 overview card': Rect.fromLTRB(16, 352, 359, 504),
+  'iOS 375×667 overview row': Rect.fromLTRB(16, 352, 359, 504),
   'iOS 375×667 task sheet': Rect.fromLTRB(0, 53.36, 375, 667),
-  'iOS 375×667 account tile': Rect.fromLTRB(0, 208, 375, 392),
+  'iOS 375×667 account tile': Rect.fromLTRB(0, 208, 375, 372),
   'iOS 375×667 task edit field': Rect.fromLTRB(16, 64, 359, 120),
   'iOS 844×390 overview card': Rect.fromLTRB(63, 260, 781, 330),
   'iOS 844×390 overview row': Rect.fromLTRB(63, 260, 781, 330),

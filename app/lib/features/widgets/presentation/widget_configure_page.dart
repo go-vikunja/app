@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/features/accounts/presentation/account_identity.d
 import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
@@ -201,7 +202,7 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
           id: row.node.project.id,
           title: row.node.project.displayTitle(l10n),
           depth: row.depth,
-          color: parseHexColor(row.node.project.hexColor),
+          leading: ProjectIcon(hexColor: row.node.project.hexColor),
         ),
     ];
   }
@@ -214,7 +215,10 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
         _Choice(
           id: label.id,
           title: label.title,
-          color: parseHexColor(label.hexColor),
+          leading: switch (parseHexColor(label.hexColor)) {
+            null => null,
+            final color => Icon(Icons.circle, size: 12, color: color),
+          },
         ),
     ];
   }
@@ -554,13 +558,13 @@ final class _Choice {
     required this.id,
     required this.title,
     this.depth = 0,
-    this.color,
+    this.leading,
   });
 
   final int id;
   final String title;
   final int depth;
-  final Color? color;
+  final Widget? leading;
 }
 
 class _ChoiceList extends StatelessWidget {
@@ -609,11 +613,10 @@ class _ChoiceList extends StatelessWidget {
             start: 24 + 16.0 * choice.depth.clamp(0, 4),
             end: 24,
           ),
-          leading: choice.color == null
-              ? null
-              : ExcludeSemantics(
-                  child: Icon(Icons.circle, size: 12, color: choice.color),
-                ),
+          leading: switch (choice.leading) {
+            null => null,
+            final leading => ExcludeSemantics(child: leading),
+          },
           title: Text(choice.title),
           trailing: selected ? const Icon(Icons.check) : null,
           onTap: () => Navigator.of(context).pop(choice.id),

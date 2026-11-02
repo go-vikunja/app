@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
@@ -400,13 +401,14 @@ void main() {
     final sync = engine();
     await sync.ensureInitialSync();
     final preferences = LocalListPreferences(db);
-    await preferences.rememberView(1, 70);
+    const shown = ViewPreferences(showDone: true);
+    await preferences.saveView('view:70', shown);
     await db.listSnapshotsDao.replace('view:70', {1: 1}, loadedAt: now);
     now = now.add(const Duration(hours: 1));
 
     await sync.fullResync();
 
-    expect(await preferences.lastViewOf(1), 70);
+    expect(await preferences.watchView('view:70').first, shown);
     expect((await db.listSnapshotsDao.load('view:70')).positions, {1: 1});
   });
 }

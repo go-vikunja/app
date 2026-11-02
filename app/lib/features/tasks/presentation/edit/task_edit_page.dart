@@ -8,7 +8,6 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
@@ -19,6 +18,7 @@ import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -278,7 +278,6 @@ class _Form extends ConsumerWidget {
     final shortcuts = buildDateShortcuts(now);
     final percent = (draft.percentDone * 100).round();
     final descriptionText = htmlToPlainText(description);
-    final projectColor = parseHexColor(project?.hexColor ?? '');
 
     return ReadableWidth.builder(
       maxWidth: ReadableWidth.form,
@@ -305,10 +304,7 @@ class _Form extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           ListTile(
-            leading: Icon(
-              Icons.folder_outlined,
-              color: projectColor ?? colors.onSurfaceVariant,
-            ),
+            leading: ProjectIcon(hexColor: project?.hexColor ?? ''),
             title: Text(l10n.taskEditProject),
             subtitle: Text(
               project?.displayTitle(l10n) ?? l10n.projectUnknownTitle,

@@ -6,8 +6,8 @@ import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart
 import 'package:vikunja_mobile/features/inbox/presentation/activity_texts.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
-/// One notification: who did what, the comment for a comment, the task's
-/// title and when; bold with a dot while unread.
+/// One notification: who did what, the comment for a comment and when;
+/// bold with a dot while unread.
 class InboxRow extends ConsumerWidget {
   const new({
     required this.item,
@@ -30,16 +30,6 @@ class InboxRow extends ConsumerWidget {
     final detailStyle = theme.textTheme.bodyMedium?.copyWith(
       color: colors.onSurfaceVariant,
     );
-    // Without an identifier the text names the task by its title already.
-    final title = item.taskIdentifier != null ? item.taskTitle : null;
-    final details = [
-      ?title,
-      formatter.relative(item.created, now: now),
-    ].join(' · ');
-    final spokenDetails = switch (formatter.semanticsLabel(item.created)) {
-      final created? => [?title, created].join(' · '),
-      null => null,
-    };
 
     return ListTile(
       onTap: onTap,
@@ -59,7 +49,11 @@ class InboxRow extends ConsumerWidget {
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium,
             ),
-          Text(details, semanticsLabel: spokenDetails, style: detailStyle),
+          Text(
+            formatter.relative(item.created, now: now),
+            semanticsLabel: formatter.semanticsLabel(item.created),
+            style: detailStyle,
+          ),
         ],
       ),
       trailing: unread

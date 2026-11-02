@@ -425,8 +425,12 @@ void main() {
       await preferences.saveView('view:21', sorted);
       await preferences.saveView('project:3', sorted);
       await preferences.saveView('project:4', sorted);
-      await preferences.rememberView(1, 12);
-      await preferences.rememberView(4, 41);
+      for (final projectId in [1, 4]) {
+        await db.listPreferencesDao.write(
+          LocalListPreferences.lastViewKey(projectId),
+          '{"view_id":${projectId}1}',
+        );
+      }
       await preferences.saveProjectTree(
         const ProjectTreePreferences(showArchived: true, collapsed: {1, 2, 4}),
       );
@@ -443,8 +447,14 @@ void main() {
       expect(await preferences.watchView('view:21').first, isNot(sorted));
       expect(await preferences.watchView('project:3').first, isNot(sorted));
       expect(await preferences.watchView('project:4').first, sorted);
-      expect(await preferences.lastViewOf(1), isNull);
-      expect(await preferences.lastViewOf(4), 41);
+      expect(
+        await db.listPreferencesDao.read(LocalListPreferences.lastViewKey(1)),
+        isNull,
+      );
+      expect(
+        await db.listPreferencesDao.read(LocalListPreferences.lastViewKey(4)),
+        '{"view_id":41}',
+      );
       expect(
         await preferences.watchProjectTree().first,
         const ProjectTreePreferences(showArchived: true, collapsed: {4}),

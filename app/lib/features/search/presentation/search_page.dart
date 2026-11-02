@@ -239,7 +239,7 @@ class _Results extends ConsumerWidget {
                     now: now,
                     minimumPriority: minimumPriority,
                     projectTitle: project?.displayTitle(l10n),
-                    projectColor: parseHexColor(project?.hexColor ?? ''),
+                    projectHexColor: project?.hexColor,
                     pending: pendingIds.contains(task.id),
                     onTap: () => unawaited(showTaskDetail(context, task: task)),
                     onDoneChanged: archived

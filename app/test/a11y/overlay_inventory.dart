@@ -176,10 +176,6 @@ const overlayInventory = <String, OverlayCoverage>{
     '$_menuOfTextItems; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
-  'features/quick_add/presentation/magic_toolbar.dart '
-      'MagicToolbar.build MenuAnchor': Swept(
-    'quick-add menu',
-  ),
   'features/quick_add/presentation/quick_add_help_sheet.dart '
       'showQuickAddHelp showModalBottomSheet': Exempt(
     'a scrolling text sheet; opened at 200 % in '

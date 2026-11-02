@@ -7,7 +7,6 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
@@ -99,9 +98,6 @@ class _ProjectListBodyState extends State<ProjectListBody> {
   late final _edgeScroller = DragEdgeScroller(onScrolled: _followPointer);
 
   List<ListGroup> _groups = const [];
-
-  /// For every row alike, set with the list's width in [build].
-  bool _identifiersLead = false;
   int? _held;
   Offset? _pointer;
   int? _dropIndex;
@@ -252,50 +248,43 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     final doneRows = model.doneRows ?? const [];
     return ReadableWidth.builder(
       maxWidth: ReadableWidth.list,
-      builder: (context, contentWidth, inset) {
-        _identifiersLead = TaskRow.identifiersFitBeforeTitle(
-          context,
-          [...model.rows, ...doneRows].map((row) => row.task),
-          rowWidth: contentWidth,
-        );
-        return DragTarget<_RowDrag>(
-          onWillAcceptWithDetails: (_) => widget.onReorder != null,
-          onAcceptWithDetails: (details) => _drop(details.data.task),
-          onLeave: (_) => _setDropIndex(null),
-          builder: (context, _, _) => CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverPadding(
-                padding: EdgeInsets.symmetric(horizontal: inset),
-                sliver: SliverMainAxisGroup(
-                  slivers: [
-                    if (widget.header case final header?)
-                      NoticeSliver(notice: header),
-                    if (reorderable)
-                      _groupList(width: contentWidth)
-                    else
-                      _rows(model.rows, key: _openRowsKey),
-                    if (doneRows.isNotEmpty) ...[
-                      SliverToBoxAdapter(
-                        child: ListSectionHeader(
-                          title: l10n.projectTasksDoneSection,
-                          count: doneRows.where((row) => row.depth == 0).length,
-                        ),
+      builder: (context, contentWidth, inset) => DragTarget<_RowDrag>(
+        onWillAcceptWithDetails: (_) => widget.onReorder != null,
+        onAcceptWithDetails: (details) => _drop(details.data.task),
+        onLeave: (_) => _setDropIndex(null),
+        builder: (context, _, _) => CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.symmetric(horizontal: inset),
+              sliver: SliverMainAxisGroup(
+                slivers: [
+                  if (widget.header case final header?)
+                    NoticeSliver(notice: header),
+                  if (reorderable)
+                    _groupList(width: contentWidth)
+                  else
+                    _rows(model.rows, key: _openRowsKey),
+                  if (doneRows.isNotEmpty) ...[
+                    SliverToBoxAdapter(
+                      child: ListSectionHeader(
+                        title: l10n.projectTasksDoneSection,
+                        count: doneRows.where((row) => row.depth == 0).length,
                       ),
-                      _rows(doneRows),
-                    ],
-                    // Room for the floating action button below the last row.
-                    const SliverSafeArea(
-                      top: false,
-                      sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
                     ),
+                    _rows(doneRows),
                   ],
-                ),
+                  // Room for the floating action button below the last row.
+                  const SliverSafeArea(
+                    top: false,
+                    sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
+                  ),
+                ],
               ),
-            ],
-          ),
-        );
-      },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -424,11 +413,10 @@ class _ProjectListBodyState extends State<ProjectListBody> {
       task: task,
       now: widget.now,
       minimumPriority: widget.minimumPriority,
-      identifierBeforeTitle: _identifiersLead,
       depth: row.depth,
       parentTitle: row.parent?.title,
       projectTitle: elsewhere?.displayTitle(context.l10n),
-      projectColor: parseHexColor(elsewhere?.hexColor ?? ''),
+      projectHexColor: elsewhere?.hexColor,
       pending: widget.pendingIds.contains(task.id),
       onTap: () => openTaskDetail(context, task: task),
       onDoneChanged: archived

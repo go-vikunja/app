@@ -52,12 +52,8 @@ SweepScenario _projectPane(
 }) => _pane(
   '${AppRoutes.projects}/:id',
   variant,
-  location: AppRoutes.project(workProjectId),
-  setUp: (tester, _) async {
-    final data = sweepData();
-    data.listPreferences.lastViews[workProjectId] = viewId;
-    await pumpSweepApp(tester, data: data);
-  },
+  location: AppRoutes.project(workProjectId, viewId: viewId),
+  setUp: (tester, _) => pumpSweepApp(tester),
   open: open,
   expectScreen: expectScreen,
 );

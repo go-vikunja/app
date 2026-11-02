@@ -25,25 +25,19 @@ void main() {
     ));
   });
 
-  test('a prefixed identifier is added, the index-only one is not', () {
+  test('the identifier is left out, also a prefixed one', () {
     final describe = describeNotificationsWith(AppLocalizationsEn());
 
-    expect(
-      describe(
-        task.copyWith(identifier: 'WORK-12'),
-        ScheduledNotificationKind.reminder,
-        work,
-      ).body,
-      'Reminder · Work · WORK-12',
-    );
-    expect(
-      describe(
-        task.copyWith(identifier: '-12'),
-        ScheduledNotificationKind.reminder,
-        work,
-      ).body,
-      'Reminder · Work',
-    );
+    for (final identifier in ['WORK-12', '-12']) {
+      expect(
+        describe(
+          task.copyWith(identifier: identifier),
+          ScheduledNotificationKind.reminder,
+          work,
+        ),
+        (title: 'Water the plants', body: 'Reminder · Work'),
+      );
+    }
   });
 
   test('without a local project the body stays short', () {
@@ -83,7 +77,7 @@ void main() {
 
       expect(describe(prefixed, ScheduledNotificationKind.reminder, work), (
         title: 'Water the plants',
-        body: 'Reminder · Work · WORK-12',
+        body: 'Reminder · Work',
       ));
     });
 

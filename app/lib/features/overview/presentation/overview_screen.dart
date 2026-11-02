@@ -6,7 +6,6 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
@@ -249,7 +248,7 @@ class _TaskSections extends StatelessWidget {
                     now: now,
                     minimumPriority: minimumPriority,
                     projectTitle: project?.displayTitle(l10n),
-                    projectColor: parseHexColor(project?.hexColor ?? ''),
+                    projectHexColor: project?.hexColor,
                     pending: pendingIds.contains(task.id),
                     onTap: () => openTaskDetail(context, task: task),
                     onDoneChanged: (done) => onDoneChanged(task, done: done),

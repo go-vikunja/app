@@ -6,6 +6,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
@@ -80,6 +81,9 @@ void main() {
 
   testWidgets('a share that started the app becomes a new task with its '
       'text, project and files', (tester) async {
+    data.projects.all = [
+      sampleProject(id: 1, title: 'Work', hexColor: '1973ff'),
+    ];
     data.shareSource.push(
       const IncomingShare(
         text: 'Buy milk\nand bread https://shop.example/x',
@@ -95,6 +99,10 @@ void main() {
       'and bread https://shop.example/x',
     );
     expect(inSheet(find.text('Work')), findsOneWidget);
+    expect(
+      tester.widget<ProjectIcon>(inSheet(find.byType(ProjectIcon))).hexColor,
+      '1973ff',
+    );
     expect(inSheet(find.text('list.pdf')), findsOneWidget);
     expect(inSheet(find.text('2 KB')), findsOneWidget);
     expect(inSheet(find.text(en.shareFileTooLarge('20 MB'))), findsOneWidget);
@@ -284,6 +292,18 @@ void main() {
 
     await tester.enterText(field(en.addRelationSearch), 'water');
     await tester.pumpAndSettle();
+    // The candidate names its project, not its number (#7).
+    final candidate = inSheet(
+      find.widgetWithText(ListTile, 'Water the plants'),
+    );
+    expect(
+      find.descendant(of: candidate, matching: find.text('Work')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: candidate, matching: find.textContaining('#')),
+      findsNothing,
+    );
     await tester.tap(inSheet(find.text('Water the plants')));
     await tester.pumpAndSettle();
     expect(enabled(tester, en.shareAdd), isTrue);

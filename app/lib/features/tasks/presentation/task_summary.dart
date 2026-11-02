@@ -20,9 +20,7 @@ typedef TableDate = ({TableColumn column, String text, String spoken});
 final class TaskSummary {
   const new _({
     required this.task,
-    required this.identifier,
     required this.projectTitle,
-    required this.details,
     required this.dueText,
     required this.dueTone,
     required this.spokenDue,
@@ -54,10 +52,6 @@ final class TaskSummary {
   }) {
     bool shows(TableColumn column) => columns?.contains(column) ?? true;
     final inTable = columns != null;
-    // A task not yet sent has no identifier until the server assigns one.
-    final identifier = task.id > 0 && shows(TableColumn.taskIndex)
-        ? task.displayIdentifier
-        : null;
     final project = shows(TableColumn.project) ? projectTitle : null;
     final percent = (task.percentDone * 100).round();
     final due = inTable ? null : task.dueDate;
@@ -74,9 +68,7 @@ final class TaskSummary {
 
     return TaskSummary._(
       task: task,
-      identifier: identifier,
       projectTitle: project,
-      details: [?identifier, ?project].join(' · '),
       dueText: dueText,
       dueTone: DueTone.of(task, now: now),
       spokenDue: due == null ? null : formatter.semanticsLabel(due) ?? dueText,
@@ -116,14 +108,10 @@ final class TaskSummary {
   }
 
   final Task task;
-  final String? identifier;
 
   /// For a task from another project than the list's; in a table, for
   /// every task while the project column shows.
   final String? projectTitle;
-
-  /// [identifier] and [projectTitle] joined, as screen readers hear them.
-  final String details;
 
   /// The list row's due date; a table's is among [tableDates].
   final String? dueText;
@@ -160,7 +148,7 @@ final class TaskSummary {
     task.title,
     if (parentTitle != null) l10n.taskSubtaskOfSemantics(parentTitle),
     if (task.done) l10n.taskDoneSemantics,
-    if (details.isNotEmpty) details,
+    ?projectTitle,
     if (spokenDue case final due? when overdue)
       l10n.taskOverdueSemantics(due)
     else if (spokenDue case final due?)

@@ -37,6 +37,7 @@ void main() {
       AppRoutes.upcoming,
       AppRoutes.projects,
       AppRoutes.project(1),
+      AppRoutes.project(1, viewId: 12),
       AppRoutes.account,
     ]) {
       expect(AppRoutes.isTab(location), isTrue, reason: location);
@@ -59,6 +60,11 @@ void main() {
     ]) {
       expect(AppRoutes.isTab(location), isFalse, reason: location);
     }
+  });
+
+  test("a project's route names a view only when given one", () {
+    expect(AppRoutes.project(1), '/home/projects/1');
+    expect(AppRoutes.project(1, viewId: 12), '/home/projects/1?view=12');
   });
 
   testWidgets('starts on the connect screen', (tester) async {

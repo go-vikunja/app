@@ -54,8 +54,7 @@ List<T> orderedByLabel<T>(Iterable<T> items, String Function(T item) label) {
 
 String tableSortLabel(AppLocalizations l10n, TableSort sort) =>
     switch ((sort.field, sort.descending)) {
-      (TableSortField.taskIndex, true) => l10n.projectTableSortNumberDesc,
-      (TableSortField.taskIndex, false) => l10n.projectTableSortNumberAsc,
+      (TableSortField.taskIndex, _) => l10n.projectTableSortDefault,
       (TableSortField.done, false) => l10n.projectTableSortDoneAsc,
       (TableSortField.done, true) => l10n.projectTableSortDoneDesc,
       (TableSortField.title, false) => l10n.sortTitleAsc,
@@ -78,20 +77,21 @@ String tableSortLabel(AppLocalizations l10n, TableSort sort) =>
       (TableSortField.updated, false) => l10n.sortUpdatedAsc,
     };
 
-/// The web table's sortable columns in its order, each in the direction
-/// most often wanted first, the default first of all.
+/// The default, then the web table's sortable columns in its order, each
+/// in the direction most often wanted first.
 final List<TableSort> tableSortsInMenuOrder = [
+  TableSort.defaultSort,
   for (final field in TableSortField.values)
-    for (final descending in switch (field) {
-      TableSortField.taskIndex ||
-      TableSortField.priority ||
-      TableSortField.percentDone ||
-      TableSortField.doneAt ||
-      TableSortField.created ||
-      TableSortField.updated => const [true, false],
-      _ => const [false, true],
-    })
-      TableSort(field, descending: descending),
+    if (field != TableSortField.taskIndex)
+      for (final descending in switch (field) {
+        TableSortField.priority ||
+        TableSortField.percentDone ||
+        TableSortField.doneAt ||
+        TableSortField.created ||
+        TableSortField.updated => const [true, false],
+        _ => const [false, true],
+      })
+        TableSort(field, descending: descending),
 ];
 
 /// What the server matches the view against: its filter, else its search.

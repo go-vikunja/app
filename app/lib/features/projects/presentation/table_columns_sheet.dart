@@ -6,7 +6,6 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 
 String tableColumnLabel(AppLocalizations l10n, TableColumn column) =>
     switch (column) {
-      TableColumn.taskIndex => l10n.projectTableColumnNumber,
       TableColumn.done => l10n.taskDone,
       TableColumn.project => l10n.taskEditProject,
       TableColumn.title => l10n.taskEditTitleLabel,

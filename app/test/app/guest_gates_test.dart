@@ -218,6 +218,7 @@ void main() {
     await openMenu(tester);
     expect(find.text(en.projectsShowArchived), findsOneWidget);
     expect(find.text(en.savedFilterNew), findsNothing);
+    expect(find.text(en.projectsShowSavedFilters), findsNothing);
   });
 
   testWidgets("the Projects tab's empty state offers a guest nothing to "

@@ -91,7 +91,6 @@ void main() {
   setUp(() {
     data = SyncFakes(now: now);
     data.tasks.all = tasks();
-    data.listPreferences.lastViews[1] = 14;
     storeBoard();
   });
 
@@ -109,7 +108,9 @@ void main() {
         userRepositoryProvider.overrideWithValue(FakeUserRepository()),
       ],
     );
-    containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+    containerOf(tester)
+        .read(appRouterProvider)
+        .go(AppRoutes.project(1, viewId: 14));
     await tester.pumpAndSettle();
   }
 

@@ -79,8 +79,9 @@ void main() {
       ],
     );
     await openTab(tester, texts.tabAccount);
+    // The section's header ends up at the top of the screen.
     await tester.scrollUntilVisible(
-      find.text(texts.homeSignOut),
+      find.text(texts.appearanceHeading),
       100,
       scrollable: find
           .descendant(
@@ -95,7 +96,7 @@ void main() {
   Finder row(String title) => find.widgetWithText(ListTile, title);
 
   testWidgets('Android 13 and later: the Appearance section shows the row '
-      "with the app's language, without a palette the row alone, and it "
+      "with the app's language, without a palette no colours switch, and it "
       'opens the per-app language page as an excursion', (tester) async {
     await pumpAccountTab(tester, android: true);
 
@@ -126,14 +127,15 @@ void main() {
     expect(excursions.active, isFalse);
   });
 
-  testWidgets('Android 12 and older: no row, and without a palette no '
-      'Appearance section', (tester) async {
+  testWidgets('Android 12 and older: no row, and without a palette the '
+      'Appearance section keeps only the theme', (tester) async {
     canOpen = false;
     await pumpAccountTab(tester, android: true);
 
     expect(calls, ['canOpenAppLocaleSettings']);
     expect(find.text(en.appLanguageTitle), findsNothing);
-    expect(find.text(en.appearanceHeading), findsNothing);
+    expect(find.text(en.appearanceTheme), findsOneWidget);
+    expect(find.text(en.appearanceSystemColors), findsNothing);
   });
 
   testWidgets("iOS: the row opens the app's settings page", (tester) async {
@@ -166,17 +168,28 @@ void main() {
     expect(containerOf(tester).read(appExcursionsProvider).active, isFalse);
   });
 
-  testWidgets('with the system palette the row comes first, above the '
-      'colours switch', (tester) async {
+  testWidgets('with the system palette the row comes last, below the '
+      'theme and the colours switch, and says it stays on the device', (
+    tester,
+  ) async {
     useSystemPalette(tester);
     await pumpAccountTab(tester, android: true);
 
     final heading = find.text(en.appearanceHeading);
-    final language = row(en.appLanguageTitle);
+    final theme = find.text(en.appearanceTheme);
     final colours = find.text(en.appearanceSystemColors);
+    final language = row(en.appLanguageTitle);
     double top(Finder finder) => tester.getTopLeft(finder).dy;
-    expect(top(heading), lessThan(top(language)));
-    expect(top(language), lessThan(top(colours)));
+    expect(top(heading), lessThan(top(theme)));
+    expect(top(theme), lessThan(top(colours)));
+    expect(top(colours), lessThan(top(language)));
+    expect(
+      find.descendant(
+        of: language,
+        matching: find.text(en.appearanceOnThisDevice),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('in German it names the language in German', (tester) async {

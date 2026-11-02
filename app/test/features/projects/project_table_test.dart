@@ -93,9 +93,10 @@ void main() {
 
   Future<void> pumpProject(WidgetTester tester, {int? viewId}) async {
     usePhoneSurface(tester, logicalSize: const Size(400, 2400));
-    if (viewId != null) data.listPreferences.lastViews[1] = viewId;
     await pumpSignedInApp(tester, sync: data, now: now);
-    containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+    containerOf(tester)
+        .read(appRouterProvider)
+        .go(AppRoutes.project(1, viewId: viewId));
     await tester.pumpAndSettle();
   }
 
@@ -163,9 +164,10 @@ void main() {
     expect(find.byType(ListSectionHeader), findsNothing);
     expect(showDoneChip, findsNothing);
     expect(
-      find.byTooltip(en.projectSortCurrent(en.projectTableSortNumberDesc)),
+      find.byTooltip(en.projectSortCurrent(en.projectTableSortDefault)),
       findsOneWidget,
     );
+    expect(find.textContaining('#'), findsNothing);
     // The view's filter is evaluated here: nothing to download.
     expect(data.tasks.projectListRefreshes, isEmpty);
     // The FAB as in a list.
@@ -176,13 +178,12 @@ void main() {
       'in its column order, and keeps the choice per view', (tester) async {
     await pumpProject(tester, viewId: 13);
 
-    await openSort(tester, en.projectTableSortNumberDesc);
+    await openSort(tester, en.projectTableSortDefault);
     final tiles = tester.widgetList<ListTile>(sheetTiles<ListTile>()).toList();
     expect(
       [for (final tile in tiles) (tile.title! as Text).data],
       [
         en.projectTableSortDefault,
-        en.projectTableSortNumberAsc,
         en.projectTableSortDoneAsc,
         en.projectTableSortDoneDesc,
         en.sortTitleAsc,
@@ -241,10 +242,9 @@ void main() {
     );
   });
 
-  testWidgets('the columns sheet lists the 16 columns in the web order with '
-      'the title always on; a change shows at once in every table view', (
-    tester,
-  ) async {
+  testWidgets("the columns sheet lists the web's columns but its number in "
+      'its order with the title always on; a change shows at once in every '
+      'table view', (tester) async {
     await pumpProject(tester, viewId: 13);
 
     await openColumns(tester);
@@ -254,7 +254,6 @@ void main() {
     expect(
       [for (final box in boxes) (box.title! as Text).data],
       [
-        en.projectTableColumnNumber,
         en.taskDone,
         en.taskEditProject,
         en.taskEditTitleLabel,
@@ -275,11 +274,11 @@ void main() {
     expect(
       [for (final box in boxes) box.value],
       [
-        true, true, false, true, false, true, true, false, //
-        true, false, false, false, false, false, false, false,
+        true, false, true, false, true, true, false, true, //
+        false, false, false, false, false, false, false,
       ],
     );
-    final title = boxes[3];
+    final title = boxes[2];
     expect(title.onChanged, isNull);
     expect((title.subtitle! as Text).data, en.projectTableColumnTitleAlways);
     final reset = find.widgetWithText(TextButton, en.projectTableColumnsReset);
@@ -338,7 +337,7 @@ void main() {
     await toggleDueColumn();
     expect(rows(tester), ['Five', 'Four', 'Done three', 'Child', 'Parent']);
     expect(
-      find.byTooltip(en.projectSortCurrent(en.projectTableSortNumberDesc)),
+      find.byTooltip(en.projectSortCurrent(en.projectTableSortDefault)),
       findsOneWidget,
     );
     expect(data.listPreferences.views['view:13']?.tableSort, byDue);
@@ -347,13 +346,27 @@ void main() {
     expect(rows(tester), ['Four', 'Five', 'Done three', 'Child', 'Parent']);
 
     await toggleDueColumn();
-    await openSort(tester, en.projectTableSortNumberDesc);
+    await openSort(tester, en.projectTableSortDefault);
     final tiles = tester.widgetList<ListTile>(sheetTiles<ListTile>()).toList();
     expect(tiles.first.selected, isTrue);
     await tester.tap(find.text(en.sortDueDateDesc));
     await tester.pumpAndSettle();
     expect(data.listPreferences.tableColumns, TableColumn.defaults);
     expect(rows(tester), ['Four', 'Five', 'Done three', 'Child', 'Parent']);
+  });
+
+  testWidgets('a stored sort by number, lowest first, which the sheet no '
+      'longer offers, works as the default', (tester) async {
+    data.listPreferences.views['view:13'] = const ViewPreferences(
+      tableSort: TableSort(TableSortField.taskIndex, descending: false),
+    );
+    await pumpProject(tester, viewId: 13);
+
+    expect(rows(tester), ['Five', 'Four', 'Done three', 'Child', 'Parent']);
+    expect(
+      find.byTooltip(en.projectSortCurrent(en.projectTableSortDefault)),
+      findsOneWidget,
+    );
   });
 
   testWidgets('"Show done" shows on a table whose filter is done = false, and '
@@ -490,7 +503,7 @@ void main() {
 
     expect(find.widgetWithText(Tab, de.projectViewTable), findsOneWidget);
     expect(find.widgetWithText(Tab, de.projectViewGantt), findsOneWidget);
-    expect(find.text(de.projectTableSortNumberDesc), findsOneWidget);
+    expect(find.text(de.projectTableSortDefault), findsOneWidget);
     expect(find.text(de.projectTableColumns), findsOneWidget);
   });
 }

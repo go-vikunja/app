@@ -39,7 +39,6 @@ final class ActivityItem {
     required this.kind,
     this.doerName,
     this.taskId,
-    this.taskIdentifier,
     this.taskTitle,
     this.projectId,
     this.projectTitle,
@@ -65,7 +64,6 @@ final class ActivityItem {
       kind: ActivityKind.of(notification.name),
       doerName: _userName(_map(payload['doer'])),
       taskId: notification.taskId,
-      taskIdentifier: task == null ? null : _identifier(task),
       taskTitle: _text(task?['title']),
       projectId: notification.projectId,
       projectTitle: _text(project?['title']),
@@ -88,9 +86,6 @@ final class ActivityItem {
   final ActivityKind kind;
   final String? doerName;
   final int? taskId;
-
-  /// `PROJ-12`, or `#12` for a project without a prefix.
-  final String? taskIdentifier;
   final String? taskTitle;
   final int? projectId;
   final String? projectTitle;
@@ -131,18 +126,6 @@ String? _text(Object? value) => switch (value) {
 /// The web's `getDisplayName`: the name, else the username.
 String? _userName(Map<String, Object?>? user) =>
     _text(user?['name']) ?? _text(user?['username']);
-
-/// Like `Task.displayIdentifier`; the payload's task may carry no
-/// identifier at all, only its index.
-String? _identifier(Map<String, Object?> task) {
-  final index = switch (task['index']) {
-    final int index when index > 0 => index,
-    _ => null,
-  };
-  final identifier = _text(task['identifier']);
-  if (identifier != null && identifier != '-$index') return identifier;
-  return index == null ? null : '#$index';
-}
 
 final _whitespace = RegExp(r'\s+');
 

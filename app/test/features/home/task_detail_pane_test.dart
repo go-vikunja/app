@@ -73,6 +73,12 @@ void main() {
           ?.findAncestorWidgetOfExactType<TaskDetailPane>(),
       isNotNull,
     );
+    // The header's project first, then its actions.
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump();
+    final chip = FocusManager.instance.primaryFocus?.context
+        ?.findAncestorWidgetOfExactType<ActionChip>();
+    expect((chip?.label as Text?)?.data, 'Work');
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.pump();
     expect(

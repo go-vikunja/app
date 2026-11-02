@@ -383,13 +383,9 @@ void main() {
       );
     });
 
-    test('the remembered view while it exists, else the first', () {
-      final views = shownViewsOf(project);
-      expect(resolveViewId(views, remembered: 12), 12);
-      expect(resolveViewId(views, remembered: 10), 10);
-      expect(resolveViewId(views, remembered: 99), 10);
-      expect(resolveViewId(views, remembered: null), 10);
-      expect(resolveViewId(const [], remembered: 12), 0);
+    test('the first view without a default kind', () {
+      expect(resolveViewId(shownViewsOf(project)), 10);
+      expect(resolveViewId(const []), 0);
     });
   });
 }

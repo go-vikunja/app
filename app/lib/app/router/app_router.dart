@@ -91,7 +91,9 @@ abstract final class AppRoutes {
   static const projects = '/home/projects';
   static const account = '/home/account';
 
-  static String project(int id) => '$projects/$id';
+  /// [viewId] opens that view first, as a guest's link names it.
+  static String project(int id, {int? viewId}) =>
+      viewId == null ? '$projects/$id' : '$projects/$id?view=$viewId';
 
   /// Full screen over the shell, from the detail sheet or a new task.
   static String taskEdit(int id) => '$home/tasks/$id/edit';
@@ -601,16 +603,17 @@ GoRouter appRouter(Ref ref) {
                     path: ':id',
                     redirect: (context, state) =>
                         _idParam(state) == null ? AppRoutes.projects : null,
-                    // The page stays when only the id changes (its key is
-                    // the route's path); the screen must not.
+                    // The page stays when only the id or the view changes
+                    // (its key is the route's path); the screen must not.
                     builder: (context, state) => switch (_idParam(state)!) {
                       final id when id < 0 => SmartListScreen(
                         key: ValueKey(id),
                         pseudoProjectId: id,
                       ),
                       final id => ProjectTasksScreen(
-                        key: ValueKey(id),
+                        key: ValueKey((id, _viewParam(state))),
                         projectId: id,
+                        viewId: _viewParam(state),
                       ),
                     },
                   ),
@@ -661,6 +664,9 @@ final class _AppSchemeLinks with WidgetsBindingObserver {
 /// a saved filter).
 int? _idParam(GoRouterState state) =>
     int.tryParse(state.pathParameters['id'] ?? '');
+
+int? _viewParam(GoRouterState state) =>
+    int.tryParse(state.uri.queryParameters['view'] ?? '');
 
 int? _appWidgetIdParam(GoRouterState state) =>
     int.tryParse(state.uri.queryParameters['appWidgetId'] ?? '');

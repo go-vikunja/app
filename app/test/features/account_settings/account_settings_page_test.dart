@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -187,8 +186,8 @@ void main() {
       'Deutsch',
       en.accountSettingsEmailNotifications,
       en.accountSettingsPrivacy,
-      en.accountSettingsAppearance,
-      en.accountSettingsColorSchemeSystem,
+      en.accountSettingsDiscoverableByEmail,
+      en.accountSettingsApiTokens,
     ];
     final places = [for (final text in texts) await placeInList(tester, text)];
 
@@ -199,6 +198,20 @@ void main() {
         reason: '${texts[index]} after ${texts[index - 1]}',
       );
     }
+  });
+
+  testWidgets('leaves the theme to the Account tab', (tester) async {
+    await pumpPage(tester);
+
+    final position = tester.state<ScrollableState>(pageList()).position;
+    for (var i = 0; i < 60; i++) {
+      expect(find.byType(SegmentedButton<ColorSchema>), findsNothing);
+      expect(find.text(en.appearanceTheme), findsNothing);
+      if (position.extentAfter <= 0) break;
+      await tester.drag(pageList(), const Offset(0, -300));
+      await tester.pump();
+    }
+    expect(position.extentAfter, 0);
   });
 
   testWidgets('saving keeps the page in place, with a named progress bar', (
@@ -396,93 +409,6 @@ void main() {
         expect(repository().changes, [testCase.changes]);
       });
     }
-
-    testWidgets('the colour scheme, side by side', (tester) async {
-      final semantics = tester.ensureSemantics();
-      await pumpPage(tester);
-
-      final dark = find.widgetWithText(
-        SegmentedButton<ColorSchema>,
-        en.accountSettingsColorSchemeDark,
-      );
-      await scrollTo(tester, dark);
-      expect(
-        tester.getSemantics(find.text(en.accountSettingsColorSchemeSystem)),
-        isSemantics(isSelected: true, isInMutuallyExclusiveGroup: true),
-      );
-      await tester.tap(find.text(en.accountSettingsColorSchemeDark));
-      await tester.pumpAndSettle();
-
-      expect(repository().changes, [
-        const UserSettingsChanges(colorSchema: ColorSchema.dark),
-      ]);
-      expect(
-        tester.getSemantics(find.text(en.accountSettingsColorSchemeDark)),
-        isSemantics(isSelected: true),
-      );
-      semantics.dispose();
-    });
-
-    testWidgets('the chosen colour scheme carries a check where the '
-        'segments have room for their icons', (tester) async {
-      await pumpPage(tester);
-      usePhoneSurface(tester, logicalSize: const Size(700, 740));
-      await tester.pumpAndSettle();
-
-      final control = find.byType(SegmentedButton<ColorSchema>);
-      await scrollTo(tester, control);
-      Finder inSegmentOf(String label, Finder matching) => find.descendant(
-        of: find.ancestor(
-          of: find.text(label),
-          matching: find.byType(TextButton),
-        ),
-        matching: matching,
-      );
-      expect(
-        inSegmentOf(
-          en.accountSettingsColorSchemeSystem,
-          find.byIcon(Icons.check),
-        ),
-        findsOneWidget,
-      );
-      expect(
-        inSegmentOf(
-          en.accountSettingsColorSchemeLight,
-          find.byIcon(Icons.light_mode_outlined),
-        ),
-        findsOneWidget,
-      );
-      expect(find.byIcon(Icons.brightness_auto_outlined), findsNothing);
-      expect(
-        tester.getSize(control).width,
-        moreOrLessEquals(700 - 32, epsilon: 1),
-      );
-    });
-
-    testWidgets('the colour scheme on iOS, in a sliding segmented control', (
-      tester,
-    ) async {
-      final semantics = tester.ensureSemantics();
-      await pumpPage(tester);
-
-      final dark = find.descendant(
-        of: find.byType(CupertinoSlidingSegmentedControl<ColorSchema>),
-        matching: find.text(en.accountSettingsColorSchemeDark),
-      );
-      await scrollTo(tester, dark);
-      expect(find.byType(SegmentedButton<ColorSchema>), findsNothing);
-      expect(
-        tester.getSemantics(find.text(en.accountSettingsColorSchemeSystem)),
-        isSemantics(isSelected: true, isInMutuallyExclusiveGroup: true),
-      );
-      await tester.tap(dark);
-      await tester.pumpAndSettle();
-
-      expect(repository().changes, [
-        const UserSettingsChanges(colorSchema: ColorSchema.dark),
-      ]);
-      semantics.dispose();
-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
 
     testWidgets('the same choice again sends nothing', (tester) async {
       await pumpPage(tester);
@@ -800,9 +726,12 @@ void main() {
       );
       await pumpPage(tester);
 
-      final dark = find.text(en.accountSettingsColorSchemeDark);
-      await scrollTo(tester, dark);
-      await tester.tap(dark);
+      final control = find.widgetWithText(
+        SwitchListTile,
+        en.accountSettingsDiscoverableByEmail,
+      );
+      await scrollTo(tester, control);
+      await tester.tap(control);
       await tester.pumpAndSettle();
 
       expect(find.text(en.accountSettingsUnconfirmed), findsOneWidget);

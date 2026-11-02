@@ -107,7 +107,7 @@ void main() {
     expect(
       find.descendant(
         of: find.ancestor(
-          of: find.text('WORK-1'),
+          of: find.text('Pay the bill'),
           matching: find.byType(TaskRow),
         ),
         matching: find.text('Work'),
@@ -116,11 +116,16 @@ void main() {
     );
     expect(
       find.descendant(
-        of: find.ancestor(of: find.text('#2'), matching: find.byType(TaskRow)),
+        of: find.ancestor(
+          of: find.text('Call mum'),
+          matching: find.byType(TaskRow),
+        ),
         matching: find.text('Home'),
       ),
       findsOneWidget,
     );
+    expect(find.textContaining('WORK-'), findsNothing);
+    expect(find.textContaining('#'), findsNothing);
     expect(find.text('1 day ago'), findsOneWidget);
     expect(find.text('in 6 hours'), findsOneWidget);
     expect(find.text('in 3 days'), findsOneWidget);
@@ -484,7 +489,7 @@ void main() {
     final sheet = find.byType(TaskDetailSheet);
     expect(sheet, findsOneWidget);
     expect(
-      find.descendant(of: sheet, matching: find.text('WORK-3')),
+      find.descendant(of: sheet, matching: find.text('Write report')),
       findsOneWidget,
     );
   });

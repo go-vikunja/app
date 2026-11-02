@@ -116,6 +116,24 @@ void main() {
       expect(plan.magicOnly, isFalse);
     });
 
+    test("the sheet's priority goes to a line without one; the line's own "
+        'wins', () {
+      final quickAdd = service();
+
+      final plain = quickAdd.plan('Buy milk', fallbackPriority: 4);
+      expect(plain.priority, 4);
+      expect(plain.priorityFromText, isFalse);
+
+      final own = quickAdd.plan('Buy milk !2', fallbackPriority: 4);
+      expect(own.priority, 2);
+      expect(own.priorityFromText, isTrue);
+
+      final magicOnly = quickAdd.plan('!2', fallbackPriority: 4);
+      expect(magicOnly.magicOnly, isTrue);
+      expect(magicOnly.priority, 4);
+      expect(magicOnly.priorityFromText, isFalse);
+    });
+
     test('a plain title goes to the fallback with nothing else', () {
       final plan = service().plan('  Buy milk  ', fallbackProjectId: 5);
 
@@ -367,6 +385,20 @@ void main() {
         expect(plan.dueDate, isNull);
         expect(plan.magicOnly, isFalse);
       });
+
+      test("disabled still takes the sheet's due date and priority", () {
+        final due = DateTime(2026, 10, 20, 12).toUtc();
+        final plan = service(
+          settings: const UserSettings(
+            quickAddMagicMode: QuickAddMagicMode.disabled,
+          ),
+        ).plan('Buy milk !1', fallbackDueDate: due, fallbackPriority: 5);
+
+        expect(plan.title, 'Buy milk !1');
+        expect(plan.dueDate, due);
+        expect(plan.priority, 5);
+        expect(plan.priorityFromText, isFalse);
+      });
     });
   });
 
@@ -481,6 +513,104 @@ void main() {
           ),
         ]),
       );
+    });
+
+    test("the sheet's priority goes to the lines without their own", () async {
+      await service().submit('a\nb !1\n!2', fallbackPriority: 4);
+
+      expect(tasks.creates.map((task) => (task.title, task.priority)), [
+        ('a', TaskPriority.urgent),
+        ('b', TaskPriority.low),
+        ('!2', TaskPriority.urgent),
+      ]);
+    });
+
+    test('the further fields go to every task: the lines add labels and '
+        'reminders, and a repeat of their own replaces the repeat', () async {
+      const roadTrip = Label(id: 11, title: 'Road trip');
+      const dayBefore = TaskReminder(
+        relativePeriod: Duration(days: -1),
+        relativeTo: ReminderRelativeTo.dueDate,
+      );
+      const hourBefore = TaskReminder(
+        relativePeriod: Duration(hours: -1),
+        relativeTo: ReminderRelativeTo.dueDate,
+      );
+      final due = DateTime(2026, 10, 20, 12).toUtc();
+
+      await service(
+        settings: const UserSettings(
+          quickAddDefaultReminders: [Duration(hours: -1), Duration(days: -1)],
+        ),
+      ).submit(
+        'a *wichtig\nb every 2 months\nc',
+        fallbackDueDate: due,
+        extras: const QuickAddExtras(
+          description: '<p>Notes</p>',
+          labels: [roadTrip],
+          reminders: [dayBefore],
+          repeatAfter: Duration(days: 7),
+        ),
+      );
+
+      expect(
+        tasks.creates.map(
+          (task) => (task.title, task.description, task.repeatAfter),
+        ),
+        [
+          ('a', '<p>Notes</p>', const Duration(days: 7)),
+          ('b', '<p>Notes</p>', const Duration(days: 60)),
+          ('c', '<p>Notes</p>', const Duration(days: 7)),
+        ],
+      );
+      expect(
+        tasks.creates.map((task) => task.reminders),
+        everyElement(const [dayBefore, hourBefore]),
+      );
+      expect(tasks.updates, [
+        (-1, const TaskChanges(labels: IdSetChange(added: {11, 10}))),
+        (-2, const TaskChanges(labels: IdSetChange(added: {11}))),
+        (-3, const TaskChanges(labels: IdSetChange(added: {11}))),
+      ]);
+    });
+
+    test("the sheet's new labels are created on submit, once with the "
+        "lines' own, and go to every task", () async {
+      final result = await service().submit(
+        'a *neu\nb',
+        extras: const QuickAddExtras(newLabels: ['Errands', 'Neu']),
+      );
+
+      expect(labels.created.map((label) => label.title), ['Errands', 'Neu']);
+      expect(tasks.updates, [
+        (-1, const TaskChanges(labels: IdSetChange(added: {500, 501}))),
+        (-2, const TaskChanges(labels: IdSetChange(added: {500, 501}))),
+      ]);
+      expect(result.labelsNotCreated, isEmpty);
+    });
+
+    test("offline, the sheet's new labels are reported and the tasks go "
+        'without them', () async {
+      labels.createFailure = const NetworkFailure(NetworkProblem.unreachable);
+
+      final result = await service().submit(
+        'a',
+        extras: const QuickAddExtras(newLabels: ['Errands']),
+      );
+
+      expect(tasks.creates.single.title, 'a');
+      expect(tasks.updates, isEmpty);
+      expect(result.labelsNotCreated, ['Errands']);
+    });
+
+    test('a monthly repeat from the sheet keeps its mode', () async {
+      await service().submit(
+        'a',
+        extras: const QuickAddExtras(repeatMode: RepeatMode.monthly),
+      );
+
+      expect(tasks.creates.single.repeatMode, RepeatMode.monthly);
+      expect(tasks.creates.single.repeatAfter, Duration.zero);
     });
 
     test('several lines: one task each, in order; a new label is created '

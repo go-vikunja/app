@@ -292,7 +292,7 @@ private struct MetaLine: View {
       }
       if let projectTitle = row.projectTitle {
         HStack(spacing: 3) {
-          Circle().fill(row.projectColor ?? .secondary).frame(width: 6, height: 6)
+          Image(systemName: "folder").foregroundStyle(row.projectColor ?? .secondary)
           Text(projectTitle)
         }
         .foregroundStyle(.secondary)

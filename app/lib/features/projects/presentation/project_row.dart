@@ -2,8 +2,8 @@ import 'package:flutter/semantics.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 
 /// A project in the Projects tab with its open tasks; in the tree with its
@@ -41,7 +41,6 @@ class ProjectRow extends StatelessWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final color = parseHexColor(project.hexColor);
     final title = project.displayTitle(l10n);
     final details = [
       if (openTaskCount > 0) l10n.smartListOpenTaskCount(openTaskCount),
@@ -53,14 +52,7 @@ class ProjectRow extends StatelessWidget {
         start: indentOf(depth),
         end: 8,
       ),
-      leading: ExcludeSemantics(
-        child: color == null
-            ? Icon(Icons.folder_outlined, color: colors.onSurfaceVariant)
-            : DecoratedBox(
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: const SizedBox.square(dimension: 16),
-              ),
-      ),
+      leading: ProjectIcon(hexColor: project.hexColor),
       title: Semantics(
         customSemanticsActions: actions.isEmpty ? null : actions,
         child: Text(title),

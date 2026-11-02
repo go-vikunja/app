@@ -210,7 +210,13 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(en.appearanceHeading), findsOneWidget);
       expect(find.text(en.appearanceSystemColorsSubtitle), findsOneWidget);
-      expect(find.text(en.appearanceLightDarkHint), findsOneWidget);
+      expect(
+        find.descendant(
+          of: toggle,
+          matching: find.text(en.appearanceOnThisDevice),
+        ),
+        findsOneWidget,
+      );
       expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
 
       await tester.tap(toggle);
@@ -252,9 +258,8 @@ void main() {
       ('Android before 12', TargetPlatform.android),
       ('iOS', TargetPlatform.iOS),
     ]) {
-      testWidgets('$name keeps the brand blue and offers no switch', (
-        tester,
-      ) async {
+      testWidgets('$name keeps the brand blue and offers no switch, only '
+          'the theme', (tester) async {
         useSystemPalette(tester, () => null);
         usePlatformBrightness(tester, Brightness.dark);
         await pumpSignedInApp(tester, sync: data, now: now);
@@ -262,7 +267,7 @@ void main() {
         expect(themeOf(tester, OverviewScreen).colorScheme.primary, brandDark);
         await openTab(tester, en.tabAccount);
         await tester.scrollUntilVisible(
-          find.text(en.homeSignOut),
+          find.text(en.appearanceHeading),
           100,
           scrollable: find
               .descendant(
@@ -271,7 +276,8 @@ void main() {
               )
               .first,
         );
-        expect(find.text(en.appearanceHeading), findsNothing);
+        await tester.pumpAndSettle();
+        expect(find.text(en.appearanceTheme), findsOneWidget);
         expect(find.text(en.appearanceSystemColors), findsNothing);
       }, variant: TargetPlatformVariant.only(variant));
     }

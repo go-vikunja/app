@@ -5,7 +5,6 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
-import 'package:vikunja_mobile/features/tasks/application/task_identifier.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart';
 
 /// A mentioned user: avatar and name.
@@ -52,9 +51,9 @@ class MentionPill extends StatelessWidget {
 }
 
 /// A link to a task of the account, as the web upgrades it: the local
-/// task's project (when it is not the current one), identifier and title,
-/// checked and struck through once done; the href while the task is not on
-/// this device, which a tap still tries to open.
+/// task's project (when it is not the current one) and title, checked and
+/// struck through once done; the href while the task is not on this device,
+/// which a tap still tries to open.
 class TaskLinkPill extends ConsumerWidget {
   const new({
     required this.taskId,
@@ -88,7 +87,7 @@ class TaskLinkPill extends ConsumerWidget {
       final prefix = task.projectId != projectId && project != null
           ? '${project.displayTitle(l10n)} › '
           : '';
-      text = '$prefix${taskIdentifierIn(task, project)} ${task.title}';
+      text = '$prefix${task.title}';
       semanticsLabel = task.done ? '$text, ${l10n.taskDoneSemantics}' : text;
     }
     final done = task?.done ?? false;

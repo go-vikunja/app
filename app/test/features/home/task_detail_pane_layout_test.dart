@@ -48,10 +48,8 @@ Future<void> _pumpWithView(
   int viewId, {
   SyncFakes? data,
 }) async {
-  final seeded = data ?? sweepData();
-  seeded.listPreferences.lastViews[workProjectId] = viewId;
-  await pumpSweepApp(tester, data: seeded);
-  goTo(tester, AppRoutes.project(workProjectId));
+  await pumpSweepApp(tester, data: data ?? sweepData());
+  goTo(tester, AppRoutes.project(workProjectId, viewId: viewId));
   await tester.pumpAndSettle();
 }
 
@@ -385,7 +383,7 @@ void main() {
     });
 
     testWidgets('the pane adds no node of its own around the task; its '
-        'identifier is read alone, after the back arrow', (tester) async {
+        'project is read alone, after the back arrow', (tester) async {
       useWindow(tester, androidTabletLandscape);
       final semantics = tester.ensureSemantics();
       await pumpSweepApp(tester);
@@ -415,13 +413,17 @@ void main() {
             node.getSemanticsData().tooltip ==
             en.taskDetailPaneBack('Plan the team day'),
       );
-      final identifier = nodes.indexWhere(
-        (node) => node.label.startsWith('WORK-'),
+      final project = nodes.indexWhere(
+        (node) => node.getSemanticsData().label == 'Work',
       );
       expect(back, isNot(-1));
-      expect(identifier, greaterThan(back));
-      expect(nodes[identifier].label, 'WORK-3');
-      expect(nodes[identifier].childrenCount, 0);
+      expect(project, back + 1);
+      expect(nodes[project].getSemanticsData().flagsCollection.isLink, isTrue);
+      expect(nodes[project].mergeAllDescendantsIntoThisNode, isTrue);
+      expect(
+        nodes.where((node) => node.getSemanticsData().label.contains('WORK-')),
+        isEmpty,
+      );
       semantics.dispose();
     });
 

@@ -2,8 +2,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/tasks/application/default_project.dart';
 
@@ -70,7 +70,6 @@ class _ProjectList extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
     return ListView.builder(
       controller: scrollController,
       itemCount: rows.length + 1,
@@ -91,16 +90,12 @@ class _ProjectList extends StatelessWidget {
         final row = rows[index - 1];
         final project = row.node.project;
         final selected = project.id == selectedId;
-        final color = parseHexColor(project.hexColor);
         return ListTile(
           contentPadding: EdgeInsets.only(
             left: 16 + 20.0 * row.depth,
             right: 16,
           ),
-          leading: Icon(
-            Icons.folder_outlined,
-            color: color ?? colors.onSurfaceVariant,
-          ),
+          leading: ProjectIcon(hexColor: project.hexColor),
           title: Text(project.displayTitle(l10n)),
           selected: selected,
           trailing: selected ? const Icon(Icons.check) : null,

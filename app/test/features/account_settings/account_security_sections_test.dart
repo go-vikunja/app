@@ -46,9 +46,7 @@ void main() {
   }
 
   testWidgets('security follows password and email, integrations and your '
-      'data follow appearance, deleting the account comes last', (
-    tester,
-  ) async {
+      'data follow privacy, deleting the account comes last', (tester) async {
     await harness.pump(tester);
 
     final places = [
@@ -56,7 +54,7 @@ void main() {
       await placeInList(tester, en.accountSettingsTotp),
       await placeInList(tester, en.accountSettingsSessions),
       await placeInList(tester, en.accountSettingsDefaults),
-      await placeInList(tester, en.accountSettingsColorScheme),
+      await placeInList(tester, en.accountSettingsDiscoverableByEmail),
       await placeInList(tester, en.accountSettingsApiTokens),
       await placeInList(tester, en.accountSettingsCaldav),
       await placeInList(tester, en.accountSettingsExport),
@@ -466,8 +464,11 @@ void main() {
         )
         .first;
     final position = tester.state<ScrollableState>(list).position;
-    position.jumpTo(position.maxScrollExtent);
-    await tester.pumpAndSettle();
+    // The lazy list's extent is an estimate until its end is built.
+    for (var i = 0; i < 5 && position.extentAfter > 0; i++) {
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pumpAndSettle();
+    }
 
     expect(
       tester

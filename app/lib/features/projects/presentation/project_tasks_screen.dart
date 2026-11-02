@@ -88,9 +88,13 @@ typedef _Shown = ({
 /// nothing it would refuse. The menu manages the project as the web's
 /// does; a project that disappears once seen says it is gone.
 class ProjectTasksScreen extends ConsumerStatefulWidget {
-  const new({required this.projectId, super.key});
+  const new({required this.projectId, this.viewId, super.key});
 
   final int projectId;
+
+  /// The view to open on while the project has it, in place of the
+  /// default.
+  final int? viewId;
 
   @override
   ConsumerState<ProjectTasksScreen> createState() => _ProjectTasksScreenState();
@@ -121,10 +125,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         _subscriptions().setProjectSubscribed(id, subscribed: subscribed),
   );
 
-  var _rememberedLoaded = false;
   var _seen = false;
-  int? _rememberedViewId;
-  int? _chosenViewId;
+  late int? _chosenViewId = widget.viewId;
   var _viewId = 0;
   ProjectViewKind _viewKind = ProjectViewKind.list;
   int? _queuedIn;
@@ -151,7 +153,6 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     if (_followable && !ref.read(activeAccountIsGuestProvider)) {
       unawaited(_follow.load(widget.projectId));
     }
-    unawaited(_loadRememberedView());
   }
 
   @override
@@ -159,22 +160,6 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     _afterQueued?.cancel();
     _follow.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadRememberedView() async {
-    int? remembered;
-    try {
-      remembered = await ref
-          .read(listPreferencesProvider)
-          ?.lastViewOf(widget.projectId);
-    } on Object {
-      remembered = null;
-    }
-    if (!mounted) return;
-    setState(() {
-      _rememberedViewId = remembered;
-      _rememberedLoaded = true;
-    });
   }
 
   SubscriptionRepository _subscriptions() =>
@@ -290,9 +275,6 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
 
   void _selectView(int viewId) {
     if (viewId == _viewId) return;
-    unawaited(
-      ref.read(listPreferencesProvider)?.rememberView(widget.projectId, viewId),
-    );
     setState(() {
       _chosenViewId = viewId;
       clearRefreshFailure();
@@ -320,9 +302,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         for (final sort in tableSortsInMenuOrder)
           SheetOption(
             value: sort,
-            label: sort.isDefault
-                ? l10n.projectTableSortDefault
-                : tableSortLabel(l10n, sort),
+            label: tableSortLabel(l10n, sort),
             selected: sort == applied,
           ),
       ],
@@ -436,15 +416,15 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       );
     }
     final views = shownViewsOf(project);
-    final viewId = _viewId = resolveViewId(
-      views,
-      remembered: _chosenViewId ?? _rememberedViewId,
-      defaultKind: ref.watch(
-        userSettingsProvider.select(
-          (settings) => settings.value?.defaultViewKind,
-        ),
+    final defaultKind = ref.watch(
+      userSettingsProvider.select(
+        (settings) => settings.value?.defaultViewKind,
       ),
     );
+    final chosenViewId = _chosenViewId;
+    final viewId = _viewId = views.any((view) => view.id == chosenViewId)
+        ? chosenViewId!
+        : resolveViewId(views, defaultKind: defaultKind);
     final view = views.where((view) => view.id == viewId).firstOrNull;
     final viewKind = _viewKind = view?.kind ?? ProjectViewKind.list;
     final board = viewKind == ProjectViewKind.kanban;
@@ -528,7 +508,6 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     );
     // Until then the view shown may still change.
     final ready =
-        _rememberedLoaded &&
         !(projects.isLoading && !projects.hasValue) &&
         !(preferencesValue.isLoading && !preferencesValue.hasValue) &&
         !(columnsValue.isLoading && !columnsValue.hasValue);

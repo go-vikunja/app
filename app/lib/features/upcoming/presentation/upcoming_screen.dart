@@ -9,7 +9,6 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
-import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -357,7 +356,7 @@ class _UpcomingSections extends StatelessWidget {
       now: now,
       minimumPriority: minimumPriority,
       projectTitle: project?.displayTitle(l10n),
-      projectColor: parseHexColor(project?.hexColor ?? ''),
+      projectHexColor: project?.hexColor,
       pending: pendingIds.contains(task.id),
       onTap: () => openTaskDetail(context, task: task),
       onDoneChanged: (done) => onDoneChanged(task, done: done),

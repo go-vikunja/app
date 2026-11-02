@@ -38,16 +38,16 @@ import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart
 
 final _log = Logger('Projects');
 
-enum _Action { refresh, newSavedFilter, toggleArchived }
+enum _Action { refresh, newSavedFilter, toggleSavedFilters, toggleArchived }
 
 /// The web's sidebar: the favourites (the Favorites list, saved filters and
 /// projects), every saved filter, and the project tree, archived projects
-/// on request. In the tree a long press lifts a project with its
-/// subprojects, to drop it between other projects or onto one, and screen
-/// readers move it with the row's actions; each move goes to the server
-/// at once. New projects start from the app bar or the empty state, new
-/// saved filters from the menu, the end of their section or the empty
-/// state.
+/// on request; saved filters, favourite ones too, can be hidden. In the
+/// tree a long press lifts a project with its subprojects, to drop it
+/// between other projects or onto one, and screen readers move it with the
+/// row's actions; each move goes to the server at once. New projects start
+/// from the app bar or the empty state, new saved filters from the menu,
+/// the end of their section or the empty state.
 class ProjectsScreen extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -100,8 +100,11 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
     final projects = ref.watch(projectsProvider);
     final treePreferences = ref.watch(projectTreePreferencesProvider);
     final preferences = treePreferences.value ?? const ProjectTreePreferences();
+    final showSavedFilters = preferences.showSavedFilters;
     final savedFiltersValue = ref.watch(savedFiltersProvider);
-    final savedFilters = savedFiltersValue.value ?? const [];
+    final savedFilters = showSavedFilters
+        ? savedFiltersValue.value ?? const <SavedFilterRef>[]
+        : const <SavedFilterRef>[];
     final (favoritesLoaded, favoriteTaskCount) = ref.watch(
       favoriteTasksProvider.select(
         (tasks) => (tasks.hasValue || tasks.hasError, tasks.value?.length ?? 0),
@@ -115,7 +118,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
     // they arrive.
     final ready =
         (treePreferences.hasValue || treePreferences.hasError) &&
-        (savedFiltersValue.hasValue || savedFiltersValue.hasError) &&
+        (!showSavedFilters ||
+            savedFiltersValue.hasValue ||
+            savedFiltersValue.hasError) &&
         favoritesLoaded &&
         (openTaskCounts.hasValue || openTaskCounts.hasError);
     return Scaffold(
@@ -136,6 +141,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
             onSelected: (action) => switch (action) {
               _Action.refresh => unawaited(refresh()),
               _Action.newSavedFilter => _createSavedFilter(),
+              _Action.toggleSavedFilters => _save(
+                preferences.copyWith(showSavedFilters: !showSavedFilters),
+              ),
               _Action.toggleArchived => _save(
                 preferences.copyWith(showArchived: !preferences.showArchived),
               ),
@@ -146,11 +154,17 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
                 enabled: !refreshing,
                 child: Text(l10n.refresh),
               ),
-              if (!guest)
+              if (!guest) ...[
                 PopupMenuItem(
                   value: _Action.newSavedFilter,
                   child: Text(l10n.savedFilterNew),
                 ),
+                CheckedPopupMenuItem(
+                  value: _Action.toggleSavedFilters,
+                  checked: showSavedFilters,
+                  child: Text(l10n.projectsShowSavedFilters),
+                ),
+              ],
               CheckedPopupMenuItem(
                 value: _Action.toggleArchived,
                 checked: preferences.showArchived,
@@ -175,7 +189,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
           notice: notice,
           onOpen: _open,
           onCreate: guest ? null : _createProject,
-          onCreateSavedFilter: guest ? null : _createSavedFilter,
+          // Hidden filters leave it to the menu.
+          onCreateSavedFilter: guest || !showSavedFilters
+              ? null
+              : _createSavedFilter,
           onToggle: (projectId) => _toggle(preferences, projectId),
           onExpand: _expand,
         ),

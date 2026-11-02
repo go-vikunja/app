@@ -30,18 +30,21 @@ enum TableSortField {
 final class TableSort {
   const new(this.field, {required this.descending});
 
-  /// [defaultSort] for anything that is not a [wireName].
+  /// [defaultSort] for anything that is not a [wireName], and for either
+  /// direction of the task number, which is only sorted by as the default.
   factory fromWireName(String? wireName) {
     if (wireName?.split(':') case [final name, final direction]
         when direction == 'asc' || direction == 'desc') {
-      if (TableSortField.fromWire(name) case final field?) {
+      if (TableSortField.fromWire(name) case final field?
+          when field != TableSortField.taskIndex) {
         return TableSort(field, descending: direction == 'desc');
       }
     }
     return defaultSort;
   }
 
-  /// The web's default: the highest task number first.
+  /// The web's default: the highest task number, the project's newest
+  /// task, first.
   static const TableSort defaultSort = TableSort(
     TableSortField.taskIndex,
     descending: true,
@@ -52,8 +55,6 @@ final class TableSort {
 
   /// The web's URL form, e.g. `due_date:asc`.
   String get wireName => '${field.wireName}:${descending ? 'desc' : 'asc'}';
-
-  bool get isDefault => this == defaultSort;
 
   /// What a table showing [columns] sorts by: the web leaves a sort on a
   /// hidden column out of its request, so [defaultSort] stands in until
@@ -74,10 +75,9 @@ final class TableSort {
   String toString() => 'TableSort($wireName)';
 }
 
-/// The web table's 16 columns in its chooser's order; [wireName] is the
-/// key of its `tableViewColumns` storage.
+/// The web table's columns in its chooser's order, without its task
+/// number; [wireName] is the key of its `tableViewColumns` storage.
 enum TableColumn {
-  taskIndex('index', TableSortField.taskIndex),
   done('done', TableSortField.done),
   project('project'),
   title('title', TableSortField.title),
@@ -101,9 +101,8 @@ enum TableColumn {
   /// Null for a column the table cannot sort by.
   final TableSortField? sortField;
 
-  /// The web's six default columns.
+  /// The web's default columns, without its task number.
   static const Set<TableColumn> defaults = {
-    taskIndex,
     done,
     title,
     labels,

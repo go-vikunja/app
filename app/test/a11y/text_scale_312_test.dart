@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
@@ -68,6 +69,22 @@ final _screens = <(String, Future<void> Function(WidgetTester), Finder)>[
     'the new-task sheet',
     (tester) async =>
         unawaited(showNewTaskSheet(_page(tester), projectId: workProjectId)),
+    find.byType(NewTaskSheet),
+  ),
+  (
+    'the new-task sheet with more options',
+    (tester) async {
+      unawaited(showNewTaskSheet(_page(tester), projectId: workProjectId));
+      await tester.pumpAndSettle();
+      final sheet = find.byType(NewTaskSheet);
+      final moreOptions = find.descendant(
+        of: sheet,
+        matching: find.text(tester.element(sheet).l10n.newTaskMoreOptions),
+      );
+      await tester.ensureVisible(moreOptions);
+      await tester.pumpAndSettle();
+      await tester.tap(moreOptions);
+    },
     find.byType(NewTaskSheet),
   ),
   (

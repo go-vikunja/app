@@ -187,7 +187,7 @@ void main() {
       expect(afternoon.canDone, isTrue);
       expect(
         afternoon.semanticsLabel,
-        'This afternoon\n#2 · Inbox\nDue Today, 15:00\nPriority: High',
+        'This afternoon\nInbox\nDue Today, 15:00\nPriority: High',
       );
       expect(afternoon.doneLabel, 'Mark “This afternoon” as done');
       expect(

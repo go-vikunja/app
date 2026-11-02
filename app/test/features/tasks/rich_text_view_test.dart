@@ -606,10 +606,9 @@ void main() {
       expect(find.text('ben'), findsOneWidget);
     });
 
-    testWidgets('a task link shows the local task, its project when it is '
-        'another one, and done tasks checked and struck through', (
-      tester,
-    ) async {
+    testWidgets("a task link shows the local task's title without its "
+        'identifier, its project when it is another one, and done tasks '
+        'checked and struck through', (tester) async {
       final semantics = tester.ensureSemantics();
       final taps = await pumpRichText(tester, const [
         RichParagraph([
@@ -624,12 +623,14 @@ void main() {
         ]),
       ]);
 
-      expect(find.text('WORK-5 Pay rent'), findsOneWidget);
-      expect(find.text('Home › #6 Paint the fence'), findsOneWidget);
+      expect(find.text('Pay rent'), findsOneWidget);
+      expect(find.text('Home › Paint the fence'), findsOneWidget);
+      expect(find.textContaining('WORK-5'), findsNothing);
+      expect(find.textContaining('#6'), findsNothing);
       expect(find.byIcon(Icons.done_all), findsOneWidget);
       expect(
         tester
-            .widget<Text>(find.text('Home › #6 Paint the fence'))
+            .widget<Text>(find.text('Home › Paint the fence'))
             .style
             ?.decoration,
         TextDecoration.lineThrough,
@@ -637,14 +638,13 @@ void main() {
       expect(
         find.semantics.byPredicate(
           (node) =>
-              node.label ==
-                  'Home › #6 Paint the fence, ${en.taskDoneSemantics}' &&
+              node.label == 'Home › Paint the fence, ${en.taskDoneSemantics}' &&
               node.flagsCollection.isLink,
         ),
         findsOne,
       );
 
-      await tester.tap(find.text('WORK-5 Pay rent'));
+      await tester.tap(find.text('Pay rent'));
       expect(taps.tasks, [5]);
       semantics.dispose();
     });
@@ -691,7 +691,7 @@ void main() {
         ),
       );
       final lineHeight = paragraph.preferredLineHeight;
-      for (final text in ['Anna', 'WORK-8 Go']) {
+      for (final text in ['Anna', 'Go']) {
         expect(
           paintedHeight(find.text(text)),
           moreOrLessEquals(lineHeight, epsilon: 2),

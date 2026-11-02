@@ -576,6 +576,10 @@
     "description": "The row of the Favourites list in the Favourites section of the Projects tab; the list's own title is projectFavouritesTitle."
   },
   "projectsAllHeading": "All projects",
+  "projectsShowSavedFilters": "Show saved filters",
+  "@projectsShowSavedFilters": {
+    "description": "Checked item in the Projects tab's menu: whether the Saved filters section and favourite saved filters show."
+  },
   "projectsShowArchived": "Show archived projects",
   "projectArchived": "Archived",
   "@projectArchived": {
@@ -642,14 +646,37 @@
   "favoritesEmptyTitle": "No favourite tasks",
   "favoritesEmptyBody": "Mark a task as a favourite with its star to find it here.",
   "appearanceHeading": "Appearance",
+  "@appearanceHeading": {
+    "description": "Account tab section with the theme (saved to the account), Use system colours and App language (both on this device)."
+  },
+  "appearanceTheme": "Theme",
+  "@appearanceTheme": {
+    "description": "Title of the row in the Account tab's Appearance section that picks light, dark or the system's mode for the account (the web's colour scheme), with appearanceThemeLight, appearanceThemeSystem and appearanceThemeDark side by side below it."
+  },
+  "appearanceThemeLight": "Light",
+  "@appearanceThemeLight": {
+    "description": "Segment of the Theme row: always the light mode."
+  },
+  "appearanceThemeSystem": "System",
+  "@appearanceThemeSystem": {
+    "description": "Segment of the Theme row: light or dark as the device's system setting is."
+  },
+  "appearanceThemeDark": "Dark",
+  "@appearanceThemeDark": {
+    "description": "Segment of the Theme row: always the dark mode."
+  },
+  "appearanceSavedToAccount": "Saved to your account",
+  "@appearanceSavedToAccount": {
+    "description": "Small line under the Theme row's title in the Account tab's Appearance section: the choice is saved on the server and applies on all the account's devices. Pairs with appearanceOnThisDevice."
+  },
+  "appearanceOnThisDevice": "On this device",
+  "@appearanceOnThisDevice": {
+    "description": "Small line under the Use system colours and App language rows in the Account tab's Appearance section: the setting stays on this device. Pairs with appearanceSavedToAccount."
+  },
   "appearanceSystemColors": "Use system colours",
   "appearanceSystemColorsSubtitle": "The colours of your wallpaper instead of the app's blue",
   "@appearanceSystemColorsSubtitle": {
     "description": "Under the switch for Android's dynamic colours; the switch applies to the whole device."
-  },
-  "appearanceLightDarkHint": "Light or dark is your account's colour scheme, in Account settings.",
-  "@appearanceLightDarkHint": {
-    "description": "Note under the Use system colours switch in the Appearance section of the Account tab: light or dark mode is not set here but by the account's colour scheme in Account settings."
   },
   "projectChildCount": "{count, plural, =1{1 subproject} other{{count} subprojects}}",
   "@projectChildCount": {
@@ -959,7 +986,10 @@
   "taskDetailRepeat": "Repeats",
   "taskDetailDescription": "Description",
   "taskDetailNoDescription": "No description",
-  "taskDetailClose": "Close",
+  "taskDetailClose": "Close details",
+  "@taskDetailClose": {
+    "description": "Tooltip of the close button of the task detail sheet and pane. It names the details, not the task, which would read as marking it done; the sheet's drag handle already reads as the system's Dismiss, which is “Schließen” in German."
+  },
   "repeatMonthly": "Every month",
   "repeatEverySeconds": "{count, plural, =1{Every second} other{Every {count} seconds}}",
   "@repeatEverySeconds": {
@@ -1411,6 +1441,13 @@
   "newTaskTitleHint": "What needs doing?",
   "newTaskAdd": "Add",
   "newTaskMoreOptions": "More options",
+  "@newTaskMoreOptions": {
+    "description": "Button on the new-task sheet that shows further fields for the new tasks below the priority: description, labels, reminders and repeat."
+  },
+  "newTaskFewerOptions": "Fewer options",
+  "@newTaskFewerOptions": {
+    "description": "Button on the new-task sheet while the further fields (description, labels, reminders, repeat) are shown; it hides them again. In place of newTaskMoreOptions."
+  },
   "newTaskPickDate": "Pick date…",
   "newTaskNoProject": "No project",
   "newTaskCreated": "Added “{title}”",
@@ -1639,43 +1676,6 @@
     }
   },
   "quickAddSuggestions": "Suggestions",
-  "quickAddInsertLabel": "Add a label ({prefix})",
-  "@quickAddInsertLabel": {
-    "placeholders": {
-      "prefix": {
-        "type": "String",
-        "example": "*"
-      }
-    }
-  },
-  "quickAddInsertProject": "Choose a project ({prefix})",
-  "@quickAddInsertProject": {
-    "placeholders": {
-      "prefix": {
-        "type": "String",
-        "example": "+"
-      }
-    }
-  },
-  "quickAddInsertAssignee": "Assign someone ({prefix})",
-  "@quickAddInsertAssignee": {
-    "placeholders": {
-      "prefix": {
-        "type": "String",
-        "example": "@"
-      }
-    }
-  },
-  "quickAddSetPriority": "Set priority ({prefix})",
-  "@quickAddSetPriority": {
-    "description": "Tooltip of the priority chip above the keyboard on the new-task sheet. It opens a menu of priorities, and choosing one adds the priority prefix with its number to the title. prefix is the Quick Add priority prefix, for example !, kept as it is.",
-    "placeholders": {
-      "prefix": {
-        "type": "String",
-        "example": "!"
-      }
-    }
-  },
   "quickAddHelp": "How Quick Add Magic works",
   "quickAddHelpTitle": "Quick Add Magic",
   "quickAddHelpIntro": "Write the whole task in one line. These parts are recognised, marked in colour and taken out of the title:",
@@ -1947,7 +1947,7 @@
   },
   "inboxATask": "a task",
   "@inboxATask": {
-    "description": "Stands in for a task without an identifier or title, as in “Anna commented on a task”."
+    "description": "Stands in for a task without a title, as in “Anna commented on a task”."
   },
   "inboxUnnamed": "unnamed",
   "@inboxUnnamed": {
@@ -1955,7 +1955,7 @@
   },
   "inboxCommented": "{doer} commented on {task}",
   "@inboxCommented": {
-    "description": "A comment on a task, named by its identifier, e.g. #12 or PROJ-12.",
+    "description": "A comment on a task, named by its title.",
     "placeholders": {
       "doer": {
         "type": "String",
@@ -1963,7 +1963,7 @@
       },
       "task": {
         "type": "String",
-        "example": "#12"
+        "example": "Pay rent"
       }
     }
   },
@@ -1976,7 +1976,7 @@
       },
       "task": {
         "type": "String",
-        "example": "#12"
+        "example": "Pay rent"
       }
     }
   },
@@ -1993,7 +1993,7 @@
       },
       "task": {
         "type": "String",
-        "example": "#12"
+        "example": "Pay rent"
       }
     }
   },
@@ -2007,7 +2007,7 @@
       },
       "task": {
         "type": "String",
-        "example": "#12"
+        "example": "Pay rent"
       }
     }
   },
@@ -2020,7 +2020,7 @@
       },
       "task": {
         "type": "String",
-        "example": "#12"
+        "example": "Pay rent"
       }
     }
   },
@@ -2033,7 +2033,7 @@
       },
       "task": {
         "type": "String",
-        "example": "#12"
+        "example": "Pay rent"
       }
     }
   },
@@ -2046,7 +2046,7 @@
       },
       "task": {
         "type": "String",
-        "example": "#12"
+        "example": "Pay rent"
       }
     }
   },
@@ -2117,7 +2117,7 @@
     "placeholders": {
       "task": {
         "type": "String",
-        "example": "#12"
+        "example": "Pay rent"
       }
     }
   },
@@ -2421,20 +2421,6 @@
     }
   },
   "notificationDueBodyNoProject": "Due now",
-  "notificationBodyWithIdentifier": "{body} · {identifier}",
-  "@notificationBodyWithIdentifier": {
-    "description": "A notification body followed by the task's identifier, when its project has a prefix.",
-    "placeholders": {
-      "body": {
-        "type": "String",
-        "example": "Reminder · Work"
-      },
-      "identifier": {
-        "type": "String",
-        "example": "WORK-12"
-      }
-    }
-  },
   "cancel": "Cancel",
   "taskDetailSubtasks": "Subtasks",
   "taskDetailSubtasksDone": "{done} of {total} done",
@@ -2501,7 +2487,7 @@
   "@addRelationKind": {
     "description": "Label of the relation kind picker in the Add relation sheet."
   },
-  "addRelationSearch": "Search by title or identifier",
+  "addRelationSearch": "Search by title",
   "@addRelationSearch": {
     "description": "Label of the task search field when adding a related task, and when adding content shared from another app to an existing task."
   },
@@ -3698,9 +3684,9 @@
   "projectEditSaved": "Project saved",
   "projectEditDiscardBody": "Your edits to this project will be lost.",
   "projectIdentifierLabel": "Project identifier",
-  "projectIdentifierHelp": "Up to 10 characters, unique on the server. The identifiers of this project's tasks start with it and change with it. Leave it empty for none.",
+  "projectIdentifierHelp": "Up to 10 characters, unique on the server. Used in task links such as PROJ-12. Leave it empty for none.",
   "@projectIdentifierHelp": {
-    "description": "Helper text under the identifier field of the project edit page. A task's identifier is the project's identifier followed by the task's number, for example WORK-12."
+    "description": "Helper text under the identifier field of the project edit page. The web's task links name a task by the project's identifier followed by the task's number; the app does not show them."
   },
   "projectIdentifierTaken": "This identifier is already in use. Identifiers are unique on the whole server.",
   "projectGoneTitle": "This project no longer exists",
@@ -4035,7 +4021,7 @@
   "searchProjects": "Projects",
   "searchLabels": "Labels",
   "searchStartTitle": "Search this device",
-  "searchStartBody": "Tasks by title, description, #12 or PROJ-12; projects, saved filters and labels by name. Works offline.",
+  "searchStartBody": "Tasks by title or description; projects, saved filters and labels by name. Works offline.",
   "searchNoResultsTitle": "Nothing found",
   "searchNoResultsBody": "Nothing on this device matches “{query}”.",
   "@searchNoResultsBody": {
@@ -4194,14 +4180,14 @@
   "syncProblemWebTaskGone": "This task is no longer on the server.",
   "syncProblemNoDescription": "No description",
   "accountSettingsEntry": "Account settings",
-  "accountSettingsEntrySubtitle": "Name, avatar, colour scheme and preferences, saved on the server for all your devices",
+  "accountSettingsEntrySubtitle": "Name, avatar and preferences, saved on the server for all your devices",
   "accountHeaderTapHint": "open the account settings",
   "@accountHeaderTapHint": {
     "description": "Screen readers say it after 'Double tap to' on the profile header."
   },
   "onThisDeviceHeading": "On this device",
   "@onThisDeviceHeading": {
-    "description": "Heads the Account tab's settings that stay on the phone (notifications, colours)."
+    "description": "At the end of the headers of the Account tab's sections whose settings stay on the device (home screen, notifications, privacy)."
   },
   "onThisDeviceSubtitle": "These settings stay on this device and are not saved to your account.",
   "accountSettingsTitle": "Account settings",
@@ -4222,7 +4208,7 @@
   },
   "accountSettingsSaving": "Saving",
   "@accountSettingsSaving": {
-    "description": "Screen readers' name for the progress bar while a change is sent to the server."
+    "description": "Screen readers' name for the progress bar of the Account settings page, and for the spinner of the Account tab's Theme row, while a change is sent to the server."
   },
   "accountSettingsProfile": "Profile",
   "accountSettingsName": "Name",
@@ -4367,11 +4353,6 @@
   "accountSettingsDiscoverableByNameSubtitle": "Others can add you to teams and projects by searching for your name",
   "accountSettingsDiscoverableByEmail": "Findable by email",
   "accountSettingsDiscoverableByEmailSubtitle": "Others can add you to teams and projects by searching for your full email address",
-  "accountSettingsAppearance": "Appearance",
-  "accountSettingsColorScheme": "Colour scheme",
-  "accountSettingsColorSchemeLight": "Light",
-  "accountSettingsColorSchemeSystem": "System",
-  "accountSettingsColorSchemeDark": "Dark",
   "accountSettingsNothingFound": "Nothing found",
   "accountSettingsNeedsConnection": "Changing account settings needs a connection to the server.",
   "accountSettingsUnconfirmed": "The change could not be confirmed. Check it again once the connection is back.",
@@ -4966,7 +4947,7 @@
   },
   "taskDetailStatusOpen": "Open",
   "@taskDetailStatusOpen": {
-    "description": "The status of a task that is not done, beside its project in the detail sheet."
+    "description": "The status of a task that is not done, under its title in the detail sheet."
   },
   "projectShowDoneChip": "Show done",
   "@projectShowDoneChip": {
@@ -5000,9 +4981,13 @@
   "@accountHeaderEdit": {
     "description": "Outlined button in the Account tab's profile header; opens the account settings."
   },
+  "accountSyncHeading": "Sync",
+  "@accountSyncHeading": {
+    "description": "Account tab section with the sync status, Sync now and Full resync, the changes waiting for the server and the sync problems."
+  },
   "accountServerHeading": "Server",
   "@accountServerHeading": {
-    "description": "Account tab section with the server's version, the sync status and the changes waiting for the server."
+    "description": "Account tab section near the end with the server's Vikunja version, its connection settings and the server's notices."
   },
   "accountAppVersion": "Rurana {version} ({build})",
   "@accountAppVersion": {
@@ -5956,10 +5941,6 @@
   "@projectTableColumnTitleAlways": {
     "description": "Below the Title column, which cannot be turned off."
   },
-  "projectTableColumnNumber": "Number",
-  "@projectTableColumnNumber": {
-    "description": "The table column of a task's number or identifier, # on the web."
-  },
   "projectTableColumnComments": "Comments",
   "@projectTableColumnComments": {
     "description": "The table column of a task's comment count."
@@ -5968,17 +5949,9 @@
   "projectTableColumnCreated": "Created",
   "projectTableColumnUpdated": "Updated",
   "projectTableColumnCreatedBy": "Created by",
-  "projectTableSortDefault": "Default (highest number first)",
+  "projectTableSortDefault": "Default (newest first)",
   "@projectTableSortDefault": {
-    "description": "The table's default sort, by number, highest first."
-  },
-  "projectTableSortNumberDesc": "Number (highest first)",
-  "@projectTableSortNumberDesc": {
-    "description": "Sort option of a project's Table view, also shown on its sort chip: by task number, highest first."
-  },
-  "projectTableSortNumberAsc": "Number (lowest first)",
-  "@projectTableSortNumberAsc": {
-    "description": "Sort option of a project's Table view, also shown on its sort chip: by task number, lowest first."
+    "description": "The table's default sort, also shown on its sort chip: by the task's number in its project, highest first, which puts the newest tasks first."
   },
   "projectTableSortDoneAsc": "Done (open first)",
   "@projectTableSortDoneAsc": {
@@ -7922,7 +7895,7 @@
   },
   "appLanguageTitle": "App language",
   "@appLanguageTitle": {
-    "description": "Row in the Account tab's device settings that opens the system's language settings for this app (Android 13+ per-app language, the app's page in iOS Settings)."
+    "description": "Row in the Account tab's Appearance section that opens the system's language settings for this app (Android 13+ per-app language, the app's page in iOS Settings)."
   },
   "appLanguageName": "English",
   "@appLanguageName": {

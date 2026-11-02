@@ -23,40 +23,12 @@ void main() {
 
   group("the web's vectors", () {
     test('no default kind (first) opens the first view', () {
-      expect(resolveViewId(webViews, remembered: null), 1);
+      expect(resolveViewId(webViews), 1);
     });
 
     test('a default kind opens its first view', () {
-      expect(
-        resolveViewId(
-          webViews,
-          remembered: null,
-          defaultKind: ProjectViewKind.kanban,
-        ),
-        4,
-      );
-    });
-
-    test('the remembered view comes first', () {
-      expect(
-        resolveViewId(
-          webViews,
-          remembered: 3,
-          defaultKind: ProjectViewKind.kanban,
-        ),
-        3,
-      );
-    });
-
-    test('a remembered view that is gone falls back to the default kind', () {
-      expect(
-        resolveViewId(
-          webViews,
-          remembered: 99,
-          defaultKind: ProjectViewKind.table,
-        ),
-        3,
-      );
+      expect(resolveViewId(webViews, defaultKind: ProjectViewKind.kanban), 4);
+      expect(resolveViewId(webViews, defaultKind: ProjectViewKind.table), 3);
     });
 
     test('a kind the project lacks opens the first view', () {
@@ -65,25 +37,11 @@ void main() {
         view(-2, ProjectViewKind.gantt, position: 2),
         view(-3, ProjectViewKind.table, position: 3),
       ];
-      expect(
-        resolveViewId(
-          favorites,
-          remembered: null,
-          defaultKind: ProjectViewKind.kanban,
-        ),
-        -1,
-      );
+      expect(resolveViewId(favorites, defaultKind: ProjectViewKind.kanban), -1);
     });
 
     test('without views there is nothing to open', () {
-      expect(
-        resolveViewId(
-          const [],
-          remembered: null,
-          defaultKind: ProjectViewKind.list,
-        ),
-        0,
-      );
+      expect(resolveViewId(const [], defaultKind: ProjectViewKind.list), 0);
     });
   });
 
@@ -112,20 +70,8 @@ void main() {
       (ProjectViewKind.gantt, 14),
       (ProjectViewKind.table, 12),
     ]) {
-      test('default ${kind?.wireName ?? 'first'} opens view $opened, the '
-          'remembered one while it is shown', () {
-        expect(
-          resolveViewId(shownViews, remembered: null, defaultKind: kind),
-          opened,
-        );
-        expect(
-          resolveViewId(shownViews, remembered: 13, defaultKind: kind),
-          13,
-        );
-        expect(
-          resolveViewId(shownViews, remembered: 99, defaultKind: kind),
-          opened,
-        );
+      test('default ${kind?.wireName ?? 'first'} opens view $opened', () {
+        expect(resolveViewId(shownViews, defaultKind: kind), opened);
       });
     }
   });

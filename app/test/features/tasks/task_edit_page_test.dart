@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart' hide RepeatMode;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
@@ -502,8 +503,22 @@ void main() {
 
     testWidgets('the project picker lists the tree without archived '
         'projects and moves the task', (tester) async {
+      data.projects.all = [
+        sampleProject(id: 1, title: 'Work'),
+        sampleProject(id: 2, title: 'Personal', hexColor: '008080'),
+        sampleProject(id: 3, title: 'Old', archived: true),
+      ];
+      String tileMark() => tester
+          .widget<ProjectIcon>(
+            find.descendant(
+              of: find.widgetWithText(ListTile, en.taskEditProject),
+              matching: find.byType(ProjectIcon),
+            ),
+          )
+          .hexColor;
       await openEditPage(tester, 1);
       expect(find.widgetWithText(ListTile, 'Work'), findsOneWidget);
+      expect(tileMark(), '');
 
       await tester.tap(find.widgetWithText(ListTile, en.taskEditProject));
       await tester.pumpAndSettle();
@@ -513,6 +528,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.widgetWithText(ListTile, 'Personal'), findsOneWidget);
+      expect(tileMark(), '008080');
       await save(tester);
       expect(data.tasks.updates.single.$2, const TaskChanges(projectId: 2));
     });

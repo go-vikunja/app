@@ -67,7 +67,7 @@ On the tablet emulator in landscape (1280 × 800), with TalkBack, Switch Access 
 - [ ] **Open:** activate a row of the Overview and of a project's list. The task opens in the pane beside the list; TalkBack's focus moves into the pane; nothing is announced beyond what opening the sheet says on a phone; back on the list, the row reads "ausgewählt" ("selected"), and so do a Kanban card and a Gantt row in their views.
 - [ ] **Order and headings:** swiping goes through the list, then the pane; the Headings control reaches the screen's title, its section headers, the task's title (level 1) and the pane's sections. The pane's menu reads "Mehr zu „*Titel*“", the project page's menu "Mehr".
 - [ ] **A task inside the pane:** activate a related task or a subtask in the pane. It opens in the same place, focus stays in the pane, and the back arrow reads "Zurück zu „*Titel*“" once; activating it returns to the task before.
-- [ ] **Close:** activate "Schließen". The pane closes and focus returns to the row that opened the task; record where it lands when that row has scrolled away.
+- [ ] **Close:** activate "Details schließen". The pane closes and focus returns to the row that opened the task; record where it lands when that row has scrolled away.
 - [ ] **Switch Access** reaches the rows, the pane's back arrow, its close button and its menu; the Scanner finds nothing new on the screen with the pane.
 
 ### 2.5 The flows

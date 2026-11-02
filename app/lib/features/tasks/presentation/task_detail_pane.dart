@@ -136,7 +136,7 @@ class TaskDetailPane extends StatelessWidget {
           child: FocusTraversalGroup(
             child: Focus(
               focusNode: focusNode,
-              // A node of its own would take in the header's identifier and
+              // A node of its own would take in the header's project and
               // read it with the whole pane outlined, before the back arrow.
               includeSemantics: false,
               child: _PaneEntry(

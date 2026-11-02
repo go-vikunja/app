@@ -186,8 +186,7 @@ void main() {
       final harness = ComposerHarness()..settings = slashed;
       await harness.open(tester);
 
-      await tester.tap(find.text(en.newTaskPickDate));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text(en.newTaskPickDate));
       await tester.tap(find.text('20'));
       await tester.tap(find.text('OK'));
       await tester.pumpAndSettle();

@@ -37,26 +37,11 @@ void main() {
       expect(comment.kind, ActivityKind.comment);
       expect(comment.doerName, 'Anna');
       expect(comment.taskId, 40);
-      expect(comment.taskIdentifier, '#12');
       expect(comment.taskTitle, 'Water the plants');
       expect(comment.projectId, 3);
       expect(comment.projectTitle, 'Garden');
       expect(comment.comment, 'Looks good to me');
       expect(comment.commentId, 9);
-    });
-
-    test('a prefixed identifier as the server sent it', () {
-      final created = item('task.created', {
-        'doer': anna,
-        'task': payloadTask(
-          id: 40,
-          title: 'Water the plants',
-          index: 12,
-          identifier: 'HOME-12',
-        ),
-      });
-
-      expect(created.taskIdentifier, 'HOME-12');
     });
 
     test('the team of a membership, which the team page opens by id', () {
@@ -99,7 +84,7 @@ void main() {
       expect(odd.doerName, isNull);
       expect(odd.commentId, isNull);
       expect(odd.taskId, isNull);
-      expect(odd.taskIdentifier, isNull);
+      expect(odd.taskTitle, isNull);
       expect(odd.comment, isNull);
     });
   });
@@ -108,33 +93,33 @@ void main() {
     final cases = {
       'task.comment': (
         {'doer': anna, 'task': task},
-        'Anna commented on #12',
-        'Anna hat #12 kommentiert',
+        'Anna commented on Water the plants',
+        'Anna hat Water the plants kommentiert',
       ),
       'task.assigned to me': (
         {'doer': anna, 'task': task, 'assignee': me},
-        'Anna assigned you to #12',
-        'Anna hat dir #12 zugewiesen',
+        'Anna assigned you to Water the plants',
+        'Anna hat dir Water the plants zugewiesen',
       ),
       'task.assigned to another': (
         {'doer': anna, 'task': task, 'assignee': ben},
-        'Anna assigned ben to #12',
-        'Anna hat ben #12 zugewiesen',
+        'Anna assigned ben to Water the plants',
+        'Anna hat ben Water the plants zugewiesen',
       ),
       'task.mentioned': (
         {'doer': anna, 'task': task, 'is_new': false},
-        'Anna mentioned you on #12',
-        'Anna hat dich in #12 erwähnt',
+        'Anna mentioned you on Water the plants',
+        'Anna hat dich in Water the plants erwähnt',
       ),
       'task.created': (
         {'doer': anna, 'task': task, 'project': project},
-        'Anna created #12',
-        'Anna hat #12 erstellt',
+        'Anna created Water the plants',
+        'Anna hat Water the plants erstellt',
       ),
       'task.deleted': (
         {'doer': anna, 'task': task},
-        'Anna deleted #12',
-        'Anna hat #12 gelöscht',
+        'Anna deleted Water the plants',
+        'Anna hat Water the plants gelöscht',
       ),
       'project.created': (
         {'doer': anna, 'project': project},
@@ -161,8 +146,8 @@ void main() {
       ),
       'task.reminder': (
         {'task': task, 'project': project},
-        'Reminder for #12',
-        'Erinnerung an #12',
+        'Reminder for Water the plants',
+        'Erinnerung an Water the plants',
       ),
       'migration.done': (
         <String, Object?>{},
@@ -179,16 +164,23 @@ void main() {
       });
     }
 
-    test('a task without an identifier by its title, an unknown doer as '
-        'someone', () {
-      final notification = item('task.comment', {
-        'task': {'id': 40, 'title': 'Water the plants'},
+    test('a task by its title, never its identifier; an unknown doer as '
+        'someone, a task without a title as a task', () {
+      final prefixed = item('task.created', {
+        'doer': anna,
+        'task': payloadTask(
+          id: 40,
+          title: 'Water the plants',
+          index: 12,
+          identifier: 'HOME-12',
+        ),
       });
+      expect(describeInboxRow(en, prefixed), 'Anna created Water the plants');
 
-      expect(
-        describeInboxRow(en, notification),
-        'Someone commented on Water the plants',
-      );
+      final untitled = item('task.comment', {
+        'task': {'id': 40, 'index': 12, 'identifier': 'HOME-12'},
+      });
+      expect(describeInboxRow(en, untitled), 'Someone commented on a task');
     });
   });
 

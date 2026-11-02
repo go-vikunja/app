@@ -18,6 +18,7 @@ import 'package:vikunja_mobile/features/accounts/presentation/account_identity.d
 import 'package:vikunja_mobile/features/attachments/application/queue_attachments.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
 import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/share/application/share_files.dart';
@@ -420,7 +421,6 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     List<Project> projects,
     Project? project,
   ) {
-    final colors = Theme.of(context).colorScheme;
     final projectTitle =
         project?.displayTitle(l10n) ?? l10n.projectUnknownTitle;
     return [
@@ -444,7 +444,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       Align(
         alignment: AlignmentDirectional.centerStart,
         child: ActionChip(
-          avatar: Icon(Icons.folder_outlined, color: colors.onSurfaceVariant),
+          avatar: ProjectIcon(hexColor: project?.hexColor ?? ''),
           label: Text(
             projectTitle,
             semanticsLabel: l10n.taskEditProjectSemantics(projectTitle),
@@ -573,10 +573,7 @@ class _TaskChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final details = [
-      if (task.id > 0) task.displayIdentifier,
-      ?projectTitle,
-    ].join(' · ');
+    final projectTitle = this.projectTitle;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       selected: selected,
@@ -584,7 +581,7 @@ class _TaskChoice extends StatelessWidget {
         selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
       ),
       title: Text(task.title),
-      subtitle: details.isEmpty ? null : Text(details),
+      subtitle: projectTitle == null ? null : Text(projectTitle),
       onTap: onTap,
     );
   }

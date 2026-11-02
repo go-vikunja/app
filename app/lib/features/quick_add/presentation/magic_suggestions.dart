@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/application/known_users_provider.dart';
 import 'package:vikunja_mobile/features/quick_add/application/project_references.dart';
@@ -166,7 +167,7 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
             project.title.toLowerCase().contains(needle) ||
             project.identifier.toLowerCase().contains(needle))
           _SuggestionChip(
-            avatar: const Icon(Icons.folder_outlined),
+            avatar: ProjectIcon(hexColor: project.hexColor),
             label: projectLabel(project, candidates),
             onPressed: () => widget.onSelected(
               projectReference(project, candidates) ?? project.title,

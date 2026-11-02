@@ -15,21 +15,37 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.
 /// Lets the user tick labels, and create one online unless a link-share
 /// guest, whom the server refuses that; Done returns the ticked labels, in
 /// the order they were ticked after the [selected] ones. Null when
-/// dismissed, which keeps the previous selection.
+/// dismissed, which keeps the previous selection. With [createLater] a new
+/// label is not created but returned as one [isLabelToCreate], for the
+/// caller to create.
 Future<List<Label>?> pickLabels(
   BuildContext context, {
   required List<Label> selected,
+  bool createLater = false,
 }) => showPickerSheet<List<Label>>(
   context,
   heightFactor: 0.9,
-  builder: (context, scrollController) =>
-      LabelPicker(selected: selected, scrollController: scrollController),
+  builder: (context, scrollController) => LabelPicker(
+    selected: selected,
+    createLater: createLater,
+    scrollController: scrollController,
+  ),
 );
 
+/// A label [pickLabels] was asked to create later: not on the server yet,
+/// it has a negative id of its own and no colour.
+bool isLabelToCreate(Label label) => label.id < 0;
+
 class LabelPicker extends ConsumerStatefulWidget {
-  const new({required this.selected, this.scrollController, super.key});
+  const new({
+    required this.selected,
+    this.createLater = false,
+    this.scrollController,
+    super.key,
+  });
 
   final List<Label> selected;
+  final bool createLater;
   final ScrollController? scrollController;
 
   @override
@@ -65,6 +81,11 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
     if (repository == null ||
         _creating ||
         title.runes.length > maxLabelTitleLength) {
+      return;
+    }
+    if (widget.createLater) {
+      final id = _selected.map((label) => label.id).fold<int>(0, min) - 1;
+      setState(() => _selected.add(Label(id: id, title: title)));
       return;
     }
     setState(() {
@@ -186,7 +207,14 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
                   value: _isSelected(label),
                   onChanged: (_) => _toggle(label),
                   secondary: _ColorDot(hexColor: label.hexColor),
-                  title: Text(label.title),
+                  title: isLabelToCreate(label)
+                      ? Text(
+                          l10n.quickAddNewLabel(label.title),
+                          semanticsLabel: l10n.quickAddNewLabelSemantics(
+                            label.title,
+                          ),
+                        )
+                      : Text(label.title),
                 ),
               if (stored.hasValue && known.isEmpty && createTitle == null)
                 Padding(

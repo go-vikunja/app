@@ -99,6 +99,7 @@ final class ComposerHarness {
     String line, {
     int? fallbackProjectId,
     DateTime? fallbackDueDate,
+    int? fallbackPriority,
   }) =>
       LocalQuickAddService(
         snapshot: QuickAddSnapshot(
@@ -115,6 +116,7 @@ final class ComposerHarness {
         line,
         fallbackProjectId: fallbackProjectId,
         fallbackDueDate: fallbackDueDate,
+        fallbackPriority: fallbackPriority,
       );
 
   List<Override> get overrides => [
@@ -151,12 +153,28 @@ final class ComposerHarness {
 
 Finder composerField() => find.descendant(
   of: find.byType(NewTaskSheet),
-  matching: find.byType(TextField),
+  matching: find.byWidgetPredicate(
+    (widget) =>
+        widget is TextField && widget.controller is MagicTextEditingController,
+  ),
 );
 
 MagicTextEditingController composerController(WidgetTester tester) =>
     tester.widget<TextField>(composerField()).controller!
         as MagicTextEditingController;
+
+/// The sheet's control showing [text].
+Finder inSheet(String text) =>
+    find.descendant(of: find.byType(NewTaskSheet), matching: find.text(text));
+
+/// Taps the sheet's chip or button showing [text], after scrolling its row
+/// and the sheet to it.
+Future<void> tapInSheet(WidgetTester tester, String text) async {
+  await tester.ensureVisible(inSheet(text));
+  await tester.pumpAndSettle();
+  await tester.tap(inSheet(text));
+  await tester.pumpAndSettle();
+}
 
 Future<void> typeLine(WidgetTester tester, String text) async {
   await tester.enterText(composerField(), text);

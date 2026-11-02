@@ -17,15 +17,15 @@ String shortcutLabel(AppLocalizations l10n, DateShortcut shortcut) =>
 
 /// Date shortcut toggles: the chip whose day the current value falls on is
 /// selected, and tapping it again clears ([onSelected] gets null). Each
-/// chip reads out its day. One row scrolling sideways, or with [wrap] as
-/// many rows as the width takes. Without [enabled] they only show the value.
+/// chip reads out its day. One row scrolling sideways, between [leading]
+/// and [trailing]. Without [enabled] they only show the value.
 class DateShortcutChips extends StatelessWidget {
   const new({
     required this.options,
     required this.selectedDay,
     required this.onSelected,
+    this.leading = const [],
     this.trailing = const [],
-    this.wrap = false,
     this.enabled = true,
     super.key,
   });
@@ -35,8 +35,8 @@ class DateShortcutChips extends StatelessWidget {
   /// The start of the current value's local day, if any.
   final DateTime? selectedDay;
   final ValueChanged<DateShortcutOption?> onSelected;
+  final List<Widget> leading;
   final List<Widget> trailing;
-  final bool wrap;
   final bool enabled;
 
   @override
@@ -44,6 +44,7 @@ class DateShortcutChips extends StatelessWidget {
     final l10n = context.l10n;
     final materialL10n = MaterialLocalizations.of(context);
     final chips = [
+      ...leading,
       for (final option in options)
         ChoiceChip(
           label: Text(
@@ -60,12 +61,6 @@ class DateShortcutChips extends StatelessWidget {
         ),
       ...trailing,
     ];
-    if (wrap) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Wrap(spacing: 8, runSpacing: 8, children: chips),
-      );
-    }
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),

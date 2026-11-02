@@ -296,7 +296,15 @@ private fun MetaLine(shown: ShownRow, wide: Boolean) {
         }
         project?.let {
             if (labels.isNotEmpty()) MetaText(SEPARATOR, colors.onSurfaceVariant)
-            row.projectColor?.let { color -> MetaText("● ", ColorProvider(Color(color))) }
+            Image(
+                ImageProvider(R.drawable.widget_project),
+                contentDescription = null,
+                modifier = GlanceModifier.size(12.dp),
+                colorFilter = ColorFilter.tint(
+                    row.projectColor?.let { ColorProvider(Color(it)) } ?: colors.onSurfaceVariant,
+                ),
+            )
+            Spacer(GlanceModifier.width(3.dp))
             MetaText(it, colors.onSurfaceVariant, GlanceModifier.defaultWeight())
         }
     }

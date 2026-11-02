@@ -4,16 +4,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
-import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_suggestions.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_text_controller.dart';
-import 'package:vikunja_mobile/features/quick_add/presentation/magic_toolbar.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_help_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 
 import '../../../helpers/pump_app.dart';
 import '../../../helpers/sample_data.dart';
@@ -74,7 +72,7 @@ void main() {
     matching: find.byType(ActionChip),
   );
 
-  Finder shortcutChip(String label) =>
+  Finder choiceChip(String label) =>
       find.ancestor(of: find.text(label), matching: find.byType(ChoiceChip));
 
   group('highlighting', () {
@@ -244,10 +242,27 @@ void main() {
     testWidgets('projects by title or identifier, never archived ones', (
       tester,
     ) async {
+      harness.data.projects.all = [
+        work,
+        inbox,
+        garageSale.copyWith(hexColor: 'e8445a'),
+        gardening,
+      ];
       await harness.open(tester);
       await typeLine(tester, 'Sell +gar');
 
       expect(suggestion('Gardening'), findsNothing);
+      expect(
+        tester
+            .widget<ProjectIcon>(
+              find.descendant(
+                of: suggestion('Garage Sale'),
+                matching: find.byType(ProjectIcon),
+              ),
+            )
+            .hexColor,
+        'e8445a',
+      );
       await tester.tap(suggestion('Garage Sale'));
       await tester.pump();
       expect(composerText(tester), 'Sell +"Garage Sale" ');
@@ -345,71 +360,21 @@ void main() {
     });
   });
 
-  group('toolbar', () {
-    testWidgets('inserts the prefixes at the caret and sets the priority', (
-      tester,
-    ) async {
+  group('help', () {
+    testWidgets('the button at the end of the title field opens it, also '
+        'with the field empty', (tester) async {
       await harness.open(tester);
-      await setComposerText(tester, 'Buy milk', caret: 3);
 
-      await tester.tap(find.byTooltip(en.quickAddInsertLabel('*')));
-      await tester.pump();
-      await tester.pump();
-      expect(composerText(tester), 'Buy * milk');
-      expect(composerController(tester).selection.baseOffset, 5);
-      expect(suggestion('urgent'), findsOneWidget);
-      expect(suggestion('Road trip'), findsOneWidget);
-
-      await setComposerText(tester, 'Buy milk');
-      await tester.tap(find.byTooltip(en.quickAddInsertProject('+')));
-      await tester.pump();
-      expect(composerText(tester), 'Buy milk +');
-
-      await setComposerText(tester, 'Buy milk');
-      await tester.tap(find.byTooltip(en.quickAddInsertAssignee('@')));
-      await tester.pump();
-      expect(composerText(tester), 'Buy milk @');
-
-      await setComposerText(tester, 'Buy milk');
-      await tester.tap(find.byTooltip(en.quickAddSetPriority('!')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(en.priorityHigh));
-      await tester.pumpAndSettle();
-      expect(composerText(tester), 'Buy milk !3 ');
-
-      // A second priority replaces the first.
-      await tester.tap(find.byTooltip(en.quickAddSetPriority('!')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(en.priorityDoNow));
-      await tester.pumpAndSettle();
-      expect(composerText(tester), 'Buy milk !5 ');
-      expect(fieldFocused(tester), isTrue);
-    });
-
-    testWidgets('a selected word becomes the item of the prefix', (
-      tester,
-    ) async {
-      await harness.open(tester);
-      composerController(tester).value = const TextEditingValue(
-        text: 'Buy oat milk',
-        selection: TextSelection(baseOffset: 4, extentOffset: 12),
+      expect(
+        find.descendant(
+          of: composerField(),
+          matching: find.byTooltip(en.quickAddHelp),
+        ),
+        findsOneWidget,
       );
-      await tester.pump();
-
-      await tester.tap(find.byTooltip(en.quickAddInsertLabel('*')));
-      await tester.pump();
-      expect(composerText(tester), 'Buy *"oat milk"');
-
-      composerController(tester).value = const TextEditingValue(
-        text: 'Buy milk',
-        selection: TextSelection(baseOffset: 4, extentOffset: 8),
-      );
-      await tester.pump();
-      await tester.tap(find.byTooltip(en.quickAddSetPriority('!')));
+      await tester.tap(find.byTooltip(en.quickAddHelp));
       await tester.pumpAndSettle();
-      await tester.tap(find.text(en.priorityHigh));
-      await tester.pumpAndSettle();
-      expect(composerText(tester), 'Buy milk !3 ');
+      expect(find.byType(QuickAddHelpSheet), findsOneWidget);
     });
 
     testWidgets('help explains the syntax in the prefixes of the mode', (
@@ -465,9 +430,6 @@ void main() {
       );
       await harness.open(tester);
 
-      expect(find.byTooltip(en.quickAddInsertLabel('@')), findsOneWidget);
-      expect(find.byTooltip(en.quickAddInsertProject('#')), findsOneWidget);
-      expect(find.byTooltip(en.quickAddInsertAssignee('+')), findsOneWidget);
       await typeLine(tester, 'Buy milk @ro');
       await tester.pump();
       expect(suggestion('Road trip'), findsOneWidget);
@@ -487,7 +449,7 @@ void main() {
       );
       await harness.open(tester);
 
-      expect(find.byType(MagicToolbar), findsNothing);
+      expect(find.byTooltip(en.quickAddHelp), findsNothing);
       await typeLine(tester, 'Buy *milk tomorrow');
       expect(composerController(tester).highlighter, isNull);
       expect(find.byType(Chip), findsNothing);
@@ -495,6 +457,26 @@ void main() {
       await tester.tap(addButton());
       await tester.pumpAndSettle();
       expect(harness.service.submits.single.text, 'Buy *milk tomorrow');
+    });
+
+    testWidgets('with magic off the priority chips still give the priority', (
+      tester,
+    ) async {
+      harness.settings = const UserSettings(
+        quickAddMagicMode: QuickAddMagicMode.disabled,
+      );
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk !5');
+      await tapInSheet(tester, en.priorityMedium);
+
+      expect(
+        tester.widget<ChoiceChip>(choiceChip(en.priorityMedium)).selected,
+        isTrue,
+      );
+      expect(chip(en.prioritySemantics(en.priorityMedium)), findsNothing);
+      await tester.tap(addButton());
+      await tester.pumpAndSettle();
+      expect(harness.service.submits.single.fallbackPriority, 2);
     });
   });
 
@@ -504,9 +486,7 @@ void main() {
       await harness.open(tester);
       await typeLine(tester, 'Call Sam tomorrow');
 
-      var tomorrow = tester.widget<ChoiceChip>(
-        shortcutChip(en.shortcutTomorrow),
-      );
+      var tomorrow = tester.widget<ChoiceChip>(choiceChip(en.shortcutTomorrow));
       expect(tomorrow.selected, isTrue);
       expect(tomorrow.onSelected, isNull);
       expect(tester.widget<ActionChip>(pickDateChip()).onPressed, isNull);
@@ -516,7 +496,7 @@ void main() {
         en.quickAddDueLabel('Sun, Oct 11 12:00 PM', en.relativeInDays(1)),
       );
       expect(composerText(tester), 'Call Sam');
-      tomorrow = tester.widget<ChoiceChip>(shortcutChip(en.shortcutTomorrow));
+      tomorrow = tester.widget<ChoiceChip>(choiceChip(en.shortcutTomorrow));
       expect(tomorrow.selected, isFalse);
       expect(tomorrow.onSelected, isNotNull);
     });
@@ -543,7 +523,7 @@ void main() {
       await typeLine(tester, 'Call mom tomorrow +Work\nBuy milk\nPay rent');
 
       final tomorrow = tester.widget<ChoiceChip>(
-        shortcutChip(en.shortcutTomorrow),
+        choiceChip(en.shortcutTomorrow),
       );
       expect(tomorrow.selected, isFalse);
       expect(tomorrow.onSelected, isNotNull);
@@ -554,7 +534,7 @@ void main() {
 
       await typeLine(tester, 'Call mom tomorrow +Work\nBuy milk +Work friday');
       expect(
-        tester.widget<ChoiceChip>(shortcutChip(en.shortcutTomorrow)).onSelected,
+        tester.widget<ChoiceChip>(choiceChip(en.shortcutTomorrow)).onSelected,
         isNull,
       );
       expect(
@@ -567,8 +547,7 @@ void main() {
         'date of their own', (tester) async {
       harness.service.result = const QuickAddResult(createdTaskIds: [-1, -2]);
       await harness.open(tester);
-      await tester.tap(find.text(en.shortcutTomorrow));
-      await tester.pump();
+      await tapInSheet(tester, en.shortcutTomorrow);
       await typeLine(tester, 'Buy milk\nCall Sam friday');
       await tester.tap(addButton(2));
       await tester.pumpAndSettle();
@@ -578,9 +557,78 @@ void main() {
           text: 'Buy milk\nCall Sam friday',
           fallbackProjectId: 2,
           fallbackDueDate: DateTime(2026, 10, 11, 12).toUtc(),
+          fallbackPriority: null,
+          extras: const QuickAddExtras(),
         ),
       ]);
       expect(harness.data.tasks.updates, isEmpty);
+    });
+
+    testWidgets('a priority in the text shows on the priority chips, which '
+        'wait until it is removed', (tester) async {
+      await harness.open(tester);
+      await tapInSheet(tester, en.priorityLow);
+      await typeLine(tester, 'Call Sam !3');
+
+      var high = tester.widget<ChoiceChip>(choiceChip(en.priorityHigh));
+      expect(high.selected, isTrue);
+      expect(high.onSelected, isNull);
+      expect(
+        tester.widget<ChoiceChip>(choiceChip(en.priorityLow)).selected,
+        isFalse,
+      );
+
+      await removeChip(tester, en.prioritySemantics(en.priorityHigh));
+      expect(composerText(tester), 'Call Sam');
+      high = tester.widget<ChoiceChip>(choiceChip(en.priorityHigh));
+      expect(high.selected, isFalse);
+      expect(high.onSelected, isNotNull);
+      final low = tester.widget<ChoiceChip>(choiceChip(en.priorityLow));
+      expect(low.selected, isTrue);
+      // The sheet's own priority shows on its row only.
+      expect(chip(en.prioritySemantics(en.priorityLow)), findsNothing);
+    });
+
+    testWidgets("the sheet's own date shows on its row only, the text's "
+        'gets a chip', (tester) async {
+      await harness.open(tester);
+      await tapInSheet(tester, en.shortcutTomorrow);
+      await typeLine(tester, 'Call Sam');
+
+      expect(find.byType(Chip), findsNothing);
+      expect(
+        tester.widget<ChoiceChip>(choiceChip(en.shortcutTomorrow)).selected,
+        isTrue,
+      );
+      await typeLine(tester, 'Call Sam tomorrow at 9:00');
+      expect(chip(mixedDue), findsOneWidget);
+    });
+
+    testWidgets("the sheet's priority goes to the lines without their own, "
+        'and stays choosable until every line has one', (tester) async {
+      harness.service.result = const QuickAddResult(createdTaskIds: [-1, -2]);
+      await harness.open(tester);
+      await tapInSheet(tester, en.priorityUrgent);
+      await typeLine(tester, 'Buy milk !1\nCall Sam');
+
+      expect(
+        tester.widget<ChoiceChip>(choiceChip(en.priorityUrgent)).onSelected,
+        isNotNull,
+      );
+      await typeLine(tester, 'Buy milk !1\nCall Sam !2');
+      expect(
+        tester.widget<ChoiceChip>(choiceChip(en.priorityUrgent)).onSelected,
+        isNull,
+      );
+      expect(
+        tester.widget<ChoiceChip>(choiceChip(en.priorityLow)).selected,
+        isTrue,
+      );
+
+      await typeLine(tester, 'Buy milk !1\nCall Sam');
+      await tester.tap(addButton(2));
+      await tester.pumpAndSettle();
+      expect(harness.service.submits.single.fallbackPriority, 4);
     });
   });
 
@@ -593,7 +641,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(harness.service.submits, [
-        (text: mixed, fallbackProjectId: 3, fallbackDueDate: null),
+        (
+          text: mixed,
+          fallbackProjectId: 3,
+          fallbackDueDate: null,
+          fallbackPriority: null,
+          extras: const QuickAddExtras(),
+        ),
       ]);
       expect(find.byType(NewTaskSheet), findsNothing);
       expect(find.text(en.newTaskCreated('Reifen wechseln')), findsOneWidget);
@@ -617,7 +671,13 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(harness.service.submits, [
-        (text: text, fallbackProjectId: 2, fallbackDueDate: null),
+        (
+          text: text,
+          fallbackProjectId: 2,
+          fallbackDueDate: null,
+          fallbackPriority: null,
+          extras: const QuickAddExtras(),
+        ),
       ]);
       expect(find.text(en.newTaskCreatedMany(3)), findsOneWidget);
     });
@@ -724,25 +784,33 @@ void main() {
       expect(tester.widget<FilledButton>(addButton()).onPressed, isNull);
     });
 
-    testWidgets('More options adds through quick add and opens the first '
-        'task', (tester) async {
-      harness.service.beforeSubmit = () async {
-        await harness.data.tasks.createTask(
-          const NewTask(projectId: 2, title: 'Plan trip'),
-        );
-      };
+    testWidgets('the further fields go with every line of a paste', (
+      tester,
+    ) async {
+      harness.service.result = const QuickAddResult(createdTaskIds: [-1, -2]);
       await harness.open(tester);
-      await typeLine(tester, 'Plan trip *urgent');
-      await tester.tap(find.text(en.newTaskMoreOptions));
+      await typeLine(tester, 'Buy milk *urgent\nCall Sam');
+      await tapInSheet(tester, en.newTaskMoreOptions);
+      await tester.enterText(
+        find.widgetWithText(TextField, en.taskDetailDescription),
+        'For the weekend',
+      );
+      await tester.pump();
+      await tapInSheet(tester, en.repeatPresetDaily);
+      await tester.ensureVisible(addButton(2));
+      await tester.pumpAndSettle();
+      await tester.tap(addButton(2));
       await tester.pumpAndSettle();
 
-      expect(harness.service.submits.single.text, 'Plan trip *urgent');
-      expect(find.byType(TaskEditPage), findsOneWidget);
+      expect(harness.service.submits.single.text, 'Buy milk *urgent\nCall Sam');
       expect(
-        containerOf(tester).read(appRouterProvider).state.uri.toString(),
-        AppRoutes.taskEdit(-1),
+        harness.service.submits.single.extras,
+        const QuickAddExtras(
+          description: '<p>For the weekend</p>',
+          repeatAfter: Duration(days: 1),
+        ),
       );
-      expect(find.text(en.newTaskCreated('Plan trip')), findsNothing);
+      expect(find.text(en.newTaskCreatedMany(2)), findsOneWidget);
     });
   });
 
@@ -792,7 +860,7 @@ void main() {
       useLocale(tester, const Locale('de'));
       await harness.open(tester);
 
-      expect(find.byTooltip(de.quickAddInsertLabel('*')), findsOneWidget);
+      expect(find.byTooltip(de.quickAddHelp), findsOneWidget);
       await typeLine(tester, 'Reifen wechseln *neu tomorrow');
       expect(chip(de.quickAddNewLabel('neu')), findsOneWidget);
       await typeLine(tester, 'Reifen wechseln\nÖl prüfen');

@@ -6,6 +6,16 @@ typedef QuickAddPlanner = QuickAddPlan Function(
   String line, {
   int? fallbackProjectId,
   DateTime? fallbackDueDate,
+  int? fallbackPriority,
+});
+
+/// One recorded submit.
+typedef QuickAddSubmit = ({
+  String text,
+  int? fallbackProjectId,
+  DateTime? fallbackDueDate,
+  int? fallbackPriority,
+  QuickAddExtras extras,
 });
 
 /// Quick add for widget tests. A `planner` decides every plan (by default
@@ -26,8 +36,7 @@ final class FakeQuickAddService implements QuickAddService {
   Future<void> Function()? beforeSubmit;
 
   final List<({String line, int? fallbackProjectId})> plans = [];
-  final List<({String text, int? fallbackProjectId, DateTime? fallbackDueDate})>
-  submits = [];
+  final List<QuickAddSubmit> submits = [];
 
   /// A plan of [line] with nothing recognised, in [project].
   static QuickAddPlan plainPlan(String line, {Project? project}) =>
@@ -43,6 +52,7 @@ final class FakeQuickAddService implements QuickAddService {
     String line, {
     int? fallbackProjectId,
     DateTime? fallbackDueDate,
+    int? fallbackPriority,
   }) {
     plans.add((line: line, fallbackProjectId: fallbackProjectId));
     return switch (_planner) {
@@ -50,6 +60,7 @@ final class FakeQuickAddService implements QuickAddService {
         line,
         fallbackProjectId: fallbackProjectId,
         fallbackDueDate: fallbackDueDate,
+        fallbackPriority: fallbackPriority,
       ),
       null => plainPlan(line, project: project),
     };
@@ -60,11 +71,15 @@ final class FakeQuickAddService implements QuickAddService {
     String text, {
     int? fallbackProjectId,
     DateTime? fallbackDueDate,
+    int? fallbackPriority,
+    QuickAddExtras extras = const QuickAddExtras(),
   }) async {
     submits.add((
       text: text,
       fallbackProjectId: fallbackProjectId,
       fallbackDueDate: fallbackDueDate,
+      fallbackPriority: fallbackPriority,
+      extras: extras,
     ));
     await beforeSubmit?.call();
     if (submitError case final error?) throw error;

@@ -126,7 +126,6 @@ void main() {
       },
       loadedAt: now,
     );
-    data.listPreferences.lastViews[1] = views.first.id;
     final anna = payloadUser(id: 2, username: 'anna', name: 'Anna Example');
     data.activity.notifications = [
       for (var id = 1; id <= 3; id++)

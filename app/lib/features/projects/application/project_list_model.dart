@@ -24,16 +24,10 @@ List<ProjectView> shownViewsOf(Project? project) =>
       return byPosition != 0 ? byPosition : a.id.compareTo(b.id);
     });
 
-/// The view to show, the web's way: the remembered one while [views] still
-/// has it, else the first of the user's default kind (null: the first by
-/// position), else the first; 0 without views. Fed the views the app
-/// shows.
-int resolveViewId(
-  List<ProjectView> views, {
-  required int? remembered,
-  ProjectViewKind? defaultKind,
-}) {
-  if (views.any((view) => view.id == remembered)) return remembered!;
+/// The view a project opens on: the first of the user's default kind (null:
+/// the first by position), else the first; 0 without views. Fed the views
+/// the app shows.
+int resolveViewId(List<ProjectView> views, {ProjectViewKind? defaultKind}) {
   final ofDefaultKind = defaultKind == null
       ? null
       : views.where((view) => view.kind == defaultKind).firstOrNull;

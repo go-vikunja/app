@@ -122,7 +122,7 @@ void main() {
     await pumpAccountTab(tester);
 
     double top(String text) => tester.getTopLeft(find.text(text)).dy;
-    final server = top(en.accountServerHeading);
+    final sync = top(en.accountSyncHeading);
     // The first of the device's own sections.
     final deviceOnly = top(en.widgetsHeading);
     expect(
@@ -130,7 +130,7 @@ void main() {
       closeTo(tester.getCenter(find.text(en.widgetsHeading)).dy, 1),
     );
     for (final text in [en.accountPendingChanges(2), en.accountSyncProblems]) {
-      expect(top(text), allOf(greaterThan(server), lessThan(deviceOnly)));
+      expect(top(text), allOf(greaterThan(sync), lessThan(deviceOnly)));
     }
   });
 

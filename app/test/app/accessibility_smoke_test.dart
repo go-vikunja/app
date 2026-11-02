@@ -197,7 +197,7 @@ void main() {
     return data;
   }
 
-  /// A project whose kanban view opens: four columns, a long title, a full
+  /// A project with a kanban view, 14: four columns, a long title, a full
   /// one, the done one and an empty one.
   SyncFakes kanbanData({bool archived = false}) {
     final now = DateTime.now();
@@ -253,7 +253,6 @@ void main() {
       },
       loadedAt: now,
     );
-    data.listPreferences.lastViews[1] = 14;
     return data;
   }
 
@@ -1386,29 +1385,30 @@ void main() {
         name: 'Maximiliane Musterfrau-Beispielhausen',
       );
       final service = FakeQuickAddService(
-        planner: (line, {fallbackProjectId, fallbackDueDate}) {
-          final parsed = parseTaskText(line, now: DateTime.now());
-          return QuickAddPlan(
-            input: line,
-            parsed: parsed,
-            title: parsed.text,
-            project: project,
-            unmatchedProject: parsed.project,
-            labels: [label],
-            newLabels: const ['ein ziemlich langes neues Label'],
-            assignees: const [person],
-            unresolvedAssignees: const ['jemand-mit-langem-namen'],
-            dueDate: parsed.date?.toUtc(),
-            repeat: parsed.repeats,
-            priority: parsed.priority,
-            reminders: const [
-              TaskReminder(
-                relativePeriod: Duration(days: -2),
-                relativeTo: ReminderRelativeTo.dueDate,
-              ),
-            ],
-          );
-        },
+        planner:
+            (line, {fallbackProjectId, fallbackDueDate, fallbackPriority}) {
+              final parsed = parseTaskText(line, now: DateTime.now());
+              return QuickAddPlan(
+                input: line,
+                parsed: parsed,
+                title: parsed.text,
+                project: project,
+                unmatchedProject: parsed.project,
+                labels: [label],
+                newLabels: const ['ein ziemlich langes neues Label'],
+                assignees: const [person],
+                unresolvedAssignees: const ['jemand-mit-langem-namen'],
+                dueDate: parsed.date?.toUtc(),
+                repeat: parsed.repeats,
+                priority: parsed.priority,
+                reminders: const [
+                  TaskReminder(
+                    relativePeriod: Duration(days: -2),
+                    relativeTo: ReminderRelativeTo.dueDate,
+                  ),
+                ],
+              );
+            },
       );
       await pumpSignedInApp(
         tester,
@@ -1447,9 +1447,22 @@ void main() {
       expect(find.byType(MagicSuggestions), findsOneWidget);
       expect(tester.takeException(), isNull);
 
+      await tester.ensureVisible(find.byTooltip(l10n.quickAddHelp));
+      await tester.pumpAndSettle();
       await tester.tap(find.byTooltip(l10n.quickAddHelp));
       await tester.pumpAndSettle();
       await scrollToEnd(tester, find.byType(QuickAddHelpSheet));
+      expect(tester.takeException(), isNull);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(l10n.newTaskMoreOptions));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.newTaskMoreOptions));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(l10n.repeatPresetThirtyDays));
+      await tester.pumpAndSettle();
+      expect(find.text(l10n.newTaskFewerOptions), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
@@ -1766,7 +1779,9 @@ void main() {
         useAccessibilityExtremes(tester);
         useLocale(tester, locale);
         await pumpSignedInApp(tester, sync: kanbanData());
-        containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+        containerOf(tester)
+            .read(appRouterProvider)
+            .go(AppRoutes.project(1, viewId: 14));
         await tester.pumpAndSettle();
 
         expect(find.byType(BoardColumnView), findsNWidgets(4));
@@ -1813,7 +1828,9 @@ void main() {
         useWorstCase(tester, locale);
         final l10n = lookupAppLocalizations(locale);
         await pumpSignedInApp(tester, sync: kanbanData());
-        containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+        containerOf(tester)
+            .read(appRouterProvider)
+            .go(AppRoutes.project(1, viewId: 14));
         await tester.pumpAndSettle();
 
         Future<void> openMenu() async {
@@ -1931,7 +1948,9 @@ void main() {
           useAccessibilityExtremes(tester);
           useLocale(tester, locale);
           await pumpSignedInApp(tester, sync: kanbanData(archived: archived));
-          containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+          containerOf(tester)
+              .read(appRouterProvider)
+              .go(AppRoutes.project(1, viewId: 14));
           await tester.pumpAndSettle();
 
           final visibleBottom = apple
@@ -2609,13 +2628,13 @@ void main() {
           identifier: 'LONGIDENT-7',
         ),
       ];
-      data.listPreferences
-        ..lastViews[1] = 13
-        ..setTableColumns(TableColumn.values.toSet());
+      data.listPreferences.setTableColumns(TableColumn.values.toSet());
       await pumpSignedInApp(tester, sync: data);
       final l10n = lookupAppLocalizations(locale);
 
-      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+      containerOf(tester)
+          .read(appRouterProvider)
+          .go(AppRoutes.project(1, viewId: 13));
       await tester.pumpAndSettle();
       await scrollToEnd(tester, find.byType(CustomScrollView));
       expect(tester.takeException(), isNull);
@@ -2714,18 +2733,18 @@ void main() {
         ),
         sampleTask(id: 10, title: 'Without any dates at all'),
       ];
-      data.listPreferences
-        ..lastViews[1] = 12
-        ..setView(
-          'view:12',
-          const ViewPreferences(
-            timeline: TimelinePreferences(withoutDates: true),
-          ),
-        );
+      data.listPreferences.setView(
+        'view:12',
+        const ViewPreferences(
+          timeline: TimelinePreferences(withoutDates: true),
+        ),
+      );
       await pumpSignedInApp(tester, sync: data);
       final l10n = lookupAppLocalizations(locale);
 
-      containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+      containerOf(tester)
+          .read(appRouterProvider)
+          .go(AppRoutes.project(1, viewId: 12));
       await tester.pumpAndSettle();
       expect(find.byType(TimelineChart), findsOneWidget);
       expect(tester.takeException(), isNull);
@@ -3201,9 +3220,11 @@ void main() {
       await pumpVikunjaApp(tester, auth: auth, sync: richData());
       await openTab(tester, l10n.tabAccount);
 
+      // Near the end of the tab, far down at this size.
       await tester.scrollUntilVisible(
         find.text(l10n.overviewDemoNote),
         100,
+        maxScrolls: 200,
         scrollable: find
             .descendant(
               of: find.byType(ListView),
