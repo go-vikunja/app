@@ -3190,6 +3190,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boardColumnLastOne => 'A board needs at least one column.';
 
   @override
+  String get boardColumnsAtMaximum =>
+      'This board already has as many columns as the server allows.';
+
+  @override
   String get boardColumnArchived =>
       'This project is archived, so its columns can\'t be changed.';
 
@@ -4892,7 +4896,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get accountSettingsTotpOnNote =>
-      'Opens the web in your browser. Turning it off needs your password.';
+      'Opens the web in your browser. Turning it off needs your password, and newer servers also ask for a code.';
 
   @override
   String get accountSettingsSessions => 'Sessions';
@@ -8055,13 +8059,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get aboutSourceCodeLater =>
-      'The source code will be published with the first release.';
+      'This build has no link to its source code. Every release of Rurana links the source code it was built from.';
 
   @override
   String get aboutSourceCodeOpen => 'View the source code';
 
   @override
-  String get aboutWebsiteHeading => 'Privacy and legal notice';
+  String get aboutWebsiteHeading => 'Help, privacy and legal notice';
+
+  @override
+  String get aboutSupport => 'Help and bug reports';
+
+  @override
+  String get aboutSupportSubtitle =>
+      'Answers to common questions and how to report a bug';
 
   @override
   String get aboutPrivacyPolicy => 'Privacy policy';

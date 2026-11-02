@@ -26,7 +26,7 @@ void main() {
       'vbscript:msgbox',
       'intent://scan#Intent;scheme=zxing;end',
       'file:///etc/passwd',
-      'vikunja-dev.coderoftime.vikunja://task/12',
+      'vikunja-dev.coderoftime.rurana://task/12',
       'https://example.com',
     ]) {
       expect(isSystemLink(Uri.parse(link)), isFalse, reason: link);

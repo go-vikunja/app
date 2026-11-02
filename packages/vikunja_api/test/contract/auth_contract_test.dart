@@ -11,8 +11,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'helpers.dart';
 
 final _client = OAuthClientConfig(
-  clientId: 'dev.coderoftime.vikunja',
-  redirectUri: Uri.parse('vikunja-dev.coderoftime.vikunja://oauth/callback'),
+  clientId: 'dev.coderoftime.rurana',
+  redirectUri: Uri.parse('vikunja-dev.coderoftime.rurana://oauth/callback'),
 );
 
 /// What the web app's /oauth/authorize page does once the user is signed in:
@@ -80,7 +80,7 @@ final class _SessionTokens implements AccessTokenSource {
 
 void main() {
   group('browser sign-in on local Docker servers', skip: contractSkip, () {
-    for (final (port, version) in [(34527, '2.7.0')]) {
+    for (final (port, version) in [(34527, '2.7.1')]) {
       group('$version on :$port', () {
         late Dio dio;
         late ServerConnection connection;
@@ -246,7 +246,7 @@ void main() {
               OAuthClientConfig(
                 clientId: _client.clientId,
                 redirectUri: Uri.parse(
-                  'vikunja-dev.coderoftime.vikunja://oauth/other',
+                  'vikunja-dev.coderoftime.rurana://oauth/other',
                 ),
               ),
               OAuthProblem.invalidRedirectUri,

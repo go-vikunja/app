@@ -10,7 +10,7 @@ import workmanager_apple
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   /// Must equal `BackgroundTasks.sync` in Dart and the entry of
   /// `BGTaskSchedulerPermittedIdentifiers` in Info.plist.
-  static let backgroundSyncTask = "dev.coderoftime.vikunja.sync"
+  static let backgroundSyncTask = "dev.coderoftime.rurana.sync"
 
   override func application(
     _ application: UIApplication,
@@ -50,7 +50,7 @@ private enum DeviceChannel {
   @MainActor
   static func register(with messenger: FlutterBinaryMessenger) {
     let channel = FlutterMethodChannel(
-      name: "dev.coderoftime.vikunja/device", binaryMessenger: messenger)
+      name: "dev.coderoftime.rurana/device", binaryMessenger: messenger)
     let capture = ScreenCapture(channel: channel)
     channel.setMethodCallHandler { call, result in
       let arguments = call.arguments as? [String: Any]

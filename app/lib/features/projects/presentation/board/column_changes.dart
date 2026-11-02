@@ -41,6 +41,8 @@ String columnChangeFailureText(
       l10n.boardColumnDeleteAdminOnly,
     Forbidden() => l10n.boardColumnForbidden,
     VikunjaFailure(code: 10003) => l10n.boardColumnLastOne,
+    // 2.7.1 caps a view at 100 buckets.
+    VikunjaFailure(code: 10007) => l10n.boardColumnsAtMaximum,
     VikunjaFailure(code: 10001) => l10n.syncProblemColumnMissing,
     NotFound(code: 3014) => l10n.projectViewGone,
     NotFound(code: 3001) => l10n.projectGone,

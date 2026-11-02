@@ -232,9 +232,12 @@ void main() {
                 (await repository.apiTokens()).map((token) => token.id),
                 isNot(contains(created.token.id)),
               );
+              // 2.7.1 answers 404 code 14017, which counts as deleted.
               await expectLater(
                 repository.deleteApiToken(created.token.id),
-                throwsA(isA<Forbidden>()),
+                (connection.info.version?.isAtLeast(2, 7, 1) ?? false)
+                    ? completes
+                    : throwsA(isA<Forbidden>()),
               );
             },
           );

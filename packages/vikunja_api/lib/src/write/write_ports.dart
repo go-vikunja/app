@@ -153,6 +153,8 @@ abstract interface class BucketsWritePort {
   /// v2 `POST`, v1 `PUT /projects/{p}/views/{v}/buckets` with `{title,
   /// limit, position}`. Without a [position] the server picks `id × 65536`,
   /// usually the rightmost. Not idempotent. The answer has `count` 0.
+  /// From 2.7.1 a view holds at most 100 buckets; one more is a
+  /// `DomainError` 412 code 10007.
   Future<Bucket> create(
     int projectId,
     int viewId, {

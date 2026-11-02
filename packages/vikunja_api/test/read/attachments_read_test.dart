@@ -24,10 +24,34 @@ final _png = Uint8List.fromList([
   0x0a,
 ]);
 
+final _jpeg = Uint8List.fromList([0xff, 0xd8, 0xff, 0xe0]);
+
 AttachmentsPort _attachments(Dio dio, {bool hasV2 = true}) => createReadClient(
   dio: dio,
   connection: testConnection(hasV2: hasV2),
 ).attachments;
+
+AttachmentsPort _attachmentsOf(
+  Dio dio,
+  ServerVersion? version, {
+  bool hasV1 = true,
+  bool hasV2 = true,
+}) {
+  final info = ServerInfo(version: version);
+  final apiVersions = {if (hasV1) ApiVersion.v1, if (hasV2) ApiVersion.v2};
+  return createReadClient(
+    dio: dio,
+    connection: ServerConnection(
+      rootUri: Uri.parse(testServerRoot),
+      apiVersions: apiVersions,
+      info: info,
+      capabilities: ServerCapabilities.derive(
+        info: info,
+        apiVersions: apiVersions,
+      ),
+    ),
+  ).attachments;
+}
 
 FakeRoute _file(
   List<int> bytes,
@@ -100,11 +124,13 @@ void main() {
         expect(request.headers['Accept'], '*/*');
       });
 
-      test('a preview by its wire size, images accepted', () async {
+      test('a preview by preview_size over v1, images accepted', () async {
         final dio = fakeDio({
           for (final size in AttachmentPreviewSize.values)
-            '$base/tasks/17/attachments/14?preview_size=${size.wireName}':
-                _file(_png, 'image/png'),
+            '$_v1/tasks/17/attachments/14?preview_size=${size.wireName}': _file(
+              _png,
+              'image/png',
+            ),
         });
         final attachments = _attachments(dio, hasV2: hasV2);
 
@@ -124,14 +150,15 @@ void main() {
         );
       });
 
-      test('what the server cannot preview comes back as it is', () async {
+      test('before 2.7.1: what the server cannot preview comes back as it '
+          'is', () async {
         const svg = '<svg><script>alert(1)</script></svg>';
         final dio = fakeDio({
-          '$base/tasks/17/attachments/15?preview_size=md': _file(
+          '$_v1/tasks/17/attachments/15?preview_size=md': _file(
             utf8.encode('just some text'),
             'text/plain; charset=utf-8',
           ),
-          '$base/tasks/17/attachments/16?preview_size=md': _file(
+          '$_v1/tasks/17/attachments/16?preview_size=md': _file(
             utf8.encode(svg),
             'Image/SVG+XML',
           ),
@@ -293,35 +320,179 @@ void main() {
     });
   }
 
-  test(
-    'v2 rejects an unknown preview size with a validation problem',
-    () async {
-      final dio = fakeDio({
-        '$_v2/tasks/17/attachments/14?preview_size=sm': (_) =>
-            ResponseBody.fromString(
-              jsonEncode({
-                'title': 'Unprocessable Entity',
-                'status': 422,
-                'detail': 'validation failed',
-                'errors': [
-                  {
-                    'message': 'expected value to be one of "sm, md, lg, xl"',
-                    'location': 'query.preview_size',
-                    'value': 'foo',
-                  },
-                ],
-              }),
-              422,
-              headers: {
-                Headers.contentTypeHeader: ['application/problem+json'],
-              },
+  group('previews by server version', () {
+    test('2.7.1 and newer, v2 only: the preview route by its size, images '
+        'accepted', () async {
+      for (final version in const [
+        ServerVersion(2, 7, 1),
+        ServerVersion(2, 8, 0),
+        ServerVersion.development('unstable'),
+      ]) {
+        final dio = fakeDio({
+          for (final size in AttachmentPreviewSize.values)
+            '$_v2/tasks/17/attachments/14/preview?size=${size.wireName}': _file(
+              _jpeg,
+              'image/jpeg',
             ),
+        });
+        final attachments = _attachmentsOf(dio, version, hasV1: false);
+
+        for (final size in AttachmentPreviewSize.values) {
+          final blob = await attachments.fetch(17, 14, preview: size);
+          expect(blob.contentType, 'image/jpeg');
+          expect(blob.bytes, _jpeg);
+        }
+        expect(adapterOf(dio).requestedUrls, [
+          for (final size in ['sm', 'md', 'lg', 'xl'])
+            '$_v2/tasks/17/attachments/14/preview?size=$size',
+        ], reason: version.raw);
+        expect(
+          adapterOf(dio).requests.map((r) => r.headers['Accept']).toSet(),
+          {'image/*'},
+        );
+      }
+    });
+
+    test('preview_size over v1 whenever the server offers it, whatever the '
+        'stored version says; over v2 only without v1, before 2.7.1 or when '
+        'the version is unknown', () async {
+      for (final (version, hasV1, hasV2) in const [
+        (ServerVersion(2, 3, 0), true, false),
+        (ServerVersion(2, 7, 0), true, true),
+        (ServerVersion(2, 7, 1), true, true),
+        (ServerVersion(2, 7, 1), true, false),
+        (ServerVersion.development('unstable'), true, true),
+        (null, true, true),
+        (ServerVersion(2, 7, 0), false, true),
+        (null, false, true),
+      ]) {
+        final base = hasV1 ? _v1 : _v2;
+        final dio = fakeDio({
+          '$base/tasks/17/attachments/14?preview_size=md': _file(
+            _png,
+            'image/png',
+          ),
+        });
+
+        await _attachmentsOf(
+          dio,
+          version,
+          hasV1: hasV1,
+          hasV2: hasV2,
+        ).fetch(17, 14, preview: AttachmentPreviewSize.medium);
+
+        expect(adapterOf(dio).requestedUrls, [
+          '$base/tasks/17/attachments/14?preview_size=md',
+        ], reason: '$version, v1 $hasV1, v2 $hasV2');
+      }
+    });
+
+    test('the original is the download route on 2.7.1 too', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/17/attachments/14': _file(_png, 'image/png'),
       });
 
-      await expectLater(
-        _attachments(dio).fetch(17, 14, preview: AttachmentPreviewSize.small),
-        throwsA(isA<ValidationFailed>()),
-      );
-    },
-  );
+      final blob = await _attachmentsOf(
+        dio,
+        const ServerVersion(2, 7, 1),
+      ).fetch(17, 14);
+
+      expect(blob.bytes, _png);
+      expect(adapterOf(dio).requestedUrls, ['$_v2/tasks/17/attachments/14']);
+      expect(adapterOf(dio).requests.single.headers['Accept'], '*/*');
+    });
+
+    test('2.7.1: a file the server cannot preview is code 4038 on both '
+        'versions', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/572/attachments/41/preview?size=md': capturedFixture(
+          'attachments/v2_preview_no_preview_2.7.1',
+        ),
+        '$_v1/tasks/572/attachments/41?preview_size=md': capturedFixture(
+          'attachments/v1_preview_no_preview_2.7.1',
+        ),
+      });
+
+      for (final hasV1 in [true, false]) {
+        final failure =
+            await _attachmentsOf(
+                  dio,
+                  const ServerVersion(2, 7, 1),
+                  hasV1: hasV1,
+                )
+                .fetch(572, 41, preview: AttachmentPreviewSize.medium)
+                .then<Object>((blob) => blob, onError: (Object error) => error);
+
+        expect(
+          failure,
+          isA<DomainError>()
+              .having((f) => f.statusCode, 'statusCode', 422)
+              .having((f) => f.code, 'code', 4038),
+        );
+        expect(isNoAttachmentPreview(failure), isTrue);
+      }
+    });
+
+    test('2.7.1: an unknown attachment is NotFound', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/572/attachments/999999/preview?size=md': capturedFixture(
+          'attachments/v2_preview_unknown_2.7.1',
+        ),
+      });
+
+      final failure =
+          await _attachmentsOf(dio, const ServerVersion(2, 7, 1), hasV1: false)
+              .fetch(572, 999999, preview: AttachmentPreviewSize.medium)
+              .then<Object>((blob) => blob, onError: (Object error) => error);
+
+      expect(failure, isA<NotFound>().having((f) => f.code, 'code', 4011));
+      expect(isNoAttachmentPreview(failure), isFalse);
+    });
+
+    test('no other failure means there is no preview', () {
+      for (final failure in <Object>[
+        const DomainError(422, code: 4039),
+        const NotFound(code: 4038),
+        const ValidationFailed(),
+        const NetworkFailure(NetworkProblem.unreachable),
+        StateError('4038'),
+      ]) {
+        expect(isNoAttachmentPreview(failure), isFalse, reason: '$failure');
+      }
+    });
+  });
+
+  test('v2 before 2.7.1 rejects an unknown preview size with a validation '
+      'problem', () async {
+    final dio = fakeDio({
+      '$_v2/tasks/17/attachments/14?preview_size=sm': (_) =>
+          ResponseBody.fromString(
+            jsonEncode({
+              'title': 'Unprocessable Entity',
+              'status': 422,
+              'detail': 'validation failed',
+              'errors': [
+                {
+                  'message': 'expected value to be one of "sm, md, lg, xl"',
+                  'location': 'query.preview_size',
+                  'value': 'foo',
+                },
+              ],
+            }),
+            422,
+            headers: {
+              Headers.contentTypeHeader: ['application/problem+json'],
+            },
+          ),
+    });
+
+    await expectLater(
+      _attachmentsOf(
+        dio,
+        const ServerVersion(2, 7, 0),
+        hasV1: false,
+      ).fetch(17, 14, preview: AttachmentPreviewSize.small),
+      throwsA(isA<ValidationFailed>()),
+    );
+  });
 }

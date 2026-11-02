@@ -4878,6 +4878,12 @@ abstract class AppLocalizations {
   /// **'A board needs at least one column.'**
   String get boardColumnLastOne;
 
+  /// No description provided for @boardColumnsAtMaximum.
+  ///
+  /// In en, this message translates to:
+  /// **'This board already has as many columns as the server allows.'**
+  String get boardColumnsAtMaximum;
+
   /// No description provided for @boardColumnArchived.
   ///
   /// In en, this message translates to:
@@ -7701,7 +7707,7 @@ abstract class AppLocalizations {
   /// No description provided for @accountSettingsTotpOnNote.
   ///
   /// In en, this message translates to:
-  /// **'Opens the web in your browser. Turning it off needs your password.'**
+  /// **'Opens the web in your browser. Turning it off needs your password, and newer servers also ask for a code.'**
   String get accountSettingsTotpOnNote;
 
   /// No description provided for @accountSettingsSessions.
@@ -12672,10 +12678,10 @@ abstract class AppLocalizations {
   /// **'Source code'**
   String get aboutSourceCodeHeading;
 
-  /// On the About page while the repository is not public yet.
+  /// On the About page of a build without a source link (local and test builds); release builds show the link instead.
   ///
   /// In en, this message translates to:
-  /// **'The source code will be published with the first release.'**
+  /// **'This build has no link to its source code. Every release of Rurana links the source code it was built from.'**
   String get aboutSourceCodeLater;
 
   /// Opens the repository in the browser; the address is shown below it.
@@ -12684,11 +12690,23 @@ abstract class AppLocalizations {
   /// **'View the source code'**
   String get aboutSourceCodeOpen;
 
-  /// Section header on the About page over the links to Rurana's privacy policy and legal notice on the developer's website, coderoftime.dev.
+  /// Section header on the About page over the links to Rurana's support page, privacy policy and legal notice on the developer's website, coderoftime.dev.
   ///
   /// In en, this message translates to:
-  /// **'Privacy and legal notice'**
+  /// **'Help, privacy and legal notice'**
   String get aboutWebsiteHeading;
+
+  /// Opens Rurana's support page on coderoftime.dev in the browser: answers to common questions, and how to report a bug or a security problem. A noun phrase like its neighbours aboutPrivacyPolicy and aboutLegalNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Help and bug reports'**
+  String get aboutSupport;
+
+  /// Under aboutSupport on the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'Answers to common questions and how to report a bug'**
+  String get aboutSupportSubtitle;
 
   /// Opens Rurana's privacy policy on coderoftime.dev in the browser; the server's own legal links are elsewhere (legalPrivacy).
   ///

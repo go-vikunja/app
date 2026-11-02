@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-const ruranaAppGroupId = 'group.dev.coderoftime.vikunja';
+const ruranaAppGroupId = 'group.dev.coderoftime.rurana';
 
 final snapshotKeyPattern = RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]{0,159}$');
 

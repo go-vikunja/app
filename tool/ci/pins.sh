@@ -5,9 +5,9 @@
 
 # https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz
 # (about 1.58 GB), sha256 from releases_linux.json.
-# 3.47.5 (D1's earlier pin): 2132e990f236f8d22e7c6314b29a191a95b10d7cbcfec9b4e2e303d996652cbb
-FLUTTER_VERSION=3.47.7
-FLUTTER_LINUX_SHA256=af7455f540df951184c7953fbe3cf884766e7541dacf8571f9f582db03dd6230
+# 3.47.7 (D73's earlier pin): af7455f540df951184c7953fbe3cf884766e7541dacf8571f9f582db03dd6230
+FLUTTER_VERSION=3.47.9
+FLUTTER_LINUX_SHA256=25ed8c3c29d51a7353f2a944310b478af8214920639524b19c50a19e6c044c5a
 
 # https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_<os>_<arch>
 OSV_SCANNER_VERSION=2.7.0

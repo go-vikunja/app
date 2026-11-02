@@ -1,6 +1,6 @@
 # Branding
 
-Name and logo of **Rurana**, an unofficial Vikunja mobile client. Its `applicationId` and bundle id are `dev.coderoftime.vikunja`.
+Name and logo of **Rurana**, an unofficial Vikunja mobile client. Its `applicationId` and bundle id are `dev.coderoftime.rurana`, renamed from `dev.coderoftime.vikunja` on 2026-11-02 ([D77](../docs/decisions.md#d77-beta-preparation-the-app-id-devcoderoftimerurana-the-owners-own-app-signing-key-every-coderoftime-project-public-a-help-row-on-the-about-page-testers-through-a-google-group-and-a-public-testflight-link)).
 
 The name and the logo, with every image derived from it, are not under the AGPL: all rights are reserved. The files may be passed on unmodified only as part of a copy of this repository or its history, or of an unmodified build published by Benedikt Lesch; an app built from modified source uses its own name and logo. [NOTICE.md](../NOTICE.md#name-and-logo) lists the files; the scripts and the Markdown files here are under the AGPL like the rest of the repository.
 
@@ -12,7 +12,7 @@ The name was chosen by the owner on 2026-10-09 from the shortlist in [`explorati
 
 - **Home screen:** `Rurana` (6 characters)
 - **Store listing:** `Rurana` in both stores and languages; never "Vikunja" in the name, subtitle or keywords (owner decision of 2026-11-02, [docs/store-listing.md](../docs/store-listing.md))
-- **Store description:** must say that the app is unofficial and that the Vikunja project does not make or endorse it, and can explain the name: *"Rurana" is Quechua for "what is to be done".* Have a Quechua speaker confirm the wording before publishing.
+- **Store description:** must say that the app is unofficial and that the Vikunja project does not make or endorse it, and can explain the name: *"Rurana" is Quechua for "what is to be done".* No store text explains it yet; have a Quechua speaker confirm the wording before any does.
 
 Why Rurana:
 - **It leans towards Vikunja.** Quechua is the language "vicuña" (German *Vikunja*) comes from. *Rurana* is the *-na* form of *ruray* "to do": "that which is to be done" — literally a to-do.
@@ -106,6 +106,6 @@ for d in mdpi:24 hdpi:36 xhdpi:48 xxhdpi:72 xxxhdpi:96; do n=${d%%:*}; px=${d##*
 
 ## Open points
 
-- **Vikunja maintainers:** [D15](../docs/decisions.md#d15-app-id-devcoderoftimevikunja) says to check the use of the name and logo with them before the store release (step 37). The store name no longer uses "Vikunja"; the icon still leans on Vikunja's artwork, which Apple's guideline 4.1(c) ties to the other developer's approval.
+- **Vikunja maintainers:** [D15](../docs/decisions.md#d15-app-id-devcoderoftimevikunja) says to check the use of the name and logo with them before the store release (step 37). The store name no longer uses "Vikunja", and since 2026-11-02 neither does the app id; the icon still leans on Vikunja's artwork, which Apple's guideline 4.1(c) ties to the other developer's approval. The check is planned in step 37d before 1.0.0: [docs/beta.md](../docs/beta.md) carries the draft message, which the owner sends; the answer is kept, as Apple accepts such an email as evidence.
 - **A vector source** would keep the small sizes and the glyph crisper than a raster derivation; worth commissioning before the store release.
-- **Licence:** no licence is chosen for these assets ([Q3](../docs/open-questions.md#q3-licence-and-distribution) is deferred); the owner confirms the rights to the illustration.
+- **Licence:** decided with [Q3](../docs/open-questions.md#q3-licence-and-distribution) on 2026-10-27 ([D67](../docs/decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-contributions-under-the-dco-the-name-and-the-logo-reserved-no-f-droid-the-legal-notices-on-an-about-page-and-the-licence-page-the-source-code-published-before-the-first-store-release)): the name and the logo are not under the AGPL, and all rights are reserved, as above and in [NOTICE.md](../NOTICE.md#name-and-logo). Still open: the owner confirms the rights to the illustration (`source/logo-llama.jpg`, supplied by the owner).

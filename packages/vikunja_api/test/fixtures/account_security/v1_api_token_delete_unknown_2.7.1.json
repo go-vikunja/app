@@ -1,0 +1,9 @@
+{
+  "server": "2.7.1",
+  "request": "DELETE /api/v1/tokens/12",
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":14017,\"message\":\"This API token does not exist.\"}\n"
+}

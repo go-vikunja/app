@@ -1,17 +1,19 @@
 // Records the answers of step 31's AccountSecurityPort into
 // test/fixtures/account_security, with one throwaway user:
 //   dart run tool/capture_account_security_fixtures.dart \
-//     [http://localhost:34527] [2.7.0]
+//     [http://localhost:34527] [2.7.1]
 // The user signs in three times: a password login (the bearer of every
 // capture), an OAuth sign-in whose code exchange sends a Rurana User-Agent
 // and a password login as Firefox. Then: the sessions on both versions, whole
 // and two to a page, revoked (the Firefox one on v1, the OAuth one on v2)
 // and an unknown one; `/routes`; API tokens listed, created, refused (no
-// title, no permission, an unknown permission) and deleted, a foreign id
-// too; CalDAV tokens listed, created and deleted, an unknown id too; the
+// title, no permission, an unknown permission) and deleted, one of them
+// twice; CalDAV tokens listed, created and deleted, an unknown id too; the
 // data export before and after a request; last the TOTP status before an
-// enrolment, after it, and once enabled, which ends every session (the
-// bearer keeps working until it expires); TOTP is disabled again.
+// enrolment, after it, and once enabled, which ends every session (up to
+// 2.7.0 the bearer keeps working until it expires, from 2.7.1 the user signs
+// in again with a code); TOTP is disabled again. From 2.7.1 enrolling and
+// enabling take the password too, and disabling a code as well.
 //
 // Requests with a password, a TOTP code or a token value are never
 // captured. Every token, secret, password and email is scrubbed, and a
@@ -40,13 +42,13 @@ final _secretPattern = RegExp('"secret":"([^"]+)"');
 final _otpauthSecretPattern = RegExp('secret=([A-Za-z0-9]+)');
 
 final _client = OAuthClientConfig(
-  clientId: 'dev.coderoftime.vikunja',
-  redirectUri: Uri.parse('vikunja-dev.coderoftime.vikunja://oauth/callback'),
+  clientId: 'dev.coderoftime.rurana',
+  redirectUri: Uri.parse('vikunja-dev.coderoftime.rurana://oauth/callback'),
 );
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.0';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,
@@ -63,6 +65,8 @@ Future<void> main(List<String> args) async {
   secrets.addAll([oauth.accessToken, oauth.refreshToken]);
   final firefoxJwt = await _login(dio, user, userAgent: _firefoxAgent);
   secrets.add(firefoxJwt);
+  final since271 = connection.info.version?.isAtLeast(2, 7, 1) ?? false;
+  var bearer = user.jwt;
 
   String scrub(String text) {
     var scrubbed = text
@@ -103,7 +107,7 @@ Future<void> main(List<String> args) async {
     String path, {
     Map<String, Object?>? body,
   }) async {
-    final response = await _send(dio, user.jwt, method, path, body: body);
+    final response = await _send(dio, bearer, method, path, body: body);
     final file = File(
       'test/fixtures/account_security/${name}_$serverVersion.json',
     );
@@ -134,7 +138,7 @@ Future<void> main(List<String> args) async {
     String path, {
     Map<String, Object?>? body,
   }) async {
-    final response = await _send(dio, user.jwt, method, path, body: body);
+    final response = await _send(dio, bearer, method, path, body: body);
     if (response.statusCode! >= 300) {
       throw StateError('$method $path: ${response.statusCode}');
     }
@@ -350,7 +354,11 @@ Future<void> main(List<String> args) async {
     );
   }
   final enrolment =
-      (await raw('POST', '/api/v2/user/settings/totp/enroll'))!
+      (await raw(
+            'POST',
+            '/api/v2/user/settings/totp/enroll',
+            body: since271 ? {'password': user.password} : null,
+          ))!
           as Map<String, Object?>;
   final totpSecret = enrolment['secret']! as String;
   final totpUrl = enrolment['url']! as String;
@@ -362,11 +370,38 @@ Future<void> main(List<String> args) async {
       '/api/$version/user/settings/totp',
     );
   }
-  await raw(
-    'POST',
+  // The server takes a code once, even in a write it then loses with a 500,
+  // so each try waits for a fresh one.
+  Future<void> withCode(
+    String path,
+    Map<String, Object?> Function(String code) body,
+  ) async {
+    for (var attempt = 1; ; attempt++) {
+      final response = await _send(
+        dio,
+        bearer,
+        'POST',
+        path,
+        body: body(_totpCode(totpSecret)),
+        retryLostRaces: false,
+      );
+      if (response.statusCode! < 300) return;
+      if (response.statusCode != 500 || attempt == 4) {
+        throw StateError('POST $path: ${response.statusCode}');
+      }
+      await _nextTotpWindow();
+    }
+  }
+
+  await withCode(
     '/api/v2/user/settings/totp/enable',
-    body: {'passcode': _totpCode(totpSecret)},
+    (code) => {'passcode': code, if (since271) 'password': user.password},
   );
+  if (since271) {
+    await _nextTotpWindow();
+    bearer = await _login(dio, user, totpSecret: totpSecret);
+    secrets.add(bearer);
+  }
   for (final version in ['v1', 'v2']) {
     await capture(
       '${version}_totp_enabled',
@@ -374,11 +409,19 @@ Future<void> main(List<String> args) async {
       '/api/$version/user/settings/totp',
     );
   }
-  await raw(
-    'POST',
-    '/api/v2/user/settings/totp/disable',
-    body: {'password': user.password},
-  );
+  if (since271) {
+    await _nextTotpWindow();
+    await withCode(
+      '/api/v2/user/settings/totp/disable',
+      (code) => {'password': user.password, 'totp_passcode': code},
+    );
+  } else {
+    await raw(
+      'POST',
+      '/api/v2/user/settings/totp/disable',
+      body: {'password': user.password},
+    );
+  }
 
   dio.close();
   ruranaDio.close();
@@ -419,6 +462,11 @@ Future<TokenSet> _oauthSignIn(
     connection,
   ).exchangeCode(code: request.codeFromCallback(callback), request: request);
 }
+
+/// The server takes each code once, so a second one needs the next window.
+Future<void> _nextTotpWindow() => Future<void>.delayed(
+  Duration(milliseconds: 30500 - DateTime.now().millisecondsSinceEpoch % 30000),
+);
 
 /// RFC 6238 with the server's parameters: SHA-1, six digits, 30 seconds.
 String _totpCode(String base32Secret) {
@@ -472,11 +520,20 @@ Future<_User> _register(Dio dio, String prefix) async {
   );
 }
 
-Future<String> _login(Dio dio, _User user, {String? userAgent}) async {
+Future<String> _login(
+  Dio dio,
+  _User user, {
+  String? userAgent,
+  String? totpSecret,
+}) async {
   final login = await _unauthenticated(
     () => dio.post<String>(
       '/api/v1/login',
-      data: {'username': user.username, 'password': user.password},
+      data: {
+        'username': user.username,
+        'password': user.password,
+        if (totpSecret != null) 'totp_passcode': _totpCode(totpSecret),
+      },
       options: Options(headers: {'User-Agent': ?userAgent}),
     ),
   );
@@ -506,6 +563,7 @@ Future<Response<String>> _send(
   String method,
   String path, {
   Map<String, Object?>? body,
+  bool retryLostRaces = true,
 }) async {
   for (var attempt = 1; ; attempt++) {
     final response = await dio.request<String>(
@@ -522,7 +580,7 @@ Future<Response<String>> _send(
     }
     // The SQLite server answers a write that collides with its own event
     // handlers, the data export among them, with a 500 and changes nothing.
-    if (response.statusCode == 500 && attempt < 8) {
+    if (response.statusCode == 500 && retryLostRaces && attempt < 8) {
       await Future<void>.delayed(Duration(seconds: attempt));
       continue;
     }

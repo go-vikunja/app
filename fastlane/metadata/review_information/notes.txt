@@ -3,7 +3,7 @@ Rurana is an unofficial, open-source (AGPL-3.0) client for Vikunja, a task manag
 HOW TO SIGN IN
 1. Open the app and tap "Try the public demo". The app connects to https://try.vikunja.io and shows the server with its message, which names the demo account.
 2. Tap "Continue to sign-in". The server's own sign-in page opens in the system sign-in sheet.
-3. Sign in with the username demo and the password demo (also in the sign-in fields). Two-factor authentication is off.
+3. Sign in with the username and the password given in the sign-in information. Two-factor authentication is off.
 4. After the first sync the Overview opens.
 
 The demo account is shared by everyone who tries the demo, and the Vikunja project resets the server at irregular intervals. You may therefore see tasks that other visitors created, or an empty account after a reset. Everything works with an empty account too: "New task" on the Overview creates a task, and "New project" in the Projects tab a project.

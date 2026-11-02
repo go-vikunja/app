@@ -1,6 +1,6 @@
 // Records the answers of step 32 into test/fixtures/link_share and
 // test/fixtures/invites, with one throwaway owner:
-//   dart run tool/capture_link_share_fixtures.dart [http://localhost:34527] [2.7.0]
+//   dart run tool/capture_link_share_fixtures.dart [http://localhost:34527] [2.7.1]
 // The owner shares a project read-only by a link named "Fixture guest" and
 // for writing by a link with a password. Recorded on both API versions: the
 // link share sign-in (open, password missing, wrong, right, unknown link),
@@ -32,7 +32,7 @@ const _keptHeaders = ['content-type', 'retry-after'];
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.0';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

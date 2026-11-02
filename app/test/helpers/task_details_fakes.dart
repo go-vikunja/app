@@ -424,7 +424,7 @@ final AttachmentImage samplePngImage = AttachmentImage(
   contentType: 'image/png',
 );
 
-/// What the server answers for an SVG, which it cannot preview.
+/// An SVG's original, which servers before 2.7.1 also send for a preview.
 final AttachmentImage sampleSvgImage = AttachmentImage(
   bytes: utf8.encode(
     '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',

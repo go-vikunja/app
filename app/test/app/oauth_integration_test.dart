@@ -410,8 +410,8 @@ void main() {
       );
       expect(authorizeUrl.queryParameters, {
         'response_type': 'code',
-        'client_id': 'dev.coderoftime.vikunja',
-        'redirect_uri': 'vikunja-dev.coderoftime.vikunja://oauth/callback',
+        'client_id': 'dev.coderoftime.rurana',
+        'redirect_uri': 'vikunja-dev.coderoftime.rurana://oauth/callback',
         'state': hasLength(22),
         'code_challenge': hasLength(43),
         'code_challenge_method': 'S256',

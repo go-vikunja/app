@@ -38,8 +38,9 @@ abstract interface class AccountSecurityPort {
   /// `DomainError` 400 code 14002.
   Future<CreatedApiToken> createApiToken(NewApiToken token);
 
-  /// `DELETE /tokens/{id}`. An unknown id and another user's token are both
-  /// a `Forbidden`.
+  /// `DELETE /tokens/{id}`. Another user's token is a `Forbidden`, and so is
+  /// an unknown id up to 2.7.0; from 2.7.1 an unknown id, a token deleted
+  /// already among them, is a 404 code 14017, which counts as deleted.
   Future<void> deleteApiToken(int id);
 
   /// `GET /user/settings/token/caldav`, oldest first, without the values.

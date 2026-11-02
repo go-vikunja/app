@@ -108,7 +108,7 @@ WidgetSnapshot samplePreview(
         canDone: i.isEven,
         semanticsLabel: 'Preview task ${i + 1}',
         doneLabel: 'Mark done',
-        link: 'vikunja-dev.coderoftime.vikunja://widget/task/${i + 1}',
+        link: 'vikunja-dev.coderoftime.rurana://widget/task/${i + 1}',
       ),
   ],
 );

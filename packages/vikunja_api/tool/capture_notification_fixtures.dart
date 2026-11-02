@@ -1,6 +1,6 @@
 // Records a user's notifications into test/fixtures/read and the answers of
 // the mark-read endpoints into test/fixtures/write, with two throwaway users:
-//   dart run tool/capture_notification_fixtures.dart [http://localhost:34527] [2.7.0]
+//   dart run tool/capture_notification_fixtures.dart [http://localhost:34527] [2.7.1]
 // The reader subscribes to the doer's project; the doer then assigns the
 // reader, mentions the reader in a comment and in a description, creates and
 // deletes a task, creates a child project and adds the reader to a team.
@@ -18,7 +18,7 @@ typedef _User = ({int id, String username, String email, String jwt});
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.0';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

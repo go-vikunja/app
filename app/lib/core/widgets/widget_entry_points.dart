@@ -22,7 +22,7 @@ Future<void> widgetActionsMain() => runWidgetActions();
 
 /// The worker's own channel on that engine: `finished` ends its wait.
 const widgetWorkerChannel = MethodChannel(
-  'dev.coderoftime.vikunja/widget_worker',
+  'dev.coderoftime.rurana/widget_worker',
 );
 
 /// The queued Done taps applied through the shared Done, every account's

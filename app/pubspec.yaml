@@ -1,7 +1,7 @@
 name: vikunja_mobile
 description: Mobile client for self-hosted Vikunja servers.
 publish_to: none
-version: 0.1.0+1
+version: 1.0.0-beta.1+1
 resolution: workspace
 
 environment:

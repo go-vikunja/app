@@ -2,7 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-export 'package:vikunja_api/vikunja_api.dart' show AttachmentPreviewSize;
+export 'package:vikunja_api/vikunja_api.dart'
+    show AttachmentPreviewSize, isNoAttachmentPreview;
 
 @immutable
 final class AttachmentImage {
@@ -10,8 +11,8 @@ final class AttachmentImage {
 
   final Uint8List bytes;
 
-  /// The response's media type, e.g. `image/png`; the server answers the
-  /// original for what it cannot preview.
+  /// The response's media type, e.g. `image/jpeg`; servers before 2.7.1
+  /// answer a preview of what they cannot preview with the original.
   final String contentType;
 
   bool get isSvg => contentType == 'image/svg+xml';
@@ -26,12 +27,14 @@ final class AttachmentImageTooLarge implements Exception {
 }
 
 /// Whether asking again may bring the image: not for a missing or
-/// forbidden attachment, an answer the port refused or one too large.
+/// forbidden attachment, an answer the port refused or one too large, nor
+/// for a preview the server says it has none of.
 bool attachmentImageFailureMayPass(Object failure) =>
     failure is! NotFound &&
     failure is! Forbidden &&
     failure is! UnexpectedResponse &&
-    failure is! AttachmentImageTooLarge;
+    failure is! AttachmentImageTooLarge &&
+    !isNoAttachmentPreview(failure);
 
 /// Authenticated attachment images of one account: previews of the list
 /// (`medium`), inline images of descriptions and comments (`extraLarge`)

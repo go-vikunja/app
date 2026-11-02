@@ -1,0 +1,10 @@
+{
+  "server": "2.7.1",
+  "request": "GET /api/v1/tasks/572/attachments/41?preview_size=md",
+  "status": 422,
+  "headers": {
+    "content-type": "application/json",
+    "content-length": "58"
+  },
+  "body": "{\"code\":4038,\"message\":\"This attachment has no preview.\"}\n"
+}

@@ -34,7 +34,7 @@ void main() {
     for (final (port, version, apiVersions, tier, concurrentWrites) in [
       (
         34527,
-        const ServerVersion(2, 7, 0),
+        const ServerVersion(2, 7, 1),
         {ApiVersion.v1, ApiVersion.v2},
         SupportTier.full,
         false,

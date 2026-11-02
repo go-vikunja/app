@@ -15,8 +15,8 @@ import 'helpers.dart';
 // build on each other: Later is created rightmost, Review between Doing and
 // Done with a limit, Review is renamed to Checked, Doing gets a limit,
 // Later moves to the front, Doing is deleted, the done and default buckets
-// are set and cleared, and a second board is deleted down to its last
-// bucket.
+// are set and cleared, a second board is deleted down to its last bucket,
+// and a third is filled up to the server's cap.
 typedef _Seed = ({
   int projectId,
   int viewId,
@@ -472,6 +472,46 @@ void main() {
                     column.bucket.id,
                 ],
                 [last],
+              );
+            });
+
+            test('a view holds at most 100 buckets', () async {
+              if (!connection.info.version!.isAtLeast(2, 7, 1)) {
+                markTestSkipped('servers before 2.7.1 have no bucket cap');
+                return;
+              }
+              final created = await send(
+                'POST',
+                '/projects/${seed.projectId}/views',
+                body: {
+                  'title': 'Full board',
+                  'view_kind': 'kanban',
+                  'bucket_configuration_mode': 'manual',
+                },
+              );
+              final viewId = created['id']! as int;
+              final path = '/projects/${seed.projectId}/views/$viewId/buckets';
+              // Unpaced: a hundred paced writes would take a minute.
+              for (var i = (await board(viewId: viewId)).length; i < 100; i++) {
+                await despiteWriteRaces(
+                  () => dio.requestUri<Object?>(
+                    at(path),
+                    data: {'title': 'Column $i'},
+                    options: Options(
+                      method: 'POST',
+                      headers: {'Authorization': 'Bearer ${user.jwt}'},
+                    ),
+                  ),
+                );
+              }
+
+              await expectLater(
+                buckets().create(seed.projectId, viewId, title: 'One more'),
+                throwsA(
+                  isA<DomainError>()
+                      .having((f) => f.statusCode, 'status', 412)
+                      .having((f) => f.code, 'code', 10007),
+                ),
               );
             });
           });

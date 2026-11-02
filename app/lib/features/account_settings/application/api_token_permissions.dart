@@ -17,7 +17,7 @@ const _presetGroups = <ApiTokenPreset, Map<String, List<String>?>>{
     'tasks_comments': null,
     'tasks_relations': null,
     'labels': ['read_one', 'read_all', 'create'],
-    'projects': ['read_one', 'read_all', 'views_buckets_tasks'],
+    'projects': ['read_one', 'read_all', 'views_buckets_tasks_update'],
     'projects_views': ['read_one', 'read_all'],
     'projects_views_tasks': ['read_one', 'read_all'],
   },
@@ -37,15 +37,29 @@ const _presetGroups = <ApiTokenPreset, Map<String, List<String>?>>{
 
 const _readPermissions = ['read_one', 'read_all'];
 
+/// Servers before 2.7.1 offer moving a task between buckets under its old
+/// name, which 2.7.1 gives to reading a bucket's tasks.
+const _namesBefore271 = {'views_buckets_tasks_update': 'views_buckets_tasks'};
+
 /// What [preset] selects of the permissions [offered].
 Map<String, Set<String>> presetSelection(
   ApiTokenPreset preset,
   ApiPermissionGroups offered,
 ) {
-  Set<String> pick(String group, List<String>? names) => {
-    for (final name in offered.groups[group] ?? const <String>[])
-      if (names == null || names.contains(name)) name,
-  };
+  Set<String> pick(String group, List<String>? names) {
+    final available = offered.groups[group] ?? const <String>[];
+    final wanted = names
+        ?.map(
+          (name) =>
+              available.contains(name) ? name : _namesBefore271[name] ?? name,
+        )
+        .toSet();
+    return {
+      for (final name in available)
+        if (wanted == null || wanted.contains(name)) name,
+    };
+  }
+
   final picked = switch (preset) {
     ApiTokenPreset.readOnly => {
       for (final group in offered.groups.keys)

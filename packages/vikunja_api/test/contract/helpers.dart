@@ -17,7 +17,7 @@ final String? contractSkip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
     : null;
 
 const List<({int port, String version})> contractServers = [
-  (port: 34527, version: '2.7.0'),
+  (port: 34527, version: '2.7.1'),
 ];
 
 Dio contractDio() => Dio(

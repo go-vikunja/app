@@ -88,8 +88,8 @@ AccountSecurityPort _port(Dio dio, String version, {int perPage = 50}) =>
 
 String _base(String version) => version == 'v2' ? _v2 : _v1;
 
-FakeRoute _captured(String name) =>
-    capturedFixture('account_security/${name}_2.7.0');
+FakeRoute _captured(String name, {String server = '2.7.0'}) =>
+    capturedFixture('account_security/${name}_$server');
 
 List<String> _calls(Dio dio) => [
   for (final request in adapterOf(dio).requests)
@@ -319,7 +319,8 @@ void main() {
         expect(_calls(dio), ['DELETE $base/tokens/92']);
       });
 
-      test('delete: an unknown or foreign id is a Forbidden', () async {
+      test('delete: up to 2.7.0 an unknown id, like a foreign one, is a '
+          'Forbidden', () async {
         final dio = fakeDio({
           '$base/tokens/92': _captured('${version}_api_token_delete_unknown'),
         });
@@ -328,6 +329,20 @@ void main() {
           _port(dio, version).deleteApiToken(92),
           throwsA(isA<Forbidden>()),
         );
+      });
+
+      test('delete: from 2.7.1 a token deleted already (404 code 14017) '
+          'counts as deleted', () async {
+        final dio = fakeDio({
+          '$base/tokens/12': _captured(
+            '${version}_api_token_delete_unknown',
+            server: '2.7.1',
+          ),
+        });
+
+        await _port(dio, version).deleteApiToken(12);
+
+        expect(_calls(dio), ['DELETE $base/tokens/12']);
       });
     });
 
@@ -593,29 +608,6 @@ void main() {
   });
 
   group('deleteApiToken beyond the captures', () {
-    test('a token deleted elsewhere already (404 code 14017) counts as '
-        'deleted', () async {
-      final v1 = fakeDio({
-        '$_v1/tokens/92': json({
-          'code': 14017,
-          'message': 'The api token does not exist.',
-        }, status: 404),
-      });
-      final v2 = fakeDio({
-        '$_v2/tokens/92': _problem(404, {
-          'status': 404,
-          'detail': 'The api token does not exist.',
-          'code': 14017,
-        }),
-      });
-
-      await _port(v1, 'v1').deleteApiToken(92);
-      await _port(v2, 'v2').deleteApiToken(92);
-
-      expect(_calls(v1), ['DELETE $_v1/tokens/92']);
-      expect(_calls(v2), ['DELETE $_v2/tokens/92']);
-    });
-
     test('another 404 is not taken for a deleted token', () async {
       final routeAbsent = fakeDio({
         '$_v2/tokens/92': json({'message': 'Not Found'}, status: 404),

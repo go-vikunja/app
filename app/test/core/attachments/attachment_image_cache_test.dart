@@ -285,6 +285,31 @@ void main() {
     expect(requests, ['1/2/original', '1/3/original', '1/4/original']);
   });
 
+  test('a preview the server has none of is not asked for again', () async {
+    answers['1/2/md'] = () => throw const DomainError(422, code: 4038);
+
+    await expectLater(
+      cache.load(1, 2, preview: AttachmentPreviewSize.medium),
+      throwsA(isA<DomainError>()),
+    );
+    now = now.add(const Duration(days: 1));
+    cache.forgetFailures();
+    await expectLater(
+      cache.load(1, 2, preview: AttachmentPreviewSize.medium),
+      throwsA(isA<DomainError>()),
+    );
+
+    expect(requests, ['1/2/md']);
+    expect(
+      attachmentImageFailureMayPass(const DomainError(422, code: 4038)),
+      isFalse,
+    );
+    expect(
+      attachmentImageFailureMayPass(const DomainError(422, code: 4039)),
+      isTrue,
+    );
+  });
+
   test(
     'clearing forgets everything, also an answer still on its way',
     () async {

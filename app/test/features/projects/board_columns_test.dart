@@ -966,6 +966,17 @@ void main() {
         text(const DomainError(412, code: 10003), ColumnChange.delete),
         en.boardColumnLastOne,
       );
+      expect(
+        text(
+          const DomainError(
+            412,
+            code: 10007,
+            message: 'A project view can have at most 100 buckets.',
+          ),
+          ColumnChange.create,
+        ),
+        en.boardColumnsAtMaximum,
+      );
       expect(text(const NotFound(code: 10001)), en.syncProblemColumnMissing);
       expect(text(const DomainError(412, code: 3008)), en.boardColumnArchived);
       expect(text(const ValidationFailed()), en.boardColumnInvalid);
@@ -1012,6 +1023,10 @@ void main() {
       expect(text(const NotFound(code: 3014)), de.projectViewGone);
       expect(text(const NotFound(code: 3001)), de.projectGone);
       expect(text(const ServerFailure(503)), de.actionFailureServerError);
+      expect(
+        text(const DomainError(412, code: 10007, message: 'at most 100')),
+        de.boardColumnsAtMaximum,
+      );
       expect(
         text(const DomainError(400, code: 9999, message: 'Oops')),
         de.boardColumnChangeRefused('Oops'),

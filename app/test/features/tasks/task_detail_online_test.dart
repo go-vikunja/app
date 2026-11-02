@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_view.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_viewer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
@@ -331,6 +332,34 @@ void main() {
       expect(find.byType(AttachmentImageViewer), findsOneWidget);
       expect(data.attachmentImages.loads, contains('4 3 original'));
       semantics.dispose();
+    });
+
+    testWidgets('an image the server has no preview of (2.7.1 and newer) '
+        'keeps its icon; its original is not fetched for it', (tester) async {
+      data.details.detailsByTask[4] = TaskDetails(
+        attachments: [sampleAttachment(id: 3, taskId: 4, size: 1536)],
+      );
+      data.attachmentImages
+        ..failures[(4, 3, AttachmentPreviewSize.medium)] = const DomainError(
+          422,
+          code: 4038,
+        )
+        ..images[(4, 3, null)] = samplePngImage;
+      await openDetail(tester, 4);
+
+      final thumbnail = inSheet(find.byType(AttachmentThumbnail));
+      expect(
+        find.descendant(
+          of: thumbnail,
+          matching: find.byIcon(Icons.image_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: thumbnail, matching: find.byType(Image)),
+        findsNothing,
+      );
+      expect(data.attachmentImages.loads, ['4 3 md']);
     });
 
     testWidgets('sizes use the decimal separator of the language', (

@@ -27,8 +27,8 @@ ServerConnection _connection({required bool hasV2}) {
 }
 
 final _client = OAuthClientConfig(
-  clientId: 'dev.coderoftime.vikunja',
-  redirectUri: Uri.parse('vikunja-dev.coderoftime.vikunja://oauth/callback'),
+  clientId: 'dev.coderoftime.rurana',
+  redirectUri: Uri.parse('vikunja-dev.coderoftime.rurana://oauth/callback'),
 );
 
 final _request = AuthorizationRequest(
@@ -71,8 +71,8 @@ void main() {
       expect(sent.data, {
         'grant_type': 'authorization_code',
         'code': 'c0de',
-        'client_id': 'dev.coderoftime.vikunja',
-        'redirect_uri': 'vikunja-dev.coderoftime.vikunja://oauth/callback',
+        'client_id': 'dev.coderoftime.rurana',
+        'redirect_uri': 'vikunja-dev.coderoftime.rurana://oauth/callback',
         'code_verifier': _request.codeVerifier,
       });
       expect(sent.headers.containsKey('Authorization'), isFalse);

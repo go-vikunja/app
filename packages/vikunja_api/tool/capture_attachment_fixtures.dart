@@ -1,7 +1,7 @@
 // Records the attachment answers of step 26 into test/fixtures/attachments,
 // with one throwaway user:
 //   dart run tool/capture_attachment_fixtures.dart \
-//     [http://localhost:34527] [2.7.0]
+//     [http://localhost:34527] [2.7.1]
 // On both versions: uploads of a PNG, a text file under a unicode name, an
 // empty file, a file one byte above the 20 MiB limit (4012 inside a
 // success), a part without a file name, a body above the request limit
@@ -37,7 +37,7 @@ const _keptHeaders = [
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.0';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

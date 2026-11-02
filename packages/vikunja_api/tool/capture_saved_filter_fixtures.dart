@@ -1,7 +1,7 @@
 // Records the saved filter reads and writes of step 24 into
 // test/fixtures/write, with one throwaway user:
 //   dart run tool/capture_saved_filter_fixtures.dart \
-//     [http://localhost:34527] [2.7.0]
+//     [http://localhost:34527] [2.7.1]
 // "Urgent open" created by v1 with sort and include-nulls, "Today" by v2;
 // both read on both versions; "Today" replaced by a v2 merge-patch, the same
 // patch unchanged (304), favourited by a v2 merge-patch; "Urgent open"
@@ -24,7 +24,7 @@ const _mergePatch = 'application/merge-patch+json';
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.0';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

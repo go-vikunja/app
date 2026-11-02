@@ -1,6 +1,6 @@
 # TLS test servers (compose profile `tls`)
 
-A second Vikunja 2.7.0 behind Caddy, for checking the connection settings per server (pinned certificate, CA certificate, client certificate, access headers) against a real server. Everything is a local dummy: the ports listen on 127.0.0.1 only, the data lives in a tmpfs, and the certificates, the PKCS#12 password and the access-header values are generated throwaways in `generated/` (gitignored).
+A second Vikunja 2.7.1 behind Caddy, for checking the connection settings per server (pinned certificate, CA certificate, client certificate, access headers) against a real server. Everything is a local dummy: the ports listen on 127.0.0.1 only, the data lives in a tmpfs, and the certificates, the PKCS#12 password and the access-header values are generated throwaways in `generated/` (gitignored).
 
 | Port | What answers | Credential |
 |---|---|---|

@@ -213,19 +213,41 @@ final class _AttachmentsApi implements AttachmentsPort {
 
   final _ReadTransport _transport;
 
+  // 2.7.1 made the v2 download route ignore preview_size and gave v2 a
+  // preview route of its own, which older servers refuse with a 422. v1's
+  // preview_size answers on 2.7.1 with a preview and before it exactly as
+  // v2 did, and the stored server version can predate an upgrade, so v1
+  // carries previews wherever the server offers it.
+  ApiVersion get _previewApi =>
+      _transport.offers(ApiVersion.v1) ? ApiVersion.v1 : _transport.version;
+
+  bool get _previewRoute =>
+      _previewApi == ApiVersion.v2 &&
+      (_transport.serverVersion?.isAtLeast(2, 7, 1) ?? false);
+
   @override
   Future<AttachmentBlob> fetch(
     int taskId,
     int attachmentId, {
     AttachmentPreviewSize? preview,
   }) async {
+    final original = '/tasks/$taskId/attachments/$attachmentId';
+    final (path, query) = switch (preview) {
+      null => (original, const <String, Object?>{}),
+      final size when _previewRoute => (
+        '$original/preview',
+        {'size': size.wireName},
+      ),
+      final size => (original, {'preview_size': size.wireName}),
+    };
     final (:bytes, :contentType) = await _transport.getCappedBytes(
-      '/tasks/$taskId/attachments/$attachmentId',
-      query: {'preview_size': ?preview?.wireName},
-      // The server answers the original for anything it cannot preview,
-      // so a preview request has to take any image.
+      path,
+      query: query,
+      // Servers before 2.7.1 answer the original for anything they cannot
+      // preview, so a preview request has to take any image.
       accept: preview == null ? '*/*' : 'image/*',
       maxBytes: maxAttachmentBytes,
+      over: preview == null ? null : _previewApi,
     );
     return AttachmentBlob(
       bytes: bytes,
@@ -629,6 +651,10 @@ final class _ReadTransport {
   final ApiVersion version;
   final Uri _base;
 
+  ServerVersion? get serverVersion => _connection.info.version;
+
+  bool offers(ApiVersion api) => _connection.apiVersions.contains(api);
+
   /// [allowTemporaryRedirect] hands a 307 back instead of failing.
   Future<Response<Object?>> get(
     String path, {
@@ -657,20 +683,23 @@ final class _ReadTransport {
 
   /// The body as it streams in, refused once it is longer than [maxBytes]
   /// (by its `Content-Length` or by what arrives), with the media type of
-  /// the response without parameters.
+  /// the response without parameters. [over] asks another API version than
+  /// the preferred one.
   Future<({Uint8List bytes, String contentType})> getCappedBytes(
     String path, {
     required Map<String, Object?> query,
     required String accept,
     required int maxBytes,
+    ApiVersion? over,
   }) async {
+    final base = over == null ? _base : _connection.apiBaseUri(over);
     // Only a cancel closes the connection: dio does not pass the end of a
     // subscription on to the source.
     final cancel = CancelToken();
     final Response<ResponseBody> response;
     try {
       response = await _dio.get<ResponseBody>(
-        _base.replace(path: '${_base.path}$path').toString(),
+        base.replace(path: '${base.path}$path').toString(),
         queryParameters: query,
         cancelToken: cancel,
         options: Options(

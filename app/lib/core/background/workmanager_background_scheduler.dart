@@ -7,8 +7,8 @@ import 'package:workmanager/workmanager.dart';
 /// `BGTaskSchedulerPermittedIdentifiers` in `ios/Runner/Info.plist` and the
 /// identifier `AppDelegate.swift` registers.
 abstract final class BackgroundTasks {
-  static const sync = 'dev.coderoftime.vikunja.sync';
-  static const drain = 'dev.coderoftime.vikunja.drain';
+  static const sync = 'dev.coderoftime.rurana.sync';
+  static const drain = 'dev.coderoftime.rurana.drain';
 }
 
 /// The calls of the `workmanager` plugin this app makes, so the adapter can

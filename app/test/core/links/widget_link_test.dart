@@ -97,7 +97,7 @@ void main() {
     test('ignores the case of the scheme and the host', () {
       expect(
         parse(
-          'VIKUNJA-dev.coderoftime.vikunja://Widget/task/7?account=$account',
+          'VIKUNJA-dev.coderoftime.rurana://Widget/task/7?account=$account',
         ),
         const WidgetTaskLink(accountId: account, taskId: 7),
       );

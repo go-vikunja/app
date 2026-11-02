@@ -17,7 +17,8 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_
 /// that it is unofficial and not the Vikunja project's, the licence with the
 /// app store permission and no warranty, the licence page, where the source
 /// code is, and the name and logo, which the licence does not cover; and
-/// Rurana's privacy policy and legal notice. Open signed out and to guests.
+/// Rurana's support page, privacy policy and legal notice. Open signed out
+/// and to guests.
 class AboutPage extends ConsumerWidget {
   const new({this.sourceCode = sourceCodeUrl, super.key});
 
@@ -47,6 +48,12 @@ class AboutPage extends ConsumerWidget {
                 title: l10n.aboutWebsiteHeading,
                 children: [
                   for (final (page, icon, title, subtitle) in [
+                    (
+                      WebsitePage.support,
+                      Icons.help_outline,
+                      l10n.aboutSupport,
+                      l10n.aboutSupportSubtitle,
+                    ),
                     (
                       WebsitePage.privacy,
                       Icons.privacy_tip_outlined,

@@ -1,7 +1,7 @@
 // Records the project and project view writes of step 23 into
 // test/fixtures/write, with one throwaway user and a link share:
 //   dart run tool/capture_project_fixtures.dart \
-//     [http://localhost:34527] [2.7.0]
+//     [http://localhost:34527] [2.7.1]
 // Studio (colour, two tasks, one done) and its child Sketches, created by v1
 // and v2; Sketches edited by a v2 merge-patch (title, identifier, colour),
 // the same patch unchanged (304), read on both versions and favourited by a
@@ -30,7 +30,7 @@ const _mergePatch = 'application/merge-patch+json';
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.0';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

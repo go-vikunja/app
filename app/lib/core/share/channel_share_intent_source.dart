@@ -16,7 +16,7 @@ final class ChannelShareIntentSource implements ShareIntentSource {
     _channel.setMethodCallHandler(_onCall);
   }
 
-  static const channelName = 'dev.coderoftime.vikunja/share';
+  static const channelName = 'dev.coderoftime.rurana/share';
 
   final MethodChannel _channel;
   final _shares = StreamController<IncomingShare>.broadcast();

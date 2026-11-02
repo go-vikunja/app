@@ -26,7 +26,7 @@ BASE = 'http://localhost:34531/api/v1'
 TLS_PORTS = (34528, 34529, 34530)
 PROJECT_TITLE = 'TLS-Test'
 SHARE_NAME = 'tls-e2e'
-SHARE_TARGET = 'dev.coderoftime.vikunja/.ShareTargetActivity'
+SHARE_TARGET = 'dev.coderoftime.rurana/.ShareTargetActivity'
 SERIAL = os.environ.get('ANDROID_SERIAL', 'emulator-5554')
 
 

@@ -4,8 +4,8 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 final _client = OAuthClientConfig(
-  clientId: 'dev.coderoftime.vikunja',
-  redirectUri: Uri.parse('vikunja-dev.coderoftime.vikunja://oauth/callback'),
+  clientId: 'dev.coderoftime.rurana',
+  redirectUri: Uri.parse('vikunja-dev.coderoftime.rurana://oauth/callback'),
 );
 
 ServerConnection _connection({
@@ -41,8 +41,8 @@ void main() {
       expect(request.url.path, '/oauth/authorize');
       expect(request.url.queryParameters, {
         'response_type': 'code',
-        'client_id': 'dev.coderoftime.vikunja',
-        'redirect_uri': 'vikunja-dev.coderoftime.vikunja://oauth/callback',
+        'client_id': 'dev.coderoftime.rurana',
+        'redirect_uri': 'vikunja-dev.coderoftime.rurana://oauth/callback',
         'state': request.state,
         'code_challenge': codeChallengeS256(request.codeVerifier),
         'code_challenge_method': 'S256',
@@ -50,7 +50,7 @@ void main() {
       expect(
         request.url.query,
         contains(
-          'redirect_uri=vikunja-dev.coderoftime.vikunja'
+          'redirect_uri=vikunja-dev.coderoftime.rurana'
           '%3A%2F%2Foauth%2Fcallback',
         ),
       );
@@ -126,7 +126,7 @@ void main() {
           _connection(),
           OAuthClientConfig(
             clientId: 'x',
-            redirectUri: Uri.parse('dev.coderoftime.vikunja://oauth/callback'),
+            redirectUri: Uri.parse('dev.coderoftime.rurana://oauth/callback'),
           ),
         ),
         throwsArgumentError,
@@ -147,7 +147,7 @@ void main() {
     setUp(() => request = AuthorizationRequest.create(_connection(), _client));
 
     Uri callback(Map<String, String> parameters, {String? base}) =>
-        Uri.parse(base ?? 'vikunja-dev.coderoftime.vikunja://oauth/callback')
+        Uri.parse(base ?? 'vikunja-dev.coderoftime.rurana://oauth/callback')
             .replace(queryParameters: parameters);
 
     Matcher throwsProblem(AuthorizationCallbackProblem problem) => throwsA(
@@ -173,7 +173,7 @@ void main() {
           callback({
             'code': 'c',
             'state': request.state,
-          }, base: 'Vikunja-Dev.CoderOfTime.Vikunja://OAUTH/callback'),
+          }, base: 'Vikunja-Dev.CoderOfTime.Rurana://OAUTH/callback'),
         ),
         'c',
       );
@@ -181,9 +181,9 @@ void main() {
 
     for (final base in [
       'vikunja-desktop://oauth/callback',
-      'vikunja-dev.coderoftime.vikunja://other/callback',
-      'vikunja-dev.coderoftime.vikunja://oauth/callback/extra',
-      'vikunja-dev.coderoftime.vikunja://oauth/',
+      'vikunja-dev.coderoftime.rurana://other/callback',
+      'vikunja-dev.coderoftime.rurana://oauth/callback/extra',
+      'vikunja-dev.coderoftime.rurana://oauth/',
       'https://oauth/callback',
     ]) {
       test('rejects another redirect: $base', () {
@@ -263,7 +263,7 @@ void main() {
       expect(
         () => request.codeFromCallback(
           Uri.parse(
-            'vikunja-dev.coderoftime.vikunja://oauth/callback?code=%E0%A4%A&state=x',
+            'vikunja-dev.coderoftime.rurana://oauth/callback?code=%E0%A4%A&state=x',
           ),
         ),
         throwsA(isA<AuthorizationCallbackException>()),

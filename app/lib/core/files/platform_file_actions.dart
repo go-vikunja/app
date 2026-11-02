@@ -22,7 +22,7 @@ final class PlatformFileActions implements FileActions {
   }) : _android = android ?? Platform.isAndroid,
        _share = share ?? SharePlus.instance.share;
 
-  static const channelName = 'dev.coderoftime.vikunja/files';
+  static const channelName = 'dev.coderoftime.rurana/files';
 
   final MethodChannel _channel;
   final bool _android;

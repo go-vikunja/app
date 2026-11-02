@@ -276,7 +276,13 @@ void main() {
             );
             final original = await images.load(seed.taskId, seed.attachmentId);
 
-            expect(preview.contentType, 'image/png');
+            // 2.7.1 and newer send JPEGs of opaque images, older servers PNGs.
+            expect(
+              preview.contentType,
+              connection.info.version!.isAtLeast(2, 7, 1)
+                  ? 'image/jpeg'
+                  : 'image/png',
+            );
             expect(preview.bytes.length, greaterThan(_png.length));
             expect(original.contentType, 'image/png');
             expect(original.bytes, _png);

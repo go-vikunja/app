@@ -147,10 +147,10 @@ void main() {
     test('redacts the OAuth callback URL', () {
       expect(
         redactSecrets(
-          'vikunja-dev.coderoftime.vikunja://oauth/callback'
+          'vikunja-dev.coderoftime.rurana://oauth/callback'
           '?code=Zm9vYmFy&state=c3RhdGU',
         ),
-        'vikunja-dev.coderoftime.vikunja://oauth/callback'
+        'vikunja-dev.coderoftime.rurana://oauth/callback'
         '?code=[redacted]&state=[redacted]',
       );
     });

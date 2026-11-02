@@ -1,0 +1,10 @@
+{
+  "server": "2.7.1",
+  "request": "GET /api/v2/tasks/572/attachments/999999/preview?size=md",
+  "status": 404,
+  "headers": {
+    "content-type": "application/problem+json",
+    "content-length": "168"
+  },
+  "body": "{\"$schema\":\"http://localhost:34527/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Not Found\",\"status\":404,\"detail\":\"This task attachment does not exist.\",\"code\":4011}\n"
+}

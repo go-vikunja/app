@@ -4,7 +4,7 @@ This is the manual accessibility pass of Rurana, the Android and iOS client for 
 
 A sign-off goes through section 1 on the tree being signed off, section 2 on Android (TalkBack, Switch Access, Accessibility Scanner) for every area the change touched (all of it before a release), and section 3 once in the final iOS phase (VoiceOver). The results and the date go into the step's decision: per flow, what TalkBack (German and English), Switch Access and the Scanner showed, and each finding with its screen and severity, fixed or a follow-up.
 
-**Status:** not yet run. On 2026-10-28 the pass could not be performed on the emulator ([D68]); it is open for the owner on the tablet emulator, or for the final device phase together with VoiceOver ([Q19]).
+**Status:** not yet run. On 2026-10-28 the pass could not be performed on the emulator ([D68]); it is open for the owner on the tablet emulator, or for the final device phase together with VoiceOver ([Q19]). *Note 2026-11-02, step 37d ([D77]): both passes come before 1.0.0 ([beta.md](beta.md#before-100)); App Store Connect's Accessibility Nutrition Labels stay blank until they confirm a feature ([store-listing.md](store-listing.md#app-store-connect)).*
 
 ## 1. Automated
 
@@ -104,4 +104,5 @@ Once, on a device (the simulator for what it can show):
 [D68]: decisions.md#d68-screen-readers-heading-levels-on-screen-titles-and-section-headers-one-announcer-with-the-apps-own-live-region-on-android-high-contrast-and-reduce-motion-followed-and-a-route-sweep-that-every-route-pushed-page-and-overlay-must-pass-wcag-22-aa-as-the-yardstick-with-written-deviations
 [D69]: decisions.md#d69-large-screens-one-window-layout-helper-readable-widths-of-840-dp-for-lists-and-640-dp-for-settings-and-forms-with-scrolling-margins-dialogs-at-most-560-dp-and-ios-sheets-at-most-640-dp-only-on-tablet-sized-windows
 [D70]: decisions.md#d70-task-detail-pane-on-windows-at-least-840-dp-wide-and-480-dp-high-a-task-opens-beside-the-list-one-pane-per-tab-with-a-back-stack-and-a-selected-row-the-sheet-everywhere-else-back-through-the-pane-first-and-pages-in-a-tab-without-androids-predictive-back
+[D77]: decisions.md#d77-beta-preparation-the-app-id-devcoderoftimerurana-the-owners-own-app-signing-key-every-coderoftime-project-public-a-help-row-on-the-about-page-testers-through-a-google-group-and-a-public-testflight-link
 [Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass

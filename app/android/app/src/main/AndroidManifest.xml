@@ -60,7 +60,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="vikunja-dev.coderoftime.vikunja" android:host="task" />
+                <data android:scheme="vikunja-dev.coderoftime.rurana" android:host="task" />
             </intent-filter>
         </activity>
         <!-- Shares from other apps: text, links and files. Like task links,
@@ -112,7 +112,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="vikunja-dev.coderoftime.vikunja" android:host="oauth" android:path="/callback" />
+                <data android:scheme="vikunja-dev.coderoftime.rurana" android:host="oauth" android:path="/callback" />
             </intent-filter>
         </activity>
         <!-- flutter_local_notifications: shows a scheduled notification,

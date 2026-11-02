@@ -4,7 +4,9 @@ library;
 
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
@@ -13,9 +15,11 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'helpers.dart';
 
 // One throwaway user, whose password exists only in memory: the export
-// request and the TOTP disable below need it. The port runs over an OAuth
-// session whose code exchange sent a Rurana User-Agent. No token value,
-// secret or password is ever printed: failures name shapes and lengths.
+// request and the TOTP enrolment and cancel below need it, the cancel from
+// 2.7.1 a code of the enrolment's secret too, which stays in memory as well.
+// The port runs over an OAuth session whose code exchange sent a Rurana
+// User-Agent. No token value, secret or password is ever printed: failures
+// name shapes and lengths.
 const _pace = Duration(milliseconds: 500);
 const _ruranaAgent = 'Rurana/0.31.0+31 (android 15)';
 const _propfind = '''
@@ -27,8 +31,8 @@ final _apiTokenShape = RegExp(r'^tk_[0-9a-f]{40}$');
 final _caldavTokenShape = RegExp(r'^[A-Za-z0-9]{64}$');
 
 final _client = OAuthClientConfig(
-  clientId: 'dev.coderoftime.vikunja',
-  redirectUri: Uri.parse('vikunja-dev.coderoftime.vikunja://oauth/callback'),
+  clientId: 'dev.coderoftime.rurana',
+  redirectUri: Uri.parse('vikunja-dev.coderoftime.rurana://oauth/callback'),
 );
 
 typedef _User = ({String username, String password, String jwt});
@@ -56,6 +60,8 @@ void main() {
           );
         }
 
+        bool since271() => connection.info.version?.isAtLeast(2, 7, 1) ?? false;
+
         Future<T> paced<T>(Future<T> Function() write) async {
           final result = await despiteWriteRaces(write);
           await Future<void>.delayed(_pace);
@@ -67,17 +73,42 @@ void main() {
           return base.replace(path: '${base.path}$path');
         }
 
-        Future<void> rawWrite(String path, Map<String, Object?>? body) => paced(
-          () => dio.postUri<Object?>(
-            api(path),
-            data: body,
-            options: Options(
-              headers: {'Authorization': 'Bearer ${user.jwt}'},
-              // The TOTP enrolment answers with the secret.
-              responseType: ResponseType.bytes,
-            ),
+        Future<Response<Object?>> postAsUser(
+          String path,
+          Map<String, Object?>? body,
+        ) => dio.postUri<Object?>(
+          api(path),
+          data: body,
+          options: Options(
+            headers: {'Authorization': 'Bearer ${user.jwt}'},
+            // The TOTP enrolment answers with the secret.
+            responseType: ResponseType.bytes,
           ),
         );
+
+        Future<Object?> rawWrite(
+          String path,
+          Map<String, Object?>? body,
+        ) async => (await paced(() => postAsUser(path, body))).data;
+
+        // The server takes a code once, even in a write it loses to a
+        // parallel one with a 500, so a retry waits for the next code.
+        Future<void> rawWriteWithCode(
+          String path,
+          String secret,
+          Map<String, Object?> Function(String code) body,
+        ) async {
+          for (var attempt = 1; ; attempt++) {
+            try {
+              await patiently(() => postAsUser(path, body(_totpCode(secret))));
+              await Future<void>.delayed(_pace);
+              return;
+            } on DioException catch (error) {
+              if (error.response?.statusCode != 500 || attempt == 3) rethrow;
+              await _nextTotpWindow();
+            }
+          }
+        }
 
         Future<int> propfind(String password) async {
           final credentials = base64Encode(
@@ -207,12 +238,22 @@ void main() {
         });
 
         test('API tokens: /routes, create, list, a CalDAV PROPFIND with the '
-            'caldav permission, delete, on both versions', () async {
+            'caldav permission, delete, twice, on both versions', () async {
           for (final apiVersion in ApiVersion.values) {
             final port = portOver(apiVersion);
             final groups = await patiently(port.apiPermissions);
             expect(groups.offers('caldav', 'access'), isTrue);
             expect(groups.offers('tasks', 'read_all'), isTrue);
+            // The app's task preset moves tasks between buckets by this name.
+            expect(
+              groups.offers(
+                'projects',
+                since271()
+                    ? 'views_buckets_tasks_update'
+                    : 'views_buckets_tasks',
+              ),
+              isTrue,
+            );
             expect(groups.groupNames.last, ApiPermissionGroups.otherGroup);
 
             final expiresAt = DateTime.now().toUtc().add(
@@ -254,9 +295,10 @@ void main() {
               (await patiently(port.apiTokens)).map((token) => token.id),
               isNot(contains(created.token.id)),
             );
+            // 2.7.1 answers 404 code 14017, which counts as deleted.
             await expectLater(
               port.deleteApiToken(created.token.id),
-              throwsA(isA<Forbidden>()),
+              since271() ? completes : throwsA(isA<Forbidden>()),
             );
             expect(await propfind(created.secret), 401);
 
@@ -363,26 +405,72 @@ void main() {
         });
 
         test('TOTP: not set up, a started setup, cancelled again with the '
-            'password', () async {
+            'password and from 2.7.1 a code', () async {
           Future<List<TotpStatus>> statuses() async => [
             for (final apiVersion in ApiVersion.values)
               await patiently(portOver(apiVersion).totpStatus),
           ];
 
           expect(await statuses(), [TotpStatus.notSetUp, TotpStatus.notSetUp]);
-          await rawWrite('/user/settings/totp/enroll', null);
+          final enrolment = await rawWrite(
+            '/user/settings/totp/enroll',
+            since271() ? {'password': user.password} : null,
+          );
+          final secret =
+              (jsonDecode(utf8.decode(enrolment! as List<int>))
+                      as Map<String, Object?>)['secret']!
+                  as String;
           expect(await statuses(), [
             TotpStatus.setupStarted,
             TotpStatus.setupStarted,
           ]);
-          await rawWrite('/user/settings/totp/disable', {
-            'password': user.password,
-          });
+          if (since271()) {
+            await rawWriteWithCode(
+              '/user/settings/totp/disable',
+              secret,
+              (code) => {'password': user.password, 'totp_passcode': code},
+            );
+          } else {
+            await rawWrite('/user/settings/totp/disable', {
+              'password': user.password,
+            });
+          }
           expect(await statuses(), [TotpStatus.notSetUp, TotpStatus.notSetUp]);
         });
       });
     }
   });
+}
+
+Future<void> _nextTotpWindow() => Future<void>.delayed(
+  Duration(milliseconds: 30500 - DateTime.now().millisecondsSinceEpoch % 30000),
+);
+
+/// RFC 6238 with the server's parameters: SHA-1, six digits, 30 seconds.
+String _totpCode(String base32Secret) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  final key = <int>[];
+  var buffer = 0;
+  var bits = 0;
+  for (final char in base32Secret.toUpperCase().replaceAll('=', '').split('')) {
+    buffer = buffer << 5 | alphabet.indexOf(char);
+    bits += 5;
+    if (bits >= 8) {
+      bits -= 8;
+      key.add(buffer >> bits & 0xff);
+    }
+  }
+  final counter = DateTime.now().millisecondsSinceEpoch ~/ 1000 ~/ 30;
+  final message = ByteData(8)..setInt64(0, counter);
+  final mac = Hmac(sha1, key).convert(message.buffer.asUint8List()).bytes;
+  final offset = mac.last & 0x0f;
+  final value =
+      ((mac[offset] & 0x7f) << 24 |
+          mac[offset + 1] << 16 |
+          mac[offset + 2] << 8 |
+          mac[offset + 3]) %
+      1000000;
+  return value.toString().padLeft(6, '0');
 }
 
 Future<_User> _registerAndLogin(Dio dio, ServerConnection connection) async {

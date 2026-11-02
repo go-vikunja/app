@@ -116,7 +116,7 @@ enum SnapshotRequests {
 /// the app's widget-link key from host.json as `k` when the app wrote one;
 /// without it the app opens the link but never switches accounts silently.
 enum WidgetLinks {
-  static let scheme = "vikunja-dev.coderoftime.vikunja"
+  static let scheme = "vikunja-dev.coderoftime.rurana"
 
   static func url(_ path: String, _ query: [String: String?] = [:]) -> URL? {
     var query = query

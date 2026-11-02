@@ -41,7 +41,8 @@ abstract interface class AccountSecurityRepository {
   /// not know is a `DomainError` code 14002.
   Future<CreatedApiToken> createApiToken(NewApiToken token);
 
-  /// Another user's or an unknown id is a `Forbidden`.
+  /// Another user's token is a `Forbidden`, and so is an unknown id up to
+  /// 2.7.0; from 2.7.1 an unknown id counts as deleted.
   Future<void> deleteApiToken(int id);
 
   Future<List<CaldavToken>> caldavTokens();

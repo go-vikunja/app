@@ -36,13 +36,32 @@ void main() {
       });
     });
 
-    test('task management: the task groups whole, reads around them', () {
+    test('task management: the task groups whole, reads around them and '
+        'moving tasks between buckets, before 2.7.1 by its old name', () {
       expect(presetSelection(ApiTokenPreset.tasks, offered), {
         'tasks': {'create', 'delete', 'read_all', 'read_one', 'update'},
         'tasks_comments': {'create', 'read_all'},
         'labels': {'create', 'read_all', 'read_one'},
         'projects': {'read_all', 'read_one', 'views_buckets_tasks'},
         'projects_views': {'read_all', 'read_one'},
+      });
+    });
+
+    test('task management on 2.7.1 moves tasks by the new name and leaves '
+        'out reading them by bucket, which took the old one', () {
+      final renamed = ApiPermissionGroups(const {
+        'projects': [
+          'read_all',
+          'read_one',
+          'views_buckets_tasks',
+          'views_buckets_tasks_update',
+        ],
+        'projects_views_tasks': ['read_all'],
+      });
+
+      expect(presetSelection(ApiTokenPreset.tasks, renamed), {
+        'projects': {'read_all', 'read_one', 'views_buckets_tasks_update'},
+        'projects_views_tasks': {'read_all'},
       });
     });
 

@@ -14,7 +14,7 @@ require 'tmpdir'
 require 'xcodeproj'
 
 NAME = 'RuranaWidgets'
-BUNDLE_ID = 'dev.coderoftime.vikunja.RuranaWidgets'
+BUNDLE_ID = 'dev.coderoftime.rurana.RuranaWidgets'
 DEPLOYMENT_TARGET = '17.0'
 EMBED_PHASE = 'Embed Foundation Extensions'
 PRIVACY_MANIFEST = 'PrivacyInfo.xcprivacy'

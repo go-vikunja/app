@@ -13,8 +13,8 @@ import java.io.IOException
 import java.util.UUID
 
 enum class WidgetProviderKind(val receiver: String) {
-    LIST("dev.coderoftime.vikunja.widgets.TasksWidgetReceiver"),
-    QUICK_ADD("dev.coderoftime.vikunja.widgets.QuickAddWidgetReceiver");
+    LIST("dev.coderoftime.rurana.widgets.TasksWidgetReceiver"),
+    QUICK_ADD("dev.coderoftime.rurana.widgets.QuickAddWidgetReceiver");
 
     val channelName: String
         get() = if (this == LIST) "list" else "quickAdd"

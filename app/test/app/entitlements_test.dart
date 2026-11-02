@@ -17,7 +17,7 @@ void main() {
       ];
 
       expect(keys, ['com.apple.security.application-groups']);
-      expect(plist, contains('<string>group.dev.coderoftime.vikunja</string>'));
+      expect(plist, contains('<string>group.dev.coderoftime.rurana</string>'));
       expect(plist, isNot(contains('keychain-access-groups')));
     });
   }

@@ -129,14 +129,28 @@ enum AttachmentPreviewSize {
 /// The largest attachment body [AttachmentsPort.fetch] takes.
 const int maxAttachmentBytes = 25 * 1024 * 1024;
 
+/// Whether [failure] is the answer of a 2.7.1 or newer server to a preview
+/// of a file it cannot preview: 422 with code 4038.
+bool isNoAttachmentPreview(Object failure) =>
+    failure is DomainError && failure.code == 4038;
+
 abstract interface class AttachmentsPort {
   /// `GET /tasks/{task}/attachments/{id}`: the original, or with [preview]
-  /// a PNG of that width (100, 200, 400 or 800 px, height proportional,
-  /// small images upscaled). For files the server cannot preview
-  /// (anything but decodable images) it answers the original, so check
-  /// [AttachmentBlob.contentType]. A missing attachment is `NotFound`, a
-  /// foreign one `Forbidden`; a body above [maxAttachmentBytes] is refused
-  /// while it arrives, with `UnexpectedResponse`.
+  /// an image of that width (100, 200, 400 or 800 px, height
+  /// proportional).
+  ///
+  /// From 2.7.1 on, v2 serves previews at `…/{id}/preview?size=` (its
+  /// download route ignores `preview_size`) and v1 at `?preview_size=`;
+  /// they are JPEGs, PNGs for images with transparency, never wider than
+  /// the image. A file the server cannot preview (anything but a raster
+  /// image it decodes: text, SVG, HEIC, AVIF) fails, see
+  /// [isNoAttachmentPreview]. Older servers answer `?preview_size=` with a
+  /// PNG, small images upscaled, and with the original for what they
+  /// cannot preview, so check [AttachmentBlob.contentType].
+  ///
+  /// A missing attachment is `NotFound`, a foreign one `Forbidden`; a body
+  /// above [maxAttachmentBytes] is refused while it arrives, with
+  /// `UnexpectedResponse`.
   Future<AttachmentBlob> fetch(
     int taskId,
     int attachmentId, {

@@ -4,9 +4,9 @@ Thank you for helping. Rurana is free software under the AGPL-3.0-or-later with 
 
 ## Issues
 
-Open an issue for a bug, with the app version, the platform, the Vikunja server version and the steps that show it, or for an idea before you build it. Larger changes are recorded in [docs/decisions.md](docs/decisions.md), so it helps to agree on the approach first.
+Open an issue for a bug, with the app version, the platform, the Vikunja server version and the steps that show it, or for an idea before you build it. Without a GitLab account, write to the address on [Rurana's support page](https://coderoftime.dev/rurana/support/). Larger changes are recorded in [docs/decisions.md](docs/decisions.md), so it helps to agree on the approach first. Never put a password, a token or another secret into an issue.
 
-Report a security problem privately, in a confidential issue on GitLab, not in a public one. The [threat model](docs/threat-model.md) explains what the app protects.
+Report a security problem privately: by email to coderoftime@gmail.com first, so that it can be fixed before it is public. Describe what you found and how to reproduce it, without passwords or tokens. A confidential issue on GitLab works too, but never a public one. The website's [security.txt](https://coderoftime.dev/.well-known/security.txt) has the same contact. Don't test with other people's accounts or data. The [threat model](docs/threat-model.md) explains what the app protects.
 
 ## Merge requests
 

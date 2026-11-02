@@ -36,6 +36,7 @@ void main() {
     expect(find.text(copyrightNotice), findsOneWidget);
     expect(find.text(en.aboutUnofficial), findsOneWidget);
     for (final text in [
+      en.aboutSupport,
       en.aboutPrivacyPolicy,
       en.aboutLegalNotice,
       en.aboutLicence,
@@ -180,7 +181,7 @@ void main() {
     expect(english.backButtonTooltip, 'Back');
   });
 
-  group('the privacy policy and the legal notice', () {
+  group('the support page, the privacy policy and the legal notice', () {
     Future<FakeExternalLinkOpener> pumpAbout(
       WidgetTester tester, {
       bool opens = true,
@@ -204,16 +205,26 @@ void main() {
       return opener;
     }
 
+    Future<void> openRows(WidgetTester tester, List<String> titles) async {
+      for (final title in titles) {
+        await scrollTo(tester, find.text(title));
+        await tester.tap(find.text(title));
+        await tester.pumpAndSettle();
+      }
+    }
+
     testWidgets('open in English', (tester) async {
       final opener = await pumpAbout(tester);
 
       expect(find.text(en.aboutWebsiteHeading), findsOneWidget);
-      await tester.tap(find.text(en.aboutPrivacyPolicy));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(en.aboutLegalNotice));
-      await tester.pumpAndSettle();
+      await openRows(tester, [
+        en.aboutSupport,
+        en.aboutPrivacyPolicy,
+        en.aboutLegalNotice,
+      ]);
 
       expect(opener.opened, [
+        Uri.parse('https://coderoftime.dev/rurana/support/'),
         Uri.parse('https://coderoftime.dev/rurana/privacy/'),
         Uri.parse('https://coderoftime.dev/impressum/#en'),
       ]);
@@ -225,12 +236,15 @@ void main() {
       final opener = await pumpAbout(tester);
 
       expect(find.text(de.aboutWebsiteHeading), findsOneWidget);
-      await tester.tap(find.text(de.aboutPrivacyPolicy));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(de.aboutLegalNotice));
-      await tester.pumpAndSettle();
+      expect(find.text('Hilfe und Fehler melden'), findsOneWidget);
+      await openRows(tester, [
+        de.aboutSupport,
+        de.aboutPrivacyPolicy,
+        de.aboutLegalNotice,
+      ]);
 
       expect(opener.opened, [
+        Uri.parse('https://coderoftime.dev/de/rurana/support/'),
         Uri.parse('https://coderoftime.dev/rurana/privacy/#de'),
         Uri.parse('https://coderoftime.dev/impressum/#de'),
       ]);
@@ -247,6 +261,10 @@ void main() {
 
     test('are English for every language but German', () {
       for (final languageCode in ['en', 'fr', 'nl']) {
+        expect(
+          WebsitePage.support.uri(languageCode: languageCode),
+          Uri.parse('https://coderoftime.dev/rurana/support/'),
+        );
         expect(
           WebsitePage.privacy.uri(languageCode: languageCode),
           Uri.parse('https://coderoftime.dev/rurana/privacy/'),

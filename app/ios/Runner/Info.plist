@@ -4,7 +4,7 @@
 <dict>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
-		<string>dev.coderoftime.vikunja.sync</string>
+		<string>dev.coderoftime.rurana.sync</string>
 	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
@@ -37,10 +37,10 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>CFBundleURLName</key>
-			<string>dev.coderoftime.vikunja</string>
+			<string>dev.coderoftime.rurana</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>vikunja-dev.coderoftime.vikunja</string>
+				<string>vikunja-dev.coderoftime.rurana</string>
 			</array>
 		</dict>
 	</array>

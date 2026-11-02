@@ -556,7 +556,7 @@ void main() {
   });
 }
 
-const String _scheme = 'vikunja-dev.coderoftime.vikunja';
+const String _scheme = 'vikunja-dev.coderoftime.rurana';
 
 /// The install's widget-link key in these tests (32 bytes 0…31).
 const String _linkKey = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';

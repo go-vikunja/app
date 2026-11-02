@@ -33,7 +33,9 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - boards: column (a kanban bucket, never "bucket"); board (a kanban view); card (a task on a board);
   - on a task: favourites; assignee; reminder; due date, start date, end date; done (the state; "Mark as done"); open (the state); identifier; comment; attachment;
   - sharing: link share (what an admin creates) vs shared link (what a guest opens); guest access;
-  - device settings: connection settings; access headers; app lock.
+  - device settings: connection settings; access headers; app lock;
+  - Rurana's pages on the website: help (the support page, "Help and bug reports"), privacy policy, legal notice (the Impressum); a server's own are its privacy policy and imprint;
+  - bug for a fault in Rurana that someone reports ("report a bug").
 - **Sign in:** "sign in" (verb), "sign-in" (noun or adjective: sign-in page), "sign out". Never log in, login or log out.
 - **Device:** "device" for the phone or tablet the app runs on. "phone" only for another phone (`linkShareQrHint`) and in the connect tagline.
 - **People and places:**
@@ -86,6 +88,7 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - Gerät for the device; Handy only for a literal phone and in the tagline;
   - Startbildschirm (Home-Bildschirm only in iOS steps);
   - 12-/24-Stunden-Format;
-  - "die Person, die den Server betreut" for whoever runs the server.
+  - "die Person, die den Server betreut" for whoever runs the server;
+  - Rurana's pages on the website: Hilfe (the support page, „Hilfe und Fehler melden“), Datenschutzerklärung, Impressum; Fehler also for a bug („einen Fehler melden“).
 - **Compounds:** German nouns form closed compounds (Standardspalte, Standardprojekt, Spaltenlimit). A hyphen only with English words, abbreviations or participles (Projekt-Admin, Label-Titel, CalDAV-Token, Erledigt-Spalte).
 - **The web's own labels** are quoted as the German web shows them („Account erstellen“).

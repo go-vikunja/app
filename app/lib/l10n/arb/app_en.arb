@@ -3228,6 +3228,7 @@
   },
   "boardColumnForbidden": "You don't have permission to change this board's columns.",
   "boardColumnLastOne": "A board needs at least one column.",
+  "boardColumnsAtMaximum": "This board already has as many columns as the server allows.",
   "boardColumnArchived": "This project is archived, so its columns can't be changed.",
   "boardColumnInvalid": "The server didn't accept this title or limit.",
   "boardColumnChangeRefused": "The server refused the change: {message}",
@@ -4430,7 +4431,7 @@
   "accountSettingsTotpNotAvailable": "Not available for this account",
   "accountSettingsTotpNotChecked": "Not checked over an unencrypted connection",
   "accountSettingsTotpTurnOnNote": "Opens the web in your browser. Turning it on signs you out everywhere, this app included. Then sign in here again; your browser asks for the code.",
-  "accountSettingsTotpOnNote": "Opens the web in your browser. Turning it off needs your password.",
+  "accountSettingsTotpOnNote": "Opens the web in your browser. Turning it off needs your password, and newer servers also ask for a code.",
   "accountSettingsSessions": "Sessions",
   "accountSettingsSessionsCount": "{count, plural, =1{1 signed-in device or browser} other{{count} signed-in devices and browsers}}",
   "@accountSettingsSessionsCount": {
@@ -7793,17 +7794,25 @@
   "@aboutSourceCodeHeading": {
     "description": "Section header on the About page."
   },
-  "aboutSourceCodeLater": "The source code will be published with the first release.",
+  "aboutSourceCodeLater": "This build has no link to its source code. Every release of Rurana links the source code it was built from.",
   "@aboutSourceCodeLater": {
-    "description": "On the About page while the repository is not public yet."
+    "description": "On the About page of a build without a source link (local and test builds); release builds show the link instead."
   },
   "aboutSourceCodeOpen": "View the source code",
   "@aboutSourceCodeOpen": {
     "description": "Opens the repository in the browser; the address is shown below it."
   },
-  "aboutWebsiteHeading": "Privacy and legal notice",
+  "aboutWebsiteHeading": "Help, privacy and legal notice",
   "@aboutWebsiteHeading": {
-    "description": "Section header on the About page over the links to Rurana's privacy policy and legal notice on the developer's website, coderoftime.dev."
+    "description": "Section header on the About page over the links to Rurana's support page, privacy policy and legal notice on the developer's website, coderoftime.dev."
+  },
+  "aboutSupport": "Help and bug reports",
+  "@aboutSupport": {
+    "description": "Opens Rurana's support page on coderoftime.dev in the browser: answers to common questions, and how to report a bug or a security problem. A noun phrase like its neighbours aboutPrivacyPolicy and aboutLegalNotice."
+  },
+  "aboutSupportSubtitle": "Answers to common questions and how to report a bug",
+  "@aboutSupportSubtitle": {
+    "description": "Under aboutSupport on the About page."
   },
   "aboutPrivacyPolicy": "Privacy policy",
   "@aboutPrivacyPolicy": {

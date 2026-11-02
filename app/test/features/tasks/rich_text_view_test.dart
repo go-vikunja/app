@@ -744,6 +744,37 @@ void main() {
       expect(find.text(en.richTextImageUnsupported), findsOneWidget);
     });
 
+    testWidgets('an image the server has no preview of (2.7.1 and newer) '
+        'shows its original, which opens full screen', (tester) async {
+      data.attachmentImages
+        ..failures[(5, 3, AttachmentPreviewSize.extraLarge)] =
+            const DomainError(422, code: 4038)
+        ..images[(5, 3, null)] = samplePngImage;
+      await pumpRichText(tester, const [photo]);
+
+      expect(data.attachmentImages.loads, ['5 3 xl', '5 3 original']);
+      expect(find.byType(Image), findsOneWidget);
+      expect(find.text(en.richTextImageFailed), findsNothing);
+
+      await tester.tap(find.byType(Image));
+      await tester.pumpAndSettle();
+      expect(find.byType(AttachmentImageViewer), findsOneWidget);
+      expect(find.byType(InteractiveViewer), findsOneWidget);
+    });
+
+    testWidgets('an SVG without a preview is still never decoded', (
+      tester,
+    ) async {
+      data.attachmentImages
+        ..failures[(5, 3, AttachmentPreviewSize.extraLarge)] =
+            const DomainError(422, code: 4038)
+        ..images[(5, 3, null)] = sampleSvgImage;
+      await pumpRichText(tester, const [photo]);
+
+      expect(find.byType(Image), findsNothing);
+      expect(find.text(en.richTextImageUnsupported), findsOneWidget);
+    });
+
     testWidgets('an image that needs a connection says so and a tap asks '
         'again', (tester) async {
       final semantics = tester.ensureSemantics();

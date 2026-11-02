@@ -129,7 +129,7 @@ void main() {
           canDone: true,
           semanticsLabel: 'Water the plants',
           doneLabel: 'Mark “Water the plants” done',
-          link: 'vikunja-dev.coderoftime.vikunja://widget/task/12',
+          link: 'vikunja-dev.coderoftime.rurana://widget/task/12',
         ),
         const WidgetRow(
           taskId: -3,
@@ -138,7 +138,7 @@ void main() {
           canDone: false,
           semanticsLabel: 'Not sent yet',
           doneLabel: 'Mark “Not sent yet” done',
-          link: 'vikunja-dev.coderoftime.vikunja://widget/task/-3',
+          link: 'vikunja-dev.coderoftime.rurana://widget/task/-3',
         ),
       ],
       total: 34,
@@ -149,9 +149,9 @@ void main() {
         'Signed out by the server',
         action: 'Sign in again',
       ),
-      messageLink: 'vikunja-dev.coderoftime.vikunja://widget/account',
-      link: 'vikunja-dev.coderoftime.vikunja://widget/list',
-      newTaskLink: 'vikunja-dev.coderoftime.vikunja://widget/new-task',
+      messageLink: 'vikunja-dev.coderoftime.rurana://widget/account',
+      link: 'vikunja-dev.coderoftime.rurana://widget/list',
+      newTaskLink: 'vikunja-dev.coderoftime.rurana://widget/new-task',
       newTaskLabel: 'New task',
     );
 

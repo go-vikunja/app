@@ -7,7 +7,7 @@ import Foundation
 /// in the shared container is killed (0xdead10cc), so every write is a
 /// rename of a finished temp file.
 enum AppGroupStore {
-  static let groupIdentifier = "group.dev.coderoftime.vikunja"
+  static let groupIdentifier = "group.dev.coderoftime.rurana"
 
   static let catalogsDirectory = "catalogs"
   static let snapshotsDirectory = "snapshots"

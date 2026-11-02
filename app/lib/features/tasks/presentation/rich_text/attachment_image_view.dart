@@ -25,8 +25,8 @@ final class AttachmentImageLoaded extends AttachmentImageState {
 
   final AttachmentImage image;
 
-  /// The server answers the original for what it cannot preview, which
-  /// may be no image at all; SVG is never decoded.
+  /// An original, which servers before 2.7.1 also send for a preview of
+  /// what they cannot preview, may be no image at all; SVG is never decoded.
   bool get drawable => image.contentType.startsWith('image/') && !image.isSvg;
 }
 
@@ -169,14 +169,20 @@ int? decodeWidthFor(BuildContext context, {double factor = 1}) {
 }
 
 /// An attachment image inside a description or comment, at the preview
-/// size; a tap shows the original full screen.
+/// size; a tap shows the original full screen. What the server has no
+/// preview of shows as its original, which older servers send in its place.
 class InlineAttachmentImage extends StatelessWidget {
-  const new({required this.attachment, this.description = '', super.key});
+  const new({required this.attachment, this.description = '', super.key})
+    : _preview = AttachmentPreviewSize.extraLarge;
+
+  const new _original({required this.attachment, required this.description})
+    : _preview = null;
 
   final AttachmentRef attachment;
 
   /// The image's alt text or title; may be empty.
   final String description;
+  final AttachmentPreviewSize? _preview;
 
   static const _maxHeight = 400.0;
 
@@ -187,7 +193,7 @@ class InlineAttachmentImage extends StatelessWidget {
     return AttachmentImageLoader(
       taskId: attachment.taskId,
       attachmentId: attachment.attachmentId,
-      preview: AttachmentPreviewSize.extraLarge,
+      preview: _preview,
       builder: (context, state, retry) {
         void open() => unawaited(
           showAttachmentImage(
@@ -233,6 +239,12 @@ class InlineAttachmentImage extends StatelessWidget {
             text: l10n.richTextImageUnsupported,
             icon: Icons.image_not_supported_outlined,
           ),
+          AttachmentImageFailed(:final failure)
+              when _preview != null && isNoAttachmentPreview(failure) =>
+            InlineAttachmentImage._original(
+              attachment: attachment,
+              description: description,
+            ),
           AttachmentImageFailed(:final failure) => _ImageNotice(
             text: attachmentImageFailureText(l10n, failure),
             icon: switch (failure) {

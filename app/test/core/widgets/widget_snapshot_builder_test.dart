@@ -192,7 +192,7 @@ void main() {
       expect(afternoon.doneLabel, 'Mark “This afternoon” as done');
       expect(
         afternoon.link,
-        'vikunja-dev.coderoftime.vikunja://widget/task/2?account=$accountId',
+        'vikunja-dev.coderoftime.rurana://widget/task/2?account=$accountId',
       );
       expect(today.total, 2);
       expect(today.moreLabel, isNull);
@@ -201,12 +201,12 @@ void main() {
       expect(today.validUntil, DateTime(2026, 10, 27));
       expect(
         today.link,
-        'vikunja-dev.coderoftime.vikunja://widget/list?account=$accountId'
+        'vikunja-dev.coderoftime.rurana://widget/list?account=$accountId'
         '&kind=today',
       );
       expect(
         today.newTaskLink,
-        'vikunja-dev.coderoftime.vikunja://widget/new-task?account=$accountId',
+        'vikunja-dev.coderoftime.rurana://widget/new-task?account=$accountId',
       );
       expect(today.message, isNull);
       expect(today.empty?.title, 'All done');
@@ -291,7 +291,7 @@ void main() {
       expect(inbox.rows.every((row) => row.projectTitle == null), isTrue);
       expect(
         inbox.newTaskLink,
-        'vikunja-dev.coderoftime.vikunja://widget/new-task?account='
+        'vikunja-dev.coderoftime.rurana://widget/new-task?account='
         '$accountId&project=1',
       );
     });
@@ -303,7 +303,7 @@ void main() {
       expect(shared.rows.single.canDone, isFalse);
       expect(
         shared.newTaskLink,
-        'vikunja-dev.coderoftime.vikunja://widget/new-task?account=$accountId',
+        'vikunja-dev.coderoftime.rurana://widget/new-task?account=$accountId',
       );
     });
 
@@ -323,7 +323,7 @@ void main() {
       expect(gone.message?.body, 'Choose another list for this widget.');
       expect(
         gone.messageLink,
-        'vikunja-dev.coderoftime.vikunja://widget/open?account=$accountId',
+        'vikunja-dev.coderoftime.rurana://widget/open?account=$accountId',
       );
     });
   });
@@ -367,7 +367,7 @@ void main() {
       expect(titles(filter), ['This afternoon']);
       expect(
         filter.link,
-        'vikunja-dev.coderoftime.vikunja://widget/list?account=$accountId'
+        'vikunja-dev.coderoftime.rurana://widget/list?account=$accountId'
         '&kind=savedFilter&id=1',
       );
     });
@@ -525,7 +525,7 @@ void main() {
     expect(user.message?.action, 'Sign in again');
     expect(
       user.messageLink,
-      'vikunja-dev.coderoftime.vikunja://widget/account?account=$accountId',
+      'vikunja-dev.coderoftime.rurana://widget/account?account=$accountId',
     );
     expect(user.subtitle, 'Alice · vikunja.example.com');
     expect(guest.state, WidgetSnapshotState.guestEnded);
@@ -607,7 +607,7 @@ void main() {
       expect(quickAdd.rows, isEmpty);
       expect(
         quickAdd.newTaskLink,
-        'vikunja-dev.coderoftime.vikunja://widget/new-task?account=$accountId',
+        'vikunja-dev.coderoftime.rurana://widget/new-task?account=$accountId',
       );
       expect(quickAdd.empty, isNull);
     });

@@ -118,7 +118,7 @@ class _ApiTokensPageState extends ConsumerState<ApiTokensPage> {
         ..showSnackBar(
           SnackBar(content: Text(accountSecurityFailureText(l10n, error))),
         );
-      // A token deleted elsewhere is refused as forbidden.
+      // Up to 2.7.0 a token deleted elsewhere is refused as forbidden.
       if (error is Forbidden && mounted) unawaited(_load());
     } finally {
       if (mounted) setState(() => _busyTokenId = null);

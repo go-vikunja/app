@@ -13,10 +13,18 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 
 import 'helpers.dart';
 
-// A 1x1 PNG that Go's image package decodes, so the server makes previews.
+// A 1x1 PNG that Go's image package decodes, so the server makes previews;
+// its one pixel is half transparent.
 final Uint8List _pixel = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA'
   '60e6kgAAAABJRU5ErkJggg==',
+);
+// An opaque 400x40 PNG, wider than a medium preview.
+final Uint8List _strip = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAZAAAAAoCAIAAABfMzs3AAAAgUlEQVR42u3UQQ0AAAjEsJOD'
+  'RCQiCxuQNKmCPZbqAXghEgCGBWBYgGEBGBaAYQGGBWBYAIYFGBaAYQEYFmBYAIYFYFiAYQEY'
+  'FoBhAYYFYFgAhgUYFoBhARgWYFgAhgVgWIBhARgWYFgqAIYFYFiAYQEYFoBhAYYFYFgAhgUY'
+  'FsAlC8jf6RrmwleDAAAAAElFTkSuQmCC',
 );
 const _notes = 'Contract notes, plain text.';
 const _vector =
@@ -24,6 +32,16 @@ const _vector =
     '<script>alert(1)</script></svg>';
 
 int _pngWidth(Uint8List png) => ByteData.sublistView(png, 16, 20).getUint32(0);
+
+// The width in the first frame header (SOF0 to SOF2).
+int _jpegWidth(Uint8List jpeg) {
+  final data = ByteData.sublistView(jpeg);
+  for (var at = 2; at + 9 <= jpeg.length; at += 2 + data.getUint16(at + 2)) {
+    final marker = data.getUint16(at);
+    if (marker >= 0xffc0 && marker <= 0xffc2) return data.getUint16(at + 7);
+  }
+  throw StateError('not a JPEG with a frame header');
+}
 
 Future<Object?> _send(
   Dio dio,
@@ -183,6 +201,10 @@ void main() {
                     ),
                     MapEntry(
                       'files',
+                      MultipartFile.fromBytes(_strip, filename: 'strip.png'),
+                    ),
+                    MapEntry(
+                      'files',
                       MultipartFile.fromString(_notes, filename: 'notes.txt'),
                     ),
                     MapEntry(
@@ -200,7 +222,12 @@ void main() {
             };
             expect(
               attachmentIds.keys,
-              unorderedEquals(['pixel.png', 'notes.txt', 'vector.svg']),
+              unorderedEquals([
+                'pixel.png',
+                'strip.png',
+                'notes.txt',
+                'vector.svg',
+              ]),
             );
             await send(
               owner,
@@ -291,6 +318,12 @@ void main() {
                   {
                     'pixel.png': (
                       attachmentIds['pixel.png'],
+                      taskId,
+                      'image/png',
+                      owner.id,
+                    ),
+                    'strip.png': (
+                      attachmentIds['strip.png'],
                       taskId,
                       'image/png',
                       owner.id,
@@ -400,44 +433,98 @@ void main() {
                 expect(beyond.hasMore, isFalse);
               });
 
-              test('previews: a PNG of an image at its width, the original '
-                  'for a text file and an SVG', () async {
-                final taskId = task['id']! as int;
+              test(
+                'previews: an image at the width asked for; a text file '
+                'and an SVG have none, before 2.7.1 their original',
+                () async {
+                  final taskId = task['id']! as int;
+                  Future<Object> preview(
+                    String name, [
+                    AttachmentPreviewSize size = AttachmentPreviewSize.medium,
+                  ]) => attachments
+                      .fetch(taskId, attachmentIds[name]!, preview: size)
+                      .then<Object>((blob) => blob, onError: (Object e) => e);
 
-                final preview = await attachments.fetch(
-                  taskId,
-                  attachmentIds['pixel.png']!,
-                  preview: AttachmentPreviewSize.medium,
-                );
-                final original = await attachments.fetch(
-                  taskId,
-                  attachmentIds['pixel.png']!,
-                );
-                final text = await attachments.fetch(
-                  taskId,
-                  attachmentIds['notes.txt']!,
-                  preview: AttachmentPreviewSize.medium,
-                );
-                final vector = await attachments.fetch(
-                  taskId,
-                  attachmentIds['vector.svg']!,
-                  preview: AttachmentPreviewSize.medium,
-                );
+                  final strip = await preview('strip.png');
+                  final stripLarge = await preview(
+                    'strip.png',
+                    AttachmentPreviewSize.extraLarge,
+                  );
+                  final pixel = await preview('pixel.png');
+                  final text = await preview('notes.txt');
+                  final vector = await preview('vector.svg');
+                  final original = await attachments.fetch(
+                    taskId,
+                    attachmentIds['pixel.png']!,
+                  );
 
-                expect(preview.contentType, 'image/png');
-                expect(_pngWidth(preview.bytes), 200);
-                expect(original.contentType, 'image/png');
-                expect(original.bytes, _pixel);
-                expect(text.contentType, 'text/plain');
-                expect(utf8.decode(text.bytes), _notes);
-                expect(vector.contentType, 'image/svg+xml');
-                expect(vector.isSvg, isTrue);
-                expect(utf8.decode(vector.bytes), _vector);
-                await expectLater(
-                  attachments.fetch(taskId, 99999999),
-                  throwsA(isA<NotFound>()),
-                );
-              });
+                  expect(original.contentType, 'image/png');
+                  expect(original.bytes, _pixel);
+                  if (connection.info.version!.isAtLeast(2, 7, 1)) {
+                    // JPEGs, PNGs for transparency, never upscaled.
+                    for (final (blob, type, width) in [
+                      (strip, 'image/jpeg', 200),
+                      (stripLarge, 'image/jpeg', 400),
+                      (pixel, 'image/png', 1),
+                    ]) {
+                      expect(
+                        blob,
+                        isA<AttachmentBlob>().having(
+                          (b) => b.contentType,
+                          'contentType',
+                          type,
+                        ),
+                      );
+                      final bytes = (blob as AttachmentBlob).bytes;
+                      expect(
+                        type == 'image/png'
+                            ? _pngWidth(bytes)
+                            : _jpegWidth(bytes),
+                        width,
+                      );
+                    }
+                    for (final none in [text, vector]) {
+                      expect(
+                        none,
+                        isA<DomainError>()
+                            .having((f) => f.statusCode, 'statusCode', 422)
+                            .having((f) => f.code, 'code', 4038),
+                      );
+                      expect(isNoAttachmentPreview(none), isTrue);
+                    }
+                  } else {
+                    // 2.7.0 and older: PNGs, small images upscaled, and the
+                    // original of what the server cannot preview.
+                    for (final (blob, width) in [
+                      (strip, 200),
+                      (stripLarge, 800),
+                      (pixel, 200),
+                    ]) {
+                      expect((blob as AttachmentBlob).contentType, 'image/png');
+                      expect(_pngWidth(blob.bytes), width);
+                    }
+                    final textBlob = text as AttachmentBlob;
+                    expect(textBlob.contentType, 'text/plain');
+                    expect(utf8.decode(textBlob.bytes), _notes);
+                    final vectorBlob = vector as AttachmentBlob;
+                    expect(vectorBlob.contentType, 'image/svg+xml');
+                    expect(vectorBlob.isSvg, isTrue);
+                    expect(utf8.decode(vectorBlob.bytes), _vector);
+                  }
+                  await expectLater(
+                    attachments.fetch(taskId, 99999999),
+                    throwsA(isA<NotFound>()),
+                  );
+                  await expectLater(
+                    attachments.fetch(
+                      taskId,
+                      99999999,
+                      preview: AttachmentPreviewSize.medium,
+                    ),
+                    throwsA(isA<NotFound>()),
+                  );
+                },
+              );
 
               test('by index: by project id and identifier in any case; an '
                   'unknown project or index is NotFound', () async {
