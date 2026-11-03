@@ -9,7 +9,7 @@ class BucketDto extends Dto<Bucket> {
   String title;
   double? position;
   final DateTime created, updated;
-  UserDto createdBy;
+  UserDto? createdBy;
   final List<TaskDto> tasks;
 
   BucketDto({
@@ -20,7 +20,7 @@ class BucketDto extends Dto<Bucket> {
     required this.limit,
     DateTime? created,
     DateTime? updated,
-    required this.createdBy,
+    this.createdBy,
     List<TaskDto>? tasks,
   }) : created = created ?? DateTime.now(),
        updated = created ?? DateTime.now(),
@@ -36,7 +36,9 @@ class BucketDto extends Dto<Bucket> {
       limit = json['limit'],
       created = DateTime.parse(json['created']),
       updated = DateTime.parse(json['updated']),
-      createdBy = UserDto.fromJson(json['created_by']),
+      createdBy = json['created_by'] != null
+          ? UserDto.fromJson(json['created_by'])
+          : null,
       tasks = json['tasks'] == null
           ? []
           : (json['tasks'] as List<dynamic>)
@@ -51,7 +53,7 @@ class BucketDto extends Dto<Bucket> {
     'limit': limit,
     'created': created.toUtc().toIso8601String(),
     'updated': updated.toUtc().toIso8601String(),
-    'created_by': createdBy.toJSON(),
+    'created_by': createdBy?.toJSON(),
     'tasks': tasks.map((task) => task.toJSON()).toList(),
   };
 
@@ -64,7 +66,7 @@ class BucketDto extends Dto<Bucket> {
     limit: limit,
     created: created,
     updated: updated,
-    createdBy: createdBy.toDomain(),
+    createdBy: createdBy?.toDomain(),
     tasks: tasks.map((e) => e.toDomain()).toList(),
   );
 
@@ -76,7 +78,7 @@ class BucketDto extends Dto<Bucket> {
     limit: b.limit,
     created: b.created,
     updated: b.updated,
-    createdBy: UserDto.fromDomain(b.createdBy),
+    createdBy: b.createdBy != null ? UserDto.fromDomain(b.createdBy!) : null,
     tasks: b.tasks.map((e) => TaskDto.fromDomain(e)).toList(),
   );
 }

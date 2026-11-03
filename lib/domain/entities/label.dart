@@ -6,7 +6,7 @@ class Label {
   final int id;
   final String title, description;
   final DateTime created, updated;
-  final User createdBy;
+  final User? createdBy;
   final Color? color;
 
   Label({
@@ -16,7 +16,7 @@ class Label {
     this.color,
     DateTime? created,
     DateTime? updated,
-    required this.createdBy,
+    this.createdBy,
   }) : created = created ?? DateTime.now(),
        updated = updated ?? DateTime.now();
 

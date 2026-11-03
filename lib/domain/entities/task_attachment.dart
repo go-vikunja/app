@@ -19,14 +19,14 @@ class TaskAttachmentFile {
 class TaskAttachment {
   final int id, taskId;
   final DateTime created;
-  final User createdBy;
+  final User? createdBy;
   final TaskAttachmentFile file;
 
   TaskAttachment({
     this.id = 0,
     required this.taskId,
     DateTime? created,
-    required this.createdBy,
+    this.createdBy,
     required this.file,
   }) : created = created ?? DateTime.now();
 }

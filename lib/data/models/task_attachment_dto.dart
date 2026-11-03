@@ -54,14 +54,14 @@ class TaskAttachmentFileDto extends Dto<TaskAttachmentFile> {
 class TaskAttachmentDto extends Dto<TaskAttachment> {
   final int id, taskId;
   final DateTime created;
-  final UserDto createdBy;
+  final UserDto? createdBy;
   final TaskAttachmentFileDto file;
 
   TaskAttachmentDto({
     this.id = 0,
     required this.taskId,
     DateTime? created,
-    required this.createdBy,
+    this.createdBy,
     required this.file,
   }) : created = created ?? DateTime.now();
 
@@ -70,13 +70,15 @@ class TaskAttachmentDto extends Dto<TaskAttachment> {
       taskId = json['task_id'],
       created = DateTime.parse(json['created']),
       file = TaskAttachmentFileDto.fromJSON(json['file']),
-      createdBy = UserDto.fromJson(json['created_by']);
+      createdBy = json['created_by'] != null
+          ? UserDto.fromJson(json['created_by'])
+          : null;
 
-  Map<String, Object> toJSON() => {
+  Map<String, Object?> toJSON() => {
     'id': id,
     'task_id': taskId,
     'created': created.toUtc().toIso8601String(),
-    'created_by': createdBy.toJSON(),
+    'created_by': createdBy?.toJSON(),
     'file': file.toJSON(),
   };
 
@@ -85,7 +87,7 @@ class TaskAttachmentDto extends Dto<TaskAttachment> {
     id: id,
     taskId: taskId,
     created: created,
-    createdBy: createdBy.toDomain(),
+    createdBy: createdBy?.toDomain(),
     file: file.toDomain(),
   );
 
@@ -93,7 +95,7 @@ class TaskAttachmentDto extends Dto<TaskAttachment> {
     id: b.id,
     taskId: b.taskId,
     created: b.created,
-    createdBy: UserDto.fromDomain(b.createdBy),
+    createdBy: b.createdBy != null ? UserDto.fromDomain(b.createdBy!) : null,
     file: TaskAttachmentFileDto.fromDomain(b.file),
   );
 }

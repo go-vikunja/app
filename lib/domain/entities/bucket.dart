@@ -7,7 +7,7 @@ class Bucket {
   String title;
   double? position;
   final DateTime created, updated;
-  User createdBy;
+  User? createdBy;
   List<Task> tasks;
 
   Bucket({
@@ -18,7 +18,7 @@ class Bucket {
     required this.limit,
     DateTime? created,
     DateTime? updated,
-    required this.createdBy,
+    this.createdBy,
     List<Task>? tasks,
   }) : created = created ?? DateTime.now(),
        updated = created ?? DateTime.now(),
