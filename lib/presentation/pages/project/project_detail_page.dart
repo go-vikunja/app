@@ -134,7 +134,7 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
 
     return Builder(
       builder: (context) => FloatingActionButton(
-        onPressed: () => _addITaskDialog(context, project),
+        onPressed: () => _addTaskDialog(context, project),
         child: Icon(Icons.add),
       ),
     );
@@ -161,7 +161,7 @@ class ProjectPageState extends ConsumerState<ProjectDetailPage> {
     return null;
   }
 
-  Future<void> _addITaskDialog(BuildContext context, Project project) {
+  Future<void> _addTaskDialog(BuildContext context, Project project) {
     return showDialog(
       context: context,
       builder: (_) => AddTaskDialog(
