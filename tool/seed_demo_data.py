@@ -39,10 +39,11 @@ SHARED_PROJECT = 'home'
 OTHER_NAME = 'Sam'
 LABELS = (('chores', 'f5a623'), ('urgent', 'd32f2f'), ('garage', '2e7d32'), ('waiting', '78909c'))
 # project key ('inbox' is the server's), title key, labels, assignees, fields;
-# due is (days, hours) from now and description names a text.
+# due is (days, hours) from now, due_today an hour of today, and description
+# names a text.
 TASKS = (
     ('kitchen', 'dishwasher', ('chores',), ('other',),
-     {'due': (0, 6), 'priority': 3, 'percent_done': 0.4, 'description': 'checklist', 'hex_color': 'e65100'}),
+     {'due_today': 21, 'priority': 3, 'percent_done': 0.4, 'description': 'checklist', 'hex_color': 'e65100'}),
     ('work', 'report', ('urgent',), (), {'due': (3, 0), 'priority': 4, 'is_favorite': True, 'percent_done': 0.3}),
     ('work', 'one_to_one', ('waiting',), (), {'due': (1, 2), 'priority': 2}),
     ('work', 'presentation', (), (), {'due': (5, 0)}),
@@ -169,11 +170,22 @@ def at(days=0, hours=0):
     return moment.isoformat().replace('+00:00', 'Z')
 
 
+def today_at(hour, now=None):
+    now = now or datetime.now().astimezone()
+    moment = now.replace(hour=hour, minute=0, second=0, microsecond=0)
+    # Seeded late in the evening, the task stays due soon rather than overdue.
+    if moment < now + timedelta(hours=1):
+        moment = now.replace(minute=0, second=0, microsecond=0) + timedelta(hours=2)
+    return moment.astimezone(timezone.utc).isoformat().replace('+00:00', 'Z')
+
+
 def task_fields(fields, texts):
     result = {}
     for key, value in fields.items():
         if key == 'due':
             result['due_date'] = at(*value)
+        elif key == 'due_today':
+            result['due_date'] = today_at(value)
         elif key == 'description':
             result['description'] = checklist(texts[value])
         else:

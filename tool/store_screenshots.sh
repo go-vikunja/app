@@ -20,7 +20,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 phone_motifs="overview project-list kanban task-detail new-task upcoming"
-tablet_motifs="list-detail"
+tablet_motifs="list-detail kanban upcoming-detail project-detail"
 
 die() {
   echo "error: $*" >&2
@@ -40,7 +40,9 @@ motif_hint() {
     task-detail) echo "the task Fix the dishwasher (Spülmaschine reparieren), its sheet pulled up and at its top" ;;
     new-task) echo "the New task sheet from the Overview, with a title typed in" ;;
     upcoming) echo "the Upcoming tab, scrolled to the end of its list" ;;
-    list-detail) echo "the Overview with Finish the quarterly report (Quartalsbericht fertigstellen) open beside it" ;;
+    list-detail) echo "the Overview with Fix the dishwasher (Spülmaschine reparieren) open beside it" ;;
+    upcoming-detail) echo "the Upcoming tab with Prepare the 1:1 with Lena (1:1 mit Lena vorbereiten) open beside it" ;;
+    project-detail) echo "the project Work (Arbeit) in its List view with Finish the quarterly report (Quartalsbericht fertigstellen) open beside it" ;;
   esac
 }
 

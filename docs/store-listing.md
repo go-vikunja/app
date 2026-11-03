@@ -84,14 +84,14 @@ The About page's links are in `app/lib/app/legal.dart`, and `tool/check_store_me
 | Form | Motifs |
 |---|---|
 | Phone | 01 Overview, 02 a project's list (Work / Arbeit), 03 its Kanban board, 04 the task detail (Fix the dishwasher / Spülmaschine reparieren, its sheet pulled up and at its top: the title, the date, priority, progress and label; its checklist does not fit beside the title in 16:9), 05 the New task sheet, 06 Upcoming (scrolled to the end of its list: the days after tomorrow, one after the other, without repeating the Overview and with the New task button over empty space) |
-| Tablet | 01 the Overview with a task open in the pane beside it |
+| Tablet | 01 the Overview with Fix the dishwasher / Spülmaschine reparieren in the pane beside it, 02 Work / Arbeit's Kanban board with its three columns, 03 Upcoming with Prepare the 1:1 with Lena / 1:1 mit Lena vorbereiten in the pane, 04 Work / Arbeit's list with Finish the quarterly report / Quartalsbericht fertigstellen in the pane; four, because Google promotes an app on large screens only with at least four |
 
 **Devices and sizes:**
 
 | Store | Device | Size | Rule |
 |---|---|---|---|
 | Play phone | a Pixel 9 emulator from a Google Play system image (1080 × 2424), window set to 16:9 by the script | 1080 × 1920 | 2–8 screenshots; JPEG or 24-bit PNG without alpha; sides 320–3840 px, the long side at most twice the short one; at least 4 of at least 1080 px for promotion ([assets][play-assets]) |
-| Play tablet (optional) | the Pixel Tablet emulator, 16:9 by the script | 2560 × 1440 | sides 1080–7680 px; Google promotes large screens with at least 4 |
+| Play tablet (optional) | a Pixel Tablet emulator from a Google Play system image (2560 × 1600), 16:9 by the script | 2560 × 1440 | sides 1080–7680 px; Google promotes large screens with at least 4 |
 | App Store iPhone 6.9" | iPhone 17 Pro Max simulator | 1320 × 2868 | no alpha, 1–10 per size and language ([screenshot specifications][apple-screenshots]) |
 | App Store iPhone 6.3" | iPhone 17 Pro simulator | 1206 × 2622 | Apple's page names this size as required in its text and the 6.9" one in its table, so both are uploaded |
 | App Store iPad 13" | iPad Pro 13-inch simulator | 2064 × 2752 | required, because the app runs on iPad |

@@ -64,7 +64,8 @@ class FakeServer:
 def seeded(lang):
     server = FakeServer()
     with mock.patch.object(seed_demo_data, 'call', server), \
-            mock.patch.object(seed_demo_data, 'at', lambda days=0, hours=0: f'at({days},{hours})'):
+            mock.patch.object(seed_demo_data, 'at', lambda days=0, hours=0: f'at({days},{hours})'), \
+            mock.patch.object(seed_demo_data, 'today_at', lambda hour: f'today_at({hour})'):
         seed_demo_data.seed('token', ME, 'token2', OTHER, seed_demo_data.TEXTS[lang])
     return server
 
@@ -95,6 +96,19 @@ class DataSetTest(unittest.TestCase):
         self.assertEqual(seed_demo_data.checklist(seed_demo_data.TEXTS['de']['checklist']), GERMAN_CHECKLIST)
 
 
+class TodayAtTest(unittest.TestCase):
+    CET = seed_demo_data.timezone(seed_demo_data.timedelta(hours=1))
+
+    def at(self, hour, minute):
+        return seed_demo_data.datetime(2026, 11, 3, hour, minute, 20, tzinfo=self.CET)
+
+    def test_the_hour_of_today_in_utc(self):
+        self.assertEqual(seed_demo_data.today_at(21, self.at(15, 10)), '2026-11-03T20:00:00Z')
+
+    def test_late_in_the_evening_two_full_hours_later(self):
+        self.assertEqual(seed_demo_data.today_at(21, self.at(20, 30)), '2026-11-03T21:00:00Z')
+
+
 class SeedTest(unittest.TestCase):
     def test_the_german_default_sends_what_it_always_sent(self):
         server = seeded('de')
@@ -116,7 +130,7 @@ class SeedTest(unittest.TestCase):
                          ['Haushalt', 'wichtig', 'Werkstatt', 'warten'])
         tasks = [(path, body) for path, body in server.sent('PUT') if path.endswith('/tasks')]
         self.assertEqual(tasks, [
-            ('/projects/103/tasks', {'title': 'Spülmaschine reparieren', 'due_date': 'at(0,6)', 'priority': 3,
+            ('/projects/103/tasks', {'title': 'Spülmaschine reparieren', 'due_date': 'today_at(21)', 'priority': 3,
                                      'percent_done': 0.4, 'description': GERMAN_CHECKLIST, 'hex_color': 'e65100'}),
             ('/projects/101/tasks', {'title': 'Quartalsbericht fertigstellen', 'due_date': 'at(3,0)', 'priority': 4,
                                      'is_favorite': True, 'percent_done': 0.3}),
