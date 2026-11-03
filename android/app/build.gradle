@@ -92,4 +92,5 @@ dependencies {
     implementation "androidx.glance:glance:1.1.1"
     implementation "androidx.glance:glance-appwidget:1.1.1"
     implementation 'com.google.code.gson:gson:2.8.5'
+    testImplementation 'junit:junit:4.13.2'
 }
