@@ -13,6 +13,7 @@ import 'package:vikunja_app/presentation/pages/error_widget.dart';
 import 'package:vikunja_app/presentation/pages/loading_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/add_bucket_dialog.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
+import 'package:vikunja_app/presentation/widgets/project/kanban/blocking_arrows.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_drag_target.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/bucket_column.dart';
 
@@ -49,6 +50,8 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
 
   final ScrollController _scrollController = ScrollController();
   final GlobalKey _listKey = GlobalKey();
+  final GlobalKey<BlockingArrowsLayerState> _arrowsKey = GlobalKey();
+  final Map<int, GlobalKey> _taskKeys = {};
 
   bool _dragActive = false;
   Offset? _lastGlobalDragPos;
@@ -131,76 +134,106 @@ class KanbanWidgetState extends ConsumerState<KanbanWidget> {
       data: (data) {
         return ScrollConfiguration(
           behavior: const _NoGlowScrollBehavior(),
-          child: Container(
-            key: _listKey,
-            child: ListView(
-              controller: _scrollController,
-              scrollDirection: Axis.horizontal,
-              children: [
-                BucketDragTarget(
-                  index: 0,
-                  onAccept: (drag) {
-                    _stopAutoScroll(); // ensure timers stop on accept
-                    _moveBucket(
-                      project: data.project,
-                      buckets: data.buckets,
-                      from: drag.fromIndex,
-                      to: 0,
-                    );
-                  },
-                ),
-                for (int i = 0; i < data.buckets.length; i++) ...[
-                  BucketColumn(
-                    key: ValueKey(data.buckets[i].id),
-                    // stable identity on reorder
-                    project: data.project,
-                    isDoneColumn:
-                        data.project.views[data.viewIndex].doneBucketId ==
-                        data.buckets[i].id,
-                    isDefaultColumn:
-                        data.project.views[data.viewIndex].defaultBucketId ==
-                        data.buckets[i].id,
-                    bucket: data.buckets[i],
-                    buckets: data.buckets,
-                    bucketIndex: i,
-                    onMoveTask: _moveTask,
-                    onAnyDragStarted: _startAutoScroll,
-                    onAnyDragEnded: _stopAutoScroll,
-                    onAnyDragUpdate: _onDragUpdate,
-                  ),
-                  BucketDragTarget(
-                    index: i + 1,
-                    onAccept: (drag) {
-                      _stopAutoScroll();
-                      _moveBucket(
-                        project: data.project,
-                        buckets: data.buckets,
-                        from: drag.fromIndex,
-                        to: i + 1,
-                      );
-                    },
-                  ),
-                ],
-                RotatedBox(
-                  quarterTurns: 1,
-                  child: Column(
-                    children: [
-                      ElevatedButton(
-                        onPressed: () {
-                          _addBucketDialog(
-                            context,
-                            data.project,
-                            data.viewIndex,
-                          );
-                        },
-                        child: Text(
-                          AppLocalizations.of(context).kanbanAddBucket,
+          child: NotificationListener<ScrollNotification>(
+            onNotification: (_) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _arrowsKey.currentState?.measure();
+              });
+              return false;
+            },
+            child: KanbanTaskRegistry(
+              keys: _taskKeys,
+              child: Container(
+                key: _listKey,
+                child: Stack(
+                  children: [
+                    ListView(
+                      controller: _scrollController,
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        BucketDragTarget(
+                          index: 0,
+                          onAccept: (drag) {
+                            _stopAutoScroll(); // ensure timers stop on accept
+                            _moveBucket(
+                              project: data.project,
+                              buckets: data.buckets,
+                              from: drag.fromIndex,
+                              to: 0,
+                            );
+                          },
+                        ),
+                        for (int i = 0; i < data.buckets.length; i++) ...[
+                          BucketColumn(
+                            key: ValueKey(data.buckets[i].id),
+                            // stable identity on reorder
+                            project: data.project,
+                            isDoneColumn:
+                                data
+                                    .project
+                                    .views[data.viewIndex]
+                                    .doneBucketId ==
+                                data.buckets[i].id,
+                            isDefaultColumn:
+                                data
+                                    .project
+                                    .views[data.viewIndex]
+                                    .defaultBucketId ==
+                                data.buckets[i].id,
+                            bucket: data.buckets[i],
+                            buckets: data.buckets,
+                            bucketIndex: i,
+                            onMoveTask: _moveTask,
+                            onAnyDragStarted: _startAutoScroll,
+                            onAnyDragEnded: _stopAutoScroll,
+                            onAnyDragUpdate: _onDragUpdate,
+                          ),
+                          BucketDragTarget(
+                            index: i + 1,
+                            onAccept: (drag) {
+                              _stopAutoScroll();
+                              _moveBucket(
+                                project: data.project,
+                                buckets: data.buckets,
+                                from: drag.fromIndex,
+                                to: i + 1,
+                              );
+                            },
+                          ),
+                        ],
+                        RotatedBox(
+                          quarterTurns: 1,
+                          child: Column(
+                            children: [
+                              ElevatedButton(
+                                onPressed: () {
+                                  _addBucketDialog(
+                                    context,
+                                    data.project,
+                                    data.viewIndex,
+                                  );
+                                },
+                                child: Text(
+                                  AppLocalizations.of(context).kanbanAddBucket,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: BlockingArrowsLayer(
+                          key: _arrowsKey,
+                          buckets: data.buckets,
+                          taskKeys: _taskKeys,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         );

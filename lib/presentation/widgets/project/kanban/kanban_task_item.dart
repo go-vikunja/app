@@ -3,6 +3,7 @@ import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/widgets/due_date_card.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/priority_batch.dart';
+import 'package:vikunja_app/presentation/widgets/task/relation_badges.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
 class TaskTile extends StatelessWidget {
@@ -17,7 +18,10 @@ class TaskTile extends StatelessWidget {
 
     return Card(
       color: bgColor,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4.0)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4.0),
+        side: relationBorderSide(task),
+      ),
       child: Padding(
         padding: const EdgeInsets.only(left: 8, right: 8, top: 8, bottom: 12),
         child: Column(
@@ -70,6 +74,7 @@ class TaskTile extends StatelessWidget {
                     .map((e) => LabelWidget(label: e))
                     .toList(),
               ),
+            RelationBadges(task: task, textColor: textColor),
             if (task.description.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 8.0),

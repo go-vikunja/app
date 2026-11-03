@@ -100,18 +100,7 @@ class Client {
     Map<String, List<String>>? queryParameters,
   }) async {
     try {
-      Uri uri = Uri.tryParse('$apiBase$url')!;
-
-      uri = Uri(
-        scheme: uri.scheme,
-        userInfo: uri.userInfo,
-        query: uri.query,
-        host: uri.host,
-        port: uri.port,
-        path: uri.path,
-        queryParameters: queryParameters,
-        fragment: uri.fragment,
-      );
+      final uri = composeGetUri(apiBase, url, queryParameters);
 
       return _handleResponseWithRefresh(mapper, () async {
         return _httpClient.get(uri, headers: await getHeaders());
@@ -308,6 +297,28 @@ class Client {
     }
 
     return _handleResponse(response, mapper);
+  }
+
+  /// Builds a GET URI without an empty fragment (`#`).
+  ///
+  /// When [queryParameters] is set, it is the only query source so values
+  /// containing `=`, `&&`, and `||` encode as a single parameter.
+  static Uri composeGetUri(
+    String apiBase,
+    String url,
+    Map<String, List<String>>? queryParameters,
+  ) {
+    final parsed = Uri.parse('$apiBase$url');
+    return Uri(
+      scheme: parsed.scheme,
+      userInfo: parsed.userInfo,
+      host: parsed.host,
+      port: parsed.port,
+      path: parsed.path,
+      queryParameters:
+          queryParameters ??
+          (parsed.hasQuery ? parsed.queryParametersAll : null),
+    );
   }
 
   ExceptionResponse<T> _handleException<T>(Object e, StackTrace s) {

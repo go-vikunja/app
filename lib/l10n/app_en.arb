@@ -11,6 +11,27 @@
   "close": "Close",
   "reset": "Reset",
   "retry": "Retry",
+  "continueOffline": "Continue offline",
+  "offlineMode": "Offline",
+  "tryOnline": "Try online",
+  "flushChanges": "Flush",
+  "flushingChanges": "Flushing…",
+  "pendingChanges": "{count} pending",
+  "@pendingChanges": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "flushFailed": "Flush failed: {error}",
+  "@flushFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   "loading": "Loading...",
   "logout": "Logout",
   "register": "Register",
@@ -223,5 +244,24 @@
   "versionDialogUsed": "Your server version: {versionString}",
   "@versionDialogUsed": {
     "placeholders": { "versionString": { "type": "String" } }
-  }
+  },
+  "relatedTasks": "Related tasks",
+  "relationSearch": "Search for a task",
+  "relationSelectKind": "Select a relation kind",
+  "relationNoneYet": "No related tasks yet",
+  "relationDelete": "Remove relation",
+  "relationTaskRequired": "Pick a task first",
+  "relationAddError": "Could not update relation",
+  "relationsOnlineOnly": "Adding relations requires an online connection.",
+  "relationKindCopiedTo": "Copied To",
+  "relationKindCopiedFrom": "Copied From",
+  "relationKindFollows": "Follows",
+  "relationKindPrecedes": "Precedes",
+  "relationKindBlocked": "Blocked By",
+  "relationKindBlocking": "Blocking",
+  "relationKindDuplicates": "Duplicates",
+  "relationKindDuplicateOf": "Duplicate Of",
+  "relationKindRelated": "Related Task",
+  "relationKindParent": "Parent Task",
+  "relationKindSubtask": "Subtask"
 }

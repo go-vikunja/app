@@ -5,6 +5,7 @@ import 'package:background_downloader/background_downloader.dart'
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_attachment.dart';
+import 'package:vikunja_app/domain/entities/task_relation.dart';
 
 abstract class TaskRepository {
   Future<Response<Task>> add(int projectId, Task task);
@@ -35,4 +36,18 @@ abstract class TaskRepository {
     int taskId,
     TaskAttachment attachment,
   );
+
+  Future<Response<List<Task>>> search(String query);
+
+  Future<Response<Object>> addRelation({
+    required int taskId,
+    required int otherTaskId,
+    required RelationKind kind,
+  });
+
+  Future<Response<Object>> deleteRelation({
+    required int taskId,
+    required int otherTaskId,
+    required RelationKind kind,
+  });
 }

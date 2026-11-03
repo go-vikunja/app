@@ -22,6 +22,7 @@ import 'package:vikunja_app/presentation/widgets/date_time_field.dart';
 import 'package:vikunja_app/presentation/widgets/label_widget.dart';
 import 'package:vikunja_app/presentation/widgets/task/color_picker_dialog.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_delete_dialog.dart';
+import 'package:vikunja_app/presentation/widgets/task/task_relations_section.dart';
 import 'package:vikunja_app/presentation/widgets/task/task_save_dialog.dart';
 
 class TaskEditPage extends ConsumerStatefulWidget {
@@ -180,6 +181,7 @@ class TaskEditPageState extends ConsumerState<TaskEditPage> {
           _buildPriority(),
           _buildAddLabel(context),
           _buildLabelList(),
+          TaskRelationsSection(task: widget.task),
           _buildColor(),
           _buildAttachments(),
         ],

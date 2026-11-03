@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
+import 'package:vikunja_app/core/offline/offline_controller.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/presentation/manager/projects_controller.dart';
@@ -67,10 +68,22 @@ class ProjectListPage extends ConsumerWidget {
           ),
         );
       },
-      error: (err, _) => VikunjaErrorWidget(
-        error: err,
-        onRetry: () => ref.invalidate(projectsControllerProvider),
-      ),
+      error: (err, _) {
+        final hasCache =
+            ref.watch(hasOfflineCacheProvider).valueOrNull ?? false;
+        return VikunjaErrorWidget(
+          error: err,
+          onRetry: () => ref.invalidate(projectsControllerProvider),
+          onContinueOffline: hasCache
+              ? () async {
+                  await ref
+                      .read(offlineControllerProvider.notifier)
+                      .enterOffline();
+                  ref.invalidate(projectsControllerProvider);
+                }
+              : null,
+        );
+      },
       loading: () => const LoadingWidget(),
     );
   }

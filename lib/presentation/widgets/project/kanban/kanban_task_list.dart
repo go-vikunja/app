@@ -8,6 +8,7 @@ import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
+import 'package:vikunja_app/presentation/widgets/project/kanban/blocking_arrows.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/kanban_task_item.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/kanban_widget.dart';
 import 'package:vikunja_app/presentation/widgets/project/kanban/task_drag_target.dart';
@@ -199,7 +200,7 @@ class _TaskListState extends ConsumerState<TaskList> {
                     child: TaskTile(task: tasks[i]),
                   ),
                   child: InkWell(
-                    child: TaskTile(task: tasks[i]),
+                    child: _anchoredTile(tasks[i]),
                     onTap: () {
                       _navigateToTask(context, tasks, i);
                     },
@@ -234,6 +235,15 @@ class _TaskListState extends ConsumerState<TaskList> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _anchoredTile(Task task) {
+    final registry = KanbanTaskRegistry.maybeOf(context);
+    if (registry == null) return TaskTile(task: task);
+    return KeyedSubtree(
+      key: registry.keyFor(task.id),
+      child: TaskTile(task: task),
     );
   }
 

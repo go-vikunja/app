@@ -473,6 +473,62 @@ void main() {
     });
   });
 
+  group('Client.composeGetUri', () {
+    const apiBase = 'http://192.168.1.31:3456/api/v1';
+    const filter = 'done = false && (due_date > now || reminders > now)';
+
+    test('uses /tasks not /tasks/all', () {
+      final uri = Client.composeGetUri(apiBase, '/tasks', {
+        'filter': [filter],
+        'filter_include_nulls': ['false'],
+      });
+
+      expect(uri.path, '/api/v1/tasks');
+      expect(uri.path, isNot(contains('/all')));
+    });
+
+    test('keeps filter with = and && as a single query value', () {
+      final uri = Client.composeGetUri(apiBase, '/tasks', {
+        'filter': [filter],
+        'filter_include_nulls': ['false'],
+      });
+
+      expect(uri.queryParameters['filter'], filter);
+      expect(uri.queryParametersAll['filter'], [filter]);
+      expect(
+        uri.queryParameters.containsKey(
+          'false && (due_date > now || reminders > now)',
+        ),
+        isFalse,
+      );
+      expect(uri.query, contains('done+%3D+false'));
+      expect(uri.query, contains('%26%26'));
+    });
+
+    test('does not append an empty fragment', () {
+      final uri = Client.composeGetUri(apiBase, '/tasks', {
+        'filter': [filter],
+      });
+
+      expect(uri.fragment, isEmpty);
+      expect(uri.hasFragment, isFalse);
+      expect(uri.toString(), isNot(contains('#')));
+    });
+
+    test('ignores query embedded in the url when queryParameters is set', () {
+      final uri = Client.composeGetUri(
+        apiBase,
+        '/tasks?filter=done=false && (due_date > now || reminders > now)',
+        {
+          'filter': [filter],
+        },
+      );
+
+      expect(uri.queryParameters['filter'], filter);
+      expect(uri.queryParameters.length, 1);
+    });
+  });
+
   group('Client.postUnauthenticated', () {
     test('sends request without Authorization header', () async {
       final mockSettings = MockSettingsDatasource()

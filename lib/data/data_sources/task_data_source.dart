@@ -87,6 +87,40 @@ class TaskDataSource extends RemoteDataSource {
     );
   }
 
+  Future<Response<List<TaskDto>>> search(String query) {
+    return client.get(
+      url: '/tasks',
+      mapper: (body) {
+        return convertList(body, (result) => TaskDto.fromJson(result));
+      },
+      queryParameters: {
+        's': [query],
+        'sort_by': ['done'],
+      },
+    );
+  }
+
+  Future<Response<Object>> addRelation({
+    required int taskId,
+    required int otherTaskId,
+    required String relationKind,
+  }) {
+    return client.put(
+      url: '/tasks/$taskId/relations',
+      body: {'other_task_id': otherTaskId, 'relation_kind': relationKind},
+    );
+  }
+
+  Future<Response<Object>> deleteRelation({
+    required int taskId,
+    required int otherTaskId,
+    required String relationKind,
+  }) {
+    return client.delete(
+      url: '/tasks/$taskId/relations/$relationKind/$otherTaskId',
+    );
+  }
+
   Future<TaskStatusUpdate> downloadAttachment(
     int taskId,
     TaskAttachmentDto attachment,

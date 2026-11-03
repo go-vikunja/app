@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
@@ -91,15 +94,30 @@ class TaskPageController extends _$TaskPageController
     _setProjectOfTask(projectsResponse, tasks);
 
     updateWidget();
-    ref
-        .read(notificationProvider)
-        ?.scheduleDueNotifications(ref.read(taskRepositoryProvider));
+    _scheduleDueNotifications();
 
     var showOnlyDueDateTasks = await ref
         .read(settingsRepositoryProvider)
         .getLandingPageOnlyDueDateTasks();
 
     return TaskPageModel(tasks, showOnlyDueDateTasks, defaultProjectId, false);
+  }
+
+  void _scheduleDueNotifications() {
+    final handler = ref.read(notificationProvider);
+    if (handler == null) return;
+
+    unawaited(
+      handler
+          .scheduleDueNotifications(ref.read(taskRepositoryProvider))
+          .catchError((Object e, StackTrace s) {
+            developer.log(
+              'Failed to schedule due notifications',
+              error: e,
+              stackTrace: s,
+            );
+          }),
+    );
   }
 
   void _setProjectOfTask(
