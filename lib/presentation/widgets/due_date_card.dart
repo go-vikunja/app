@@ -1,3 +1,4 @@
+import 'package:clock/clock.dart';
 import 'package:flutter/material.dart';
 import 'package:vikunja_app/core/utils/misc.dart';
 
@@ -8,7 +9,7 @@ class DueDateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    var difference = dueDate.difference(DateTime.now());
+    var difference = dueDate.difference(clock.now());
     var textStyle = _getTextStyle(context, difference);
     var bgColor = _getBackgroundColor(difference, context);
 

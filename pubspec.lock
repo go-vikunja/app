@@ -234,7 +234,7 @@ packages:
     source: hosted
     version: "0.4.2"
   clock:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: clock
       sha256: fddb70d9b5277016c77a80201021d40a2247104d9f4aa7bab7157b7e3f05b84b
@@ -386,7 +386,7 @@ packages:
     source: hosted
     version: "1.8.1"
   fake_async:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: fake_async
       sha256: "5368f224a74523e8d2e7399ea1638b37aecfca824a3cc4dfdf77bf1fa905ac44"
@@ -673,7 +673,7 @@ packages:
     source: hosted
     version: "3.0.0"
   flutter_secure_storage_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: flutter_secure_storage_platform_interface
       sha256: "8ceea1223bee3c6ac1a22dabd8feefc550e4729b3675de4b5900f55afcb435d6"
@@ -1634,7 +1634,7 @@ packages:
     source: hosted
     version: "3.2.5"
   url_launcher_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: url_launcher_platform_interface
       sha256: "552f8a1e663569be95a8190206a38187b531910283c3e982193e4f2733f01029"
@@ -1874,7 +1874,7 @@ packages:
     source: hosted
     version: "0.9.1+2"
   workmanager_platform_interface:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: workmanager_platform_interface
       sha256: f40422f10b970c67abb84230b44da22b075147637532ac501729256fcea10a47

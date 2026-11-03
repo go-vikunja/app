@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer' as developer;
 
+import 'package:clock/clock.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -62,7 +63,7 @@ Future<void> completeTask(String taskID) async {
 }
 
 WidgetTask convertTask(Task task) {
-  final now = DateTime.now();
+  final now = clock.now();
   final today = DateTime(now.year, now.month, now.day);
   final effectiveDueDate = task.hasDueDate ? task.dueDate : null;
   final dueLocal = effectiveDueDate?.toLocal();

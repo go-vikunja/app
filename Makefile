@@ -11,6 +11,11 @@ endif
 test:
 	$(FLUTTER) test
 
+.PHONY: coverage
+coverage:
+	$(FLUTTER) test --coverage
+	dart run tool/coverage_report.dart
+
 .PHONY: build-all
 build-all: build-release build-debug build-profile
 
