@@ -1513,7 +1513,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     ),
                   if (attributes.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    SectionCard(children: attributes),
+                    _AttributeCard(attributes: attributes),
                   ],
                   if (task.parentTasks.isNotEmpty)
                     ParentTasksBlock(
@@ -1957,9 +1957,60 @@ class _PendingNote extends StatelessWidget {
   }
 }
 
-/// One row of the attribute card: an icon, the name in a column of its
-/// own and the value at the end; the value goes under the name when the
-/// two do not fit side by side, as at a large text size. [value] gets the
+/// The attribute card, whose rows share one column for their names, as
+/// wide as the widest name on one line, so that they line up and go from
+/// side by side to stacked together.
+class _AttributeCard extends StatelessWidget {
+  const new({required this.attributes});
+
+  final List<_Attribute> attributes;
+
+  static const _minLabelWidth = 96.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final textScaler = MediaQuery.textScalerOf(context);
+    final style = _Attribute.nameStyle(context);
+    final direction = Directionality.of(context);
+    double widthOf(String label) {
+      final painter = TextPainter(
+        text: TextSpan(text: label, style: style),
+        textScaler: textScaler,
+        textDirection: direction,
+        maxLines: 1,
+      )..layout();
+      final width = painter.width;
+      painter.dispose();
+      return width;
+    }
+
+    // Android 14 and later scale text nonlinearly: the minimum grows as the
+    // names' own size does, not as a font size of 96.
+    final size = style?.fontSize ?? 14;
+    final minWidth = _minLabelWidth * textScaler.scale(size) / size;
+    final width = attributes
+        .map((attribute) => widthOf(attribute.label))
+        .fold(minWidth, math.max)
+        .ceilToDouble();
+    return _NameColumn(
+      width: width,
+      child: SectionCard(children: attributes),
+    );
+  }
+}
+
+class _NameColumn extends InheritedWidget {
+  const new({required this.width, required super.child});
+
+  final double width;
+
+  @override
+  bool updateShouldNotify(_NameColumn oldWidget) => width != oldWidget.width;
+}
+
+/// One row of the attribute card: an icon, the name in the card's column
+/// and the value at the end; the value goes under the name when the two do
+/// not fit side by side, as at a large text size. [value] gets the
 /// alignment of the side it is on.
 class _Attribute extends StatelessWidget {
   const new({
@@ -1996,20 +2047,28 @@ class _Attribute extends StatelessWidget {
   /// reach on its own.
   final bool merge;
 
-  static const _labelWidth = 96.0;
   static const _minValueWidth = 120.0;
+
+  /// Bold under the platform's bold text setting, as [Text] draws it, so
+  /// that the card measures what is drawn.
+  static TextStyle? nameStyle(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return MediaQuery.boldTextOf(context)
+        ? style?.merge(const TextStyle(fontWeight: FontWeight.bold))
+        : style;
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final labelWidth = MediaQuery.textScalerOf(context).scale(_labelWidth);
-    final name = Text(
-      label,
-      style: theme.textTheme.bodyMedium?.copyWith(
-        color: colors.onSurfaceVariant,
-      ),
-    );
+    final labelWidth = context
+        .dependOnInheritedWidgetOfExactType<_NameColumn>()!
+        .width;
+    final name = Text(label, style: nameStyle(context));
     final glyph = Icon(icon, size: 20, color: colors.onSurfaceVariant);
     final row = DefaultTextStyle.merge(
       style: theme.textTheme.bodyMedium,
@@ -2045,7 +2104,12 @@ class _Attribute extends StatelessWidget {
                 children: [
                   glyph,
                   const SizedBox(width: 16),
-                  SizedBox(width: labelWidth, child: name),
+                  // At least the column: a name a fraction wider than
+                  // measured takes from the value instead of wrapping.
+                  ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: labelWidth),
+                    child: name,
+                  ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Align(

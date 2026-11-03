@@ -56,7 +56,7 @@ void main() {
     double width = 360,
   }) async {
     // Tall enough for the whole sheet, which builds its rows lazily.
-    usePhoneSurface(tester, logicalSize: Size(width, 1800));
+    usePhoneSurface(tester, logicalSize: Size(width, 2200));
     await pumpSignedInApp(tester, sync: data, now: now);
     await tester.tap(find.text(title));
     await tester.pumpAndSettle();
@@ -385,12 +385,57 @@ void main() {
   testWidgets('the attribute card puts each value beside its name', (
     tester,
   ) async {
-    await openDetail(tester, 'Quarterly report');
+    // The test font's names are wider than Roboto's; at 360 they would not
+    // leave the value room (task_detail_attribute_names_test.dart measures
+    // a phone in Roboto).
+    await openDetail(tester, 'Quarterly report', width: 480);
 
     final name = tester.getRect(find.text(en.taskDetailDueDateRow));
     final value = tester.getRect(find.text('Oct 12, 2026 9:30 AM'));
     expect(value.left, greaterThan(name.right));
     expect(value.center.dy, closeTo(name.center.dy, 1));
+  });
+
+  Finder sheetText(String text) => find.descendant(
+    of: find.byType(TaskDetailSheet),
+    matching: find.text(text),
+  );
+
+  bool onOneLine(WidgetTester tester, String text) {
+    final paragraph = tester.renderObject<RenderParagraph>(sheetText(text));
+    return paragraph.size.height ==
+        paragraph.getMinIntrinsicHeight(double.infinity);
+  }
+
+  testWidgets('a long German name stays on one line beside its value', (
+    tester,
+  ) async {
+    useLocale(tester, const Locale('de'));
+    await openDetail(tester, 'Quarterly report', width: 600);
+
+    expect(onOneLine(tester, de.taskDetailAssignees), isTrue);
+    final name = tester.getRect(sheetText(de.taskDetailAssignees));
+    final value = tester.getRect(sheetText('Alice Example'));
+    expect(value.left, greaterThan(name.right));
+  });
+
+  testWidgets('every row puts its value under its name when the longest '
+      'name leaves too little room beside it', (tester) async {
+    useLocale(tester, const Locale('de'));
+    await openDetail(tester, 'Quarterly report', width: 400);
+
+    for (final (label, value) in [
+      (de.taskDetailAssignees, 'Alice Example'),
+      (de.taskDetailPriority, de.priorityHigh),
+    ]) {
+      expect(onOneLine(tester, label), isTrue, reason: label);
+      expect(
+        tester.getRect(sheetText(value)).top,
+        greaterThanOrEqualTo(tester.getRect(sheetText(label)).bottom),
+        reason: label,
+      );
+    }
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('at 200 % text the attribute card puts each value under its '
