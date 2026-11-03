@@ -93,6 +93,7 @@ void main() async {
       options.addIntegration(LoggingIntegration());
       options.enableLogs = true;
       options.tracesSampleRate = 1.0;
+      // ignore: experimental_member_use
       options.profilesSampleRate = 1.0;
       options.beforeSend = (event, hint) {
         // Filter out network unreachability errors (Cronet exceptions)

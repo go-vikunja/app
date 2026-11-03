@@ -7,6 +7,7 @@ import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/presentation/manager/pagination_mixin.dart';
+import 'package:vikunja_app/presentation/manager/project_controller.dart';
 import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
 part 'task_page_controller.g.dart';
@@ -61,14 +62,18 @@ class TaskPageController extends _$TaskPageController
     await loadMoreItems(
       fetcher: (page) => _getAllFiltered(page: page),
       stateUpdater: (newTasks) async {
+        final typed = newTasks as List<Task>;
         var projectsResponse = await ref
             .read(projectRepositoryProvider)
             .getAll();
-        _setProjectOfTask(projectsResponse, newTasks as List<Task>);
+        _setProjectOfTask(projectsResponse, typed);
 
         final latestModel = state.value;
         if (latestModel != null) {
-          final updatedTasks = [...latestModel.tasks, ...newTasks];
+          final updatedTasks = mergeAndRebuildTree(
+            latestModel.tasks,
+            typed,
+          );
           state = AsyncData(
             latestModel.copyWith(tasks: updatedTasks, isLoadingNextPage: false),
           );
@@ -89,6 +94,8 @@ class TaskPageController extends _$TaskPageController
     var projectsResponse = await ref.read(projectRepositoryProvider).getAll();
 
     _setProjectOfTask(projectsResponse, tasks);
+
+    tasks = flattenAndRemoveSubtasks(tasks);
 
     updateWidget();
     ref

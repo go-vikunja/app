@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(dart:*)",
+      "Shell(git:*)"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}
