@@ -2,9 +2,11 @@
 # Takes the store screenshots on an Android emulator or an iOS simulator, one
 # motif at a time: open the motif on the device, press Enter, and the script
 # saves the screen into the fastlane layout (docs/store-listing.md). It sets a
-# clean status bar (9:41, full battery and signal, no notifications) and, on
-# Android, a 16:9 window, because Play takes no side longer than twice the
-# other; it restores the device when it ends, also after Ctrl-C.
+# clean status bar (full battery and Wi-Fi, no mobile signal, no
+# notifications) and, on Android, a 16:9 window, because Play takes no side
+# longer than twice the other; it restores the device when it ends, also after
+# Ctrl-C. The clock shows the device's own time at each shot, so it agrees
+# with the Overview's greeting and the due times.
 #
 # Usage: tool/store_screenshots.sh [--no-wait] android <emulator serial> <en-GB|de-DE> <phone|tablet> [motif...]
 #        tool/store_screenshots.sh [--no-wait] ios <simulator UDID> <en-GB|de-DE> <phone|tablet> [motif...]
@@ -35,9 +37,9 @@ motif_hint() {
     overview) echo "the Overview tab, scrolled to the top" ;;
     project-list) echo "the project Work (Arbeit) in its List view" ;;
     kanban) echo "the project Work (Arbeit) in its Kanban view" ;;
-    task-detail) echo "the task Fix the dishwasher (Spülmaschine reparieren) with its checklist" ;;
+    task-detail) echo "the task Fix the dishwasher (Spülmaschine reparieren), its sheet pulled up and at its top" ;;
     new-task) echo "the New task sheet from the Overview, with a title typed in" ;;
-    upcoming) echo "the Upcoming tab" ;;
+    upcoming) echo "the Upcoming tab, scrolled to the end of its list" ;;
     list-detail) echo "the Overview with Finish the quarterly report (Quartalsbericht fertigstellen) open beside it" ;;
   esac
 }
@@ -116,6 +118,7 @@ check_android() {
 
 prepare_android() {
   old_demo_allowed="$(android_value settings get global sysui_demo_allowed)"
+  old_12_24="$(android_value settings get system time_12_24)"
   old_size="$(android_value wm size | sed -n 's/^Override size: //p')"
   old_density="$(android_value wm density | sed -n 's/^Override density: //p')"
   local physical width height short long
@@ -129,11 +132,13 @@ prepare_android() {
 
   prepared=1
   adb_ shell settings put global sysui_demo_allowed 1
+  # The app writes 24-hour times in both languages.
+  adb_ shell settings put system time_12_24 24
   demo enter
-  demo clock -e hhmm 0941
   demo battery -e level 100 -e plugged false
-  demo network -e wifi show -e level 4
-  demo network -e mobile show -e datatype none -e level 4
+  # Without fully, Wi-Fi carries the no-internet mark.
+  demo network -e wifi show -e level 4 -e fully true
+  demo network -e mobile hide
   demo notifications -e visible false
   adb_ shell wm size "$window"
   echo "$device: demo mode on, window ${window} (was ${old_size:-$physical})"
@@ -146,12 +151,19 @@ restore_android() {
   else
     adb_ shell settings put global sysui_demo_allowed "$old_demo_allowed" || true
   fi
+  if [[ -z "$old_12_24" || "$old_12_24" == null ]]; then
+    adb_ shell settings delete system time_12_24 >/dev/null || true
+  else
+    adb_ shell settings put system time_12_24 "$old_12_24" || true
+  fi
   adb_ shell wm size "${old_size:-reset}" || true
   adb_ shell wm density "${old_density:-reset}" || true
   echo "$device: demo mode off, window and density restored"
 }
 
 capture_android() {
+  demo clock -e hhmm "$(android_value date +%H%M)"
+  sleep 1
   adb_ exec-out screencap -p >"$1"
 }
 
@@ -166,7 +178,7 @@ check_ios() {
 
 prepare_ios() {
   prepared=1
-  xcrun simctl status_bar "$device" override --time 9:41 --dataNetwork wifi --wifiMode active --wifiBars 3 \
+  xcrun simctl status_bar "$device" override --dataNetwork wifi --wifiMode active --wifiBars 3 \
     --cellularMode active --cellularBars 4 --operatorName '' --batteryState charged --batteryLevel 100
   echo "$device: status bar overridden"
 }
@@ -177,6 +189,8 @@ restore_ios() {
 }
 
 capture_ios() {
+  xcrun simctl status_bar "$device" override --time "$(date +%-H:%M)"
+  sleep 1
   xcrun simctl io "$device" screenshot --type=png --mask=ignored "$1" >/dev/null
 }
 

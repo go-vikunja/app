@@ -31,7 +31,7 @@ The owner's decisions of 2026-11-02 behind it ([D77]): every project of the GitL
 
 - **Create the app** `Rurana`, with Play App Signing on the owner's key (part [2](#2-the-keys)); its id is `dev.coderoftime.rurana`, which creating the app registers for developer verification.
 - **Every form** as [store-listing.md](store-listing.md#google-play-console) answers it: store settings and contact details, the listing in both languages with the graphics of `branding/png/`, the privacy policy, App access with the public demo, Ads, Content rating, Target audience, News, Data safety, Government, Financial features, Health, Advertising ID. After the first upload, check that App content asks for no exact-alarm or foreground-service declaration.
-- **The screenshots:** the closed test needs the whole listing, screenshots included. The screenshot session ([releasing.md](releasing.md#the-website-and-the-store-listings) step 5, [store-listing.md](store-listing.md#screenshots)) needs the owner to sign in once on each emulator and simulator; it takes the App Store's screenshots at the same time.
+- **The screenshots:** the closed test needs the whole listing, screenshots included. The phone set in both languages is in `fastlane/metadata/android/*/images/phoneScreenshots/` (taken on 2026-11-03, [store-listing.md](store-listing.md#screenshots)); the tablet set is optional. The App Store's sets wait for a session on the simulators before the 1.0.0 submission ([before 1.0.0](#before-100)); TestFlight needs none.
 
 ### 5. The Apple account and the app record
 

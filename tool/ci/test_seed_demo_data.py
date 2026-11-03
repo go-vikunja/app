@@ -30,6 +30,7 @@ def project(id_, title, parent=0, owner=1):
 class FakeServer:
     def __init__(self, projects=(), labels=(), inbox_tasks=()):
         self.requests = []
+        self.tokens = []
         self.projects = [project(1, 'Inbox'), *projects]
         self.labels = list(labels)
         self.inbox_tasks = list(inbox_tasks)
@@ -37,6 +38,7 @@ class FakeServer:
 
     def __call__(self, method, path, token=None, body=None, version='v1', ctype='application/json'):
         self.requests.append((method, path, body))
+        self.tokens.append(token)
         if method == 'GET':
             if path.startswith('/projects?'):
                 return self.projects
@@ -63,7 +65,7 @@ def seeded(lang):
     server = FakeServer()
     with mock.patch.object(seed_demo_data, 'call', server), \
             mock.patch.object(seed_demo_data, 'at', lambda days=0, hours=0: f'at({days},{hours})'):
-        seed_demo_data.seed('token', ME, OTHER, seed_demo_data.TEXTS[lang])
+        seed_demo_data.seed('token', ME, 'token2', OTHER, seed_demo_data.TEXTS[lang])
     return server
 
 
@@ -96,7 +98,10 @@ class DataSetTest(unittest.TestCase):
 class SeedTest(unittest.TestCase):
     def test_the_german_default_sends_what_it_always_sent(self):
         server = seeded('de')
-        self.assertEqual(server.sent('PATCH'), [('/user/settings/general', {'name': 'Tara'})])
+        self.assertEqual(server.sent('PATCH'), [('/user/settings/general', {'name': 'Tara'}),
+                                                ('/user/settings/general', {'name': 'Sam'})])
+        self.assertEqual([token for (method, _, _), token in zip(server.requests, server.tokens) if method == 'PATCH'],
+                         ['token', 'token2'])
         projects = [body for path, body in server.sent('PUT') if path == '/projects']
         self.assertEqual(projects, [
             {'title': 'Arbeit', 'hex_color': '2e7d32', 'identifier': 'WORK', 'parent_project_id': 0},

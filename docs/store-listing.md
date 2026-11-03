@@ -83,14 +83,14 @@ The About page's links are in `app/lib/app/legal.dart`, and `tool/check_store_me
 
 | Form | Motifs |
 |---|---|
-| Phone | 01 Overview, 02 a project's list (Work / Arbeit), 03 its Kanban board, 04 the task detail (Fix the dishwasher / Spülmaschine reparieren, with its checklist), 05 the New task sheet, 06 Upcoming |
+| Phone | 01 Overview, 02 a project's list (Work / Arbeit), 03 its Kanban board, 04 the task detail (Fix the dishwasher / Spülmaschine reparieren, its sheet pulled up and at its top: the title, the date, priority, progress and label; its checklist does not fit beside the title in 16:9), 05 the New task sheet, 06 Upcoming (scrolled to the end of its list: the days after tomorrow, one after the other, without repeating the Overview and with the New task button over empty space) |
 | Tablet | 01 the Overview with a task open in the pane beside it |
 
 **Devices and sizes:**
 
 | Store | Device | Size | Rule |
 |---|---|---|---|
-| Play phone | an Android phone emulator, window set to 16:9 by the script | 1080 × 1920 | 2–8 screenshots; JPEG or 24-bit PNG without alpha; sides 320–3840 px, the long side at most twice the short one; at least 4 of at least 1080 px for promotion ([assets][play-assets]) |
+| Play phone | a Pixel 9 emulator from a Google Play system image (1080 × 2424), window set to 16:9 by the script | 1080 × 1920 | 2–8 screenshots; JPEG or 24-bit PNG without alpha; sides 320–3840 px, the long side at most twice the short one; at least 4 of at least 1080 px for promotion ([assets][play-assets]) |
 | Play tablet (optional) | the Pixel Tablet emulator, 16:9 by the script | 2560 × 1440 | sides 1080–7680 px; Google promotes large screens with at least 4 |
 | App Store iPhone 6.9" | iPhone 17 Pro Max simulator | 1320 × 2868 | no alpha, 1–10 per size and language ([screenshot specifications][apple-screenshots]) |
 | App Store iPhone 6.3" | iPhone 17 Pro simulator | 1206 × 2622 | Apple's page names this size as required in its text and the 6.9" one in its table, so both are uploaded |
@@ -100,9 +100,9 @@ The About page's links are in `app/lib/app/legal.dart`, and `tool/check_store_me
 
 1. Start the local test server and create both test users: `docker-compose -f test_servers/docker-compose.yaml up -d`, `tool/wait_for_test_servers.sh`, `tool/seed_e2e_user.sh`, `E2E_USER_ENV=test_servers/seed/e2e-user-2.env tool/seed_e2e_user.sh`.
 2. Seed the demo data: `python3 -I tool/seed_demo_data.py --lang en`. The English and the German set have the same projects, labels, tasks, saved filter and board; `--reset --lang de` replaces one with the other on the same account, so nobody has to sign in again. Dates are relative to the moment of seeding, so seed shortly before.
-3. On each device, sign in to `http://localhost:34527` with the E2E user (the Android emulator needs `adb reverse tcp:34527 tcp:34527`) and wait for the first sync. Light mode, the app's language set to the listing's (Android 13 and later: `adb shell cmd locale set-app-locales dev.coderoftime.rurana --locales en-GB`; iOS: the app's language in Settings).
-4. Run `tool/store_screenshots.sh android <emulator serial> <en-GB|de-DE> <phone|tablet>` or `tool/store_screenshots.sh ios <simulator UDID> …`. It refuses anything but an emulator (`emulator-<port>` that reports itself as one) or a booted simulator. It sets the status bar to 9:41 with a full battery and signal and no notifications (Android's SystemUI demo mode; `xcrun simctl status_bar … override` on iOS), on Android a 16:9 window, then asks for one motif after the other; open the motif and press Enter, `s` skips, `q` ends. Each screen is saved without alpha under the paths above. On exit, also after Ctrl-C or an error, it ends the demo mode and restores the window size and density, or clears the status bar. `--no-wait` with motif names takes them at once, for a device that already shows them.
-5. Pull to refresh after a `--reset`, then take the other language.
+3. On each device, sign in to `http://localhost:34527` with the E2E user (the Android emulator needs `adb reverse tcp:34527 tcp:34527`, and a Google Play system image: the sign-in goes through the browser, and an AOSP image has only the WebView Browser Tester, without Custom Tabs) and wait for the first sync. Light mode, the app's language set to the listing's (Android 13 and later: `adb shell cmd locale set-app-locales dev.coderoftime.rurana --locales en-GB`; iOS: the app's language in Settings).
+4. Run `tool/store_screenshots.sh android <emulator serial> <en-GB|de-DE> <phone|tablet>` or `tool/store_screenshots.sh ios <simulator UDID> …`. It refuses anything but an emulator (`emulator-<port>` that reports itself as one) or a booted simulator. It sets a clean status bar: a full battery and Wi-Fi, no notifications, on Android no mobile signal and the 24-hour clock (Android's SystemUI demo mode; `xcrun simctl status_bar … override` on iOS), and at each shot the device's own time, which the Overview's greeting and the due times follow; on Android also a 16:9 window, then asks for one motif after the other; open the motif and press Enter, `s` skips, `q` ends. Each screen is saved without alpha under the paths above. On exit, also after Ctrl-C or an error, it ends the demo mode and restores the clock format, the window size and the density, or clears the status bar. `--no-wait` with motif names takes them at once, for a device that already shows them.
+5. Pull to refresh after a `--reset`, set the app's language, then take the other language. A page of a project the reset deleted says it is gone; go back to the list. Quick Add Magic knows only English words, so the German New task sheet gets its date from the date row („Morgen“) instead of the title.
 6. `python3 -I tool/check_store_metadata.py`, then look at every screenshot: no stranger's data, nothing but Rurana's own screens (no web sign-in page with Vikunja's branding), German screens with German data.
 
 ## Google Play Console

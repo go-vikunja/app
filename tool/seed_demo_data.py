@@ -34,6 +34,9 @@ PROJECTS = (
     ('old', '', None, None, True),
 )
 SHARED_PROJECT = 'home'
+# The second user, who shares Home and is assigned the dishwasher; without a
+# name the app shows the username.
+OTHER_NAME = 'Sam'
 LABELS = (('chores', 'f5a623'), ('urgent', 'd32f2f'), ('garage', '2e7d32'), ('waiting', '78909c'))
 # project key ('inbox' is the server's), title key, labels, assignees, fields;
 # due is (days, hours) from now and description names a text.
@@ -212,9 +215,14 @@ def inbox_id(token):
     return next(p['id'] for p in all_projects(token) if p['title'] == 'Inbox' and p['id'] > 0)
 
 
-def seed(token, me, other, texts):
-    call('PATCH', '/user/settings/general', token, {'name': texts['name']}, version='v2',
+def set_name(token, name):
+    call('PATCH', '/user/settings/general', token, {'name': name}, version='v2',
          ctype='application/merge-patch+json')
+
+
+def seed(token, me, other_token, other, texts):
+    set_name(token, texts['name'])
+    set_name(other_token, OTHER_NAME)
     ids = {'inbox': inbox_id(token)}
     for key, colour, identifier, parent, _ in PROJECTS:
         ids[key] = call('PUT', '/projects', token, {
@@ -267,7 +275,7 @@ def main(argv):
     BASE = args.base.rstrip('/')
     texts = TEXTS[args.lang]
     token, me = login('e2e-user.env')
-    _, other = login('e2e-user-2.env')
+    other_token, other = login('e2e-user-2.env')
     if args.reset:
         reset(token, me)
     titles = {p['title'] for p in all_projects(token)}
@@ -277,7 +285,7 @@ def main(argv):
     others = [lang for lang, other_texts in TEXTS.items() if other_texts['work'] in titles]
     if others:
         raise SystemExit(f'the {others[0]} demo data is on this server; add --reset to replace it')
-    seed(token, me, other, texts)
+    seed(token, me, other_token, other, texts)
     print(f'demo data created ({args.lang})')
 
 
