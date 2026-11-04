@@ -33,7 +33,35 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
     if (tasksResponse.isSuccessful) {
       updateTotalPages(tasksResponse.toSuccess().headers);
       final tasks = tasksResponse.toSuccess().body;
-      return ProjectPageModel(project, 0, tasks, [], displayDoneTask, false);
+
+      // The project opens on its first view. If that is a kanban view, its
+      // buckets have to be loaded here too, otherwise the board stays empty
+      // until the user switches to another view and back.
+      var buckets = <Bucket>[];
+      if (project.views.isNotEmpty &&
+          project.views.first.viewKind == ViewKind.kanban) {
+        final bucketsResponse = await _loadBuckets(
+          projectId: project.id,
+          viewId: project.views.first.id,
+        );
+        switch (bucketsResponse) {
+          case SuccessResponse<List<Bucket>>():
+            buckets = bucketsResponse.body;
+          case ErrorResponse<List<Bucket>>():
+            throw Exception(bucketsResponse.error.toString());
+          case ExceptionResponse<List<Bucket>>():
+            throw Exception(bucketsResponse.message);
+        }
+      }
+
+      return ProjectPageModel(
+        project,
+        0,
+        tasks,
+        buckets,
+        displayDoneTask,
+        false,
+      );
     } else if (tasksResponse.isException) {
       throw Exception(tasksResponse.toException().message);
     } else {
