@@ -16,8 +16,10 @@ import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
+import 'package:vikunja_app/presentation/manager/widget_launch_controller.dart';
 import 'package:vikunja_app/presentation/pages/project/project_list_page.dart';
 import 'package:vikunja_app/presentation/pages/settings_page.dart';
+import 'package:vikunja_app/presentation/pages/task/task_edit_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_list_page.dart';
 import 'package:vikunja_app/presentation/widgets/task/add_task_dialog.dart';
 
@@ -113,14 +115,48 @@ class HomePageState extends ConsumerState<HomePage> {
   void scheduleIntent() async {
     try {
       platform.setMethodCallHandler((call) async {
-        return showAddItemDialog(call.arguments as String);
+        switch (call.method) {
+          case "open_add_task":
+            return showAddItemDialog(call.arguments as String?);
+          case "open_task":
+            return openTaskFromWidget(call.arguments as String?);
+        }
       });
 
-      String? argument = await platform.invokeMethod<String>("isQuickTile", "");
-      return showAddItemDialog(argument);
+      final launch = await platform.invokeMethod("isQuickTile", "");
+      if (launch is Map) {
+        final method = launch["method"];
+        if (method == "open_add_task") {
+          await showAddItemDialog(launch["argument"] as String?);
+        } else if (method == "open_task") {
+          await openTaskFromWidget(launch["argument"] as String?);
+        }
+      }
     } catch (e) {
       developer.log("Error $e");
     }
+  }
+
+  Future<void> openTaskFromWidget(String? taskId) async {
+    developer.log('open_task from widget, taskId=$taskId');
+    final task = await ref
+        .read(widgetLaunchControllerProvider)
+        .openTask(taskId);
+
+    if (!mounted) {
+      developer.log('open_task: HomePage unmounted, dropping navigation');
+      return;
+    }
+    if (task == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).failedToOpenTask)),
+      );
+      return;
+    }
+
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => TaskEditPage(task: task)));
   }
 
   Future<dynamic> showAddItemDialog(String? title) async {
