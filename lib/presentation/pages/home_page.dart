@@ -35,7 +35,12 @@ class HomePageState extends ConsumerState<HomePage> {
   Widget? drawerItem;
   NotificationHandler? _notificationHandler;
 
-  List<Widget> widgets = [TaskListPage(), ProjectListPage(), SettingsPage()];
+  List<Widget> widgets = [
+    TaskListPage(),
+    ProjectListPage(),
+    ProjectListPage(filters: true),
+    SettingsPage(),
+  ];
 
   List<NavigationDestination> navbarItems(BuildContext context) => [
     NavigationDestination(
@@ -45,6 +50,10 @@ class HomePageState extends ConsumerState<HomePage> {
     NavigationDestination(
       icon: Icon(Icons.list),
       label: AppLocalizations.of(context).projectsTab,
+    ),
+    NavigationDestination(
+      icon: Icon(Icons.filter_alt_outlined),
+      label: AppLocalizations.of(context).savedFiltersTitle,
     ),
     NavigationDestination(
       icon: Icon(Icons.settings),

@@ -223,5 +223,9 @@
   "versionDialogUsed": "Your server version: {versionString}",
   "@versionDialogUsed": {
     "placeholders": { "versionString": { "type": "String" } }
+  },
+  "savedFiltersTitle": "Filters",
+  "@savedFiltersTitle": {
+    "description": "Title of the tab and page that list saved filters"
   }
 }
