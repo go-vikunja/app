@@ -10,6 +10,7 @@ import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
 import 'package:vikunja_app/core/utils/constants.dart';
+import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 import 'package:vikunja_app/main.dart';
@@ -124,15 +125,14 @@ class HomePageState extends ConsumerState<HomePage> {
   }
 
   Future<dynamic> showAddItemDialog(String? title) async {
-    var response = await ref.read(userRepositoryProvider).getCurrentUser();
+    var userResponse = await ref.read(userRepositoryProvider).getCurrentUser();
+    var projectsResponse = await ref.read(projectRepositoryProvider).getAll();
     var buildContext = context;
-    if (response.isSuccessful && buildContext.mounted) {
-      var defaultProjectId = response
-          .toSuccess()
-          .body
-          .settings
-          ?.defaultProjectId;
-      if (defaultProjectId == null || defaultProjectId == 0) {
+    if (userResponse.isSuccessful &&
+        projectsResponse.isSuccessful &&
+        buildContext.mounted) {
+      final projects = projectsResponse.toSuccess().body;
+      if (projects.isEmpty) {
         ScaffoldMessenger.of(buildContext).showSnackBar(
           SnackBar(
             content: Text(
@@ -140,23 +140,44 @@ class HomePageState extends ConsumerState<HomePage> {
             ),
           ),
         );
-      } else {
-        _addItemDialog(buildContext, defaultProjectId, title);
-        return Future.value();
+        return;
       }
+
+      var defaultProjectId = userResponse
+          .toSuccess()
+          .body
+          .settings
+          ?.defaultProjectId;
+      final selectedProjectId =
+          defaultProjectId != null &&
+              defaultProjectId != 0 &&
+              projects.any((project) => project.id == defaultProjectId)
+          ? defaultProjectId
+          : projects.first.id;
+
+      _addItemDialog(buildContext, selectedProjectId, projects, title);
+      return Future.value();
     }
   }
 
   void _addItemDialog(
     BuildContext context,
-    int defaultProjectId, [
+    int projectId,
+    List<Project> projects, [
     String? title,
   ]) {
     showDialog(
       context: context,
       builder: (_) => AddTaskDialog(
-        onAddTask: (title, dueDate) =>
-            _addTask(title, dueDate, defaultProjectId, context),
+        initialProjectId: projectId,
+        projects: projects,
+        onAddTask: (title, dueDate, selectedProjectId, priority) => _addTask(
+          title,
+          dueDate,
+          selectedProjectId ?? projectId,
+          priority,
+          context,
+        ),
         title: title,
       ),
     );
@@ -166,6 +187,7 @@ class HomePageState extends ConsumerState<HomePage> {
     String title,
     DateTime? dueDate,
     int defaultProjectId,
+    int priority,
     BuildContext context,
   ) async {
     final currentUser = ref.read(currentUserProvider);
@@ -178,6 +200,7 @@ class HomePageState extends ConsumerState<HomePage> {
       dueDate: dueDate,
       createdBy: currentUser,
       projectId: defaultProjectId,
+      priority: priority,
     );
 
     var success = await ref
