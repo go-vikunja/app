@@ -10,6 +10,15 @@ part 'projects_controller.g.dart';
 @riverpod
 class ProjectsController extends _$ProjectsController
     with PaginationMixin<Project> {
+  String get _currentSearchQuery => state.value?.searchQuery ?? '';
+
+  bool _isCurrentSearch(String searchQuery) {
+    final current = state.value;
+    return current != null &&
+        current.searchQuery == searchQuery &&
+        !current.isSearching;
+  }
+
   @override
   Future<ProjectListModel> build() async {
     resetPagination();
@@ -18,7 +27,10 @@ class ProjectsController extends _$ProjectsController
 
     if (response.isSuccessful) {
       updateTotalPages(response.toSuccess().headers);
-      return ProjectListModel(response.toSuccess().body);
+      return ProjectListModel(
+        response.toSuccess().body,
+        searchQuery: _currentSearchQuery,
+      );
     } else if (response.isException) {
       throw Exception(response.toException().message);
     } else {
@@ -27,13 +39,48 @@ class ProjectsController extends _$ProjectsController
   }
 
   void reload() async {
+    final searchQuery = _currentSearchQuery;
     state = const AsyncLoading();
     resetPagination();
 
-    var response = await loadProjects();
+    var response = await loadProjects(searchQuery: searchQuery);
     if (response.isSuccessful) {
       updateTotalPages(response.toSuccess().headers);
-      state = AsyncData(ProjectListModel(response.toSuccess().body));
+      state = AsyncData(
+        ProjectListModel(response.toSuccess().body, searchQuery: searchQuery),
+      );
+    } else if (response.isException) {
+      state = AsyncError(
+        response.toException().message,
+        response.toException().stackTrace,
+      );
+    } else {
+      state = AsyncError(response.toError().error, StackTrace.empty);
+    }
+  }
+
+  Future<void> setSearchQuery(String query) async {
+    final trimmed = query.trim();
+    final current = state.value;
+    if (current == null || trimmed == current.searchQuery) {
+      return;
+    }
+
+    state = AsyncData(
+      current.copyWith(searchQuery: trimmed, isSearching: true),
+    );
+
+    resetPagination();
+    var response = await loadProjects(searchQuery: trimmed);
+    if (state.value?.searchQuery != trimmed) {
+      return;
+    }
+
+    if (response.isSuccessful) {
+      updateTotalPages(response.toSuccess().headers);
+      state = AsyncData(
+        ProjectListModel(response.toSuccess().body, searchQuery: trimmed),
+      );
     } else if (response.isException) {
       state = AsyncError(
         response.toException().message,
@@ -49,15 +96,22 @@ class ProjectsController extends _$ProjectsController
     if (!canLoadNextPage) return;
 
     final currentModel = state.value;
-    if (currentModel == null) return;
+    if (currentModel == null || currentModel.isSearching) return;
 
+    final requestedSearchQuery = currentModel.searchQuery;
     state = AsyncData(currentModel.copyWith(isLoadingNextPage: true));
 
     await loadMoreItems(
-      fetcher: (page) => ref.read(projectRepositoryProvider).getAll(page: page),
+      fetcher: (page) => ref
+          .read(projectRepositoryProvider)
+          .getAll(
+            page: page,
+            search: requestedSearchQuery.isEmpty ? null : requestedSearchQuery,
+          ),
+      shouldApply: () => _isCurrentSearch(requestedSearchQuery),
       stateUpdater: (newProjects) {
         final latestModel = state.value;
-        if (latestModel != null) {
+        if (latestModel != null && _isCurrentSearch(requestedSearchQuery)) {
           state = AsyncData(
             latestModel.copyWith(
               projects: [
@@ -71,9 +125,10 @@ class ProjectsController extends _$ProjectsController
       },
     );
 
-    // Fallback
-    if (state.value?.isLoadingNextPage == true) {
-      state = AsyncData(state.value!.copyWith(isLoadingNextPage: false));
+    final latest = state.value;
+    if (latest?.isLoadingNextPage == true &&
+        latest?.searchQuery == requestedSearchQuery) {
+      state = AsyncData(latest!.copyWith(isLoadingNextPage: false));
     }
   }
 
@@ -82,26 +137,43 @@ class ProjectsController extends _$ProjectsController
     reload();
   }
 
-  Future<Response<List<Project>>> loadProjects() async {
-    var response = await ref.read(projectRepositoryProvider).getAll(page: 1);
+  Future<Response<List<Project>>> loadProjects({String? searchQuery}) async {
+    final query = searchQuery ?? _currentSearchQuery;
+    var response = await ref
+        .read(projectRepositoryProvider)
+        .getAll(page: 1, search: query.isEmpty ? null : query);
 
     if (response.isSuccessful) {
-      var successResponse = (response as SuccessResponse);
-      List<Project> topLevelProjects = successResponse.body
-          .where((e) => e.parentProjectId == 0)
-          .toList();
-      for (var topLevelProject in topLevelProjects) {
-        _findSubproject(topLevelProject, successResponse.body);
+      var successResponse = (response as SuccessResponse<List<Project>>);
+      if (query.isNotEmpty) {
+        return SuccessResponse(
+          successResponse.body,
+          successResponse.statusCode,
+          successResponse.headers,
+        );
       }
 
       return SuccessResponse(
-        topLevelProjects,
+        _asTopLevelTree(successResponse.body, successResponse.body),
         successResponse.statusCode,
         successResponse.headers,
       );
     }
 
     return response;
+  }
+
+  List<Project> _asTopLevelTree(
+    List<Project> candidates,
+    List<Project> allProjects,
+  ) {
+    final topLevelProjects = candidates
+        .where((e) => e.parentProjectId == 0)
+        .toList();
+    for (var topLevelProject in topLevelProjects) {
+      _findSubproject(topLevelProject, allProjects);
+    }
+    return topLevelProjects;
   }
 
   void _findSubproject(Project project, List<Project> projects) {

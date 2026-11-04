@@ -9,6 +9,8 @@ class ProjectPageModel {
   List<Bucket> buckets;
   bool displayDoneTask;
   bool isLoadingNextPage;
+  String searchQuery;
+  bool isSearching;
 
   ProjectPageModel(
     this.project,
@@ -16,8 +18,10 @@ class ProjectPageModel {
     this.tasks,
     this.buckets,
     this.displayDoneTask,
-    this.isLoadingNextPage,
-  );
+    this.isLoadingNextPage, {
+    this.searchQuery = '',
+    this.isSearching = false,
+  });
 
   ProjectPageModel copyWith({
     Project? project,
@@ -26,6 +30,8 @@ class ProjectPageModel {
     List<Bucket>? buckets,
     bool? displayDoneTask,
     bool? isLoadingNextPage,
+    String? searchQuery,
+    bool? isSearching,
   }) {
     return ProjectPageModel(
       project ?? this.project,
@@ -34,6 +40,8 @@ class ProjectPageModel {
       buckets ?? this.buckets,
       displayDoneTask ?? this.displayDoneTask,
       isLoadingNextPage ?? this.isLoadingNextPage,
+      searchQuery: searchQuery ?? this.searchQuery,
+      isSearching: isSearching ?? this.isSearching,
     );
   }
 }

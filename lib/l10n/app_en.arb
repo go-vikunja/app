@@ -223,5 +223,14 @@
   "versionDialogUsed": "Your server version: {versionString}",
   "@versionDialogUsed": {
     "placeholders": { "versionString": { "type": "String" } }
-  }
+  },
+  "search": "Search",
+  "@search": {
+    "description": "Tooltip and accessibility label for the search action."
+  },
+  "searchTasksHint": "Search tasks",
+  "searchProjectsHint": "Search projects",
+  "clearSearch": "Clear search",
+  "closeSearch": "Close search",
+  "noSearchResults": "No results"
 }

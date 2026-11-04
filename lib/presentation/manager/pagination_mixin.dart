@@ -23,6 +23,7 @@ mixin PaginationMixin<T> {
   Future<void> loadMoreItems({
     required Future<Response<List<Object>>> Function(int page) fetcher,
     required FutureOr<void> Function(List<Object> newItems) stateUpdater,
+    bool Function()? shouldApply,
   }) async {
     if (!hasMorePages || loadingNextPage) return;
 
@@ -34,6 +35,9 @@ mixin PaginationMixin<T> {
     try {
       final response = await fetcher(nextPage);
       if (response.isSuccessful) {
+        if (shouldApply != null && !shouldApply()) {
+          return;
+        }
         _currentPage = nextPage;
         updateTotalPages(response.toSuccess().headers);
         final items = response.toSuccess().body;
