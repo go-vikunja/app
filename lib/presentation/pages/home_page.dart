@@ -132,7 +132,7 @@ class HomePageState extends ConsumerState<HomePage> {
           .body
           .settings
           ?.defaultProjectId;
-      if (defaultProjectId == null || defaultProjectId == 0) {
+      if (defaultProjectId == null || defaultProjectId <= 0) {
         ScaffoldMessenger.of(buildContext).showSnackBar(
           SnackBar(
             content: Text(

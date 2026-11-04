@@ -45,7 +45,7 @@ class TaskListPage extends ConsumerWidget {
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: () {
-              if (model.defaultProjectId == 0) {
+              if (model.defaultProjectId <= 0) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(l10n.selectDefaultProject)),
                 );
