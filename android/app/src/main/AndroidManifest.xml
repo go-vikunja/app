@@ -48,6 +48,12 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".widget.WidgetViewPickerActivity"
+            android:exported="false"
+            android:taskAffinity=""
+            android:label="Switch view"
+            android:theme="@android:style/Theme.DeviceDefault.Dialog" />
         <meta-data android:name="io.flutter.network-policy" android:resource="@xml/network_security_config"/>
         <activity
             android:name=".MainActivity"
