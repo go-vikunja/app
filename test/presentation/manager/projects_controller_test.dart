@@ -20,6 +20,11 @@ class MockProjectRepository implements ProjectRepository {
   }
 
   @override
+  Future<Response<Project>> get(int projectId) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Response<Project>> update(Project p) {
     throw UnimplementedError();
   }

@@ -16,6 +16,7 @@ import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
 import 'package:vikunja_app/presentation/manager/settings_controller.dart';
 import 'package:vikunja_app/presentation/manager/task_page_controller.dart';
+import 'package:vikunja_app/presentation/pages/project/project_detail_page.dart';
 import 'package:vikunja_app/presentation/pages/project/project_list_page.dart';
 import 'package:vikunja_app/presentation/pages/settings_page.dart';
 import 'package:vikunja_app/presentation/pages/task/task_list_page.dart';
@@ -113,14 +114,47 @@ class HomePageState extends ConsumerState<HomePage> {
   void scheduleIntent() async {
     try {
       platform.setMethodCallHandler((call) async {
+        if (call.method == "open_project") {
+          return openProject(call.arguments as int);
+        }
         return showAddItemDialog(call.arguments as String);
       });
+
+      // Set when the app was launched by tapping the header of a widget
+      // which is configured to show a project.
+      int? projectId = await platform.invokeMethod<int>("takeWidgetProjectId");
+      if (projectId != null) {
+        return openProject(projectId);
+      }
 
       String? argument = await platform.invokeMethod<String>("isQuickTile", "");
       return showAddItemDialog(argument);
     } catch (e) {
       developer.log("Error $e");
     }
+  }
+
+  Future<dynamic> openProject(int projectId) async {
+    if (projectId == 0) return;
+
+    var response = await ref.read(projectRepositoryProvider).get(projectId);
+    if (!response.isSuccessful) {
+      developer.log("Could not load project $projectId");
+      return;
+    }
+
+    var project = response.toSuccess().body;
+    if (!mounted) return;
+
+    return Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ProjectDetailPage(
+          key: Key(project.id.toString()),
+          project: project,
+        ),
+      ),
+    );
   }
 
   Future<dynamic> showAddItemDialog(String? title) async {

@@ -16,6 +16,11 @@ class ProjectRepositoryImpl extends ProjectRepository {
   }
 
   @override
+  Future<Response<Project>> get(int projectId) async {
+    return (await _dataSource.get(projectId)).toDomain();
+  }
+
+  @override
   Future<Response<List<Project>>> getAll({int page = 1}) async {
     Response<List<Project>> projectsResponse = (await _dataSource.getAll(
       page: page,
