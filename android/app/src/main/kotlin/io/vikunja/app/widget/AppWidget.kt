@@ -184,6 +184,7 @@ class AppWidget : GlanceAppWidget() {
 
         val viewType = prefs.getString("widget_view_$appWidgetId", "today") ?: "today"
         val widgetTitle = prefs.getString("widget_title_$appWidgetId", "Vikunja") ?: "Vikunja"
+        val showDueDate = prefs.getBoolean("widget_show_due_date_$appWidgetId", true)
         val otherSectionLabel = when (viewType) {
             "upcoming" -> "This Week:"
             "inbox", "project" -> "Tasks:"
@@ -212,7 +213,7 @@ class AppWidget : GlanceAppWidget() {
                             )
                         }
                         items(todayTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
-                            RenderRow(context, task, prefs)
+                            RenderRow(context, task, prefs, showDueDate = showDueDate)
                         }
                     }
                     if (otherTasks.isNotEmpty()) {
@@ -223,7 +224,9 @@ class AppWidget : GlanceAppWidget() {
                             )
                         }
                         items(otherTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
-                            RenderRow(context, task, prefs, showDate = true)
+                            RenderRow(
+                                context, task, prefs, showFullDate = true, showDueDate = showDueDate
+                            )
                         }
                     }
                 }
@@ -273,7 +276,11 @@ class AppWidget : GlanceAppWidget() {
 
     @Composable
     private fun RenderRow(
-        context: Context, task: Task, prefs: SharedPreferences, showDate: Boolean = false
+        context: Context,
+        task: Task,
+        prefs: SharedPreferences,
+        showFullDate: Boolean = false,
+        showDueDate: Boolean = true,
     ) {
         Row(
             modifier = GlanceModifier.fillMaxWidth().padding(8.dp)
@@ -285,13 +292,13 @@ class AppWidget : GlanceAppWidget() {
                 onCheckedChange = { doneTask(context, prefs, task.id) },
                 modifier = GlanceModifier.padding(start = 0.dp)
             )
-            val taskDueDate = task.dueDateAsDate()
+            val taskDueDate = if (showDueDate) task.dueDateAsDate() else null
             if (taskDueDate != null) {
                 Box(
                     modifier = GlanceModifier.padding(start = 8.dp)
                 ) {
                     Text(
-                        text = formatDueDate(taskDueDate, showDate), style = TextStyle(
+                        text = formatDueDate(taskDueDate, showFullDate), style = TextStyle(
                             fontSize = 18.sp, color = ColorProvider(Color.Black, Color.White)
                         )
                     )
@@ -309,8 +316,8 @@ class AppWidget : GlanceAppWidget() {
         }
     }
 
-    private fun formatDueDate(dueDate: Date, showDate: Boolean): String {
-        if (showDate) {
+    private fun formatDueDate(dueDate: Date, showFullDate: Boolean): String {
+        if (showFullDate) {
             val pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), "MM dd j:m")
             val formatter = DateTimeFormatter.ofPattern(pattern)
             return dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime().format(

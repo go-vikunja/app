@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
@@ -56,12 +57,16 @@ class WidgetConfigureActivity : Activity() {
 
         val currentView = prefs.getString("widget_view_$appWidgetId", "today") ?: "today"
         val currentProjectId = prefs.getString("widget_project_id_$appWidgetId", "0")?.toIntOrNull() ?: 0
+        val currentShowDueDate = prefs.getBoolean("widget_show_due_date_$appWidgetId", true)
 
         val scrollView = findViewById<ScrollView>(R.id.scroll_view)
         val radioGroup = findViewById<RadioGroup>(R.id.view_radio_group)
         val projectSpinner = findViewById<Spinner>(R.id.project_spinner)
         val projectLayout = findViewById<View>(R.id.project_layout)
+        val showDueDateCheckBox = findViewById<CheckBox>(R.id.show_due_date_checkbox)
         val saveButton = findViewById<Button>(R.id.save_button)
+
+        showDueDateCheckBox.isChecked = currentShowDueDate
 
         val projectNames = projects.map { it.title }
         val adapter = ArrayAdapter(this, android.R.layout.simple_spinner_item, projectNames)
@@ -110,6 +115,7 @@ class WidgetConfigureActivity : Activity() {
 
             val editor = prefs.edit()
             editor.putString("widget_view_$appWidgetId", viewName)
+            editor.putBoolean("widget_show_due_date_$appWidgetId", showDueDateCheckBox.isChecked)
 
             if (viewName == "project") {
                 val project = projects[projectSpinner.selectedItemPosition]

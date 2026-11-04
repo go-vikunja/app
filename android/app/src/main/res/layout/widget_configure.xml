@@ -76,6 +76,22 @@
 
         </LinearLayout>
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Display"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginTop="24dp"
+            android:layout_marginBottom="8dp" />
+
+        <CheckBox
+            android:id="@+id/show_due_date_checkbox"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Show due date and time"
+            android:padding="8dp" />
+
         <Button
             android:id="@+id/save_button"
             android:layout_width="wrap_content"
