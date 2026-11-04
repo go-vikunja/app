@@ -1,6 +1,7 @@
 import 'package:collection/collection.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
+import 'package:vikunja_app/core/di/widget_refresher_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/bucket.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
@@ -239,9 +240,12 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
         var tasks = value.tasks;
         tasks.add(response.toSuccess().body);
         state = AsyncData(value.copyWith(tasks: tasks));
-
-        return true;
       }
+
+      // Keep the home screen widget in sync with the added task
+      ref.read(widgetRefresherProvider)();
+
+      return true;
     }
 
     return false;
@@ -473,9 +477,12 @@ class ProjectController extends _$ProjectController with PaginationMixin<Task> {
         var tasks = value.tasks;
         tasks.removeWhere((element) => element.id == task.id);
         state = AsyncData(value.copyWith(tasks: tasks));
-
-        return true;
       }
+
+      // Keep the home screen widget in sync with the completion
+      ref.read(widgetRefresherProvider)();
+
+      return true;
     }
 
     return false;

@@ -2,12 +2,12 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_app/core/di/network_provider.dart';
 import 'package:vikunja_app/core/di/notification_provider.dart';
 import 'package:vikunja_app/core/di/repository_provider.dart';
+import 'package:vikunja_app/core/di/widget_refresher_provider.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/project.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
 import 'package:vikunja_app/domain/entities/task_page_model.dart';
 import 'package:vikunja_app/presentation/manager/pagination_mixin.dart';
-import 'package:vikunja_app/presentation/manager/widget_controller.dart';
 
 part 'task_page_controller.g.dart';
 
@@ -90,7 +90,7 @@ class TaskPageController extends _$TaskPageController
 
     _setProjectOfTask(projectsResponse, tasks);
 
-    updateWidget();
+    ref.read(widgetRefresherProvider)();
     ref
         .read(notificationProvider)
         ?.scheduleDueNotifications(ref.read(taskRepositoryProvider));
@@ -185,6 +185,9 @@ class TaskPageController extends _$TaskPageController
         state = AsyncData(value.copyWith(tasks: tasks));
       }
 
+      // Keep the home screen widget in sync with the deletion
+      ref.read(widgetRefresherProvider)();
+
       return true;
     }
 
@@ -212,6 +215,9 @@ class TaskPageController extends _$TaskPageController
         tasks.removeWhere((element) => element.id == task.id);
         state = AsyncData(value.copyWith(tasks: tasks));
       }
+
+      // Keep the home screen widget in sync with the completion
+      ref.read(widgetRefresherProvider)();
 
       return true;
     }
