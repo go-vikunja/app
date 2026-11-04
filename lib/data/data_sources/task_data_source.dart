@@ -74,7 +74,7 @@ class TaskDataSource extends RemoteDataSource {
     Map<String, List<String>>? queryParameters,
   ]) async {
     Map<String, List<String>> parameters = {
-      "filter": [filterString],
+      if (filterString.trim().isNotEmpty) "filter": [filterString],
       ...?queryParameters,
     };
 

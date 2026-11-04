@@ -142,15 +142,17 @@ class ProjectEditPageState extends ConsumerState<ProjectEditPage> {
           .updateProject(project);
 
       if (success && context.mounted) {
+        await ref
+            .read(projectControllerProvider(project).notifier)
+            .setDisplayDoneTasks(displayDoneTask!);
+
+        if (!context.mounted) return;
+
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(loc.projectUpdatedSuccess)));
 
         Navigator.of(context).pop();
-
-        await ref
-            .read(projectControllerProvider(project).notifier)
-            .setDisplayDoneTasks(displayDoneTask!);
       } else if (context.mounted) {
         ScaffoldMessenger.of(
           context,

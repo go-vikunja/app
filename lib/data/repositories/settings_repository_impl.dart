@@ -78,6 +78,16 @@ class SettingsRepositoryImpl implements SettingsRepository {
   }
 
   @override
+  Future<bool> getLandingPageDisplayDoneTasks() {
+    return _datasource.getLandingPageDisplayDoneTasks();
+  }
+
+  @override
+  Future<void> setLandingPageDisplayDoneTasks(bool value) {
+    return _datasource.setLandingPageDisplayDoneTasks(value);
+  }
+
+  @override
   Future<bool> getDisplayDoneTasks(int projectId) async {
     return _datasource.getDisplayDoneTasks(projectId);
   }

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vikunja_app/l10n/gen/app_localizations.dart';
 
-class TaskDeleteDialog extends ConsumerWidget {
+class TaskDeleteDialog extends StatefulWidget {
   final int taskId;
-  final Function onConfirm;
-  final Function onCancel;
+  final Future<void> Function() onConfirm;
+  final VoidCallback onCancel;
 
   const TaskDeleteDialog(
     this.taskId, {
@@ -15,24 +14,50 @@ class TaskDeleteDialog extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return AlertDialog(
-      title: Text(AppLocalizations.of(context).deleteTaskTitle),
-      content: Text(AppLocalizations.of(context).deleteTaskMessage),
-      actions: [
-        TextButton(
-          child: Text(AppLocalizations.of(context).cancel),
-          onPressed: () {
-            onCancel();
-          },
-        ),
-        TextButton(
-          child: Text(AppLocalizations.of(context).delete),
-          onPressed: () {
-            onConfirm();
-          },
-        ),
-      ],
+  State<TaskDeleteDialog> createState() => _TaskDeleteDialogState();
+}
+
+class _TaskDeleteDialogState extends State<TaskDeleteDialog> {
+  bool _deleting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return PopScope(
+      canPop: !_deleting,
+      child: AlertDialog(
+        title: Text(AppLocalizations.of(context).deleteTaskTitle),
+        content: Text(AppLocalizations.of(context).deleteTaskMessage),
+        actions: [
+          TextButton(
+            onPressed: _deleting ? null : widget.onCancel,
+            child: Text(AppLocalizations.of(context).cancel),
+          ),
+          TextButton(
+            onPressed: _deleting ? null : _confirm,
+            child: _deleting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(AppLocalizations.of(context).delete),
+          ),
+        ],
+      ),
     );
+  }
+
+  Future<void> _confirm() async {
+    setState(() {
+      _deleting = true;
+    });
+
+    await widget.onConfirm();
+
+    if (mounted) {
+      setState(() {
+        _deleting = false;
+      });
+    }
   }
 }

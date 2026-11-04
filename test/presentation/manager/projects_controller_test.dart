@@ -7,11 +7,12 @@ import 'package:vikunja_app/domain/repositories/project_repository.dart';
 import 'package:vikunja_app/presentation/manager/projects_controller.dart';
 
 class MockProjectRepository implements ProjectRepository {
-  Future<Response<List<Project>>> Function({int page})? getAllStub;
+  Future<Response<List<Project>>> Function({int page, String? search})?
+  getAllStub;
 
   @override
-  Future<Response<List<Project>>> getAll({int page = 1}) {
-    return getAllStub!(page: page);
+  Future<Response<List<Project>>> getAll({int page = 1, String? search}) {
+    return getAllStub!(page: page, search: search);
   }
 
   @override
@@ -51,7 +52,7 @@ void main() {
       Project(id: 4, title: 'Independent Project', parentProjectId: 0),
     ];
 
-    mockProjectRepository.getAllStub = ({int page = 1}) async =>
+    mockProjectRepository.getAllStub = ({int page = 1, String? search}) async =>
         SuccessResponse(projects, 200, {});
 
     final container = createContainer();
@@ -69,5 +70,37 @@ void main() {
     expect(topLevelProjects[0].subprojects.length, 2);
     expect(topLevelProjects[0].subprojects.first.id, 2);
     expect(topLevelProjects[0].subprojects.last.id, 3);
+  });
+
+  test('search results stay flat instead of being grouped as a tree', () async {
+    final projects = [
+      Project(id: 2, title: 'Nested match', parentProjectId: 1),
+    ];
+
+    mockProjectRepository.getAllStub = ({int page = 1, String? search}) async {
+      if (search == 'nested') {
+        return SuccessResponse(projects, 200, {});
+      }
+      return SuccessResponse(
+        [
+          Project(id: 1, title: 'Parent Project', parentProjectId: 0),
+          ...projects,
+        ],
+        200,
+        {},
+      );
+    };
+
+    final container = createContainer();
+    await container.read(projectsControllerProvider.future);
+    await container
+        .read(projectsControllerProvider.notifier)
+        .setSearchQuery('nested');
+
+    final model = container.read(projectsControllerProvider).requireValue;
+    expect(model.searchQuery, 'nested');
+    expect(model.projects.length, 1);
+    expect(model.projects.first.id, 2);
+    expect(model.projects.first.subprojects, isEmpty);
   });
 }

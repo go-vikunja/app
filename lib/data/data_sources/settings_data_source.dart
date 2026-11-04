@@ -99,6 +99,19 @@ class SettingsDatasource {
     );
   }
 
+  Future<bool> getLandingPageDisplayDoneTasks() {
+    return _storage
+        .read(key: "landing-page-display-done-tasks")
+        .then((value) => value == "1");
+  }
+
+  Future<void> setLandingPageDisplayDoneTasks(bool value) {
+    return _storage.write(
+      key: "landing-page-display-done-tasks",
+      value: value ? "1" : "0",
+    );
+  }
+
   Future<bool> getDisplayDoneTasks(int projectId) async {
     var value = await _storage.read(key: "display_done_tasks_list_$projectId");
 

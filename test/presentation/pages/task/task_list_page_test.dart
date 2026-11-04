@@ -61,5 +61,33 @@ void main() {
 
     // Verify subproject title is displayed in the subtitle
     expect(find.text('Subproject A'), findsOneWidget);
+
+    expect(find.byIcon(Icons.search), findsOneWidget);
+  });
+
+  testWidgets('TaskListPage shows no results for an empty search', (
+    WidgetTester tester,
+  ) async {
+    final model = TaskPageModel([], false, 1, false, searchQuery: 'missing');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          taskPageControllerProvider.overrideWith(
+            () => MockTaskPageController(model),
+          ),
+        ],
+        child: MaterialApp(
+          home: const TaskListPage(),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+        ),
+      ),
+    );
+
+    await tester.pump();
+
+    expect(find.text('No results'), findsOneWidget);
   });
 }
