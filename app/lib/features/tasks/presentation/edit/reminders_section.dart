@@ -9,7 +9,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart'
 /// One row per reminder: tap edits, the trailing button removes. A
 /// relative reminder also shows when it fires with the draft's [dates], or
 /// that its date is missing; reminders that would fire together are
-/// flagged, because the server keeps only one of them.
+/// flagged, because the server keeps only one of them. Adding stops at the
+/// server's limit.
 class RemindersSection extends StatelessWidget {
   const new({
     required this.reminders,
@@ -30,6 +31,7 @@ class RemindersSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
+    final canAdd = reminders.length < Task.maxReminders;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -48,9 +50,14 @@ class RemindersSection extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: ActionChip(
-            avatar: Icon(Icons.add_alarm, color: colors.onSurfaceVariant),
+            avatar: Icon(
+              Icons.add_alarm,
+              color: canAdd
+                  ? colors.onSurfaceVariant
+                  : colors.onSurface.withValues(alpha: 0.38),
+            ),
             label: Text(l10n.taskEditAddReminder),
-            onPressed: onAdd,
+            onPressed: canAdd ? onAdd : null,
           ),
         ),
       ],

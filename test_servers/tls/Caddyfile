@@ -1,4 +1,4 @@
-# TLS front for vikunja-2-7-tls (compose profile `tls`, see README.md).
+# TLS front for vikunja-tls (compose profile `tls`, see README.md).
 # Certificates come from tool/gen_tls_test_certs.sh, mounted at /certs.
 # There is no access log and no autosaved config, so the access-header values
 # never reach a log or a file.
@@ -17,7 +17,7 @@
 
 https://:8443 {
 	tls /certs/selfsigned.pem /certs/selfsigned.key
-	reverse_proxy vikunja-2-7-tls:3456
+	reverse_proxy vikunja-tls:3456
 }
 
 https://:8444 {
@@ -27,7 +27,7 @@ https://:8444 {
 			trust_pool file /certs/client-ca.pem
 		}
 	}
-	reverse_proxy vikunja-2-7-tls:3456
+	reverse_proxy vikunja-tls:3456
 }
 
 https://:8445 {
@@ -37,7 +37,7 @@ https://:8445 {
 		header CF-Access-Client-Secret {$RURANA_TEST_ACCESS_SECRET}
 	}
 	handle @access {
-		reverse_proxy vikunja-2-7-tls:3456 {
+		reverse_proxy vikunja-tls:3456 {
 			header_up -CF-Access-Client-Id
 			header_up -CF-Access-Client-Secret
 		}

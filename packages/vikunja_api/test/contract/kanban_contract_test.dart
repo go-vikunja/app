@@ -341,6 +341,10 @@ void main() {
 
             test('a repeating task moved into the done bucket reopens in the '
                 'default bucket, without the position', () async {
+              // A due date in the past would be moved on until it lies in
+              // the future, more than one interval.
+              final now = DateTime.now().toUtc();
+              final due = DateTime.utc(now.year, now.month, now.day + 2, 8);
               final created = await send(
                 'POST',
                 ApiVersion.v2,
@@ -348,7 +352,7 @@ void main() {
                 {
                   'title': 'E',
                   'repeat_after': 86400,
-                  'due_date': '2026-11-02T08:00:00Z',
+                  'due_date': due.toIso8601String(),
                 },
               );
               final repeating = created['id']! as int;
@@ -356,7 +360,7 @@ void main() {
               final task = await place(repeating, seed.done, position: 1);
 
               expect(task.done, isFalse);
-              expect(task.dueDate, DateTime.utc(2026, 11, 3, 8));
+              expect(task.dueDate, due.add(const Duration(days: 1)));
               final columns = await board();
               expect(idsIn(columns, seed.done), [seed.c]);
               expect(idsIn(columns, seed.toDo), [repeating, seed.d]);

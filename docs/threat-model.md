@@ -35,7 +35,7 @@ IDs used throughout: **A** assets, **B** trust boundaries, **E** entry points, *
 | A7 | Task data: tasks, descriptions, comments, projects, labels, people, planned notification texts | SQLite per account, `<application support>/accounts/<id>/vikunja.db` | Android no; iOS no since 35c | personal or business data |
 | A8 | Queued uploads, downloaded attachments | `accounts/<id>/uploads`; `cache/attachments` | no | user files |
 | A9 | Description and comment drafts | preferences | Android no; iOS yes | personal data, unsent |
-| A10 | Account registry: server roots, usernames, display names, `/info` snapshot | preferences `auth.account_registry` | Android no; iOS yes | personal data, no secret ([D25]) |
+| A10 | Account registry: server roots, usernames, display names, `/info` snapshot (read again while signed in since step 37e) | preferences `auth.account_registry` | Android no; iOS yes | personal data, no secret ([D25]) |
 | A11 | Connection metadata: pins, CA certificates, header names, unencrypted-connection consents, last pin mismatch | preferences `network.profiles` | Android no; iOS yes | not secret, but its integrity decides whom the app trusts |
 | A12 | Privacy settings (app lock, timeout, screenshots, notification content, widget titles) | preferences `privacy.settings`; the lock state in memory | Android no; iOS yes | integrity |
 | A13 | Widget files: snapshots with task titles, catalogs, configs, host settings, Done taps | Android `files/widgets`; iOS App Group `widgets/` | no since 35c | titles, account names, hosts |

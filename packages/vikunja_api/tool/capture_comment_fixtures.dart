@@ -1,7 +1,7 @@
 // Records the comment and reaction answers of step 27 into
 // test/fixtures/write, with one throwaway user:
 //   dart run tool/capture_comment_fixtures.dart \
-//     [http://localhost:34527] [2.7.1]
+//     [http://localhost:34527] [2.8.0]
 // On both versions: a comment created with a mention, an empty one, one on
 // a task that does not exist and one in an archived project; an update (v1:
 // the read before it and the echo; v2: a merge-patch, the same patch again)
@@ -27,7 +27,7 @@ const _missing = 999999999;
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.8.0';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

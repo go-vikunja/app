@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/features/share/application/share_text.dart';
 
 void main() {
@@ -35,6 +36,41 @@ void main() {
 
     test('a subject over several lines becomes one line', () {
       expect(sharedTaskText(subject: 'a\nb').title, 'a b');
+    });
+
+    test('a first line over the limit is cut; the rest of it starts the '
+        'notes, before the other lines', () {
+      final line = 'word ' * 250;
+
+      final text = sharedTaskText(text: '$line\nsecond line\n\nthird');
+
+      expect(text.title, ('word ' * 200).trim());
+      expect(text.title.runes.length, lessThanOrEqualTo(Task.maxTitleLength));
+      expect(text.notes, '${('word ' * 50).trim()}\nsecond line\n\nthird');
+      expect(
+        text.description,
+        '<p>${('word ' * 50).trim()}<br>second line</p><p>third</p>',
+      );
+    });
+
+    test('a subject over the limit leaves its rest as a paragraph of its '
+        'own before the text', () {
+      final subject = '${'a' * Task.maxTitleLength} b c';
+
+      final text = sharedTaskText(subject: subject, text: 'Body');
+
+      expect(text.title, 'a' * Task.maxTitleLength);
+      expect(text.notes, 'b c\n\nBody');
+      expect(text.description, '<p>b c</p><p>Body</p>');
+    });
+
+    test('a single line over the limit loses nothing', () {
+      final emoji = '😀' * (Task.maxTitleLength + 3);
+
+      final text = sharedTaskText(text: emoji);
+
+      expect(text.title, '😀' * Task.maxTitleLength);
+      expect(text.notes, '😀😀😀');
     });
 
     test('without text the name of the one file is the title', () {

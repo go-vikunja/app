@@ -38,8 +38,11 @@ abstract interface class TasksWritePort {
   /// `related_tasks`; an edge that already exists (409 code 4008) or is
   /// already gone (404 code 4009) counts as done. Every other task id must
   /// be a server id, else this throws an [ArgumentError] before any
-  /// request. A missing other task fails with `RelatedTaskMissing`, never
-  /// with the plain `NotFound` code 4002 that means this task is gone.
+  /// request. A missing other task, deleted or in the trash itself or with
+  /// its project, fails with `RelatedTaskMissing` carrying the server's code,
+  /// never with the plain `NotFound` that means this task is gone. A remove
+  /// meeting such a task counts as done when this task no longer lists the
+  /// edge; on 2.8.0 the edge comes back if the other task is restored.
   ///
   /// [TaskChanges.kanban] goes last, per view: the move (v2 `PUT`, v1
   /// `POST /projects/{task's project}/views/{v}/buckets/{b}/tasks`), then,
@@ -80,8 +83,9 @@ abstract interface class TasksWritePort {
     String Function(String current)? rebaseDescription,
   });
 
-  /// A task that is already gone (404 with Vikunja code 4002) counts as
-  /// deleted and does not throw.
+  /// A task that is already gone counts as deleted and does not throw: 404
+  /// code 4002, or from 2.8.0 on code 4040 for a task in the trash and 3001
+  /// for one whose project is in the trash.
   Future<void> delete(int id);
 
   /// v2 `POST /tasks/{id}/duplicate`, v1 `PUT`: the server copies the task
@@ -303,10 +307,12 @@ abstract interface class ProjectsWritePort {
   });
 
   /// `DELETE /projects/{id}`: the server deletes the project's tasks and its
-  /// whole subtree, also projects of other users in it. Admin permission
+  /// whole subtree, also projects of other users in it (from 2.8.0 on into
+  /// the trash, from where they can be restored for 30 days). Admin permission
   /// (`Forbidden` otherwise); another user's default project is a
   /// `DomainError` code 3012, the owner may delete their own. A project that
-  /// is gone already (404 code 3001) counts as deleted.
+  /// is gone already (404 code 3001, also when it is in the trash) counts as
+  /// deleted.
   Future<void> delete(int projectId);
 
   /// v2 `POST`, v1 `PUT /projects/{id}/duplicate`; returns the copy, which
@@ -355,9 +361,10 @@ abstract interface class SavedFiltersPort implements SavedFiltersReadPort {
 /// A task's attachments; the cover is set through [TasksWritePort.update]
 /// with [TaskChanges.coverImageAttachmentId]. Both writes need project
 /// write permission (`Forbidden` for a read share) and are a `DomainError`
-/// code 3008 while the project is archived. A task that does not exist is a
-/// `NotFound` code 4002; a server with attachments switched off answers
-/// every attachment route with a `NotFound` without a code.
+/// code 3008 while the project is archived. A task that is gone is a
+/// `NotFound` with `taskGone`, or `projectGone` when its project is in the
+/// trash; a server with attachments switched off answers every attachment
+/// route with a `NotFound` without a code.
 abstract interface class AttachmentsWritePort {
   /// v2 `POST`, v1 `PUT /tasks/{id}/attachments`: one multipart part
   /// `files` with [bytes], which must be exactly [length] bytes long and is
@@ -396,10 +403,11 @@ abstract interface class AttachmentsWritePort {
 /// sent. Writing needs project write permission (`Forbidden` for a read
 /// share) and is a `DomainError` code 3008 while the project is archived;
 /// changing or deleting a comment is for its author alone, `Forbidden` even
-/// for the project's owner. A task that does not exist is a `NotFound` code
-/// 4002, a comment that does not exist (or belongs to another task) code
-/// 4015; a server with comments switched off answers every route with a
-/// `NotFound` without a code.
+/// for the project's owner. A task that is gone is a `NotFound` with
+/// `taskGone`, or `projectGone` when its project is in the trash; a comment
+/// that does not exist (or belongs to another task) is code 4015. A server
+/// with comments switched off answers every route with a `NotFound` without
+/// a code.
 ///
 /// The server reports any update or delete it could not apply as 4015, so
 /// before throwing that the comment is read again: when it is still there
@@ -431,10 +439,10 @@ abstract interface class CommentsWritePort {
 /// The signed-in user's own reactions to a task or a comment (for a comment
 /// the id is the comment's, without its task). Both need write permission
 /// on the task (`Forbidden` for a read share and for link shares) and are a
-/// `DomainError` code 3008 while the project is archived; a task or comment
-/// that does not exist is a `NotFound` code 4002 or 4015. Reactions bump no
-/// `updated` and notify nobody. The value is sent as it is: the server
-/// compares the bytes.
+/// `DomainError` code 3008 while the project is archived; a task that is
+/// gone is a `NotFound` with `taskGone` (or `projectGone`), a comment that
+/// does not exist code 4015. Reactions bump no `updated` and notify nobody.
+/// The value is sent as it is: the server compares the bytes.
 abstract interface class ReactionsWritePort {
   /// v2 `POST`, v1 `PUT /{tasks|comments}/{id}/reactions` with `{value}`.
   /// Adding a value the user reacted with already changes nothing. An empty

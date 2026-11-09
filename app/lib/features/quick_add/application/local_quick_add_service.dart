@@ -7,10 +7,12 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/user_repository.dart';
+import 'package:vikunja_mobile/core/text/task_title_limit.dart';
 import 'package:vikunja_mobile/features/quick_add/application/project_references.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_grammar.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_lines.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
+import 'package:vikunja_mobile/features/share/application/share_text.dart';
 import 'package:vikunja_mobile/features/tasks/application/default_project.dart';
 import 'package:vikunja_mobile/features/tasks/application/label_search.dart';
 
@@ -219,13 +221,14 @@ final class LocalQuickAddService implements QuickAddService {
         final repeat? => _grammar.repeatOf(repeat),
         null => null,
       };
+      final cut = cutTaskTitle(title);
       final int id;
       try {
         id = await _tasks.createTask(
           NewTask(
             projectId: plan.project!.id,
-            title: title,
-            description: extras.description,
+            title: cut.title,
+            description: '${sharedTextHtml(cut.rest)}${extras.description}',
             dueDate: plan.dueDate,
             priority: TaskPriority.fromValue(plan.priority ?? 0),
             repeatAfter: repeat?.repeatAfter ?? extras.repeatAfter,
@@ -237,7 +240,7 @@ final class LocalQuickAddService implements QuickAddService {
                   (other) => sameReminder(other, reminder),
                 ))
                   reminder,
-            ],
+            ].take(Task.maxReminders).toList(),
           ),
         );
       } on Object catch (error, stackTrace) {

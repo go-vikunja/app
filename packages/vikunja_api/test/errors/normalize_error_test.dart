@@ -43,7 +43,8 @@ Matcher _expectedFor(String name) {
   final api = parts.first;
   final version = parts.last;
   final what = parts.sublist(1, parts.length - 1).join('_');
-  final before27 = version != '2.7.0';
+  final [major, minor, _] = version.split('.').map(int.parse).toList();
+  final before27 = major < 2 || major == 2 && minor < 7;
   return switch (what) {
     '401_code11_garbage' || '401_code11_missing' => _tokenRejected,
     '403_project' => _forbidden,
@@ -56,6 +57,21 @@ Matcher _expectedFor(String name) {
       isA<NotFound>()
           .having((f) => f.routeAbsent, 'routeAbsent', isTrue)
           .having((f) => f.message, 'message', 'Not Found'),
+    '404_task_trashed' || '404_relation_task_trashed' =>
+      isA<NotFound>()
+          .having((f) => f.code, 'code', 4040)
+          .having((f) => f.taskGone, 'taskGone', isTrue)
+          .having((f) => f.message, 'message', 'This task is in the trash.'),
+    '404_task_project_trashed' =>
+      isA<NotFound>()
+          .having((f) => f.code, 'code', 3018)
+          .having((f) => f.projectGone, 'projectGone', isTrue)
+          .having((f) => f.message, 'message', startsWith('This project is')),
+    '404_task_delete_project_trashed' =>
+      isA<NotFound>()
+          .having((f) => f.code, 'code', 3001)
+          .having((f) => f.projectGone, 'projectGone', isTrue)
+          .having((f) => f.message, 'message', 'This project does not exist.'),
     '412_invalid_fields' =>
       isA<ValidationFailed>()
           .having((f) => f.code, 'code', 2002)
@@ -94,6 +110,33 @@ Matcher _expectedFor(String name) {
             'message',
             'You must provide at least a task title.',
           ),
+    // 2.8.0's limits, checked only for a title or reminders that change.
+    '412_title_too_long' || '422_title_too_long' =>
+      isA<ValidationFailed>()
+          .having((f) => f.code, 'code', 2002)
+          .having((f) => f.fieldErrors.keys, 'fields', ['title'])
+          .having((f) => f.message, 'message', contains('at most 1000')),
+    '412_reminders_too_many' || '422_reminders_too_many' =>
+      isA<ValidationFailed>()
+          .having((f) => f.code, 'code', 2002)
+          .having((f) => f.fieldErrors.keys, 'fields', ['reminders'])
+          .having((f) => f.message, 'message', contains('at most 100')),
+    // 2.8.0 refuses a NUL in any JSON body, which the client strips first.
+    '400_title_nul' when api == 'v1' =>
+      isA<DomainError>()
+          .having((f) => f.statusCode, 'status', 400)
+          .having((f) => f.code, 'code', 2004)
+          .having((f) => f.message, 'message', contains('NUL')),
+    '400_title_nul' =>
+      isA<UnexpectedResponse>()
+          .having((f) => f.statusCode, 'status', 400)
+          .having((f) => f.message, 'message', 'validation failed'),
+    // More than 10000 business days across a filter, since 2.8.0.
+    '400_filter_business_days' =>
+      isA<DomainError>()
+          .having((f) => f.statusCode, 'status', 400)
+          .having((f) => f.code, 'code', 4019)
+          .having((f) => f.message, 'message', contains("'now+10001b'")),
     '400_repeat_range' =>
       isA<DomainError>()
           .having((f) => f.statusCode, 'status', 400)

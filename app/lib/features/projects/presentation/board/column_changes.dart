@@ -45,7 +45,7 @@ String columnChangeFailureText(
     VikunjaFailure(code: 10007) => l10n.boardColumnsAtMaximum,
     VikunjaFailure(code: 10001) => l10n.syncProblemColumnMissing,
     NotFound(code: 3014) => l10n.projectViewGone,
-    NotFound(code: 3001) => l10n.projectGone,
+    NotFound(projectGone: true) => l10n.projectGone,
     VikunjaFailure(code: 3008) => l10n.boardColumnArchived,
     ValidationFailed() || VikunjaFailure(code: 2002) => l10n.boardColumnInvalid,
     _ when shared != null => shared,

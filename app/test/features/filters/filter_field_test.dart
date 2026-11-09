@@ -319,6 +319,15 @@ void main() {
       findsOneWidget,
     );
 
+    // Vikunja 2.8.0's limit on the business days of a whole filter.
+    await type(tester, 'dueDate < now+6000b || startDate > now-4001b');
+    await tester.pump(FilterField.errorDelay);
+    expect(
+      find.text(en.filterErrorFieldValue('now-4001b', 'startDate')),
+      findsOneWidget,
+    );
+    expect(createEnabled(tester), isFalse);
+
     await type(tester, 'done = true &&');
     await tester.pump(FilterField.errorDelay);
     expect(find.text(en.filterErrorSyntax), findsOneWidget);

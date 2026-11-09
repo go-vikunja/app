@@ -531,6 +531,157 @@ void main() {
       );
     });
 
+    group('the trash of 2.8.0', () {
+      final taskTrashed = {
+        for (final hasV2 in [true, false])
+          hasV2: errorFixture(
+            '${hasV2 ? 'v2' : 'v1'}_404_relation_task_trashed_2.8.0',
+          ),
+      };
+      final projectTrashed = errorFixture('v2_404_task_project_trashed_2.8.0');
+
+      for (final hasV2 in [true, false]) {
+        final version = hasV2 ? 'v2' : 'v1';
+        final base = hasV2 ? _v2 : _v1;
+
+        test('$version an add answered 404 code 4040 (the other task is in '
+            'the trash) fails as RelatedTaskMissing with that code', () async {
+          final dio = fakeDio({
+            '$base/tasks/42': json(_taskWith(const {})),
+            '$base/tasks/42/relations': taskTrashed[hasV2]!,
+          });
+
+          await expectLater(
+            _tasks(
+              dio,
+              hasV2: hasV2,
+            ).update(42, _relations(added: {_parentOf7})),
+            throwsA(
+              isA<RelatedTaskMissing>()
+                  .having((f) => f.otherTaskId, 'otherTaskId', 7)
+                  .having((f) => f.code, 'code', 4040),
+            ),
+          );
+        });
+
+        test('$version a remove answered 404 code 4040 counts as done when '
+            'the read no longer lists the edge', () async {
+          final dio = fakeDio({
+            '$base/tasks/42': sequence([
+              json(_taskWith({_parentOf7})),
+              json(_taskWith(const {})),
+            ]),
+            '$base/tasks/42/relations/parenttask/7': taskTrashed[hasV2]!,
+          });
+
+          final task = await _tasks(
+            dio,
+            hasV2: hasV2,
+          ).update(42, _relations(removed: {_parentOf7}));
+
+          expect(_calls(dio), [
+            'GET $base/tasks/42',
+            'DELETE $base/tasks/42/relations/parenttask/7',
+            'GET $base/tasks/42',
+            'GET $base/tasks/42',
+          ]);
+          expect(task.relatedTasks, isEmpty);
+        });
+      }
+
+      test('a remove answered 404 code 4040 while the read still shows the '
+          'edge is a missing related task with that code', () async {
+        final dio = fakeDio({
+          '$_v2/tasks/42': json(_taskWith({_parentOf7})),
+          '$_v2/tasks/42/relations/parenttask/7': taskTrashed[true]!,
+        });
+
+        await expectLater(
+          _tasks(dio).update(42, _relations(removed: {_parentOf7})),
+          throwsA(
+            isA<RelatedTaskMissing>()
+                .having((f) => f.otherTaskId, 'otherTaskId', 7)
+                .having((f) => f.code, 'code', 4040),
+          ),
+        );
+      });
+
+      test('an add answered 404 code 3018 (the other task is in a trashed '
+          'project) fails as RelatedTaskMissing with that code', () async {
+        final dio = fakeDio({
+          '$_v2/tasks/42': json(_taskWith(const {})),
+          '$_v2/tasks/42/relations': projectTrashed,
+        });
+
+        await expectLater(
+          _tasks(dio).update(42, _relations(added: {_parentOf7})),
+          throwsA(
+            isA<RelatedTaskMissing>()
+                .having((f) => f.otherTaskId, 'otherTaskId', 7)
+                .having((f) => f.code, 'code', 3018),
+          ),
+        );
+      });
+
+      test('a remove answered 404 code 3018 counts as done when the read no '
+          'longer lists the edge', () async {
+        final dio = fakeDio({
+          '$_v2/tasks/42': sequence([
+            json(_taskWith({_parentOf7})),
+            json(_taskWith(const {})),
+          ]),
+          '$_v2/tasks/42/relations/parenttask/7': projectTrashed,
+        });
+
+        final task = await _tasks(dio)
+            .update(42, _relations(removed: {_parentOf7}));
+
+        expect(task.relatedTasks, isEmpty);
+      });
+
+      test('when the task itself is in the trash, its plain NotFound '
+          'propagates', () async {
+        final dio = fakeDio({
+          '$_v2/tasks/42': sequence([
+            json(_taskWith(const {})),
+            errorFixture('v2_404_task_trashed_2.8.0'),
+          ]),
+          '$_v2/tasks/42/relations': taskTrashed[true]!,
+        });
+
+        await expectLater(
+          _tasks(dio).update(42, _relations(added: {_parentOf7})),
+          throwsA(
+            isA<NotFound>()
+                .having((f) => f.code, 'code', 4040)
+                .having((f) => f.taskGone, 'taskGone', isTrue),
+          ),
+        );
+      });
+
+      test('when the task is in a trashed project (the add answers 3001, the '
+          'read 3018), its plain NotFound propagates', () async {
+        final dio = fakeDio({
+          '$_v2/tasks/42': sequence([
+            json(_taskWith(const {})),
+            projectTrashed,
+          ]),
+          '$_v2/tasks/42/relations': errorFixture(
+            'v2_404_task_delete_project_trashed_2.8.0',
+          ),
+        });
+
+        await expectLater(
+          _tasks(dio).update(42, _relations(added: {_parentOf7})),
+          throwsA(
+            isA<NotFound>()
+                .having((f) => f.code, 'code', 3018)
+                .having((f) => f.projectGone, 'projectGone', isTrue),
+          ),
+        );
+      });
+    });
+
     group('failures propagate and stop the requests after them', () {
       final cases = <(String, bool, FakeRoute, Matcher)>[
         (

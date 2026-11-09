@@ -14,12 +14,49 @@ void main() {
     expect(const NetworkFailure(NetworkProblem.timeout).code, isNull);
   });
 
+  test('a task or project is gone when deleted or in the trash', () {
+    for (final code in [4002, 4040]) {
+      expect(NotFound(code: code).taskGone, isTrue, reason: '$code');
+      expect(NotFound(code: code).projectGone, isFalse, reason: '$code');
+    }
+    for (final code in [3001, 3018]) {
+      expect(NotFound(code: code).projectGone, isTrue, reason: '$code');
+      expect(NotFound(code: code).taskGone, isFalse, reason: '$code');
+    }
+    for (final failure in [
+      const NotFound(),
+      const NotFound(code: 4009),
+      const NotFound(code: 3014),
+      const TeamMemberMissing(),
+    ]) {
+      expect(failure.taskGone, isFalse, reason: '$failure');
+      expect(failure.projectGone, isFalse, reason: '$failure');
+    }
+    expect(switch (const NotFound(code: 4040) as VikunjaFailure) {
+      NotFound(projectGone: true) => 'project gone',
+      NotFound(taskGone: true) => 'task gone',
+      _ => 'other',
+    }, 'task gone');
+  });
+
+  test('a missing related task is a 404 with the code the server sent for '
+      'the other task, which is not the task itself gone', () {
+    for (final code in [4040, 3018]) {
+      final failure = RelatedTaskMissing(5, code: code);
+
+      expect(failure.code, code);
+      expect(failure.taskGone, isFalse);
+      expect(failure.projectGone, isFalse);
+    }
+  });
+
   test('a missing related task is a 404 with code 4002 that names the '
       'other task', () {
     const failure = RelatedTaskMissing(5, message: 'This task does not exist');
 
     expect(failure, isA<NotFound>());
     expect(failure.code, 4002);
+    expect(failure.taskGone, isFalse);
     expect(failure.routeAbsent, isFalse);
     expect(failure.otherTaskId, 5);
     expect(failure.message, 'This task does not exist');

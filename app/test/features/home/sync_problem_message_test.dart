@@ -56,14 +56,20 @@ void main() {
   test('explains each permanent failure the server can answer with', () {
     String describe(VikunjaFailure failure) =>
         describeSyncProblem(en, problem(failure));
-    expect(
-      describe(const NotFound(code: 3001)),
-      endsWith(en.syncProblemProjectMissing),
-    );
-    expect(
-      describe(const NotFound(code: 4002)),
-      endsWith(en.syncProblemTaskMissing),
-    );
+    for (final code in [3001, 3018]) {
+      expect(
+        describe(NotFound(code: code)),
+        endsWith(en.syncProblemProjectMissing),
+        reason: '$code',
+      );
+    }
+    for (final code in [4002, 4040]) {
+      expect(
+        describe(NotFound(code: code)),
+        endsWith(en.syncProblemTaskMissing),
+        reason: '$code',
+      );
+    }
     expect(
       describe(const NotFound(code: 8002)),
       endsWith(en.syncProblemLabelMissing),
@@ -76,10 +82,13 @@ void main() {
       describe(const DomainError(412, code: 3008)),
       endsWith(en.syncProblemProjectArchived),
     );
-    expect(
-      describe(const RelatedTaskMissing(7)),
-      endsWith(en.syncProblemRelatedTaskMissing),
-    );
+    for (final code in [4002, 4040, 3018]) {
+      expect(
+        describe(RelatedTaskMissing(7, code: code)),
+        endsWith(en.syncProblemRelatedTaskMissing),
+        reason: '$code',
+      );
+    }
     expect(
       describe(const DomainError(409, code: 4023)),
       endsWith(en.syncProblemRelationCycle),

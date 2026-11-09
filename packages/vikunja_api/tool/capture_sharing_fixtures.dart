@@ -1,6 +1,6 @@
 // Records the answers of step 28 into test/fixtures/sharing, with three
 // throwaway users (owner, member, guest):
-//   dart run tool/capture_sharing_fixtures.dart [http://localhost:34527] [2.7.1]
+//   dart run tool/capture_sharing_fixtures.dart [http://localhost:34527] [2.8.0]
 // Labels: the owner's label updated (v2 merge-patch, the same unchanged, v1
 // read and full replace), refused for the member, a title too long, deleted
 // twice, and a label titled "2026" listed with every label. The global user
@@ -42,7 +42,7 @@ const _keptHeaders = [
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.8.0';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

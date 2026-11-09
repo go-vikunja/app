@@ -58,6 +58,27 @@ void main() {
         );
       });
 
+      test('the task or its project in the trash', () {
+        expect(
+          attachmentFailureText(
+            l10n,
+            const NotFound(code: 4040, message: 'task is in the trash'),
+            download: true,
+          ),
+          l10n.syncProblemTaskMissing,
+        );
+        for (final code in [3018, 3001]) {
+          expect(
+            attachmentFailureText(
+              l10n,
+              NotFound(code: code, message: 'project is in the trash'),
+            ),
+            l10n.syncProblemProjectMissing,
+            reason: '$code',
+          );
+        }
+      });
+
       test('a server error, also an upload whose storage failed', () {
         expect(
           attachmentFailureText(

@@ -24,6 +24,9 @@ final class RegisteredAccount {
   RegisteredAccount withAccount(Account account) =>
       RegisteredAccount(account: account, connection: connection);
 
+  RegisteredAccount withConnection(ServerConnection connection) =>
+      RegisteredAccount(account: account, connection: connection);
+
   @override
   String toString() => 'RegisteredAccount($account)';
 }
@@ -216,6 +219,34 @@ final class AccountRegistry {
         'Could not store the name of account $accountId: ${error.runtimeType}',
       );
     }
+  }
+
+  /// Stores what [refresh] makes of the connection [accountId] has now;
+  /// null from it, or an unknown account, writes nothing. Returns whether
+  /// it wrote.
+  Future<bool> updateConnection(
+    String accountId,
+    ServerConnection? Function(ServerConnection stored) refresh,
+  ) async {
+    var written = false;
+    await _update((state) {
+      final entry = state.find(accountId);
+      final connection = entry == null ? null : refresh(entry.connection);
+      if (connection == null) return null;
+      written = true;
+      return AccountRegistryState(
+        accounts: [
+          for (final existing in state.accounts)
+            if (existing.id == accountId)
+              existing.withConnection(connection)
+            else
+              existing,
+        ],
+        activeAccountId: state.activeAccountId,
+        recentAccountIds: state.recentAccountIds,
+      );
+    });
+    return written;
   }
 
   static AccountRegistryState? _withGuestTitle(

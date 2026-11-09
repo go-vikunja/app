@@ -1,0 +1,9 @@
+{
+  "server": "2.8.0",
+  "request": "DELETE /api/v1/tasks/3",
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":3001,\"message\":\"This project does not exist.\"}\n"
+}

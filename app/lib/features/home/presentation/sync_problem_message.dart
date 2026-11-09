@@ -21,7 +21,7 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
       l10n.syncProblemListNotReorderable,
     Forbidden() => l10n.syncProblemForbidden,
     RelatedTaskMissing() => l10n.syncProblemRelatedTaskMissing,
-    NotFound(code: 3001) => l10n.syncProblemProjectMissing,
+    NotFound(projectGone: true) => l10n.syncProblemProjectMissing,
     NotFound(code: 8002) => l10n.syncProblemLabelMissing,
     NotFound(code: 1005) => l10n.syncProblemUserMissing,
     NotFound(code: 3014) when _namesOnlyListViews(problem.changes) =>

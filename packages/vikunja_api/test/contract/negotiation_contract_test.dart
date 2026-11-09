@@ -34,7 +34,7 @@ void main() {
     for (final (port, version, apiVersions, tier, concurrentWrites) in [
       (
         34527,
-        const ServerVersion(2, 7, 1),
+        const ServerVersion(2, 8, 0),
         {ApiVersion.v1, ApiVersion.v2},
         SupportTier.full,
         false,
@@ -88,6 +88,16 @@ void main() {
         (body['enabled_pro_features']! as List).toSet(),
       );
       expect(info.concurrentWrites, body['concurrent_writes']);
+      final legal = body['legal']! as Map<String, Object?>;
+      expect([
+        for (final link in info.legal.links)
+          {'text': link.text, 'url': '${link.url}'},
+      ], legal['links']);
+      expect(info.legal.imprintUrl?.toString() ?? '', legal['imprint_url']);
+      expect(
+        info.legal.privacyPolicyUrl?.toString() ?? '',
+        legal['privacy_policy_url'],
+      );
     });
 
     test('scheme-less input falls back to http after https fails', () async {

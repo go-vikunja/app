@@ -459,8 +459,7 @@ void main() {
       );
     });
 
-    test('D19-2: the unit in any case', () {
-      // The web adds nothing for a capitalised unit.
+    test('the unit in any case (the web since 2.8.0)', () {
       expect(
         parse('x IN 2 Days', now: now).date,
         DateTime(2021, 6, 26, 12, 34, 56, 789),
@@ -482,6 +481,119 @@ void main() {
       expect(
         parse('x in 100000 weeks', now: now).date,
         DateTime(2021, 6, 24 + 700000, 12, 34, 56, 789),
+      );
+      expect(parse('x in 100001 minutes', now: now).date, isNull);
+      expect(parse('x in 100001 years', now: now).date, isNull);
+    });
+
+    test('a date up to the year 9999', () {
+      expect(
+        parse('x in 7000 years', now: now).date,
+        DateTime(9021, 6, 24, 12, 34, 56, 789),
+      );
+      expect(
+        parse('x in 7978 years', now: now).date,
+        DateTime(9999, 6, 24, 12, 34, 56, 789),
+      );
+      expect(
+        parse('x in 95742 months', now: now).date,
+        DateTime(9999, 12, 24, 12, 34, 56, 789),
+      );
+    });
+
+    test('D38-9: punctuation may follow the unit (the web wants a space)', () {
+      final comma = parse('Pay rent in 2 days, then call', now: now);
+      expect(comma.date, DateTime(2021, 6, 26, 12, 34, 56, 789));
+      expect(comma.text, 'Pay rent , then call');
+      final stop = parse('Call back in 4 Hours.', now: now);
+      expect(stop.date, DateTime(2021, 6, 24, 16, 34, 56, 789));
+      expect(stop.text, 'Call back .');
+      for (final text in ['x in 1 week; y', 'x in 1 week!', 'x in 1 week)']) {
+        expect(
+          parse(text, now: now).date,
+          DateTime(2021, 7, 1, 12, 34, 56, 789),
+          reason: text,
+        );
+      }
+    });
+  });
+
+  group('in N units, the forms of 2.8.0 (now Tue 2026-03-10 08:15:30)', () {
+    final now = DateTime(2026, 3, 10, 8, 15, 30);
+    final cases = {
+      'Water plants in three days': DateTime(2026, 3, 13, 8, 15, 30),
+      'Plan trip in one month': DateTime(2026, 4, 10, 8, 15, 30),
+      'Renew passport in Eleven Months': DateTime(2027, 2, 10, 8, 15, 30),
+      'Repaint fence in twelve weeks': DateTime(2026, 6, 2, 8, 15, 30),
+      'Nap in five Hours': DateTime(2026, 3, 10, 13, 15, 30),
+      'Stretch in a minute': DateTime(2026, 3, 10, 8, 16, 30),
+      'Fetch parcel IN AN HOUR': DateTime(2026, 3, 10, 9, 15, 30),
+      'Defrost in A Day': DateTime(2026, 3, 11, 8, 15, 30),
+      'Rotate tyres in a month': DateTime(2026, 4, 10, 8, 15, 30),
+      'Order filters in 45 minutes': DateTime(2026, 3, 10, 9, 0, 30),
+      'Call in seven Minutes': DateTime(2026, 3, 10, 8, 22, 30),
+      'Check warranty in 2 years': DateTime(2028, 3, 10, 8, 15, 30),
+      'Book dentist in a year': DateTime(2027, 3, 10, 8, 15, 30),
+      'Taxes in ten Years': DateTime(2036, 3, 10, 8, 15, 30),
+    };
+    for (final MapEntry(key: input, value: expected) in cases.entries) {
+      test(input, () {
+        final result = parse(input, now: now);
+        final at = input.toLowerCase().indexOf(' in ');
+        expect(result.date, expected);
+        expect(result.text, input.substring(0, at));
+        expect(result.datePhrases, [input.substring(at + 1)]);
+      });
+    }
+
+    test('at the start and in the middle', () {
+      final start = parse('in two weeks water plants', now: now);
+      expect(start.text, 'water plants');
+      expect(start.date, DateTime(2026, 3, 24, 8, 15, 30));
+      final middle = parse('x in Two Weeks y', now: now);
+      expect(middle.text, 'x  y');
+      expect(middle.datePhrases, ['in Two Weeks']);
+    });
+
+    test('an explicit time sets the time of that day', () {
+      expect(
+        parse('Dentist in two days at 16:30', now: now).date,
+        DateTime(2026, 3, 12, 16, 30),
+      );
+      expect(
+        parse('Dentist at 9am in a year', now: now).date,
+        DateTime(2027, 3, 10, 9),
+      );
+      expect(
+        parse('x in 20 minutes at 7', now: now).date,
+        DateTime(2026, 3, 10, 7),
+      );
+    });
+
+    test('minutes carry into the next day', () {
+      expect(
+        parse('x in 90 minutes', now: DateTime(2026, 12, 31, 23)).date,
+        DateTime(2027, 1, 1, 0, 30),
+      );
+    });
+
+    test('a year from 29 February overflows like JS', () {
+      final leapDay = DateTime(2024, 2, 29, 10);
+      expect(parse('x in 1 year', now: leapDay).date, DateTime(2025, 3, 1, 10));
+      expect(
+        parse('x in four years', now: leapDay).date,
+        DateTime(2028, 2, 29, 10),
+      );
+    });
+
+    test('web parity: the article is not checked', () {
+      expect(
+        parse('x in an day', now: now).date,
+        DateTime(2026, 3, 11, 8, 15, 30),
+      );
+      expect(
+        parse('x in a hours', now: now).date,
+        DateTime(2026, 3, 10, 9, 15, 30),
       );
     });
   });

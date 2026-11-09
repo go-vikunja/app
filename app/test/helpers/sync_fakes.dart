@@ -9,6 +9,8 @@ import 'package:vikunja_mobile/core/activity/foreground_activity.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/connection_refresh.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/files/file_actions_providers.dart';
 import 'package:vikunja_mobile/core/files/link_share_actions.dart';
@@ -43,6 +45,7 @@ import 'package:vikunja_mobile/core/share/share_providers.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
@@ -52,6 +55,7 @@ import 'activity_fakes.dart';
 import 'app_lock_fakes.dart';
 import 'attachment_fakes.dart';
 import 'bucket_fakes.dart';
+import 'fakes.dart';
 import 'label_user_fakes.dart';
 import 'list_preferences_fakes.dart';
 import 'project_view_fakes.dart';
@@ -1863,6 +1867,11 @@ final class SyncFakes {
   /// How often the foreground activity sync ran for the active account.
   int foregroundActivityRuns = 0;
 
+  /// The re-read of the active account's /info, which never answers unless
+  /// a test sets a handler; apart from the screens' connector, whose calls
+  /// tests count.
+  final serverInfoConnector = FakeServerConnector();
+
   /// The outboxes of inactive accounts: an account's queued ops are the
   /// pending changes of its task repository.
   late final outboxes = FakeAccountOutboxes(
@@ -1951,6 +1960,13 @@ final class SyncFakes {
       ForegroundActivity(
         syncActive: () async => foregroundActivityRuns++,
         syncInactive: () async {},
+      ),
+    ),
+    connectionRefreshProvider.overrideWith(
+      (ref) => ConnectionRefresh(
+        registry: ref.watch(accountRegistryProvider),
+        connector: () => serverInfoConnector,
+        clock: ref.watch(clockProvider),
       ),
     ),
     realtimeConnectorProvider.overrideWithValue(realtime),

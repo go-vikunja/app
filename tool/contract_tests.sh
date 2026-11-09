@@ -3,7 +3,7 @@
 # starts those servers first unless all of them are already running.
 #
 # Usage: tool/contract_tests.sh [flutter test arguments ...]
-# Example: tool/contract_tests.sh --plain-name '2.7.1'
+# Example: tool/contract_tests.sh --plain-name '2.8.0'
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

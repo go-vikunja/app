@@ -18,6 +18,7 @@ import 'package:vikunja_mobile/features/accounts/presentation/account_identity.d
 import 'package:vikunja_mobile/features/attachments/application/queue_attachments.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
 import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
+import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -429,6 +430,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
         controller: _title,
         enabled: !_submitting,
         textCapitalization: TextCapitalization.sentences,
+        inputFormatters: [CodePointLimitFormatter(Task.maxTitleLength)],
         decoration: InputDecoration(labelText: l10n.taskEditTitleLabel),
       ),
       const SizedBox(height: 12),

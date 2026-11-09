@@ -993,18 +993,47 @@ void main() {
           completes,
         );
       });
+
+      final version = hasV2 ? 'v2' : 'v1';
+      for (final (what, fixture) in [
+        ('a task in the trash (404 code 4040)', 'task_trashed'),
+        (
+          'a task whose project is in the trash (404 code 3001)',
+          'task_delete_project_trashed',
+        ),
+      ]) {
+        test('$what is success on $version', () async {
+          final dio = fakeDio({
+            '$base/tasks/42': errorFixture('${version}_404_${fixture}_2.8.0'),
+          });
+
+          await expectLater(
+            _client(dio, hasV2: hasV2).tasks.delete(42),
+            completes,
+          );
+        });
+      }
     }
+
+    test('the 404 code 3018 a read gets for a task in a trashed project is '
+        'success too', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/42': errorFixture('v2_404_task_project_trashed_2.8.0'),
+      });
+
+      await expectLater(_client(dio).tasks.delete(42), completes);
+    });
 
     test('other 404s are failures', () async {
       final dio = fakeDio({
-        '$_v2/tasks/42': _notFound(3001),
+        '$_v2/tasks/42': _notFound(4009),
         '$_v2/tasks/43': errorFixture('v2_404_route_2.7.0'),
       });
       final tasks = _client(dio).tasks;
 
       await expectLater(
         tasks.delete(42),
-        throwsA(isA<NotFound>().having((f) => f.code, 'code', 3001)),
+        throwsA(isA<NotFound>().having((f) => f.code, 'code', 4009)),
       );
       await expectLater(
         tasks.delete(43),

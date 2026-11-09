@@ -38,7 +38,7 @@ String shareFailureText(
   VikunjaFailure(code: 7003 || 6007 || 3006) => l10n.shareFailureGone,
   VikunjaFailure(code: 6004) => l10n.shareFailureTeamAlreadyShared,
   VikunjaFailure(code: 6002) => l10n.shareFailureUnknownTeam,
-  NotFound(code: 3001) => l10n.projectGone,
+  NotFound(projectGone: true) => l10n.projectGone,
   Forbidden() => l10n.shareFailureForbidden,
   ValidationFailed() ||
   VikunjaFailure(code: 2002 || 2004) => l10n.shareFailureInvalid,

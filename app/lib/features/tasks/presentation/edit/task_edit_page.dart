@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
+import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
@@ -38,6 +39,9 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_pick
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/project_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/reminder_picker.dart';
+
+/// The title's counter shows once this few code points are left.
+const _counterFrom = 50;
 
 /// Edits the core properties of one task. The draft starts from the row as
 /// it was when the page opened and Save sends only the fields that differ
@@ -66,8 +70,10 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     return draft != null && original != null && !draft.diff(original).isEmpty;
   }
 
+  bool get _titleFits => _draft!.titleFits(_original!);
+
   bool get _canSave =>
-      _dirty && _draft!.isValid && _current != null && !_saving;
+      _dirty && _draft!.isValid && _titleFits && _current != null && !_saving;
 
   @override
   void dispose() {
@@ -217,6 +223,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
                 ? null
                 : () => unawaited(_editDescription()),
             titleController: _title,
+            titleTooLong: !_titleFits,
             project: ref.watch(projectByIdProvider(draft.projectId)),
             onChanged: _update,
             onPickProject: () => unawaited(_pickProject()),
@@ -248,6 +255,7 @@ class _Form extends ConsumerWidget {
     required this.description,
     required this.onEditDescription,
     required this.titleController,
+    required this.titleTooLong,
     required this.project,
     required this.onChanged,
     required this.onPickProject,
@@ -262,6 +270,9 @@ class _Form extends ConsumerWidget {
   final String description;
   final VoidCallback? onEditDescription;
   final TextEditingController titleController;
+
+  /// Changed and still over the limit, which a stored title may be.
+  final bool titleTooLong;
   final Project? project;
   final void Function(TaskDraft Function(TaskDraft draft) change) onChanged;
   final VoidCallback onPickProject;
@@ -278,6 +289,8 @@ class _Form extends ConsumerWidget {
     final shortcuts = buildDateShortcuts(now);
     final percent = (draft.percentDone * 100).round();
     final descriptionText = htmlToPlainText(description);
+    final used = titleController.text.runes.length;
+    final left = Task.maxTitleLength - used;
 
     return ReadableWidth.builder(
       maxWidth: ReadableWidth.form,
@@ -294,9 +307,19 @@ class _Form extends ConsumerWidget {
               keyboardType: TextInputType.text,
               textInputAction: TextInputAction.done,
               textCapitalization: TextCapitalization.sentences,
+              inputFormatters: [CodePointLimitFormatter(Task.maxTitleLength)],
               decoration: InputDecoration(
                 labelText: l10n.taskEditTitleLabel,
                 errorText: draft.hasTitle ? null : l10n.taskEditTitleRequired,
+                counterText: left <= _counterFrom
+                    ? '$used/${Task.maxTitleLength}'
+                    : null,
+                counterStyle: titleTooLong
+                    ? TextStyle(color: colors.error)
+                    : null,
+                semanticCounterText: left <= _counterFrom && left >= 0
+                    ? l10n.labelsTitleRemaining(left)
+                    : null,
               ),
               onChanged: (text) =>
                   onChanged((draft) => draft.copyWith(title: text)),

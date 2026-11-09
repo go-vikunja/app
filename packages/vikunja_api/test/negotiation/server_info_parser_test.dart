@@ -16,6 +16,8 @@ void main() {
       ('info_v2_2.4.0.json', const ServerVersion(2, 4, 0), 34524, 4),
       ('info_v1_2.7.0.json', const ServerVersion(2, 7, 0), 34527, 5),
       ('info_v2_2.7.0.json', const ServerVersion(2, 7, 0), 34527, 5),
+      ('info_v1_2.8.0.json', const ServerVersion(2, 8, 0), 34552, 5),
+      ('info_v2_2.8.0.json', const ServerVersion(2, 8, 0), 34552, 5),
     ]) {
       test(name, () {
         final info = parseServerInfo(fixtureJson(name));
@@ -32,6 +34,7 @@ void main() {
         expect(info.enabledBackgroundProviders, ['upload']);
         expect(info.legal.imprintUrl, isNull);
         expect(info.legal.privacyPolicyUrl, isNull);
+        expect(info.legal.links, isEmpty);
         expect(info.auth.localEnabled, isTrue);
         expect(info.auth.registrationEnabled, isTrue);
         expect(info.auth.ldapEnabled, isFalse);
@@ -75,16 +78,173 @@ void main() {
         info.legal.privacyPolicyUrl,
         Uri.parse('https://vikunja.io/privacy/'),
       );
+      expect(info.legal.links, [
+        LegalLink(
+          text: 'Imprint',
+          url: Uri.parse('https://vikunja.io/imprint/'),
+        ),
+        LegalLink(
+          text: 'Privacy Policy',
+          url: Uri.parse('https://vikunja.io/privacy/'),
+        ),
+      ]);
     });
 
-    test('the v1 and v2 bodies of one server parse alike', () {
-      final v1 = parseServerInfo(fixtureJson('info_v1_2.7.0.json'));
-      final v2 = parseServerInfo(fixtureJson('info_v2_2.7.0.json'));
+    for (final version in ['2.7.0', '2.8.0']) {
+      test('the v1 and v2 bodies of one $version server parse alike', () {
+        final v1 = parseServerInfo(fixtureJson('info_v1_$version.json'));
+        final v2 = parseServerInfo(fixtureJson('info_v2_$version.json'));
 
-      expect(v2.version, v1.version);
-      expect(v2.availableMigrators, v1.availableMigrators);
-      expect(v2.concurrentWrites, v1.concurrentWrites);
-      expect(v2.maxFileSizeBytes, v1.maxFileSizeBytes);
+        expect(v2.version, v1.version);
+        expect(v2.availableMigrators, v1.availableMigrators);
+        expect(v2.concurrentWrites, v1.concurrentWrites);
+        expect(v2.maxFileSizeBytes, v1.maxFileSizeBytes);
+        expect(v2.legal.links, v1.legal.links);
+      });
+    }
+  });
+
+  group('legal links', () {
+    LegalLinks legalOf(Map<String, Object?> legal) =>
+        parseServerInfo({'version': 'v2.8.0', 'legal': legal}).legal;
+
+    final imprint = Uri.parse('https://example.com/imprint');
+    final privacy = Uri.parse('https://example.com/privacy');
+    final terms = Uri.parse('https://example.com/terms');
+
+    test('2.8.0 lists them with the two deprecated ones first', () {
+      final legal = legalOf({
+        'imprint_url': '$imprint',
+        'privacy_policy_url': '$privacy',
+        'links': [
+          {'text': 'Imprint', 'url': '$imprint'},
+          {'text': 'Privacy Policy', 'url': '$privacy'},
+          {'text': 'Terms of Service', 'url': '$terms'},
+        ],
+      });
+
+      expect(legal.imprintUrl, imprint);
+      expect(legal.privacyPolicyUrl, privacy);
+      expect(legal.links, [
+        LegalLink(text: 'Imprint', url: imprint),
+        LegalLink(text: 'Privacy Policy', url: privacy),
+        LegalLink(text: 'Terms of Service', url: terms),
+      ]);
+    });
+
+    test('the imprint and the privacy policy come from the list when '
+        'only the new keys are configured', () {
+      final legal = legalOf({
+        'imprint_url': '',
+        'privacy_policy_url': '',
+        'links': [
+          {'text': 'Imprint', 'url': '$imprint'},
+          {'text': 'Privacy Policy', 'url': '$privacy'},
+        ],
+      });
+
+      expect(legal.imprintUrl, imprint);
+      expect(legal.privacyPolicyUrl, privacy);
+    });
+
+    test('only the exact server texts name the imprint and privacy policy', () {
+      final legal = legalOf({
+        'links': [
+          {'text': 'imprint', 'url': '$imprint'},
+          {'text': 'Datenschutz', 'url': '$privacy'},
+        ],
+      });
+
+      expect(legal.imprintUrl, isNull);
+      expect(legal.privacyPolicyUrl, isNull);
+      expect(legal.links, hasLength(2));
+    });
+
+    test('the deprecated fields win over a listed link of that name', () {
+      final legal = legalOf({
+        'imprint_url': '$imprint',
+        'links': [
+          {'text': 'Imprint', 'url': '$terms'},
+        ],
+      });
+
+      expect(legal.imprintUrl, imprint);
+    });
+
+    test('keeps http(s) links with a text, each URL once', () {
+      final legal = legalOf({
+        'links': [
+          {'text': '  Terms  ', 'url': ' $terms '},
+          {'text': 'Terms again', 'url': '$terms'},
+          {'text': '', 'url': '$imprint'},
+          {'text': '   ', 'url': '$imprint'},
+          {'url': '$imprint'},
+          {'text': 'No URL'},
+          {'text': 'Script', 'url': 'javascript:alert(1)'},
+          {'text': 'Relative', 'url': '/privacy'},
+          {'text': 'Mail', 'url': 'mailto:legal@example.com'},
+          {'text': 42, 'url': '$privacy'},
+          {'text': 'Not a string', 'url': 42},
+          null,
+          'not a link',
+          {'text': 'Privacy', 'url': 'http://example.com/privacy'},
+        ],
+      });
+
+      expect(legal.links, [
+        LegalLink(text: 'Terms', url: terms),
+        LegalLink(
+          text: 'Privacy',
+          url: Uri.parse('http://example.com/privacy'),
+        ),
+      ]);
+    });
+
+    test('servers before 2.8.0: the list is built from the two URLs', () {
+      expect(
+        legalOf({'imprint_url': '$imprint', 'privacy_policy_url': '$privacy'})
+            .links,
+        [
+          LegalLink(text: 'Imprint', url: imprint),
+          LegalLink(text: 'Privacy Policy', url: privacy),
+        ],
+      );
+      expect(legalOf({'privacy_policy_url': '$privacy'}).links, [
+        LegalLink(text: 'Privacy Policy', url: privacy),
+      ]);
+      expect(
+        legalOf({'imprint_url': '', 'privacy_policy_url': 'ftp://x'}).links,
+        isEmpty,
+      );
+      expect(
+        legalOf({'imprint_url': '$imprint', 'privacy_policy_url': '$imprint'})
+            .links,
+        [LegalLink(text: 'Imprint', url: imprint)],
+      );
+    });
+
+    test('a links value that is not a list counts as missing', () {
+      for (final links in [null, 'x', 1, <String, Object?>{}]) {
+        final legal = legalOf({'imprint_url': '$imprint', 'links': links});
+
+        expect(legal.imprintUrl, imprint, reason: '$links');
+        expect(legal.links, [
+          LegalLink(text: 'Imprint', url: imprint),
+        ], reason: '$links');
+      }
+    });
+
+    test('the list is unmodifiable', () {
+      final legal = legalOf({
+        'links': [
+          {'text': 'Terms', 'url': '$terms'},
+        ],
+      });
+
+      expect(
+        () => legal.links.add(LegalLink(text: 'x', url: terms)),
+        throwsUnsupportedError,
+      );
     });
   });
 
@@ -371,16 +531,25 @@ void main() {
         SupportTier.full,
       );
       expect(
+        derive('info_v2_2.8.0.json', {ApiVersion.v1, ApiVersion.v2}).tier,
+        SupportTier.full,
+      );
+      expect(
         derive('info_v2_try_vikunja_io.json', {ApiVersion.v2}).tier,
         SupportTier.full,
       );
     });
 
-    test('flags of the 2.7.0 fixture', () {
+    test('flags of the 2.7.0 and 2.8.0 fixtures', () {
       final capabilities = derive('info_v2_2.7.0.json', {
         ApiVersion.v1,
         ApiVersion.v2,
       });
+
+      expect(
+        derive('info_v2_2.8.0.json', {ApiVersion.v1, ApiVersion.v2}).all,
+        capabilities.all,
+      );
 
       expect(capabilities.all, {
         Capability.apiV2,

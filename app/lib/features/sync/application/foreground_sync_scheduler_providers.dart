@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/connection_refresh.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
@@ -28,11 +31,17 @@ ForegroundSyncScheduler? foregroundSyncScheduler(Ref ref) {
   if (needsReauth ?? true) return null;
   if (ref.watch(signOutControllerProvider)) return null;
 
+  final activity = ref.watch(foregroundActivityProvider);
+  final connectionRefresh = ref.watch(connectionRefreshProvider);
   final scheduler = ForegroundSyncScheduler(
     engine: ref.watch(syncEngineProvider(accountId)),
     clock: ref.watch(clockProvider),
-    // The activity sync rides on its ticks (step 16).
-    onForeground: ref.watch(foregroundActivityProvider).onForeground,
+    // The activity sync (step 16) and the re-read of /info (step 37e) ride
+    // on its ticks.
+    onForeground: ({required timed}) {
+      activity.onForeground(timed: timed);
+      unawaited(connectionRefresh.onForeground(accountId));
+    },
   );
   var listened = true;
   bool inFront() => switch (WidgetsBinding.instance.lifecycleState) {

@@ -430,6 +430,16 @@ void main() {
         await _client(dio, hasV2: hasV2).projects.delete(_v2Copy);
       });
 
+      test('a project in the trash (3018) counts as deleted', () async {
+        final dio = fakeDio({
+          '$base/projects/$_v2Copy': errorFixture(
+            '${version}_404_task_project_trashed_2.8.0',
+          ),
+        });
+
+        await _client(dio, hasV2: hasV2).projects.delete(_v2Copy);
+      });
+
       test('a missing route is not a deleted project', () async {
         final dio = fakeDio({
           '$base/projects/$_v2Copy': json({

@@ -1,7 +1,7 @@
 // Records the error answers of attachment previews on 2.7.1 and newer into
 // test/fixtures/attachments, with one throwaway user:
 //   dart run tool/capture_attachment_preview_fixtures.dart \
-//     [http://localhost:34527] [2.7.1]
+//     [http://localhost:34527] [2.8.0]
 // A preview of a text file (v2 `…/preview?size=md`, v1 `?preview_size=md`)
 // and a v2 preview of an unknown attachment. The previews themselves are
 // binary and not recorded. The user is renamed `fixtureuser` and the email
@@ -19,7 +19,7 @@ const _keptHeaders = ['content-type', 'content-length'];
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.8.0';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

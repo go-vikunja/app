@@ -1,5 +1,4 @@
-import 'package:vikunja_logic/src/quick_add/repeat_parser.dart'
-    show maxQuickAddAmount;
+import 'package:vikunja_logic/src/quick_add/amounts.dart';
 import 'package:vikunja_logic/src/time/day_interval.dart';
 import 'package:vikunja_logic/src/time/default_time.dart';
 
@@ -69,10 +68,11 @@ final _ordinalDay = RegExp(
 
 final _monthWord = RegExp('\\b($_months)\\b', caseSensitive: false);
 
-// D38-9: the web matches inside words, so `within 2 days` was `with` in
-// two days.
+// D38-9: the web needs a space or the end after the unit; here punctuation
+// may follow (`in 2 days,`) but no apostrophe (`in a day's work`).
 final _inAmount = RegExp(
-  r'(^| )(in ([0-9]+) (hour|day|week|month)s?)\b',
+  '(^| )(in ([0-9]+|an?|$amountWordsPattern) '
+  "(minute|hour|day|week|month|year)s?)(?![\\w'\u2019])",
   caseSensitive: false,
 );
 
@@ -192,13 +192,14 @@ _FoundDate? _ordinalDate(String text, DateTime now) {
 _FoundDate? _inAmountDate(String text, DateTime now) {
   final match = _inAmount.firstMatch(text);
   if (match == null) return null;
-  final amount = int.tryParse(match[3]!);
-  if (amount == null || amount > maxQuickAddAmount) return null;
-  // D19-2: the web reads the unit of `In 2 Days` case-sensitively and adds
-  // nothing.
+  final amount = switch (match[3]!.toLowerCase()) {
+    'a' || 'an' => 1,
+    final amountText => parseQuickAddAmount(amountText),
+  };
+  if (amount == null) return null;
   final unit = match[4]!.toLowerCase();
   final date = DateTime(
-    now.year,
+    now.year + (unit == 'year' ? amount : 0),
     now.month + (unit == 'month' ? amount : 0),
     now.day +
         switch (unit) {
@@ -207,11 +208,13 @@ _FoundDate? _inAmountDate(String text, DateTime now) {
           _ => 0,
         },
     now.hour + (unit == 'hour' ? amount : 0),
-    now.minute,
+    now.minute + (unit == 'minute' ? amount : 0),
     now.second,
     now.millisecond,
     now.microsecond,
   );
+  // Vikunja refuses the extended ISO form that a later year needs.
+  if (date.year > 9999) return null;
   return _found(text, date, match[2]!);
 }
 

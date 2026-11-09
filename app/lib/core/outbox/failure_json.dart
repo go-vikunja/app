@@ -75,6 +75,7 @@ VikunjaFailure failureFromJson(Map<String, Object?> json) {
     'forbidden' => Forbidden(code: code, message: message),
     'related_task_missing' => RelatedTaskMissing(
       json['other_task_id'] as int? ?? 0,
+      code: code ?? 4002,
       message: message,
     ),
     'not_found' => NotFound(code: code, message: message),

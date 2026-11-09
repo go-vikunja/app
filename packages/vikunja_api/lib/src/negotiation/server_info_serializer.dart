@@ -22,6 +22,10 @@ Map<String, Object?> serverInfoToJson(ServerInfo info) => {
   'legal': {
     'imprint_url': _uri(info.legal.imprintUrl),
     'privacy_policy_url': _uri(info.legal.privacyPolicyUrl),
+    'links': [
+      for (final link in info.legal.links)
+        {'text': link.text, 'url': link.url.toString()},
+    ],
   },
   'caldav_enabled': info.caldavEnabled,
   'auth': {

@@ -847,7 +847,8 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       TaskNotSyncedYet() => l10n.taskDuplicateNotSynced,
       Forbidden() => l10n.taskDuplicateForbidden,
       NotFound(code: 4034) => l10n.taskDuplicateFileMissing,
-      NotFound(code: 4002) => l10n.syncProblemTaskMissing,
+      NotFound(taskGone: true) => l10n.syncProblemTaskMissing,
+      NotFound(projectGone: true) => l10n.syncProblemProjectMissing,
       VikunjaFailure(code: 3008) => l10n.taskDuplicateArchived,
       _ when shared != null => shared,
       VikunjaFailure(:final message) when message.trim().isNotEmpty =>

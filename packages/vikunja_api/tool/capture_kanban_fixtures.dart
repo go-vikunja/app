@@ -1,7 +1,7 @@
 // Records a kanban board, per-bucket paging, moves and positions into
 // test/fixtures/read and test/fixtures/write, with one throwaway user:
 //   dart run tool/capture_kanban_fixtures.dart \
-//     [http://localhost:34527] [2.7.1]
+//     [http://localhost:34527] [2.8.0]
 // A project whose Kanban view has To-Do, Doing (limit 2), Done and an
 // empty Later; four tasks, three in To-Do (read two per bucket; the second
 // with a label, a description and a priority) and one in Doing; then a
@@ -22,7 +22,7 @@ typedef _User = ({String username, String email, String jwt});
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.8.0';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

@@ -418,8 +418,11 @@ void main() {
       const OAuthFailure(OAuthProblem.pkceMismatch, code: 17006),
       const Forbidden(code: 7003, message: 'no access'),
       const NotFound(code: 3001),
+      const NotFound(code: 4040),
       const NotFound(),
       const RelatedTaskMissing(41, message: 'task does not exist'),
+      const RelatedTaskMissing(42, code: 4040),
+      const RelatedTaskMissing(43, code: 3018),
       const ValidationFailed(
         fieldErrors: {
           'title': ['must not be empty', 'too long'],
@@ -471,6 +474,15 @@ void main() {
         }
       });
     }
+
+    test('a missing related task without a code reads as 4002', () {
+      expect(
+        decodeFailure('{"kind":"related_task_missing","other_task_id":5}'),
+        isA<RelatedTaskMissing>()
+            .having((f) => f.otherTaskId, 'otherTaskId', 5)
+            .having((f) => f.code, 'code', 4002),
+      );
+    });
 
     test('an unknown kind reads as an unexpected response', () {
       expect(decodeFailure('{"kind":"future"}'), isA<UnexpectedResponse>());

@@ -43,7 +43,7 @@ final class WriteTransport {
     try {
       return await _dio.requestUri<Object?>(
         _base.replace(path: '${_base.path}$path', queryParameters: query),
-        data: body,
+        data: body == null ? null : _withoutNul(body),
         options: Options(
           method: method,
           responseType: ResponseType.json,
@@ -132,3 +132,15 @@ final class WriteTransport {
       status != null &&
       (status >= 200 && status < 300 || status == _notModified);
 }
+
+/// Vikunja 2.8.0 refuses a JSON body with U+0000 anywhere in it, so one
+/// pasted into a text would fail its write for good.
+Object? _withoutNul(Object? value) => switch (value) {
+  final String text => withoutNul(text),
+  final Map<String, Object?> map => <String, Object?>{
+    for (final MapEntry(:key, :value) in map.entries)
+      withoutNul(key): _withoutNul(value),
+  },
+  final List<Object?> list => [for (final item in list) _withoutNul(item)],
+  _ => value,
+};

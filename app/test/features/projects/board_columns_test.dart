@@ -983,6 +983,7 @@ void main() {
       expect(text(const DomainError(412, code: 2002)), en.boardColumnInvalid);
       expect(text(const NotFound(code: 3014)), en.projectViewGone);
       expect(text(const NotFound(code: 3001)), en.projectGone);
+      expect(text(const NotFound(code: 3018)), en.projectGone);
       expect(
         text(const DomainError(400, code: 9999, message: ' Oops ')),
         en.boardColumnChangeRefused('Oops'),

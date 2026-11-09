@@ -74,4 +74,4 @@ final class ForegroundSyncSchedulerProvider
 }
 
 String _$foregroundSyncSchedulerHash() =>
-    r'219265baa73357a469b81a890a4ab5b555f57cb2';
+    r'c6aaa7b358e784c1b662c53e3e93f9d2434ae785';

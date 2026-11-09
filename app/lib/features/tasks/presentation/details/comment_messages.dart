@@ -20,7 +20,8 @@ String commentFailureText(
     l10n.commentFailedNotAuthor,
   Forbidden() => l10n.commentsReadOnlyNote,
   VikunjaFailure(code: 4015) => l10n.commentFailedGone,
-  NotFound(code: 4002) => l10n.taskOpenNotFound,
+  NotFound(taskGone: true) ||
+  NotFound(projectGone: true) => l10n.taskOpenNotFound,
   // Empty comments never leave the app, so the server's 2002 is the size.
   VikunjaFailure(code: 2002) ||
   ServerFailure(statusCode: 413) ||

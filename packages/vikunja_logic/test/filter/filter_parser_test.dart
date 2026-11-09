@@ -461,6 +461,101 @@ void main() {
       );
     });
   });
+
+  // As Vikunja 2.8.0 answered; 2.7.1 accepted all of these.
+  group('business days, at most 10000 over the whole filter', () {
+    test('count by amount whatever the sign, a bare b as one', () {
+      for (final filter in [
+        'due_date < now+10000b',
+        'due_date < now-10000b',
+        'due_date < now+010000b',
+        'due_date < now+5000b+5000b',
+        'due_date < now+5000b+5000d',
+        'due_date < now+9999b && due_date < now+b',
+        'due_date < now+10000b && due_date < now+0b',
+        'due_date in now+6000b, now+4000b',
+        'due_date < 2023-02-05-10000b',
+        'title = now+10001b && due_date < now+b',
+        'assignees in now+10001b',
+      ]) {
+        expect(
+          parseTaskFilter(filter),
+          isA<FilterExpression>(),
+          reason: filter,
+        );
+      }
+    });
+
+    test('more is 4019 for the value that goes over', () {
+      final cases = {
+        'due_date < now+10001b': ('due_date', 'now+10001b'),
+        'due_date < now-10001b': ('due_date', 'now-10001b'),
+        'reminders < now+10001b': ('reminders', 'now+10001b'),
+        'due_date < now+5000b-5001b': ('due_date', 'now+5000b-5001b'),
+        'due_date < now+10000b && due_date < now-b': ('due_date', 'now-b'),
+        'due_date in now+6000b, now+4001b': (
+          'due_date',
+          'now+6000b, now+4001b',
+        ),
+        '(due_date < now+6000b || done = true) && start_date > now-4001b': (
+          'start_date',
+          'now-4001b',
+        ),
+        'done_at < now+6000b && created > now+3000b && updated > now+1001b': (
+          'updated',
+          'now+1001b',
+        ),
+        'due_date < now+0000000000000000000010001b': (
+          'due_date',
+          'now+0000000000000000000010001b',
+        ),
+        'due_date < now+99999999999999999999b': (
+          'due_date',
+          'now+99999999999999999999b',
+        ),
+        // Not date math, yet counted: the lenient Y-M-D ignores the rest.
+        'due_date < 2023-02-05-10001b': ('due_date', '2023-02-05-10001b'),
+      };
+      for (final MapEntry(key: filter, value: (field, value))
+          in cases.entries) {
+        final error = _error(filter);
+
+        expect(error.code, FilterError.invalidValue, reason: filter);
+        expect(error.field, field, reason: filter);
+        expect(error.value, value, reason: filter);
+      }
+    });
+
+    test('the conditions convert in order', () {
+      expect(
+        parseTaskFilter('due_date < now+10001b && foo = 1'),
+        _errorWithCode(4019, field: 'due_date'),
+      );
+      expect(
+        parseTaskFilter('foo = 1 && due_date < now+10001b'),
+        _errorWithCode(4016, field: 'foo'),
+      );
+      expect(
+        parseTaskFilter('priority like 3 && due_date < now+10001b'),
+        _errorWithCode(4019, field: 'due_date'),
+      );
+      expect(
+        _error('due_date like now+6000b && due_date < now+4001b').value,
+        'now+4001b',
+      );
+    });
+
+    test("a request ANDed with a view's filter shares the limit", () {
+      expect(
+        parseTaskFilter('(due_date > now-4000b) && (due_date < now+6000b)'),
+        isA<FilterExpression>(),
+      );
+      expect(
+        _error('(due_date > now-4001b) && (due_date < now+6000b)').value,
+        'now+6000b',
+      );
+    });
+  });
 }
 
 Matcher _errorWithCode(int code, {String? field}) => isA<FilterError>()

@@ -36,6 +36,8 @@ void main() {
         late TestUser owner;
         late TestUser member;
         late TestUser guest;
+        late Map<int, RenewedJwt> sessions;
+        late Dio ownerDio;
         late String runId;
 
         Future<T> paced<T>(Future<T> Function() write) async {
@@ -47,12 +49,9 @@ void main() {
         Future<int> createProject(String title, {int parent = 0}) async {
           final v1 = connection.apiBaseUri(ApiVersion.v1);
           final response = await paced(
-            () => dio.putUri<Map<String, Object?>>(
+            () => ownerDio.putUri<Map<String, Object?>>(
               v1.replace(path: '${v1.path}/projects'),
               data: {'title': title, 'parent_project_id': parent},
-              options: Options(
-                headers: {'Authorization': 'Bearer ${owner.jwt}'},
-              ),
             ),
           );
           return response.data!['id']! as int;
@@ -62,16 +61,25 @@ void main() {
             createAuthenticatedDio(
               base: dio,
               connection: over,
-              tokens: StaticJwt(user.jwt),
+              tokens: sessions[user.id]!,
             );
 
         setUpAll(() async {
           dio = contractDio();
           connection = await DioServerConnector(dio)
               .connect('http://localhost:$port');
-          owner = await registerAndLogin(dio, connection);
-          member = await registerAndLogin(dio, connection);
-          guest = await registerAndLogin(dio, connection);
+          final users = [
+            for (var i = 0; i < 3; i++)
+              await registerAndLoginAgainLater(dio, connection),
+          ];
+          [owner, member, guest] = [
+            for (final signedIn in users) signedIn.user,
+          ];
+          sessions = {
+            for (final (:user, :loginAgain) in users)
+              user.id: RenewedJwt(user.jwt, loginAgain),
+          };
+          ownerDio = authenticated(owner, connection);
           runId = Random.secure().nextInt(1 << 16).toRadixString(16);
         });
 

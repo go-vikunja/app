@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
@@ -124,6 +125,7 @@ class _SubtasksSectionState extends State<SubtasksSection> {
                 focusNode: _focus,
                 textInputAction: TextInputAction.done,
                 textCapitalization: TextCapitalization.sentences,
+                inputFormatters: [CodePointLimitFormatter(Task.maxTitleLength)],
                 decoration: InputDecoration(
                   labelText: l10n.taskDetailAddSubtask,
                   prefixIcon: const Icon(Icons.subdirectory_arrow_right),

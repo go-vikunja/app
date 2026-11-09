@@ -148,6 +148,20 @@ void main() {
       expect(await db.outboxDao.loadProblems(), isEmpty);
     });
 
+    test('a base with a U+0000 is the one the server stored without '
+        'it', () async {
+      await db.tasksDao.upsertAll([
+        task.copyWith(description: '<p>Ol\u0000d</p>'),
+      ], syncRunId: 'run');
+      write.serverTasks[1] = task.copyWith(description: '<p>Old</p>');
+      await edit('<p>New</p>');
+
+      await sender.drain();
+
+      expect(write.serverTasks[1]!.description, '<p>New</p>');
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+    });
+
     test('a description change without a base overwrites whatever the '
         'server has', () async {
       expect(
@@ -224,6 +238,18 @@ void main() {
       expect(await db.outboxDao.count(), 0);
       expect(write.serverTasks[1]!.description, '<p>Mine</p>');
       expect(await localDescription(), '<p>Mine</p>');
+    });
+
+    test('an edit with a U+0000 the server already has without it is no '
+        'conflict', () async {
+      await edit('<p>Mi\u0000ne</p>');
+      changeOnTheWeb('<p>Mine</p>');
+
+      await sender.drain();
+
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      expect(await db.outboxDao.count(), 0);
+      expect(write.updates, hasLength(1));
     });
 
     test('taps followed by an edit are an edit', () async {

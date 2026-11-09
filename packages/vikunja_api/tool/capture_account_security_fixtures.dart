@@ -1,7 +1,7 @@
 // Records the answers of step 31's AccountSecurityPort into
 // test/fixtures/account_security, with one throwaway user:
 //   dart run tool/capture_account_security_fixtures.dart \
-//     [http://localhost:34527] [2.7.1]
+//     [http://localhost:34527] [2.8.0]
 // The user signs in three times: a password login (the bearer of every
 // capture), an OAuth sign-in whose code exchange sends a Rurana User-Agent
 // and a password login as Firefox. Then: the sessions on both versions, whole
@@ -48,7 +48,7 @@ final _client = OAuthClientConfig(
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.8.0';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

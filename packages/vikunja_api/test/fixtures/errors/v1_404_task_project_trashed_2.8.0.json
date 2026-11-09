@@ -1,0 +1,9 @@
+{
+  "server": "2.8.0",
+  "request": "GET /api/v1/tasks/3",
+  "status": 404,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":3018,\"message\":\"This project is in the trash. Restore it first.\",\"details\":{\"id\":11,\"deleted_at\":\"2026-11-09T07:16:25Z\",\"deleted_by\":{\"id\":6,\"name\":\"\",\"username\":\"trashcodes8e4755\",\"created\":\"2026-11-09T07:16:25Z\",\"updated\":\"2026-11-09T07:16:25Z\"},\"can_restore\":true,\"can_restore_root\":false}}\n"
+}

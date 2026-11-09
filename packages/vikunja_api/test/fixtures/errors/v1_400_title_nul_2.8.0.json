@@ -1,0 +1,9 @@
+{
+  "server": "2.8.0",
+  "request": "PUT /api/v1/projects/{id}/tasks",
+  "status": 400,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"code\":2004,\"message\":\"Invalid model provided: text must not contain NUL characters (\\\\u0000)\"}\n"
+}

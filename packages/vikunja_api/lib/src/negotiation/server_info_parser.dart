@@ -37,10 +37,7 @@ ServerInfo parseServerInfo(Map<String, Object?> json) {
     taskAttachmentsEnabled: _bool(json['task_attachments_enabled']),
     enabledBackgroundProviders: _strings(json['enabled_background_providers']),
     totpEnabled: _bool(json['totp_enabled']),
-    legal: LegalLinks(
-      imprintUrl: _webUri(legal['imprint_url']),
-      privacyPolicyUrl: _webUri(legal['privacy_policy_url']),
-    ),
+    legal: _legalLinks(legal),
     caldavEnabled: _bool(json['caldav_enabled']),
     auth: AuthMethods(
       localEnabled: _bool(local['enabled']),
@@ -63,6 +60,36 @@ ServerInfo parseServerInfo(Map<String, Object?> json) {
       final bool value => value,
       _ => null,
     },
+  );
+}
+
+// The texts 2.8.0 gives the links of the deprecated `imprint_url` and
+// `privacy_policy_url`, and the ones its config docs ask admins to reuse.
+const _imprintText = 'Imprint';
+const _privacyPolicyText = 'Privacy Policy';
+
+LegalLinks _legalLinks(Map<String, Object?> legal) {
+  final imprint = _webUri(legal['imprint_url']);
+  final privacy = _webUri(legal['privacy_policy_url']);
+  final candidates = switch (legal['links']) {
+    final List<Object?> listed => [
+      for (final link in listed.map(_map))
+        (_string(link['text']).trim(), _webUri(link['url'])),
+    ],
+    _ => [(_imprintText, imprint), (_privacyPolicyText, privacy)],
+  };
+  final seen = <Uri>{};
+  final links = [
+    for (final (text, url) in candidates)
+      if (text.isNotEmpty && url != null && seen.add(url))
+        LegalLink(text: text, url: url),
+  ];
+  Uri? named(String text) =>
+      links.where((link) => link.text == text).firstOrNull?.url;
+  return LegalLinks(
+    imprintUrl: imprint ?? named(_imprintText),
+    privacyPolicyUrl: privacy ?? named(_privacyPolicyText),
+    links: List.unmodifiable(links),
   );
 }
 

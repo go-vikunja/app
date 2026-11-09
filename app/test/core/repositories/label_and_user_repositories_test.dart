@@ -254,6 +254,43 @@ void main() {
       expect(write.requests, ['create label errand']);
     });
 
+    group('a title with a U+0000 is the one the server stores, without it', () {
+      const withNul = NewLabel(
+        title: 'err\u0000and',
+        hexColor: '0ead69',
+        description: '<p>Outside</p>',
+      );
+
+      test('findOrCreate finds the label of that title', () async {
+        read.allLabels = [serverLabel(40, 'errand', created: now)];
+
+        final found = await repository.findOrCreate(withNul);
+
+        expect(found.id, 40);
+        expect(read.requests, ['labels page 1 search errand']);
+        expect(write.requests, isEmpty);
+      });
+
+      test('a create sends it with the colour and description', () async {
+        final created = await repository.create(withNul);
+
+        expect(write.requests, ['create label errand']);
+        expect(created.title, 'errand');
+        expect(created.hexColor, '0ead69');
+        expect(created.description, '<p>Outside</p>');
+      });
+
+      test('a create whose answer was lost adopts the label', () async {
+        loseAnswers();
+
+        final created = await repository.create(withNul);
+
+        expect(created.id, 900);
+        expect(read.requests, ['labels page 1 search errand']);
+        expect(write.serverLabels, hasLength(1));
+      });
+    });
+
     group('update', () {
       const me = User(id: 5, username: 'me');
 

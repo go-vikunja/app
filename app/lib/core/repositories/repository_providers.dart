@@ -156,14 +156,17 @@ ProjectSharingPort projectSharingPort(Ref ref, String accountId) =>
     );
 
 /// The registry hands out new connection instances on every write, so only
-/// the parts that choose the transport count as a change.
+/// the parts the ports build on count as a change: the root and the API
+/// versions, which choose the transport, and the server version, which
+/// gates routes and changes when a refresh of `/info` finds the server
+/// upgraded.
 ServerConnection _connectionOf(Ref ref, String accountId) {
-  final transportKey = ref.watch(
+  final portsKey = ref.watch(
     accountsProvider.select(
-      (accounts) => _transportKey(accounts.value?.find(accountId)?.connection),
+      (accounts) => _portsKey(accounts.value?.find(accountId)?.connection),
     ),
   );
-  if (transportKey == null) {
+  if (portsKey == null) {
     throw StateError('Account $accountId is not registered');
   }
   return ref.read(accountsProvider).value!.find(accountId)!.connection;
@@ -198,13 +201,18 @@ final class AccountTokens implements AccessTokenSource {
       _session.refreshAfterRejection(rejectedToken);
 }
 
-(Uri, String)? _transportKey(ServerConnection? connection) {
+(Uri, String, String)? _portsKey(ServerConnection? connection) {
   if (connection == null) return null;
   final versions = [
     for (final version in ApiVersion.values)
       if (connection.apiVersions.contains(version)) version.name,
   ];
-  return (connection.rootUri, versions.join(','));
+  final info = connection.info;
+  return (
+    connection.rootUri,
+    versions.join(','),
+    info.version?.raw ?? info.rawVersion,
+  );
 }
 
 @Riverpod(keepAlive: true)

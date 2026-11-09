@@ -1,0 +1,9 @@
+{
+  "server": "2.8.0",
+  "request": "DELETE /api/v2/tasks/2",
+  "status": 404,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34552/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Not Found\",\"status\":404,\"detail\":\"This task is in the trash.\",\"code\":4040,\"details\":{\"id\":2,\"project_id\":10,\"deleted_at\":\"2026-11-09T07:16:25Z\",\"deleted_by\":{\"id\":6,\"name\":\"\",\"username\":\"trashcodes8e4755\",\"created\":\"2026-11-09T07:16:25Z\",\"updated\":\"2026-11-09T07:16:25Z\"},\"can_restore\":true}}\n"
+}

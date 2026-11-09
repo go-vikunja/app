@@ -71,6 +71,8 @@ List<String> _dateExamples(DateTime now) {
     '27/$mm',
     '${date.year}-$mm-27',
     'in 3 days',
+    'in two weeks',
+    'in 30 minutes',
   ];
 }
 

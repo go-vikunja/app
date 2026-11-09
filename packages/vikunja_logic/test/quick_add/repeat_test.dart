@@ -155,13 +155,40 @@ void main() {
       expect(parse('x every dayz').repeats, isNull);
     });
 
-    test('amounts are digits or one to ten', () {
+    test('amounts are digits or one to twelve', () {
       expect(
         parse('x every 11 days').repeats,
         _repeat(11, QuickAddRepeatUnit.days),
       );
-      expect(parse('x every eleven days').repeats, isNull);
+      expect(
+        parse('x every eleven days').repeats,
+        _repeat(11, QuickAddRepeatUnit.days),
+      );
+      expect(
+        parse('x every twelve months').repeats,
+        _repeat(12, QuickAddRepeatUnit.months),
+      );
+      expect(parse('x every thirteen days').repeats, isNull);
       expect(parse('x every 1.5 days').repeats, isNull);
+    });
+
+    test('number words in any case', () {
+      final result = parse('Clean gutters Each Twelve weeks');
+      expect(result.text, 'Clean gutters');
+      expect(result.repeats, _repeat(12, QuickAddRepeatUnit.weeks));
+      expect(result.repeatPhrase, 'Each Twelve weeks');
+      expect(
+        parse('x every ELEVEN hours').repeats,
+        _repeat(11, QuickAddRepeatUnit.hours),
+      );
+    });
+
+    test('a and an are no repeat amounts', () {
+      for (final text in ['x every a week', 'x each an hour']) {
+        final result = parse(text);
+        expect(result.repeats, isNull, reason: text);
+        expect(result.text, text, reason: text);
+      }
     });
 
     test('every with a weekday is no repeat but the weekday', () {
@@ -186,6 +213,13 @@ void main() {
       final result = parse('x every 100001 years');
       expect(result.repeats, isNull);
       expect(result.text, 'x every 100001 years');
+    });
+
+    test('with a spelled-out date after it', () {
+      final result = parse('Water lawn every two weeks in three days');
+      expect(result.text, 'Water lawn');
+      expect(result.repeats, _repeat(2, QuickAddRepeatUnit.weeks));
+      expect(result.date, DateTime(2021, 6, 27, 12));
     });
 
     test('with a date before or after it', () {

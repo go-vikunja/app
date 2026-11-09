@@ -479,7 +479,7 @@ final class _ProjectsWriteApi implements ProjectsWritePort {
     try {
       await _transport.send('DELETE', '/projects/$projectId');
     } on NotFound catch (failure) {
-      if (failure.code != _projectDoesNotExist) rethrow;
+      if (!failure.projectGone) rethrow;
     }
   }
 
@@ -782,7 +782,6 @@ final class _LabelsWriteApi implements LabelsWritePort {
 
 const _notModified = 304;
 const _contentTooLarge = 413;
-const _taskDoesNotExist = 4002;
 const _attachmentDoesNotExist = 4011;
 const _commentDoesNotExist = 4015;
 const _fileTooLarge = 4012;
@@ -794,7 +793,6 @@ const _relationAlreadyExists = 4008;
 const _relationDoesNotExist = 4009;
 const _alreadySubscribed = 12002;
 const _bucketDoesNotExist = 10001;
-const _projectDoesNotExist = 3001;
 const _viewDoesNotExist = 3014;
 const _savedFilterDoesNotExist = 11001;
 const _minProjectPosition = 0.1;
@@ -900,7 +898,7 @@ final class _TasksWriteApi implements TasksWritePort {
     try {
       await _transport.send('DELETE', '/tasks/$id');
     } on NotFound catch (failure) {
-      if (failure.code != _taskDoesNotExist) rethrow;
+      if (!failure.taskGone && !failure.projectGone) rethrow;
     }
   }
 
@@ -1109,11 +1107,15 @@ final class _TasksWriteApi implements TasksWritePort {
       // added from the other task.
       if (failure.code != _relationAlreadyExists) rethrow;
     } on NotFound catch (failure) {
-      if (failure.code != _taskDoesNotExist) rethrow;
+      if (!failure.taskGone && !failure.projectGone) rethrow;
       // The code does not say which of the two tasks is missing; the read
-      // fails with it when this one is.
+      // fails when this one is.
       await _read(taskId);
-      throw RelatedTaskMissing(ref.otherTaskId, message: failure.message);
+      throw RelatedTaskMissing(
+        ref.otherTaskId,
+        code: failure.code,
+        message: failure.message,
+      );
     }
   }
 
@@ -1124,16 +1126,16 @@ final class _TasksWriteApi implements TasksWritePort {
         '/tasks/$taskId/relations/${ref.kind.wireName}/${ref.otherTaskId}',
       );
     } on NotFound catch (failure) {
-      switch (failure.code) {
-        case _relationDoesNotExist:
-          return;
-        case _taskDoesNotExist:
-          // Deleting the other task takes its edges along.
-          if (!_edgesOf(await _read(taskId)).contains(ref)) return;
-          throw RelatedTaskMissing(ref.otherTaskId, message: failure.message);
-        default:
-          rethrow;
-      }
+      if (failure.code == _relationDoesNotExist) return;
+      if (!failure.taskGone && !failure.projectGone) rethrow;
+      // Deleting the other task takes its edges along; trashing it, or its
+      // project, hides them until a restore.
+      if (!_edgesOf(await _read(taskId)).contains(ref)) return;
+      throw RelatedTaskMissing(
+        ref.otherTaskId,
+        code: failure.code,
+        message: failure.message,
+      );
     }
   }
 

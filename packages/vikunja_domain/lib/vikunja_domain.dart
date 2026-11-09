@@ -52,3 +52,4 @@ export 'src/task/task_details.dart';
 export 'src/task/task_relation_kind.dart';
 export 'src/task/task_reminder.dart';
 export 'src/team/team.dart';
+export 'src/text/without_nul.dart';

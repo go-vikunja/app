@@ -6,7 +6,8 @@ import 'package:material_ui/material_ui.dart';
 /// Keeps a field within [maxLength] code points, as the server counts.
 /// Flutter's `LengthLimitingTextInputFormatter` counts characters as shown,
 /// and one emoji can be several code points. A text already over the limit,
-/// such as a stored title, can still be shortened.
+/// such as a stored title, is never cut: it takes any edit that does not
+/// make it longer.
 final class CodePointLimitFormatter extends TextInputFormatter {
   new(this.maxLength);
 
@@ -20,8 +21,8 @@ final class CodePointLimitFormatter extends TextInputFormatter {
     final length = newValue.text.runes.length;
     if (length <= maxLength) return newValue;
     final oldLength = oldValue.text.runes.length;
-    if (length < oldLength) return newValue;
-    if (oldLength >= maxLength && oldValue.selection.isCollapsed) {
+    if (oldLength > maxLength) return length > oldLength ? oldValue : newValue;
+    if (oldLength == maxLength && oldValue.selection.isCollapsed) {
       return oldValue;
     }
     final text = String.fromCharCodes(newValue.text.runes.take(maxLength));

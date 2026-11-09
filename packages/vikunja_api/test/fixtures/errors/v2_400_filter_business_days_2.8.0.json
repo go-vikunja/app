@@ -1,0 +1,9 @@
+{
+  "server": "2.8.0",
+  "request": "GET /api/v2/tasks?filter=due_date < now+10001b",
+  "status": 400,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34553/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Bad Request\",\"status\":400,\"detail\":\"The task filter value 'now+10001b' for field 'due_date' is invalid.\",\"code\":4019}\n"
+}

@@ -139,16 +139,24 @@ void main() {
       expect(sync.refreshCalls, 1);
     });
 
-    test('a task the server already deleted counts as deleted', () async {
-      await queueDelete(2);
-      write.beforeRequest = (_) => fail(const NotFound(code: 4002));
+    for (final (what, code) in [
+      ('deleted', 4002),
+      ('put in the trash', 4040),
+      ('put in the trash with its project, on a delete', 3001),
+      ('put in the trash with its project, on a read', 3018),
+    ]) {
+      test('a task the server already $what ($code) counts as '
+          'deleted', () async {
+        await queueDelete(2);
+        write.beforeRequest = (_) => fail(NotFound(code: code));
 
-      await sender().drain();
+        await sender().drain();
 
-      expect(await db.tasksDao.findRow(2), isNull);
-      expect(await db.outboxDao.count(), 0);
-      expect(await db.outboxDao.loadProblems(), isEmpty);
-    });
+        expect(await db.tasksDao.findRow(2), isNull);
+        expect(await db.outboxDao.count(), 0);
+        expect(await db.outboxDao.loadProblems(), isEmpty);
+      });
+    }
 
     test("the fields of a later op survive the server's answer", () async {
       await queue(1, done);
@@ -752,7 +760,9 @@ void main() {
   group('problems', () {
     for (final failure in <VikunjaFailure>[
       const NotFound(code: 3001),
+      const NotFound(code: 3018),
       const NotFound(code: 4002),
+      const NotFound(code: 4040),
       const Forbidden(code: 7003),
       const DomainError(412, code: 3008),
       const ValidationFailed(
@@ -1055,6 +1065,32 @@ void main() {
       expect(await db.tasksDao.resolveId(id), 100);
       expect(await db.outboxDao.count(), 0);
       expect(outbox.state, OutboxSenderState.idle);
+    });
+
+    test('a lost create whose title had a U+0000 is adopted under the title '
+        'the server stored, not sent again', () async {
+      final id = await create(
+        const NewTask(projectId: 7, title: 'Buy\u0000 milk'),
+      );
+      write.afterRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      final outbox = sender();
+      await outbox.drain();
+      // The transport leaves the NUL out, so the server stores the title
+      // without it.
+      write.serverTasks[100] = write.serverTasks[100]!.copyWith(
+        title: 'Buy milk',
+      );
+      mirrorServer();
+
+      write.afterRequest = null;
+      await outbox.sendNow();
+
+      expect(write.requests, ['create Buy\u0000 milk']);
+      expect(read.requests, hasLength(1));
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect((await db.tasksDao.find(100))!.title, 'Buy milk');
+      expect(await db.outboxDao.count(), 0);
     });
 
     test('the lookup matches the title as sent, not the newer one, and '

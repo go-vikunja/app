@@ -18,8 +18,8 @@ User? parseUser(Object? json) {
   return null;
 }
 
-/// Someone else as a list names them: never with an email, which a few
-/// answers still carry (a link share's creator on v1).
+/// Someone else as a list names them: never with an email, which servers
+/// before 2.8.0 sent with a link share's creator.
 User? parseOtherUser(Object? json) => switch (parseUser(json)) {
   final user? => User(id: user.id, username: user.username, name: user.name),
   null => null,

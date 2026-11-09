@@ -304,6 +304,16 @@ void main() {
           l10n.syncProblemTaskMissing,
         ),
         (
+          'the task in the trash',
+          const NotFound(code: 4040, message: 'task is in the trash'),
+          l10n.syncProblemTaskMissing,
+        ),
+        (
+          'its project in the trash',
+          const NotFound(code: 3018, message: 'project is in the trash'),
+          l10n.syncProblemProjectMissing,
+        ),
+        (
           'a server error',
           const ServerFailure(500, message: 'Internal Server Error'),
           l10n.actionFailureServerError,

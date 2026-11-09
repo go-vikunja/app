@@ -1,6 +1,6 @@
 # Local Vikunja server for the vikunja_api contract tests and manual sign-in
 # tests. Only the latest release is tested (owner decision, 2026-10-09):
-#   34527  2.7.1  latest release
+#   34527  2.8.0  latest release
 #   34528-34531  the same release behind TLS, opt-in profile `tls` (below)
 # Bump the image tag when a new Vikunja release comes out.
 # The host port is referenced by the contract tests, tool/*.sh and the docs;
@@ -43,8 +43,8 @@ x-vikunja-env: &vikunja-env
 # API base URL. localhost works for the host, the iOS simulator (shares the
 # host's network) and the Android emulator with `adb reverse`.
 services:
-  vikunja-2-7:
-    image: vikunja/vikunja:2.7.1
+  vikunja:
+    image: vikunja/vikunja:2.8.0
     environment:
       <<: *vikunja-env
       VIKUNJA_SERVICE_PUBLICURL: http://localhost:34527/
@@ -59,12 +59,12 @@ services:
   #   34529  client certificate required, server certificate from the test CA
   #   34530  access-header gate like Cloudflare Access, test CA
   #   34531  plain HTTP straight to Vikunja, for seeding from the host only
-  vikunja-2-7-tls:
-    image: vikunja/vikunja:2.7.1
+  vikunja-tls:
+    image: vikunja/vikunja:2.8.0
     profiles: ["tls"]
     environment:
       <<: *vikunja-env
-      # Not shared with vikunja-2-7, so a token of one server fails on the other.
+      # Not shared with vikunja, so a token of one server fails on the other.
       VIKUNJA_SERVICE_SECRET: tls-tests-only-not-a-secret
       VIKUNJA_SERVICE_JWTSECRET: tls-tests-only-not-a-secret
       VIKUNJA_SERVICE_PUBLICURL: https://localhost:34528/
@@ -73,7 +73,7 @@ services:
   tls-proxy:
     image: caddy:2.11.7-alpine
     profiles: ["tls"]
-    depends_on: [vikunja-2-7-tls]
+    depends_on: [vikunja-tls]
     # Only the two dummy access-header values. Inspect this file with
     # `config --services`, never a plain `config`, which prints them.
     env_file: ./tls/generated/access.env

@@ -37,6 +37,21 @@ Future<int> _createProject(
   }
 }
 
+Future<void> _deleteProject(
+  Dio dio,
+  ServerConnection connection,
+  TestUser user,
+  int projectId,
+) async {
+  final v2 = connection.apiBaseUri(ApiVersion.v2);
+  await despiteWriteRaces(
+    () => dio.deleteUri<Object?>(
+      v2.replace(path: '${v2.path}/projects/$projectId'),
+      options: Options(headers: {'Authorization': 'Bearer ${user.jwt}'}),
+    ),
+  );
+}
+
 Set<TaskRelationRef> _edges(Task task) => {
   for (final MapEntry(key: kind, value: others) in task.relatedTasks.entries)
     for (final other in others) TaskRelationRef(kind, other.id),
@@ -117,6 +132,11 @@ void main() {
           });
 
           tearDownAll(() => dio.close(force: true));
+
+          // From 2.8.0 a deleted task waits in the trash, and every route
+          // answers 4040 for it.
+          int taskGoneCode() =>
+              connection.info.version!.isAtLeast(2, 8) ? 4040 : 4002;
 
           for (final apiVersion in ApiVersion.values) {
             group(apiVersion.pathSegment, () {
@@ -369,7 +389,7 @@ void main() {
                   },
                 );
 
-                test('a missing other task is a RelatedTaskMissing, and the '
+                test('a deleted other task is a RelatedTaskMissing, and the '
                     'task itself is still there', () async {
                   final task = await newTask('Relates to a ghost');
                   final ghost = await newTask('Ghost');
@@ -385,7 +405,59 @@ void main() {
                     throwsA(
                       isA<RelatedTaskMissing>()
                           .having((f) => f.otherTaskId, 'otherTaskId', ghost.id)
-                          .having((f) => f.code, 'code', 4002),
+                          .having((f) => f.code, 'code', taskGoneCode()),
+                    ),
+                  );
+                  expect((await reads.read(task.id)).relatedTasks, isEmpty);
+                });
+
+                test('an other task in a deleted project is a '
+                    'RelatedTaskMissing, and its edge counts as '
+                    'removed', () async {
+                  final task = await newTask('Relates into a doomed project');
+                  final doomedProject = await _createProject(
+                    dio,
+                    connection,
+                    user,
+                    {'title': 'Relations contract doomed $runId'},
+                  );
+                  final other = await newTask(
+                    'In the doomed project',
+                    project: doomedProject,
+                  );
+                  final edge = TaskRelationRef(
+                    TaskRelationKind.related,
+                    other.id,
+                  );
+                  await writes.update(task.id, _add({edge}));
+                  await _deleteProject(dio, connection, user, doomedProject);
+                  final projectGoneCode =
+                      connection.info.version!.isAtLeast(2, 8) ? 3018 : 4002;
+
+                  expect((await reads.read(task.id)).relatedTasks, isEmpty);
+                  // A read from before the delete still shows the edge.
+                  final removed = await despiteWriteRaces(() {
+                    staleReads
+                      ..errorStatuses.clear()
+                      ..editNextRead = (read) => read['related_tasks'] = {
+                        'related': [
+                          {
+                            'id': other.id,
+                            'title': other.title,
+                            'project_id': doomedProject,
+                          },
+                        ],
+                      };
+                    return rawWrites.update(task.id, _remove({edge}));
+                  });
+                  expect(staleReads.errorStatuses, [404]);
+                  expect(removed.relatedTasks, isEmpty);
+                  await expectLater(
+                    writes.update(task.id, _add({edge})),
+                    throwsA(
+                      isA<RelatedTaskMissing>()
+                          .having((f) => f.otherTaskId, 'otherTaskId', other.id)
+                          .having((f) => f.code, 'code', projectGoneCode),
                     ),
                   );
                   expect((await reads.read(task.id)).relatedTasks, isEmpty);
@@ -616,7 +688,11 @@ void main() {
                       ghost.id,
                     ),
                     throwsA(
-                      isA<NotFound>().having((f) => f.code, 'code', 4002),
+                      isA<NotFound>().having(
+                        (f) => f.code,
+                        'code',
+                        taskGoneCode(),
+                      ),
                     ),
                   );
                   await expectLater(

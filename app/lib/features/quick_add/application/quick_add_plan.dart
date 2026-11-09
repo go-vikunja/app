@@ -161,7 +161,8 @@ abstract interface class QuickAddService {
   /// not exist and the new labels of [extras] are created online first,
   /// `@names` are resolved with the server's user search in the task's
   /// project when it is reachable and with the known users otherwise;
-  /// every task also gets [extras]. Throws
+  /// every task also gets [extras]. A title over the server's limit is cut
+  /// and its rest starts the description. Throws
   /// [QuickAddNoProject] before creating anything when a line has no
   /// project, and [QuickAddPartlyFailed] when a line fails after earlier
   /// ones were created.

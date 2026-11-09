@@ -78,6 +78,14 @@ final class TaskDraft {
 
   bool get isValid => hasTitle && repeat.isValid;
 
+  /// Whether the server takes the title [diff] sends against [original]:
+  /// it checks the limit only on a title that changes, so a stored longer
+  /// one may stay.
+  bool titleFits(Task original) {
+    final title = normalizedTitle;
+    return title == original.title || title.runes.length <= Task.maxTitleLength;
+  }
+
   static const _unset = Object();
 
   TaskDraft copyWith({

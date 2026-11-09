@@ -17,6 +17,7 @@ import 'helpers.dart';
 // One throwaway user, whose password exists only in memory: the export
 // request and the TOTP enrolment and cancel below need it, the cancel from
 // 2.7.1 a code of the enrolment's secret too, which stays in memory as well.
+// From 2.8.0 the cancel is refused and the setup can only be finished.
 // The port runs over an OAuth session whose code exchange sent a Rurana
 // User-Agent. No token value, secret or password is ever printed: failures
 // name shapes and lengths.
@@ -61,6 +62,7 @@ void main() {
         }
 
         bool since271() => connection.info.version?.isAtLeast(2, 7, 1) ?? false;
+        bool since280() => connection.info.version?.isAtLeast(2, 8) ?? false;
 
         Future<T> paced<T>(Future<T> Function() write) async {
           final result = await despiteWriteRaces(write);
@@ -405,7 +407,7 @@ void main() {
         });
 
         test('TOTP: not set up, a started setup, cancelled again with the '
-            'password and from 2.7.1 a code', () async {
+            'password and from 2.7.1 a code, from 2.8.0 refused', () async {
           Future<List<TotpStatus>> statuses() async => [
             for (final apiVersion in ApiVersion.values)
               await patiently(portOver(apiVersion).totpStatus),
@@ -424,6 +426,29 @@ void main() {
             TotpStatus.setupStarted,
             TotpStatus.setupStarted,
           ]);
+          if (since280()) {
+            await expectLater(
+              rawWriteWithCode(
+                '/user/settings/totp/disable',
+                secret,
+                (code) => {'password': user.password, 'totp_passcode': code},
+              ),
+              throwsA(
+                isA<DioException>().having(
+                  normalizeError,
+                  'failure',
+                  isA<DomainError>()
+                      .having((f) => f.statusCode, 'status', 412)
+                      .having((f) => f.code, 'code', 1016),
+                ),
+              ),
+            );
+            expect(await statuses(), [
+              TotpStatus.setupStarted,
+              TotpStatus.setupStarted,
+            ]);
+            return;
+          }
           if (since271()) {
             await rawWriteWithCode(
               '/user/settings/totp/disable',

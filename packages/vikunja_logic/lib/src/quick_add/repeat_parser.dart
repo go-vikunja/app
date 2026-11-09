@@ -1,31 +1,16 @@
+import 'package:vikunja_logic/src/quick_add/amounts.dart';
 import 'package:vikunja_logic/src/quick_add/parsed_task_text.dart';
-
-/// Larger amounts overflow `Duration` and `DateTime` arithmetic silently.
-const maxQuickAddAmount = 100000;
 
 final _repeatPhrase = RegExp(
   '(^| )'
   '((?:every|each) '
-  '(?:([0-9]+|one|two|three|four|five|six|seven|eight|nine|ten) )?'
+  '(?:([0-9]+|$amountWordsPattern) )?'
   '(hour|day|week|month|year)s?'
   '|annually|biannually|semiannually|biennially'
   '|daily|hourly|monthly|weekly|yearly)'
   r'(?:$| )',
   caseSensitive: false,
 );
-
-const _amountWords = [
-  'one',
-  'two',
-  'three',
-  'four',
-  'five',
-  'six',
-  'seven',
-  'eight',
-  'nine',
-  'ten',
-];
 
 const _keywords = <String, QuickAddRepeat>{
   'hourly': QuickAddRepeat(amount: 1, unit: QuickAddRepeatUnit.hours),
@@ -67,13 +52,8 @@ const _units = <String, QuickAddRepeatUnit>{
 }
 
 QuickAddRepeat? _everyPhrase(RegExpMatch match) {
-  final amountText = match[3]?.toLowerCase();
-  final amount = switch (amountText) {
-    null => 1,
-    _ when _amountWords.contains(amountText) =>
-      _amountWords.indexOf(amountText) + 1,
-    _ => int.tryParse(amountText),
-  };
-  if (amount == null || amount > maxQuickAddAmount) return null;
+  final amountText = match[3];
+  final amount = amountText == null ? 1 : parseQuickAddAmount(amountText);
+  if (amount == null) return null;
   return QuickAddRepeat(amount: amount, unit: _units[match[4]!.toLowerCase()]!);
 }

@@ -29,7 +29,8 @@ String attachmentFailureText(
     VikunjaFailure(code: 3008) => l10n.attachmentArchived,
     VikunjaFailure(code: 4011) => l10n.attachmentGone,
     NotFound(code: 4034) => l10n.attachmentFileMissing,
-    NotFound(code: 4002) => l10n.syncProblemTaskMissing,
+    NotFound(taskGone: true) => l10n.syncProblemTaskMissing,
+    NotFound(projectGone: true) => l10n.syncProblemProjectMissing,
     NotFound(routeAbsent: true) => l10n.attachmentsDisabled,
     _ when shared != null => shared,
     VikunjaFailure(:final message) when message.trim().isNotEmpty =>

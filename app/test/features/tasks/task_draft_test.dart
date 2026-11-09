@@ -295,5 +295,19 @@ void main() {
         isFalse,
       );
     });
+
+    test('a changed title must fit the limit in code points; a stored '
+        'longer one may stay', () {
+      final base = TaskDraft.fromTask(task);
+      final atLimit = '😀' * Task.maxTitleLength;
+      expect(base.copyWith(title: atLimit).titleFits(task), isTrue);
+      expect(base.copyWith(title: '$atLimit!').titleFits(task), isFalse);
+
+      final stored = sampleTask(id: 2, title: 'a' * 1200);
+      final kept = TaskDraft.fromTask(stored);
+      expect(kept.titleFits(stored), isTrue);
+      expect(kept.copyWith(title: 'a' * 1199).titleFits(stored), isFalse);
+      expect(kept.copyWith(title: 'a' * 1000).titleFits(stored), isTrue);
+    });
   });
 }

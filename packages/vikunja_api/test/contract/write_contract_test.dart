@@ -58,6 +58,13 @@ final class _Seeder {
   Future<int> create(String path, Map<String, Object?> body) async =>
       (await post(path, body))['id']! as int;
 
+  Future<void> delete(String path) => despiteWriteRaces(
+    () => _dio.deleteUri<Object?>(
+      _v2.replace(path: '${_v2.path}$path'),
+      options: Options(headers: {'Authorization': 'Bearer ${_user.jwt}'}),
+    ),
+  );
+
   Future<_Seed> tasks(int projectId, int labelId) async {
     final now = DateTime.now().toUtc();
     final reminderAt = DateTime.utc(
@@ -143,6 +150,11 @@ void main() {
         });
 
         tearDownAll(() => dio.close(force: true));
+
+        bool since280() => connection.info.version!.isAtLeast(2, 8);
+
+        Matcher notFound(int code) =>
+            isA<NotFound>().having((f) => f.code, 'code', code);
 
         for (final apiVersion in ApiVersion.values) {
           group(apiVersion.pathSegment, () {
@@ -474,14 +486,165 @@ void main() {
               );
             });
 
+            // From 2.8.0 a deleted task waits in the trash for 30 days.
             test('delete, then delete again', () async {
               await writes.delete(seed.doomedId);
 
               await expectLater(
                 reads.read(seed.doomedId),
-                throwsA(isA<NotFound>().having((f) => f.code, 'code', 4002)),
+                throwsA(notFound(since280() ? 4040 : 4002)),
               );
               await expectLater(writes.delete(seed.doomedId), completes);
+            });
+
+            test('a task whose project went to the trash answers 3018 to a '
+                'read and 3001 to a delete, which counts as done', () async {
+              final trashedProject = await seeder.create('/projects', {
+                'title': 'Trashed ${apiVersion.pathSegment}',
+              });
+              final taskId = await seeder.create(
+                '/projects/$trashedProject/tasks',
+                {'title': 'In a trashed project'},
+              );
+              await seeder.delete('/projects/$trashedProject');
+              final base = connection.apiBaseUri(apiVersion);
+
+              await expectLater(
+                reads.read(taskId),
+                throwsA(notFound(since280() ? 3018 : 4002)),
+              );
+              await expectLater(
+                despiteWriteRaces(
+                  () => dio.deleteUri<Object?>(
+                    base.replace(path: '${base.path}/tasks/$taskId'),
+                    options: Options(
+                      headers: {'Authorization': 'Bearer ${user.jwt}'},
+                    ),
+                  ),
+                ),
+                throwsA(
+                  isA<DioException>().having(
+                    normalizeError,
+                    'failure',
+                    notFound(since280() ? 3001 : 4002),
+                  ),
+                ),
+              );
+              await expectLater(writes.delete(taskId), completes);
+            });
+
+            test('from 2.8.0 a title has at most 1000 code points and a task '
+                'at most 100 reminders, refused with code 2002', () async {
+              if (!since280()) {
+                markTestSkipped('servers before 2.8.0 have no such limits');
+                return;
+              }
+              Matcher refused(String field) => isA<ValidationFailed>()
+                  .having((f) => f.code, 'code', 2002)
+                  .having((f) => f.fieldErrors.keys, 'fields', [field]);
+              final longest = '\u{1F600}' * Task.maxTitleLength;
+              final reminders = [
+                for (var i = 0; i < Task.maxReminders; i++)
+                  TaskReminder(
+                    reminder: DateTime.utc(2030).add(Duration(minutes: i)),
+                  ),
+              ];
+
+              final created = await writes.create(
+                NewTask(
+                  projectId: projectId,
+                  title: longest,
+                  reminders: reminders,
+                ),
+              );
+              expect(created.title, longest);
+              expect(created.reminders, hasLength(Task.maxReminders));
+              final stored = await reads.read(created.id);
+              expect(stored.title, longest);
+              expect(stored.reminders, hasLength(Task.maxReminders));
+
+              await expectLater(
+                writes.create(
+                  NewTask(projectId: projectId, title: '${longest}x'),
+                ),
+                throwsA(refused('title')),
+              );
+              await expectLater(
+                writes.update(
+                  created.id,
+                  TaskChanges(title: '\u00e4' * (Task.maxTitleLength + 1)),
+                ),
+                throwsA(refused('title')),
+              );
+              await expectLater(
+                writes.update(
+                  created.id,
+                  TaskChanges(
+                    reminders: [
+                      ...reminders,
+                      TaskReminder(reminder: DateTime.utc(2031)),
+                    ],
+                  ),
+                ),
+                throwsA(refused('reminders')),
+              );
+              // Unchanged, the long title and the reminders stay editable.
+              final done = await writes.update(
+                created.id,
+                const TaskChanges(done: true),
+              );
+              expect(done.title, longest);
+              expect(done.reminders, hasLength(Task.maxReminders));
+            });
+
+            test('a NUL in a text is stripped before it is sent: 2.8.0 '
+                'refuses a body with one', () async {
+              if (since280()) {
+                final base = connection.apiBaseUri(apiVersion);
+                await expectLater(
+                  despiteWriteRaces(
+                    () => dio.requestUri<Object?>(
+                      base.replace(
+                        path: '${base.path}/projects/$projectId/tasks',
+                      ),
+                      data: {'title': 'Raw\u0000 NUL'},
+                      options: Options(
+                        method: switch (apiVersion) {
+                          ApiVersion.v1 => 'PUT',
+                          ApiVersion.v2 => 'POST',
+                        },
+                        headers: {'Authorization': 'Bearer ${user.jwt}'},
+                      ),
+                    ),
+                  ),
+                  throwsA(
+                    isA<DioException>().having(
+                      (e) => e.response?.statusCode,
+                      'status',
+                      400,
+                    ),
+                  ),
+                );
+              }
+
+              final created = await writes.create(
+                NewTask(
+                  projectId: projectId,
+                  title: 'With\u0000 a NUL',
+                  description: '<p>Pasted\u0000 text</p>',
+                ),
+              );
+              expect(created.title, 'With a NUL');
+              expect(created.description, '<p>Pasted text</p>');
+
+              final changed = await writes.update(
+                created.id,
+                const TaskChanges(title: 'Still\u0000 none'),
+              );
+              expect(changed.title, 'Still none');
+              final stored = await reads.read(created.id);
+              expect(stored.title, 'Still none');
+              expect(stored.description, '<p>Pasted text</p>');
             });
 
             test('reminders set as absolute and relative ones, the server '

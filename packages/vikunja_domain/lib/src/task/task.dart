@@ -72,6 +72,14 @@ final class Task {
     this.isUnread = false,
   });
 
+  /// The server's limit in code points from Vikunja 2.8.0 on. It checks
+  /// only a title that changes, so a longer stored one stays editable.
+  static const maxTitleLength = 1000;
+
+  /// The server's limit from Vikunja 2.8.0 on, checked only when a task's
+  /// reminders grow.
+  static const maxReminders = 100;
+
   final int id;
   final String title;
   final int projectId;

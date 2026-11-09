@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Link-share helper for the Docker `tls` profile (test_servers/tls/README.md).
 
-Talks to vikunja-2-7-tls over its plain seeding port as the E2E user from
+Talks to vikunja-tls over its plain seeding port as the E2E user from
 test_servers/seed/e2e-user.env (create it first with
 `tool/seed_e2e_user.sh http://localhost:34531`). Prints only ids, never a
 password, token, share hash or share URL.

@@ -368,9 +368,16 @@ void main() {
           await _drainFully(sender, db);
 
           expect(await db.tasksDao.findRow(seed.doomedId), isNull);
+          // From 2.8.0 the task waits in the trash.
           await expectLater(
             reads.tasks.read(seed.doomedId),
-            throwsA(isA<NotFound>().having((f) => f.code, 'code', 4002)),
+            throwsA(
+              isA<NotFound>().having(
+                (f) => f.code,
+                'code',
+                connection.info.version!.isAtLeast(2, 8) ? 4040 : 4002,
+              ),
+            ),
           );
 
           // The pull after the drain agrees with the server.
@@ -570,6 +577,39 @@ void main() {
             inProject.items.length,
           );
           expect(await db.outboxDao.count(), 0);
+          expect(sender.state, OutboxSenderState.idle);
+        });
+
+        test('a delete that meets a task another device deleted, or whose '
+            'project it deleted, completes without a sync problem', () async {
+          final seeder = Seeder(dio, connection, user);
+          final doomedProject = await seeder.create('/projects', {
+            'title': 'Deleted elsewhere',
+          });
+          final inDoomedProject = await seeder.create(
+            '/projects/$doomedProject/tasks',
+            {'title': 'Its project goes'},
+          );
+          final deletedElsewhere = await seeder.create(
+            '/projects/${seed.projectId}/tasks',
+            {'title': 'Goes elsewhere first'},
+          );
+          await engine.refresh();
+          sender.pause();
+          await repository.deleteTask(deletedElsewhere);
+          await repository.deleteTask(inDoomedProject);
+          expect(await db.outboxDao.count(), 2);
+
+          // From 2.8.0 both wait in the trash: the task answers 4040, the
+          // one in the trashed project 3001.
+          await seeder.delete('/tasks/$deletedElsewhere');
+          await seeder.delete('/projects/$doomedProject');
+          await sender.resume();
+          await _until(() async => await db.outboxDao.count() == 0);
+
+          expect(await db.outboxDao.loadProblems(), isEmpty);
+          expect(await db.tasksDao.findRow(deletedElsewhere), isNull);
+          expect(await db.tasksDao.findRow(inDoomedProject), isNull);
           expect(sender.state, OutboxSenderState.idle);
         });
 

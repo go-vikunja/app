@@ -393,9 +393,10 @@ final class IncrementalRun {
     }
   }
 
-  /// A project that answers "not found" (3001) was deleted since the
-  /// project list, one that answers "forbidden" (7003) was unshared; both
-  /// go with their tasks. A missing route is not that.
+  /// A project that answers "not found" (3001, or since 2.8.0 3018 from the
+  /// trash) was deleted or trashed since the project list, one that answers
+  /// "forbidden" (7003) was unshared; both go with their tasks. A missing
+  /// route is not that.
   Future<void> _inProject(
     int projectId,
     Set<int> gone,

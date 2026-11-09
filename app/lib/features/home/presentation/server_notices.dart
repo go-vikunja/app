@@ -4,8 +4,9 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/legal_links.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/motd_card.dart';
 
-/// The demo mode, the message of the day and the legal links the server
-/// reported at sign-in; not refreshed while signed in (D60).
+/// The demo mode, the message of the day and the legal links of the stored
+/// `/info`, which the app reads again at each start and then at most every
+/// few hours while it is in front.
 class ServerNotices extends StatelessWidget {
   const new({required this.info, super.key});
 

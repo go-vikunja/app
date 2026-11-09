@@ -119,7 +119,7 @@ void main() {
 
   group('D38-9: the in rule needs whole words', () {
     test('within 2 days', () {
-      // The web gives 2021-6-26 and the text "Reply with".
+      // Before 2.8.0 the web gave 2021-6-26 and the text "Reply with".
       expect(
         parse('Reply within 2 days'),
         const ParsedTaskText(text: 'Reply within 2 days'),
@@ -130,11 +130,71 @@ void main() {
       expect(parse('x in 2 daysx'), const ParsedTaskText(text: 'x in 2 daysx'));
     });
 
-    test('in two days and in 1 year are not supported', () {
-      expect(parse('x in two days').date, isNull);
-      expect(parse('x in 1 year').date, isNull);
+    test('one space between the words', () {
       expect(parse('x in  2 days').date, isNull);
+      expect(parse('x in  two days').date, isNull);
       expect(parse('x in 2days').date, isNull);
+      expect(parse('x in aweek').date, isNull);
+    });
+
+    test('the unit is a whole word', () {
+      for (final text in [
+        'Book the cabin in two weekends',
+        'Buy in an hourglass',
+        'x in 3 minutesx',
+        'x in a yearbook',
+      ]) {
+        expect(parse(text), ParsedTaskText(text: text), reason: text);
+      }
+    });
+
+    test('in ends a longer word', () {
+      for (final text in ['Clean the cabin 3 days', 'Fix the bin a week']) {
+        expect(parse(text), ParsedTaskText(text: text), reason: text);
+      }
+    });
+
+    test('an apostrophe after the unit (the web wants a space)', () {
+      for (final text in [
+        "All in a day's work",
+        "Finish in 2 days' time",
+        'Done in a day’s time',
+        'Ship in two weeks’',
+      ]) {
+        expect(parse(text), ParsedTaskText(text: text), reason: text);
+      }
+    });
+  });
+
+  group('amounts the in rule does not know', () {
+    for (final text in [
+      'x in thirteen days',
+      'x in a few days',
+      'x in another day',
+      'x in twenty minutes',
+      'x in 1.5 hours',
+      'x in -2 days',
+    ]) {
+      test(text, () => expect(parse(text).date, isNull));
+    }
+  });
+
+  group('an in date after the year 9999 (the server refuses it)', () {
+    for (final text in [
+      'Time capsule in 9000 years',
+      'x in 8000 years',
+      'x in 7979 years',
+      'x in 100000 years',
+      'x in 100000 months',
+      'x in 95743 months',
+    ]) {
+      test(text, () => expect(parse(text), ParsedTaskText(text: text)));
+    }
+
+    test('a time after it still counts, as for too large amounts', () {
+      final result = parse('x in 8000 years at 5pm');
+      expect(result.text, 'x in 8000 years');
+      expect(result.date, DateTime(2021, 6, 24, 17));
     });
   });
 

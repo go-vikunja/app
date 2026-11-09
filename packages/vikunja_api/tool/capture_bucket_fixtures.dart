@@ -1,7 +1,7 @@
 // Records the bucket writes and the kanban view update into
 // test/fixtures/write, with one throwaway user:
 //   dart run tool/capture_bucket_fixtures.dart \
-//     [http://localhost:34527] [2.7.1]
+//     [http://localhost:34527] [2.8.0]
 // A project whose Kanban view has To-Do, Doing (holding one task) and Done:
 // creates (with and without a position, an empty title), updates, the view
 // read and its done and default bucket changes (v1 full replace, v2 patch,
@@ -23,7 +23,7 @@ const _mergePatch = 'application/merge-patch+json';
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.8.0';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

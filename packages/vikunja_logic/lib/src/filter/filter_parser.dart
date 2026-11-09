@@ -11,7 +11,9 @@ import 'package:vikunja_logic/src/filter/go_values.dart';
 ///
 /// Beyond the server, `position` and range comparisons on `assignees` or
 /// `created_by` are refused with 4019 here: the server accepts them and then
-/// fails every request with a 500.
+/// fails every request with a 500. Business-day offsets above Vikunja
+/// 2.8.0's limit are refused with 4019 too, which servers before 2.8.0
+/// accept.
 FilterParseResult parseTaskFilter(String text) {
   if (text.isEmpty) return FilterExpression.matchAll;
   if (complexityError(text) case final error?) return error;
@@ -39,7 +41,28 @@ FilterParseResult parseTaskFilter(String text) {
 final class _Conversion {
   final fields = <String>{};
   FilterError? queryError;
+  var _businessDays = 0;
+
+  /// False once the filter's `b` offsets exceed the limit. As on the
+  /// server, any `[+-]digits b` in a date value counts, date math or not,
+  /// a bare `b` as one day and a negative offset by its amount.
+  bool spendBusinessDays(String value) {
+    for (final match in _businessDayOffset.allMatches(value)) {
+      final digits = match[1]!;
+      final days = digits.isEmpty
+          ? 1
+          : int.tryParse(digits) ?? _maxBusinessDays + 1;
+      if (days > _maxBusinessDays - _businessDays) return false;
+      _businessDays += days;
+    }
+    return true;
+  }
 }
+
+// go-datemath adds business days one at a time, so Vikunja 2.8.0 caps
+// their sum over all of a filter's date values.
+const _maxBusinessDays = 10000;
+final _businessDayOffset = RegExp(r'[+-](\d*)b');
 
 const Map<String, FilterComparator> _comparators = {
   '=': FilterComparator.equals,
@@ -156,6 +179,10 @@ Object? _condition(FexprCondition condition, _Conversion conversion) {
   final parts = comparator.isList ? raw.split(',') : [raw];
   final values = <Object>[];
   for (final part in parts) {
+    if (field.kind == FilterValueKind.date &&
+        !conversion.spendBusinessDays(part)) {
+      return invalid();
+    }
     final value = _value(field.kind, goTrimSpace(part));
     if (value == null) return invalid();
     values.add(value);

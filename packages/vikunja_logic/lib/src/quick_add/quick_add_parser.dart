@@ -31,10 +31,12 @@ QuickAddPrefixes? quickAddPrefixes(QuickAddMagicMode mode) => switch (mode) {
 /// local wall-clock time; every relative date is computed from it.
 ///
 /// Where it parts from the web on purpose (D38):
-/// - Repeat keywords and the unit of `in N days` match in any case
-///   (`Daily`, `Every Day`, `In 2 Days`).
-/// - The date keywords (`today` to `next monday`) and `in N days` need
-///   whole words: `todays`, `next weekend` and `within 2 days` stay text.
+/// - Repeat keywords and units match in any case (`Daily`, `Every Day`).
+/// - The date keywords (`today` to `next monday`) need whole words:
+///   `todays` and `next weekend` stay text.
+/// - `in 2 days` may be followed by punctuation (`in 2 days,`), where the
+///   web wants a space or the end; an apostrophe keeps it text on both
+///   (`in a day's work`).
 /// - Day-and-month dates need whole words: `12 decorations`,
 ///   `13th marathon` and `sep 17th tasks` stay text, and so does a day that
 ///   no month has (`dec 45`), which the web drops from the title.
@@ -42,7 +44,8 @@ QuickAddPrefixes? quickAddPrefixes(QuickAddMagicMode mode) => switch (mode) {
 ///   a longer word (the web turns `fri frisbee` into `sbee`).
 /// - Weekdays and ordinal days get the default time, not the clock time
 ///   of [now].
-/// - Amounts above 100000 (`every 999999 years`) are text.
+/// - Amounts above 100000 (`every 999999 years`) are text, and so is an
+///   `in …` date after the year 9999 (`in 9000 years`).
 ParsedTaskText parseTaskText(
   String text, {
   required DateTime now,

@@ -1,7 +1,7 @@
 // Records list position writes and project moves into test/fixtures/write,
 // with two throwaway users:
 //   dart run tool/capture_ordering_fixtures.dart \
-//     [http://localhost:34527] [2.7.1]
+//     [http://localhost:34527] [2.8.0]
 // Project Ordering (colour, identifier, description, a favourite) with a
 // list view and two tasks, Elsewhere with its own list view, the child
 // Child (colour, identifier, description) with the grandchild Grandchild,
@@ -29,7 +29,7 @@ const _mergePatch = 'application/merge-patch+json';
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.8.0';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

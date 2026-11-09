@@ -138,9 +138,6 @@ final class OutboxSender {
   /// the head of the queue, which usually takes seconds.
   static const inFlightRecheck = Duration(seconds: 30);
 
-  /// A delete of a task that is already gone.
-  static const _taskGoneCode = 4002;
-
   /// The task names a cover attachment that is not one of its own: one that
   /// was deleted.
   static const _foreignCoverCode = 4020;
@@ -632,7 +629,7 @@ final class OutboxSender {
           task = null;
       }
     } on VikunjaFailure catch (failure) {
-      if (failure case NotFound(code: _taskGoneCode)
+      if (failure case NotFound(taskGone: true) || NotFound(projectGone: true)
           when kind == OutboxOperationKind.deleteTask) {
         await _applyDelete(op);
         return true;
@@ -878,8 +875,9 @@ final class OutboxSender {
   /// while the server still has the one it started from (an empty one
   /// counts as unchanged however it is written) or has the queued one
   /// already (a re-send after a lost answer, or the same change made on
-  /// the web), the taps applied again to [current] when they are all the
-  /// change was, else a `DescriptionConflict`.
+  /// the web), each as the server stores it, without U+0000; the taps
+  /// applied again to [current] when they are all the change was, else a
+  /// `DescriptionConflict`.
   static String _descriptionToSend(
     OutboxRow op,
     TaskChanges changes,
@@ -887,8 +885,8 @@ final class OutboxSender {
   ) {
     final base = changes.descriptionBase!;
     final queued = changes.description!;
-    if (current == base ||
-        current == queued ||
+    if (current == withoutNul(base) ||
+        current == withoutNul(queued) ||
         (isRichTextEmpty(current) && isRichTextEmpty(base))) {
       return queued;
     }
@@ -920,10 +918,11 @@ final class OutboxSender {
         sort: TaskFilters.byCreatedDescending,
       ),
     );
+    final title = withoutNul(newTask.title);
     final adopted = await _db.tasksDao.remappedServerIds();
     Task? found;
     for (final candidate in page.items) {
-      if (candidate.title != newTask.title || adopted.contains(candidate.id)) {
+      if (candidate.title != title || adopted.contains(candidate.id)) {
         continue;
       }
       if (found == null ||

@@ -17,7 +17,7 @@ final String? contractSkip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
     : null;
 
 const List<({int port, String version})> contractServers = [
-  (port: 34527, version: '2.7.1'),
+  (port: 34527, version: '2.8.0'),
 ];
 
 Dio contractDio() => Dio(
@@ -62,7 +62,13 @@ typedef TestUser = ({int id, String username, String jwt});
 
 /// Registers a random user and signs in with the password, which gives a
 /// plain user JWT without the browser leg.
-Future<TestUser> registerAndLogin(Dio dio, ServerConnection connection) async {
+Future<TestUser> registerAndLogin(Dio dio, ServerConnection connection) async =>
+    (await registerAndLoginAgainLater(dio, connection)).user;
+
+/// [registerAndLogin], and a way to sign in again, which starts another
+/// session of the user and answers its JWT. The password stays in memory.
+Future<({TestUser user, Future<String> Function() loginAgain})>
+registerAndLoginAgainLater(Dio dio, ServerConnection connection) async {
   final v1 = connection.apiBaseUri(ApiVersion.v1);
   final suffix = Random.secure().nextInt(1 << 32).toRadixString(16);
   final username = 'contract$suffix';
@@ -77,16 +83,23 @@ Future<TestUser> registerAndLogin(Dio dio, ServerConnection connection) async {
       },
     ),
   );
-  final login = await despiteWriteRaces(
-    () => dio.postUri<Map<String, Object?>>(
-      v1.replace(path: '${v1.path}/login'),
-      data: {'username': username, 'password': password},
-    ),
-  );
+  Future<String> login() async {
+    final response = await despiteWriteRaces(
+      () => dio.postUri<Map<String, Object?>>(
+        v1.replace(path: '${v1.path}/login'),
+        data: {'username': username, 'password': password},
+      ),
+    );
+    return response.data!['token']! as String;
+  }
+
   return (
-    id: registered.data!['id']! as int,
-    username: username,
-    jwt: login.data!['token']! as String,
+    user: (
+      id: registered.data!['id']! as int,
+      username: username,
+      jwt: await login(),
+    ),
+    loginAgain: login,
   );
 }
 
@@ -319,4 +332,29 @@ final class StaticJwt implements AccessTokenSource {
 
   @override
   Future<String?> refreshAfterRejection(String rejectedToken) async => null;
+}
+
+/// A session that signs in again once the server rejects its JWT. A login
+/// JWT lives ten minutes, and a file that registers several users can wait
+/// out the login limit for longer than that before its tests start.
+final class RenewedJwt implements AccessTokenSource {
+  new(this._jwt, this._loginAgain);
+
+  String _jwt;
+  final Future<String> Function() _loginAgain;
+  Future<String>? _renewal;
+
+  @override
+  Future<String> validAccessToken() async => _jwt;
+
+  @override
+  Future<String?> refreshAfterRejection(String rejectedToken) async {
+    if (rejectedToken != _jwt) return _jwt;
+    final renewal = _renewal ??= _loginAgain();
+    try {
+      return _jwt = await renewal;
+    } finally {
+      _renewal = null;
+    }
+  }
 }

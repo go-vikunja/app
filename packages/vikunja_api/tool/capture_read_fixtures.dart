@@ -1,6 +1,6 @@
 // Records the read endpoints of a local test server into test/fixtures/read
 // with a throwaway user:
-//   dart run tool/capture_read_fixtures.dart [http://localhost:34527] [2.7.1]
+//   dart run tool/capture_read_fixtures.dart [http://localhost:34527] [2.8.0]
 // The user's name is replaced by `fixtureuser` in every file; no file may
 // hold a token or an email address.
 import 'dart:convert';
@@ -11,7 +11,7 @@ import 'package:dio/dio.dart';
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.8.0';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

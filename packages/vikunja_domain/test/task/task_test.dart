@@ -203,4 +203,9 @@ void _copyWithTests() {
       expect(copy.updated, monday);
     });
   });
+
+  test('the limits are the server limits of Vikunja 2.8.0', () {
+    expect(Task.maxTitleLength, 1000);
+    expect(Task.maxReminders, 100);
+  });
 }

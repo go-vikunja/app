@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:vikunja_mobile/core/text/task_title_limit.dart';
 
 /// A new task's title and the rest of what another app shared, as text.
 @immutable
@@ -15,7 +16,8 @@ final class SharedTaskText {
 }
 
 /// The title is the [subject], else the first line of [text], else the
-/// name of the one shared file; the rest of [text] is the notes.
+/// name of the one shared file; the rest of [text] is the notes. What a
+/// title has beyond the server's limit starts the notes.
 SharedTaskText sharedTaskText({
   String? subject,
   String? text,
@@ -24,15 +26,23 @@ SharedTaskText sharedTaskText({
   final body = _normaliseNewlines(text ?? '').trim();
   final cleanSubject = subject?.trim() ?? '';
   if (cleanSubject.isNotEmpty) {
-    return SharedTaskText(title: _oneLine(cleanSubject), notes: body);
+    return _withTitle(_oneLine(cleanSubject), body, between: '\n\n');
   }
   if (body.isNotEmpty) {
     final newline = body.indexOf('\n');
     final first = newline < 0 ? body : body.substring(0, newline);
     final rest = newline < 0 ? '' : body.substring(newline + 1);
-    return SharedTaskText(title: first.trim(), notes: rest.trim());
+    return _withTitle(first.trim(), rest.trim());
   }
-  return SharedTaskText(title: singleFileName?.trim() ?? '', notes: '');
+  return _withTitle(singleFileName?.trim() ?? '', '');
+}
+
+SharedTaskText _withTitle(String title, String notes, {String between = '\n'}) {
+  final cut = cutTaskTitle(title);
+  return SharedTaskText(
+    title: cut.title,
+    notes: [cut.rest, notes].where((part) => part.isNotEmpty).join(between),
+  );
 }
 
 /// What goes into an existing task: the [subject] (a page title) and the

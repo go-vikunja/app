@@ -48,18 +48,20 @@ final class LocalLabelRepository implements LabelRepository {
 
   @override
   Future<Label> create(NewLabel label) async {
-    if (_unconfirmed[label.title] case final since?) {
-      if (await _createdSince(label.title, since) case final found?) {
+    final sent = _asStored(label);
+    final title = sent.title;
+    if (_unconfirmed[title] case final since?) {
+      if (await _createdSince(title, since) case final found?) {
         return await _store(found);
       }
     }
     final attemptedAt = _now();
     try {
-      return await _store(await _write.labels.create(label));
+      return await _store(await _write.labels.create(sent));
     } on VikunjaFailure catch (failure) {
       if (failure is! NetworkFailure && failure is! ServerFailure) rethrow;
-      final since = _unconfirmed.putIfAbsent(label.title, () => attemptedAt);
-      final found = await _createdSinceIfReachable(label.title, since);
+      final since = _unconfirmed.putIfAbsent(title, () => attemptedAt);
+      final found = await _createdSinceIfReachable(title, since);
       if (found == null) rethrow;
       return await _store(found);
     }
@@ -67,11 +69,20 @@ final class LocalLabelRepository implements LabelRepository {
 
   @override
   Future<Label> findOrCreate(NewLabel label) async {
-    if (await _titled(label.title) case final found?) {
+    final sent = _asStored(label);
+    if (await _titled(sent.title) case final found?) {
       return await _store(found);
     }
-    return await create(label);
+    return await create(sent);
   }
+
+  /// [label] with the title the server stores, without U+0000, so the
+  /// search and the title matches find the label it made of it.
+  static NewLabel _asStored(NewLabel label) => NewLabel(
+    title: withoutNul(label.title),
+    hexColor: label.hexColor,
+    description: label.description,
+  );
 
   @override
   Future<Label> update(int id, LabelChanges changes) async {

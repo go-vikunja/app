@@ -512,6 +512,39 @@ void main() {
             }
           });
 
+          test('more than 10000 business days across a filter are refused '
+              'by the engine and, from 2.8.0, by the server', () async {
+            for (final (filter, refused) in [
+              ('due_date < now+10000b', false),
+              ('due_date < now+10001b', true),
+              ('due_date < now+6000b || due_date > now-4001b', true),
+            ]) {
+              final local = LocalFilter.compile(
+                ViewFilter(filter: filter),
+                location: locationForFilters(['GMT']),
+                now: DateTime.now(),
+              );
+              expect(local == null, refused, reason: filter);
+              if (!refused) {
+                expect(
+                  local!.matchingIds(
+                    await db.tasksDao.loadFilterRowsOfSavedFilters(),
+                  ),
+                  await serverIds(filter),
+                  reason: filter,
+                );
+              } else if (connection.info.version!.isAtLeast(2, 8)) {
+                await expectLater(
+                  serverIds(filter),
+                  throwsA(
+                    isA<DomainError>().having((f) => f.code, 'code', 4019),
+                  ),
+                  reason: filter,
+                );
+              }
+            }
+          });
+
           test("a saved filter made here lists the server's open tasks, in the "
               "user's zone, at once and after a sync; edits, the favourite and "
               'the delete round-trip', () async {

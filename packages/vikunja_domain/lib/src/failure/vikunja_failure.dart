@@ -146,17 +146,33 @@ final class NotFound extends VikunjaFailure {
 
   bool get routeAbsent => code == null;
 
+  /// The task the request names is deleted (4002) or, from Vikunja 2.8.0
+  /// on, in the trash (4040).
+  bool get taskGone => code == 4002 || code == 4040;
+
+  /// The project is deleted (3001) or, from Vikunja 2.8.0 on, in the trash
+  /// (3018). A task inside a trashed project answers reads and updates with
+  /// 3018 and a delete with 3001.
+  bool get projectGone => code == 3001 || code == 3018;
+
   @override
   String toString() => 'NotFound(code: $code)';
 }
 
-/// The other task of a relation is gone. The server answers with
-/// the same 404 code 4002 as for the task itself, which this one must not
-/// be taken for: the task the relation was added to still exists.
+/// The other task of a relation, or that task's project, is gone. The
+/// server answers with the same codes as for the task itself (4002 or 4040,
+/// 3001 or 3018), which this one must not be taken for: the task the
+/// relation was added to still exists.
 final class RelatedTaskMissing extends NotFound {
-  const new(this.otherTaskId, {super.message}) : super(code: 4002);
+  const new(this.otherTaskId, {super.code = 4002, super.message});
 
   final int otherTaskId;
+
+  @override
+  bool get taskGone => false;
+
+  @override
+  bool get projectGone => false;
 
   @override
   String toString() => 'RelatedTaskMissing($otherTaskId)';

@@ -74,10 +74,38 @@ final class ServerInfo {
 
 @immutable
 final class LegalLinks {
-  const new({this.imprintUrl, this.privacyPolicyUrl});
+  const new({this.imprintUrl, this.privacyPolicyUrl, this.links = const []});
 
+  /// `imprint_url`, or the listed link the server names `Imprint` when only
+  /// the list has it.
   final Uri? imprintUrl;
+
+  /// `privacy_policy_url`, or the listed link the server names
+  /// `Privacy Policy` when only the list has it.
   final Uri? privacyPolicyUrl;
+
+  /// Every legal link, the imprint and the privacy policy included. Listed
+  /// by the server since 2.8.0, built from the two URLs before.
+  final List<LegalLink> links;
+}
+
+@immutable
+final class LegalLink {
+  const new({required this.text, required this.url});
+
+  /// As the server's admin wrote it, untranslated.
+  final String text;
+  final Uri url;
+
+  @override
+  bool operator ==(Object other) =>
+      other is LegalLink && other.text == text && other.url == url;
+
+  @override
+  int get hashCode => Object.hash(text, url);
+
+  @override
+  String toString() => 'LegalLink($url)';
 }
 
 @immutable

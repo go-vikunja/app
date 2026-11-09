@@ -1,7 +1,7 @@
 // Records the user settings and avatar answers of step 30 into
 // test/fixtures/user_settings, with one throwaway user:
 //   dart run tool/capture_user_settings_fixtures.dart \
-//     [http://localhost:34527] [2.7.1]
+//     [http://localhost:34527] [2.8.0]
 // The user first gets frontend keys another client wrote (a sound switch, a
 // sidebar width, a key no client knows) and a date display. Then: a v2
 // merge-patch of changed fields with a frontend key cleared, the same patch
@@ -29,7 +29,7 @@ const _general = '/user/settings/general';
 
 Future<void> main(List<String> args) async {
   final root = args.elementAtOrNull(0) ?? 'http://localhost:34527';
-  final serverVersion = args.elementAtOrNull(1) ?? '2.7.1';
+  final serverVersion = args.elementAtOrNull(1) ?? '2.8.0';
   final dio = Dio(
     BaseOptions(
       baseUrl: root,

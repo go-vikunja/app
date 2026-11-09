@@ -25,6 +25,7 @@ void _expectSameInfo(ServerInfo actual, ServerInfo expected) {
   expect(actual.totpEnabled, expected.totpEnabled);
   expect(actual.legal.imprintUrl, expected.legal.imprintUrl);
   expect(actual.legal.privacyPolicyUrl, expected.legal.privacyPolicyUrl);
+  expect(actual.legal.links, expected.legal.links);
   expect(actual.caldavEnabled, expected.caldavEnabled);
   expect(actual.auth.localEnabled, expected.auth.localEnabled);
   expect(actual.auth.registrationEnabled, expected.auth.registrationEnabled);
@@ -67,6 +68,18 @@ Object? _comparable(Object? raw, Object? serialized) {
   return raw;
 }
 
+/// [serialized] without what [raw] lacks, such as the legal links servers
+/// before 2.8.0 do not send.
+Object? _restrictedTo(Object? serialized, Object? raw) {
+  if (serialized is Map<String, Object?> && raw is Map<String, Object?>) {
+    return {
+      for (final key in serialized.keys)
+        if (raw.containsKey(key)) key: _restrictedTo(serialized[key], raw[key]),
+    };
+  }
+  return serialized;
+}
+
 void main() {
   final infoFixtures = [
     for (final file in Directory('test/fixtures').listSync())
@@ -75,7 +88,7 @@ void main() {
   ].where((name) => fixtureJson(name).containsKey('version')).toList()..sort();
 
   test('every /info fixture is covered', () {
-    expect(infoFixtures, hasLength(8));
+    expect(infoFixtures, hasLength(10));
   });
 
   for (final name in infoFixtures) {
@@ -94,10 +107,7 @@ void main() {
         final serialized = serverInfoToJson(info);
 
         expect(serialized, containsPair('version', raw['version']));
-        expect(_comparable(raw, serialized), {
-          for (final key in raw.keys)
-            if (key != r'$schema') key: serialized[key],
-        });
+        expect(_comparable(raw, serialized), _restrictedTo(serialized, raw));
       });
     });
   }
@@ -119,6 +129,20 @@ void main() {
       legal: LegalLinks(
         imprintUrl: Uri.parse('https://example.com/imprint'),
         privacyPolicyUrl: Uri.parse('https://example.com/privacy'),
+        links: [
+          LegalLink(
+            text: 'Imprint',
+            url: Uri.parse('https://example.com/imprint'),
+          ),
+          LegalLink(
+            text: 'Privacy Policy',
+            url: Uri.parse('https://example.com/privacy'),
+          ),
+          LegalLink(
+            text: 'Nutzungsbedingungen',
+            url: Uri.parse('https://example.com/terms'),
+          ),
+        ],
       ),
       caldavEnabled: true,
       auth: AuthMethods(
@@ -150,6 +174,39 @@ void main() {
     );
 
     _expectSameInfo(parseServerInfo(serverInfoToJson(info)), info);
+  });
+
+  test('legal links named only in the list keep naming the imprint', () {
+    final info = parseServerInfo(const {
+      'version': 'v2.8.0',
+      'legal': {
+        'imprint_url': '',
+        'privacy_policy_url': '',
+        'links': [
+          {'text': 'Imprint', 'url': 'https://example.com/imprint'},
+          {'text': 'Terms', 'url': 'https://example.com/terms'},
+        ],
+      },
+    });
+    final restored = parseServerInfo(serverInfoToJson(info));
+
+    expect(restored.legal.imprintUrl, Uri.parse('https://example.com/imprint'));
+    expect(restored.legal.privacyPolicyUrl, isNull);
+    expect(restored.legal.links, info.legal.links);
+  });
+
+  test('a snapshot stored without links lists the two URLs', () {
+    final stored = serverInfoToJson(
+      parseServerInfo(const {
+        'version': 'v2.7.1',
+        'legal': {'imprint_url': 'https://example.com/imprint'},
+      }),
+    );
+    (stored['legal']! as Map<String, Object?>).remove('links');
+
+    expect(parseServerInfo(stored).legal.links, [
+      LegalLink(text: 'Imprint', url: Uri.parse('https://example.com/imprint')),
+    ]);
   });
 
   test('a server that reported no max_file_size keeps reporting none', () {

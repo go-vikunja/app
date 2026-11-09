@@ -137,9 +137,9 @@ final class GuestSignIn {
     required bool land,
     Future<void> Function(String accountId)? beforeActivatingExisting,
   }) async {
-    // A stored account's `/info` is a snapshot from its sign-in (D60), so
-    // only a fresh probe may save the request; the server's 404 without a
-    // code says the same.
+    // A stored account's `/info` can be hours old (it is read again at most
+    // every few hours while signed in), so only a fresh probe may save the
+    // request; the server's 404 without a code says the same.
     if (!connection.capabilities.has(Capability.linkSharing) &&
         !await _hasStoredAccountOn(connection.rootUri)) {
       return const GuestLinkGone(sharingOff: true);

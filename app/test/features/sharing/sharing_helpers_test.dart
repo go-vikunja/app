@@ -202,6 +202,8 @@ void main() {
           ShareChange.changeTeam,
           en.shareFailureInvalid,
         ),
+        (const NotFound(code: 3001), ShareChange.addPerson, en.projectGone),
+        (const NotFound(code: 3018), ShareChange.createLink, en.projectGone),
         (StateError('boom'), ShareChange.addPerson, en.shareFailureGeneric),
       ];
       for (final (error, change, text) in cases) {

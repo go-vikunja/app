@@ -1,6 +1,6 @@
 # TLS test servers (compose profile `tls`)
 
-A second Vikunja 2.7.1 behind Caddy, for checking the connection settings per server (pinned certificate, CA certificate, client certificate, access headers) against a real server. Everything is a local dummy: the ports listen on 127.0.0.1 only, the data lives in a tmpfs, and the certificates, the PKCS#12 password and the access-header values are generated throwaways in `generated/` (gitignored).
+A second Vikunja, the same release as on port 34527, behind Caddy, for checking the connection settings per server (pinned certificate, CA certificate, client certificate, access headers) against a real server. Everything is a local dummy: the ports listen on 127.0.0.1 only, the data lives in a tmpfs, and the certificates, the PKCS#12 password and the access-header values are generated throwaways in `generated/` (gitignored).
 
 | Port | What answers | Credential |
 |---|---|---|
@@ -15,16 +15,16 @@ The profile is opt-in: CI, a plain `up -d` and `tool/contract_tests.sh` never st
 
 ```sh
 tool/gen_tls_test_certs.sh                     # once: writes generated/, prints the self-signed fingerprint
-docker compose -f test_servers/docker-compose.yaml --profile tls up -d tls-proxy   # starts vikunja-2-7-tls too
+docker compose -f test_servers/docker-compose.yaml --profile tls up -d tls-proxy   # starts vikunja-tls too
 tool/wait_for_test_servers.sh --tls            # waits for 34528-34531 and checks that every gate refuses without its credential
 tool/seed_e2e_user.sh http://localhost:34531   # the E2E user of test_servers/seed/e2e-user.env
 python3 -I tool/tls_e2e.py seed                # project, task and a read link share (--write for a write share); prints ids only
 ```
 
-Stop only the TLS pair; a plain `--profile tls down` also removes `vikunja-2-7` on 34527 and its data:
+Stop only the TLS pair; a plain `--profile tls down` also removes `vikunja` on 34527 and its data:
 
 ```sh
-docker compose -f test_servers/docker-compose.yaml --profile tls down tls-proxy vikunja-2-7-tls
+docker compose -f test_servers/docker-compose.yaml --profile tls down tls-proxy vikunja-tls
 ```
 
 Inspect the compose file with `config --services` only. A plain `config` prints the access-header values from `access.env`.
