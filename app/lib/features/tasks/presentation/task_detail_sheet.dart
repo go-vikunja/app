@@ -23,6 +23,7 @@ import 'package:vikunja_mobile/core/repositories/subscription_repository_provide
 import 'package:vikunja_mobile/core/repositories/task_details_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
@@ -75,6 +76,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart'
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_failure_text.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
 
 final _log = Logger('TaskDetail');
 
@@ -789,23 +792,56 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   }
 
   /// The sheet closes, so its "Task deleted" lands on what is below it; in
-  /// the pane it shows on the screen beside it.
+  /// the pane it shows on the screen beside it. On a server with the bin a
+  /// queued delete can be undone from there; a task with a temporary id
+  /// may never reach the server, so it is not said to go to the bin.
   Future<void> _delete(TaskRepository repository, Task task) async {
+    final trash = ref.read(activeServerHasTrashProvider);
+    final guest = ref.read(activeAccountIsGuestProvider);
     final l10n = context.l10n;
     final navigator = Navigator.of(context);
     final screenMessenger = ScaffoldMessenger.of(context);
-    final confirmed = await confirmDeleteTask(context, title: task.title);
+    final persist = MediaQuery.accessibleNavigationOf(context);
+    final confirmed = await confirmDeleteTask(
+      context,
+      title: task.title,
+      trash: trash,
+      guest: guest,
+      unsent: task.id < 0,
+    );
     if (!confirmed || !mounted) return;
-    await repository.deleteTask(task.id);
+    final deletion = await repository.deleteTask(task.id);
     if (!mounted) return;
+    final ScaffoldMessengerState messenger;
     if (widget.pane case final pane?) {
       pane.deleted(task.id);
-      screenMessenger.showSnackBar(SnackBar(content: Text(l10n.taskDeleted)));
+      messenger = screenMessenger;
+    } else {
+      messenger = widget.messengerBelow?.currentState ?? screenMessenger;
+      navigator.pop();
+    }
+    if (!trash) {
+      messenger.showSnackBar(SnackBar(content: Text(l10n.taskDeleted)));
       return;
     }
-    final messenger = widget.messengerBelow?.currentState ?? screenMessenger;
-    navigator.pop();
-    messenger.showSnackBar(SnackBar(content: Text(l10n.taskDeleted)));
+    final undoable = deletion == TaskDeletion.queued;
+    showDeletedSnackBar(
+      messenger,
+      text: undoable && task.id > 0 ? l10n.taskMovedToTrash : l10n.taskDeleted,
+      undoLabel: l10n.undo,
+      persist: persist,
+      onUndo: undoable
+          ? () => unawaited(
+              runUndo(
+                messenger,
+                l10n,
+                restore: () => repository.restoreTask(task.id),
+                restored: l10n.taskRestored,
+                action: TrashAction.restoreTask,
+              ),
+            )
+          : null,
+    );
   }
 
   Future<void> _duplicate(TaskRepository repository, Task task) async {

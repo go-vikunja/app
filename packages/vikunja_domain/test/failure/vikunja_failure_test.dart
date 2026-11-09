@@ -39,6 +39,54 @@ void main() {
     }, 'task gone');
   });
 
+  test('a 404 carries what the server tells about the trash only when '
+      'given; it does not change what is gone', () {
+    expect(const NotFound().trash, isNull);
+    expect(const NotFound(code: 4040).trash, isNull);
+    expect(const RelatedTaskMissing(5, code: 4040).trash, isNull);
+    expect(const TeamMemberMissing().trash, isNull);
+
+    final task = NotFound(
+      code: 4040,
+      trash: TrashDetails(
+        id: 2,
+        deletedAt: DateTime.utc(2026, 11, 9, 7, 16, 25),
+        deletedBy: const User(id: 6, username: 'fixtureowner'),
+        canRestore: true,
+        projectId: 10,
+      ),
+    );
+    expect(task.trash!.projectId, 10);
+    expect(task.trash!.trashedRootId, isNull);
+    expect(task.taskGone, isTrue);
+    expect(task.projectGone, isFalse);
+    expect(task.routeAbsent, isFalse);
+
+    const project = NotFound(
+      code: 3018,
+      trash: TrashDetails(id: 11, trashedRootId: 6, canRestoreRoot: true),
+    );
+    expect(project.trash!.canRestore, isFalse);
+    expect(project.trash!.deletedAt, isNull);
+    expect(project.projectGone, isTrue);
+    expect(project.taskGone, isFalse);
+    expect('$project', 'NotFound(code: 3018)');
+  });
+
+  test('trash details are equal by value', () {
+    TrashDetails details() => TrashDetails(
+      id: 2,
+      deletedAt: DateTime.utc(2026, 11, 9),
+      deletedBy: const User(id: -3, username: 'link-share-3', name: 'Link'),
+      canRestore: true,
+      projectId: 10,
+    );
+
+    expect(details(), details());
+    expect(details().hashCode, details().hashCode);
+    expect(details(), isNot(const TrashDetails(id: 2)));
+  });
+
   test('a missing related task is a 404 with the code the server sent for '
       'the other task, which is not the task itself gone', () {
     for (final code in [4040, 3018]) {

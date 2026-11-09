@@ -11,9 +11,11 @@ import 'package:vikunja_mobile/features/projects/presentation/manage/project_edi
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_views_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
 
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
+import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 
 void main() {
@@ -39,8 +41,12 @@ void main() {
     ];
   });
 
-  Future<void> pumpProject(WidgetTester tester, int projectId) async {
-    await pumpSignedInApp(tester, sync: data, now: now);
+  Future<void> pumpProject(
+    WidgetTester tester,
+    int projectId, {
+    ServerConnection? connection,
+  }) async {
+    await pumpSignedInApp(tester, sync: data, now: now, connection: connection);
     containerOf(tester)
         .read(appRouterProvider)
         .go(AppRoutes.project(projectId));
@@ -461,6 +467,143 @@ void main() {
       expect(find.text(en.projectDeleteAdminOnly), findsOneWidget);
       expect(find.byType(ProjectTasksScreen), findsOneWidget);
       expect(find.widgetWithText(AppBar, 'Home'), findsOneWidget);
+    });
+  });
+
+  group('delete on a server with the bin', () {
+    Future<void> pumpBinProject(WidgetTester tester, int projectId) =>
+        pumpProject(tester, projectId, connection: fullServer280());
+
+    Future<void> delete(WidgetTester tester) async {
+      await choose(tester, en.projectDelete);
+      await tester.tap(find.text(en.projectDelete).last);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('says what moves to the bin and that it can be restored, '
+        'without saying it cannot be undone', (tester) async {
+      await pumpBinProject(tester, 1);
+
+      await choose(tester, en.projectDelete);
+
+      expect(find.text(en.projectDeleteTitle('Work')), findsOneWidget);
+      expect(
+        find.text(
+          '${en.projectTrashTasksAndSubprojects(4, 2)}\n\n'
+          '${en.projectTrashRestorable}',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining(en.projectDeleteCannotBeUndone), findsNothing);
+    });
+
+    testWidgets('says the default project below stops being the default', (
+      tester,
+    ) async {
+      data.shared.settings = const UserSettings(defaultProjectId: 4);
+      await pumpBinProject(tester, 1);
+
+      await choose(tester, en.projectDelete);
+
+      expect(
+        find.text(
+          '${en.projectTrashTasksAndSubprojects(4, 2)}\n\n'
+          "${en.projectTrashIncludesDefault('Q1')}\n\n"
+          '${en.projectTrashRestorable}',
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('of a project without subprojects counts its tasks', (
+      tester,
+    ) async {
+      await pumpBinProject(tester, 2);
+
+      await choose(tester, en.projectDelete);
+
+      expect(
+        find.text('${en.projectTrashTasks(1)}\n\n${en.projectTrashRestorable}'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('then leaves for the Projects tab, where Undo restores it', (
+      tester,
+    ) async {
+      await pumpBinProject(tester, 1);
+
+      await delete(tester);
+
+      expect(data.projects.deletes, [1]);
+      expect(find.byType(ProjectTasksScreen), findsNothing);
+      expect(find.byType(ProjectsScreen), findsOneWidget);
+      expect(find.text(en.projectMovedToTrash), findsOneWidget);
+      expect(find.text(en.projectDeleted), findsNothing);
+      expect(find.text('Work'), findsNothing);
+      final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+      expect(snackBar.duration, deletedSnackBarDuration);
+      expect(snackBar.persist, isFalse);
+
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+
+      expect(data.projects.restores, [1]);
+      expect(data.projects.calls, ['deleteProject 1', 'restoreProject 1']);
+      expect(find.text(en.projectRestored), findsOneWidget);
+      expect(find.text('Work'), findsOneWidget);
+    });
+
+    for (final (failure, message) in [
+      (const Forbidden() as Exception, en.trashRestoreProjectAdminOnly),
+      (const DomainError(412, code: 3019), en.trashRestoreParentInTrash),
+      (
+        const NetworkFailure(NetworkProblem.unreachable),
+        en.trashRestoreNeedsConnection,
+      ),
+    ]) {
+      testWidgets('an Undo that fails ($failure) says why', (tester) async {
+        data.projects.failures['restoreProject'] = failure;
+        await pumpBinProject(tester, 2);
+
+        await delete(tester);
+        await tester.tap(find.text(en.undo));
+        await tester.pumpAndSettle();
+
+        expect(data.projects.restores, [2]);
+        expect(find.text(message), findsOneWidget);
+        expect(find.text(en.projectRestored), findsNothing);
+        expect(find.text('Home'), findsNothing);
+      });
+    }
+
+    testWidgets('refused, it says why and offers no Undo', (tester) async {
+      data.projects.failures['deleteProject'] = const Forbidden();
+      await pumpBinProject(tester, 2);
+
+      await delete(tester);
+
+      expect(find.text(en.projectDeleteAdminOnly), findsOneWidget);
+      expect(find.text(en.undo), findsNothing);
+      expect(find.byType(ProjectTasksScreen), findsOneWidget);
+    });
+
+    testWidgets('is in German', (tester) async {
+      useLocale(tester, const Locale('de'));
+      await pumpBinProject(tester, 2);
+
+      await tester.tap(find.byTooltip(de.moreActions));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(de.projectDelete));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('${de.projectTrashTasks(1)}\n\n${de.projectTrashRestorable}'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text(de.projectDelete).last);
+      await tester.pumpAndSettle();
+      expect(find.text(de.projectMovedToTrash), findsOneWidget);
+      expect(find.text(de.undo), findsOneWidget);
     });
   });
 

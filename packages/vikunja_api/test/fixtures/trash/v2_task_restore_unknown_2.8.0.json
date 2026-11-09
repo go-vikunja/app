@@ -1,0 +1,9 @@
+{
+  "server": "2.8.0",
+  "request": "POST /api/v2/tasks/99999999/restore",
+  "status": 404,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34551/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Not Found\",\"status\":404,\"detail\":\"This task does not exist\",\"code\":4002}\n"
+}

@@ -40,6 +40,7 @@ import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_search_providers.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/share/share_providers.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
@@ -66,6 +67,7 @@ import 'subscription_fakes.dart';
 import 'task_details_fakes.dart';
 import 'task_edits.dart';
 import 'team_sharing_fakes.dart';
+import 'trash_fakes.dart';
 import 'widget_fakes.dart';
 
 /// Replays [current] to every subscriber when it has one, then forwards
@@ -298,9 +300,10 @@ final class FakeProjectRepository implements ProjectRepository {
 
   /// Project management as the real repository does it, on [all]. Every
   /// call is recorded in its own list ([creates], [updates], [deletes],
-  /// [duplicates]) and in [calls] first: `createProject Title`,
+  /// [restores], [duplicates]) and in [calls] first: `createProject Title`,
   /// `updateProject 5 ProjectChanges(title)`, `deleteProject 5`,
-  /// `duplicateProject 5 under 0 shares true`. [beforeCall] can hold one;
+  /// `restoreProject 5`, `duplicateProject 5 under 0 shares true`.
+  /// [beforeCall] can hold one;
   /// [failure], or the entry of [failures] for the method name
   /// (`createProject`, …), is thrown instead while set, and nothing changes.
   /// Then the real repository's checks: a blank title or an identifier of
@@ -312,6 +315,7 @@ final class FakeProjectRepository implements ProjectRepository {
   final List<NewProject> creates = [];
   final List<(int, ProjectChanges)> updates = [];
   final List<int> deletes = [];
+  final List<int> restores = [];
   final List<({int projectId, int parentProjectId, bool copyShares})>
   duplicates = [];
   Future<void> Function(String call)? beforeCall;
@@ -328,10 +332,20 @@ final class FakeProjectRepository implements ProjectRepository {
   /// The id the next task copied by [duplicateProject] gets.
   int nextTaskId = 5000;
 
-  /// When set, [deleteProject] takes the subtree's tasks out of it and
-  /// [duplicateProject] copies the project's tasks into it, like the sync
-  /// after them would.
+  /// When set, [deleteProject] takes the subtree's tasks out of it,
+  /// [restoreProject] puts them back and [duplicateProject] copies the
+  /// project's tasks into it, like the sync after them would.
   FakeTaskRepository? tasks;
+
+  /// Projects the server has in its trash that were not deleted through
+  /// this fake, by id; [restoreProject] puts them back.
+  final Map<int, Project> restorable = {};
+
+  /// The account's trash, whose project items [restoreProject] takes out.
+  FakeTrashRepository? trash;
+
+  /// What each [deleteProject] took out, by the deleted project's id.
+  final Map<int, ({List<Project> projects, List<Task> tasks})> _deleted = {};
 
   /// Lands at `id × 65536` with the four default views ([defaultViews]),
   /// the title trimmed.
@@ -435,22 +449,83 @@ final class FakeProjectRepository implements ProjectRepository {
     return null;
   }
 
-  /// Takes the project and its subtree out of [all].
+  /// Takes the project and its subtree out of [all], keeping them for
+  /// [restoreProject].
   @override
   Future<void> deleteProject(int projectId) async {
     deletes.add(projectId);
     await _call('deleteProject', '$projectId');
     final doomed = subtreeIds(_all, projectId);
+    final tasks = this.tasks;
+    _deleted[projectId] = (
+      projects: [
+        for (final project in _all)
+          if (doomed.contains(project.id)) project,
+      ],
+      tasks: [
+        if (tasks != null)
+          for (final task in tasks.all)
+            if (doomed.contains(task.projectId)) task,
+      ],
+    );
     all = [
       for (final project in _all)
         if (!doomed.contains(project.id)) project,
     ];
-    if (tasks case final tasks?) {
+    if (tasks != null) {
       tasks.all = [
         for (final task in tasks.all)
           if (!doomed.contains(task.projectId)) task,
       ];
     }
+  }
+
+  /// Puts back, in this order, what [deleteProject] took out (the subtree
+  /// with its tasks), else [restorable]'s project, else [trash]'s item with
+  /// its subprojects, taking it out of the trash; returns the project. A
+  /// `NotFound` code 3001 when none of them has it.
+  @override
+  Future<Project> restoreProject(int projectId) async {
+    restores.add(projectId);
+    await _call('restoreProject', '$projectId');
+    if (_deleted.remove(projectId) case final deleted?) {
+      _putBack(deleted.projects);
+      if (tasks case final tasks?) {
+        final ids = {for (final task in deleted.tasks) task.id};
+        tasks.all = [
+          for (final task in tasks.all)
+            if (!ids.contains(task.id)) task,
+          ...deleted.tasks,
+        ];
+      }
+      return deleted.projects.firstWhere((project) => project.id == projectId);
+    }
+    if (restorable.remove(projectId) case final project?) {
+      _putBack([project]);
+      return project;
+    }
+    if (trash?.takeProject(projectId) case final item?) {
+      _putBack([
+        item.project,
+        for (final subproject in item.subprojects)
+          Project(
+            id: subproject.id,
+            title: subproject.title,
+            parentProjectId: subproject.parentProjectId,
+          ),
+      ]);
+      return item.project;
+    }
+    throw const NotFound(code: 3001);
+  }
+
+  void _putBack(List<Project> projects) {
+    final ids = {for (final project in projects) project.id};
+    all = [
+      for (final project in _all)
+        if (!ids.contains(project.id)) project,
+      ...projects,
+    ];
   }
 
   /// Adds "<title> - duplicate" at the source's position, without
@@ -1161,13 +1236,13 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
 
   /// Every write, in order, as `create -1 Title`, `update 1`,
   /// `updateDescription 1`, `toggle 1 at 42 true`, `setDone 1 true`,
-  /// `undoDone 1`, `setFavorite 2 false`, `delete 3`, `place …` (see
-  /// [placements]), `position …` (see [positions]), `retry <op>`,
-  /// `discard <op>`, `keepMine <op> over <html>`, `useWebs <op>`,
-  /// `queueUpload 3 photo.png` (see [uploadRequests]), `cancelUpload <op>`
-  /// or `sendPending`. A write applies to the task at once, like the local
-  /// database; what counts as pending is the test's to say with
-  /// [pendingChanges] and [pendingTaskIds].
+  /// `undoDone 1`, `setFavorite 2 false`, `delete 3`, `restore 3`,
+  /// `place …` (see [placements]), `position …` (see [positions]),
+  /// `retry <op>`, `discard <op>`, `keepMine <op> over <html>`,
+  /// `useWebs <op>`, `queueUpload 3 photo.png` (see [uploadRequests]),
+  /// `cancelUpload <op>` or `sendPending`. A write applies to the task at
+  /// once, like the local database; what counts as pending is the test's to
+  /// say with [pendingChanges] and [pendingTaskIds].
   final List<String> writes = [];
   Future<void> Function()? beforeWrite;
 
@@ -1420,9 +1495,56 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     (task) => task.id == taskId ? copyTask(task, isFavorite: favorite) : task,
   );
 
+  /// What [deleteTask] answers; it removes the task whatever this says.
+  TaskDeletion deletion = TaskDeletion.queued;
+
+  /// Tasks the server has in its trash that were not deleted through this
+  /// fake, by id.
+  final Map<int, Task> restorable = {};
+
+  /// Thrown by [restoreTask] while set, with nothing changed.
+  Object? restoreFailure;
+
+  /// Can hold a [restoreTask] after it was recorded.
+  Future<void> Function(int taskId)? beforeRestore;
+
+  /// The account's trash, whose task items [restoreTask] takes out.
+  FakeTrashRepository? trash;
+
+  final Map<int, Task> _deleted = {};
+
+  /// Removes the task and keeps it for [restoreTask]; answers [deletion].
   @override
-  Future<void> deleteTask(int taskId) =>
-      _write('delete $taskId', (task) => task.id == taskId ? null : task);
+  Future<TaskDeletion> deleteTask(int taskId) async {
+    final deleted = _all.where((task) => task.id == taskId).firstOrNull;
+    await _write('delete $taskId', (task) => task.id == taskId ? null : task);
+    if (deleted != null) _deleted[taskId] = deleted;
+    return deletion;
+  }
+
+  /// [writes] has `restore <id>`. Puts back, in this order, the task
+  /// [deleteTask] removed, else [restorable]'s, else the task of [trash]'s
+  /// item, taking it out of the trash; returns it. A `NotFound` code 4002
+  /// when none of them has it.
+  @override
+  Future<Task> restoreTask(int taskId) async {
+    writes.add('restore $taskId');
+    await beforeRestore?.call(taskId);
+    if (restoreFailure case final failure?) {
+      Error.throwWithStackTrace(failure, StackTrace.current);
+    }
+    final task =
+        _deleted.remove(taskId) ??
+        restorable.remove(taskId) ??
+        trash?.takeTask(taskId) ??
+        (throw const NotFound(code: 4002));
+    all = [
+      for (final other in _all)
+        if (other.id != task.id) other,
+      task,
+    ];
+    return task;
+  }
 
   /// Ids the next duplicates get; a failure set here is thrown instead
   /// (a `VikunjaFailure`, or `TaskNotSyncedYet`).
@@ -1753,7 +1875,10 @@ final class AccountDataFakes {
     );
     projects = FakeProjectRepository(engine);
     tasks = FakeTaskRepository(engine);
-    projects.tasks = tasks;
+    projects
+      ..tasks = tasks
+      ..trash = trash;
+    tasks.trash = trash;
     resolver = FakeTaskResolver(local: () => tasks.all);
     details.onRowChange = (taskId, change) {
       final row = tasks.all.where((task) => task.id == taskId).firstOrNull;
@@ -1819,6 +1944,10 @@ final class AccountDataFakes {
   /// The people search; a test that overrides `userRepositoryProvider`
   /// itself does not use it.
   final users = FakeUserRepository();
+
+  /// The server's trash, which the restores of [tasks] and [projects] take
+  /// their items out of.
+  final trash = FakeTrashRepository();
 
   /// What `userSettingsProvider` reports while the account is active.
   UserSettings get settings => _settings;
@@ -1897,6 +2026,7 @@ final class SyncFakes {
   FakeProjectSharingRepository get sharing => shared.sharing;
   FakeLabelRepository get labels => shared.labels;
   FakeUserRepository get users => shared.users;
+  FakeTrashRepository get trash => shared.trash;
 
   AccountDataFakes forAccount(String accountId) =>
       accounts[accountId] ?? shared;
@@ -1991,6 +2121,9 @@ final class SyncFakes {
     ),
     accountUserRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).users,
+    ),
+    trashRepositoryForProvider.overrideWith(
+      (ref, accountId) => forAccount(accountId).trash,
     ),
     linkShareActionsProvider.overrideWithValue(linkShares),
     sensitiveClipboardProvider.overrideWithValue(clipboard),

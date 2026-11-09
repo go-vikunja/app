@@ -9,6 +9,84 @@ part of 'task_opener.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 
+@ProviderFor(accountServerTaskRead)
+final accountServerTaskReadProvider = AccountServerTaskReadFamily._();
+
+final class AccountServerTaskReadProvider
+    extends $FunctionalProvider<ServerTaskRead, ServerTaskRead, ServerTaskRead>
+    with $Provider<ServerTaskRead> {
+  AccountServerTaskReadProvider._({
+    required AccountServerTaskReadFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountServerTaskReadProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountServerTaskReadHash();
+
+  @override
+  String toString() {
+    return r'accountServerTaskReadProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<ServerTaskRead> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ServerTaskRead create(Ref ref) {
+    final argument = this.argument as String;
+    return accountServerTaskRead(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ServerTaskRead value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ServerTaskRead>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountServerTaskReadProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountServerTaskReadHash() =>
+    r'bf083c97214d3d3ad610353dba5f74e9ad05fb7e';
+
+final class AccountServerTaskReadFamily extends $Family
+    with $FunctionalFamilyOverride<ServerTaskRead, String> {
+  AccountServerTaskReadFamily._()
+    : super(
+        retry: null,
+        name: r'accountServerTaskReadProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AccountServerTaskReadProvider call(String accountId) =>
+      AccountServerTaskReadProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountServerTaskReadProvider';
+}
+
 @ProviderFor(taskOpener)
 final taskOpenerProvider = TaskOpenerProvider._();
 

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:vikunja_api/src/dto/trash_codec.dart';
 import 'package:vikunja_api/src/errors/error_body.dart';
 import 'package:vikunja_api/src/negotiation/transport_failure.dart';
 import 'package:vikunja_api/src/transport/retry_after.dart';
@@ -93,7 +94,13 @@ VikunjaFailure failureFromResponse(Response<Object?> response) {
   final fieldErrors = body?.fieldErrors;
   return switch (status) {
     403 => Forbidden(code: code, message: message),
-    404 => NotFound(code: code, message: message),
+    404 => NotFound(
+      code: code,
+      message: message,
+      trash: _trashCodes.contains(code)
+          ? parseTrashDetails(body?.details)
+          : null,
+    ),
     412 || 422 when fieldErrors != null => ValidationFailed(
       fieldErrors: fieldErrors,
       code: code,
@@ -110,6 +117,7 @@ const _refreshRaceLost = 16004;
 // v1's answer to a guest whose share is gone; v2 answers 401 without a
 // code, which only LinkShareGoneInterceptor can tell from a user's 401.
 const _linkShareTokenInvalid = 13003;
+const _trashCodes = {4040, 3018};
 
 const Map<int, OAuthProblem> _oauthProblems = {
   17001: OAuthProblem.clientMismatch,

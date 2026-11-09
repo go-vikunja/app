@@ -23,6 +23,7 @@ import '../../helpers/recording_sync_engine.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/trash_fakes.dart';
 
 // The real repository and sender providers over an in-memory database, with
 // the clients and the engine faked: what the screens get when they write.
@@ -62,6 +63,7 @@ void main() {
         syncEngineProvider.overrideWith((ref, accountId) => engine),
         writeClientProvider.overrideWith((ref, accountId) => write),
         readClientProvider.overrideWith((ref, accountId) => read),
+        trashPortProvider.overrideWith((ref, accountId) => FakeTrashPort()),
         clockProvider.overrideWithValue(() => now),
       ],
     );

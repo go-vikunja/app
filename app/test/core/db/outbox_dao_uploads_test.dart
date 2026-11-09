@@ -170,10 +170,12 @@ void main() {
     expect(problem.failure, isA<FileTooLarge>());
   });
 
-  test('a delete drops the unsent uploads, not one on its way', () async {
+  test('a delete keeps the uploads, which wait while it is queued and go on '
+      'once it was taken back', () async {
     final sending = await queueUpload(1, file: 'a' * 32);
-    await queueUpload(1, file: 'b' * 32);
+    final waiting = await queueUpload(1, file: 'b' * 32);
     final failed = await queueUpload(1, file: 'c' * 32);
+    final other = await queueUpload(2, file: 'd' * 32);
     await db.outboxDao.claim(sending, at: now);
     await db.outboxDao.markFailed(failed, const Forbidden());
 
@@ -182,19 +184,57 @@ void main() {
     final kinds = [for (final op in await ops()) (op.kind, op.state)];
     expect(kinds, [
       (OutboxOperationKind.uploadAttachment.name, OutboxState.sending.name),
+      (OutboxOperationKind.uploadAttachment.name, OutboxState.pending.name),
+      (OutboxOperationKind.uploadAttachment.name, OutboxState.failed.name),
+      (OutboxOperationKind.uploadAttachment.name, OutboxState.pending.name),
       (OutboxOperationKind.deleteTask.name, OutboxState.pending.name),
     ]);
-    expect(await db.outboxDao.uploadFiles(), {'a' * 32});
+    expect(
+      [for (final op in await db.outboxDao.queuedUploads()) op.id],
+      [other],
+    );
+    expect(await db.outboxDao.uploadFiles(), {
+      'a' * 32,
+      'b' * 32,
+      'c' * 32,
+      'd' * 32,
+    });
+    expect(await db.outboxDao.watchPendingUploads(1).first, hasLength(3));
+
+    await db.outboxDao.unqueueDelete(1);
+
+    expect(
+      [for (final op in await db.outboxDao.queuedUploads()) op.id],
+      [sending, waiting, other],
+    );
   });
 
   test('cancelling a create drops its uploads', () async {
-    final localId = await db.outboxDao.queueCreate(
+    final failedCreate = await db.outboxDao.queueCreate(
+      const NewTask(title: 'Refused', projectId: 7),
+      now: now,
+    );
+    await queueUpload(failedCreate, file: 'a' * 32);
+    final refused = (await ops()).first;
+    await db.outboxDao.claim(refused.id, at: now);
+    await db.outboxDao.markFailed(
+      refused.id,
+      const DomainError(400, code: 4001),
+    );
+    final neverSent = await db.outboxDao.queueCreate(
       const NewTask(title: 'New', projectId: 7),
       now: now,
     );
-    await queueUpload(localId);
+    await queueUpload(neverSent, file: 'b' * 32);
 
-    await db.outboxDao.queueDelete(localId, now: now);
+    await db.outboxDao.queueDelete(failedCreate, now: now);
+
+    expect(await db.outboxDao.uploadFiles(), {'b' * 32});
+
+    await db.outboxDao.queueDelete(neverSent, now: now);
+    final create = (await ops()).firstWhere((op) => op.taskId == neverSent);
+    await db.outboxDao.claim(create.id, at: now);
+    await db.outboxDao.cancelDeletedCreate(create.id);
 
     expect(await ops(), isEmpty);
     expect(await db.outboxDao.uploadFiles(), isEmpty);

@@ -37,3 +37,4 @@ export 'src/time/date_range_preset.dart';
 export 'src/time/datemath.dart';
 export 'src/time/day_interval.dart';
 export 'src/time/default_time.dart';
+export 'src/trash/trash_retention.dart';

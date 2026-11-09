@@ -2,7 +2,10 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
+import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
+
+export 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 
 /// Tasks as this device knows them; the same stream and error rules as
 /// `ProjectRepository`.
@@ -165,9 +168,39 @@ abstract interface class TaskRepository {
 
   Future<void> setFavorite(int taskId, {required bool favorite});
 
-  /// Hides the task at once; the server delete follows. A task the server
-  /// already deleted counts as success.
-  Future<void> deleteTask(int taskId);
+  /// Hides the task at once and queues its delete behind the task's own
+  /// queued changes, which stay: they reach the server first, so a restore
+  /// from the server's trash has them. A create that never reached the
+  /// server goes together with its delete once the sender gets to it,
+  /// without a request. A task the server already deleted counts as
+  /// success.
+  Future<TaskDeletion> deleteTask(int taskId);
+
+  /// Takes a delete back and returns the task as it is now. A delete still
+  /// queued here, one the server refused included, is removed: the task
+  /// shows again with its queued changes, without a request. A delete on
+  /// its way is waited for. A delete the server has made is restored from
+  /// its trash (Vikunja 2.8.0 and later), and the answered task is stored
+  /// at once; ops of the task the server refused because the task or its
+  /// project was gone or in the trash go back to the queue.
+  ///
+  /// A queued delete whose earlier attempt may have reached the server (a
+  /// timeout, a 5xx, a kill in flight) is removed too, and the task is
+  /// also restored from the trash in case it got there; a task the server
+  /// never trashed is read back as it is. When that request does not get
+  /// through the task shows again all the same, and if the server did
+  /// trash it, the next sync may take it away again. A refusal that keeps
+  /// the task in the trash (`Forbidden`, `DomainError`, `NotFound` code
+  /// 3018) is thrown, with the task showing again.
+  ///
+  /// Throws the `VikunjaFailure` of the restore: `NotFound` code 4002 when
+  /// the task is gone for good or never reached the server, `DomainError`
+  /// code 3008 in an archived project, `NotFound` code 3018 in a trashed
+  /// project, `Forbidden` without write permission, a `NetworkFailure`
+  /// offline; `NotFound` without a code on a server without the trash.
+  /// Throws [TaskDeleteInFlight] when another process is still sending the
+  /// delete after `restoreWait`.
+  Future<Task> restoreTask(int taskId);
 
   /// Asks the server for a copy (labels, assignees, attachments and
   /// reminders included, plus a `copiedfrom` relation), so it needs a
@@ -254,4 +287,15 @@ final class TaskNotSyncedYet implements Exception {
 
   @override
   String toString() => 'TaskNotSyncedYet($taskId)';
+}
+
+/// The task's delete is still on its way to the server, usually sent by
+/// another process, so it can be taken back only once it has arrived.
+final class TaskDeleteInFlight implements Exception {
+  const new(this.taskId);
+
+  final int taskId;
+
+  @override
+  String toString() => 'TaskDeleteInFlight($taskId)';
 }

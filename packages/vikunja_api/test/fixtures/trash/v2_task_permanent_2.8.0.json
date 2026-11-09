@@ -1,0 +1,7 @@
+{
+  "server": "2.8.0",
+  "request": "DELETE /api/v2/tasks/4/permanent",
+  "status": 204,
+  "headers": {},
+  "body": ""
+}

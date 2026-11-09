@@ -24,6 +24,7 @@ import '../../../helpers/fake_write_client.dart';
 import '../../../helpers/recording_sync_engine.dart';
 import '../../../helpers/server_connections.dart';
 import '../../../helpers/sync_fakes.dart';
+import '../../../helpers/trash_fakes.dart';
 
 // Removing an account goes through the same SignOut as signing out, for
 // the active account and for any other one.
@@ -79,6 +80,7 @@ void main() {
           (ref, _) => FakeWriteClient(clock: () => now),
         ),
         readClientProvider.overrideWith((ref, _) => FakeSyncClient()),
+        trashPortProvider.overrideWith((ref, _) => FakeTrashPort()),
         clockProvider.overrideWithValue(() => now),
       ],
     );

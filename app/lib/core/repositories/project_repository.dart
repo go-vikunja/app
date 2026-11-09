@@ -61,11 +61,31 @@ abstract interface class ProjectRepository {
     required String base,
   });
 
-  /// The server deletes the project's whole subtree with its tasks; here
-  /// the subtree goes with its tasks (also those with unsent changes, whose
-  /// queued ops go too: they would fail), views, boards, list snapshots and
-  /// list preferences.
+  /// The server deletes the project's whole subtree with its tasks, or
+  /// moves it to its trash (Vikunja 2.8.0 and later); here the subtree goes
+  /// with its tasks, views, boards, list snapshots and list preferences.
+  /// The tasks' queued ops go too: creates, unsent edits and uploads, task
+  /// deletes still queued, and sync problems. A restore ([restoreProject])
+  /// does not bring them back: the tasks come back as the server has them,
+  /// and a task whose delete was still queued comes back alive.
   Future<void> deleteProject(int projectId);
+
+  /// Restores the project from the server's trash (Vikunja 2.8.0 and
+  /// later), online like [deleteProject], with every trashed project below
+  /// it and their tasks; tasks trashed on their own stay in the trash. Once
+  /// answered a sync run stores them; when that run fails, the project is
+  /// stored from the answer and its tasks come with the next run. What
+  /// [deleteProject] dropped here stays dropped: list preferences, and the
+  /// subtree's queued creates, edits, uploads and task deletes and its
+  /// sync problems, so a task whose delete was still queued comes back
+  /// alive. The default project the server unset on the delete stays
+  /// unset.
+  ///
+  /// Throws `Forbidden` for anyone but an admin, `DomainError` code 3019
+  /// while a parent is in the trash and 3016 when the parent is archived,
+  /// `NotFound` code 3001 when it is gone for good, `NotFound` without a
+  /// code on a server without the trash, a `NetworkFailure` offline.
+  Future<Project> restoreProject(int projectId);
 
   /// Returns the copy's id once a sync has stored it with its tasks; when
   /// that sync fails, the copy is stored without them and the next one

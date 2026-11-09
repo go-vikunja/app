@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
@@ -114,6 +115,7 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
     if (repository == null || original == null || !_canSave) return;
     final changes = _changes(original);
     final l10n = context.l10n;
+    final trash = ref.read(activeServerHasTrashProvider);
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     setState(() {
@@ -134,9 +136,11 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
       if (!mounted) return;
       setState(() => _saving = false);
       if (error case VikunjaFailure(code: 3007)) {
-        setState(() => _identifierError = l10n.projectIdentifierTaken);
-        Announcer.of(context)
-            .say(l10n.projectIdentifierTaken, onlyIfPlatformAnnounces: true);
+        final taken = trash
+            ? l10n.projectIdentifierTakenTrash
+            : l10n.projectIdentifierTaken;
+        setState(() => _identifierError = taken);
+        Announcer.of(context).say(taken, onlyIfPlatformAnnounces: true);
         return;
       }
       messenger

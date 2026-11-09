@@ -41,7 +41,7 @@ void addAccount(BuildContext context) =>
 
 /// Signs out of [entry] after asking. Removing the active account switches
 /// to the most recently active other one; removing the last one returns to
-/// the connect screen.
+/// the connect screen, without the snackbars shown or queued before.
 Future<void> removeAccount(
   BuildContext context,
   WidgetRef ref,
@@ -82,7 +82,12 @@ Future<void> removeAccount(
   await ref
       .read(signOutControllerProvider.notifier)
       .signOut(entry.id, forgetConnectionSettings: forgetConnectionSettings);
-  if (others.isEmpty) return;
+  if (others.isEmpty) {
+    // What is still up or queued, like the Undo of a delete, would act on
+    // the account just signed out of.
+    messenger.clearSnackBars();
+    return;
+  }
   messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));

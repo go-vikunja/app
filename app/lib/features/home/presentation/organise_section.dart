@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/tasks/application/label_providers.dart';
 
-/// The account's labels, with how many this device has, and its teams.
+/// The account's labels, with how many this device has, its teams and, on
+/// servers with one, the bin. Users only: the Account tab leaves it out for
+/// guests.
 class OrganiseSection extends ConsumerWidget {
   const new({required this.busy, super.key});
 
@@ -20,6 +23,7 @@ class OrganiseSection extends ConsumerWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    final trash = ref.watch(activeServerHasTrashProvider);
     final labelCount = ref.watch(
       allLabelsProvider.select((labels) => labels.value?.length),
     );
@@ -54,6 +58,14 @@ class OrganiseSection extends ConsumerWidget {
           enabled: !busy,
           onTap: () => unawaited(GoRouter.of(context).push(AppRoutes.teams)),
         ),
+        if (trash)
+          ListTile(
+            leading: const Icon(Icons.delete_outline),
+            title: Text(l10n.accountTrashEntry),
+            trailing: const Icon(Icons.chevron_right),
+            enabled: !busy,
+            onTap: () => unawaited(GoRouter.of(context).push(AppRoutes.trash)),
+          ),
       ],
     );
   }

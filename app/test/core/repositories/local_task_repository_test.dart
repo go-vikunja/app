@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -13,6 +15,7 @@ import '../../helpers/fake_write_client.dart';
 import '../../helpers/recording_sync_engine.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
+import '../../helpers/trash_fakes.dart';
 import '../../helpers/zero_random.dart';
 
 void main() {
@@ -22,6 +25,7 @@ void main() {
   late FakeSyncClient read;
   late FakeTimers timers;
   late OutboxSender sender;
+  late FakeTrashPort trash;
   late LocalTaskRepository repository;
   final monday = DateTime.utc(2026, 10, 12, 9);
   final now = DateTime.utc(2026, 10, 10, 12);
@@ -56,7 +60,15 @@ void main() {
       random: ZeroRandom(),
     );
     addTearDown(sender.dispose);
-    repository = LocalTaskRepository(db, sync, sender, write, now: () => now);
+    trash = FakeTrashPort();
+    repository = LocalTaskRepository(
+      db,
+      sync,
+      sender,
+      write,
+      now: () => now,
+      trash: trash,
+    );
     addTearDown(repository.dispose);
     await db.tasksDao.upsertAll(tasks, syncRunId: 'run');
     write.serverTasks.addEntries(tasks.map((t) => MapEntry(t.id, t)));
@@ -239,7 +251,7 @@ void main() {
 
     test('favourite and delete', () async {
       await repository.setFavorite(1, favorite: true);
-      await repository.deleteTask(4);
+      expect(await repository.deleteTask(4), TaskDeletion.queued);
       await pumpEventQueue();
 
       expect((await db.tasksDao.find(1))!.isFavorite, isTrue);
@@ -252,7 +264,7 @@ void main() {
 
     test('a write for a task that is gone here does nothing', () async {
       await repository.setDone(99, done: true);
-      await repository.deleteTask(99);
+      expect(await repository.deleteTask(99), TaskDeletion.none);
       await pumpEventQueue();
 
       expect(write.requests, isEmpty);
@@ -376,12 +388,44 @@ void main() {
     test('a delete before the send costs nothing', () async {
       sender.pause();
       final id = await repository.createTask(draft);
-      await repository.deleteTask(id);
+      expect(await repository.deleteTask(id), TaskDeletion.queued);
+      expect(await repository.deleteTask(id), TaskDeletion.none);
 
       await sender.resume();
 
       expect(write.requests, isEmpty);
       expect(await db.tasksDao.findRow(id), isNull);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a delete of a create the server refused discards it at once; an '
+        'update of another task that waited for it is sent', () async {
+      write.beforeRequest = (request) async {
+        if (request.startsWith('create')) {
+          throw const DomainError(400, code: 4001);
+        }
+      };
+      final id = await repository.createTask(draft);
+      await pumpEventQueue();
+      expect(await db.outboxDao.loadProblems(), hasLength(1));
+      await repository.updateTask(
+        1,
+        TaskChanges(
+          title: 'Renamed',
+          relations: RelationChange(
+            added: {TaskRelationRef(TaskRelationKind.related, id)},
+          ),
+        ),
+      );
+      await pumpEventQueue();
+      expect(write.requests, ['create Buy milk']);
+
+      expect(await repository.deleteTask(id), TaskDeletion.discarded);
+      await pumpEventQueue();
+
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect(write.requests, ['create Buy milk', 'update 1']);
+      expect(write.updates.single, (1, const TaskChanges(title: 'Renamed')));
       expect(await db.outboxDao.count(), 0);
     });
 
@@ -480,6 +524,418 @@ void main() {
           repeatMode: RepeatMode.afterAmount,
         ),
       ));
+    });
+  });
+
+  group('restoreTask', () {
+    test('a queued delete never tried is taken back without a request; the '
+        'row is back with its queued edit', () async {
+      sender.pause();
+      await repository.updateTask(4, const TaskChanges(title: 'Renamed'));
+      expect(await repository.deleteTask(4), TaskDeletion.queued);
+      expect(await db.tasksDao.find(4), isNull);
+
+      final restored = await repository.restoreTask(4);
+
+      expect(restored.title, 'Renamed');
+      expect(trash.calls, isEmpty);
+      await sender.resume();
+      expect(write.requests, ['update 4']);
+      expect(write.serverTasks[4]!.title, 'Renamed');
+      expect(await db.outboxDao.count(), 0);
+      expect(sync.refreshAfterWriteCalls, 0);
+    });
+
+    test(
+      'a delete taken back after an attempt that failed on the way asks '
+      'the trash too; a 4002 changes nothing, and the queue drains',
+      () async {
+        write.beforeRequest = (request) async {
+          if (request.startsWith('delete')) {
+            throw const NetworkFailure(NetworkProblem.timeout);
+          }
+        };
+        await repository.updateTask(4, const TaskChanges(title: 'Renamed'));
+        await pumpEventQueue();
+        expect(await repository.deleteTask(4), TaskDeletion.queued);
+        await pumpEventQueue();
+        expect(write.requests, ['update 4', 'delete 4']);
+        // Queued behind the delete, which waits out its backoff.
+        await repository.setDone(1, done: true);
+        await pumpEventQueue();
+        expect(write.requests, ['update 4', 'delete 4']);
+
+        final restored = await repository.restoreTask(4);
+        await pumpEventQueue();
+
+        expect(trash.calls, ['restoreTask 4']);
+        expect(restored.title, 'Renamed');
+        expect((await db.tasksDao.find(4))!.title, 'Renamed');
+        expect(write.requests, ['update 4', 'delete 4', 'update 1']);
+        expect(write.serverTasks[4]!.title, 'Renamed');
+        expect(await db.outboxDao.count(), 0);
+        expect(sync.refreshAfterWriteCalls, 0);
+      },
+    );
+
+    test('a delete taken back after an attempt shows the task again when '
+        'the trash cannot be asked; a refusal that keeps it there is '
+        'thrown', () async {
+      write.beforeRequest = (request) async {
+        if (request.startsWith('delete')) {
+          throw const NetworkFailure(NetworkProblem.timeout);
+        }
+      };
+      for (final failure in [
+        const SessionEnded(SessionEndReason.expired),
+        const RateLimited(),
+        const NotFound(),
+      ]) {
+        await repository.deleteTask(4);
+        await pumpEventQueue();
+        trash.failures['restoreTask'] = failure;
+
+        final restored = await repository.restoreTask(4);
+
+        expect(restored.id, 4, reason: '$failure');
+        expect(await db.tasksDao.find(4), isNotNull, reason: '$failure');
+        expect(await db.outboxDao.queuedDeleteOf(4), isNull);
+      }
+
+      await repository.deleteTask(4);
+      await pumpEventQueue();
+      trash.failures['restoreTask'] = const Forbidden();
+      await expectLater(repository.restoreTask(4), throwsA(isA<Forbidden>()));
+      expect(await db.tasksDao.find(4), isNotNull);
+      expect(await db.outboxDao.queuedDeleteOf(4), isNull);
+    });
+
+    test('a delete taken back after a timeout the server did act on is '
+        'restored from the trash; the answer is stored', () async {
+      write.beforeRequest = (request) async {
+        // The server moved it to the trash; the answer got lost.
+        if (request == 'delete 4') {
+          throw const NetworkFailure(NetworkProblem.timeout);
+        }
+      };
+      await repository.deleteTask(4);
+      await pumpEventQueue();
+      final delete = (await db.outboxDao.queuedDeleteOf(4))!;
+      expect(delete.state, 'pending');
+      expect(delete.sentAt, isNull);
+      trash.restoredTasks[4] = sampleTask(
+        id: 4,
+        title: 'Elsewhere',
+        projectId: 8,
+      ).copyWith(bucketId: 31);
+
+      final restored = await repository.restoreTask(4);
+      await pumpEventQueue();
+
+      expect(trash.calls, ['restoreTask 4']);
+      expect(restored.bucketId, 31);
+      expect((await db.tasksDao.find(4))!.bucketId, 31);
+      expect(await db.outboxDao.count(), 0);
+      expect(sync.refreshAfterWriteCalls, 1);
+    });
+
+    test('a delete a killed app left in flight is restored from the trash '
+        'too once it is back in the queue', () async {
+      sender.pause();
+      await repository.deleteTask(4);
+      final delete = (await db.outboxDao.all()).single;
+      await db.outboxDao.markSending(delete.id, at: now);
+      expect(
+        await db.outboxDao.resetSending(
+          now: now.add(OutboxSender.staleSendingAfter),
+          olderThan: OutboxSender.staleSendingAfter,
+        ),
+        1,
+      );
+      trash.restoredTasks[4] = sampleTask(
+        id: 4,
+        title: 'Elsewhere',
+        projectId: 8,
+      ).copyWith(bucketId: 31);
+
+      final restored = await repository.restoreTask(4);
+
+      expect(trash.calls, ['restoreTask 4']);
+      expect(restored.bucketId, 31);
+      expect(write.requests, isEmpty);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('when the trash cannot be asked after such an attempt, the task '
+        'shows again all the same', () async {
+      write.beforeRequest = (request) async {
+        if (request == 'delete 4') {
+          throw const NetworkFailure(NetworkProblem.timeout);
+        }
+      };
+      await repository.deleteTask(4);
+      await pumpEventQueue();
+      trash.failures['restoreTask'] = const NetworkFailure(
+        NetworkProblem.unreachable,
+      );
+
+      expect((await repository.restoreTask(4)).title, 'Elsewhere');
+      expect(trash.calls, ['restoreTask 4']);
+      expect(await db.outboxDao.count(), 0);
+
+      await repository.deleteTask(4);
+      await pumpEventQueue();
+      trash.failures['restoreTask'] = const ServerFailure(502);
+
+      expect((await repository.restoreTask(4)).title, 'Elsewhere');
+      expect(trash.calls, ['restoreTask 4', 'restoreTask 4']);
+      expect(sync.refreshAfterWriteCalls, 0);
+    });
+
+    test('any other refusal of that restore is thrown, with the task showing '
+        'again', () async {
+      write.beforeRequest = (request) async {
+        if (request == 'delete 4') {
+          throw const NetworkFailure(NetworkProblem.timeout);
+        }
+      };
+      await repository.deleteTask(4);
+      await pumpEventQueue();
+      trash.failures['restoreTask'] = const NotFound(code: 3018);
+
+      await expectLater(
+        repository.restoreTask(4),
+        throwsA(isA<NotFound>().having((f) => f.code, 'code', 3018)),
+      );
+      expect((await db.tasksDao.find(4))!.title, 'Elsewhere');
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test(
+      'a delete before the send of the create is taken back with it',
+      () async {
+        sender.pause();
+        final id = await repository.createTask(
+          const NewTask(projectId: 7, title: 'Fresh'),
+        );
+        await repository.deleteTask(id);
+        expect(await db.tasksDao.find(id), isNull);
+
+        final restored = await repository.restoreTask(id);
+
+        expect(restored.id, id);
+        expect(restored.title, 'Fresh');
+        await sender.resume();
+        expect(write.requests, ['create Fresh']);
+        expect((await db.tasksDao.find(100))!.title, 'Fresh');
+      },
+    );
+
+    test('a delete the server refused is taken back', () async {
+      write.beforeRequest = (request) async {
+        if (request.startsWith('delete')) throw const Forbidden();
+      };
+      await repository.deleteTask(4);
+      await pumpEventQueue();
+      expect(await db.outboxDao.loadProblems(), hasLength(1));
+
+      final restored = await repository.restoreTask(4);
+
+      expect(restored.id, 4);
+      expect((await db.tasksDao.find(4))!.title, 'Elsewhere');
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      expect(trash.calls, isEmpty);
+    });
+
+    test('a delete the server made is restored from its trash; the answer is '
+        'stored at once and a run follows', () async {
+      await repository.deleteTask(4);
+      await pumpEventQueue();
+      expect(await db.tasksDao.findRow(4), isNull);
+      trash.restoredTasks[4] = sampleTask(
+        id: 4,
+        title: 'Elsewhere',
+        projectId: 8,
+      ).copyWith(bucketId: 31);
+      final watched = <Task?>[];
+      repository.watchTask(4).listen(watched.add);
+
+      final restored = await repository.restoreTask(4);
+      await pumpEventQueue();
+
+      expect(trash.calls, ['restoreTask 4']);
+      expect(restored.title, 'Elsewhere');
+      expect(restored.bucketId, 31);
+      expect((await db.tasksDao.find(4))!.bucketId, 31);
+      expect(watched.last!.title, 'Elsewhere');
+      expect(sync.refreshAfterWriteCalls, 1);
+      expect(write.requests, ['delete 4']);
+    });
+
+    test('ops the server refused while the task was in the trash go back to '
+        'the queue once it is restored, and are sent', () async {
+      write.beforeRequest = (request) async {
+        if (request == 'update 4') throw const NotFound(code: 4040);
+      };
+      await repository.updateTask(4, const TaskChanges(title: 'Mine'));
+      await pumpEventQueue();
+      expect(
+        (await db.outboxDao.loadProblems()).single.failure,
+        isA<NotFound>().having((f) => f.code, 'code', 4040),
+      );
+      write.beforeRequest = null;
+      trash.restoredTasks[4] = sampleTask(
+        id: 4,
+        title: 'Elsewhere',
+        projectId: 8,
+      );
+
+      final restored = await repository.restoreTask(4);
+      await pumpEventQueue();
+
+      expect(trash.calls, ['restoreTask 4']);
+      expect(restored.title, 'Mine');
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      expect(write.requests, ['update 4', 'update 4']);
+      expect(write.serverTasks[4]!.title, 'Mine');
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a task created here follows its server id to the trash', () async {
+      final id = await repository.createTask(
+        const NewTask(projectId: 7, title: 'Fresh'),
+      );
+      await pumpEventQueue();
+      await repository.deleteTask(id);
+      await pumpEventQueue();
+      expect(write.requests, ['create Fresh', 'delete 100']);
+      trash.restoredTasks[100] = sampleTask(
+        id: 100,
+        title: 'Fresh',
+        projectId: 7,
+      );
+
+      final restored = await repository.restoreTask(id);
+
+      expect(trash.calls, ['restoreTask 100']);
+      expect(restored.id, 100);
+    });
+
+    test('a create that never reached the server is gone for good once the '
+        'sender dropped it', () async {
+      sender.pause();
+      final id = await repository.createTask(
+        const NewTask(projectId: 7, title: 'Fresh'),
+      );
+      await repository.deleteTask(id);
+      await sender.resume();
+
+      await expectLater(
+        repository.restoreTask(id),
+        throwsA(isA<NotFound>().having((f) => f.code, 'code', 4002)),
+      );
+      expect(trash.calls, isEmpty);
+    });
+
+    test(
+      'without the trash a delete the server made cannot be taken back',
+      () async {
+        final withoutTrash = LocalTaskRepository(
+          db,
+          sync,
+          sender,
+          write,
+          now: () => now,
+        );
+        await withoutTrash.deleteTask(4);
+        await pumpEventQueue();
+
+        await expectLater(
+          withoutTrash.restoreTask(4),
+          throwsA(isA<NotFound>().having((f) => f.routeAbsent, 'route', true)),
+        );
+      },
+    );
+
+    test(
+      'a failing restore stores nothing and passes the failure on',
+      () async {
+        await repository.deleteTask(4);
+        await pumpEventQueue();
+        trash.failures['restoreTask'] = const DomainError(412, code: 3008);
+
+        await expectLater(
+          repository.restoreTask(4),
+          throwsA(isA<DomainError>().having((f) => f.code, 'code', 3008)),
+        );
+        expect(await db.tasksDao.findRow(4), isNull);
+        expect(sync.refreshAfterWriteCalls, 0);
+
+        trash.failures.clear();
+        await expectLater(
+          repository.restoreTask(4),
+          throwsA(isA<NotFound>().having((f) => f.code, 'code', 4002)),
+        );
+        expect(await db.tasksDao.findRow(4), isNull);
+      },
+    );
+
+    testWidgets('a delete on its way is waited for, then restored from the '
+        'trash', (tester) async {
+      final gate = RequestGate()..pattern = 'delete';
+      write.beforeRequest = gate.call;
+      await repository.deleteTask(4);
+      await tester.pump();
+      expect(gate.isHolding, isTrue);
+      trash.restoredTasks[4] = sampleTask(
+        id: 4,
+        title: 'Elsewhere',
+        projectId: 8,
+      );
+      Task? restored;
+      unawaited(repository.restoreTask(4).then((task) => restored = task));
+      await tester.pump(const Duration(seconds: 1));
+      expect(restored, isNull);
+      expect(trash.calls, isEmpty);
+
+      gate.release();
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pump(const Duration(milliseconds: 250));
+
+      expect(trash.calls, ['restoreTask 4']);
+      expect(restored!.title, 'Elsewhere');
+      expect((await db.tasksDao.find(4))!.title, 'Elsewhere');
+    });
+
+    testWidgets('a delete still on its way after the wait is in flight', (
+      tester,
+    ) async {
+      sender.pause();
+      await repository.deleteTask(4);
+      final delete = (await db.outboxDao.all()).single;
+      // Another process has it.
+      await db.outboxDao.markSending(delete.id, at: now);
+      Object? failure;
+      unawaited(
+        repository
+            .restoreTask(4)
+            .then<void>((_) {}, onError: (Object error) => failure = error),
+      );
+
+      await tester.pump(
+        LocalTaskRepository.restoreWait - const Duration(seconds: 1),
+      );
+      expect(failure, isNull);
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 250));
+      }
+
+      expect(
+        failure,
+        isA<TaskDeleteInFlight>().having((f) => f.taskId, 'taskId', 4),
+      );
+      expect(trash.calls, isEmpty);
+      expect((await db.outboxDao.queuedDeleteOf(4))!.state, 'sending');
     });
   });
 

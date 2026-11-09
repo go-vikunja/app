@@ -28,4 +28,5 @@ export 'src/sharing/project_sharing_port.dart';
 export 'src/teams/teams_port.dart';
 export 'src/transport/authenticated_dio.dart';
 export 'src/transport/retry_interceptor.dart';
+export 'src/trash/trash_port.dart';
 export 'src/write/write_ports.dart';

@@ -47,6 +47,7 @@ const Set<Capability> _v2Only = {
   Capability.pendingEmail,
   Capability.byIndexRedirect,
   Capability.userSettingsMergePatch,
+  Capability.trash,
   Capability.timeTracking,
   Capability.adminPanel,
   Capability.auditLogs,
@@ -105,7 +106,7 @@ void main() {
       });
     });
 
-    test('2.7.0 with v2 has every versioned capability', () {
+    test('2.7.0 with v2 has every versioned capability but the trash', () {
       final capabilities = ServerCapabilities.derive(
         info: _info('v2.7.0'),
         apiVersions: _both,
@@ -121,6 +122,26 @@ void main() {
         Capability.pendingEmail,
         Capability.byIndexRedirect,
         Capability.userSettingsMergePatch,
+      });
+    });
+
+    test('2.8.0 with v2 has every versioned capability', () {
+      final capabilities = ServerCapabilities.derive(
+        info: _info('v2.8.0'),
+        apiVersions: _both,
+      );
+      expect(capabilities.tier, SupportTier.full);
+      expect(capabilities.all, {
+        ..._instanceFlags,
+        Capability.apiV2,
+        Capability.sessionRefresh,
+        Capability.oauthPkce,
+        Capability.websocket,
+        Capability.bulkCreateTasks,
+        Capability.pendingEmail,
+        Capability.byIndexRedirect,
+        Capability.userSettingsMergePatch,
+        Capability.trash,
       });
     });
 
@@ -150,7 +171,7 @@ void main() {
       'user_invites',
     };
 
-    for (final version in ['v2.4.0', 'v2.7.0', 'dev']) {
+    for (final version in ['v2.4.0', 'v2.7.0', 'v2.8.0', 'dev']) {
       test('are absent on $version when /api/v2 is unreachable', () {
         final capabilities = ServerCapabilities.derive(
           info: _info(version, proFeatures: licensed),
@@ -180,6 +201,56 @@ void main() {
       );
       expect(capabilities.has(Capability.timeTracking), isTrue);
       expect(capabilities.has(Capability.adminPanel), isFalse);
+    });
+  });
+
+  group('the trash', () {
+    for (final version in [
+      'v2.8.0',
+      'v2.8.1',
+      'v2.8.0-3-gabc1234',
+      'v3.0.0',
+      'dev',
+      'unstable',
+    ]) {
+      test('$version with v2 has it', () {
+        final capabilities = ServerCapabilities.derive(
+          info: _info(version),
+          apiVersions: _both,
+        );
+        expect(capabilities.has(Capability.trash), isTrue);
+      });
+    }
+
+    for (final version in [
+      'v2.7.0',
+      'v2.7.1',
+      'v2.7.1-40-g0123abc',
+      'banana',
+    ]) {
+      test('$version with v2 has none', () {
+        final capabilities = ServerCapabilities.derive(
+          info: _info(version),
+          apiVersions: _both,
+        );
+        expect(capabilities.has(Capability.trash), isFalse);
+      });
+    }
+
+    test('a missing version with v2 has none', () {
+      final capabilities = ServerCapabilities.derive(
+        info: const ServerInfo(version: null),
+        apiVersions: _both,
+      );
+      expect(capabilities.has(Capability.trash), isFalse);
+    });
+
+    test('2.8.0 without v2 has none: the routes exist only there', () {
+      final capabilities = ServerCapabilities.derive(
+        info: _info('v2.8.0'),
+        apiVersions: _v1,
+      );
+      expect(capabilities.has(Capability.trash), isFalse);
     });
   });
 

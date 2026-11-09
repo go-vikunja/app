@@ -5,6 +5,7 @@ import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_timers.dart';
@@ -155,6 +156,43 @@ void main() {
     await sender.retry(left.first.id);
 
     expect(write.requests.skip(2), ['create Rejected', 'update 1']);
+    expect(await db.outboxDao.count(), 0);
+  });
+
+  test("a delete waits behind its task's update that waits for a failed "
+      'create; once that create is discarded both go, the update first, so '
+      'a restore from the trash has the edit', () async {
+    final created = await create('Rejected');
+    await queue(
+      1,
+      TaskChanges(
+        title: 'Renamed',
+        relations: add(TaskRelationKind.related, created),
+      ),
+    );
+    expect(await db.outboxDao.queueDelete(1, now: now), TaskDeletion.queued);
+    await queue(2, const TaskChanges(isFavorite: true));
+    write.beforeRequest = (request) async {
+      if (request == 'create Rejected') {
+        throw const DomainError(400, code: 4001);
+      }
+    };
+
+    await sender.drain();
+
+    expect(write.requests, ['create Rejected', 'update 2']);
+    final left = await db.outboxDao.all();
+    expect(left.map((op) => (op.kind, op.taskId, op.state)), [
+      (OutboxOperationKind.createTask.name, created, OutboxState.failed.name),
+      (OutboxOperationKind.updateTask.name, 1, OutboxState.pending.name),
+      (OutboxOperationKind.deleteTask.name, 1, OutboxState.pending.name),
+    ]);
+
+    await sender.discard(left.first.id);
+    await sender.drain();
+
+    expect(write.requests.skip(2), ['update 1', 'delete 1']);
+    expect(write.updates.last, (1, const TaskChanges(title: 'Renamed')));
     expect(await db.outboxDao.count(), 0);
   });
 

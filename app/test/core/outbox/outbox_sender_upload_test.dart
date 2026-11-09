@@ -622,6 +622,101 @@ void main() {
     );
   });
 
+  group('a queued delete', () {
+    test('holds the uploads of its task back; their copies go once the '
+        'delete is applied', () async {
+      await queueUpload(1);
+      await queueUpload(2, name: 'other.png', bytes: const [4, 5]);
+      await db.outboxDao.queueDelete(1, now: now);
+      write.beforeRequest = (request) async {
+        if (request.startsWith('delete')) {
+          throw const NetworkFailure(NetworkProblem.unreachable);
+        }
+      };
+      final outbox = sender();
+
+      await outbox.drain();
+
+      expect(write.requests, ['delete 1', 'upload 2 other.png']);
+      expect(await storedCopies(), hasLength(1));
+      expect(outbox.state, OutboxSenderState.waiting);
+
+      write.beforeRequest = null;
+      await outbox.sendNow();
+
+      expect(write.requests, ['delete 1', 'upload 2 other.png', 'delete 1']);
+      expect(await db.outboxDao.count(), 0);
+      expect(await storedCopies(), isEmpty);
+    });
+
+    test('taken back, the uploads go on', () async {
+      await queueUpload(1);
+      await db.outboxDao.queueDelete(1, now: now);
+      write.beforeRequest = (_) =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+      final outbox = sender();
+      await outbox.drain();
+      expect(write.requests, ['delete 1']);
+
+      write.beforeRequest = null;
+      await db.outboxDao.unqueueDelete(1);
+      await outbox.drain();
+
+      expect(write.requests, ['delete 1', 'upload 1 photo.png']);
+      expect(await db.outboxDao.count(), 0);
+      expect(await storedCopies(), isEmpty);
+    });
+
+    test('behind a create never sent drops both without a request and '
+        'sweeps the copies', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(title: 'New', projectId: 7),
+        now: now,
+      );
+      await queueUpload(id);
+      await db.outboxDao.queueDelete(id, now: now);
+      expect(await storedCopies(), hasLength(1));
+
+      await sender().drain();
+
+      expect(write.requests, isEmpty);
+      expect(await db.outboxDao.count(), 0);
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect(await storedCopies(), isEmpty);
+    });
+
+    test('behind a create the server refuses goes with it, and so do the '
+        'copies', () async {
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(title: 'New', projectId: 7),
+        now: now,
+      );
+      await db.outboxDao.markUncertain(
+        (await db.outboxDao.all()).single.id,
+        sentAt: now,
+      );
+      await queueUpload(id);
+      await db.outboxDao.queueUpdate(
+        id,
+        const TaskChanges(done: true),
+        now: now,
+      );
+      await db.outboxDao.queueDelete(id, now: now);
+      write.beforeRequest = (request) async {
+        if (request.startsWith('create')) {
+          throw const DomainError(400, code: 4001);
+        }
+      };
+
+      await sender().drain();
+
+      expect(write.requests, ['create New']);
+      expect(await db.outboxDao.count(), 0);
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect(await storedCopies(), isEmpty);
+    });
+  });
+
   group('dangling cover', () {
     test(
       'an update refused with 4020 goes once more with the cover cleared',

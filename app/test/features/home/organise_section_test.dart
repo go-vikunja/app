@@ -1,12 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/labels/presentation/labels_page.dart';
 import 'package:vikunja_mobile/features/teams/presentation/teams_page.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_page.dart';
 
 import '../../helpers/label_user_fakes.dart';
 import '../../helpers/pump_app.dart';
+import '../../helpers/server_connections.dart';
 import '../teams/organise_harness.dart';
 
 void main() {
@@ -19,8 +22,15 @@ void main() {
       );
   });
 
-  Future<void> openAccountTab(WidgetTester tester) async {
-    await harness.pump(tester, size: const Size(360, 1400));
+  Future<void> openAccountTab(
+    WidgetTester tester, {
+    ServerConnection? connection,
+  }) async {
+    await harness.pump(
+      tester,
+      size: const Size(360, 1400),
+      connection: connection,
+    );
     await openTab(tester, en.tabAccount);
   }
 
@@ -70,5 +80,40 @@ void main() {
 
     expect(find.byType(TeamsPage), findsOneWidget);
     expect(currentLocation(tester), AppRoutes.teams);
+  });
+
+  testWidgets('on a server with the bin, the bin comes after the teams and '
+      'opens its page', (tester) async {
+    await openAccountTab(tester, connection: fullServer280());
+
+    final bin = tile(en.accountTrashEntry);
+    expect(bin, findsOneWidget);
+    expect(
+      tester.getTopLeft(tile(en.accountTeamsEntry)).dy,
+      lessThan(tester.getTopLeft(bin).dy),
+    );
+    expect(
+      tester.getTopLeft(bin).dy,
+      lessThan(
+        tester
+            .getTopLeft(
+              find.widgetWithText(ListSectionHeader, en.accountsHeading),
+            )
+            .dy,
+      ),
+    );
+
+    await tester.tap(bin);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TrashPage), findsOneWidget);
+    expect(currentLocation(tester), AppRoutes.trash);
+  });
+
+  testWidgets('on a server without the bin there is no bin', (tester) async {
+    await openAccountTab(tester);
+
+    expect(tile(en.accountTeamsEntry), findsOneWidget);
+    expect(tile(en.accountTrashEntry), findsNothing);
   });
 }

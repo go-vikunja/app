@@ -76,10 +76,34 @@ ServerConnection fullServer270({
   String root = 'https://tasks.example.org/vikunja',
   bool demoMode = false,
   bool userDeletion = true,
+}) => _fullServer(
+  root,
+  version: 'v2.7.0',
+  demoMode: demoMode,
+  userDeletion: userDeletion,
+);
+
+/// [fullServer270] on 2.8.0, which has the trash.
+ServerConnection fullServer280({
+  String root = 'https://tasks.example.org/vikunja',
+  bool demoMode = false,
+  bool userDeletion = true,
+}) => _fullServer(
+  root,
+  version: 'v2.8.0',
+  demoMode: demoMode,
+  userDeletion: userDeletion,
+);
+
+ServerConnection _fullServer(
+  String root, {
+  required String version,
+  required bool demoMode,
+  required bool userDeletion,
 }) => _connect(
   root,
   _info(
-    version: 'v2.7.0',
+    version: version,
     motd: 'Maintenance on Sunday from 02:00 to 03:00.',
     ldap: true,
     openIdProviders: const [

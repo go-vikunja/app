@@ -70,6 +70,8 @@ enum OutboxSenderState {
 /// a slow upstream, a kill while the request was in flight) is not simply
 /// sent again: the next attempt first looks for a task with the sent title
 /// created since [lostResponseWindow] before that attempt and adopts it.
+/// A create never sent whose task was deleted meanwhile goes with the
+/// delete and the row, without a request.
 ///
 /// Senders of the same account may run in several isolates (the app, a
 /// background run, a notification action) on the shared database. The
@@ -602,6 +604,13 @@ final class OutboxSender {
       await _sendUpload(op);
       return false;
     }
+    if (kind == OutboxOperationKind.createTask &&
+        op.sentAt == null &&
+        await _db.outboxDao.cancelDeletedCreate(op.id)) {
+      await sweepUploads();
+      _log.info('Task ${op.taskId} was deleted before its create was sent');
+      return false;
+    }
     TaskChanges? changes;
     if (kind == OutboxOperationKind.updateTask) {
       changes = await _sendableChanges(op);
@@ -1029,6 +1038,11 @@ final class OutboxSender {
     }
     await _db.outboxDao.markFailed(op.id, failure);
     _log.warning('${op.kind} for task ${op.taskId} was rejected: $failure');
+    // A refused create with a delete queued behind it went with its row.
+    if (op.kind == OutboxOperationKind.createTask.name &&
+        await _db.outboxDao.find(op.id) == null) {
+      await sweepUploads();
+    }
   }
 
   /// A request the server may have processed without this device seeing

@@ -18,6 +18,8 @@ import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_fo
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/teams/presentation/team_page.dart';
 import 'package:vikunja_mobile/features/teams/presentation/teams_page.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_page.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_rows.dart';
 import 'package:vikunja_mobile/features/widgets/presentation/widget_configure_page.dart';
 import 'package:vikunja_mobile/features/widgets/presentation/widgets_page.dart';
 
@@ -27,7 +29,9 @@ import '../features/widgets/widget_pages_harness.dart';
 import '../helpers/auth_fakes.dart';
 import '../helpers/editor_bridge_fakes.dart';
 import '../helpers/guest_app.dart';
+import '../helpers/pump_app.dart';
 import '../helpers/sample_data.dart';
+import '../helpers/server_connections.dart';
 import '../helpers/sync_fakes.dart';
 import '../helpers/team_sharing_fakes.dart';
 import 'sweep_data.dart';
@@ -142,6 +146,87 @@ void _seedComment(SyncFakes data) => data.details
   ..me = alice
   ..commentsByTask[1] = [_ownComment];
 
+/// Three tasks, deleted by alice, by Kim (who is not admin of the
+/// project) and through a link share, and a project with two subprojects.
+void _seedTrash(SyncFakes data) => data.trash
+  ..trashedTasks = [
+    TrashedTask(
+      task: sampleTask(id: 31, title: 'Fix the gate'),
+      deletedAt: sweepNow.subtract(const Duration(days: 3)).toUtc(),
+      deletedBy: alice,
+      canDeletePermanently: true,
+    ),
+    TrashedTask(
+      task: sampleTask(
+        id: 32,
+        title: 'Order compost',
+        projectId: gardenProjectId,
+      ),
+      deletedAt: sweepNow.subtract(const Duration(days: 12)).toUtc(),
+      deletedBy: kim,
+    ),
+    TrashedTask(
+      task: sampleTask(id: 33, title: 'Sweep the porch'),
+      deletedAt: sweepNow.subtract(const Duration(days: 30)).toUtc(),
+      deletedBy: const User(
+        id: -5,
+        username: 'link-share-5',
+        name: 'Link Share',
+      ),
+      canDeletePermanently: true,
+    ),
+  ]
+  ..trashedProjects = [
+    TrashedProject(
+      project: sampleProject(id: 40, title: 'Old house', hexColor: 'e8445a'),
+      deletedAt: sweepNow.subtract(const Duration(days: 1)).toUtc(),
+      deletedBy: alice,
+      subprojects: const [
+        TrashedSubproject(
+          id: 41,
+          title: 'Kitchen',
+          parentProjectId: 40,
+          depth: 1,
+        ),
+        TrashedSubproject(
+          id: 42,
+          title: 'Attic',
+          parentProjectId: 40,
+          depth: 1,
+        ),
+      ],
+    ),
+  ];
+
+/// The bin on a 2.8.0 server, on its [variant] tab, where [shows] is.
+SweepScenario _trash(
+  String variant, {
+  Type shows = TrashPage,
+  SweepStep? after,
+}) => SweepScenario.route(
+  AppRoutes.trash,
+  variant: variant,
+  setUp: (tester, _) async {
+    final data = sweepData();
+    _seedTrash(data);
+    await pumpSignedInApp(
+      tester,
+      sync: data,
+      now: sweepNow,
+      connection: fullServer280(),
+      overrides: sweepRepositoryOverrides(),
+    );
+  },
+  navigate: (tester, l10n) async {
+    pushTo(tester, AppRoutes.trash);
+    if (after != null) {
+      await tester.pumpAndSettle();
+      await after(tester, l10n);
+    }
+  },
+  expectScreen: (_) => find.byType(shows),
+);
+
 final TaskComment _ownComment = sampleComment(
   id: _commentId,
   author: alice,
@@ -244,6 +329,16 @@ final List<SweepScenario> pageRouteScenarios = [
       teamId: _teamId,
       description: '<p>Who waters what, and when.</p>',
     ),
+  ),
+  _trash('tasks'),
+  _trash(
+    'projects',
+    shows: TrashProjectRow,
+    after: (tester, _) async {
+      final tab = find.byType(Tab).last;
+      await tester.ensureVisible(tab);
+      await tester.tap(tab);
+    },
   ),
   _page(
     AppRoutes.savedFilterNew,

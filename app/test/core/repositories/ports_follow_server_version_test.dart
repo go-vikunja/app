@@ -13,6 +13,30 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/server_connections.dart';
 
+/// Answers every request with a trash count.
+final class _CountAdapter implements HttpClientAdapter {
+  final List<Uri> requests = [];
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests.add(options.uri);
+    return ResponseBody.fromString(
+      '{"total":2,"by_others":1}',
+      200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
 final class _ImageAdapter implements HttpClientAdapter {
   final List<Uri> requests = [];
 
@@ -110,5 +134,47 @@ void main() {
       await previewRequest(),
       '/vikunja/api/v2/tasks/1/attachments/2/preview?size=md',
     );
+  });
+
+  test('the trash port follows a server upgrade to 2.8: refused before any '
+      'request until then', () async {
+    final auth = AuthFakes();
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+    );
+    final adapter = _CountAdapter();
+    final container = ProviderContainer(
+      overrides: [
+        ...auth.overrides,
+        dioProvider.overrideWithValue(
+          createDio(
+            userAgent: 'test',
+            httpClientAdapter: adapter,
+            logRequests: false,
+          ),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(accountsProvider.future);
+    final port = container.listen(trashPortProvider(alice.id), (_, _) {});
+
+    await expectLater(
+      port.read().taskCount(),
+      throwsA(isA<NotFound>().having((f) => f.routeAbsent, 'route', true)),
+    );
+    expect(adapter.requests, isEmpty);
+
+    await container
+        .read(accountRegistryProvider)
+        .updateConnection(alice.id, (_) => fullServer280());
+    await pumpEventQueue();
+
+    expect(
+      await port.read().taskCount(),
+      const TrashCount(total: 2, byOthers: 1),
+    );
+    expect(adapter.requests.single.path, '/vikunja/api/v2/tasks/deleted/count');
   });
 }

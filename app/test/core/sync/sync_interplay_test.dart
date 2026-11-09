@@ -1,8 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 
 import '../../helpers/fake_sync_client.dart';
@@ -12,6 +15,7 @@ import '../../helpers/recording_sync_engine.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/task_edits.dart';
 import '../../helpers/test_database.dart';
+import '../../helpers/trash_fakes.dart';
 import '../../helpers/zero_random.dart';
 
 // The sync engine against the outbox: a pull must not clobber a queued
@@ -109,7 +113,7 @@ void main() {
   test(
     'a queued delete stays hidden through the pull and is never brought back',
     () async {
-      expect(await db.outboxDao.queueDelete(2, now: now), isTrue);
+      expect(await db.outboxDao.queueDelete(2, now: now), TaskDeletion.queued);
       editOnServer(
         2,
         (task) => copyTask(task, title: 'Two, edited', updated: edited),
@@ -137,10 +141,94 @@ void main() {
     },
   );
 
+  test('a queued delete keeps the edit queued before it through a pull: '
+      'hidden, with the edit on top, and shown so once taken back', () async {
+    await queue(2, const TaskChanges(title: 'Two, mine'));
+    expect(await db.outboxDao.queueDelete(2, now: now), TaskDeletion.queued);
+    editOnServer(
+      2,
+      (task) => copyTask(
+        task,
+        title: 'Two, edited',
+        isFavorite: true,
+        updated: edited,
+      ),
+    );
+
+    await engine().refresh();
+    await engine().fullResync();
+
+    expect(await db.tasksDao.find(2), isNull);
+    final row = (await db.tasksDao.findRow(2))!;
+    expect(row.pendingDelete, isTrue);
+    expect(row.title, 'Two, mine');
+    expect(row.isFavorite, isTrue);
+    expect(
+      decodeTaskChanges(row.pendingChanges!),
+      const TaskChanges(title: 'Two, mine'),
+    );
+    expect(await db.outboxDao.count(), 2);
+
+    expect(await db.outboxDao.unqueueDelete(2), DeleteUnqueue.cancelled);
+
+    final two = (await db.tasksDao.find(2))!;
+    expect(two.title, 'Two, mine');
+    expect(two.isFavorite, isTrue);
+    expect(two.updated, edited);
+  });
+
+  test('a task restored from the trash survives the next run', () async {
+    final write = FakeWriteClient(clock: () => now)
+      ..serverTasks[2] = serverTask(2);
+    final sync = RecordingSyncEngine();
+    final sender = OutboxSender(
+      db: db,
+      writeClient: write,
+      readClient: client,
+      sync: sync,
+      now: () => now,
+      createTimer: FakeTimers().create,
+      random: ZeroRandom(),
+    );
+    addTearDown(sender.dispose);
+    final trash = FakeTrashPort();
+    final repository = LocalTaskRepository(
+      db,
+      sync,
+      sender,
+      write,
+      now: () => now,
+      trash: trash,
+    );
+    await repository.deleteTask(2);
+    await sender.drain();
+    expect(await db.tasksDao.findRow(2), isNull);
+    final inTrash = serverTask(2);
+    client.allTasks = [
+      for (final task in client.allTasks)
+        if (task.id != 2) task,
+    ];
+    await engine().refresh();
+    // The restore puts it back on the server, updated as of the restore.
+    final restored = copyTask(inTrash, updated: edited);
+    client.allTasks = [...client.allTasks, restored];
+    trash.restoredTasks[2] = restored;
+
+    await repository.restoreTask(2);
+    expect((await db.tasksDao.find(2))!.title, 'Two');
+    await engine().refresh();
+
+    expect((await db.tasksDao.find(2))!.title, 'Two');
+    expect(await db.tasksDao.count(), 4);
+    now = now.add(const Duration(minutes: 5));
+    await engine().refresh();
+    expect((await db.tasksDao.find(2))!.title, 'Two');
+  });
+
   test(
     'the count probe counts a queued delete as the server still has it',
     () async {
-      expect(await db.outboxDao.queueDelete(2, now: now), isTrue);
+      expect(await db.outboxDao.queueDelete(2, now: now), TaskDeletion.queued);
       client.requests.clear();
 
       await engine().refresh();

@@ -214,6 +214,85 @@ void main() {
     );
   });
 
+  testWidgets('without the bin the screen beside the pane gets a plain '
+      '"Task deleted": it waits for a snackbar still up and goes after the '
+      'usual 4 s, also under a screen reader', (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(
+          accessibleNavigation: true,
+          supportsAnnounce: true,
+        );
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    useWindow(tester, androidTabletLandscape);
+    await pumpSweepApp(tester);
+    await _tapRow(tester, 'Call the plumber');
+    await tester.tap(
+      _inPane(find.byTooltip(en.taskDetailPaneMore('Call the plumber'))),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.taskDelete));
+    await tester.pumpAndSettle();
+    ScaffoldMessenger.of(tester.element(_inPane(find.byType(TaskDetailSheet))))
+        .showSnackBar(const SnackBar(content: Text('Earlier')));
+    await tester.tap(find.text(en.taskDeleteDialogConfirm));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TaskDetailPane), findsNothing);
+    expect(find.text('Earlier'), findsOneWidget);
+    expect(find.text(en.taskDeleted), findsNothing);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.taskDeleted), findsOneWidget);
+    final shown = tester.widget<SnackBar>(find.byType(SnackBar));
+    expect(shown.duration, const SnackBar(content: SizedBox()).duration);
+    expect(shown.persist, isFalse);
+    expect(shown.action, isNull);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(find.text(en.taskDeleted), findsNothing);
+  });
+
+  testWidgets('on a server with the bin, delete closes the pane and the '
+      'screen beside it offers Undo, which brings the task back', (
+    tester,
+  ) async {
+    useWindow(tester, androidTabletLandscape);
+    final data = sweepData();
+    await pumpSignedInApp(
+      tester,
+      sync: data,
+      now: sweepNow,
+      connection: fullServer280(),
+      overrides: sweepRepositoryOverrides(),
+    );
+    await _tapRow(tester, 'Call the plumber');
+    await tester.tap(
+      _inPane(find.byTooltip(en.taskDetailPaneMore('Call the plumber'))),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.taskDelete));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(en.taskDeleteDialogBodyTrash('Call the plumber')),
+      findsOneWidget,
+    );
+    await tester.tap(find.text(en.taskDeleteDialogConfirm));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TaskDetailPane), findsNothing);
+    expect(find.text(en.taskMovedToTrash), findsOneWidget);
+    expect(find.text('Call the plumber'), findsNothing);
+
+    await tester.tap(find.text(en.undo));
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.writes, ['delete 1', 'restore 1']);
+    expect(find.text(en.taskRestored), findsOneWidget);
+    expect(find.text('Call the plumber'), findsOneWidget);
+    expect(find.byType(TaskDetailPane), findsNothing);
+  });
+
   testWidgets('losing the room for the pane opens the same task as a sheet; '
       'growing again keeps the sheet', (tester) async {
     useWindow(tester, androidTabletLandscape);

@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/features/projects/presentation/project_tasks_scre
 import '../../helpers/announcer_region.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
+import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 
 void main() {
@@ -36,8 +37,12 @@ void main() {
   });
 
   /// Opens the page over the project's screen, as its menu does.
-  Future<void> pumpEdit(WidgetTester tester, int projectId) async {
-    await pumpSignedInApp(tester, sync: data, now: now);
+  Future<void> pumpEdit(
+    WidgetTester tester,
+    int projectId, {
+    ServerConnection? connection,
+  }) async {
+    await pumpSignedInApp(tester, sync: data, now: now, connection: connection);
     final router = containerOf(tester).read(appRouterProvider)
       ..go(AppRoutes.project(projectId));
     await tester.pumpAndSettle();
@@ -200,6 +205,31 @@ void main() {
         .getSemanticsData();
     expect(error.flagsCollection.isLiveRegion, isTrue);
     expect(error.label, contains(en.projectIdentifierTaken));
+  });
+
+  testWidgets('on a server with the bin an identifier in use also says that '
+      'a project in the bin keeps its identifier, at the field and aloud', (
+    tester,
+  ) async {
+    data.projects.failures['updateProject'] = const DomainError(
+      400,
+      code: 3007,
+    );
+    await pumpEdit(tester, 1, connection: fullServer280());
+    await tester.enterText(field(en.projectIdentifierLabel), 'HOME');
+    await tester.pump();
+    await save(tester);
+
+    expect(find.byType(ProjectEditPage), findsOneWidget);
+    expect(find.text(en.projectIdentifierTakenTrash), findsOneWidget);
+    expect(find.text(en.projectIdentifierTaken), findsNothing);
+    expect(tester.takeAnnouncements(), [
+      isAccessibilityAnnouncement(en.projectIdentifierTakenTrash),
+    ]);
+
+    await tester.enterText(field(en.projectIdentifierLabel), 'HOME2');
+    await tester.pumpAndSettle();
+    expect(find.text(en.projectIdentifierTakenTrash), findsNothing);
   });
 
   testWidgets('the parent picker leaves out the project, its subprojects and '

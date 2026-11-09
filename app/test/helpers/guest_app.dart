@@ -22,22 +22,23 @@ Project guestProject({Permission? permission = Permission.read}) =>
       title: 'Garden',
     ).copyWith(maxPermission: permission);
 
-/// Starts the app with a link-share guest ("Helper" on "Garden") as the
-/// only, active account, its project in [data] unless that already has
-/// projects.
+/// Starts the app with a link-share guest ("Helper" on "Garden") on
+/// [connection] (a 2.7 server by default) as the only, active account, its
+/// project in [data] unless that already has projects.
 Future<RegisteredAccount> pumpGuestApp(
   WidgetTester tester, {
   required AuthFakes auth,
   required SyncFakes data,
   Permission? permission = Permission.read,
   bool needsReauth = false,
+  ServerConnection? connection,
   List<Override> overrides = const [],
 }) async {
   if (data.projects.all.isEmpty) {
     data.projects.all = [guestProject(permission: permission)];
   }
   final entry = await auth.seedGuest(
-    fullServer270(),
+    connection ?? fullServer270(),
     token: issueLinkShareToken(
       issuedAt: DateTime.now().toUtc(),
       permission: permission ?? Permission.read,

@@ -155,6 +155,12 @@ ProjectSharingPort projectSharingPort(Ref ref, String accountId) =>
       connection: _connectionOf(ref, accountId),
     );
 
+@riverpod
+TrashPort trashPort(Ref ref, String accountId) => createTrashPort(
+  dio: ref.watch(accountDioProvider(accountId)),
+  connection: _connectionOf(ref, accountId),
+);
+
 /// The registry hands out new connection instances on every write, so only
 /// the parts the ports build on count as a change: the root and the API
 /// versions, which choose the transport, and the server version, which
@@ -427,6 +433,7 @@ ProjectRepository accountProjectRepository(Ref ref, String accountId) {
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(syncEngineProvider(accountId)),
     ref.watch(writeClientProvider(accountId)),
+    trash: ref.watch(trashPortProvider(accountId)),
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -464,6 +471,7 @@ TaskRepository accountTaskRepository(Ref ref, String accountId) {
     clockTicks: clockTicks.stream,
     uploads: ref.watch(accountUploadFilesProvider(accountId)),
     maxUploadBytes: maxUploadBytes,
+    trash: ref.watch(trashPortProvider(accountId)),
   );
   ref
     ..onDispose(repository.dispose)

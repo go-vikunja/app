@@ -13,6 +13,11 @@ enum Capability {
   /// v2 `PATCH /user/settings/general` as a deep merge-patch; older servers
   /// replace every setting on a write.
   userSettingsMergePatch,
+
+  /// The server keeps deleted tasks and projects in a trash for 30 days,
+  /// with routes to list, restore and delete them for good. Vikunja 2.8.0
+  /// and newer, on `/api/v2` only.
+  trash,
   localAuth,
   ldapAuth,
   openIdConnect,

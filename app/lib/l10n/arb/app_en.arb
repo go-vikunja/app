@@ -1300,9 +1300,50 @@
       }
     }
   },
+  "taskDeleteDialogBodyTrash": "“{title}” moves to the bin, for everyone. It can be restored from the bin on the Account tab for 30 days.",
+  "@taskDeleteDialogBodyTrash": {
+    "description": "Body of the delete-task confirmation on servers with a bin (Vikunja 2.8.0 and later), for a signed-in user. The bin is the server's trash; its page is on the Account tab.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Pay the bill"
+      }
+    }
+  },
+  "taskDeleteDialogBodyTrashGuest": "“{title}” moves to the bin, for everyone. It can be restored from there for 30 days.",
+  "@taskDeleteDialogBodyTrashGuest": {
+    "description": "Body of the delete-task confirmation on servers with a bin, for a link-share guest, who has no bin page.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Pay the bill"
+      }
+    }
+  },
+  "taskDeleteDialogBodyUnsent": "“{title}” hasn't reached the server yet. It is deleted and won't be in the bin.",
+  "@taskDeleteDialogBodyUnsent": {
+    "description": "Body of the delete-task confirmation on servers with a bin, for signed-in users and guests, when the task was created on this device and may not have reached the server yet. Such a task does not go to the bin.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Pay the bill"
+      }
+    }
+  },
   "taskDeleteDialogCancel": "Cancel",
   "taskDeleteDialogConfirm": "Delete",
   "taskDeleted": "Task deleted",
+  "@taskDeleted": {
+    "description": "Snackbar after a task was deleted: on servers without a bin, and on servers with one for a task whose create never reached the server or was refused. There it comes with Undo while the delete is still queued."
+  },
+  "taskMovedToTrash": "Task moved to the bin",
+  "@taskMovedToTrash": {
+    "description": "Snackbar after a task was deleted on a server with a bin, with an Undo action."
+  },
+  "taskRestored": "Task restored",
+  "@taskRestored": {
+    "description": "Snackbar after Undo brought a deleted task back; also announced on the bin page after Restore."
+  },
   "accountPendingChanges": "Pending changes: {count}",
   "@accountPendingChanges": {
     "placeholders": {
@@ -1329,7 +1370,15 @@
   "syncProblemDeleteFailed": "The task could not be deleted.",
   "syncProblemForbidden": "You no longer have access to its project.",
   "syncProblemProjectMissing": "Its project no longer exists on the server.",
+  "syncProblemProjectInTrash": "Its project is in the bin on the server.",
+  "@syncProblemProjectInTrash": {
+    "description": "Entry in the Sync problems section of the Account tab: the task's project is in the server's bin."
+  },
   "syncProblemTaskMissing": "The task no longer exists on the server.",
+  "syncProblemTaskInTrash": "The task is in the bin on the server.",
+  "@syncProblemTaskInTrash": {
+    "description": "Entry in the Sync problems section of the Account tab: the task is in the server's bin."
+  },
   "syncProblemLabelMissing": "One of its labels no longer exists on the server.",
   "syncProblemUserMissing": "One of its assignees no longer exists on the server.",
   "syncProblemProjectArchived": "Its project is archived.",
@@ -3631,6 +3680,18 @@
     "description": "Screen reader hint on a project in the task's project path."
   },
   "taskOpenNotFound": "This task wasn't found",
+  "taskOpenInTrash": "This task is in the bin",
+  "@taskOpenInTrash": {
+    "description": "Snackbar when a task opened from a link, a notification or the inbox's deleted entry is in the server's bin."
+  },
+  "taskOpenProjectInTrash": "This task's project is in the bin",
+  "@taskOpenProjectInTrash": {
+    "description": "Snackbar when the project of a task opened from a link or notification is in the server's bin."
+  },
+  "trashRestore": "Restore",
+  "@trashRestore": {
+    "description": "Action of the snackbar saying a task opened from a link or notification is in the bin."
+  },
   "taskOpenForbidden": "You don't have access to this task",
   "taskOpenOffline": "This task isn't on this device. Connect to open it.",
   "taskOpenFailed": "This task couldn't be opened",
@@ -3704,6 +3765,10 @@
     "description": "Helper text under the identifier field of the project edit page. The web's task links name a task by the project's identifier followed by the task's number; the app does not show them."
   },
   "projectIdentifierTaken": "This identifier is already in use. Identifiers are unique on the whole server.",
+  "projectIdentifierTakenTrash": "This identifier is already in use. Identifiers are unique on the whole server, and a project in the bin keeps its identifier for 30 days.",
+  "@projectIdentifierTakenTrash": {
+    "description": "Error of the identifier field of the project edit page on servers with a bin; also announced."
+  },
   "projectGoneTitle": "This project no longer exists",
   "projectGoneBody": "It may have been deleted, here or on the web.",
   "projectViews": "Views",
@@ -3785,7 +3850,57 @@
       }
     }
   },
+  "projectTrashTasks": "{count, plural, =0{It has no tasks. It moves to the bin, for everyone.} =1{It moves to the bin with {count} task, for everyone.} other{It moves to the bin with {count} tasks, for everyone.}}",
+  "@projectTrashTasks": {
+    "description": "Confirmation for deleting a project on servers with a bin: what deleting a project without subprojects moves to the bin; counts done tasks too.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "projectTrashTasksAndSubprojects": "It moves to the bin with {subprojects, plural, =1{{subprojects} subproject} other{{subprojects} subprojects}} and {tasks, plural, =0{no tasks} =1{{tasks} task} other{{tasks} tasks}}, for everyone.",
+  "@projectTrashTasksAndSubprojects": {
+    "description": "Confirmation for deleting a project on servers with a bin: the subprojects at every level and the tasks of the project and all its subprojects move to the bin with it.",
+    "placeholders": {
+      "tasks": {
+        "type": "int",
+        "example": "12"
+      },
+      "subprojects": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "projectTrashEverything": "It moves to the bin with its tasks and subprojects, for everyone.",
+  "@projectTrashEverything": {
+    "description": "Confirmation for deleting a project on servers with a bin, when its tasks could not be counted."
+  },
+  "projectTrashIncludesDefault": "This includes your default project “{project}”. It stops being your default project, even if it is restored.",
+  "@projectTrashIncludesDefault": {
+    "description": "Added to the delete confirmation on servers with a bin when the user's default project is in the project's subtree. The server unsets the default project, and a restore does not set it again.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Inbox"
+      }
+    }
+  },
+  "projectTrashRestorable": "The project can be restored from the bin on the Account tab for 30 days.",
+  "@projectTrashRestorable": {
+    "description": "Last paragraph of the confirmation for deleting a project on servers with a bin."
+  },
   "projectDeleted": "Project deleted",
+  "projectMovedToTrash": "Project moved to the bin",
+  "@projectMovedToTrash": {
+    "description": "Snackbar after a project was deleted on a server with a bin, with an Undo action."
+  },
+  "projectRestored": "Project restored",
+  "@projectRestored": {
+    "description": "Snackbar after Undo brought a deleted project back; also announced on the bin page after Restore."
+  },
   "projectChangeNeedsConnection": "Managing projects needs a connection to the server.",
   "projectChangeUnconfirmed": "Couldn't confirm the change. Check your connection and pull down to refresh.",
   "@projectChangeUnconfirmed": {
@@ -5401,10 +5516,14 @@
   },
   "accountOrganiseHeading": "Organise",
   "@accountOrganiseHeading": {
-    "description": "Account tab section with the labels and teams pages."
+    "description": "Account tab section with the labels and teams pages, and the bin on servers with one."
   },
   "accountLabelsEntry": "Labels",
   "accountTeamsEntry": "Teams",
+  "accountTrashEntry": "Bin",
+  "@accountTrashEntry": {
+    "description": "Account tab row that opens the bin page, on servers with a bin."
+  },
   "labelsCount": "{count, plural, =1{1 label} other{{count} labels}}",
   "@labelsCount": {
     "description": "How many labels are on this device, read out for the count next to the Labels entry.",
@@ -5781,6 +5900,296 @@
     "description": "Error when a change to a team failed for a reason the app cannot name."
   },
   "teamOk": "OK",
+  "trashTitle": "Bin",
+  "@trashTitle": {
+    "description": "Title of the bin page, which lists the tasks and projects in the server's trash."
+  },
+  "trashTasksTab": "Tasks",
+  "@trashTasksTab": {
+    "description": "Tab of the bin page with the tasks in the bin."
+  },
+  "trashProjectsTab": "Projects",
+  "@trashProjectsTab": {
+    "description": "Tab of the bin page with the projects in the bin."
+  },
+  "trashTabsLabel": "Tasks or projects in the bin",
+  "@trashTabsLabel": {
+    "description": "Screen reader: the tab bar of the bin page."
+  },
+  "trashLoading": "Loading the bin…",
+  "@trashLoading": {
+    "description": "While the bin page reads the bin from the server."
+  },
+  "trashRetentionNote": "After 30 days in the bin, the server deletes items forever.",
+  "@trashRetentionNote": {
+    "description": "Note on each tab of the bin page."
+  },
+  "trashTasksEmptyTitle": "No tasks in the bin",
+  "@trashTasksEmptyTitle": {
+    "description": "Title of the empty Tasks tab of the bin page."
+  },
+  "trashTasksEmptyBody": "Deleted tasks stay here for 30 days. Then the server deletes them forever.",
+  "@trashTasksEmptyBody": {
+    "description": "Body of the empty Tasks tab of the bin page."
+  },
+  "trashProjectsEmptyTitle": "No projects in the bin",
+  "@trashProjectsEmptyTitle": {
+    "description": "Title of the empty Projects tab of the bin page."
+  },
+  "trashProjectsEmptyBody": "Deleted projects stay here for 30 days, for their admins only. Then the server deletes them forever.",
+  "@trashProjectsEmptyBody": {
+    "description": "Body of the empty Projects tab of the bin page. The server lists a project in the bin only to its admins."
+  },
+  "trashDeletedBy": "Deleted {when} by {name}",
+  "@trashDeletedBy": {
+    "description": "Line of a task or project on the bin page: when it was deleted, and by whom.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "3 days ago"
+      },
+      "name": {
+        "type": "String",
+        "example": "Kim"
+      }
+    }
+  },
+  "trashDeletedByYou": "Deleted {when} by you",
+  "@trashDeletedByYou": {
+    "description": "Line of a task or project on the bin page that the user deleted.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "3 days ago"
+      }
+    }
+  },
+  "trashDeletedByLinkShare": "Deleted {when} through a link share",
+  "@trashDeletedByLinkShare": {
+    "description": "Line of a task or project on the bin page that a guest deleted through a link share.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "3 days ago"
+      }
+    }
+  },
+  "trashDeletedWhen": "Deleted {when}",
+  "@trashDeletedWhen": {
+    "description": "Line of a task or project on the bin page when nobody is known as the one who deleted it.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "3 days ago"
+      }
+    }
+  },
+  "trashDeletedForGoodIn": "{days, plural, =0{Deleted forever today} =1{Deleted forever in {days} day} other{Deleted forever in {days} days}}",
+  "@trashDeletedForGoodIn": {
+    "description": "Line of a task or project on the bin page: the whole days left until the server deletes it forever.",
+    "placeholders": {
+      "days": {
+        "type": "int",
+        "example": "27"
+      }
+    }
+  },
+  "trashSubprojects": "{count, plural, =1{With {count} subproject: {titles}} other{With {count} subprojects: {titles}}}",
+  "@trashSubprojects": {
+    "description": "Line of a project on the bin page: the subprojects in the bin with it. The titles are the subprojects' titles joined with a comma and a space.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      },
+      "titles": {
+        "type": "String",
+        "example": "Garden, Tools"
+      }
+    }
+  },
+  "trashRestoreItem": "Restore “{title}”",
+  "@trashRestoreItem": {
+    "description": "Tooltip and label of a row's restore button on the bin page.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Pay the bill"
+      }
+    }
+  },
+  "trashDeleteForeverItem": "Delete “{title}” forever",
+  "@trashDeleteForeverItem": {
+    "description": "Tooltip and label of a row's delete forever button on the bin page.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Pay the bill"
+      }
+    }
+  },
+  "trashDeleteForeverTitle": "Delete “{title}” forever?",
+  "@trashDeleteForeverTitle": {
+    "description": "Title of the confirmation for deleting a task or project in the bin forever.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Pay the bill"
+      }
+    }
+  },
+  "trashDeleteTaskForeverBody": "It is deleted forever, with its comments, attachments, reminders and relations. This can't be undone.",
+  "@trashDeleteTaskForeverBody": {
+    "description": "Body of the confirmation for deleting a task in the bin forever."
+  },
+  "trashDeleteProjectForeverBody": "It is deleted forever, with its subprojects, tasks, views and shares. This can't be undone.",
+  "@trashDeleteProjectForeverBody": {
+    "description": "Body of the confirmation for deleting a project in the bin forever."
+  },
+  "trashDeleteForever": "Delete forever",
+  "@trashDeleteForever": {
+    "description": "Confirm button of the confirmation for deleting a task or project in the bin forever, and of the confirmation for emptying a tab of the bin."
+  },
+  "trashTaskDeletedForever": "Task deleted forever",
+  "@trashTaskDeletedForever": {
+    "description": "Screen reader: announced after a task in the bin was deleted forever."
+  },
+  "trashProjectDeletedForever": "Project deleted forever",
+  "@trashProjectDeletedForever": {
+    "description": "Screen reader: announced after a project in the bin was deleted forever."
+  },
+  "trashEmpty": "Empty bin",
+  "@trashEmpty": {
+    "description": "Button on each tab of the bin page that deletes forever, after a confirmation, the tab's items in projects the user is an admin of."
+  },
+  "trashEmptyTasksTitle": "Delete the tasks in the bin forever?",
+  "@trashEmptyTasksTitle": {
+    "description": "Title of the confirmation for emptying the Tasks tab of the bin page."
+  },
+  "trashEmptyProjectsTitle": "Delete the projects in the bin forever?",
+  "@trashEmptyProjectsTitle": {
+    "description": "Title of the confirmation for emptying the Projects tab of the bin page."
+  },
+  "trashEmptyTasks": "{count, plural, =1{{count} task is deleted forever.} other{{count} tasks are deleted forever.}}",
+  "@trashEmptyTasks": {
+    "description": "Confirmation for emptying the Tasks tab of the bin page: how many tasks the server deletes.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "trashEmptyProjects": "{count, plural, =1{{count} project is deleted forever, with everything in it.} other{{count} projects are deleted forever, with everything in them.}}",
+  "@trashEmptyProjects": {
+    "description": "Confirmation for emptying the Projects tab of the bin page: how many projects the server deletes, with their subprojects and tasks.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "trashEmptyByOthers": "{count, plural, =1{{count} of them was moved to the bin by someone else.} other{{count} of them were moved to the bin by other people.}}",
+  "@trashEmptyByOthers": {
+    "description": "Confirmation for emptying a tab of the bin page: how many of the items other people moved to the bin. Emptying deletes them too.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "trashEmptyKeepsOthers": "Tasks in projects where you aren't an admin stay in the bin.",
+  "@trashEmptyKeepsOthers": {
+    "description": "Confirmation for emptying the Tasks tab of the bin page: the server deletes only tasks in projects the user is an admin of."
+  },
+  "trashEmptyNothing": "Only project admins can delete these forever, so there is nothing here you can delete.",
+  "@trashEmptyNothing": {
+    "description": "Shown on the bin page's Tasks tab instead of the confirmation for emptying it, when the server would delete nothing and a listed task is in a project the user is not an admin of: the server deletes only what is in projects the user is an admin of."
+  },
+  "trashCannotBeUndone": "This can't be undone.",
+  "@trashCannotBeUndone": {
+    "description": "Last paragraph of the confirmation for emptying a tab of the bin page."
+  },
+  "trashEmptied": "Bin emptied",
+  "@trashEmptied": {
+    "description": "Screen reader: announced after a tab of the bin page was emptied."
+  },
+  "trashWorking": "Working",
+  "@trashWorking": {
+    "description": "Screen reader: the spinner of a row on the bin page, or of the Empty bin button, while its action runs."
+  },
+  "trashRestoreNeedsConnection": "Restoring needs a connection to the server.",
+  "@trashRestoreNeedsConnection": {
+    "description": "Error when restoring a task or project, from the bin page, a link or Undo, fails without a connection."
+  },
+  "trashNeedsConnection": "The bin needs a connection to the server.",
+  "@trashNeedsConnection": {
+    "description": "Error when deleting forever or emptying the bin fails without a connection."
+  },
+  "trashTaskGone": "This task is no longer in the bin.",
+  "@trashTaskGone": {
+    "description": "Error when a task to restore or delete forever is no longer in the bin, for example because someone restored it."
+  },
+  "trashProjectGone": "This project is no longer in the bin.",
+  "@trashProjectGone": {
+    "description": "Error when a project to restore or delete forever is no longer in the bin, for example because someone restored it."
+  },
+  "trashRestoreArchived": "Its project is archived. Unarchive the project to restore the task.",
+  "@trashRestoreArchived": {
+    "description": "Error when a task cannot be restored because its project is archived."
+  },
+  "trashDeleteArchived": "Its project is archived. Unarchive the project to delete the task forever.",
+  "@trashDeleteArchived": {
+    "description": "Error when a task in the bin cannot be deleted forever because its project is archived."
+  },
+  "trashTaskProjectInTrash": "Its project is in the bin. Restore the project first.",
+  "@trashTaskProjectInTrash": {
+    "description": "Error when a task cannot be restored or deleted forever because its project is in the bin too."
+  },
+  "trashRestoreParentInTrash": "Its parent project is in the bin. Restore that one first.",
+  "@trashRestoreParentInTrash": {
+    "description": "Error when a project cannot be restored because its parent project is in the bin."
+  },
+  "trashRestoreTaskForbidden": "You don't have permission to restore tasks in this project.",
+  "@trashRestoreTaskForbidden": {
+    "description": "Error when restoring a task is refused: it needs write permission on its project."
+  },
+  "trashRestoreProjectAdminOnly": "Only project admins can restore a project.",
+  "@trashRestoreProjectAdminOnly": {
+    "description": "Error when restoring a project is refused because the user is not its admin."
+  },
+  "trashDeleteTaskAdminOnly": "Only project admins can delete tasks forever.",
+  "@trashDeleteTaskAdminOnly": {
+    "description": "Error when deleting a task forever or emptying the bin is refused because the user is not an admin of the project."
+  },
+  "trashDeleteProjectAdminOnly": "Only project admins can delete a project forever.",
+  "@trashDeleteProjectAdminOnly": {
+    "description": "Error when deleting a project forever is refused because the user is not its admin."
+  },
+  "trashDeleteStillSending": "The delete is still on its way to the server. Try again in a moment.",
+  "@trashDeleteStillSending": {
+    "description": "Error of Undo or Restore when the task's delete is still being sent to the server, after the app waited for it."
+  },
+  "trashUnavailable": "This server has no bin.",
+  "@trashUnavailable": {
+    "description": "Error of a bin action, and the body of the bin page's failure card, on a server without a bin (older than Vikunja 2.8.0)."
+  },
+  "trashActionRefused": "The server refused this: {message}",
+  "@trashActionRefused": {
+    "description": "Error of a bin action that the server refused. The server's own explanation follows, in English.",
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "Forbidden"
+      }
+    }
+  },
+  "trashActionFailed": "That didn't work. Try again.",
+  "@trashActionFailed": {
+    "description": "Error of a bin action that failed for a reason the app cannot name."
+  },
   "shareLowerOwnAccessTitle": "Lower your own access?",
   "@shareLowerOwnAccessTitle": {
     "description": "Confirmation title when admins choose a lower permission on their own share row."

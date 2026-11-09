@@ -19,6 +19,14 @@ The files in this directory are the research snapshot of **2026-10-08**. They we
 | [critique.md](critique.md) | Completeness review: corrections, gaps, unverified claims |
 | [synthesis.md](synthesis.md) | Architecture, roadmap, open questions and risks derived from all of the above |
 
+## Later research
+
+Written after the snapshot, against the release named in each file:
+
+| File | Contents |
+|---|---|
+| [trash.md](trash.md) | The trash of Vikunja 2.8.0: routes, lists, counts, restore, permanent delete, retention, and the web's behaviour (2026-11-09) |
+
 ## Corrections found since
 
 Items 1 and 2 were verified against the Docker test servers in [`test_servers/`](../../test_servers/docker-compose.yaml) (images `vikunja/vikunja:1.0.0`, `2.0.0`, `2.3.0`, `2.4.0`, `2.7.0`) and against `try.vikunja.io`. The responses are recorded in `packages/vikunja_api/test/fixtures/`.

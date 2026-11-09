@@ -1411,6 +1411,21 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String taskDeleteDialogBodyTrash(String title) {
+    return '„$title“ wird in den Papierkorb verschoben, für alle. Im Tab „Konto“ lässt sich die Aufgabe 30 Tage lang aus dem Papierkorb wiederherstellen.';
+  }
+
+  @override
+  String taskDeleteDialogBodyTrashGuest(String title) {
+    return '„$title“ wird in den Papierkorb verschoben, für alle. Von dort lässt sich die Aufgabe 30 Tage lang wiederherstellen.';
+  }
+
+  @override
+  String taskDeleteDialogBodyUnsent(String title) {
+    return '„$title“ ist noch nicht beim Server angekommen. Die Aufgabe wird gelöscht und kommt nicht in den Papierkorb.';
+  }
+
+  @override
   String get taskDeleteDialogCancel => 'Abbrechen';
 
   @override
@@ -1418,6 +1433,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get taskDeleted => 'Aufgabe gelöscht';
+
+  @override
+  String get taskMovedToTrash => 'Aufgabe in den Papierkorb verschoben';
+
+  @override
+  String get taskRestored => 'Aufgabe wiederhergestellt';
 
   @override
   String accountPendingChanges(int count) {
@@ -1459,8 +1480,16 @@ class AppLocalizationsDe extends AppLocalizations {
       'Das Projekt der Aufgabe gibt es auf dem Server nicht mehr.';
 
   @override
+  String get syncProblemProjectInTrash =>
+      'Das Projekt der Aufgabe ist auf dem Server im Papierkorb.';
+
+  @override
   String get syncProblemTaskMissing =>
       'Die Aufgabe gibt es auf dem Server nicht mehr.';
+
+  @override
+  String get syncProblemTaskInTrash =>
+      'Die Aufgabe ist auf dem Server im Papierkorb.';
 
   @override
   String get syncProblemLabelMissing =>
@@ -3652,6 +3681,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get taskOpenNotFound => 'Diese Aufgabe wurde nicht gefunden';
 
   @override
+  String get taskOpenInTrash => 'Diese Aufgabe ist im Papierkorb';
+
+  @override
+  String get taskOpenProjectInTrash =>
+      'Das Projekt dieser Aufgabe ist im Papierkorb';
+
+  @override
+  String get trashRestore => 'Wiederherstellen';
+
+  @override
   String get taskOpenForbidden => 'Du hast keinen Zugriff auf diese Aufgabe';
 
   @override
@@ -3749,6 +3788,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get projectIdentifierTaken =>
       'Dieser Bezeichner wird schon verwendet. Bezeichner sind auf dem ganzen Server eindeutig.';
+
+  @override
+  String get projectIdentifierTakenTrash =>
+      'Dieser Bezeichner wird schon verwendet. Bezeichner sind auf dem ganzen Server eindeutig, und ein Projekt im Papierkorb behält seinen Bezeichner 30 Tage lang.';
 
   @override
   String get projectGoneTitle => 'Dieses Projekt gibt es nicht mehr';
@@ -3876,7 +3919,57 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String projectTrashTasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          'Es wird mit $count Aufgaben in den Papierkorb verschoben, für alle.',
+      one: 'Es wird mit $count Aufgabe in den Papierkorb verschoben, für alle.',
+      zero: 'Es enthält keine Aufgaben. Es wird in den Papierkorb verschoben, für alle.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String projectTrashTasksAndSubprojects(int tasks, int subprojects) {
+    String _temp0 = intl.Intl.pluralLogic(
+      subprojects,
+      locale: localeName,
+      other: '$subprojects Unterprojekten',
+      one: '$subprojects Unterprojekt',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tasks,
+      locale: localeName,
+      other: '$tasks Aufgaben',
+      one: '$tasks Aufgabe',
+      zero: 'keinen Aufgaben',
+    );
+    return 'Es wird mit $_temp0 und $_temp1 in den Papierkorb verschoben, für alle.';
+  }
+
+  @override
+  String get projectTrashEverything =>
+      'Es wird mit seinen Aufgaben und Unterprojekten in den Papierkorb verschoben, für alle.';
+
+  @override
+  String projectTrashIncludesDefault(String project) {
+    return 'Darunter ist dein Standardprojekt „$project“. Es ist danach nicht mehr dein Standardprojekt, auch wenn es wiederhergestellt wird.';
+  }
+
+  @override
+  String get projectTrashRestorable =>
+      'Im Tab „Konto“ lässt sich das Projekt 30 Tage lang aus dem Papierkorb wiederherstellen.';
+
+  @override
   String get projectDeleted => 'Projekt gelöscht';
+
+  @override
+  String get projectMovedToTrash => 'Projekt in den Papierkorb verschoben';
+
+  @override
+  String get projectRestored => 'Projekt wiederhergestellt';
 
   @override
   String get projectChangeNeedsConnection =>
@@ -6169,6 +6262,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get accountTeamsEntry => 'Teams';
 
   @override
+  String get accountTrashEntry => 'Papierkorb';
+
+  @override
   String labelsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -6620,6 +6716,237 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get teamOk => 'OK';
+
+  @override
+  String get trashTitle => 'Papierkorb';
+
+  @override
+  String get trashTasksTab => 'Aufgaben';
+
+  @override
+  String get trashProjectsTab => 'Projekte';
+
+  @override
+  String get trashTabsLabel => 'Aufgaben oder Projekte im Papierkorb';
+
+  @override
+  String get trashLoading => 'Papierkorb wird geladen …';
+
+  @override
+  String get trashRetentionNote =>
+      'Der Server löscht, was im Papierkorb liegt, nach 30 Tagen endgültig.';
+
+  @override
+  String get trashTasksEmptyTitle => 'Keine Aufgaben im Papierkorb';
+
+  @override
+  String get trashTasksEmptyBody =>
+      'Gelöschte Aufgaben bleiben 30 Tage lang hier. Danach löscht der Server sie endgültig.';
+
+  @override
+  String get trashProjectsEmptyTitle => 'Keine Projekte im Papierkorb';
+
+  @override
+  String get trashProjectsEmptyBody =>
+      'Gelöschte Projekte bleiben 30 Tage lang hier, nur für ihre Admins. Danach löscht der Server sie endgültig.';
+
+  @override
+  String trashDeletedBy(String when, String name) {
+    return 'Gelöscht $when von $name';
+  }
+
+  @override
+  String trashDeletedByYou(String when) {
+    return 'Gelöscht $when von dir';
+  }
+
+  @override
+  String trashDeletedByLinkShare(String when) {
+    return 'Gelöscht $when über eine Linkfreigabe';
+  }
+
+  @override
+  String trashDeletedWhen(String when) {
+    return 'Gelöscht $when';
+  }
+
+  @override
+  String trashDeletedForGoodIn(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Wird in $days Tagen endgültig gelöscht',
+      one: 'Wird in $days Tag endgültig gelöscht',
+      zero: 'Wird heute endgültig gelöscht',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trashSubprojects(int count, String titles) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Mit $count Unterprojekten: $titles',
+      one: 'Mit $count Unterprojekt: $titles',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trashRestoreItem(String title) {
+    return '„$title“ wiederherstellen';
+  }
+
+  @override
+  String trashDeleteForeverItem(String title) {
+    return '„$title“ endgültig löschen';
+  }
+
+  @override
+  String trashDeleteForeverTitle(String title) {
+    return '„$title“ endgültig löschen?';
+  }
+
+  @override
+  String get trashDeleteTaskForeverBody =>
+      'Sie wird endgültig gelöscht, mit ihren Kommentaren, Anhängen, Erinnerungen und Verknüpfungen. Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String get trashDeleteProjectForeverBody =>
+      'Es wird endgültig gelöscht, mit seinen Unterprojekten, Aufgaben, Ansichten und Freigaben. Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String get trashDeleteForever => 'Endgültig löschen';
+
+  @override
+  String get trashTaskDeletedForever => 'Aufgabe endgültig gelöscht';
+
+  @override
+  String get trashProjectDeletedForever => 'Projekt endgültig gelöscht';
+
+  @override
+  String get trashEmpty => 'Papierkorb leeren';
+
+  @override
+  String get trashEmptyTasksTitle =>
+      'Aufgaben im Papierkorb endgültig löschen?';
+
+  @override
+  String get trashEmptyProjectsTitle =>
+      'Projekte im Papierkorb endgültig löschen?';
+
+  @override
+  String trashEmptyTasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Aufgaben werden endgültig gelöscht.',
+      one: '$count Aufgabe wird endgültig gelöscht.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trashEmptyProjects(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Projekte werden endgültig gelöscht, mit allem darin.',
+      one: '$count Projekt wird endgültig gelöscht, mit allem darin.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trashEmptyByOthers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count davon haben andere in den Papierkorb verschoben.',
+      one: '$count davon hat jemand anderes in den Papierkorb verschoben.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get trashEmptyKeepsOthers =>
+      'Aufgaben in Projekten, in denen du kein Admin bist, bleiben im Papierkorb.';
+
+  @override
+  String get trashEmptyNothing =>
+      'Nur Projekt-Admins können sie endgültig löschen, hier gibt es also nichts, was du löschen kannst.';
+
+  @override
+  String get trashCannotBeUndone => 'Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String get trashEmptied => 'Papierkorb geleert';
+
+  @override
+  String get trashWorking => 'Wird ausgeführt';
+
+  @override
+  String get trashRestoreNeedsConnection =>
+      'Zum Wiederherstellen brauchst du eine Verbindung zum Server.';
+
+  @override
+  String get trashNeedsConnection =>
+      'Für den Papierkorb brauchst du eine Verbindung zum Server.';
+
+  @override
+  String get trashTaskGone => 'Diese Aufgabe ist nicht mehr im Papierkorb.';
+
+  @override
+  String get trashProjectGone => 'Dieses Projekt ist nicht mehr im Papierkorb.';
+
+  @override
+  String get trashRestoreArchived =>
+      'Das Projekt der Aufgabe ist archiviert. Hebe die Archivierung des Projekts auf, um die Aufgabe wiederherzustellen.';
+
+  @override
+  String get trashDeleteArchived =>
+      'Das Projekt der Aufgabe ist archiviert. Hebe die Archivierung des Projekts auf, um die Aufgabe endgültig zu löschen.';
+
+  @override
+  String get trashTaskProjectInTrash =>
+      'Das Projekt der Aufgabe ist im Papierkorb. Stelle zuerst das Projekt wieder her.';
+
+  @override
+  String get trashRestoreParentInTrash =>
+      'Sein übergeordnetes Projekt ist im Papierkorb. Stelle zuerst dieses wieder her.';
+
+  @override
+  String get trashRestoreTaskForbidden =>
+      'Du hast keine Berechtigung, in diesem Projekt Aufgaben wiederherzustellen.';
+
+  @override
+  String get trashRestoreProjectAdminOnly =>
+      'Nur Projekt-Admins können ein Projekt wiederherstellen.';
+
+  @override
+  String get trashDeleteTaskAdminOnly =>
+      'Nur Projekt-Admins können Aufgaben endgültig löschen.';
+
+  @override
+  String get trashDeleteProjectAdminOnly =>
+      'Nur Projekt-Admins können ein Projekt endgültig löschen.';
+
+  @override
+  String get trashDeleteStillSending =>
+      'Das Löschen ist noch unterwegs zum Server. Versuche es gleich noch einmal.';
+
+  @override
+  String get trashUnavailable => 'Dieser Server hat keinen Papierkorb.';
+
+  @override
+  String trashActionRefused(String message) {
+    return 'Der Server hat das abgelehnt: $message';
+  }
+
+  @override
+  String get trashActionFailed =>
+      'Das hat nicht geklappt. Versuche es noch einmal.';
 
   @override
   String get shareLowerOwnAccessTitle => 'Deinen eigenen Zugriff einschränken?';

@@ -546,10 +546,10 @@ void main() {
         ApiVersion.v2,
       });
 
-      expect(
-        derive('info_v2_2.8.0.json', {ApiVersion.v1, ApiVersion.v2}).all,
-        capabilities.all,
-      );
+      expect(derive('info_v2_2.8.0.json', {ApiVersion.v1, ApiVersion.v2}).all, {
+        ...capabilities.all,
+        Capability.trash,
+      });
 
       expect(capabilities.all, {
         Capability.apiV2,

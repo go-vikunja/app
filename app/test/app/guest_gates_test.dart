@@ -19,12 +19,14 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_pick
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_page.dart';
 
 import '../helpers/auth_fakes.dart';
 import '../helpers/guest_app.dart';
 import '../helpers/label_user_fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/sample_data.dart';
+import '../helpers/server_connections.dart';
 import '../helpers/sync_fakes.dart';
 
 void main() {
@@ -83,6 +85,7 @@ void main() {
       AppRoutes.teams,
       AppRoutes.team(3),
       AppRoutes.teamDescription(3),
+      AppRoutes.trash,
       AppRoutes.inbox,
       AppRoutes.labels,
       AppRoutes.labelNew,
@@ -112,6 +115,7 @@ void main() {
       AppRoutes.privacy,
       AppRoutes.about,
       '${AppRoutes.labels}x',
+      '${AppRoutes.trash}x',
     ]) {
       expect(AppRoutes.isClosedToGuests(location), isFalse, reason: location);
     }
@@ -138,6 +142,24 @@ void main() {
     }
     await push(tester, AppRoutes.accountSettings);
     expect(find.byType(AccountSettingsPage), findsNothing);
+  });
+
+  testWidgets('a guest on a server with the bin pushed to it lands on the '
+      'Overview', (tester) async {
+    await pumpGuestApp(
+      tester,
+      auth: auth,
+      data: data,
+      permission: Permission.write,
+      connection: fullServer280(),
+    );
+
+    await push(tester, AppRoutes.trash);
+
+    expect(find.byType(TrashPage), findsNothing);
+    expect(location(tester), AppRoutes.overview);
+    expect(find.byType(OverviewScreen), findsOneWidget);
+    expect(data.trash.calls, isEmpty);
   });
 
   testWidgets("a label's tasks still open for a guest", (tester) async {

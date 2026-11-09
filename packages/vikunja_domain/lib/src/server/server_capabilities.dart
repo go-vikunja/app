@@ -46,6 +46,7 @@ final class ServerCapabilities {
         Capability.byIndexRedirect,
         Capability.userSettingsMergePatch,
       ],
+      if (hasV2 && atLeast(2, 8)) Capability.trash,
       if (auth.localEnabled) Capability.localAuth,
       if (auth.ldapEnabled) Capability.ldapAuth,
       if (auth.openIdConnectEnabled && auth.openIdProviders.isNotEmpty)

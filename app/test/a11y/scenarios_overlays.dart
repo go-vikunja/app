@@ -26,6 +26,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/time_picker.d
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_viewer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
 
 import '../features/account_settings/avatar_fakes.dart';
 import '../features/teams/organise_harness.dart';
@@ -57,6 +58,7 @@ const overlayRegistry = <String>[
   'delete-task dialog',
   'sign-out dialog',
   'done snackbar',
+  'bin snackbar',
   'one-time secret page',
   'avatar crop page',
   'image viewer',
@@ -254,6 +256,24 @@ final List<SweepScenario> overlayScenarios = [
     'done snackbar',
     show: (context, _) =>
         unawaited(showMarkedDoneSnackBar(context, onUndo: () {})),
+    expectScreen: (_) => find.byType(SnackBar),
+    tearDown: (tester, _) async {
+      ScaffoldMessenger.of(_page(tester)).removeCurrentSnackBar();
+      await tester.pumpAndSettle();
+    },
+  ),
+  _overlay(
+    'bin snackbar',
+    show: (context, _) {
+      final l10n = context.l10n;
+      showDeletedSnackBar(
+        ScaffoldMessenger.of(context),
+        text: l10n.taskMovedToTrash,
+        undoLabel: l10n.undo,
+        persist: MediaQuery.accessibleNavigationOf(context),
+        onUndo: () {},
+      );
+    },
     expectScreen: (_) => find.byType(SnackBar),
     tearDown: (tester, _) async {
       ScaffoldMessenger.of(_page(tester)).removeCurrentSnackBar();

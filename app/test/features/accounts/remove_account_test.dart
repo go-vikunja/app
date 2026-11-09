@@ -222,6 +222,41 @@ void main() {
     expect(find.byType(SnackBar), findsNothing);
   });
 
+  testWidgets('signing out of the last account takes along the snackbars '
+      'still up or queued, like the Undo of a delete', (tester) async {
+    await seedUser(
+      accounts.auth,
+      fullServer280(),
+      userId: 7,
+      username: 'alice',
+      displayName: 'alice',
+    );
+    await accounts.pump(tester);
+    await openTab(tester, en.tabAccount);
+    await scrollTo(tester, find.text(en.homeSignOut));
+    await tester.tap(find.text(en.homeSignOut));
+    await tester.pumpAndSettle();
+    tester.state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger).first)
+      ..showSnackBar(
+        SnackBar(
+          content: Text(en.taskMovedToTrash),
+          persist: true,
+          action: SnackBarAction(label: en.undo, onPressed: () {}),
+        ),
+      )
+      ..showSnackBar(SnackBar(content: Text(en.taskRestored)));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ConnectServerScreen), findsOneWidget);
+    expect(find.byType(SnackBar), findsNothing);
+    await tester.pump(const Duration(seconds: 30));
+    await tester.pumpAndSettle();
+    expect(find.byType(SnackBar), findsNothing);
+  });
+
   testWidgets('the removal dialog is a Cupertino alert on iOS', (tester) async {
     await accounts.seed(withCarol: false);
     await accounts.pump(tester);

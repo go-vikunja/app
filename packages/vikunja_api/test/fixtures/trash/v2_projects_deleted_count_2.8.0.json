@@ -1,0 +1,9 @@
+{
+  "server": "2.8.0",
+  "request": "GET /api/v2/projects/deleted/count",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34551/api/v2/schemas/TrashCount.json\",\"total\":2,\"by_others\":1}\n"
+}

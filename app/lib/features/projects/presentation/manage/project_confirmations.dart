@@ -25,27 +25,42 @@ Future<bool> confirmArchiveProject(
 /// Names the project and everything the server deletes with it: the tasks
 /// of the project and of every project below it, and the user's
 /// [defaultProject] when it is one of them; without a [taskCount] (the
-/// tasks could not be counted) it says so in general.
+/// tasks could not be counted) it says so in general. With [trash] (a
+/// server with the bin) all of it moves to the bin and can be restored
+/// from there, except that the default project stays unset.
 Future<bool> confirmDeleteProject(
   BuildContext context, {
   required String project,
   required int? taskCount,
   required int subprojectCount,
   String? defaultProject,
+  bool trash = false,
 }) {
   final l10n = context.l10n;
   return confirmAdaptive(
     context,
     title: l10n.projectDeleteTitle(project),
     body: [
-      switch (taskCount) {
-        null => l10n.projectDeleteEverything,
-        final tasks when subprojectCount > 0 =>
-          l10n.projectDeleteTasksAndSubprojects(tasks, subprojectCount),
-        final tasks => l10n.projectDeleteTasks(tasks),
-      },
-      if (defaultProject != null) l10n.projectIncludesDefault(defaultProject),
-      l10n.projectDeleteCannotBeUndone,
+      if (trash) ...[
+        switch (taskCount) {
+          null => l10n.projectTrashEverything,
+          final tasks when subprojectCount > 0 =>
+            l10n.projectTrashTasksAndSubprojects(tasks, subprojectCount),
+          final tasks => l10n.projectTrashTasks(tasks),
+        },
+        if (defaultProject != null)
+          l10n.projectTrashIncludesDefault(defaultProject),
+        l10n.projectTrashRestorable,
+      ] else ...[
+        switch (taskCount) {
+          null => l10n.projectDeleteEverything,
+          final tasks when subprojectCount > 0 =>
+            l10n.projectDeleteTasksAndSubprojects(tasks, subprojectCount),
+          final tasks => l10n.projectDeleteTasks(tasks),
+        },
+        if (defaultProject != null) l10n.projectIncludesDefault(defaultProject),
+        l10n.projectDeleteCannotBeUndone,
+      ],
     ].join('\n\n'),
     confirmLabel: l10n.projectDelete,
     destructive: true,

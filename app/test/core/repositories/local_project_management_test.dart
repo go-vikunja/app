@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_project_repository.dart';
@@ -13,11 +14,13 @@ import '../../helpers/fake_write_client.dart';
 import '../../helpers/recording_sync_engine.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
+import '../../helpers/trash_fakes.dart';
 
 void main() {
   late AppDatabase db;
   late RecordingSyncEngine sync;
   late FakeWriteClient server;
+  late FakeTrashPort trash;
   late LocalProjectRepository repository;
   final work = Project(
     id: 1,
@@ -47,7 +50,8 @@ void main() {
     db = testDatabase();
     sync = RecordingSyncEngine();
     server = FakeWriteClient(clock: () => DateTime.utc(2026, 10, 20, 12));
-    repository = LocalProjectRepository(db, sync, server);
+    trash = FakeTrashPort();
+    repository = LocalProjectRepository(db, sync, server, trash: trash);
     addTearDown(repository.dispose);
     final all = [work, reports, drafts, home];
     await db.projectsDao.upsertAll(all);
@@ -476,6 +480,145 @@ void main() {
 
       expect(await db.projectsDao.loadAll(), hasLength(4));
       expect(sync.refreshAfterWriteCalls, 0);
+    });
+  });
+
+  group('restoring a project', () {
+    final garden = sampleProject(
+      id: 5,
+      title: 'Garden',
+      views: [sampleListView(id: 51, projectId: 5)],
+    );
+    final beds = sampleProject(id: 6, title: 'Beds', parent: 5);
+
+    test('comes back from the trash once a sync started after the restore '
+        'has stored it with what was below it', () async {
+      trash.restoredProjects[5] = garden;
+      final gate = Completer<void>();
+      sync
+        ..gate = gate
+        ..onRefreshAfterWrite = () async {
+          await db.projectsDao.upsertAll([garden, beds]);
+          await db.tasksDao.upsertAll([
+            sampleTask(id: 51, title: 'Seeds', projectId: 5),
+            sampleTask(id: 61, title: 'Dig', projectId: 6),
+          ]);
+        };
+
+      Project? restored;
+      final restoring = repository
+          .restoreProject(5)
+          .then((project) => restored = project);
+      await pumpEventQueue();
+
+      expect(trash.calls, ['restoreProject 5']);
+      expect(restored, isNull);
+
+      gate.complete();
+      await restoring;
+
+      expect(restored, garden);
+      expect((await stored(5))!.title, 'Garden');
+      expect((await stored(6))!.parentProjectId, 5);
+      expect((await db.tasksDao.find(61))!.title, 'Dig');
+      expect(sync.refreshAfterWriteCalls, 1);
+      expect(await pendingWholePull(), isNull);
+      expect(server.requests, isEmpty);
+    });
+
+    test('when that sync fails, the answer is stored and the next sync pulls '
+        'it whole', () async {
+      trash.restoredProjects[5] = garden;
+      sync.error = const NetworkFailure(NetworkProblem.unreachable);
+
+      final restored = await repository.restoreProject(5);
+
+      expect(restored.id, 5);
+      final project = (await stored(5))!;
+      expect(project.title, 'Garden');
+      expect(project.views.single.id, 51);
+      expect(await pendingWholePull(), '5');
+    });
+
+    test('a failure passes through and stores nothing', () async {
+      trash.failures['restoreProject'] = const DomainError(412, code: 3019);
+      await expectLater(
+        repository.restoreProject(5),
+        throwsA(isA<DomainError>().having((e) => e.code, 'code', 3019)),
+      );
+      trash.failures['restoreProject'] = const Forbidden();
+      await expectLater(
+        repository.restoreProject(5),
+        throwsA(isA<Forbidden>()),
+      );
+      trash.failures.clear();
+      await expectLater(
+        repository.restoreProject(5),
+        throwsA(isA<NotFound>().having((e) => e.code, 'code', 3001)),
+      );
+
+      expect(await stored(5), isNull);
+      expect(await pendingWholePull(), isNull);
+      expect(sync.refreshAfterWriteCalls, 0);
+    });
+
+    test(
+      'without the trash it is refused as on a server without one',
+      () async {
+        final withoutTrash = LocalProjectRepository(db, sync, server);
+
+        await expectLater(
+          withoutTrash.restoreProject(5),
+          throwsA(isA<NotFound>().having((e) => e.routeAbsent, 'route', true)),
+        );
+        expect(sync.refreshAfterWriteCalls, 0);
+      },
+    );
+
+    test("brings back none of the subtree's queued ops the delete dropped: "
+        'the tasks come back as the server has them, one whose delete was '
+        'still queued too', () async {
+      final inWork = sampleTask(id: 31, title: 'In work');
+      final inDrafts = sampleTask(id: 32, title: 'In drafts', projectId: 3);
+      await db.tasksDao.upsertAll([inWork, inDrafts]);
+      final at = DateTime.utc(2026, 10, 20);
+      await db.outboxDao.queueUpdate(
+        32,
+        const TaskChanges(title: 'Unsent'),
+        now: at,
+      );
+      expect(await db.outboxDao.queueDelete(31, now: at), TaskDeletion.queued);
+      await repository.deleteProject(1);
+      await pumpEventQueue();
+      expect(await db.outboxDao.all(), isEmpty);
+      trash.restoredProjects[1] = work;
+      sync.onRefreshAfterWrite = () async {
+        await db.projectsDao.upsertAll([work, reports, drafts]);
+        await db.tasksDao.upsertAll([inWork, inDrafts]);
+      };
+
+      final restored = await repository.restoreProject(1);
+
+      expect(restored, work);
+      expect((await stored(1))!.title, 'Work');
+      expect(await db.outboxDao.all(), isEmpty);
+      expect((await db.tasksDao.find(31))!.title, 'In work');
+      expect((await db.tasksDao.find(32))!.title, 'In drafts');
+      expect(trash.calls, ['restoreProject 1']);
+      expect(server.requests, ['delete project 1']);
+    });
+
+    test('leaves the default project setting alone', () async {
+      const settings = '{"default_project_id":0}';
+      await db.syncStateDao.write({SyncStateKeys.userSettings: settings});
+      trash.restoredProjects[5] = garden;
+
+      await repository.restoreProject(5);
+
+      expect(
+        (await db.syncStateDao.readAll())[SyncStateKeys.userSettings],
+        settings,
+      );
     });
   });
 

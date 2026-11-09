@@ -56,20 +56,14 @@ void main() {
   test('explains each permanent failure the server can answer with', () {
     String describe(VikunjaFailure failure) =>
         describeSyncProblem(en, problem(failure));
-    for (final code in [3001, 3018]) {
-      expect(
-        describe(NotFound(code: code)),
-        endsWith(en.syncProblemProjectMissing),
-        reason: '$code',
-      );
-    }
-    for (final code in [4002, 4040]) {
-      expect(
-        describe(NotFound(code: code)),
-        endsWith(en.syncProblemTaskMissing),
-        reason: '$code',
-      );
-    }
+    expect(
+      describe(const NotFound(code: 3001)),
+      endsWith(en.syncProblemProjectMissing),
+    );
+    expect(
+      describe(const NotFound(code: 4002)),
+      endsWith(en.syncProblemTaskMissing),
+    );
     expect(
       describe(const NotFound(code: 8002)),
       endsWith(en.syncProblemLabelMissing),
@@ -189,6 +183,48 @@ void main() {
     );
   });
 
+  test('a task or project in the bin on the server says so', () {
+    for (final l10n in [en, de]) {
+      for (final kind in [
+        OutboxOperationKind.updateTask,
+        OutboxOperationKind.deleteTask,
+      ]) {
+        expect(
+          describeSyncProblem(
+            l10n,
+            problem(const NotFound(code: 4040), kind: kind),
+          ),
+          endsWith(' ${l10n.syncProblemTaskInTrash}'),
+          reason: '${l10n.localeName} $kind',
+        );
+        expect(
+          describeSyncProblem(
+            l10n,
+            problem(const NotFound(code: 3018), kind: kind),
+          ),
+          endsWith(' ${l10n.syncProblemProjectInTrash}'),
+          reason: '${l10n.localeName} $kind',
+        );
+      }
+    }
+    expect(
+      describeSyncProblem(
+        en,
+        problem(
+          const NotFound(
+            code: 4040,
+            trash: TrashDetails(id: 1, canRestore: true),
+          ),
+        ),
+      ),
+      '${en.syncProblemUpdateFailed} ${en.syncProblemTaskInTrash}',
+    );
+    expect(
+      describeSyncProblem(en, problem(const NotFound(code: 3018))),
+      '${en.syncProblemUpdateFailed} ${en.syncProblemProjectInTrash}',
+    );
+  });
+
   test('is in German', () {
     expect(
       describeSyncProblem(de, problem(const DomainError(412, code: 3008))),
@@ -218,6 +254,14 @@ void main() {
     expect(
       describe(const NotFound(code: 4002)),
       '$what ${en.syncProblemTaskMissing}',
+    );
+    expect(
+      describe(const NotFound(code: 4040)),
+      '$what ${en.syncProblemTaskInTrash}',
+    );
+    expect(
+      describe(const NotFound(code: 3018)),
+      '$what ${en.syncProblemProjectInTrash}',
     );
     expect(
       describe(const NotFound()),

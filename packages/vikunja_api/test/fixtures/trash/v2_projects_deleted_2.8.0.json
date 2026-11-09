@@ -1,0 +1,9 @@
+{
+  "server": "2.8.0",
+  "request": "GET /api/v2/projects/deleted?page=1&per_page=50",
+  "status": 200,
+  "headers": {
+    "content-type": "application/json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34551/api/v2/schemas/PaginatedTrashedProject.json\",\"items\":[{\"id\":8,\"title\":\"Fixture hand-over\",\"description\":\"\",\"identifier\":\"\",\"hex_color\":\"\",\"parent_project_id\":0,\"owner\":{\"id\":1,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-11-09T11:33:38Z\",\"updated\":\"2026-11-09T11:33:38Z\"},\"is_archived\":false,\"background_information\":null,\"background_blur_hash\":\"\",\"is_favorite\":false,\"position\":524288,\"views\":null,\"max_permission\":null,\"created\":\"2026-11-09T11:33:54Z\",\"updated\":\"2026-11-09T11:33:54Z\",\"deleted_at\":\"2026-11-09T11:33:56Z\",\"deleted_by\":{\"id\":2,\"name\":\"\",\"username\":\"fixturewriter\",\"created\":\"2026-11-09T11:33:38Z\",\"updated\":\"2026-11-09T11:33:38Z\"}},{\"id\":5,\"title\":\"Fixture shed\",\"description\":\"\",\"identifier\":\"\",\"hex_color\":\"\",\"parent_project_id\":0,\"owner\":{\"id\":1,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-11-09T11:33:38Z\",\"updated\":\"2026-11-09T11:33:38Z\"},\"is_archived\":false,\"background_information\":null,\"background_blur_hash\":\"\",\"is_favorite\":false,\"position\":327680,\"views\":null,\"max_permission\":null,\"created\":\"2026-11-09T11:33:51Z\",\"updated\":\"2026-11-09T11:33:52Z\",\"deleted_at\":\"2026-11-09T11:33:55Z\",\"deleted_by\":{\"id\":1,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-11-09T11:33:38Z\",\"updated\":\"2026-11-09T11:33:38Z\"},\"trashed_sub_projects\":[{\"id\":6,\"title\":\"Fixture tools\",\"parent_project_id\":5,\"depth\":1},{\"id\":7,\"title\":\"Fixture screws\",\"parent_project_id\":6,\"depth\":2}]}],\"total\":2,\"page\":1,\"per_page\":50,\"total_pages\":1}\n"
+}

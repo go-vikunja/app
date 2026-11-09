@@ -36,6 +36,14 @@ final class ErrorBody {
     return '';
   }
 
+  /// Since 2.8.0 a 404 for something in the trash (codes 4040 and 3018)
+  /// describes it here, in v1 and v2 alike. Null when absent or not an
+  /// object.
+  Map<String, Object?>? get details => switch (_json['details']) {
+    final Map<String, Object?> details => details,
+    _ => null,
+  };
+
   /// Field name to messages from v1 `invalid_fields` (`"title: reason"` or a
   /// bare field name) and v2 `errors[]` (`location` `body.title`). Null when
   /// the body has neither.

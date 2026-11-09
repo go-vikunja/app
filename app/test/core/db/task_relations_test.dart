@@ -363,7 +363,7 @@ void main() {
         TaskChanges(relations: add(TaskRelationKind.blocked, created)),
       );
 
-      await db.outboxDao.queueDelete(created, now: now);
+      await db.outboxDao.cancelCreate(created);
 
       final left = (await ops()).single;
       expect(left.taskId, 1);
@@ -378,7 +378,7 @@ void main() {
 
     test('an edge to a create that was cancelled is not queued', () async {
       final created = await create('Gone');
-      await db.outboxDao.queueDelete(created, now: now);
+      await db.outboxDao.cancelCreate(created);
 
       await queue(
         1,

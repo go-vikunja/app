@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/attachments/upload_files.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
@@ -48,6 +49,9 @@ final _log = Logger('AccountData');
 /// A file to upload is stored in the account's uploads folder (`uploads`)
 /// under a random name before its op is queued, so the upload survives the
 /// picker's copy going; without `uploads` nothing can be queued.
+///
+/// A delete the server has made is taken back through `trash`; without it
+/// that is refused as on a server without the trash.
 final class LocalTaskRepository
     implements TaskRepository, PendingTaskIdsSource {
   new(
@@ -61,7 +65,16 @@ final class LocalTaskRepository
     this._clockTicks = const Stream.empty(),
     this._uploads,
     this._maxUploadBytes = defaultMaxUploadBytes,
+    this._trash,
   }) : _now = now ?? DateTime.now;
+
+  /// How long [restoreTask] waits for a delete on its way to the server.
+  static const restoreWait = Duration(seconds: 30);
+
+  static const _restorePoll = Duration(milliseconds: 250);
+
+  static const _taskGone = 4002;
+  static const _projectInTrash = 3018;
 
   final AppDatabase _db;
   final SyncEngine _sync;
@@ -73,6 +86,7 @@ final class LocalTaskRepository
   final Stream<void> _clockTicks;
   final UploadFiles? _uploads;
   final int _maxUploadBytes;
+  final TrashPort? _trash;
 
   // Upcoming and the Overview without a saved filter watch the same tasks.
   late final SharedLatest<List<Task>> _activeOpenTasks = SharedLatest(
@@ -493,13 +507,106 @@ final class LocalTaskRepository
       _queue(taskId, TaskChanges(isFavorite: favorite));
 
   @override
-  Future<void> deleteTask(int taskId) async {
-    final queued = await _db.outboxDao.queueDelete(taskId, now: _now());
-    if (queued) {
-      // The delete dropped the task's unsent uploads.
+  Future<TaskDeletion> deleteTask(int taskId) async {
+    final deletion = await _db.outboxDao.queueDelete(taskId, now: _now());
+    if (deletion == TaskDeletion.discarded) {
+      // The task's unsent uploads went with it, and an update of another
+      // task that waited for its create can go now.
       unawaited(_outbox.sweepUploads());
-      _drainQuietly();
     }
+    if (deletion != TaskDeletion.none) _drainQuietly();
+    return deletion;
+  }
+
+  /// A delete on its way is polled for until it was answered or went back
+  /// to the queue, at most [restoreWait].
+  @override
+  Future<Task> restoreTask(int taskId) async {
+    var unqueued = await _db.outboxDao.unqueueDelete(taskId);
+    if (unqueued == DeleteUnqueue.sending) {
+      await _awaitDeleteOnItsWay(taskId);
+      unqueued = await _db.outboxDao.unqueueDelete(taskId);
+    }
+    switch (unqueued) {
+      case DeleteUnqueue.sending:
+        throw TaskDeleteInFlight(taskId);
+      case DeleteUnqueue.cancelled || DeleteUnqueue.cancelledAfterAttempt:
+        _log.fine('Took back the queued delete of task $taskId');
+        final id = await _db.tasksDao.resolveId(taskId);
+        try {
+          if (unqueued == DeleteUnqueue.cancelledAfterAttempt && id > 0) {
+            await _restoreIfTrashed(id);
+          }
+        } finally {
+          _drainQuietly();
+        }
+        return await _db.tasksDao.find(id) ??
+            (throw const NotFound(code: _taskGone));
+      case DeleteUnqueue.notQueued:
+        return await _restoreFromTrash(taskId);
+    }
+  }
+
+  Future<void> _awaitDeleteOnItsWay(int taskId) async {
+    for (
+      var waited = Duration.zero;
+      waited < restoreWait;
+      waited += _restorePoll
+    ) {
+      await Future<void>.delayed(_restorePoll);
+      final op = await _db.outboxDao.queuedDeleteOf(taskId);
+      if (op == null || op.state != OutboxState.sending.name) return;
+    }
+  }
+
+  Future<Task> _restoreFromTrash(int taskId) async {
+    final id = await _db.tasksDao.resolveId(taskId);
+    if (id < 0) throw const NotFound(code: _taskGone);
+    final trash = _trash ?? (throw const NotFound());
+    final task = await trash.restoreTask(id);
+    await _storeRestored(task);
+    return await _db.tasksDao.find(id) ?? task;
+  }
+
+  /// The taken-back delete may have trashed the task before its answer
+  /// was lost. Only a refusal that keeps a trashed task there is thrown;
+  /// a request that did not get through (offline, a 5xx, a session or
+  /// rate limit, a proxy's 404) leaves the server as it is, and so does
+  /// 4002, a task the server does not have.
+  Future<void> _restoreIfTrashed(int id) async {
+    final trash = _trash;
+    if (trash == null) return;
+    try {
+      await _storeRestored(await trash.restoreTask(id));
+    } on VikunjaFailure catch (failure) {
+      switch (failure) {
+        case Forbidden() || DomainError() || NotFound(code: _projectInTrash):
+          rethrow;
+        default:
+          _log.info(
+            'Did not restore task $id from the trash: '
+            '${failure.runtimeType}',
+          );
+      }
+    }
+  }
+
+  /// The server's answer is stored at once, keeping the queued changes;
+  /// the task's ops it refused while the task was gone go back to the
+  /// queue, and a quiet run brings what else the restore changed.
+  Future<void> _storeRestored(Task task) async {
+    await _db.tasksDao.upsertAll([task]);
+    _log.fine('Restored task ${task.id} from the trash');
+    if (await _db.outboxDao.retryRefusedAsGone(task.id) > 0) _drainQuietly();
+    unawaited(
+      _sync.refreshAfterWrite().then<void>(
+        (_) {},
+        onError: (Object error) => _log.fine(
+          'Sync after restoring task ${task.id} failed: '
+          '${error.runtimeType}',
+        ),
+      ),
+    );
   }
 
   @override

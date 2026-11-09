@@ -25,6 +25,7 @@ const requiredVariants = <String, Set<String>>{
     'certificate',
     'clientCertificate',
   },
+  '/home/trash': {'tasks', 'projects'},
 };
 
 /// The key a scenario of [route] in [variant] covers.

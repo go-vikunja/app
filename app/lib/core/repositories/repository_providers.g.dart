@@ -766,6 +766,83 @@ final class ProjectSharingPortFamily extends $Family
   String toString() => r'projectSharingPortProvider';
 }
 
+@ProviderFor(trashPort)
+final trashPortProvider = TrashPortFamily._();
+
+final class TrashPortProvider
+    extends $FunctionalProvider<TrashPort, TrashPort, TrashPort>
+    with $Provider<TrashPort> {
+  TrashPortProvider._({
+    required TrashPortFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'trashPortProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$trashPortHash();
+
+  @override
+  String toString() {
+    return r'trashPortProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<TrashPort> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  TrashPort create(Ref ref) {
+    final argument = this.argument as String;
+    return trashPort(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(TrashPort value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<TrashPort>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is TrashPortProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$trashPortHash() => r'8b0bba813f6a13c608faa42db99aaf202481b017';
+
+final class TrashPortFamily extends $Family
+    with $FunctionalFamilyOverride<TrashPort, String> {
+  TrashPortFamily._()
+    : super(
+        retry: null,
+        name: r'trashPortProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  TrashPortProvider call(String accountId) =>
+      TrashPortProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'trashPortProvider';
+}
+
 @ProviderFor(accountDatabaseFiles)
 final accountDatabaseFilesProvider = AccountDatabaseFilesProvider._();
 
@@ -1403,7 +1480,7 @@ final class AccountProjectRepositoryProvider
 }
 
 String _$accountProjectRepositoryHash() =>
-    r'1a2c96056be7736c7bbe6f840a6df62932f89300';
+    r'8405043dda4523c25952655e7fc16a8ec05e5d91';
 
 /// One account's repositories over its database. Kept alive by the
 /// active-account providers below, so they go when another account takes
@@ -1489,7 +1566,7 @@ final class AccountTaskRepositoryProvider
 }
 
 String _$accountTaskRepositoryHash() =>
-    r'9714f3a4aca2ceeb47667e6d52efc970764fccf9';
+    r'd32029a8ba90dceccd3f1f2d0ce1c8ff273c5613';
 
 final class AccountTaskRepositoryFamily extends $Family
     with $FunctionalFamilyOverride<TaskRepository, String> {

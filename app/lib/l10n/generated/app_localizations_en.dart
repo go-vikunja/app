@@ -1399,6 +1399,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String taskDeleteDialogBodyTrash(String title) {
+    return '“$title” moves to the bin, for everyone. It can be restored from the bin on the Account tab for 30 days.';
+  }
+
+  @override
+  String taskDeleteDialogBodyTrashGuest(String title) {
+    return '“$title” moves to the bin, for everyone. It can be restored from there for 30 days.';
+  }
+
+  @override
+  String taskDeleteDialogBodyUnsent(String title) {
+    return '“$title” hasn\'t reached the server yet. It is deleted and won\'t be in the bin.';
+  }
+
+  @override
   String get taskDeleteDialogCancel => 'Cancel';
 
   @override
@@ -1406,6 +1421,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get taskDeleted => 'Task deleted';
+
+  @override
+  String get taskMovedToTrash => 'Task moved to the bin';
+
+  @override
+  String get taskRestored => 'Task restored';
 
   @override
   String accountPendingChanges(int count) {
@@ -1445,8 +1466,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Its project no longer exists on the server.';
 
   @override
+  String get syncProblemProjectInTrash =>
+      'Its project is in the bin on the server.';
+
+  @override
   String get syncProblemTaskMissing =>
       'The task no longer exists on the server.';
+
+  @override
+  String get syncProblemTaskInTrash => 'The task is in the bin on the server.';
 
   @override
   String get syncProblemLabelMissing =>
@@ -3611,6 +3639,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskOpenNotFound => 'This task wasn\'t found';
 
   @override
+  String get taskOpenInTrash => 'This task is in the bin';
+
+  @override
+  String get taskOpenProjectInTrash => 'This task\'s project is in the bin';
+
+  @override
+  String get trashRestore => 'Restore';
+
+  @override
   String get taskOpenForbidden => 'You don\'t have access to this task';
 
   @override
@@ -3708,6 +3745,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get projectIdentifierTaken =>
       'This identifier is already in use. Identifiers are unique on the whole server.';
+
+  @override
+  String get projectIdentifierTakenTrash =>
+      'This identifier is already in use. Identifiers are unique on the whole server, and a project in the bin keeps its identifier for 30 days.';
 
   @override
   String get projectGoneTitle => 'This project no longer exists';
@@ -3833,7 +3874,56 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String projectTrashTasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'It moves to the bin with $count tasks, for everyone.',
+      one: 'It moves to the bin with $count task, for everyone.',
+      zero: 'It has no tasks. It moves to the bin, for everyone.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String projectTrashTasksAndSubprojects(int tasks, int subprojects) {
+    String _temp0 = intl.Intl.pluralLogic(
+      subprojects,
+      locale: localeName,
+      other: '$subprojects subprojects',
+      one: '$subprojects subproject',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      tasks,
+      locale: localeName,
+      other: '$tasks tasks',
+      one: '$tasks task',
+      zero: 'no tasks',
+    );
+    return 'It moves to the bin with $_temp0 and $_temp1, for everyone.';
+  }
+
+  @override
+  String get projectTrashEverything =>
+      'It moves to the bin with its tasks and subprojects, for everyone.';
+
+  @override
+  String projectTrashIncludesDefault(String project) {
+    return 'This includes your default project “$project”. It stops being your default project, even if it is restored.';
+  }
+
+  @override
+  String get projectTrashRestorable =>
+      'The project can be restored from the bin on the Account tab for 30 days.';
+
+  @override
   String get projectDeleted => 'Project deleted';
+
+  @override
+  String get projectMovedToTrash => 'Project moved to the bin';
+
+  @override
+  String get projectRestored => 'Project restored';
 
   @override
   String get projectChangeNeedsConnection =>
@@ -6099,6 +6189,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountTeamsEntry => 'Teams';
 
   @override
+  String get accountTrashEntry => 'Bin';
+
+  @override
   String labelsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -6548,6 +6641,235 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamOk => 'OK';
+
+  @override
+  String get trashTitle => 'Bin';
+
+  @override
+  String get trashTasksTab => 'Tasks';
+
+  @override
+  String get trashProjectsTab => 'Projects';
+
+  @override
+  String get trashTabsLabel => 'Tasks or projects in the bin';
+
+  @override
+  String get trashLoading => 'Loading the bin…';
+
+  @override
+  String get trashRetentionNote =>
+      'After 30 days in the bin, the server deletes items forever.';
+
+  @override
+  String get trashTasksEmptyTitle => 'No tasks in the bin';
+
+  @override
+  String get trashTasksEmptyBody =>
+      'Deleted tasks stay here for 30 days. Then the server deletes them forever.';
+
+  @override
+  String get trashProjectsEmptyTitle => 'No projects in the bin';
+
+  @override
+  String get trashProjectsEmptyBody =>
+      'Deleted projects stay here for 30 days, for their admins only. Then the server deletes them forever.';
+
+  @override
+  String trashDeletedBy(String when, String name) {
+    return 'Deleted $when by $name';
+  }
+
+  @override
+  String trashDeletedByYou(String when) {
+    return 'Deleted $when by you';
+  }
+
+  @override
+  String trashDeletedByLinkShare(String when) {
+    return 'Deleted $when through a link share';
+  }
+
+  @override
+  String trashDeletedWhen(String when) {
+    return 'Deleted $when';
+  }
+
+  @override
+  String trashDeletedForGoodIn(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: 'Deleted forever in $days days',
+      one: 'Deleted forever in $days day',
+      zero: 'Deleted forever today',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trashSubprojects(int count, String titles) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'With $count subprojects: $titles',
+      one: 'With $count subproject: $titles',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trashRestoreItem(String title) {
+    return 'Restore “$title”';
+  }
+
+  @override
+  String trashDeleteForeverItem(String title) {
+    return 'Delete “$title” forever';
+  }
+
+  @override
+  String trashDeleteForeverTitle(String title) {
+    return 'Delete “$title” forever?';
+  }
+
+  @override
+  String get trashDeleteTaskForeverBody =>
+      'It is deleted forever, with its comments, attachments, reminders and relations. This can\'t be undone.';
+
+  @override
+  String get trashDeleteProjectForeverBody =>
+      'It is deleted forever, with its subprojects, tasks, views and shares. This can\'t be undone.';
+
+  @override
+  String get trashDeleteForever => 'Delete forever';
+
+  @override
+  String get trashTaskDeletedForever => 'Task deleted forever';
+
+  @override
+  String get trashProjectDeletedForever => 'Project deleted forever';
+
+  @override
+  String get trashEmpty => 'Empty bin';
+
+  @override
+  String get trashEmptyTasksTitle => 'Delete the tasks in the bin forever?';
+
+  @override
+  String get trashEmptyProjectsTitle =>
+      'Delete the projects in the bin forever?';
+
+  @override
+  String trashEmptyTasks(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tasks are deleted forever.',
+      one: '$count task is deleted forever.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trashEmptyProjects(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count projects are deleted forever, with everything in them.',
+      one: '$count project is deleted forever, with everything in it.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String trashEmptyByOthers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count of them were moved to the bin by other people.',
+      one: '$count of them was moved to the bin by someone else.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get trashEmptyKeepsOthers =>
+      'Tasks in projects where you aren\'t an admin stay in the bin.';
+
+  @override
+  String get trashEmptyNothing =>
+      'Only project admins can delete these forever, so there is nothing here you can delete.';
+
+  @override
+  String get trashCannotBeUndone => 'This can\'t be undone.';
+
+  @override
+  String get trashEmptied => 'Bin emptied';
+
+  @override
+  String get trashWorking => 'Working';
+
+  @override
+  String get trashRestoreNeedsConnection =>
+      'Restoring needs a connection to the server.';
+
+  @override
+  String get trashNeedsConnection =>
+      'The bin needs a connection to the server.';
+
+  @override
+  String get trashTaskGone => 'This task is no longer in the bin.';
+
+  @override
+  String get trashProjectGone => 'This project is no longer in the bin.';
+
+  @override
+  String get trashRestoreArchived =>
+      'Its project is archived. Unarchive the project to restore the task.';
+
+  @override
+  String get trashDeleteArchived =>
+      'Its project is archived. Unarchive the project to delete the task forever.';
+
+  @override
+  String get trashTaskProjectInTrash =>
+      'Its project is in the bin. Restore the project first.';
+
+  @override
+  String get trashRestoreParentInTrash =>
+      'Its parent project is in the bin. Restore that one first.';
+
+  @override
+  String get trashRestoreTaskForbidden =>
+      'You don\'t have permission to restore tasks in this project.';
+
+  @override
+  String get trashRestoreProjectAdminOnly =>
+      'Only project admins can restore a project.';
+
+  @override
+  String get trashDeleteTaskAdminOnly =>
+      'Only project admins can delete tasks forever.';
+
+  @override
+  String get trashDeleteProjectAdminOnly =>
+      'Only project admins can delete a project forever.';
+
+  @override
+  String get trashDeleteStillSending =>
+      'The delete is still on its way to the server. Try again in a moment.';
+
+  @override
+  String get trashUnavailable => 'This server has no bin.';
+
+  @override
+  String trashActionRefused(String message) {
+    return 'The server refused this: $message';
+  }
+
+  @override
+  String get trashActionFailed => 'That didn\'t work. Try again.';
 
   @override
   String get shareLowerOwnAccessTitle => 'Lower your own access?';

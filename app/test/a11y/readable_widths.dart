@@ -65,6 +65,8 @@ const readableWidths = <String, ReadableClass>{
   '/home/teams': ReadableClass.form640,
   '/home/teams/:id': ReadableClass.form640,
   '/home/teams/:id/description': ReadableClass.uncapped,
+  '/home/trash [tasks]': ReadableClass.list840,
+  '/home/trash [projects]': ReadableClass.list840,
   '/home/filters/new': ReadableClass.form640,
   '/home/filters/:id/edit': ReadableClass.form640,
   '/home/widgets': ReadableClass.form640,

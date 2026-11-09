@@ -1,0 +1,9 @@
+{
+  "server": "2.8.0",
+  "request": "POST /api/v2/projects/5/restore",
+  "status": 404,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34551/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Not Found\",\"status\":404,\"detail\":\"This project does not exist.\",\"code\":3001}\n"
+}

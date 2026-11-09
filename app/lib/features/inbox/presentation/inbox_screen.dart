@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/activity/activity_item.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
@@ -66,6 +67,15 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
     switch (item.kind) {
       case ActivityKind.projectCreated:
         await _openProject(item.projectId);
+      // The task may be in the bin, which the opener says, with Restore.
+      case ActivityKind.taskDeleted
+          when item.taskId != null && ref.read(activeServerHasTrashProvider):
+        await ref
+            .read(taskOpenerProvider)
+            .openDeletedInActiveAccount(
+              item.taskId!,
+              gone: (l10n) => l10n.inboxTaskWasDeleted,
+            );
       case ActivityKind.taskDeleted:
         _showSnackBar(context.l10n.inboxTaskWasDeleted);
       case ActivityKind.teamMemberAdded:

@@ -759,8 +759,10 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   );
 
   /// The tasks of projects deleted on the server, unlike [purgeInProjects]
-  /// also those with queued ops, which go with them: they would fail, a
-  /// create cancelled here (`OutboxDao.cancelCreate`). Kept is a server task
+  /// also those with queued ops, which go with them, a create cancelled
+  /// here (`OutboxDao.cancelCreate`): they would fail while the project is
+  /// gone or in the server's trash, and a restore from the trash does not
+  /// bring them back. Kept is a server task
   /// whose queued changes move it into one of the projects: the server
   /// still has it where it was, and its op fails as a sync problem whose
   /// discard brings it back.

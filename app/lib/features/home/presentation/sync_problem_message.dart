@@ -21,6 +21,8 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
       l10n.syncProblemListNotReorderable,
     Forbidden() => l10n.syncProblemForbidden,
     RelatedTaskMissing() => l10n.syncProblemRelatedTaskMissing,
+    NotFound(code: 3018) => l10n.syncProblemProjectInTrash,
+    NotFound(code: 4040) => l10n.syncProblemTaskInTrash,
     NotFound(projectGone: true) => l10n.syncProblemProjectMissing,
     NotFound(code: 8002) => l10n.syncProblemLabelMissing,
     NotFound(code: 1005) => l10n.syncProblemUserMissing,
@@ -55,14 +57,18 @@ bool _namesOnlyListViews(TaskChanges? changes) =>
     (changes.kanban?.isEmpty ?? true);
 
 String _whyUploadFailed(AppLocalizations l10n, VikunjaFailure failure) =>
-    switch (uploadProblemReason(failure)) {
-      UploadProblemReason.tooLarge => l10n.syncProblemUploadTooLarge,
-      UploadProblemReason.taskGone => l10n.syncProblemTaskMissing,
-      UploadProblemReason.projectArchived => l10n.syncProblemProjectArchived,
-      UploadProblemReason.noPermission => l10n.syncProblemUploadForbidden,
-      UploadProblemReason.attachmentsDisabled =>
-        l10n.syncProblemAttachmentsDisabled,
-      UploadProblemReason.fileMissing => l10n.syncProblemUploadFileMissing,
-      UploadProblemReason.timedOut => l10n.syncProblemUploadTimedOut,
-      UploadProblemReason.other => l10n.syncProblemUnexpected,
+    switch (failure) {
+      NotFound(code: 3018) => l10n.syncProblemProjectInTrash,
+      NotFound(code: 4040) => l10n.syncProblemTaskInTrash,
+      _ => switch (uploadProblemReason(failure)) {
+        UploadProblemReason.tooLarge => l10n.syncProblemUploadTooLarge,
+        UploadProblemReason.taskGone => l10n.syncProblemTaskMissing,
+        UploadProblemReason.projectArchived => l10n.syncProblemProjectArchived,
+        UploadProblemReason.noPermission => l10n.syncProblemUploadForbidden,
+        UploadProblemReason.attachmentsDisabled =>
+          l10n.syncProblemAttachmentsDisabled,
+        UploadProblemReason.fileMissing => l10n.syncProblemUploadFileMissing,
+        UploadProblemReason.timedOut => l10n.syncProblemUploadTimedOut,
+        UploadProblemReason.other => l10n.syncProblemUnexpected,
+      },
     };

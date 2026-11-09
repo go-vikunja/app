@@ -32,6 +32,7 @@ import '../../helpers/recording_sync_engine.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/trash_fakes.dart';
 import '../../helpers/widget_fakes.dart';
 
 // The widgets over the real providers, as a headless container builds them:
@@ -79,6 +80,7 @@ void main() {
         syncEngineProvider.overrideWith((ref, accountId) => engine),
         writeClientProvider.overrideWith((ref, accountId) => write),
         readClientProvider.overrideWith((ref, accountId) => FakeSyncClient()),
+        trashPortProvider.overrideWith((ref, accountId) => FakeTrashPort()),
         clockProvider.overrideWithValue(() => now),
         notificationGatewayProvider.overrideWithValue(gateway),
         backgroundSchedulerProvider.overrideWithValue(background),

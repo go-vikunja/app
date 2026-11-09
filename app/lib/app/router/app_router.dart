@@ -51,6 +51,7 @@ import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/teams/presentation/team_page.dart';
 import 'package:vikunja_mobile/features/teams/presentation/teams_page.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_page.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 import 'package:vikunja_mobile/features/widgets/presentation/widget_configure_page.dart';
 import 'package:vikunja_mobile/features/widgets/presentation/widgets_page.dart';
@@ -136,6 +137,11 @@ abstract final class AppRoutes {
   static String team(int teamId) => '$teams/$teamId';
   static String teamDescription(int teamId) => '$teams/$teamId/description';
 
+  /// Over the shell, from the Account tab on servers with the bin (Vikunja
+  /// 2.8.0 and later): the server's trash. Closed to guests, whom the
+  /// server shows no trash.
+  static const trash = '$home/trash';
+
   /// Over the shell, from the Projects tab and a saved filter's menu.
   static const savedFilterNew = '$home/filters/new';
   static String savedFilterEdit(int pseudoProjectId) =>
@@ -179,7 +185,7 @@ abstract final class AppRoutes {
       _tabs.any((tab) => location == tab || location.startsWith('$tab/'));
 
   static final _closedToGuests = RegExp(
-    '^(?:(?:$accountSettings|$teams)(?:/.*)?|$inbox|'
+    '^(?:(?:$accountSettings|$teams|$trash)(?:/.*)?|$inbox|'
     '$labels(?:/new|/\\d+/edit|/\\d+/description)?|'
     '$home/filters/(?:new|-?\\d+/edit)|'
     '$home/project/-?\\d+/(?:edit|description|views|share))\$',
@@ -471,6 +477,12 @@ GoRouter appRouter(Ref ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: AppRoutes.trash,
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) =>
+            const AccountBoundScreen(child: TrashPage()),
       ),
       GoRoute(
         path: AppRoutes.savedFilterNew,

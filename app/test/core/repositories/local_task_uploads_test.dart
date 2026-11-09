@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_timers.dart';
@@ -217,8 +218,14 @@ void main() {
     expect(stored(), isEmpty);
   });
 
-  test('deleting the task drops its unsent uploads and their copies', () async {
-    write.beforeRequest = (_) async => throw const Forbidden();
+  test('a delete keeps the uploads while it is queued; once sent, their '
+      'copies go', () async {
+    write.beforeRequest = (request) async {
+      if (request.startsWith('upload')) throw const Forbidden();
+      if (request.startsWith('delete')) {
+        throw const NetworkFailure(NetworkProblem.unreachable);
+      }
+    };
     await repository.queueUpload(
       1,
       sourcePath: picked('a', const [1]).path,
@@ -226,9 +233,61 @@ void main() {
     );
     await sender.drain();
 
-    await repository.deleteTask(1);
+    expect(await repository.deleteTask(1), TaskDeletion.queued);
     await pumpEventQueue();
 
+    expect(stored(), hasLength(1));
+
+    write.beforeRequest = null;
+    await repository.sendPendingChanges();
+
+    expect(await db.outboxDao.count(), 0);
+    expect(stored(), isEmpty);
+  });
+
+  test('an upload waiting behind a delete that is taken back goes', () async {
+    sender.pause();
+    await repository.queueUpload(
+      1,
+      sourcePath: picked('a', const [1]).path,
+      fileName: 'a',
+    );
+    await repository.deleteTask(1);
+    expect(
+      await repository.queueUpload(
+        1,
+        sourcePath: picked('b', const [2]).path,
+        fileName: 'b',
+      ),
+      isNull,
+    );
+
+    await repository.restoreTask(1);
+    await sender.resume();
+
+    expect(write.requests, ['upload 1 a']);
+    expect(await db.outboxDao.count(), 0);
+    expect(stored(), isEmpty);
+  });
+
+  test('deleting a task whose create the server refused drops its uploads '
+      'and their copies at once', () async {
+    write.beforeRequest = (_) async => throw const DomainError(400, code: 4001);
+    final id = await repository.createTask(
+      const NewTask(projectId: 7, title: 'New'),
+    );
+    await repository.queueUpload(
+      id,
+      sourcePath: picked('a', const [1]).path,
+      fileName: 'a',
+    );
+    await sender.drain();
+    expect(stored(), hasLength(1));
+
+    expect(await repository.deleteTask(id), TaskDeletion.discarded);
+    await pumpEventQueue();
+
+    expect(await db.outboxDao.count(), 0);
     expect(stored(), isEmpty);
   });
 }

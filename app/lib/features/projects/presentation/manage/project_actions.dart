@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/projects/application/project_management.dart';
@@ -20,6 +21,8 @@ import 'package:vikunja_mobile/features/projects/presentation/manage/form_parts.
 import 'package:vikunja_mobile/features/projects/presentation/manage/new_project_sheet.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_change_failure.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_failure_text.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
 
 final _log = Logger('ProjectActions');
 
@@ -32,23 +35,45 @@ mixin ProjectManagementActions<W extends ConsumerStatefulWidget>
   /// A change of the project is on its way.
   bool get managingProject => _managing;
 
+  /// With [undo], [done] comes with an Undo that runs it; the page may
+  /// close meanwhile, so everything it needs is read first.
   Future<bool> _send(
     ProjectChange change,
     Project project, {
     required String done,
     required Future<void> Function(ProjectRepository repository) send,
+    Future<Object?> Function(ProjectRepository repository)? undo,
   }) async {
     final repository = ref.read(projectRepositoryProvider);
     if (repository == null || _managing) return false;
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
+    final persist = MediaQuery.accessibleNavigationOf(context);
     setState(() => _managing = true);
     try {
       await send(repository);
       unawaited(HapticFeedback.selectionClick());
-      messenger
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(done)));
+      if (undo == null) {
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(done)));
+      } else {
+        showDeletedSnackBar(
+          messenger,
+          text: done,
+          undoLabel: l10n.undo,
+          persist: persist,
+          onUndo: () => unawaited(
+            runUndo(
+              messenger,
+              l10n,
+              restore: () => undo(repository),
+              restored: l10n.projectRestored,
+              action: TrashAction.restoreProject,
+            ),
+          ),
+        );
+      }
       return true;
     } on Object catch (error) {
       _log.warning('Changing a project failed: ${error.runtimeType}');
@@ -129,9 +154,11 @@ mixin ProjectManagementActions<W extends ConsumerStatefulWidget>
   }
 
   /// Counts what goes with the project before asking; once deleted, the
-  /// project's screen and whatever covers it close.
+  /// project's screen and whatever covers it close. On a server with the
+  /// bin the project moves there, and Undo restores it.
   Future<void> deleteProject(Project project) async {
     final l10n = context.l10n;
+    final trash = ref.read(activeServerHasTrashProvider);
     final subtree = projectSubtreeIds(
       project.id,
       ref.read(projectsProvider).value ?? const [],
@@ -157,6 +184,7 @@ mixin ProjectManagementActions<W extends ConsumerStatefulWidget>
       taskCount: taskCount,
       subprojectCount: subtree.length - 1,
       defaultProject: _defaultProjectBelow(project.id)?.displayTitle(l10n),
+      trash: trash,
     );
     if (!confirmed || !mounted) return;
     final router = GoRouter.of(context);
@@ -164,8 +192,11 @@ mixin ProjectManagementActions<W extends ConsumerStatefulWidget>
     final deleted = await _send(
       ProjectChange.delete,
       project,
-      done: l10n.projectDeleted,
+      done: trash ? l10n.projectMovedToTrash : l10n.projectDeleted,
       send: (repository) => repository.deleteProject(project.id),
+      undo: trash
+          ? (repository) => repository.restoreProject(project.id)
+          : null,
     );
     if (!deleted) return;
     modals.closeAll();

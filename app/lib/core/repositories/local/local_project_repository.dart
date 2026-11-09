@@ -29,13 +29,15 @@ const _parentArchived = 3016;
 /// Projects from the account's database; a refresh is a full sync run. A
 /// write goes straight to the server and into the stored projects once
 /// answered; the sync that follows quietly brings what else the server
-/// changed.
+/// changed. Without `trash` a restore is refused as on a server without
+/// the trash.
 final class LocalProjectRepository implements ProjectRepository {
-  new(this._db, this._sync, this._write);
+  new(this._db, this._sync, this._write, {this._trash});
 
   final AppDatabase _db;
   final SyncEngine _sync;
   final VikunjaWriteClient _write;
+  final TrashPort? _trash;
   List<Project> _latest = const [];
 
   @override
@@ -273,6 +275,30 @@ final class LocalProjectRepository implements ProjectRepository {
           .forget(projectIds: purged.projectIds, viewIds: purged.viewIds);
     });
     _settle('Deleted project $projectId');
+  }
+
+  /// Like a duplicate, the project comes with a run that starts after the
+  /// restore, which finds it new and pulls it whole.
+  @override
+  Future<Project> restoreProject(int projectId) async {
+    final trash = _trash ?? (throw const NotFound());
+    final project = await trash.restoreProject(projectId);
+    _log.fine('Restored project $projectId');
+    try {
+      await _sync.refreshAfterWrite();
+    } on Object catch (error) {
+      _log.fine(
+        'Sync after restoring project $projectId failed: '
+        '${error.runtimeType}',
+      );
+    }
+    if (await _db.projectsDao.loadProject(project.id) == null) {
+      await _db.transaction(() async {
+        await _db.projectsDao.upsertAll([project]);
+        await pullWholeOnNextRun(_db, {project.id});
+      });
+    }
+    return project;
   }
 
   /// The copy comes with a run that starts after the duplicate: it finds

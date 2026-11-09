@@ -137,20 +137,22 @@ Future<void> openTab(WidgetTester tester, String label) async {
   await tester.pumpAndSettle();
 }
 
-/// Starts the app signed in to a 2.7 server whose data [sync] holds; the
-/// account counts as synced just now unless [sync] says otherwise.
+/// Starts the app signed in to [connection] (a 2.7 server by default)
+/// whose data [sync] holds; the account counts as synced just now unless
+/// [sync] says otherwise.
 Future<AuthFakes> pumpSignedInApp(
   WidgetTester tester, {
   SyncFakes? sync,
   AuthFakes? auth,
   NotificationFakes? notifications,
   DateTime? now,
+  ServerConnection? connection,
   List<Override> overrides = const [],
   bool settle = true,
 }) async {
   final fakes = auth ?? AuthFakes();
   await fakes.seedAccount(
-    fullServer270(),
+    connection ?? fullServer270(),
     tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
   );
   await pumpVikunjaApp(

@@ -2054,6 +2054,24 @@ abstract class AppLocalizations {
   /// **'“{title}” will be deleted on the server too. This cannot be undone.'**
   String taskDeleteDialogBody(String title);
 
+  /// Body of the delete-task confirmation on servers with a bin (Vikunja 2.8.0 and later), for a signed-in user. The bin is the server's trash; its page is on the Account tab.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” moves to the bin, for everyone. It can be restored from the bin on the Account tab for 30 days.'**
+  String taskDeleteDialogBodyTrash(String title);
+
+  /// Body of the delete-task confirmation on servers with a bin, for a link-share guest, who has no bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” moves to the bin, for everyone. It can be restored from there for 30 days.'**
+  String taskDeleteDialogBodyTrashGuest(String title);
+
+  /// Body of the delete-task confirmation on servers with a bin, for signed-in users and guests, when the task was created on this device and may not have reached the server yet. Such a task does not go to the bin.
+  ///
+  /// In en, this message translates to:
+  /// **'“{title}” hasn\'t reached the server yet. It is deleted and won\'t be in the bin.'**
+  String taskDeleteDialogBodyUnsent(String title);
+
   /// No description provided for @taskDeleteDialogCancel.
   ///
   /// In en, this message translates to:
@@ -2066,11 +2084,23 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get taskDeleteDialogConfirm;
 
-  /// No description provided for @taskDeleted.
+  /// Snackbar after a task was deleted: on servers without a bin, and on servers with one for a task whose create never reached the server or was refused. There it comes with Undo while the delete is still queued.
   ///
   /// In en, this message translates to:
   /// **'Task deleted'**
   String get taskDeleted;
+
+  /// Snackbar after a task was deleted on a server with a bin, with an Undo action.
+  ///
+  /// In en, this message translates to:
+  /// **'Task moved to the bin'**
+  String get taskMovedToTrash;
+
+  /// Snackbar after Undo brought a deleted task back; also announced on the bin page after Restore.
+  ///
+  /// In en, this message translates to:
+  /// **'Task restored'**
+  String get taskRestored;
 
   /// No description provided for @accountPendingChanges.
   ///
@@ -2126,11 +2156,23 @@ abstract class AppLocalizations {
   /// **'Its project no longer exists on the server.'**
   String get syncProblemProjectMissing;
 
+  /// Entry in the Sync problems section of the Account tab: the task's project is in the server's bin.
+  ///
+  /// In en, this message translates to:
+  /// **'Its project is in the bin on the server.'**
+  String get syncProblemProjectInTrash;
+
   /// No description provided for @syncProblemTaskMissing.
   ///
   /// In en, this message translates to:
   /// **'The task no longer exists on the server.'**
   String get syncProblemTaskMissing;
+
+  /// Entry in the Sync problems section of the Account tab: the task is in the server's bin.
+  ///
+  /// In en, this message translates to:
+  /// **'The task is in the bin on the server.'**
+  String get syncProblemTaskInTrash;
 
   /// No description provided for @syncProblemLabelMissing.
   ///
@@ -5532,6 +5574,24 @@ abstract class AppLocalizations {
   /// **'This task wasn\'t found'**
   String get taskOpenNotFound;
 
+  /// Snackbar when a task opened from a link, a notification or the inbox's deleted entry is in the server's bin.
+  ///
+  /// In en, this message translates to:
+  /// **'This task is in the bin'**
+  String get taskOpenInTrash;
+
+  /// Snackbar when the project of a task opened from a link or notification is in the server's bin.
+  ///
+  /// In en, this message translates to:
+  /// **'This task\'s project is in the bin'**
+  String get taskOpenProjectInTrash;
+
+  /// Action of the snackbar saying a task opened from a link or notification is in the bin.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get trashRestore;
+
   /// No description provided for @taskOpenForbidden.
   ///
   /// In en, this message translates to:
@@ -5699,6 +5759,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This identifier is already in use. Identifiers are unique on the whole server.'**
   String get projectIdentifierTaken;
+
+  /// Error of the identifier field of the project edit page on servers with a bin; also announced.
+  ///
+  /// In en, this message translates to:
+  /// **'This identifier is already in use. Identifiers are unique on the whole server, and a project in the bin keeps its identifier for 30 days.'**
+  String get projectIdentifierTakenTrash;
 
   /// No description provided for @projectGoneTitle.
   ///
@@ -5880,11 +5946,53 @@ abstract class AppLocalizations {
   /// **'This includes your default project “{project}”.'**
   String projectIncludesDefault(String project);
 
+  /// Confirmation for deleting a project on servers with a bin: what deleting a project without subprojects moves to the bin; counts done tasks too.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{It has no tasks. It moves to the bin, for everyone.} =1{It moves to the bin with {count} task, for everyone.} other{It moves to the bin with {count} tasks, for everyone.}}'**
+  String projectTrashTasks(int count);
+
+  /// Confirmation for deleting a project on servers with a bin: the subprojects at every level and the tasks of the project and all its subprojects move to the bin with it.
+  ///
+  /// In en, this message translates to:
+  /// **'It moves to the bin with {subprojects, plural, =1{{subprojects} subproject} other{{subprojects} subprojects}} and {tasks, plural, =0{no tasks} =1{{tasks} task} other{{tasks} tasks}}, for everyone.'**
+  String projectTrashTasksAndSubprojects(int tasks, int subprojects);
+
+  /// Confirmation for deleting a project on servers with a bin, when its tasks could not be counted.
+  ///
+  /// In en, this message translates to:
+  /// **'It moves to the bin with its tasks and subprojects, for everyone.'**
+  String get projectTrashEverything;
+
+  /// Added to the delete confirmation on servers with a bin when the user's default project is in the project's subtree. The server unsets the default project, and a restore does not set it again.
+  ///
+  /// In en, this message translates to:
+  /// **'This includes your default project “{project}”. It stops being your default project, even if it is restored.'**
+  String projectTrashIncludesDefault(String project);
+
+  /// Last paragraph of the confirmation for deleting a project on servers with a bin.
+  ///
+  /// In en, this message translates to:
+  /// **'The project can be restored from the bin on the Account tab for 30 days.'**
+  String get projectTrashRestorable;
+
   /// No description provided for @projectDeleted.
   ///
   /// In en, this message translates to:
   /// **'Project deleted'**
   String get projectDeleted;
+
+  /// Snackbar after a project was deleted on a server with a bin, with an Undo action.
+  ///
+  /// In en, this message translates to:
+  /// **'Project moved to the bin'**
+  String get projectMovedToTrash;
+
+  /// Snackbar after Undo brought a deleted project back; also announced on the bin page after Restore.
+  ///
+  /// In en, this message translates to:
+  /// **'Project restored'**
+  String get projectRestored;
 
   /// No description provided for @projectChangeNeedsConnection.
   ///
@@ -9552,7 +9660,7 @@ abstract class AppLocalizations {
   /// **'Read only'**
   String get shareTaskReadOnly;
 
-  /// Account tab section with the labels and teams pages.
+  /// Account tab section with the labels and teams pages, and the bin on servers with one.
   ///
   /// In en, this message translates to:
   /// **'Organise'**
@@ -9569,6 +9677,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Teams'**
   String get accountTeamsEntry;
+
+  /// Account tab row that opens the bin page, on servers with a bin.
+  ///
+  /// In en, this message translates to:
+  /// **'Bin'**
+  String get accountTrashEntry;
 
   /// How many labels are on this device, read out for the count next to the Labels entry.
   ///
@@ -10295,6 +10409,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'OK'**
   String get teamOk;
+
+  /// Title of the bin page, which lists the tasks and projects in the server's trash.
+  ///
+  /// In en, this message translates to:
+  /// **'Bin'**
+  String get trashTitle;
+
+  /// Tab of the bin page with the tasks in the bin.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks'**
+  String get trashTasksTab;
+
+  /// Tab of the bin page with the projects in the bin.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get trashProjectsTab;
+
+  /// Screen reader: the tab bar of the bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks or projects in the bin'**
+  String get trashTabsLabel;
+
+  /// While the bin page reads the bin from the server.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the bin…'**
+  String get trashLoading;
+
+  /// Note on each tab of the bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'After 30 days in the bin, the server deletes items forever.'**
+  String get trashRetentionNote;
+
+  /// Title of the empty Tasks tab of the bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'No tasks in the bin'**
+  String get trashTasksEmptyTitle;
+
+  /// Body of the empty Tasks tab of the bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted tasks stay here for 30 days. Then the server deletes them forever.'**
+  String get trashTasksEmptyBody;
+
+  /// Title of the empty Projects tab of the bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects in the bin'**
+  String get trashProjectsEmptyTitle;
+
+  /// Body of the empty Projects tab of the bin page. The server lists a project in the bin only to its admins.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted projects stay here for 30 days, for their admins only. Then the server deletes them forever.'**
+  String get trashProjectsEmptyBody;
+
+  /// Line of a task or project on the bin page: when it was deleted, and by whom.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {when} by {name}'**
+  String trashDeletedBy(String when, String name);
+
+  /// Line of a task or project on the bin page that the user deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {when} by you'**
+  String trashDeletedByYou(String when);
+
+  /// Line of a task or project on the bin page that a guest deleted through a link share.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {when} through a link share'**
+  String trashDeletedByLinkShare(String when);
+
+  /// Line of a task or project on the bin page when nobody is known as the one who deleted it.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {when}'**
+  String trashDeletedWhen(String when);
+
+  /// Line of a task or project on the bin page: the whole days left until the server deletes it forever.
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =0{Deleted forever today} =1{Deleted forever in {days} day} other{Deleted forever in {days} days}}'**
+  String trashDeletedForGoodIn(int days);
+
+  /// Line of a project on the bin page: the subprojects in the bin with it. The titles are the subprojects' titles joined with a comma and a space.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{With {count} subproject: {titles}} other{With {count} subprojects: {titles}}}'**
+  String trashSubprojects(int count, String titles);
+
+  /// Tooltip and label of a row's restore button on the bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore “{title}”'**
+  String trashRestoreItem(String title);
+
+  /// Tooltip and label of a row's delete forever button on the bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{title}” forever'**
+  String trashDeleteForeverItem(String title);
+
+  /// Title of the confirmation for deleting a task or project in the bin forever.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete “{title}” forever?'**
+  String trashDeleteForeverTitle(String title);
+
+  /// Body of the confirmation for deleting a task in the bin forever.
+  ///
+  /// In en, this message translates to:
+  /// **'It is deleted forever, with its comments, attachments, reminders and relations. This can\'t be undone.'**
+  String get trashDeleteTaskForeverBody;
+
+  /// Body of the confirmation for deleting a project in the bin forever.
+  ///
+  /// In en, this message translates to:
+  /// **'It is deleted forever, with its subprojects, tasks, views and shares. This can\'t be undone.'**
+  String get trashDeleteProjectForeverBody;
+
+  /// Confirm button of the confirmation for deleting a task or project in the bin forever, and of the confirmation for emptying a tab of the bin.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete forever'**
+  String get trashDeleteForever;
+
+  /// Screen reader: announced after a task in the bin was deleted forever.
+  ///
+  /// In en, this message translates to:
+  /// **'Task deleted forever'**
+  String get trashTaskDeletedForever;
+
+  /// Screen reader: announced after a project in the bin was deleted forever.
+  ///
+  /// In en, this message translates to:
+  /// **'Project deleted forever'**
+  String get trashProjectDeletedForever;
+
+  /// Button on each tab of the bin page that deletes forever, after a confirmation, the tab's items in projects the user is an admin of.
+  ///
+  /// In en, this message translates to:
+  /// **'Empty bin'**
+  String get trashEmpty;
+
+  /// Title of the confirmation for emptying the Tasks tab of the bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the tasks in the bin forever?'**
+  String get trashEmptyTasksTitle;
+
+  /// Title of the confirmation for emptying the Projects tab of the bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete the projects in the bin forever?'**
+  String get trashEmptyProjectsTitle;
+
+  /// Confirmation for emptying the Tasks tab of the bin page: how many tasks the server deletes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{{count} task is deleted forever.} other{{count} tasks are deleted forever.}}'**
+  String trashEmptyTasks(int count);
+
+  /// Confirmation for emptying the Projects tab of the bin page: how many projects the server deletes, with their subprojects and tasks.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{{count} project is deleted forever, with everything in it.} other{{count} projects are deleted forever, with everything in them.}}'**
+  String trashEmptyProjects(int count);
+
+  /// Confirmation for emptying a tab of the bin page: how many of the items other people moved to the bin. Emptying deletes them too.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{{count} of them was moved to the bin by someone else.} other{{count} of them were moved to the bin by other people.}}'**
+  String trashEmptyByOthers(int count);
+
+  /// Confirmation for emptying the Tasks tab of the bin page: the server deletes only tasks in projects the user is an admin of.
+  ///
+  /// In en, this message translates to:
+  /// **'Tasks in projects where you aren\'t an admin stay in the bin.'**
+  String get trashEmptyKeepsOthers;
+
+  /// Shown on the bin page's Tasks tab instead of the confirmation for emptying it, when the server would delete nothing and a listed task is in a project the user is not an admin of: the server deletes only what is in projects the user is an admin of.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can delete these forever, so there is nothing here you can delete.'**
+  String get trashEmptyNothing;
+
+  /// Last paragraph of the confirmation for emptying a tab of the bin page.
+  ///
+  /// In en, this message translates to:
+  /// **'This can\'t be undone.'**
+  String get trashCannotBeUndone;
+
+  /// Screen reader: announced after a tab of the bin page was emptied.
+  ///
+  /// In en, this message translates to:
+  /// **'Bin emptied'**
+  String get trashEmptied;
+
+  /// Screen reader: the spinner of a row on the bin page, or of the Empty bin button, while its action runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Working'**
+  String get trashWorking;
+
+  /// Error when restoring a task or project, from the bin page, a link or Undo, fails without a connection.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring needs a connection to the server.'**
+  String get trashRestoreNeedsConnection;
+
+  /// Error when deleting forever or emptying the bin fails without a connection.
+  ///
+  /// In en, this message translates to:
+  /// **'The bin needs a connection to the server.'**
+  String get trashNeedsConnection;
+
+  /// Error when a task to restore or delete forever is no longer in the bin, for example because someone restored it.
+  ///
+  /// In en, this message translates to:
+  /// **'This task is no longer in the bin.'**
+  String get trashTaskGone;
+
+  /// Error when a project to restore or delete forever is no longer in the bin, for example because someone restored it.
+  ///
+  /// In en, this message translates to:
+  /// **'This project is no longer in the bin.'**
+  String get trashProjectGone;
+
+  /// Error when a task cannot be restored because its project is archived.
+  ///
+  /// In en, this message translates to:
+  /// **'Its project is archived. Unarchive the project to restore the task.'**
+  String get trashRestoreArchived;
+
+  /// Error when a task in the bin cannot be deleted forever because its project is archived.
+  ///
+  /// In en, this message translates to:
+  /// **'Its project is archived. Unarchive the project to delete the task forever.'**
+  String get trashDeleteArchived;
+
+  /// Error when a task cannot be restored or deleted forever because its project is in the bin too.
+  ///
+  /// In en, this message translates to:
+  /// **'Its project is in the bin. Restore the project first.'**
+  String get trashTaskProjectInTrash;
+
+  /// Error when a project cannot be restored because its parent project is in the bin.
+  ///
+  /// In en, this message translates to:
+  /// **'Its parent project is in the bin. Restore that one first.'**
+  String get trashRestoreParentInTrash;
+
+  /// Error when restoring a task is refused: it needs write permission on its project.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to restore tasks in this project.'**
+  String get trashRestoreTaskForbidden;
+
+  /// Error when restoring a project is refused because the user is not its admin.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can restore a project.'**
+  String get trashRestoreProjectAdminOnly;
+
+  /// Error when deleting a task forever or emptying the bin is refused because the user is not an admin of the project.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can delete tasks forever.'**
+  String get trashDeleteTaskAdminOnly;
+
+  /// Error when deleting a project forever is refused because the user is not its admin.
+  ///
+  /// In en, this message translates to:
+  /// **'Only project admins can delete a project forever.'**
+  String get trashDeleteProjectAdminOnly;
+
+  /// Error of Undo or Restore when the task's delete is still being sent to the server, after the app waited for it.
+  ///
+  /// In en, this message translates to:
+  /// **'The delete is still on its way to the server. Try again in a moment.'**
+  String get trashDeleteStillSending;
+
+  /// Error of a bin action, and the body of the bin page's failure card, on a server without a bin (older than Vikunja 2.8.0).
+  ///
+  /// In en, this message translates to:
+  /// **'This server has no bin.'**
+  String get trashUnavailable;
+
+  /// Error of a bin action that the server refused. The server's own explanation follows, in English.
+  ///
+  /// In en, this message translates to:
+  /// **'The server refused this: {message}'**
+  String trashActionRefused(String message);
+
+  /// Error of a bin action that failed for a reason the app cannot name.
+  ///
+  /// In en, this message translates to:
+  /// **'That didn\'t work. Try again.'**
+  String get trashActionFailed;
 
   /// Confirmation title when admins choose a lower permission on their own share row.
   ///

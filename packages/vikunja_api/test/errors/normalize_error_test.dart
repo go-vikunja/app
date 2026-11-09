@@ -36,6 +36,36 @@ final Matcher _forbidden = isA<Forbidden>()
     .having((f) => f.code, 'code', isNull)
     .having((f) => f.message, 'message', contains('permission'));
 
+// The details of the trash fixtures captured for step 37e: task 2 of
+// project 10, and that task's project 11, deleted by a throwaway user.
+final _trashedAt = DateTime.utc(2026, 11, 9, 7, 16, 25);
+const _trashCodesUser = User(id: 6, username: 'trashcodes8e4755');
+
+final _taskInTrash = TrashDetails(
+  id: 2,
+  deletedAt: _trashedAt,
+  deletedBy: _trashCodesUser,
+  canRestore: true,
+  projectId: 10,
+);
+
+final _projectInTrash = TrashDetails(
+  id: 11,
+  deletedAt: _trashedAt,
+  deletedBy: _trashCodesUser,
+  canRestore: true,
+);
+
+// tool/capture_trash_fixtures.dart: a task of Screws (7), below Tools,
+// below Shed (5), which went to the trash with both.
+final _belowTrashedRoot = TrashDetails(
+  id: 7,
+  deletedAt: DateTime.utc(2026, 11, 9, 11, 33, 55),
+  deletedBy: const User(id: 1, username: 'fixtureowner'),
+  trashedRootId: 5,
+  canRestoreRoot: true,
+);
+
 /// What every captured body in test/fixtures/errors normalizes to. Named
 /// `<api>_<what>_<server version>.json`.
 Matcher _expectedFor(String name) {
@@ -52,25 +82,36 @@ Matcher _expectedFor(String name) {
       isA<NotFound>()
           .having((f) => f.code, 'code', 3001)
           .having((f) => f.routeAbsent, 'routeAbsent', isFalse)
+          .having((f) => f.trash, 'trash', isNull)
           .having((f) => f.message, 'message', 'This project does not exist.'),
     '404_route' =>
       isA<NotFound>()
           .having((f) => f.routeAbsent, 'routeAbsent', isTrue)
+          .having((f) => f.trash, 'trash', isNull)
           .having((f) => f.message, 'message', 'Not Found'),
     '404_task_trashed' || '404_relation_task_trashed' =>
       isA<NotFound>()
           .having((f) => f.code, 'code', 4040)
           .having((f) => f.taskGone, 'taskGone', isTrue)
+          .having((f) => f.trash, 'trash', _taskInTrash)
           .having((f) => f.message, 'message', 'This task is in the trash.'),
     '404_task_project_trashed' =>
       isA<NotFound>()
           .having((f) => f.code, 'code', 3018)
           .having((f) => f.projectGone, 'projectGone', isTrue)
+          .having((f) => f.trash, 'trash', _projectInTrash)
+          .having((f) => f.message, 'message', startsWith('This project is')),
+    '404_task_project_trashed_root' =>
+      isA<NotFound>()
+          .having((f) => f.code, 'code', 3018)
+          .having((f) => f.projectGone, 'projectGone', isTrue)
+          .having((f) => f.trash, 'trash', _belowTrashedRoot)
           .having((f) => f.message, 'message', startsWith('This project is')),
     '404_task_delete_project_trashed' =>
       isA<NotFound>()
           .having((f) => f.code, 'code', 3001)
           .having((f) => f.projectGone, 'projectGone', isTrue)
+          .having((f) => f.trash, 'trash', isNull)
           .having((f) => f.message, 'message', 'This project does not exist.'),
     '412_invalid_fields' =>
       isA<ValidationFailed>()
@@ -344,6 +385,125 @@ void main() {
         );
       },
     );
+
+    test('a 404 for something gone carries no trash details', () async {
+      expect(
+        await _failureFor(
+          capturedFixture('trash/v2_task_restore_unknown_2.8.0'),
+        ),
+        isA<NotFound>()
+            .having((f) => f.code, 'code', 4002)
+            .having((f) => f.trash, 'trash', isNull),
+      );
+      expect(
+        await _failureFor(
+          body(404, {
+            'code': 4002,
+            'message': 'This task does not exist',
+            'details': {'id': 2, 'can_restore': true},
+          }),
+        ),
+        isA<NotFound>().having((f) => f.trash, 'trash', isNull),
+        reason: 'details only count for 4040 and 3018',
+      );
+    });
+
+    for (final details in <Object?>[
+      null,
+      'task 2',
+      [2],
+      <String, Object?>{},
+      {'id': '2'},
+      {'id': 2.5},
+      {'task_id': 2},
+    ]) {
+      test('trash details without an id are dropped: $details', () async {
+        for (final code in [4040, 3018]) {
+          expect(
+            await _failureFor(
+              body(404, {
+                'code': code,
+                'message': 'in the trash',
+                'details': details,
+              }),
+            ),
+            isA<NotFound>()
+                .having((f) => f.code, 'code', code)
+                .having((f) => f.trash, 'trash', isNull),
+          );
+        }
+      });
+    }
+
+    test('malformed trash fields fall back, the rest is kept', () async {
+      expect(
+        await _failureFor(
+          body(404, {
+            'code': 4040,
+            'message': 'This task is in the trash.',
+            'details': {
+              'id': 2,
+              'project_id': '10',
+              'deleted_at': 'yesterday',
+              'deleted_by': 'someone',
+              'can_restore': 'yes',
+              'trashed_root_id': 0,
+              'can_restore_root': 1,
+            },
+          }),
+        ),
+        isA<NotFound>().having(
+          (f) => f.trash,
+          'trash',
+          const TrashDetails(id: 2),
+        ),
+      );
+      expect(
+        await _failureFor(
+          body(404, {
+            'code': 4040,
+            'details': {'id': 2, 'deleted_at': '0001-01-01T00:00:00Z'},
+          }),
+        ),
+        isA<NotFound>().having((f) => f.trash?.deletedAt, 'deletedAt', isNull),
+      );
+    });
+
+    test('a link share as the deleter, and never an email', () async {
+      expect(
+        await _failureFor(
+          body(404, {
+            'code': 4040,
+            'details': {
+              'id': 2,
+              'project_id': 10,
+              'deleted_at': '2026-11-09T08:16:25+01:00',
+              'deleted_by': {
+                'id': -3,
+                'name': 'Link Share',
+                'username': 'link-share-3',
+                'email': 'someone@example.invalid',
+              },
+              'can_restore': false,
+            },
+          }),
+        ),
+        isA<NotFound>().having(
+          (f) => f.trash,
+          'trash',
+          TrashDetails(
+            id: 2,
+            deletedAt: _trashedAt,
+            deletedBy: const User(
+              id: -3,
+              username: 'link-share-3',
+              name: 'Link Share',
+            ),
+            projectId: 10,
+          ),
+        ),
+      );
+    });
 
     test('a coded domain error keeps status, code and message', () async {
       expect(

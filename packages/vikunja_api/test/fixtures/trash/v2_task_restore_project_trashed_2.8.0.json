@@ -1,0 +1,9 @@
+{
+  "server": "2.8.0",
+  "request": "POST /api/v2/tasks/5/restore",
+  "status": 404,
+  "headers": {
+    "content-type": "application/problem+json"
+  },
+  "body": "{\"$schema\":\"http://localhost:34551/api/v2/schemas/VikunjaErrorModel.json\",\"title\":\"Not Found\",\"status\":404,\"detail\":\"This project is in the trash. Restore it first.\",\"code\":3018,\"details\":{\"id\":7,\"deleted_at\":\"2026-11-09T11:33:55Z\",\"deleted_by\":{\"id\":1,\"name\":\"\",\"username\":\"fixtureowner\",\"created\":\"2026-11-09T11:33:38Z\",\"updated\":\"2026-11-09T11:33:38Z\"},\"can_restore\":false,\"trashed_root_id\":5,\"can_restore_root\":true}}\n"
+}

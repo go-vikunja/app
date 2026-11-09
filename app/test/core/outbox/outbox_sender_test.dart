@@ -1,5 +1,8 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart'
+    show ApplyInterceptor, QueryExecutor, QueryInterceptor;
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -9,6 +12,7 @@ import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
 import '../../helpers/fake_sync_client.dart';
@@ -61,7 +65,7 @@ void main() {
   }
 
   Future<void> queueDelete(int id) async {
-    expect(await db.outboxDao.queueDelete(id, now: now), isTrue);
+    expect(await db.outboxDao.queueDelete(id, now: now), TaskDeletion.queued);
   }
 
   Future<List<OutboxRow>> ops() => db.outboxDao.all();
@@ -209,6 +213,35 @@ void main() {
         expect(await db.tasksDao.findRow(1), isNull);
       },
     );
+
+    test('updates queued before a delete go first, in order, and the row '
+        'stays hidden through their answers', () async {
+      await queue(1, done);
+      await queue(2, favorite);
+      await queue(1, const TaskChanges(title: 'Renamed'));
+      await queueDelete(1);
+      final gate = RequestGate()..pattern = 'delete 1';
+      write.beforeRequest = gate.call;
+      final outbox = sender();
+      final drain = outbox.drain();
+      await pumpEventQueue();
+
+      expect(write.requests, ['update 1', 'update 2', 'delete 1']);
+      expect(write.updates, [
+        (1, const TaskChanges(done: true, title: 'Renamed')),
+        (2, favorite),
+      ]);
+      expect(write.serverTasks[1]!.title, 'Renamed');
+      expect(await db.tasksDao.find(1), isNull);
+      expect((await db.tasksDao.findRow(1))!.pendingDelete, isTrue);
+      expect((await ops()).single.kind, 'deleteTask');
+
+      gate.release();
+      await drain;
+
+      expect(await db.tasksDao.findRow(1), isNull);
+      expect(await db.outboxDao.count(), 0);
+    });
 
     test('never sends two ops at once', () async {
       await queue(1, done);
@@ -1247,12 +1280,87 @@ void main() {
 
     test('a create and its delete before the send cost no request', () async {
       final id = await create();
+      await queue(id, done);
       await queueDelete(id);
+      expect(await ops(), hasLength(3));
 
       await sender().drain();
 
       expect(write.requests, isEmpty);
+      expect(read.requests, isEmpty);
       expect(sync.refreshCalls, 0);
+      expect(await db.outboxDao.count(), 0);
+      expect(await db.tasksDao.findRow(id), isNull);
+    });
+
+    test('a delete taken back between the claim of the create and its drop '
+        'lets the create go', () async {
+      final interceptor = _OnStatement();
+      db = AppDatabase(NativeDatabase.memory().interceptWith(interceptor));
+      addTearDown(db.close);
+      final id = await create();
+      await queueDelete(id);
+      final createId = (await ops()).first.id;
+      late Future<DeleteUnqueue> undo;
+      interceptor.onUpdate = (args) {
+        if (!args.contains(createId) ||
+            !args.contains(OutboxState.sending.name)) {
+          return;
+        }
+        interceptor.onUpdate = null;
+        // Outside the claim's transaction, so it queues behind it and ahead
+        // of the sender's next one.
+        Zone.root.run<void>(() {
+          undo = db.outboxDao.unqueueDelete(id);
+        });
+      };
+
+      await sender().drain();
+
+      expect(await undo, DeleteUnqueue.cancelled);
+      expect(write.requests, ['create Buy milk']);
+      expect((await db.tasksDao.find(100))!.title, 'Buy milk');
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a delete behind a create that may have reached the server waits '
+        'for the lookup, then goes', () async {
+      final id = await create();
+      await db.outboxDao.markUncertain(
+        (await ops()).single.id,
+        sentAt: now.subtract(const Duration(minutes: 1)),
+      );
+      await queueDelete(id);
+
+      await sender().drain();
+
+      expect(read.requests, hasLength(1));
+      expect(write.requests, ['create Buy milk', 'delete 100']);
+      expect(write.serverTasks.containsKey(100), isFalse);
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a delete behind a create the server had is sent for the task the '
+        'lookup found', () async {
+      final id = await create();
+      await db.outboxDao.markUncertain(
+        (await ops()).single.id,
+        sentAt: now.subtract(const Duration(minutes: 1)),
+      );
+      await queueDelete(id);
+      write.serverTasks[100] = sampleTask(
+        id: 100,
+        title: 'Buy milk',
+        projectId: 7,
+      ).copyWith(created: now.subtract(const Duration(minutes: 1)));
+      mirrorServer();
+
+      await sender().drain();
+
+      expect(write.requests, ['delete 100']);
+      expect(write.serverTasks.containsKey(100), isFalse);
+      expect(await db.tasksDao.findRow(id), isNull);
       expect(await db.outboxDao.count(), 0);
     });
 
@@ -1588,4 +1696,21 @@ void main() {
       });
     }
   });
+}
+
+/// Calls [onUpdate] with the arguments of every update statement, after it
+/// ran.
+final class _OnStatement extends QueryInterceptor {
+  void Function(List<Object?> args)? onUpdate;
+
+  @override
+  Future<int> runUpdate(
+    QueryExecutor executor,
+    String statement,
+    List<Object?> args,
+  ) async {
+    final changed = await super.runUpdate(executor, statement, args);
+    onUpdate?.call(args);
+    return changed;
+  }
 }

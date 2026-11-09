@@ -13,12 +13,14 @@ import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/teams/presentation/team_page.dart';
 
 import '../../helpers/label_user_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
+import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 import '../accounts/accounts_harness.dart';
 import 'inbox_samples.dart';
@@ -339,8 +341,147 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(data.activity.markedRead, isEmpty);
+      expect(data.resolver.resolved, isEmpty);
       expect(find.text(en.inboxTaskWasDeleted), findsOneWidget);
       expect(find.text(en.inboxTaskNotLocal), findsNothing);
+    });
+
+    group('on a deleted task on a server with the bin', () {
+      late List<int> serverReads;
+      late Future<Task> Function() serverAnswer;
+
+      setUp(() {
+        serverReads = [];
+        data.activity.notifications = [deleted];
+        // A row this device still has: its sync has not seen the delete.
+        data.tasks.all = [
+          ...data.tasks.all,
+          sampleTask(id: 99, title: 'Old chore'),
+        ];
+      });
+
+      Future<void> tapDeleted(WidgetTester tester) async {
+        await pumpSignedInApp(
+          tester,
+          sync: data,
+          now: now,
+          connection: fullServer280(),
+          overrides: [
+            accountServerTaskReadProvider.overrideWith(
+              (ref, accountId) => (taskId) {
+                serverReads.add(taskId);
+                return serverAnswer();
+              },
+            ),
+          ],
+        );
+        await tester.tap(find.byType(InboxButton));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          inInbox(find.text(en.inboxTaskDeleted('Anna Example', 'Old chore'))),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      Finder inSheet(String text) => find.descendant(
+        of: find.byType(TaskDetailSheet),
+        matching: find.text(text),
+      );
+
+      testWidgets('asks the server, not the row here, and opens the task it '
+          'still has', (tester) async {
+        serverAnswer = () async => sampleTask(id: 99, title: 'Old chore');
+
+        await tapDeleted(tester);
+
+        expect(serverReads, [99]);
+        expect(data.resolver.resolved, isEmpty);
+        expect(inSheet('Old chore'), findsOneWidget);
+        expect(find.text(en.inboxTaskWasDeleted), findsNothing);
+      });
+
+      testWidgets('says the task is in the bin and offers Restore, which '
+          'brings it back and opens it', (tester) async {
+        serverAnswer = () async => throw const NotFound(
+          code: 4040,
+          trash: TrashDetails(id: 99, canRestore: true),
+        );
+        data.tasks.restorable[99] = sampleTask(id: 99, title: 'Old chore');
+
+        await tapDeleted(tester);
+
+        expect(serverReads, [99]);
+        expect(find.byType(TaskDetailSheet), findsNothing);
+        expect(find.text(en.taskOpenInTrash), findsOneWidget);
+        expect(find.text(en.inboxTaskWasDeleted), findsNothing);
+
+        await tester.tap(find.text(en.trashRestore));
+        await tester.pumpAndSettle();
+
+        expect(data.tasks.writes, ['restore 99']);
+        expect(inSheet('Old chore'), findsOneWidget);
+      });
+
+      testWidgets('says when its project is in the bin, without Restore', (
+        tester,
+      ) async {
+        serverAnswer = () async => throw const NotFound(
+          code: 3018,
+          trash: TrashDetails(id: 1, canRestore: true),
+        );
+
+        await tapDeleted(tester);
+
+        expect(find.text(en.taskOpenProjectInTrash), findsOneWidget);
+        expect(find.text(en.trashRestore), findsNothing);
+        expect(find.byType(TaskDetailSheet), findsNothing);
+      });
+
+      testWidgets("without the task's id says only that it was deleted", (
+        tester,
+      ) async {
+        data.activity.notifications = [
+          inboxNotification(
+            id: 2,
+            name: 'task.deleted',
+            created: DateTime(2026, 10, 2),
+            payload: {'doer': anna},
+          ),
+        ];
+        await pumpSignedInApp(
+          tester,
+          sync: data,
+          now: now,
+          connection: fullServer280(),
+        );
+        await tester.tap(find.byType(InboxButton));
+        await tester.pumpAndSettle();
+
+        await tester.tap(inInbox(find.byIcon(Icons.delete_outline)));
+        await tester.pumpAndSettle();
+
+        expect(data.resolver.resolved, isEmpty);
+        expect(find.text(en.inboxTaskWasDeleted), findsOneWidget);
+        expect(find.text(en.inboxTaskNotLocal), findsNothing);
+      });
+
+      for (final failure in [
+        const NetworkFailure(NetworkProblem.unreachable) as Exception,
+        const ServerFailure(502),
+        const NotFound(code: 4002),
+      ]) {
+        testWidgets('says only that the task was deleted when the server '
+            'cannot tell ($failure)', (tester) async {
+          serverAnswer = () async => throw failure;
+
+          await tapDeleted(tester);
+
+          expect(serverReads, [99]);
+          expect(find.text(en.inboxTaskWasDeleted), findsOneWidget);
+          expect(find.text(en.taskOpening), findsNothing);
+          expect(find.byType(TaskDetailSheet), findsNothing);
+        });
+      }
     });
 
     testWidgets('on a new project over the edit page with unsaved changes '

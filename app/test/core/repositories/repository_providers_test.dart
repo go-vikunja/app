@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/repositories/project_sharing_repository_prov
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
@@ -48,6 +49,8 @@ void main() {
     expect(container.read(bucketRepositoryProvider), isNull);
     expect(container.read(teamRepositoryProvider), isNull);
     expect(container.read(projectSharingRepositoryProvider), isNull);
+    expect(container.read(trashRepositoryProvider), isNull);
+    expect(container.read(activeServerHasTrashProvider), isFalse);
     final projects = container.listen(projectsProvider, (_, _) {});
     expect(projects.read(), const AsyncLoading<List<Project>>());
     final status = container.listen(syncStatusProvider, (_, _) {});
@@ -128,6 +131,36 @@ void main() {
         ),
         ['Alice project', 'loading', 'Bob project'],
       );
+    },
+  );
+
+  test(
+    "the trash is the active account's, and there only from 2.8 on",
+    () async {
+      final alice = await auth.seedAccount(
+        fullServer280(),
+        tokens: issueTokens(issuedAt: now),
+      );
+      final bob = await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
+        activate: false,
+      );
+      final aliceTrash = dataFor(alice.id).trash;
+      final bobTrash = dataFor(bob.id).trash;
+      await container.read(accountsProvider.future);
+      container
+        ..listen(trashRepositoryProvider, (_, _) {})
+        ..listen(activeServerHasTrashProvider, (_, _) {});
+
+      expect(container.read(trashRepositoryProvider), same(aliceTrash));
+      expect(container.read(activeServerHasTrashProvider), isTrue);
+
+      await container.read(accountRegistryProvider).setActive(bob.id);
+      await pumpEventQueue();
+
+      expect(container.read(trashRepositoryProvider), same(bobTrash));
+      expect(container.read(activeServerHasTrashProvider), isFalse);
     },
   );
 

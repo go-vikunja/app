@@ -15,30 +15,56 @@ import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 
 part 'outbox_dao.g.dart';
 
 enum OutboxState { pending, sending, failed }
 
+/// What [OutboxDao.unqueueDelete] found.
+enum DeleteUnqueue {
+  /// The delete was still here and is gone; the task shows again. It was
+  /// never sent, or the server refused it.
+  cancelled,
+
+  /// Like [cancelled], but an earlier attempt may have reached the server
+  /// without this device seeing the answer (a timeout, a 5xx, a kill in
+  /// flight), so the server may have the task in its trash.
+  cancelledAfterAttempt,
+
+  /// The delete is on its way to the server; nothing changed.
+  sending,
+
+  /// No delete of the task is queued.
+  notQueued,
+}
+
 /// The queue of task writes and the local side of each write: a queued
 /// change is applied to the task row in the same transaction, so the row
 /// shows it at once, and `pending_changes` keeps the merged unsent fields
 /// for the sync's upserts.
 ///
+/// A delete is an op like the others: it hides the row and waits behind
+/// the task's queued ops, which stay, so their changes reach the server
+/// first, and it can be taken back ([unqueueDelete]) until it is sent.
+///
 /// A task created here lives under a temporary negative id until its
 /// create is answered. While the create has not left the device an edit
-/// folds into it and a delete cancels it; once it may be on the server
-/// (in flight, or without an answer) later ops queue behind it under the
-/// temporary id, which [completeCreate] rewrites to the server id. A
-/// relation may name such a task as the other task too: the remap rewrites
-/// those references, and an op that still names a temporary id waits.
+/// folds into it; a delete queues behind it, and once the sender gets to
+/// the create both go without a request ([cancelDeletedCreate]). Once the
+/// create may be on the server (in flight, or without an answer) later ops
+/// queue behind it under the temporary id, which [completeCreate] rewrites
+/// to the server id. A relation may name such a task as the other task
+/// too: the remap rewrites those references, and an op that still names a
+/// temporary id waits.
 ///
 /// An upload is an op of its own per file, never merged or folded: it
 /// follows its task's id like any other op, but it never holds up the
 /// queue ([nextInLine] leaves uploads out; the sender takes them from
-/// [queuedUploads] when nothing else is ready) and a delete of the task drops
-/// the unsent ones. Its stored copy is the caller's to delete.
+/// [queuedUploads] when nothing else is ready) and waits while a delete of
+/// its task is queued: it goes with the delete, or after the delete was
+/// taken back. Its stored copy is the caller's to delete.
 @DriftAccessor(tables: [Outbox, Tasks, TaskIdRemaps, SyncState])
 final class OutboxDao extends DatabaseAccessor<AppDatabase>
     with _$OutboxDaoMixin {
@@ -193,47 +219,85 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     return true;
   });
 
-  /// Hides the row and queues the delete; an unsent update or upload op of
-  /// the task is dropped, because the delete makes it moot, and a create
-  /// that has not left the device is cancelled with the row. A temporary
-  /// id whose create was answered meanwhile is followed to the server id.
-  /// False when the task is unknown here or already queued for deletion.
-  Future<bool> queueDelete(int localOrServerId, {required DateTime now}) =>
+  /// Hides the row and queues the delete behind the task's other ops,
+  /// which stay with the row's `pending_changes`; the delete is sent once
+  /// they are. A temporary id whose create was answered meanwhile is
+  /// followed to the server id. A create that has not left the device goes
+  /// with the delete once the sender gets to it; one the server refused, or
+  /// a row without its create, is discarded at once with every op.
+  /// [TaskDeletion.none] when the task is unknown here or already queued
+  /// for deletion.
+  Future<TaskDeletion> queueDelete(
+    int localOrServerId, {
+    required DateTime now,
+  }) => transaction(() async {
+    final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
+    final row = await _row(taskId);
+    if (row == null || row.pendingDelete) return TaskDeletion.none;
+    if (taskId < 0) {
+      final create = await _createOf(taskId);
+      if (create == null || create.state == OutboxState.failed.name) {
+        await cancelCreate(taskId);
+        return TaskDeletion.discarded;
+      }
+    }
+    await _insert(
+      kind: OutboxOperationKind.deleteTask,
+      taskId: taskId,
+      payload: '{}',
+      now: now,
+    );
+    await (update(tasks)..where((t) => t.id.equals(taskId))).write(
+      const TasksCompanion(pendingDelete: Value(true)),
+    );
+    return TaskDeletion.queued;
+  });
+
+  /// Takes the task's queued delete back while it is pending or failed:
+  /// the op goes and the row shows again, with its `pending_changes`. One
+  /// on its way is left alone. Follows a temporary id whose create was
+  /// answered meanwhile.
+  ///
+  /// A pending delete that was tried before is
+  /// [DeleteUnqueue.cancelledAfterAttempt]: it is back in the queue after a
+  /// transient failure or a kill in flight ([resetSending]), so the server
+  /// may have acted on it. A failed one is [DeleteUnqueue.cancelled]: the
+  /// server answered its last attempt with a refusal.
+  Future<DeleteUnqueue> unqueueDelete(int localOrServerId) => transaction(
+    () async {
+      final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
+      final op = await _deleteOf(taskId);
+      if (op == null) return DeleteUnqueue.notQueued;
+      if (op.state == OutboxState.sending.name) return DeleteUnqueue.sending;
+      await (delete(outbox)..where((o) => o.id.equals(op.id))).go();
+      await clearPendingDelete(taskId);
+      return op.state == OutboxState.pending.name && op.lastAttemptAt != null
+          ? DeleteUnqueue.cancelledAfterAttempt
+          : DeleteUnqueue.cancelled;
+    },
+  );
+
+  /// The task's queued delete, whatever its state; null without one.
+  /// Follows a temporary id whose create was answered meanwhile.
+  Future<OutboxRow?> queuedDeleteOf(int localOrServerId) async {
+    final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
+    return await _deleteOf(taskId);
+  }
+
+  /// Drops the create of [createOperationId] with its row and every op of
+  /// the task, when it was never sent and a delete of the task is queued:
+  /// the server is never asked. False, with nothing changed, otherwise,
+  /// also when the delete was taken back first.
+  Future<bool> cancelDeletedCreate(String createOperationId) =>
       transaction(() async {
-        final taskId = await attachedDatabase.tasksDao.resolveId(
-          localOrServerId,
-        );
-        final row = await _row(taskId);
-        if (row == null || row.pendingDelete) return false;
-        if (taskId < 0) {
-          final create = await _createOf(taskId);
-          if (create == null || _neverReachedServer(create)) {
-            await cancelCreate(taskId);
-            return true;
-          }
+        final create = await find(createOperationId);
+        if (create == null ||
+            create.kind != OutboxOperationKind.createTask.name ||
+            create.sentAt != null ||
+            !await hasQueuedDelete(create.taskId)) {
+          return false;
         }
-        await (delete(outbox)..where(
-              (o) =>
-                  o.taskId.equals(taskId) &
-                  o.kind.isIn([
-                    OutboxOperationKind.updateTask.name,
-                    OutboxOperationKind.uploadAttachment.name,
-                  ]) &
-                  o.state.equals(OutboxState.sending.name).not(),
-            ))
-            .go();
-        await _insert(
-          kind: OutboxOperationKind.deleteTask,
-          taskId: taskId,
-          payload: '{}',
-          now: now,
-        );
-        await (update(tasks)..where((t) => t.id.equals(taskId))).write(
-          const TasksCompanion(
-            pendingDelete: Value(true),
-            pendingChanges: Value(null),
-          ),
-        );
+        await cancelCreate(create.taskId);
         return true;
       });
 
@@ -241,12 +305,14 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// its `next_attempt_at`; the sender waits for that itself. Uploads are
   /// not part of it (see [queuedUploads]). It may be `sending`, in another
   /// isolate or left by a run that died, and then nothing may overtake
-  /// it. An update or delete under a temporary id
-  /// waits for its create, which is ahead of it or failed; so does an
-  /// update whose relations name a task whose create has not been
-  /// answered, wherever that create is.
+  /// it. An update or delete under a temporary id waits for its create,
+  /// which is ahead of it or failed; so does an update whose relations name
+  /// a task whose create has not been answered, wherever that create is,
+  /// and every later op of its task, so a delete never goes before the
+  /// task's edits.
   Future<OutboxRow?> nextInLine() async {
     var after = 0;
+    final waiting = <int>{};
     while (true) {
       final op =
           await (select(outbox)
@@ -263,28 +329,33 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
                 ..orderBy([(o) => OrderingTerm.asc(o.sequence)])
                 ..limit(1))
               .getSingleOrNull();
-      if (op == null ||
-          op.state != OutboxState.pending.name ||
-          !await waitsForRelatedCreate(op)) {
+      if (op == null || op.state != OutboxState.pending.name) return op;
+      if (!waiting.contains(op.taskId) && !await waitsForRelatedCreate(op)) {
         return op;
       }
+      waiting.add(op.taskId);
       after = op.sequence;
     }
   }
 
   /// The uploads that may go once their backoff is over, oldest first:
-  /// not failed, and the task has a server id. Some may be `sending`, in a
-  /// run that died or another isolate.
-  Future<List<OutboxRow>> queuedUploads() =>
-      (select(outbox)
-            ..where(
-              (o) =>
-                  o.kind.equals(OutboxOperationKind.uploadAttachment.name) &
-                  o.state.equals(OutboxState.failed.name).not() &
-                  o.taskId.isBiggerThanValue(0),
-            )
-            ..orderBy([(o) => OrderingTerm.asc(o.sequence)]))
-          .get();
+  /// not failed, the task has a server id and no queued delete. Some may be
+  /// `sending`, in a run that died or another isolate.
+  Future<List<OutboxRow>> queuedUploads() {
+    final deleting = selectOnly(tasks)
+      ..addColumns([tasks.id])
+      ..where(tasks.pendingDelete.equals(true));
+    return (select(outbox)
+          ..where(
+            (o) =>
+                o.kind.equals(OutboxOperationKind.uploadAttachment.name) &
+                o.state.equals(OutboxState.failed.name).not() &
+                o.taskId.isBiggerThanValue(0) &
+                o.taskId.isNotInQuery(deleting),
+          )
+          ..orderBy([(o) => OrderingTerm.asc(o.sequence)]))
+        .get();
+  }
 
   /// Every stored copy a queued upload names, whatever its state.
   Future<Set<String>> uploadFiles() async {
@@ -448,8 +519,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// A rejected create takes the edit queued behind it while it was in
   /// flight, so that edit cannot revert a later one folded into the
   /// create; only done, labels and assignees stay queued behind it. A
-  /// delete behind it cancels it: the server never had the task, so both
-  /// go. A related task the server no longer has is forgotten (see
+  /// delete queued behind it cancels it: the server never had the task,
+  /// so both go. A related task the server no longer has is forgotten (see
   /// [forgetRelatedTasks]), in this op too, which stays failed to say why
   /// the edge is gone: the write client tried every other request of the
   /// op first, so it holds nothing back, and an edit merged into it later
@@ -484,7 +555,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         }
         final newer = await _newerUnsent(op);
         if (op.kind == OutboxOperationKind.createTask.name) {
-          if (newer?.kind == OutboxOperationKind.deleteTask.name) {
+          if (await hasQueuedDelete(op.taskId)) {
             await cancelCreate(op.taskId);
             return;
           }
@@ -665,6 +736,30 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     ),
   );
 
+  /// The task's failed ops the server refused because the task or its
+  /// project was gone or in its trash go back to the queue, as with
+  /// [retry], for when the task is back on the server. Returns how many.
+  Future<int> retryRefusedAsGone(int taskId) => transaction(() async {
+    final failed =
+        await (select(outbox)..where(
+              (o) =>
+                  o.taskId.equals(taskId) &
+                  o.state.equals(OutboxState.failed.name),
+            ))
+            .get();
+    var retried = 0;
+    for (final op in failed) {
+      final error = op.lastError;
+      if (error == null) continue;
+      if (decodeFailure(error)
+          case NotFound(taskGone: true) || NotFound(projectGone: true)) {
+        await retry(op.id);
+        retried++;
+      }
+    }
+    return retried;
+  });
+
   /// Ops left in `sending` for at least [olderThan] go back to pending: a
   /// killed run, a disposed sender or a failed local apply left them, as
   /// no live sender takes that long over one op. A younger one may still
@@ -778,7 +873,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     await (delete(tasks)..where((t) => t.id.equals(localId))).go();
     await attachedDatabase.tasksDao.upsertAll([created]);
     final pending = await pendingChangesFor(created.id);
-    final deleting = await _hasQueuedDelete(created.id);
+    final deleting = await hasQueuedDelete(created.id);
     if (pending != null || deleting) {
       var row = (await _row(created.id))!;
       if (pending != null) {
@@ -964,24 +1059,26 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
           .getSingleOrNull();
 
   /// A create the server was never asked for, or rejected: it still takes
-  /// edits and a delete cancels it. In flight, or sent without an answer,
-  /// the server may have it, so later ops queue behind it.
+  /// edits. In flight, or sent without an answer, the server may have it,
+  /// so later ops queue behind it.
   static bool _neverReachedServer(OutboxRow create) =>
       create.state == OutboxState.failed.name ||
       (create.state == OutboxState.pending.name && create.sentAt == null);
 
-  Future<bool> _hasQueuedDelete(int taskId) async {
-    final op =
-        await (select(outbox)
-              ..where(
-                (o) =>
-                    o.taskId.equals(taskId) &
-                    o.kind.equals(OutboxOperationKind.deleteTask.name),
-              )
-              ..limit(1))
-            .getSingleOrNull();
-    return op != null;
-  }
+  /// Whether a delete of the task is queued, whatever its state.
+  Future<bool> hasQueuedDelete(int taskId) async =>
+      await _deleteOf(taskId) != null;
+
+  Future<OutboxRow?> _deleteOf(int taskId) =>
+      (select(outbox)
+            ..where(
+              (o) =>
+                  o.taskId.equals(taskId) &
+                  o.kind.equals(OutboxOperationKind.deleteTask.name),
+            )
+            ..orderBy([(o) => OrderingTerm.asc(o.sequence)])
+            ..limit(1))
+          .getSingleOrNull();
 
   /// Back in the queue with the merged [payload] and a clean slate, like
   /// the first time.

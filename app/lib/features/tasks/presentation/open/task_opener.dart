@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
@@ -19,6 +20,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet
 import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_failure_text.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
 
 part 'task_opener.g.dart';
 
@@ -27,6 +30,8 @@ final _log = Logger('TaskOpener');
 /// Why a task could not be found or read, as the user reads it.
 String taskOpenFailureText(AppLocalizations l10n, Object error) =>
     switch (error) {
+      NotFound(code: 4040) => l10n.taskOpenInTrash,
+      NotFound(code: 3018) => l10n.taskOpenProjectInTrash,
       NotFound() => l10n.taskOpenNotFound,
       Forbidden() => l10n.taskOpenForbidden,
       NetworkFailure() => l10n.taskOpenOffline,
@@ -269,6 +274,27 @@ final class TaskOpener {
     await _resolveAndShow(accountId, reference, commentId: commentId);
   }
 
+  /// A task of the active account that someone deleted, e.g. from the
+  /// inbox on a server with the bin: read from the server even when this
+  /// device has it, as its row may not know of the delete yet. A task the
+  /// server has opens; one in the bin, or whose project is, says so as for
+  /// a link, with Restore where a link has it. When the server cannot be
+  /// reached, fails or no longer has the task, [gone] is shown.
+  Future<void> openDeletedInActiveAccount(
+    int taskId, {
+    required String Function(AppLocalizations l10n) gone,
+  }) async {
+    final accountId = _ref.read(activeAccountIdProvider);
+    if (accountId == null) return;
+    await _readAndShow(accountId, (opening) async {
+      await opening();
+      return await withAccount(
+        accountServerTaskReadProvider(accountId),
+        (read) => read(taskId),
+      );
+    }, gone: gone);
+  }
+
   /// A link into a task. [TaskDeepLink.account] picks a signed-in account;
   /// otherwise the active account when it has the task on this device,
   /// else the accounts that have it; when none has it, the active account
@@ -297,31 +323,105 @@ final class TaskOpener {
     String accountId,
     TaskReference reference, {
     int? commentId,
+  }) => _readAndShow(
+    accountId,
+    (opening) =>
+        withAccount(accountTaskResolverProvider(accountId), (resolver) async {
+          if (await resolver.findLocal(reference) == null) await opening();
+          return await resolver.resolve(reference);
+        }),
+    commentId: commentId,
+  );
+
+  /// Shows the task [read] finds, or why it cannot; [read] calls `opening`
+  /// before it goes online. With [gone], a network or server failure, or a
+  /// task the server does not know, shows [gone] instead.
+  Future<void> _readAndShow(
+    String accountId,
+    Future<Task> Function(Future<void> Function() opening) read, {
+    int? commentId,
+    String Function(AppLocalizations l10n)? gone,
   }) async {
     VoidCallback? closeOpening;
     final Task task;
     try {
-      task = await withAccount(accountTaskResolverProvider(accountId), (
-        resolver,
-      ) async {
-        if (await resolver.findLocal(reference) == null &&
-            isActive(accountId)) {
-          closeOpening = await _showOpening();
-        }
-        return await resolver.resolve(reference);
+      task = await read(() async {
+        if (isActive(accountId)) closeOpening = await _showOpening();
       });
     } on Object catch (error) {
       _log.info('Could not resolve a task: ${error.runtimeType}');
-      if (isActive(accountId)) {
-        await showMessage((l10n) => taskOpenFailureText(l10n, error));
-      } else {
+      if (!isActive(accountId)) {
         closeOpening?.call();
+      } else if (error
+          case NotFound(
+            code: 4040,
+            trash: TrashDetails(canRestore: true, :final id),
+          )
+          when _mayRestore(accountId)) {
+        await _offerRestore(accountId, id);
+      } else if (gone != null && _unknownOrGone(error)) {
+        await showMessage(gone);
+      } else {
+        await showMessage((l10n) => taskOpenFailureText(l10n, error));
       }
       return;
     }
     closeOpening?.call();
     if (!isActive(accountId)) return;
     await showTask(task, commentId: commentId);
+  }
+
+  static bool _unknownOrGone(Object error) => switch (error) {
+    NotFound(code: 4040 || 3018) => false,
+    NotFound() || NetworkFailure() || ServerFailure() => true,
+    _ => false,
+  };
+
+  /// Not for link-share guests, as on the web, nor where the account's
+  /// connection has no bin to restore from: a 2.8.0 server without a
+  /// reachable `/api/v2` still answers its codes.
+  bool _mayRestore(String accountId) =>
+      !_ref.read(accountIsGuestProvider(accountId)) &&
+      (_ref
+              .read(accountsProvider)
+              .value
+              ?.find(accountId)
+              ?.connection
+              .capabilities
+              .has(Capability.trash) ??
+          false);
+
+  /// "This task is in the bin" with Restore, which brings the task back
+  /// and opens it.
+  Future<void> _offerRestore(String accountId, int taskId) =>
+      showAfterFrame((context) {
+        final l10n = context.l10n;
+        showDeletedSnackBar(
+          ScaffoldMessenger.of(context),
+          text: l10n.taskOpenInTrash,
+          undoLabel: l10n.trashRestore,
+          persist: MediaQuery.accessibleNavigationOf(context),
+          onUndo: () => unawaited(_restore(accountId, taskId)),
+        );
+      });
+
+  Future<void> _restore(String accountId, int taskId) async {
+    unawaited(HapticFeedback.selectionClick());
+    final Task task;
+    try {
+      task = await withAccount(
+        accountTaskRepositoryProvider(accountId),
+        (repository) => repository.restoreTask(taskId),
+      );
+    } on Object catch (error) {
+      _log.info('Could not restore a task: ${error.runtimeType}');
+      unawaited(HapticFeedback.heavyImpact());
+      await showMessage(
+        (l10n) => trashFailureText(l10n, error, TrashAction.restoreTask),
+      );
+      return;
+    }
+    if (isActive(accountId)) await showTask(task);
   }
 
   /// Only the active account when it has the task, else the others that
@@ -402,6 +502,25 @@ Future<List<T>> _firstValue<T>(Stream<List<T>> stream) {
     },
   );
   return completer.future;
+}
+
+/// Reads a task from the server even when this device has it, and stores
+/// it the way a task read online for a link is stored. Throws the
+/// `VikunjaFailure` of the read, and `NotFound` code 4002 for a task this
+/// device is deleting.
+typedef ServerTaskRead = Future<Task> Function(int taskId);
+
+@riverpod
+ServerTaskRead accountServerTaskRead(Ref ref, String accountId) {
+  final db = ref.watch(appDatabaseProvider(accountId));
+  final client = ref.watch(readClientProvider(accountId));
+  return (taskId) async {
+    final task = await client.tasks.read(taskId);
+    await db.tasksDao.upsertAll([task]);
+    // A row queued for deletion stays hidden through the upsert.
+    return await db.tasksDao.find(task.id) ??
+        (throw const NotFound(code: 4002));
+  };
 }
 
 @Riverpod(keepAlive: true)

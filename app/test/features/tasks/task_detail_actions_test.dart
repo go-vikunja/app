@@ -2,10 +2,16 @@ import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
 
+import '../../helpers/auth_fakes.dart';
+import '../../helpers/guest_app.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
+import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 
 void main() {
@@ -21,9 +27,13 @@ void main() {
     ];
   });
 
-  Future<void> openDetail(WidgetTester tester, String title) async {
+  Future<void> openDetail(
+    WidgetTester tester,
+    String title, {
+    ServerConnection? connection,
+  }) async {
     usePhoneSurface(tester, logicalSize: const Size(360, 1800));
-    await pumpSignedInApp(tester, sync: data, now: now);
+    await pumpSignedInApp(tester, sync: data, now: now, connection: connection);
     await tester.tap(find.text(title));
     await tester.pumpAndSettle();
   }
@@ -220,5 +230,292 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text(de.taskDeleteDialogTitle), findsOneWidget);
     expect(find.text(de.taskDeleteDialogBody('Bare task')), findsOneWidget);
+  });
+
+  group('on a server with the bin', () {
+    Future<void> deleteFromSheet(WidgetTester tester, String title) async {
+      await openDetail(tester, title, connection: fullServer280());
+      await openMenu(tester, en.moreActions);
+      await tester.tap(find.text(en.taskDelete));
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> confirm(WidgetTester tester) async {
+      await tester.tap(find.text(en.taskDeleteDialogConfirm));
+      await tester.pumpAndSettle();
+    }
+
+    SnackBar snackBar(WidgetTester tester) =>
+        tester.widget(find.byType(SnackBar));
+
+    testWidgets('the dialog says the task moves to the bin; once deleted, '
+        'the snackbar says so and offers Undo', (tester) async {
+      await deleteFromSheet(tester, 'Bare task');
+
+      expect(find.text(en.taskDeleteDialogTitle), findsOneWidget);
+      expect(
+        find.text(en.taskDeleteDialogBodyTrash('Bare task')),
+        findsOneWidget,
+      );
+      expect(find.text(en.taskDeleteDialogBody('Bare task')), findsNothing);
+
+      await confirm(tester);
+
+      expect(find.byType(TaskDetailSheet), findsNothing);
+      expect(data.tasks.writes, ['delete 2']);
+      expect(find.text(en.taskMovedToTrash), findsOneWidget);
+      expect(find.text(en.taskDeleted), findsNothing);
+      expect(find.text(en.undo), findsOneWidget);
+      expect(find.text('Bare task'), findsNothing);
+    });
+
+    testWidgets('Undo restores the task and says so', (tester) async {
+      await deleteFromSheet(tester, 'Bare task');
+      await confirm(tester);
+
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.writes, ['delete 2', 'restore 2']);
+      expect(find.text(en.taskRestored), findsOneWidget);
+      expect(find.text(en.taskMovedToTrash), findsNothing);
+      expect(find.text('Bare task'), findsOneWidget);
+    });
+
+    testWidgets('an Undo that fails says why and leaves the task deleted', (
+      tester,
+    ) async {
+      data.tasks.restoreFailure = const DomainError(412, code: 3008);
+      await deleteFromSheet(tester, 'Bare task');
+      await confirm(tester);
+
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.writes, ['delete 2', 'restore 2']);
+      expect(find.text(en.trashRestoreArchived), findsOneWidget);
+      expect(find.text(en.taskRestored), findsNothing);
+      expect(find.text('Bare task'), findsNothing);
+    });
+
+    testWidgets('a task discarded at once is deleted, without Undo', (
+      tester,
+    ) async {
+      data.tasks.deletion = TaskDeletion.discarded;
+      await deleteFromSheet(tester, 'Bare task');
+      await confirm(tester);
+
+      expect(data.tasks.writes, ['delete 2']);
+      expect(find.text(en.taskDeleted), findsOneWidget);
+      expect(find.text(en.taskMovedToTrash), findsNothing);
+      expect(find.text(en.undo), findsNothing);
+    });
+
+    testWidgets('under a screen reader "Task deleted" without Undo still '
+        'goes, as nothing else would close it', (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(
+            accessibleNavigation: true,
+            supportsAnnounce: true,
+          );
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      data.tasks.deletion = TaskDeletion.discarded;
+      await deleteFromSheet(tester, 'Bare task');
+      await confirm(tester);
+
+      expect(find.text(en.taskDeleted), findsOneWidget);
+      expect(snackBar(tester).persist, isFalse);
+      await tester.pump(deletedSnackBarDuration + const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(find.text(en.taskDeleted), findsNothing);
+    });
+
+    testWidgets('a task that never reached the server is deleted, not moved '
+        'to the bin, and Undo still takes it back', (tester) async {
+      data.tasks.all = [...data.tasks.all, sampleTask(id: -3, title: 'Draft')];
+      await deleteFromSheet(tester, 'Draft');
+
+      expect(find.text(en.taskDeleteDialogBodyUnsent('Draft')), findsOneWidget);
+      expect(find.text(en.taskDeleteDialogBodyTrash('Draft')), findsNothing);
+      await confirm(tester);
+
+      expect(data.tasks.writes, ['delete -3']);
+      expect(find.text(en.taskDeleted), findsOneWidget);
+      expect(find.text(en.taskMovedToTrash), findsNothing);
+
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.writes, ['delete -3', 'restore -3']);
+      expect(find.text(en.taskRestored), findsOneWidget);
+      expect(find.text('Draft'), findsOneWidget);
+    });
+
+    testWidgets('the snackbar goes after 10 s', (tester) async {
+      await deleteFromSheet(tester, 'Bare task');
+      await confirm(tester);
+
+      expect(snackBar(tester).duration, deletedSnackBarDuration);
+      expect(snackBar(tester).persist, isFalse);
+      await tester.pump(const Duration(seconds: 9));
+      expect(find.text(en.undo), findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+      expect(find.text(en.taskMovedToTrash), findsNothing);
+    });
+
+    testWidgets('under a screen reader the snackbar waits for the user', (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(
+            accessibleNavigation: true,
+            supportsAnnounce: true,
+          );
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await deleteFromSheet(tester, 'Bare task');
+      await confirm(tester);
+
+      await tester.pump(deletedSnackBarDuration * 3);
+      await tester.pumpAndSettle();
+
+      expect(snackBar(tester).persist, isTrue);
+      expect(find.text(en.taskMovedToTrash), findsOneWidget);
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+      expect(data.tasks.writes, ['delete 2', 'restore 2']);
+    });
+
+    testWidgets('a write guest is not pointed to the bin page and gets Undo', (
+      tester,
+    ) async {
+      usePhoneSurface(tester, logicalSize: const Size(360, 1800));
+      data.projects.all = [];
+      data.tasks.all = [
+        sampleTask(id: 2, title: 'Bare task', projectId: guestProjectId),
+      ];
+      await pumpGuestApp(
+        tester,
+        auth: AuthFakes(),
+        data: data,
+        permission: Permission.write,
+        connection: fullServer280(),
+      );
+      await tester.tap(find.text('Bare task'));
+      await tester.pumpAndSettle();
+      await openMenu(tester, en.moreActions);
+      await tester.tap(find.text(en.taskDelete));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(en.taskDeleteDialogBodyTrashGuest('Bare task')),
+        findsOneWidget,
+      );
+      expect(
+        find.text(en.taskDeleteDialogBodyTrash('Bare task')),
+        findsNothing,
+      );
+
+      await confirm(tester);
+      expect(find.text(en.taskMovedToTrash), findsOneWidget);
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+      expect(data.tasks.writes, ['delete 2', 'restore 2']);
+      expect(find.text(en.taskRestored), findsOneWidget);
+    });
+
+    testWidgets('a write guest is told the same of a task that never '
+        'reached the server', (tester) async {
+      usePhoneSurface(tester, logicalSize: const Size(360, 1800));
+      data.projects.all = [];
+      data.tasks.all = [
+        sampleTask(id: -3, title: 'Draft', projectId: guestProjectId),
+      ];
+      await pumpGuestApp(
+        tester,
+        auth: AuthFakes(),
+        data: data,
+        permission: Permission.write,
+        connection: fullServer280(),
+      );
+      await tester.tap(find.text('Draft'));
+      await tester.pumpAndSettle();
+      await openMenu(tester, en.moreActions);
+      await tester.tap(find.text(en.taskDelete));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.taskDeleteDialogBodyUnsent('Draft')), findsOneWidget);
+      expect(
+        find.text(en.taskDeleteDialogBodyTrashGuest('Draft')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('is in German', (tester) async {
+      useLocale(tester, const Locale('de'));
+      await openDetail(tester, 'Bare task', connection: fullServer280());
+      await openMenu(tester, de.moreActions);
+      await tester.tap(find.text(de.taskDelete));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(de.taskDeleteDialogBodyTrash('Bare task')),
+        findsOneWidget,
+      );
+      await tester.tap(find.text(de.taskDeleteDialogConfirm));
+      await tester.pumpAndSettle();
+      expect(find.text(de.taskMovedToTrash), findsOneWidget);
+      expect(find.text(de.undo), findsOneWidget);
+    });
+  });
+
+  testWidgets('without the bin a delete has no Undo', (tester) async {
+    await openDetail(tester, 'Bare task');
+    await openMenu(tester, en.moreActions);
+    await tester.tap(find.text(en.taskDelete));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.taskDeleteDialogConfirm));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.taskDeleted), findsOneWidget);
+    expect(find.text(en.undo), findsNothing);
+  });
+
+  testWidgets('without the bin "Task deleted" is a plain snackbar: it waits '
+      'for one still up and goes after the usual 4 s, also under a screen '
+      'reader', (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(
+          accessibleNavigation: true,
+          supportsAnnounce: true,
+        );
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await openDetail(tester, 'Bare task');
+    await openMenu(tester, en.moreActions);
+    await tester.tap(find.text(en.taskDelete));
+    await tester.pumpAndSettle();
+    tester
+        .state<ScaffoldMessengerState>(find.byType(ScaffoldMessenger).first)
+        .showSnackBar(const SnackBar(content: Text('Earlier')));
+    await tester.tap(find.text(en.taskDeleteDialogConfirm));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Earlier'), findsOneWidget);
+    expect(find.text(en.taskDeleted), findsNothing);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.taskDeleted), findsOneWidget);
+    final shown = tester.widget<SnackBar>(find.byType(SnackBar));
+    expect(shown.duration, const SnackBar(content: SizedBox()).duration);
+    expect(shown.persist, isFalse);
+    expect(shown.action, isNull);
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+    expect(find.text(en.taskDeleted), findsNothing);
   });
 }

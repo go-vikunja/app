@@ -1,4 +1,5 @@
 import 'package:meta/meta.dart';
+import 'package:vikunja_domain/src/trash/trash_details.dart';
 
 /// Why an API call failed, normalized across the v1 `{code, message}`, v2
 /// problem+json and plain Echo error shapes. `code` is Vikunja's numeric
@@ -142,7 +143,11 @@ final class Forbidden extends VikunjaFailure {
 /// A 404. Without a Vikunja [code] the route itself is absent (older server,
 /// disabled feature or licence gate) rather than a missing entity.
 final class NotFound extends VikunjaFailure {
-  const new({super.code, super.message});
+  const new({super.code, super.message, this.trash});
+
+  /// What the server tells about the trashed task (4040) or project (3018)
+  /// when its answer carries details; null otherwise.
+  final TrashDetails? trash;
 
   bool get routeAbsent => code == null;
 

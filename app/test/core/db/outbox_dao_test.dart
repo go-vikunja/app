@@ -6,6 +6,7 @@ import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
+import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
@@ -190,18 +191,22 @@ void main() {
   });
 
   group('queueing a delete', () {
-    test('hides the row and drops the unsent update', () async {
+    test('hides the row and keeps the queued update ahead of it, with its '
+        'pending changes', () async {
       await queue(1, done);
 
-      expect(await db.outboxDao.queueDelete(1, now: now), isTrue);
+      expect(await db.outboxDao.queueDelete(1, now: now), TaskDeletion.queued);
 
       expect(await db.tasksDao.find(1), isNull);
       final row = (await db.tasksDao.findRow(1))!;
       expect(row.pendingDelete, isTrue);
-      expect(row.pendingChanges, isNull);
-      final op = (await ops()).single;
-      expect(op.kind, OutboxOperationKind.deleteTask.name);
-      expect(op.taskId, 1);
+      expect(row.done, isTrue);
+      expect(await pendingOf(1), done);
+      final all = await ops();
+      expect(all.map((op) => op.kind), ['updateTask', 'deleteTask']);
+      expect(all.map((op) => op.taskId), [1, 1]);
+      expect(decodeTaskChanges(all.first.payload), done);
+      expect((await db.outboxDao.nextInLine())!.kind, 'updateTask');
       expect((await db.tasksDao.loadOpenTasks()).map((t) => t.id), [2]);
       expect(await db.tasksDao.idsInProject(7), [2]);
       expect(await db.tasksDao.findAll([1, 2]), hasLength(1));
@@ -211,12 +216,28 @@ void main() {
       expect(await db.tasksDao.countNotInProjects([8]), 2);
     });
 
-    test('is final: a second delete and later edits are refused', () async {
+    test('a second delete changes nothing', () async {
+      expect(await db.outboxDao.queueDelete(1, now: now), TaskDeletion.queued);
+
+      expect(await db.outboxDao.queueDelete(1, now: now), TaskDeletion.none);
+      expect(await db.outboxDao.queueDelete(99, now: now), TaskDeletion.none);
+      expect(await ops(), hasLength(1));
+    });
+
+    test('edits are refused while the delete is queued and taken again once '
+        'it was taken back', () async {
       await db.outboxDao.queueDelete(1, now: now);
 
-      expect(await db.outboxDao.queueDelete(1, now: now), isFalse);
       expect(await queue(1, favorite), isFalse);
+      expect(await db.outboxDao.takesUploads(1), isFalse);
       expect(await ops(), hasLength(1));
+
+      expect(await db.outboxDao.unqueueDelete(1), DeleteUnqueue.cancelled);
+
+      expect(await queue(1, favorite), isTrue);
+      expect(await db.outboxDao.takesUploads(1), isTrue);
+      expect((await ops()).single.kind, 'updateTask');
+      expect((await db.tasksDao.find(1))!.isFavorite, isTrue);
     });
 
     test('keeps an update that is being sent', () async {
@@ -229,6 +250,132 @@ void main() {
       expect(all.map((op) => op.kind), ['updateTask', 'deleteTask']);
       expect(all.map((op) => op.state), ['sending', 'pending']);
     });
+  });
+
+  group('taking a delete back', () {
+    test(
+      'a queued delete goes; the row shows again with its queued update',
+      () async {
+        await queue(1, done);
+        await db.outboxDao.queueDelete(1, now: now);
+
+        expect(await db.outboxDao.unqueueDelete(1), DeleteUnqueue.cancelled);
+
+        final task = (await db.tasksDao.find(1))!;
+        expect(task.done, isTrue);
+        expect((await db.tasksDao.findRow(1))!.pendingDelete, isFalse);
+        expect(await pendingOf(1), done);
+        final op = (await ops()).single;
+        expect(op.kind, 'updateTask');
+        expect(decodeTaskChanges(op.payload), done);
+        expect(await db.outboxDao.queuedDeleteOf(1), isNull);
+        expect(await db.outboxDao.hasQueuedDelete(1), isFalse);
+      },
+    );
+
+    test('a delete the server refused is taken back too', () async {
+      await db.outboxDao.queueDelete(1, now: now);
+      final delete = (await ops()).single;
+      await db.outboxDao.markSending(delete.id, at: now);
+      await db.outboxDao.markFailed(delete.id, const Forbidden());
+      expect(await db.outboxDao.loadProblems(), hasLength(1));
+
+      expect(await db.outboxDao.unqueueDelete(1), DeleteUnqueue.cancelled);
+
+      expect(await ops(), isEmpty);
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      expect((await db.tasksDao.find(1))!.title, 'One');
+    });
+
+    test('a delete back in the queue after an attempt that may have '
+        'reached the server says so', () async {
+      await db.outboxDao.queueDelete(1, now: now);
+      final delete = (await ops()).single;
+      await db.outboxDao.markSending(delete.id, at: now);
+      await db.outboxDao.scheduleRetry(
+        delete.id,
+        attempts: 1,
+        failure: const NetworkFailure(NetworkProblem.timeout),
+        nextAttemptAt: later,
+      );
+      expect((await ops()).single.sentAt, isNull);
+
+      expect(
+        await db.outboxDao.unqueueDelete(1),
+        DeleteUnqueue.cancelledAfterAttempt,
+      );
+
+      expect(await ops(), isEmpty);
+      expect((await db.tasksDao.find(1))!.title, 'One');
+    });
+
+    test('so does a delete a killed app left in flight, once reset', () async {
+      await db.outboxDao.queueDelete(1, now: now);
+      final delete = (await ops()).single;
+      await db.outboxDao.markSending(delete.id, at: now);
+      expect(await db.outboxDao.resetSending(now: later), 1);
+      final reset = (await ops()).single;
+      expect(reset.state, OutboxState.pending.name);
+      expect(reset.attempts, 0);
+      expect(reset.sentAt, isNull);
+      expect(reset.lastError, isNull);
+
+      expect(
+        await db.outboxDao.unqueueDelete(1),
+        DeleteUnqueue.cancelledAfterAttempt,
+      );
+      expect((await db.tasksDao.find(1))!.title, 'One');
+    });
+
+    test('a delete on its way is left alone', () async {
+      await db.outboxDao.queueDelete(1, now: now);
+      final delete = (await ops()).single;
+      await db.outboxDao.markSending(delete.id, at: now);
+
+      expect(await db.outboxDao.unqueueDelete(1), DeleteUnqueue.sending);
+
+      expect((await db.outboxDao.queuedDeleteOf(1))!.id, delete.id);
+      expect((await ops()).single.state, OutboxState.sending.name);
+      expect(await db.tasksDao.find(1), isNull);
+    });
+
+    test('without a queued delete there is nothing to take back', () async {
+      await queue(1, done);
+
+      expect(await db.outboxDao.unqueueDelete(1), DeleteUnqueue.notQueued);
+      expect(await db.outboxDao.unqueueDelete(99), DeleteUnqueue.notQueued);
+
+      expect((await ops()).single.kind, 'updateTask');
+      expect(await db.outboxDao.queuedDeleteOf(1), isNull);
+    });
+
+    test(
+      'follows a temporary id whose create was answered meanwhile',
+      () async {
+        final id = await db.outboxDao.queueCreate(
+          const NewTask(projectId: 7, title: 'New'),
+          now: now,
+        );
+        final create = (await ops()).single;
+        await db.outboxDao.markSending(create.id, at: now);
+        expect(
+          await db.outboxDao.queueDelete(id, now: now),
+          TaskDeletion.queued,
+        );
+        await db.outboxDao.completeCreate(
+          create.id,
+          sampleTask(id: 50, title: 'New', projectId: 7),
+          at: later,
+        );
+        expect((await db.outboxDao.queuedDeleteOf(id))!.taskId, 50);
+        expect(await db.tasksDao.find(50), isNull);
+
+        expect(await db.outboxDao.unqueueDelete(id), DeleteUnqueue.cancelled);
+
+        expect(await ops(), isEmpty);
+        expect((await db.tasksDao.find(50))!.title, 'New');
+      },
+    );
   });
 
   group('the queue', () {
@@ -386,6 +533,48 @@ void main() {
   });
 
   group('problems', () {
+    test('ops refused because the task or its project was gone or in the '
+        'trash go back to the queue for that task only', () async {
+      await queue(1, done);
+      await queue(2, favorite);
+      await queue(3, favorite);
+      final [one, two, three] = await ops();
+      await db.outboxDao.markFailed(one.id, const NotFound(code: 4040));
+      await db.outboxDao.markFailed(two.id, const NotFound(code: 3018));
+      await db.outboxDao.markFailed(three.id, const Forbidden(code: 7003));
+
+      expect(await db.outboxDao.retryRefusedAsGone(1), 1);
+      expect(await db.outboxDao.retryRefusedAsGone(3), 0);
+
+      final [backOne, stillTwo, stillThree] = await ops();
+      expect(backOne.state, OutboxState.pending.name);
+      expect(backOne.attempts, 0);
+      expect(backOne.lastError, isNull);
+      expect(stillTwo.state, OutboxState.failed.name);
+      expect(stillThree.state, OutboxState.failed.name);
+
+      expect(await db.outboxDao.retryRefusedAsGone(2), 1);
+      expect((await ops())[1].state, OutboxState.pending.name);
+    });
+
+    test('an edge to another task that is gone is not the task gone', () async {
+      await queue(
+        1,
+        TaskChanges(
+          relations: RelationChange(
+            added: {const TaskRelationRef(TaskRelationKind.related, 2)},
+          ),
+        ),
+      );
+      await db.outboxDao.markFailed(
+        (await ops()).single.id,
+        const RelatedTaskMissing(2, code: 4040),
+      );
+
+      expect(await db.outboxDao.retryRefusedAsGone(1), 0);
+      expect((await ops()).single.state, OutboxState.failed.name);
+    });
+
     test('failed ops are listed with the task title, oldest first', () async {
       await queue(1, done);
       await queue(2, done);
@@ -563,19 +752,31 @@ void main() {
       },
     );
 
-    test('a delete before the send cancels the create and the row', () async {
+    test('a delete before the send queues behind the create', () async {
       final id = await create();
       await queue(id, const TaskChanges(done: true));
 
-      expect(await db.outboxDao.queueDelete(id, now: now), isTrue);
+      expect(await db.outboxDao.queueDelete(id, now: now), TaskDeletion.queued);
 
-      expect(await db.tasksDao.findRow(id), isNull);
-      expect(await db.outboxDao.count(), 0);
-      expect(await db.outboxDao.queueDelete(id, now: now), isFalse);
+      expect(await db.tasksDao.find(id), isNull);
+      expect((await db.tasksDao.findRow(id))!.pendingDelete, isTrue);
+      final all = await ops();
+      expect(all.map((op) => op.kind), [
+        'createTask',
+        'updateTask',
+        'deleteTask',
+      ]);
+      expect(all.map((op) => op.taskId), [id, id, id]);
+      expect(await db.outboxDao.queueDelete(id, now: now), TaskDeletion.none);
+
+      expect(await db.outboxDao.unqueueDelete(id), DeleteUnqueue.cancelled);
+
+      expect((await db.tasksDao.find(id))!.done, isTrue);
+      expect((await ops()).map((op) => op.kind), ['createTask', 'updateTask']);
     });
 
     test('a rejected create takes the edit and goes back to pending; a delete '
-        'cancels it', () async {
+        'discards it', () async {
       final id = await create();
       final op = await createOp(id);
       await db.outboxDao.markSending(op.id, at: now);
@@ -592,11 +793,36 @@ void main() {
       expect(await db.outboxDao.loadProblems(), isEmpty);
 
       await db.outboxDao.markFailed(op.id, const DomainError(412, code: 3008));
-      await db.outboxDao.queueDelete(id, now: now);
+
+      expect(
+        await db.outboxDao.queueDelete(id, now: now),
+        TaskDeletion.discarded,
+      );
 
       expect(await db.outboxDao.count(), 0);
       expect(await db.tasksDao.findRow(id), isNull);
+      expect(await db.outboxDao.unqueueDelete(id), DeleteUnqueue.notQueued);
     });
+
+    test(
+      'a create refused with a delete queued behind it goes with the row',
+      () async {
+        final id = await create();
+        final op = await createOp(id);
+        await db.outboxDao.markSending(op.id, at: now);
+        await db.outboxDao.markUncertain(op.id, sentAt: now);
+        await queue(id, done);
+        await db.outboxDao.queueDelete(id, now: now);
+
+        await db.outboxDao.markFailed(
+          op.id,
+          const DomainError(412, code: 3008),
+        );
+
+        expect(await ops(), isEmpty);
+        expect(await db.tasksDao.findRow(id), isNull);
+      },
+    );
 
     test('while the create is in flight, edits and a delete queue behind it '
         'under the temporary id', () async {
@@ -606,14 +832,82 @@ void main() {
 
       await queue(id, const TaskChanges(title: 'Edited in flight'));
       await queue(id, favorite);
-      expect(await db.outboxDao.queueDelete(id, now: now), isTrue);
+      expect(await db.outboxDao.queueDelete(id, now: now), TaskDeletion.queued);
 
       final all = await ops();
-      expect(all.map((op) => op.kind), ['createTask', 'deleteTask']);
-      expect(all.map((op) => op.taskId), [id, id]);
+      expect(all.map((op) => op.kind), [
+        'createTask',
+        'updateTask',
+        'deleteTask',
+      ]);
+      expect(all.map((op) => op.taskId), [id, id, id]);
       expect(decodeNewTask(all.first.payload), draft);
+      expect(
+        decodeTaskChanges(all[1].payload),
+        const TaskChanges(title: 'Edited in flight', isFavorite: true),
+      );
       expect((await db.tasksDao.findRow(id))!.pendingDelete, isTrue);
       expect(await db.tasksDao.find(id), isNull);
+    });
+
+    group('cancelDeletedCreate', () {
+      test(
+        'drops a create never sent with its queued delete and the row',
+        () async {
+          final id = await create();
+          await queue(id, done);
+          await db.outboxDao.queueDelete(id, now: now);
+          final op = await createOp(id);
+          await db.outboxDao.claim(op.id, at: now);
+
+          expect(await db.outboxDao.cancelDeletedCreate(op.id), isTrue);
+
+          expect(await ops(), isEmpty);
+          expect(await db.tasksDao.findRow(id), isNull);
+        },
+      );
+
+      test('leaves a create alone that may have reached the server', () async {
+        final id = await create();
+        final op = await createOp(id);
+        await db.outboxDao.markUncertain(op.id, sentAt: now);
+        await db.outboxDao.queueDelete(id, now: now);
+
+        expect(await db.outboxDao.cancelDeletedCreate(op.id), isFalse);
+
+        expect((await ops()).map((op) => op.kind), [
+          'createTask',
+          'deleteTask',
+        ]);
+      });
+
+      test('leaves a create alone whose delete was taken back first', () async {
+        final id = await create();
+        await db.outboxDao.queueDelete(id, now: now);
+        final op = await createOp(id);
+        await db.outboxDao.claim(op.id, at: now);
+        await db.outboxDao.unqueueDelete(id);
+
+        expect(await db.outboxDao.cancelDeletedCreate(op.id), isFalse);
+
+        expect((await ops()).single.id, op.id);
+        expect((await db.tasksDao.find(id))!.title, 'Buy milk');
+      });
+
+      test('leaves a create alone without a delete, and an op that is no '
+          'create', () async {
+        final id = await create();
+        final op = await createOp(id);
+        await queue(1, done);
+        await db.outboxDao.queueDelete(1, now: now);
+        final update = (await ops()).firstWhere((op) => op.taskId == 1);
+
+        expect(await db.outboxDao.cancelDeletedCreate(op.id), isFalse);
+        expect(await db.outboxDao.cancelDeletedCreate(update.id), isFalse);
+        expect(await db.outboxDao.cancelDeletedCreate('gone'), isFalse);
+
+        expect(await ops(), hasLength(3));
+      });
     });
 
     test('an unanswered create keeps its payload: the lookup needs the title '
@@ -768,10 +1062,10 @@ void main() {
       expect((await db.tasksDao.find(50))!.done, isTrue);
       expect(await pendingOf(50), done);
 
-      expect(await db.outboxDao.queueDelete(id, now: now), isTrue);
+      expect(await db.outboxDao.queueDelete(id, now: now), TaskDeletion.queued);
 
-      expect((await ops()).single.kind, 'deleteTask');
-      expect((await ops()).single.taskId, 50);
+      expect((await ops()).map((op) => op.kind), ['updateTask', 'deleteTask']);
+      expect((await ops()).map((op) => op.taskId), [50, 50]);
       expect((await db.tasksDao.findRow(50))!.pendingDelete, isTrue);
       expect(await queue(id, done), isFalse);
     });
@@ -1138,13 +1432,13 @@ void main() {
       );
     });
 
-    test('are dropped with the task when it is deleted', () async {
+    test('stay queued ahead of a delete of the task', () async {
       await queue(1, toDoing);
 
       await db.outboxDao.queueDelete(1, now: now);
 
-      expect((await ops()).single.kind, 'deleteTask');
-      expect(await pendingOf(1), isNull);
+      expect((await ops()).map((op) => op.kind), ['updateTask', 'deleteTask']);
+      expect(await pendingOf(1), toDoing);
     });
   });
 
