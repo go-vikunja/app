@@ -1,14 +1,16 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/filters/search_index.dart';
 
 /// [users] whose username or name contains the trimmed [query], ignoring
-/// case; how the offline fallback filters the people this device knows.
+/// case and accents; how the offline fallback filters the people this
+/// device knows.
 List<User> filterUsers(List<User> users, String query) {
-  final needle = query.trim().toLowerCase();
+  final needle = foldForSearch(query.trim());
   if (needle.isEmpty) return users;
   return [
     for (final user in users)
-      if (user.username.toLowerCase().contains(needle) ||
-          user.name.toLowerCase().contains(needle))
+      if (foldForSearch(user.username).contains(needle) ||
+          foldForSearch(user.name).contains(needle))
         user,
   ];
 }

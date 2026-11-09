@@ -415,7 +415,7 @@ void main() {
           );
 
       expect(labels.created, const [
-        NewLabel(title: 'neu', hexColor: 'ffbe0b'),
+        NewLabel(title: 'neu', hexColor: 'e69f00'),
       ]);
       expect(tasks.creates, [
         NewTask(

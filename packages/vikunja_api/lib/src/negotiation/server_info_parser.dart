@@ -63,11 +63,6 @@ ServerInfo parseServerInfo(Map<String, Object?> json) {
   );
 }
 
-// The texts 2.8.0 gives the links of the deprecated `imprint_url` and
-// `privacy_policy_url`, and the ones its config docs ask admins to reuse.
-const _imprintText = 'Imprint';
-const _privacyPolicyText = 'Privacy Policy';
-
 LegalLinks _legalLinks(Map<String, Object?> legal) {
   final imprint = _webUri(legal['imprint_url']);
   final privacy = _webUri(legal['privacy_policy_url']);
@@ -76,19 +71,22 @@ LegalLinks _legalLinks(Map<String, Object?> legal) {
       for (final link in listed.map(_map))
         (_string(link['text']).trim(), _webUri(link['url'])),
     ],
-    _ => [(_imprintText, imprint), (_privacyPolicyText, privacy)],
+    _ => [
+      (LegalLink.imprintText, imprint),
+      (LegalLink.privacyPolicyText, privacy),
+    ],
   };
-  final seen = <Uri>{};
-  final links = [
+  // A set drops only an exact repeat: the server sends one address under two
+  // texts, like a keyed "Impressum" beside the imprint, and the web shows both.
+  final links = {
     for (final (text, url) in candidates)
-      if (text.isNotEmpty && url != null && seen.add(url))
-        LegalLink(text: text, url: url),
-  ];
+      if (text.isNotEmpty && url != null) LegalLink(text: text, url: url),
+  }.toList();
   Uri? named(String text) =>
       links.where((link) => link.text == text).firstOrNull?.url;
   return LegalLinks(
-    imprintUrl: imprint ?? named(_imprintText),
-    privacyPolicyUrl: privacy ?? named(_privacyPolicyText),
+    imprintUrl: imprint ?? named(LegalLink.imprintText),
+    privacyPolicyUrl: privacy ?? named(LegalLink.privacyPolicyText),
     links: List.unmodifiable(links),
   );
 }

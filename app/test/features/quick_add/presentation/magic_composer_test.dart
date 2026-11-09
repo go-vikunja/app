@@ -274,6 +274,21 @@ void main() {
       expect(suggestion('Work'), findsOneWidget);
     });
 
+    testWidgets('labels, projects and people ignore accents', (tester) async {
+      await harness.open(tester);
+
+      await typeLine(tester, 'Pack *RÖAD');
+      await tester.pump();
+      expect(suggestion('Road trip'), findsOneWidget);
+      await typeLine(tester, 'Report +wörk');
+      expect(suggestion('Work'), findsOneWidget);
+      await typeLine(tester, 'Call @sàm');
+      await tester.pump();
+      expect(suggestion('Sam Example'), findsOneWidget);
+      await tester.pump(MagicSuggestions.debounce);
+      await tester.pump();
+    });
+
     testWidgets('projects of the same title show their parents and complete '
         'what tells them apart', (tester) async {
       harness.data.projects.all = [

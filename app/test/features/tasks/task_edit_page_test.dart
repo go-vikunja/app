@@ -8,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
+import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
@@ -407,15 +408,15 @@ void main() {
       await openEditPage(tester, 2);
 
       await tester.tap(
-        find.bySemanticsLabel(en.taskEditColourSemantics('#1973ff')),
+        find.bySemanticsLabel(en.taskEditColourSemantics('#0072b2')),
       );
       await tester.pumpAndSettle();
       await save(tester);
       expect(
         data.tasks.updates.single.$2,
-        const TaskChanges(hexColor: '1973ff'),
+        const TaskChanges(hexColor: '0072b2'),
       );
-      expect(data.tasks.find(2)?.hexColor, '1973ff');
+      expect(data.tasks.find(2)?.hexColor, '0072b2');
 
       unawaited(routerOf(tester).push(AppRoutes.taskEdit(2)));
       await tester.pumpAndSettle();
@@ -425,18 +426,43 @@ void main() {
       expect(data.tasks.updates.last.$2, const TaskChanges(hexColor: ''));
     });
 
-    testWidgets('a custom colour of the task is offered next to the defaults', (
-      tester,
-    ) async {
+    testWidgets('a custom colour of the task is offered next to the '
+        'Okabe–Ito colours', (tester) async {
       data.tasks.all = [
         sampleTask(id: 5, title: 'Teal').copyWith(hexColor: '008080'),
       ];
       await openEditPage(tester, 5);
 
+      for (final hex in [...okabeItoColors, '008080']) {
+        expect(
+          find.bySemanticsLabel(en.taskEditColourSemantics('#$hex')),
+          findsOneWidget,
+        );
+      }
       expect(
-        find.bySemanticsLabel(en.taskEditColourSemantics('#008080')),
-        findsOneWidget,
+        find.bySemanticsLabel(en.taskEditColourSemantics('#1973ff')),
+        findsNothing,
       );
+      expect(saveEnabled(tester), isFalse);
+    });
+
+    testWidgets('a custom colour of the task can be chosen again after '
+        'trying another', (tester) async {
+      data.tasks.all = [
+        sampleTask(id: 5, title: 'Teal').copyWith(hexColor: '008080'),
+      ];
+      await openEditPage(tester, 5);
+
+      await tester.tap(
+        find.bySemanticsLabel(en.taskEditColourSemantics('#e69f00')),
+      );
+      await tester.pumpAndSettle();
+      expect(saveEnabled(tester), isTrue);
+      await tester.tap(
+        find.bySemanticsLabel(en.taskEditColourSemantics('#008080')),
+      );
+      await tester.pumpAndSettle();
+
       expect(saveEnabled(tester), isFalse);
     });
 

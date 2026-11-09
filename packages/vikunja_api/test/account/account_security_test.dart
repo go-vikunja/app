@@ -231,6 +231,37 @@ void main() {
         expect(groups.offers('user', 'read'), isFalse);
       });
 
+      test(
+        '/routes of 2.8.0: the bin permissions in tasks and projects',
+        () async {
+          final dio = fakeDio({
+            '$base/routes': _captured('${version}_routes', server: '2.8.0'),
+          });
+
+          final groups = await _port(dio, version).apiPermissions();
+
+          expect(groups.groups, hasLength(25));
+          expect(groups.permissionCount, 127);
+          for (final group in ['tasks', 'projects']) {
+            for (final permission in [
+              'deleted',
+              'deleted_count',
+              'deleted_delete',
+              'permanent',
+              'restore',
+            ]) {
+              expect(
+                groups.offers(group, permission),
+                isTrue,
+                reason: '$group $permission',
+              );
+            }
+          }
+          expect(groups.offers('projects', 'count'), isTrue);
+          expect(groups.offers('tasks', 'count'), isFalse);
+        },
+      );
+
       final createMethod = version == 'v2' ? 'POST' : 'PUT';
 
       test('create: $createMethod with the title, the permissions and the '

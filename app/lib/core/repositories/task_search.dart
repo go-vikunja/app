@@ -7,11 +7,12 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 abstract interface class TaskSearch {
   /// What [query] finds, again whenever the local data changes; an empty
   /// or blank query finds nothing, once the search is ready. Tasks match
-  /// by a substring of the title or of the description's text ignoring
-  /// case, by `#12` (index 12 in any project) and by an identifier like
-  /// `PROJ-12`; projects, saved filters and labels by a substring of the
-  /// title or of the description's text. Archived projects and their tasks
-  /// are left out, except favourite tasks, as in the server's `GET /tasks`.
+  /// by a substring of the title or of the description's text, by `#12`
+  /// (index 12 in any project) and by an identifier like `PROJ-12`;
+  /// projects, saved filters and labels by a substring of the title or of
+  /// the description's text. The matches ignore case and accents. Archived
+  /// projects and their tasks are left out, except favourite tasks, as in
+  /// the server's `GET /tasks`.
   Stream<SearchResults> watch(String query);
 
   /// How many tasks [filter] (its text, search and include-nulls flag)

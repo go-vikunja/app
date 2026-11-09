@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/core/filters/search_index.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
@@ -160,12 +161,12 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
     final candidates = [
       for (final row in selectableProjects(projects)) row.node.project,
     ];
-    final needle = query.trim().toLowerCase();
+    final needle = foldForSearch(query.trim());
     return [
       for (final project in candidates)
         if (needle.isEmpty ||
-            project.title.toLowerCase().contains(needle) ||
-            project.identifier.toLowerCase().contains(needle))
+            foldForSearch(project.title).contains(needle) ||
+            foldForSearch(project.identifier).contains(needle))
           _SuggestionChip(
             avatar: ProjectIcon(hexColor: project.hexColor),
             label: projectLabel(project, candidates),

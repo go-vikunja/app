@@ -134,7 +134,7 @@ void main() {
 
     expect(find.text(en.projectTitleTooLong), findsOneWidget);
     await tester.tap(
-      find.bySemanticsLabel(en.taskEditColourSemantics('#1973ff')),
+      find.bySemanticsLabel(en.taskEditColourSemantics('#0072b2')),
     );
     await tester.pump();
     expect(saveButton(tester, en).onPressed, isNull);
@@ -259,14 +259,44 @@ void main() {
     ]);
   });
 
-  testWidgets('the colour can be cleared', (tester) async {
+  testWidgets('a colour from outside the palette stays chosen and can be '
+      'cleared', (tester) async {
     await pumpEdit(tester, 1);
 
+    expect(
+      tester.getSemantics(
+        find.bySemanticsLabel(en.taskEditColourSemantics('#1973ff')),
+      ),
+      isSemantics(isSelected: true),
+    );
     await tester.tap(find.bySemanticsLabel(en.taskEditNoColour));
     await tester.pump();
     await save(tester);
 
     expect(data.projects.updates, [(1, const ProjectChanges(hexColor: ''))]);
+  });
+
+  testWidgets('a colour from outside the palette can be chosen again after '
+      'trying another', (tester) async {
+    await pumpEdit(tester, 1);
+
+    await tester.tap(
+      find.bySemanticsLabel(en.taskEditColourSemantics('#e69f00')),
+    );
+    await tester.pump();
+    expect(saveButton(tester, en).onPressed, isNotNull);
+    await tester.tap(
+      find.bySemanticsLabel(en.taskEditColourSemantics('#1973ff')),
+    );
+    await tester.pump();
+
+    expect(
+      tester.getSemantics(
+        find.bySemanticsLabel(en.taskEditColourSemantics('#1973ff')),
+      ),
+      isSemantics(isSelected: true),
+    );
+    expect(saveButton(tester, en).onPressed, isNull);
   });
 
   testWidgets('a title of only spaces cannot be saved', (tester) async {

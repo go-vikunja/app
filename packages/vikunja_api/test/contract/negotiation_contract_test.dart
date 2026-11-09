@@ -89,6 +89,7 @@ void main() {
       );
       expect(info.concurrentWrites, body['concurrent_writes']);
       final legal = body['legal']! as Map<String, Object?>;
+      expect(legal['links'], isNotEmpty);
       expect([
         for (final link in info.legal.links)
           {'text': link.text, 'url': '${link.url}'},
@@ -98,6 +99,20 @@ void main() {
         info.legal.privacyPolicyUrl?.toString() ?? '',
         legal['privacy_policy_url'],
       );
+    });
+
+    test('the test server lists its terms as its one legal link', () async {
+      final connection = await connector.connect('http://localhost:34527');
+      final legal = connection.info.legal;
+
+      expect(legal.links, [
+        LegalLink(
+          text: 'Terms of Service',
+          url: Uri.parse('https://example.org/terms'),
+        ),
+      ]);
+      expect(legal.imprintUrl, isNull);
+      expect(legal.privacyPolicyUrl, isNull);
     });
 
     test('scheme-less input falls back to http after https fails', () async {

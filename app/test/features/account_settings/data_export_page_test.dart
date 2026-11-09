@@ -21,12 +21,16 @@ void main() {
     expires: harness.now.add(const Duration(days: 7)),
   );
 
-  Future<void> pumpPage(WidgetTester tester, {bool isLocalUser = true}) =>
-      harness.pump(
-        tester,
-        location: AppRoutes.accountDataExport,
-        state: fakeAccountSettingsState(isLocalUser: isLocalUser),
-      );
+  Future<void> pumpPage(
+    WidgetTester tester, {
+    bool isLocalUser = true,
+    ServerConnection? connection,
+  }) => harness.pump(
+    tester,
+    location: AppRoutes.accountDataExport,
+    state: fakeAccountSettingsState(isLocalUser: isLocalUser),
+    connection: connection,
+  );
 
   testWidgets('without an export: what it holds and the way to request one', (
     tester,
@@ -86,10 +90,33 @@ void main() {
     expect(find.text(en.dataExportNoneTitle), findsOneWidget);
   });
 
+  testWidgets('on 2.8.0 also says that ten wrong passwords lock the '
+      'account', (tester) async {
+    await pumpPage(tester, connection: securityServer(version: 'v2.8.0'));
+
+    expect(
+      find.text(
+        '${en.dataExportRequestNote} ${en.accountSettingsWebAsksPassword} '
+        '${en.accountSettingsAccountLockout}',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('a sign-in provider account is not told about a password', (
     tester,
   ) async {
     await pumpPage(tester, isLocalUser: false);
+
+    expect(find.text(en.dataExportRequestNote), findsOneWidget);
+  });
+
+  testWidgets('nor about the lockout on 2.8.0', (tester) async {
+    await pumpPage(
+      tester,
+      isLocalUser: false,
+      connection: securityServer(version: 'v2.8.0'),
+    );
 
     expect(find.text(en.dataExportRequestNote), findsOneWidget);
   });
@@ -119,5 +146,19 @@ void main() {
 
     expect(find.text(de.dataExportTitle), findsOneWidget);
     expect(find.text(de.dataExportRequest), findsOneWidget);
+  });
+
+  testWidgets('says in German that ten wrong passwords lock the account on '
+      '2.8.0', (tester) async {
+    useLocale(tester, const Locale('de'));
+    await pumpPage(tester, connection: securityServer(version: 'v2.8.0'));
+
+    expect(
+      find.text(
+        '${de.dataExportRequestNote} ${de.accountSettingsWebAsksPassword} '
+        '${de.accountSettingsAccountLockout}',
+      ),
+      findsOneWidget,
+    );
   });
 }

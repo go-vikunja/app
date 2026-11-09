@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/application/web_settings_pages.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/security_list_body.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/web_password_note.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
@@ -95,6 +96,15 @@ class _DataExportPageState extends ConsumerState<DataExportPage> {
       color: colors.onSurfaceVariant,
     );
     final webAsksPassword = profile?.isLocalUser ?? true;
+    final accountLockout = ref.watch(
+      accountsProvider.select(
+        (accounts) =>
+            accounts.value?.activeAccount?.connection.capabilities.has(
+              Capability.accountLockout,
+            ) ??
+            false,
+      ),
+    );
     return Scaffold(
       appBar: AppBar(title: ScreenTitle(l10n.dataExportTitle)),
       body: SecurityListBody(
@@ -154,7 +164,8 @@ class _DataExportPageState extends ConsumerState<DataExportPage> {
             child: Text(
               [
                 l10n.dataExportRequestNote,
-                if (webAsksPassword) l10n.accountSettingsWebAsksPassword,
+                if (webAsksPassword)
+                  webAsksPasswordNote(l10n, accountLockout: accountLockout),
               ].join(' '),
               style: mutedStyle,
             ),

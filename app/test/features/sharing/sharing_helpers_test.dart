@@ -138,6 +138,18 @@ void main() {
     );
   });
 
+  test('teams are found by name, ignoring case and accents', () {
+    final teams = [
+      Team(id: 1, name: 'Équipe café'),
+      Team(id: 2, name: 'Garden'),
+    ];
+
+    expect([for (final t in filterTeams(teams, ' EQUIPE ')) t.id], [1]);
+    expect([for (final t in filterTeams(teams, 'cafe')) t.id], [1]);
+    expect([for (final t in filterTeams(teams, 'gärden')) t.id], [2]);
+    expect(filterTeams(teams, ''), teams);
+  });
+
   group('the words', () {
     test('for refusals, by the server codes', () {
       final cases = <(Object, ShareChange, String)>[

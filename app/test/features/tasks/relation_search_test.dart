@@ -82,6 +82,23 @@ void main() {
     expect(ids('#'), isEmpty);
   });
 
+  test('matches ignoring accents, in the query too', () {
+    expect(ids('FLÏGHTS'), [2]);
+    expect(
+      [
+        for (final found in relationCandidates(
+          [...all, sampleTask(id: 5, title: 'Réserver l’hôtel')],
+          task: task,
+          kind: TaskRelationKind.related,
+          query: 'reserver l’hotel',
+          includeDone: false,
+        ))
+          found.id,
+      ],
+      [5],
+    );
+  });
+
   test('a task not yet synced is found by title only', () {
     expect(ids('fresh'), [-2]);
     expect(ids('#0'), isEmpty);

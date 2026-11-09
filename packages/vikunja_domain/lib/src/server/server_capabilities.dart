@@ -47,7 +47,10 @@ final class ServerCapabilities {
         Capability.userSettingsMergePatch,
       ],
       if (hasV2 && atLeast(2, 8)) Capability.trash,
-      if (atLeast(2, 8)) Capability.remindersToSubscribers,
+      if (atLeast(2, 8)) ...[
+        Capability.remindersToSubscribers,
+        Capability.accountLockout,
+      ],
       if (auth.localEnabled) Capability.localAuth,
       if (auth.ldapEnabled) Capability.ldapAuth,
       if (auth.openIdConnectEnabled && auth.openIdProviders.isNotEmpty)

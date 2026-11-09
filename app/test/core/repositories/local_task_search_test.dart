@@ -116,6 +116,30 @@ void main() {
     expect(await find('strasse').then(ids), [11]);
   });
 
+  test('accents are ignored, in the query too', () async {
+    await db.projectsDao.upsertAll([sampleProject(id: 5, title: 'Café')]);
+    await db.labelsDao.upsertAll([const Label(id: 3, title: 'Café')]);
+    await storeSavedFilters(db, const [
+      SavedFilterRef(projectId: -5, title: 'Cafés'),
+    ]);
+    await db.tasksDao.upsertAll([
+      task(60, 'Café au lait'),
+      task(61, 'Order', description: '<p>Ein Café</p>'),
+      task(62, 'cafe'),
+      task(63, 'Café decomposed'),
+    ], syncRunId: 'run');
+
+    final results = await find('cafe');
+    expect(ids(results), [63, 62, 61, 60]);
+    expect([for (final p in results.projects) p.id], [5]);
+    expect([for (final f in results.savedFilters) f.title], ['Cafés']);
+    expect([for (final l in results.labels) l.id], [3]);
+    expect(await find('CAFÉ').then(ids), [63, 62, 61, 60]);
+    expect(await find('café decomposed').then(ids), [63]);
+    expect(await find('café au').then(ids), [60]);
+    expect(await find('arger').then(ids), [11]);
+  });
+
   test('#12 finds index 12 in any project and the titles holding it; a '
       'bare number only titles', () async {
     expect(await find('#12').then(ids), [20, 10, 12]);

@@ -5058,6 +5058,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Öffnet das Web in deinem Browser. Das Einschalten meldet dich überall ab, auch in dieser App. Melde dich danach hier erneut an; dein Browser fragt nach dem Code.';
 
   @override
+  String get accountSettingsTotpTurnOnPasswordNote =>
+      'Öffnet das Web in deinem Browser. Das Einschalten erfordert dein Passwort und meldet dich überall ab, auch in dieser App. Melde dich danach hier erneut an; dein Browser fragt nach dem Code.';
+
+  @override
   String get accountSettingsTotpOnNote =>
       'Öffnet das Web in deinem Browser. Zum Ausschalten brauchst du dein Passwort, neuere Server fragen auch nach einem Code.';
 
@@ -5130,6 +5134,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get accountSettingsWebAsksPassword =>
       'Das Web fragt nach deinem Passwort.';
+
+  @override
+  String get accountSettingsAccountLockout =>
+      'Zehn falsche Passwörter melden dich auf allen Geräten ab und sperren dein Konto, bis du dein Passwort zurücksetzt.';
 
   @override
   String accountDeletionScheduled(String date) {

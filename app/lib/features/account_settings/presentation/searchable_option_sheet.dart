@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/filters/search_index.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
@@ -24,7 +25,8 @@ final class SearchableOption<T> {
   final List<String> searchTerms;
   final bool selected;
 
-  /// Ignores case, and a typed `-` finds the `−` offsets are written with.
+  /// Ignores case and accents, and a typed `-` finds the `−` offsets are
+  /// written with.
   bool matches(String query) {
     final needle = _searchable(query.trim());
     return needle.isEmpty ||
@@ -36,7 +38,7 @@ final class SearchableOption<T> {
   }
 }
 
-String _searchable(String text) => text.toLowerCase().replaceAll('−', '-');
+String _searchable(String text) => foldForSearch(text).replaceAll('−', '-');
 
 /// One of a long list of [options] with a search field over it; the
 /// [suggested] ones first under [suggestedHeading] while nothing is

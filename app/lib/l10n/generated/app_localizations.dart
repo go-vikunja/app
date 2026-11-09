@@ -554,13 +554,13 @@ abstract class AppLocalizations {
   /// **'Message from the server'**
   String get motdHeading;
 
-  /// No description provided for @legalImprint.
+  /// A server's legal link that the server names exactly "Imprint" (its legal notice), on the server overview and in the Account tab's Server section; the server's other legal links show with the text its admin wrote, untranslated. Rurana's own legal notice is aboutLegalNotice.
   ///
   /// In en, this message translates to:
   /// **'Imprint'**
   String get legalImprint;
 
-  /// No description provided for @legalPrivacy.
+  /// A server's legal link that the server names exactly "Privacy Policy", beside legalImprint. Rurana's own is aboutPrivacyPolicy.
   ///
   /// In en, this message translates to:
   /// **'Privacy policy'**
@@ -7824,13 +7824,19 @@ abstract class AppLocalizations {
   /// **'Not checked over an unencrypted connection'**
   String get accountSettingsTotpNotChecked;
 
-  /// No description provided for @accountSettingsTotpTurnOnNote.
+  /// Under the two-factor authentication row while it is not on, also while its status is being checked or could not be read, on servers before Vikunja 2.8.0, whose web does not ask for the password to turn it on. Newer servers show accountSettingsTotpTurnOnPasswordNote instead.
   ///
   /// In en, this message translates to:
   /// **'Opens the web in your browser. Turning it on signs you out everywhere, this app included. Then sign in here again; your browser asks for the code.'**
   String get accountSettingsTotpTurnOnNote;
 
-  /// No description provided for @accountSettingsTotpOnNote.
+  /// Under the two-factor authentication row while it is not on, also while its status is being checked or could not be read, on Vikunja 2.8.0 and newer, whose web asks for the password to set it up and turn it on. accountSettingsAccountLockout follows it, joined with a space.
+  ///
+  /// In en, this message translates to:
+  /// **'Opens the web in your browser. Turning it on needs your password and signs you out everywhere, this app included. Then sign in here again; your browser asks for the code.'**
+  String get accountSettingsTotpTurnOnPasswordNote;
+
+  /// Under the two-factor authentication row while it is on. On Vikunja 2.8.0 and newer accountSettingsAccountLockout follows it, joined with a space.
   ///
   /// In en, this message translates to:
   /// **'Opens the web in your browser. Turning it off needs your password, and newer servers also ask for a code.'**
@@ -7926,11 +7932,17 @@ abstract class AppLocalizations {
   /// **'Delete account'**
   String get accountSettingsDeleteAccount;
 
-  /// No description provided for @accountSettingsWebAsksPassword.
+  /// For accounts with a password: in the account deletion dialog and on the data export page, and on Vikunja 2.8.0 and newer also in a note under Change password and Change email address. On those servers accountSettingsAccountLockout follows it, joined with a space.
   ///
   /// In en, this message translates to:
   /// **'The web asks for your password.'**
   String get accountSettingsWebAsksPassword;
+
+  /// After accountSettingsWebAsksPassword, joined to it with a space, in the account deletion dialog, on the data export page and in the note under Change password and Change email address; also after accountSettingsTotpOnNote or accountSettingsTotpTurnOnPasswordNote on the two-factor authentication row. Only for accounts with a password on Vikunja 2.8.0 and newer: there ten wrong passwords, at sign-in, at any password prompt of the web or in a CalDAV app, and on any device, end every session and lock the account until its password is reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Ten wrong passwords sign you out on every device and lock your account until you reset your password.'**
+  String get accountSettingsAccountLockout;
 
   /// No description provided for @accountDeletionScheduled.
   ///

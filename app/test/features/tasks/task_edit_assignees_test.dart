@@ -188,6 +188,53 @@ void main() {
       expect(rowNames(tester), ['Carol Writer', 'Alice Example']);
     });
 
+    testWidgets("keeps a project member the server's search misses for an "
+        'accent, and adds no one else', (tester) async {
+      const rene = User(id: 11, username: 'rdupont', name: 'René Dupont');
+      const renee = User(id: 12, username: 'renee', name: 'Renée Known');
+      users = FakeUserRepository(
+        projectUsers: {
+          1: const [alice, bob, carol, rene],
+        },
+        known: const [carol, renee],
+      );
+      await openPage(tester);
+      await openPicker(tester);
+
+      await tester.enterText(searchField(), 'rene');
+      await tester.pump(AssigneePicker.debounce);
+      await tester.pumpAndSettle();
+
+      expect(users.searches.map((s) => s.$2), ['', 'rene']);
+      expect(rowNames(tester), ['Carol Writer', 'René Dupont']);
+    });
+
+    testWidgets('a member listed by a slower earlier answer joins the '
+        'latest', (tester) async {
+      const rene = User(id: 11, username: 'rdupont', name: 'René Dupont');
+      users = FakeUserRepository(
+        projectUsers: {
+          1: const [alice, carol, rene],
+        },
+      );
+      final slowFirst = Completer<void>();
+      users.beforeAnswer = (query) =>
+          query.isEmpty ? slowFirst.future : Future.value();
+      await openPage(tester);
+      await tester.ensureVisible(find.text(en.taskEditAssign));
+      await tester.tap(find.text(en.taskEditAssign));
+      await pumpFrames(tester, 5);
+
+      await tester.enterText(searchField(), 'rene');
+      await tester.pump(AssigneePicker.debounce);
+      await tester.pump();
+      expect(rowNames(tester), ['Carol Writer']);
+
+      slowFirst.complete();
+      await tester.pumpAndSettle();
+      expect(rowNames(tester), ['Carol Writer', 'René Dupont']);
+    });
+
     testWidgets('shows progress while the server searches', (tester) async {
       final answer = Completer<void>();
       users.beforeAnswer = (_) => answer.future;

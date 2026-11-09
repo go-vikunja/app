@@ -274,13 +274,21 @@ void main() {
         test('/info carries the notice fields', () {
           final info = connection.info;
 
-          // The test server sets none of them.
+          // The test server sets no message, demo mode, imprint or privacy
+          // policy; its one legal link is the terms
+          // (test_servers/docker-compose.yaml).
           expect(info.motd, isEmpty);
           expect(info.demoModeEnabled, isFalse);
           expect(info.auth.localEnabled, isTrue);
           expect(info.auth.registrationEnabled, isTrue);
           expect(info.legal.imprintUrl, isNull);
           expect(info.legal.privacyPolicyUrl, isNull);
+          expect(info.legal.links, [
+            LegalLink(
+              text: 'Terms of Service',
+              url: Uri.parse('https://example.org/terms'),
+            ),
+          ]);
           expect(info.enabledProFeatures, isNot(contains('user_invites')));
           expect(connection.capabilities.has(Capability.userInvites), isFalse);
         });

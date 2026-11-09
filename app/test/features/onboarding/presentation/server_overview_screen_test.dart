@@ -123,6 +123,7 @@ void main() {
       en.featurePublicTeams,
       en.motdHeading,
       en.legalImprint,
+      'Terms of Service',
     ], findsOneWidget);
     // Dropped and deferred features (D20) are not advertised, even when the
     // server is licensed for them.
@@ -147,7 +148,12 @@ void main() {
 
     await tester.tap(find.text(en.legalImprint));
     await tester.pump();
-    expect(linkOpener.opened, [Uri.parse('https://example.org/imprint')]);
+    await tester.tap(find.text('Terms of Service'));
+    await tester.pump();
+    expect(linkOpener.opened, [
+      Uri.parse('https://example.org/imprint'),
+      Uri.parse('https://example.org/terms'),
+    ]);
   });
 
   testWidgets('a link that cannot be opened shows a message', (tester) async {

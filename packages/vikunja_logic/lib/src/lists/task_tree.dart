@@ -17,42 +17,58 @@ final class TaskTreeNode {
 bool showsAtTopLevel(Iterable<int> parentIds, Set<int> idsInList) =>
     !parentIds.any(idsInList.contains);
 
-/// The web's List view: the rows are the tasks of [matching] (the view's
-/// tasks, already in display order) that [showsAtTopLevel] keeps, each
-/// followed by its subtasks, the way the server appends every descendant
-/// of a row whatever the filter: a parent's `relatedTasks[subtask]` ids in
-/// their order, looked up in [tasksById] (a subtask missing there is left
-/// out), recursively and without a depth limit. A subtask with two shown
-/// parents appears under both; a task already on the path is not repeated,
-/// which guards against a relation cycle.
+/// How deep the web's List view expands subtasks below a top-level row,
+/// since Vikunja 2.8.0.
+const maxSubtaskDepth = 5;
+
+/// The web's List view. The rows are the tasks of [matching] (the view's
+/// tasks, already in display order) that the server sends as roots, those
+/// without a matching parent, and that [showsAtTopLevel] keeps against
+/// everything the server sends: the roots and every subtask below them in
+/// [tasksById], whatever the filter. Each row is followed by its subtasks,
+/// a parent's `relatedTasks[subtask]` ids in their order looked up in
+/// [tasksById] (a subtask missing there is left out). As on the web since
+/// 2.8.0, a task is expanded only where it first appears below its top-level
+/// row, depth first, and only down to [maxSubtaskDepth]; a later appearance,
+/// a cycle's ancestor included, is a row without subtasks.
 List<TaskTreeNode> buildTaskTree({
   required List<Task> matching,
   required Map<int, Task> tasksById,
 }) {
-  final idsInList = {for (final task in matching) task.id};
-  final path = <int>{};
+  Iterable<int> parentIdsOf(Task task) =>
+      task.parentTasks.map((parent) => parent.id);
 
-  TaskTreeNode nodeOf(Task task, int depth) {
-    path.add(task.id);
-    final children = [
-      for (final subtask in task.subtasks)
-        if (!path.contains(subtask.id))
-          if (tasksById[subtask.id] case final child?) nodeOf(child, depth + 1),
+  final matchingIds = {for (final task in matching) task.id};
+  final roots = [
+    for (final task in matching)
+      if (showsAtTopLevel(parentIdsOf(task), matchingIds)) task,
+  ];
+  final sent = {for (final task in roots) task.id};
+  for (var below = roots; below.isNotEmpty;) {
+    below = [
+      for (final task in below)
+        for (final subtask in task.subtasks)
+          if (tasksById[subtask.id] case final child? when sent.add(child.id))
+            child,
     ];
-    path.remove(task.id);
+  }
+
+  TaskTreeNode nodeOf(Task task, int depth, Set<int> expanded) {
+    final expands = depth < maxSubtaskDepth && expanded.add(task.id);
     return TaskTreeNode(
       task: task,
       depth: depth,
-      children: List.unmodifiable(children),
+      children: List.unmodifiable([
+        if (expands)
+          for (final subtask in task.subtasks)
+            if (tasksById[subtask.id] case final child?)
+              nodeOf(child, depth + 1, expanded),
+      ]),
     );
   }
 
   return List.unmodifiable([
-    for (final task in matching)
-      if (showsAtTopLevel(
-        task.parentTasks.map((parent) => parent.id),
-        idsInList,
-      ))
-        nodeOf(task, 0),
+    for (final task in roots)
+      if (showsAtTopLevel(parentIdsOf(task), sent)) nodeOf(task, 0, <int>{}),
   ]);
 }

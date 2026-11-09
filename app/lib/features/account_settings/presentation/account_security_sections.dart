@@ -4,6 +4,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/account_settings/application/totp_status_reading.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_deletion.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/web_password_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
@@ -105,6 +106,8 @@ Widget securitySection({
     (null, TotpProblem.notOffered || TotpProblem.notLocal) => true,
     _ => false,
   };
+  // These servers ask for the password to turn it on as well as off.
+  final lockout = connection.capabilities.has(Capability.accountLockout);
   return SettingsSection(
     title: l10n.accountSettingsSecurity,
     children: [
@@ -126,8 +129,18 @@ Widget securitySection({
           },
           help: switch (totp) {
             _ when unavailable => null,
-            TotpStatus.enabled => l10n.accountSettingsTotpOnNote,
-            _ => l10n.accountSettingsTotpTurnOnNote,
+            TotpStatus.enabled => withAccountLockout(
+              l10n,
+              l10n.accountSettingsTotpOnNote,
+              accountLockout: lockout,
+            ),
+            _ => withAccountLockout(
+              l10n,
+              lockout
+                  ? l10n.accountSettingsTotpTurnOnPasswordNote
+                  : l10n.accountSettingsTotpTurnOnNote,
+              accountLockout: lockout,
+            ),
           },
           trailing: unavailable ? null : const Icon(Icons.open_in_new),
           onTap: unavailable ? null : onOpenTotp,

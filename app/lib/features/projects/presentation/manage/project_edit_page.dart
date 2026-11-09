@@ -221,6 +221,7 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
               identifierController: _identifier,
               identifierError: _identifierError,
               hexColor: _hexColor,
+              originalHexColor: original.hexColor,
               parentLabel: parentProjectLabel(l10n, _parentId, all),
               description: project?.description ?? original.description,
               onEditDescription: _saving || archived || project == null
@@ -258,6 +259,7 @@ class _Form extends StatelessWidget {
     required this.identifierController,
     required this.identifierError,
     required this.hexColor,
+    required this.originalHexColor,
     required this.parentLabel,
     required this.description,
     required this.onEditDescription,
@@ -273,6 +275,7 @@ class _Form extends StatelessWidget {
   final TextEditingController identifierController;
   final String? identifierError;
   final String hexColor;
+  final String originalHexColor;
   final String parentLabel;
 
   /// As stored now: the editor saves it on its own.
@@ -357,7 +360,11 @@ class _Form extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: IgnorePointer(
               ignoring: !enabled,
-              child: ColorRow(value: hexColor, onChanged: onColorChanged),
+              child: ColorRow(
+                value: hexColor,
+                original: originalHexColor,
+                onChanged: onColorChanged,
+              ),
             ),
           ),
           const SizedBox(height: 16),

@@ -4997,6 +4997,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Opens the web in your browser. Turning it on signs you out everywhere, this app included. Then sign in here again; your browser asks for the code.';
 
   @override
+  String get accountSettingsTotpTurnOnPasswordNote =>
+      'Opens the web in your browser. Turning it on needs your password and signs you out everywhere, this app included. Then sign in here again; your browser asks for the code.';
+
+  @override
   String get accountSettingsTotpOnNote =>
       'Opens the web in your browser. Turning it off needs your password, and newer servers also ask for a code.';
 
@@ -5068,6 +5072,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get accountSettingsWebAsksPassword =>
       'The web asks for your password.';
+
+  @override
+  String get accountSettingsAccountLockout =>
+      'Ten wrong passwords sign you out on every device and lock your account until you reset your password.';
 
   @override
   String accountDeletionScheduled(String date) {

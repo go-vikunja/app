@@ -9,14 +9,26 @@ class LegalLinksRow extends ConsumerWidget {
 
   final LegalLinks links;
 
-  static bool hasAny(LegalLinks links) =>
-      isWebLink(links.imprintUrl) || isWebLink(links.privacyPolicyUrl);
+  /// The server's legal links with a web address and a text, in its order.
+  static List<LegalLink> shownOf(LegalLinks links) => [
+    for (final link in links.links)
+      if (isWebLink(link.url) && link.text.trim().isNotEmpty) link,
+  ];
+
+  static bool hasAny(LegalLinks links) => shownOf(links).isNotEmpty;
+
+  /// The imprint and the privacy policy in the app's words, as the web
+  /// translates them; any other link with its admin's text, untranslated.
+  static String labelOf(AppLocalizations l10n, LegalLink link) =>
+      switch (link.text) {
+        LegalLink.imprintText => l10n.legalImprint,
+        LegalLink.privacyPolicyText => l10n.legalPrivacy,
+        _ => link.text,
+      };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final imprint = links.imprintUrl;
-    final privacy = links.privacyPolicyUrl;
 
     Future<void> open(Uri uri) async {
       final opened = await ref.read(externalLinkOpenerProvider).open(uri);
@@ -27,20 +39,19 @@ class LegalLinksRow extends ConsumerWidget {
       }
     }
 
+    // The server keeps "Imprint" and an admin's "Impressum" at one address
+    // apart; in German both read „Impressum“, and one button is enough.
+    final buttons = <(String, Uri)>{
+      for (final link in shownOf(links)) (labelOf(l10n, link), link.url),
+    };
     return Wrap(
       spacing: 8,
       children: [
-        if (imprint != null && isWebLink(imprint))
+        for (final (label, url) in buttons)
           TextButton.icon(
-            onPressed: () => open(imprint),
+            onPressed: () => open(url),
             icon: const Icon(Icons.open_in_new, size: 18),
-            label: Text(l10n.legalImprint),
-          ),
-        if (privacy != null && isWebLink(privacy))
-          TextButton.icon(
-            onPressed: () => open(privacy),
-            icon: const Icon(Icons.open_in_new, size: 18),
-            label: Text(l10n.legalPrivacy),
+            label: Text(label),
           ),
       ],
     );

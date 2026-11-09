@@ -41,4 +41,32 @@ void main() {
     expect(compareTitles('Same', 'same'), 0);
     expect(compareTitles('ÜBER', 'über'), 0);
   });
+
+  test('Romanian ș and ț, with a comma below, sort with s and t', () {
+    expect(sorted(['Tara', 'Șanț', 'Sat']), ['Șanț', 'Sat', 'Tara']);
+  });
+
+  group('foldAccents', () {
+    test('drops the accents of Latin letters and writes out æ, œ, ß and '
+        'þ', () {
+      expect(foldAccents('café'), 'cafe');
+      expect(foldAccents('ärger mit öl'), 'arger mit ol');
+      expect(foldAccents('straße'), 'strasse');
+      expect(foldAccents('œuvre'), 'oeuvre');
+      expect(foldAccents('æble'), 'aeble');
+      expect(foldAccents('þing'), 'thing');
+      expect(foldAccents('șanț'), 'sant');
+    });
+
+    test('drops a decomposed accent', () {
+      expect(foldAccents('cafe\u0301'), 'cafe');
+      expect(foldAccents('u\u0308bersicht'), 'ubersicht');
+    });
+
+    test('keeps plain ASCII and the letters it does not know', () {
+      const ascii = 'plain ascii, 12 #3 - PROJ';
+      expect(foldAccents(ascii), same(ascii));
+      expect(foldAccents('ελληνικά'), 'ελληνικά');
+    });
+  });
 }

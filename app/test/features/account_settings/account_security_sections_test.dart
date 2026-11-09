@@ -63,6 +63,66 @@ void main() {
     expect(places, orderedEquals([...places]..sort()));
   });
 
+  group('password and email', () {
+    testWidgets('on 2.8.0 a note under both rows says that the web asks for '
+        'the password and ten wrong ones lock the account', (tester) async {
+      await harness.pump(tester, connection: securityServer(version: 'v2.8.0'));
+
+      final note =
+          '${en.accountSettingsWebAsksPassword} '
+          '${en.accountSettingsAccountLockout}';
+      final places = [
+        await placeInList(tester, en.accountSettingsChangePassword),
+        await placeInList(tester, en.accountSettingsChangeEmail),
+        await placeInList(tester, note),
+        await placeInList(tester, en.accountSettingsSecurity),
+      ];
+      expect(places, orderedEquals([...places]..sort()));
+      expect(find.text(note), findsOneWidget);
+    });
+
+    testWidgets('before 2.8.0 there is no such note', (tester) async {
+      await harness.pump(tester);
+
+      await scrollTo(tester, find.text(en.accountSettingsTotp));
+      expect(find.text(en.accountSettingsWebAsksPassword), findsNothing);
+      expect(
+        find.textContaining(en.accountSettingsAccountLockout),
+        findsNothing,
+      );
+    });
+
+    testWidgets('an account of a sign-in provider has no such note', (
+      tester,
+    ) async {
+      await harness.pump(
+        tester,
+        connection: securityServer(version: 'v2.8.0'),
+        state: fakeAccountSettingsState(isLocalUser: false),
+      );
+
+      await scrollTo(tester, find.text(en.accountSettingsSessions));
+      expect(
+        find.textContaining(en.accountSettingsAccountLockout),
+        findsNothing,
+      );
+    });
+
+    testWidgets('the note in German', (tester) async {
+      useLocale(tester, const Locale('de'));
+      await harness.pump(tester, connection: securityServer(version: 'v2.8.0'));
+
+      await scrollTo(tester, find.text(de.accountSettingsChangeEmail));
+      expect(
+        find.text(
+          '${de.accountSettingsWebAsksPassword} '
+          '${de.accountSettingsAccountLockout}',
+        ),
+        findsOneWidget,
+      );
+    });
+  });
+
   group('two-factor authentication', () {
     for (final (status, label) in [
       (TotpStatus.notSetUp, en.accountSettingsTotpOff),
@@ -85,6 +145,50 @@ void main() {
         );
       });
     }
+
+    for (final (status, note) in [
+      (TotpStatus.notSetUp, en.accountSettingsTotpTurnOnPasswordNote),
+      (TotpStatus.setupStarted, en.accountSettingsTotpTurnOnPasswordNote),
+      (TotpStatus.enabled, en.accountSettingsTotpOnNote),
+    ]) {
+      testWidgets('on 2.8.0, which asks for the password both ways, the '
+          '${status.name} note adds that ten wrong ones lock the account', (
+        tester,
+      ) async {
+        harness.security.totp = status;
+        await harness.pump(
+          tester,
+          connection: securityServer(version: 'v2.8.0'),
+        );
+
+        await scrollTo(tester, find.text(en.accountSettingsTotp));
+        expect(
+          find.text('$note ${en.accountSettingsAccountLockout}'),
+          findsOneWidget,
+        );
+      });
+    }
+
+    testWidgets('on 2.8.0 the turn-on note names the password in German', (
+      tester,
+    ) async {
+      useLocale(tester, const Locale('de'));
+      harness.security.totp = TotpStatus.notSetUp;
+      await harness.pump(tester, connection: securityServer(version: 'v2.8.0'));
+
+      await scrollTo(tester, find.text(de.accountSettingsTotp));
+      expect(
+        find.text(
+          '${de.accountSettingsTotpTurnOnPasswordNote} '
+          '${de.accountSettingsAccountLockout}',
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(de.accountSettingsTotpTurnOnNote),
+        findsNothing,
+      );
+    });
 
     testWidgets('a server with it off has no row and is not asked', (
       tester,
@@ -327,6 +431,11 @@ void main() {
         find.textContaining(en.accountSettingsWebAsksPassword),
         findsOneWidget,
       );
+      // 2.7 does not lock an account after wrong passwords.
+      expect(
+        find.textContaining(en.accountSettingsAccountLockout),
+        findsNothing,
+      );
 
       await tester.tap(find.text(en.cancel));
       await tester.pumpAndSettle();
@@ -336,6 +445,25 @@ void main() {
       await tester.tap(find.text(en.accountDeletionContinue));
       await tester.pumpAndSettle();
       expect(harness.links.opened, [webPage('user/settings/deletion')]);
+    });
+
+    testWidgets('on 2.8.0 also says that ten wrong passwords lock the '
+        'account', (tester) async {
+      await harness.pump(tester, connection: securityServer(version: 'v2.8.0'));
+
+      await tapRow(tester, en.accountSettingsDeleteAccount);
+
+      // The same sentences stand under Password and email.
+      expect(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.textContaining(
+            '${en.accountSettingsWebAsksPassword} '
+            '${en.accountSettingsAccountLockout}',
+          ),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a sign-in provider account is not told about a password', (
@@ -350,6 +478,26 @@ void main() {
 
       expect(
         find.textContaining(en.accountSettingsWebAsksPassword),
+        findsNothing,
+      );
+    });
+
+    testWidgets('nor about the lockout on 2.8.0', (tester) async {
+      await harness.pump(
+        tester,
+        connection: securityServer(version: 'v2.8.0'),
+        state: fakeAccountSettingsState(isLocalUser: false),
+      );
+
+      await tapRow(tester, en.accountSettingsDeleteAccount);
+
+      expect(find.text(en.accountDeletionDialogTitle), findsOneWidget);
+      expect(
+        find.textContaining(en.accountSettingsWebAsksPassword),
+        findsNothing,
+      );
+      expect(
+        find.textContaining(en.accountSettingsAccountLockout),
         findsNothing,
       );
     });

@@ -66,14 +66,14 @@ void main() {
     await tester.tap(find.text('Work').last);
     await tester.pumpAndSettle();
     await tester.tap(
-      find.bySemanticsLabel(en.taskEditColourSemantics('#1973ff')),
+      find.bySemanticsLabel(en.taskEditColourSemantics('#0072b2')),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text(en.projectCreate));
     await tester.pumpAndSettle();
 
     expect(data.projects.creates, [
-      const NewProject(title: 'Launch', parentProjectId: 1, hexColor: '1973ff'),
+      const NewProject(title: 'Launch', parentProjectId: 1, hexColor: '0072b2'),
     ]);
     expect(find.byType(NewProjectSheet), findsNothing);
     expect(find.byType(ProjectTasksScreen), findsOneWidget);

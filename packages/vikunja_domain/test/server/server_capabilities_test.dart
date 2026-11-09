@@ -143,6 +143,7 @@ void main() {
         Capability.userSettingsMergePatch,
         Capability.trash,
         Capability.remindersToSubscribers,
+        Capability.accountLockout,
       });
     });
 
@@ -287,6 +288,50 @@ void main() {
         apiVersions: _both,
       );
       expect(capabilities.has(Capability.remindersToSubscribers), isFalse);
+    });
+  });
+
+  group('the account lockout', () {
+    for (final version in [
+      'v2.8.0',
+      'v2.8.1',
+      'v2.8.0-3-gabc1234',
+      'v3.0.0',
+      'dev',
+      'unstable',
+    ]) {
+      for (final (apiVersions, api) in [(_both, 'v2'), (_v1, 'only v1')]) {
+        test('$version with $api has it', () {
+          final capabilities = ServerCapabilities.derive(
+            info: _info(version),
+            apiVersions: apiVersions,
+          );
+          expect(capabilities.has(Capability.accountLockout), isTrue);
+        });
+      }
+    }
+
+    for (final version in [
+      'v2.7.0',
+      'v2.7.1',
+      'v2.7.1-40-g0123abc',
+      'banana',
+    ]) {
+      test('$version with v2 has none', () {
+        final capabilities = ServerCapabilities.derive(
+          info: _info(version),
+          apiVersions: _both,
+        );
+        expect(capabilities.has(Capability.accountLockout), isFalse);
+      });
+    }
+
+    test('a missing version with v2 has none', () {
+      final capabilities = ServerCapabilities.derive(
+        info: const ServerInfo(version: null),
+        apiVersions: _both,
+      );
+      expect(capabilities.has(Capability.accountLockout), isFalse);
     });
   });
 

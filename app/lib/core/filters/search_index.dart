@@ -4,15 +4,20 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/core/text/title_order.dart';
 
-/// [text] for a case-insensitive comparison: lower case, plus the full
-/// case foldings lower-casing leaves out (`ß` and `ss`, `ς` and `σ`, the
-/// Latin ligatures).
+/// [text] for a comparison that ignores case and accents, so that "cafe"
+/// finds "Café" on every server, as Vikunja 2.8.0 searches on PostgreSQL
+/// with unaccent: lower case, plus the full case foldings lower-casing
+/// leaves out (`ß` and `ss`, `ς` and `σ`, the Latin ligatures), then
+/// [foldAccents].
 String foldForSearch(String text) {
   final lower = text.toLowerCase();
-  if (!lower.contains(_beyondLowerCase)) return lower;
-  return lower.replaceAllMapped(
-    _beyondLowerCase,
-    (match) => _fullFoldings[match[0]]!,
+  return foldAccents(
+    lower.contains(_beyondLowerCase)
+        ? lower.replaceAllMapped(
+            _beyondLowerCase,
+            (match) => _fullFoldings[match[0]]!,
+          )
+        : lower,
   );
 }
 

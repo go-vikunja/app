@@ -171,11 +171,13 @@ void main() {
       expect(legal.imprintUrl, imprint);
     });
 
-    test('keeps http(s) links with a text, each URL once', () {
+    test('keeps http(s) links with a text, a second text for one address '
+        'too, but not an exact repeat', () {
       final legal = legalOf({
         'links': [
           {'text': '  Terms  ', 'url': ' $terms '},
           {'text': 'Terms again', 'url': '$terms'},
+          {'text': 'Terms', 'url': '$terms'},
           {'text': '', 'url': '$imprint'},
           {'text': '   ', 'url': '$imprint'},
           {'url': '$imprint'},
@@ -193,6 +195,7 @@ void main() {
 
       expect(legal.links, [
         LegalLink(text: 'Terms', url: terms),
+        LegalLink(text: 'Terms again', url: terms),
         LegalLink(
           text: 'Privacy',
           url: Uri.parse('http://example.com/privacy'),
@@ -219,8 +222,37 @@ void main() {
       expect(
         legalOf({'imprint_url': '$imprint', 'privacy_policy_url': '$imprint'})
             .links,
-        [LegalLink(text: 'Imprint', url: imprint)],
+        [
+          LegalLink(text: 'Imprint', url: imprint),
+          LegalLink(text: 'Privacy Policy', url: imprint),
+        ],
       );
+    });
+
+    test('the answer of a 2.8.0 server with a keyed imprint, a relative and '
+        'a padded link', () {
+      final legalPage = Uri.parse('https://example.org/legal');
+      final privacyPage = Uri.parse('https://example.org/privacy');
+      final legal = legalOf({
+        'imprint_url': '$legalPage',
+        'privacy_policy_url': '',
+        'links': [
+          {'text': 'Imprint', 'url': '$legalPage'},
+          {'text': 'Impressum', 'url': '$legalPage'},
+          {'text': 'Privacy Policy', 'url': '$privacyPage'},
+          {'text': 'Relative', 'url': '/relative'},
+          {'text': '  Padded  ', 'url': 'https://example.org/padded'},
+        ],
+      });
+
+      expect(legal.links, [
+        LegalLink(text: 'Imprint', url: legalPage),
+        LegalLink(text: 'Impressum', url: legalPage),
+        LegalLink(text: 'Privacy Policy', url: privacyPage),
+        LegalLink(text: 'Padded', url: Uri.parse('https://example.org/padded')),
+      ]);
+      expect(legal.imprintUrl, legalPage);
+      expect(legal.privacyPolicyUrl, privacyPage);
     });
 
     test('a links value that is not a list counts as missing', () {
@@ -550,6 +582,7 @@ void main() {
         ...capabilities.all,
         Capability.trash,
         Capability.remindersToSubscribers,
+        Capability.accountLockout,
       });
 
       expect(capabilities.all, {
@@ -575,11 +608,12 @@ void main() {
       });
     });
 
-    test('the 2.8.0 fixture over v1 alone still reminds only subscribers, '
-        'without the trash', () {
+    test('the 2.8.0 fixture over v1 alone still reminds only subscribers '
+        'and locks accounts, without the trash', () {
       final capabilities = derive('info_v1_2.8.0.json', {ApiVersion.v1});
 
       expect(capabilities.has(Capability.remindersToSubscribers), isTrue);
+      expect(capabilities.has(Capability.accountLockout), isTrue);
       expect(capabilities.has(Capability.trash), isFalse);
       expect(
         derive('info_v2_2.7.0.json', {

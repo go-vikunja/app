@@ -229,6 +229,30 @@ void main() {
       },
     );
 
+    test('an open task below a done subtask of an open task is listed once, '
+        'under it, as the web lists the server answer', () {
+      final model = buildProjectListModel(
+        source(
+          tasks: [
+            sampleTask(id: 1, title: 'Open parent', subtaskIds: [2]),
+            sampleTask(
+              id: 2,
+              title: 'Done middle',
+              parentIds: [1],
+              subtaskIds: [3],
+              done: true,
+              doneAt: doneAt,
+            ),
+            sampleTask(id: 3, title: 'Open below', parentIds: [2]),
+          ],
+        ),
+        kind: ViewFilterKind.openOnly,
+        preferences: const ViewPreferences(),
+      );
+
+      expect(idsAndDepths(model.rows), [(1, 0), (2, 1), (3, 2)]);
+    });
+
     test('a subtask row names the row it is nested under', () {
       final model = buildProjectListModel(
         source(),

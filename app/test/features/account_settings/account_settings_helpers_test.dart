@@ -193,6 +193,16 @@ void main() {
       expect(newYork.matches('berlin'), isFalse);
       expect(newYork.matches('+05'), isFalse);
     });
+
+    test('ignores accents, in the query too', () {
+      const portuguese = SearchableOption(
+        value: 'pt-BR',
+        label: 'Português Brasileiro',
+      );
+      expect(portuguese.matches('portugues'), isTrue);
+      expect(portuguese.matches('PORTUGUÊS'), isTrue);
+      expect(portuguese.matches('português brasileira'), isFalse);
+    });
   });
 
   group('the avatar square', () {

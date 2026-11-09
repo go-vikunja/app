@@ -31,6 +31,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/avatar_lab
 import 'package:vikunja_mobile/features/account_settings/presentation/default_project_picker.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/searchable_option_sheet.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/sign_in_provider_name.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/web_password_note.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
@@ -218,6 +219,9 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
       final confirmed = await confirmAccountDeletion(
         context,
         isLocalUser: profile?.isLocalUser ?? true,
+        accountLockout: entry.connection.capabilities.has(
+          Capability.accountLockout,
+        ),
       );
       if (!confirmed || !mounted) return;
     }
@@ -577,6 +581,11 @@ class _Settings extends ConsumerWidget {
               trailing: const Icon(Icons.open_in_new),
               onTap: () => onOpenWeb(WebSettingsPage.email),
             ),
+            if (entry.connection.capabilities.has(Capability.accountLockout))
+              SettingsNote(
+                text: webAsksPasswordNote(l10n, accountLockout: true),
+                icon: Icons.lock_outline,
+              ),
           ] else
             ListTile(
               leading: const Icon(Icons.verified_user_outlined),

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/features/tasks/application/label_search.dart';
+import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
 
@@ -262,7 +262,7 @@ void main() {
 
       final created = labels.created.single;
       expect(created.title, 'Groceries');
-      expect(newLabelColors, contains(created.hexColor));
+      expect(okabeItoColors, contains(created.hexColor));
       expect(createRow('Groceries'), findsNothing);
       expect(ticked(tester, 'Groceries'), isTrue);
 

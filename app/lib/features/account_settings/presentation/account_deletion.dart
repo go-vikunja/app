@@ -5,6 +5,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/web_password_note.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
 // v2 ignores the server's switch, so the app must respect it.
@@ -34,10 +35,11 @@ Future<void> explainAccountDeletionNotAllowed(BuildContext context) {
 
 /// What deleting the account means, before the web's page takes over; true
 /// for Continue in the browser. [isLocalUser] adds that the web asks for
-/// the password.
+/// the password, and [accountLockout] that ten wrong ones lock the account.
 Future<bool> confirmAccountDeletion(
   BuildContext context, {
   required bool isLocalUser,
+  required bool accountLockout,
 }) async {
   final l10n = context.l10n;
   final confirmed = await showAdaptiveDialog<bool>(
@@ -50,7 +52,8 @@ Future<bool> confirmAccountDeletion(
           l10n.accountDeletionDialogPermanent,
           l10n.accountDeletionDialogEmail,
           l10n.accountDeletionDialogNoEmail,
-          if (isLocalUser) l10n.accountSettingsWebAsksPassword,
+          if (isLocalUser)
+            webAsksPasswordNote(l10n, accountLockout: accountLockout),
         ].join('\n\n'),
       ),
       actions: [

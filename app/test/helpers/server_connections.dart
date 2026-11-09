@@ -88,18 +88,23 @@ ServerConnection fullServer280({
   String root = 'https://tasks.example.org/vikunja',
   bool demoMode = false,
   bool userDeletion = true,
+  LegalLinks? legal,
 }) => _fullServer(
   root,
   version: 'v2.8.0',
   demoMode: demoMode,
   userDeletion: userDeletion,
+  legal: legal,
 );
 
+/// Its legal links by default: the imprint, a privacy policy that is not a
+/// web link, which the UI must not offer, and terms of service.
 ServerConnection _fullServer(
   String root, {
   required String version,
   required bool demoMode,
   required bool userDeletion,
+  LegalLinks? legal,
 }) => _connect(
   root,
   _info(
@@ -115,10 +120,26 @@ ServerConnection _fullServer(
     publicTeams: true,
     demoMode: demoMode,
     userDeletion: userDeletion,
-    legal: LegalLinks(
-      imprintUrl: Uri.parse('https://example.org/imprint'),
-      privacyPolicyUrl: Uri.parse('javascript:alert(1)'),
-    ),
+    legal:
+        legal ??
+        LegalLinks(
+          imprintUrl: Uri.parse('https://example.org/imprint'),
+          privacyPolicyUrl: Uri.parse('javascript:alert(1)'),
+          links: [
+            LegalLink(
+              text: LegalLink.imprintText,
+              url: Uri.parse('https://example.org/imprint'),
+            ),
+            LegalLink(
+              text: LegalLink.privacyPolicyText,
+              url: Uri.parse('javascript:alert(1)'),
+            ),
+            LegalLink(
+              text: 'Terms of Service',
+              url: Uri.parse('https://example.org/terms'),
+            ),
+          ],
+        ),
   ),
   {ApiVersion.v1, ApiVersion.v2},
 );

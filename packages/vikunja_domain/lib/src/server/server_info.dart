@@ -84,14 +84,21 @@ final class LegalLinks {
   /// `Privacy Policy` when only the list has it.
   final Uri? privacyPolicyUrl;
 
-  /// Every legal link, the imprint and the privacy policy included. Listed
-  /// by the server since 2.8.0, built from the two URLs before.
+  /// Every legal link in the server's order, the imprint and the privacy
+  /// policy included; two links with one address are both kept when their
+  /// texts differ. Listed by the server since 2.8.0, built from the two URLs
+  /// before.
   final List<LegalLink> links;
 }
 
 @immutable
 final class LegalLink {
   const new({required this.text, required this.url});
+
+  /// The texts the server gives the deprecated imprint and privacy policy in
+  /// its list, which the app shows in its own words.
+  static const imprintText = 'Imprint';
+  static const privacyPolicyText = 'Privacy Policy';
 
   /// As the server's admin wrote it, untranslated.
   final String text;

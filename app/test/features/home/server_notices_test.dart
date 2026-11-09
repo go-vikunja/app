@@ -12,6 +12,38 @@ import '../../helpers/sync_fakes.dart';
 
 const _motd = 'Maintenance on Sunday from 02:00 to 03:00.';
 
+final _everyKindOfLink = LegalLinks(
+  links: [
+    LegalLink(
+      text: LegalLink.imprintText,
+      url: Uri.parse('https://example.org/imprint'),
+    ),
+    LegalLink(
+      text: LegalLink.privacyPolicyText,
+      url: Uri.parse('https://example.org/privacy'),
+    ),
+    LegalLink(
+      text: 'Barrierefreiheit',
+      url: Uri.parse('https://example.org/a11y'),
+    ),
+    LegalLink(text: 'imprint', url: Uri.parse('https://example.org/lower')),
+  ],
+);
+
+/// The legal link buttons' texts in the Server section, in widget order.
+List<String?> _legalLabels(WidgetTester tester) => tester
+    .widgetList<Text>(
+      find.descendant(
+        of: find.descendant(
+          of: find.byType(ServerNotices),
+          matching: find.byType(TextButton),
+        ),
+        matching: find.byType(Text),
+      ),
+    )
+    .map((text) => text.data)
+    .toList();
+
 void main() {
   late AuthFakes auth;
   late FakeExternalLinkOpener linkOpener;
@@ -62,6 +94,7 @@ void main() {
     expect(find.text(en.motdHeading), findsOneWidget);
     expect(find.widgetWithText(SelectableText, _motd), findsOneWidget);
     expect(find.text(en.legalImprint), findsOneWidget);
+    expect(find.text('Terms of Service'), findsOneWidget);
     // Only web links are offered; the stored privacy link is javascript:.
     expect(find.text(en.legalPrivacy), findsNothing);
 
@@ -99,6 +132,76 @@ void main() {
     expect(find.text(en.overviewDemoNote), findsNothing);
     expect(find.widgetWithText(SelectableText, _motd), findsOneWidget);
     expect(find.text(en.legalImprint), findsOneWidget);
+  });
+
+  testWidgets('every legal link of a 2.8.0 server shows in its order, the '
+      "imprint and the privacy policy in the app's words, the others as "
+      'written', (tester) async {
+    await pumpAccountTab(tester, fullServer280(legal: _everyKindOfLink));
+
+    await scrollTo(tester, find.byType(ServerNotices));
+    expect(_legalLabels(tester), [
+      'Imprint',
+      'Privacy policy',
+      'Barrierefreiheit',
+      'imprint',
+    ]);
+    await tester.tap(find.text('Barrierefreiheit'));
+    await tester.pump();
+    expect(linkOpener.opened, [Uri.parse('https://example.org/a11y')]);
+  });
+
+  testWidgets('every legal link of a 2.8.0 server in German', (tester) async {
+    useLocale(tester, const Locale('de'));
+    await pumpAccountTab(
+      tester,
+      fullServer280(legal: _everyKindOfLink),
+      tabLabel: de.tabAccount,
+    );
+
+    await scrollTo(tester, find.byType(ServerNotices));
+    expect(_legalLabels(tester), [
+      'Impressum',
+      'Datenschutzerklärung',
+      'Barrierefreiheit',
+      'imprint',
+    ]);
+  });
+
+  group('Imprint and Impressum at one address', () {
+    final imprintTwice = LegalLinks(
+      links: [
+        LegalLink(
+          text: LegalLink.imprintText,
+          url: Uri.parse('https://example.org/imprint'),
+        ),
+        LegalLink(
+          text: 'Impressum',
+          url: Uri.parse('https://example.org/imprint'),
+        ),
+      ],
+    );
+
+    testWidgets('are two buttons in English', (tester) async {
+      await pumpAccountTab(tester, fullServer280(legal: imprintTwice));
+
+      await scrollTo(tester, find.byType(ServerNotices));
+      expect(_legalLabels(tester), ['Imprint', 'Impressum']);
+    });
+
+    testWidgets('are one button in German, where both read Impressum', (
+      tester,
+    ) async {
+      useLocale(tester, const Locale('de'));
+      await pumpAccountTab(
+        tester,
+        fullServer280(legal: imprintTwice),
+        tabLabel: de.tabAccount,
+      );
+
+      await scrollTo(tester, find.byType(ServerNotices));
+      expect(_legalLabels(tester), ['Impressum']);
+    });
   });
 
   testWidgets('a server without notices adds nothing', (tester) async {
@@ -139,5 +242,6 @@ void main() {
     expect(find.text(de.overviewDemoNote), findsOneWidget);
     expect(find.text(de.motdHeading), findsOneWidget);
     expect(find.text(de.legalImprint), findsOneWidget);
+    expect(find.text('Terms of Service'), findsOneWidget);
   });
 }

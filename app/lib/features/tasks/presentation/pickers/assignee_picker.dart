@@ -56,6 +56,12 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
   List<User> _found = const [];
   String? _answeredQuery;
 
+  /// Everyone the server has listed for the project, all of whom may be
+  /// assigned; the empty query lists them. Those matching a query here,
+  /// ignoring accents, join the server's answer to it, which on most
+  /// servers minds accents.
+  List<User> _projectPeople = const [];
+
   /// The people this device knows and everyone found so far: the rows,
   /// filtered here, while the server has not answered the current query,
   /// which on a slow or dead connection can take its retries and timeouts.
@@ -109,14 +115,22 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
     } on Object catch (error) {
       failure = error;
     }
-    // A slower answer to an earlier query must not replace a newer one.
-    if (!mounted || search != _latestSearch) return;
+    if (!mounted) return;
+    // A slower answer to an earlier query must not replace a newer one, but
+    // the people it lists still have access to the project.
+    if (search != _latestSearch) {
+      if (found case final people?) {
+        setState(() => _projectPeople = _merged(_projectPeople, people));
+      }
+      return;
+    }
     final l10n = context.l10n;
     setState(() {
       _searching = false;
       if (found != null) {
         _found = found;
         _answeredQuery = query;
+        _projectPeople = _merged(_projectPeople, found);
         _known = _merged(_known, found);
       }
       _fallbackNotice = switch (failure) {
@@ -163,7 +177,9 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
     final rows = peoplePickerRows(
       assigned: widget.selected,
       selected: _selected,
-      found: query == _answeredQuery ? _found : filterUsers(_known, query),
+      found: query == _answeredQuery
+          ? _merged(_found, filterUsers(_projectPeople, query))
+          : filterUsers(_known, query),
     );
 
     // Everything under the header scrolls: with the keyboard up, in

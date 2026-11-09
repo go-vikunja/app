@@ -1,37 +1,24 @@
 import 'dart:math';
 
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/filters/search_index.dart';
+import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
 
 /// The server's limit for a label title, in code points.
 const int maxLabelTitleLength = Label.maxTitleLength;
 
-/// The colours the web picks from at random for a new label.
-const newLabelColors = [
-  'ffbe0b',
-  'fd8a09',
-  'fb5607',
-  'ff006e',
-  'efbdeb',
-  '8338ec',
-  '5f5ff6',
-  '3a86ff',
-  '4c91ff',
-  '0ead69',
-  '25be8b',
-  '073b4c',
-  '373f47',
-];
-
+/// A new label's colour: one of the [okabeItoColors] at random.
 String randomLabelColor(Random random) =>
-    newLabelColors[random.nextInt(newLabelColors.length)];
+    okabeItoColors[random.nextInt(okabeItoColors.length)];
 
-/// [labels] whose title contains the trimmed [query], ignoring case.
+/// [labels] whose title contains the trimmed [query], ignoring case and
+/// accents.
 List<Label> filterLabels(List<Label> labels, String query) {
-  final needle = query.trim().toLowerCase();
+  final needle = foldForSearch(query.trim());
   if (needle.isEmpty) return labels;
   return [
     for (final label in labels)
-      if (label.title.toLowerCase().contains(needle)) label,
+      if (foldForSearch(label.title).contains(needle)) label,
   ];
 }
 

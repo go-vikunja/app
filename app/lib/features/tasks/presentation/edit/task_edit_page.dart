@@ -218,6 +218,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
         body: switch ((draft, task)) {
           (final draft?, _) => _Form(
             draft: draft,
+            originalHexColor: _original?.hexColor.toLowerCase() ?? '',
             description: current?.description ?? '',
             onEditDescription: current == null || archived
                 ? null
@@ -252,6 +253,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
 class _Form extends ConsumerWidget {
   const new({
     required this.draft,
+    required this.originalHexColor,
     required this.description,
     required this.onEditDescription,
     required this.titleController,
@@ -265,6 +267,7 @@ class _Form extends ConsumerWidget {
   });
 
   final TaskDraft draft;
+  final String originalHexColor;
 
   /// As stored now: the editor saves it on its own.
   final String description;
@@ -454,6 +457,7 @@ class _Form extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: ColorRow(
               value: draft.hexColor,
+              original: originalHexColor,
               onChanged: (hex) =>
                   onChanged((draft) => draft.copyWith(hexColor: hex)),
             ),

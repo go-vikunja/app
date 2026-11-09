@@ -1,4 +1,5 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/filters/search_index.dart';
 
 /// The kinds the detail sheet lists under "Related tasks", in this order;
 /// subtasks and parents have places of their own.
@@ -45,7 +46,7 @@ List<Task> inCreationOrder(Iterable<Task> tasks) {
 /// itself, none it already has that relation to, not its parent as a
 /// subtask nor its subtask as a parent (the server refuses the loop), done
 /// ones only with [includeDone], and with the trimmed [query] in the title
-/// or the identifier, ignoring case. At most [limit].
+/// or the identifier, ignoring case and accents. At most [limit].
 List<Task> relationCandidates(
   Iterable<Task> tasks, {
   required Task task,
@@ -54,7 +55,7 @@ List<Task> relationCandidates(
   required bool includeDone,
   int limit = 50,
 }) {
-  final needle = query.trim().toLowerCase();
+  final needle = foldForSearch(query.trim());
   final related = {
     for (final other in [
       ...?task.relatedTasks[kind],
@@ -65,8 +66,8 @@ List<Task> relationCandidates(
   };
   bool matches(Task other) =>
       needle.isEmpty ||
-      other.title.toLowerCase().contains(needle) ||
-      (other.id > 0 && other.displayIdentifier.toLowerCase().contains(needle));
+      foldForSearch(other.title).contains(needle) ||
+      (other.id > 0 && foldForSearch(other.displayIdentifier).contains(needle));
   return [
     for (final other in tasks)
       if (other.id != task.id &&

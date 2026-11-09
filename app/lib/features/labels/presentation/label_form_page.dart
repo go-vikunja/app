@@ -250,6 +250,7 @@ class _LabelFormPageState extends ConsumerState<LabelFormPage> {
         customHexController: _customHex,
         customHexInvalid: _customHexInvalid,
         hexColor: _hexColor,
+        originalHexColor: _initialHexColor,
         enabled: enabled,
         notes: [
           if (offline) const OfflineNotice(),
@@ -328,6 +329,7 @@ class _Form extends StatelessWidget {
     required this.customHexController,
     required this.customHexInvalid,
     required this.hexColor,
+    required this.originalHexColor,
     required this.enabled,
     required this.notes,
     required this.description,
@@ -345,6 +347,7 @@ class _Form extends StatelessWidget {
   final TextEditingController customHexController;
   final bool customHexInvalid;
   final String hexColor;
+  final String originalHexColor;
   final bool enabled;
   final List<Widget> notes;
 
@@ -416,7 +419,7 @@ class _Form extends StatelessWidget {
               ignoring: !enabled,
               child: ColorRow(
                 value: hexColor,
-                palette: newLabelColors,
+                original: originalHexColor,
                 onChanged: onColorPicked,
               ),
             ),

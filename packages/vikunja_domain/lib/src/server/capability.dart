@@ -24,6 +24,10 @@ enum Capability {
   /// own, so unfollowing a task silences it. Vikunja 2.8.0 and newer,
   /// whatever the API version: the server routes the reminders itself.
   remindersToSubscribers,
+
+  /// Ten wrong passwords lock a local account until its password is reset,
+  /// and end all its sessions. Vikunja 2.8.0 and newer, on both API versions.
+  accountLockout,
   localAuth,
   ldapAuth,
   openIdConnect,

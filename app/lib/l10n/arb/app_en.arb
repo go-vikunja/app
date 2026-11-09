@@ -234,7 +234,13 @@
   "featureBackgrounds": "Project backgrounds",
   "motdHeading": "Message from the server",
   "legalImprint": "Imprint",
+  "@legalImprint": {
+    "description": "A server's legal link that the server names exactly \"Imprint\" (its legal notice), on the server overview and in the Account tab's Server section; the server's other legal links show with the text its admin wrote, untranslated. Rurana's own legal notice is aboutLegalNotice."
+  },
   "legalPrivacy": "Privacy policy",
+  "@legalPrivacy": {
+    "description": "A server's legal link that the server names exactly \"Privacy Policy\", beside legalImprint. Rurana's own is aboutPrivacyPolicy."
+  },
   "legalOpenFailed": "The link could not be opened.",
   "continueToSignIn": "Continue to sign-in",
   "useDifferentServer": "Use a different server",
@@ -4561,7 +4567,17 @@
   "accountSettingsTotpNotAvailable": "Not available for this account",
   "accountSettingsTotpNotChecked": "Not checked over an unencrypted connection",
   "accountSettingsTotpTurnOnNote": "Opens the web in your browser. Turning it on signs you out everywhere, this app included. Then sign in here again; your browser asks for the code.",
+  "@accountSettingsTotpTurnOnNote": {
+    "description": "Under the two-factor authentication row while it is not on, also while its status is being checked or could not be read, on servers before Vikunja 2.8.0, whose web does not ask for the password to turn it on. Newer servers show accountSettingsTotpTurnOnPasswordNote instead."
+  },
+  "accountSettingsTotpTurnOnPasswordNote": "Opens the web in your browser. Turning it on needs your password and signs you out everywhere, this app included. Then sign in here again; your browser asks for the code.",
+  "@accountSettingsTotpTurnOnPasswordNote": {
+    "description": "Under the two-factor authentication row while it is not on, also while its status is being checked or could not be read, on Vikunja 2.8.0 and newer, whose web asks for the password to set it up and turn it on. accountSettingsAccountLockout follows it, joined with a space."
+  },
   "accountSettingsTotpOnNote": "Opens the web in your browser. Turning it off needs your password, and newer servers also ask for a code.",
+  "@accountSettingsTotpOnNote": {
+    "description": "Under the two-factor authentication row while it is on. On Vikunja 2.8.0 and newer accountSettingsAccountLockout follows it, joined with a space."
+  },
   "accountSettingsSessions": "Sessions",
   "accountSettingsSessionsCount": "{count, plural, =1{1 signed-in device or browser} other{{count} signed-in devices and browsers}}",
   "@accountSettingsSessionsCount": {
@@ -4605,6 +4621,13 @@
   "accountSettingsExportHint": "A copy of your projects and tasks",
   "accountSettingsDeleteAccount": "Delete account",
   "accountSettingsWebAsksPassword": "The web asks for your password.",
+  "@accountSettingsWebAsksPassword": {
+    "description": "For accounts with a password: in the account deletion dialog and on the data export page, and on Vikunja 2.8.0 and newer also in a note under Change password and Change email address. On those servers accountSettingsAccountLockout follows it, joined with a space."
+  },
+  "accountSettingsAccountLockout": "Ten wrong passwords sign you out on every device and lock your account until you reset your password.",
+  "@accountSettingsAccountLockout": {
+    "description": "After accountSettingsWebAsksPassword, joined to it with a space, in the account deletion dialog, on the data export page and in the note under Change password and Change email address; also after accountSettingsTotpOnNote or accountSettingsTotpTurnOnPasswordNote on the two-factor authentication row. Only for accounts with a password on Vikunja 2.8.0 and newer: there ten wrong passwords, at sign-in, at any password prompt of the web or in a CalDAV app, and on any device, end every session and lock the account until its password is reset."
+  },
   "accountDeletionScheduled": "Your account will be deleted on {date}.",
   "@accountDeletionScheduled": {
     "placeholders": {

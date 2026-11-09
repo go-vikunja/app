@@ -3,16 +3,6 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
 import 'package:vikunja_mobile/features/tasks/application/repeat_editor.dart';
 
-/// The web colour picker's defaults, six lowercase hex digits without `#`.
-const defaultTaskColors = [
-  '1973ff',
-  '7f23ff',
-  'ff4136',
-  'ff851b',
-  'ffeb10',
-  '00db60',
-];
-
 /// What the edit page holds while the user edits; [diff] turns it into the
 /// fields that differ from the task it started from. Dates are UTC instants.
 @immutable

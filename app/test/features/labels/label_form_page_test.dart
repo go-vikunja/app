@@ -6,7 +6,7 @@ import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/labels/presentation/label_form_page.dart';
 import 'package:vikunja_mobile/features/labels/presentation/labels_page.dart';
-import 'package:vikunja_mobile/features/tasks/application/label_search.dart';
+import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
 
 import '../../helpers/editor_bridge_fakes.dart';
 import '../../helpers/label_user_fakes.dart';
@@ -39,7 +39,7 @@ void main() {
       expect(find.text(en.labelsNew), findsOneWidget);
       expect(find.text(en.labelsDescriptionAfterCreate), findsOneWidget);
       final startColor = tester.widget<TextField>(hexField()).controller!.text;
-      expect(newLabelColors, contains(startColor));
+      expect(okabeItoColors, contains(startColor));
       expect(enabled(tester, action(en.labelsCreate)), isFalse);
 
       await tester.enterText(titleField(), '  Errands  ');
@@ -54,6 +54,23 @@ void main() {
       expect(find.byType(LabelsPage), findsOneWidget);
       expect(find.text(en.labelsCreated), findsOneWidget);
       expect(find.text('Errands'), findsOneWidget);
+    });
+
+    testWidgets('offers the seven colours of the Okabe–Ito palette', (
+      tester,
+    ) async {
+      await openForm(tester, AppRoutes.labelNew);
+
+      for (final hex in okabeItoColors) {
+        expect(
+          find.bySemanticsLabel(en.taskEditColourSemantics('#$hex')),
+          findsOneWidget,
+        );
+      }
+      expect(
+        find.bySemanticsLabel(en.taskEditColourSemantics('#3a86ff')),
+        findsNothing,
+      );
     });
 
     testWidgets('a cleared title says it is needed and cannot be saved', (
@@ -200,15 +217,49 @@ void main() {
       await openForm(tester, AppRoutes.labelEdit(1));
 
       await tester.tap(
-        find.bySemanticsLabel(en.taskEditColourSemantics('#3a86ff')),
+        find.bySemanticsLabel(en.taskEditColourSemantics('#0072b2')),
       );
       await tester.pump();
       await tester.tap(action(en.labelsSave));
       await tester.pumpAndSettle();
 
       expect(harness.labels.updates, [
-        (1, const LabelChanges(hexColor: '3a86ff')),
+        (1, const LabelChanges(hexColor: '0072b2')),
       ]);
+    });
+
+    testWidgets('a colour from outside the palette stays chosen', (
+      tester,
+    ) async {
+      await openForm(tester, AppRoutes.labelEdit(1));
+
+      expect(
+        tester.getSemantics(
+          find.bySemanticsLabel(en.taskEditColourSemantics('#ff006e')),
+        ),
+        isSemantics(
+          label: en.taskEditColourSemantics('#ff006e'),
+          isSelected: true,
+        ),
+      );
+      expect(enabled(tester, action(en.labelsSave)), isFalse);
+    });
+
+    testWidgets('a colour from outside the palette can be chosen again '
+        'after trying another', (tester) async {
+      await openForm(tester, AppRoutes.labelEdit(1));
+
+      await tester.tap(
+        find.bySemanticsLabel(en.taskEditColourSemantics('#e69f00')),
+      );
+      await tester.pump();
+      expect(enabled(tester, action(en.labelsSave)), isTrue);
+      await tester.tap(
+        find.bySemanticsLabel(en.taskEditColourSemantics('#ff006e')),
+      );
+      await tester.pump();
+
+      expect(enabled(tester, action(en.labelsSave)), isFalse);
     });
 
     testWidgets('a label gone on the server closes the page and says so', (

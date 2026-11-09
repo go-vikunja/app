@@ -37,6 +37,11 @@ x-vikunja-env: &vikunja-env
   # All test traffic comes from one IP. The login limiter (10/min) cannot be
   # disabled and still applies.
   VIKUNJA_RATELIMIT_ENABLED: "false"
+  # A legal link besides the imprint and the privacy policy for the contract
+  # tests, named neither "Imprint" nor "Privacy Policy": they expect the
+  # server to have neither.
+  VIKUNJA_LEGAL_TERMS_TEXT: "Terms of Service"
+  VIKUNJA_LEGAL_TERMS_URL: "https://example.org/terms"
 
 # VIKUNJA_SERVICE_PUBLICURL becomes `frontend_url` in /info, where the app
 # opens the OAuth authorize page, and it is also the bundled web frontend's

@@ -32,6 +32,8 @@ typedef _Seed = ({
   int importantId,
   int importantViewId,
   int importantDone,
+  int sharedId,
+  int sharedXId,
 });
 
 List<int> _flatten(Iterable<TaskTreeNode> nodes) => [
@@ -167,6 +169,17 @@ void main() {
       });
       movedId = oldest;
 
+      // Open R, done P below it and open X below P: the server sends X as
+      // a root too, and the web shows it only under P.
+      final sharedId = await seeder.create('/projects', {
+        'title': 'Shared subtasks',
+      });
+      final sharedR = await task(sharedId, 'R');
+      final sharedP = await task(sharedId, 'P', {'done': true});
+      final sharedXId = await task(sharedId, 'X');
+      await subtask(sharedR, sharedP);
+      await subtask(sharedP, sharedXId);
+
       // A view the device cannot evaluate, its done task moved to the top.
       final importantId = await seeder.create('/projects', {
         'title': 'Important',
@@ -209,6 +222,8 @@ void main() {
         importantId: importantId,
         importantViewId: importantViewId,
         importantDone: importantDone,
+        sharedId: sharedId,
+        sharedXId: sharedXId,
       );
     });
 
@@ -310,6 +325,51 @@ void main() {
             );
           },
         );
+
+        test('a task below a done subtask shows once, nested, as the web '
+            'shows the server answer', () async {
+          final project = (await db.projectsDao.loadAll()).firstWhere(
+            (project) => project.id == seed.sharedId,
+          );
+          final view = project.views.firstWhere(
+            (view) => view.kind == ProjectViewKind.list,
+          );
+
+          await tasks.refreshProjectList(seed.sharedId, viewId: view.id);
+          final source = await tasks
+              .watchProjectList(seed.sharedId, viewId: view.id)
+              .first;
+          final tree = buildTaskTree(
+            matching: [
+              for (final task in source.projectTasks)
+                if (!task.done) task,
+            ],
+            tasksById: source.tasksById,
+          );
+
+          final server = await v2Items(
+            '/projects/${seed.sharedId}/views/${view.id}/tasks',
+            {'expand': 'subtasks', 'per_page': '50'},
+          );
+          final sent = {for (final item in server) item['id']! as int};
+          Iterable<int> parentIdsOf(Map<String, Object?> item) => [
+            if (item['related_tasks'] case {
+              'parenttask': final List<Object?> parents,
+            })
+              for (final parent in parents)
+                (parent! as Map<String, Object?>)['id']! as int,
+          ];
+          final webTop = {
+            for (final item in server)
+              if (!parentIdsOf(item).any(sent.contains)) item['id']! as int,
+          };
+          final shown = _flatten(tree);
+
+          expect(sent, contains(seed.sharedXId));
+          expect(_ids(tree.map((node) => node.task)).toSet(), webTop);
+          expect(shown.where((id) => id == seed.sharedXId), hasLength(1));
+          expect(shown.toSet(), sent);
+        });
 
         test("a filter the classifier does not know matches the server's "
             "on the device, and its download keeps the server's order, its "
