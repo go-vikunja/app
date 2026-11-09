@@ -83,15 +83,21 @@ String deletionDate(MomentFormatter formatter, DateTime moment) =>
 /// The account is scheduled for deletion: an emphasized note with the date
 /// and the way to cancel it on the web. A date that has passed does not
 /// mean the account is gone: the server's hourly deletion can fail.
+/// [isLocalUser] adds that the web asks for the password, and
+/// [accountLockout] that ten wrong ones lock the account.
 class DeletionScheduledNote extends ConsumerWidget {
   const new({
     required this.scheduledAt,
+    required this.isLocalUser,
+    required this.accountLockout,
     required this.onCancel,
     this.padding = const EdgeInsets.fromLTRB(16, 8, 16, 8),
     super.key,
   });
 
   final DateTime scheduledAt;
+  final bool isLocalUser;
+  final bool accountLockout;
   final VoidCallback onCancel;
   final EdgeInsetsGeometry padding;
 
@@ -126,13 +132,30 @@ class DeletionScheduledNote extends ConsumerWidget {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        overdue
-                            ? l10n.accountDeletionOverdue(date)
-                            : l10n.accountDeletionScheduled(date),
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: colors.onErrorContainer,
-                        ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Text(
+                            overdue
+                                ? l10n.accountDeletionOverdue(date)
+                                : l10n.accountDeletionScheduled(date),
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              color: colors.onErrorContainer,
+                            ),
+                          ),
+                          if (isLocalUser) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              webAsksPasswordNote(
+                                l10n,
+                                accountLockout: accountLockout,
+                              ),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: colors.onErrorContainer,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
                     ),
                   ],

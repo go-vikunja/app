@@ -7932,13 +7932,13 @@ abstract class AppLocalizations {
   /// **'Delete account'**
   String get accountSettingsDeleteAccount;
 
-  /// For accounts with a password: in the account deletion dialog and on the data export page, and on Vikunja 2.8.0 and newer also in a note under Change password and Change email address. On those servers accountSettingsAccountLockout follows it, joined with a space.
+  /// For accounts with a password: in the account deletion dialog, on the data export page and in the note of a scheduled deletion (on the Account tab and the Account settings page), whose Cancel deletion opens the web's page, and under the Delete account row of a scheduled deletion; on Vikunja 2.8.0 and newer also in a note under Change password and Change email address. On those servers accountSettingsAccountLockout follows it, joined with a space.
   ///
   /// In en, this message translates to:
   /// **'The web asks for your password.'**
   String get accountSettingsWebAsksPassword;
 
-  /// After accountSettingsWebAsksPassword, joined to it with a space, in the account deletion dialog, on the data export page and in the note under Change password and Change email address; also after accountSettingsTotpOnNote or accountSettingsTotpTurnOnPasswordNote on the two-factor authentication row. Only for accounts with a password on Vikunja 2.8.0 and newer: there ten wrong passwords, at sign-in, at any password prompt of the web or in a CalDAV app, and on any device, end every session and lock the account until its password is reset.
+  /// After accountSettingsWebAsksPassword, joined to it with a space, in the account deletion dialog, on the data export page, in the note of a scheduled deletion, under the Delete account row of a scheduled deletion and in the note under Change password and Change email address; also after accountSettingsTotpOnNote or accountSettingsTotpTurnOnPasswordNote on the two-factor authentication row. Only for accounts with a password on Vikunja 2.8.0 and newer: there ten wrong passwords, at sign-in, at any password prompt of the web or in a CalDAV app, and on any device, end every session and lock the account until its password is reset.
   ///
   /// In en, this message translates to:
   /// **'Ten wrong passwords sign you out on every device and lock your account until you reset your password.'**
@@ -8628,6 +8628,12 @@ abstract class AppLocalizations {
   /// **'Use a CalDAV token as the password. Your account password works too, unless two-factor authentication is on.'**
   String get caldavTokenUnknown;
 
+  /// On the CalDAV page on Vikunja 2.8.0 and newer, in place of caldavPasswordOrToken (an account with a password and without two-factor authentication) and caldavTokenUnknown (when the app cannot tell). On those servers ten wrong passwords lock the account, also those a CalDAV app sends.
+  ///
+  /// In en, this message translates to:
+  /// **'As the password, use a CalDAV token rather than your account password: a calendar app that keeps trying an old password, for example after a password change, locks your account after ten tries.'**
+  String get caldavTokenRecommended;
+
   /// No description provided for @caldavApiTokenHint.
   ///
   /// In en, this message translates to:
@@ -8687,6 +8693,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CalDAV apps using it can no longer sign in. This cannot be undone.'**
   String get caldavDeleteBody;
+
+  /// In place of caldavDeleteBody in the confirmation to delete a CalDAV token, on Vikunja 2.8.0 and newer for an account with a password: those servers check a token they no longer know as the account password, so a calendar app that keeps using it counts toward the lockout.
+  ///
+  /// In en, this message translates to:
+  /// **'CalDAV apps using it can no longer sign in. This cannot be undone. Remove it from those apps first; otherwise every further try with it counts as a wrong password, and ten wrong passwords lock your account until you reset your password.'**
+  String get caldavDeleteBodyLockout;
 
   /// No description provided for @caldavDelete.
   ///

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/api_tokens_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/caldav_page.dart';
@@ -28,6 +29,7 @@ void main() {
     WidgetTester tester, {
     ServerConnection? connection,
     bool isLocalUser = true,
+    bool profileRead = true,
   }) async {
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
@@ -49,10 +51,12 @@ void main() {
       tester,
       location: AppRoutes.accountCaldav,
       connection: connection,
-      state: fakeAccountSettingsState(
-        isLocalUser: isLocalUser,
-        authProvider: isLocalUser ? 'local' : 'Keycloak',
-      ),
+      state: profileRead
+          ? fakeAccountSettingsState(
+              isLocalUser: isLocalUser,
+              authProvider: isLocalUser ? 'local' : 'Keycloak',
+            )
+          : const AccountSettingsState(),
     );
   }
 
@@ -188,6 +192,61 @@ void main() {
       await pumpPage(tester);
 
       expect(find.text(en.caldavTokenUnknown), findsOneWidget);
+    });
+
+    group('on 2.8.0, where ten wrong passwords lock the account', () {
+      final server = securityServer(version: 'v2.8.0');
+
+      testWidgets('a password account without two-factor is advised a token '
+          'and told why', (tester) async {
+        await pumpPage(tester, connection: server);
+
+        expect(find.text(en.caldavTokenRecommended), findsOneWidget);
+        expect(find.text(en.caldavPasswordOrToken), findsNothing);
+      });
+
+      testWidgets('so is one whose two-factor status cannot be read', (
+        tester,
+      ) async {
+        harness.security.failures['totpStatus'] = const NetworkFailure(
+          NetworkProblem.unreachable,
+        );
+        await pumpPage(tester, connection: server);
+
+        expect(find.text(en.caldavTokenRecommended), findsOneWidget);
+        expect(find.text(en.caldavTokenUnknown), findsNothing);
+      });
+
+      testWidgets('so is one whose profile is not read yet', (tester) async {
+        await pumpPage(tester, connection: server, profileRead: false);
+
+        expect(find.text(en.caldavTokenRecommended), findsOneWidget);
+        expect(find.text(en.caldavTokenUnknown), findsNothing);
+      });
+
+      testWidgets('with two-factor on the text stays', (tester) async {
+        harness.security.totp = TotpStatus.enabled;
+        await pumpPage(tester, connection: server);
+
+        expect(find.text(en.caldavTokenTotp), findsOneWidget);
+        expect(find.text(en.caldavTokenRecommended), findsNothing);
+      });
+
+      testWidgets('for a sign-in provider account the text stays', (
+        tester,
+      ) async {
+        await pumpPage(tester, connection: server, isLocalUser: false);
+
+        expect(find.text(en.caldavTokenProvider('Keycloak')), findsOneWidget);
+        expect(find.text(en.caldavTokenRecommended), findsNothing);
+      });
+
+      testWidgets('in German', (tester) async {
+        useLocale(tester, const Locale('de'));
+        await pumpPage(tester, connection: server);
+
+        expect(find.text(de.caldavTokenRecommended), findsOneWidget);
+      });
     });
   });
 
@@ -350,6 +409,86 @@ void main() {
 
     expect(harness.security.calls, contains('deleteCaldavToken 7'));
     expect(find.text(en.caldavTokenName(7)), findsNothing);
+  });
+
+  group('on 2.8.0 deleting a token', () {
+    final server = securityServer(version: 'v2.8.0');
+
+    Future<void> askToDelete(WidgetTester tester) async {
+      await scrollTo(tester, find.byTooltip(en.caldavDeleteToken(7)));
+      await tester.tap(find.byTooltip(en.caldavDeleteToken(7)));
+      await tester.pumpAndSettle();
+    }
+
+    setUp(
+      () => harness.security.caldavTokenList = [
+        CaldavToken(id: 7, created: harness.now),
+      ],
+    );
+
+    testWidgets('says to remove it from the apps first, as each further try '
+        'counts as a wrong password', (tester) async {
+      await pumpPage(tester, connection: server);
+      await askToDelete(tester);
+
+      expect(find.text(en.caldavDeleteBodyLockout), findsOneWidget);
+      expect(find.text(en.caldavDeleteBody), findsNothing);
+      await tester.tap(find.text(en.caldavDelete).last);
+      await tester.pumpAndSettle();
+      expect(harness.security.calls, contains('deleteCaldavToken 7'));
+    });
+
+    testWidgets('also with two-factor on, as the server checks a token it no '
+        'longer knows as the password', (tester) async {
+      harness.security.totp = TotpStatus.enabled;
+      await pumpPage(tester, connection: server);
+      await askToDelete(tester);
+
+      expect(find.text(en.caldavDeleteBodyLockout), findsOneWidget);
+    });
+
+    testWidgets('also for an account whose profile is not read yet, which '
+        'may have a password', (tester) async {
+      await pumpPage(tester, connection: server, profileRead: false);
+      await askToDelete(tester);
+
+      expect(find.text(en.caldavDeleteBodyLockout), findsOneWidget);
+      expect(find.text(en.caldavDeleteBody), findsNothing);
+    });
+
+    testWidgets('an account of a sign-in provider has no password to lock', (
+      tester,
+    ) async {
+      await pumpPage(tester, connection: server, isLocalUser: false);
+      await askToDelete(tester);
+
+      expect(find.text(en.caldavDeleteBody), findsOneWidget);
+      expect(find.text(en.caldavDeleteBodyLockout), findsNothing);
+    });
+
+    testWidgets('in German', (tester) async {
+      useLocale(tester, const Locale('de'));
+      await pumpPage(tester, connection: server);
+      await scrollTo(tester, find.byTooltip(de.caldavDeleteToken(7)));
+      await tester.tap(find.byTooltip(de.caldavDeleteToken(7)));
+      await tester.pumpAndSettle();
+
+      expect(find.text(de.caldavDeleteBodyLockout), findsOneWidget);
+    });
+
+    test('says what cannot be undone before the warning, and that the lock '
+        'lasts until a password reset', () {
+      expect(en.caldavDeleteBodyLockout, startsWith(en.caldavDeleteBody));
+      expect(de.caldavDeleteBodyLockout, startsWith(de.caldavDeleteBody));
+      expect(
+        en.caldavDeleteBodyLockout,
+        endsWith('lock your account until you reset your password.'),
+      );
+      expect(
+        de.caldavDeleteBodyLockout,
+        endsWith('sperren dein Konto, bis du dein Passwort zurücksetzt.'),
+      );
+    });
   });
 
   testWidgets('a token that cannot be made says why', (tester) async {

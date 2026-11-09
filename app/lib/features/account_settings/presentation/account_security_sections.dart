@@ -219,7 +219,8 @@ Widget yourDataSection({
 }
 
 /// Deleting the account, last and in the error colour; once scheduled, the
-/// row names the date.
+/// row names the date and, for a local account, that the web's page to
+/// cancel it asks for the password.
 List<Widget> deleteAccountSection({
   required AppLocalizations l10n,
   required ThemeData theme,
@@ -232,6 +233,17 @@ List<Widget> deleteAccountSection({
   final scheduled = profile?.deletionScheduledAt;
   final allowed = scheduled != null || allowsAccountDeletion(connection);
   final error = theme.colorScheme.error;
+  final status = Text(switch (scheduled) {
+    // The server's hourly deletion can fail and leave the account.
+    final date? when date.isBefore(now) => l10n.accountDeletionOverdueRow(
+      deletionDate(formatter, date),
+    ),
+    final date? => l10n.accountDeletionScheduledRow(
+      deletionDate(formatter, date),
+    ),
+    null when !allowed => l10n.accountDeletionNotAllowedRow,
+    null => l10n.accountSettingsOpensWeb,
+  });
   return [
     const Divider(height: 1),
     const SizedBox(height: 8),
@@ -241,17 +253,26 @@ List<Widget> deleteAccountSection({
         l10n.accountSettingsDeleteAccount,
         style: TextStyle(color: error),
       ),
-      subtitle: Text(switch (scheduled) {
-        // The server's hourly deletion can fail and leave the account.
-        final date? when date.isBefore(now) => l10n.accountDeletionOverdueRow(
-          deletionDate(formatter, date),
-        ),
-        final date? => l10n.accountDeletionScheduledRow(
-          deletionDate(formatter, date),
-        ),
-        null when !allowed => l10n.accountDeletionNotAllowedRow,
-        null => l10n.accountSettingsOpensWeb,
-      }),
+      // Without a scheduled deletion, the dialog before the web says it.
+      subtitle: scheduled != null && (profile?.isLocalUser ?? false)
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                status,
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: SettingHelpText(
+                    webAsksPasswordNote(
+                      l10n,
+                      accountLockout: connection.capabilities.has(
+                        Capability.accountLockout,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : status,
       trailing: Icon(
         allowed ? Icons.open_in_new : Icons.info_outline,
         color: error,

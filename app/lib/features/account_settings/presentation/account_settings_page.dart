@@ -475,6 +475,10 @@ class _Settings extends ConsumerWidget {
       if (profile?.deletionScheduledAt case final scheduledAt?)
         DeletionScheduledNote(
           scheduledAt: scheduledAt,
+          isLocalUser: isLocalUser,
+          accountLockout: entry.connection.capabilities.has(
+            Capability.accountLockout,
+          ),
           onCancel: () => onOpenWeb(WebSettingsPage.deletion),
         ),
       SettingsNote(

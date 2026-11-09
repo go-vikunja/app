@@ -122,6 +122,11 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
     }
   }
 
+  /// Ten wrong passwords lock the account there, also those a CalDAV app
+  /// sends, and a token the server no longer knows counts as one.
+  static bool _lockout(ServerConnection? connection) =>
+      connection?.capabilities.has(Capability.accountLockout) ?? false;
+
   void _showSnackBar(String text) => ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(text)));
@@ -182,10 +187,13 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
     final repository = ref.read(accountSecurityRepositoryProvider);
     if (repository == null || _busyTokenId != null) return;
     final l10n = context.l10n;
+    final lockout =
+        _lockout(ref.read(accountsProvider).value?.activeAccount?.connection) &&
+        (ref.read(accountSettingsProvider).value?.profile?.isLocalUser ?? true);
     final confirmed = await confirmAdaptive(
       context,
       title: l10n.caldavDeleteTitle(token.id),
-      body: l10n.caldavDeleteBody,
+      body: lockout ? l10n.caldavDeleteBodyLockout : l10n.caldavDeleteBody,
       confirmLabel: l10n.caldavDelete,
       destructive: true,
     );
@@ -227,6 +235,7 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
         signInProviderName(profile.authProvider),
       ),
       (_?, TotpStatus.enabled) => l10n.caldavTokenTotp,
+      _ when _lockout(entry.connection) => l10n.caldavTokenRecommended,
       (_?, TotpStatus.notSetUp || TotpStatus.setupStarted) =>
         l10n.caldavPasswordOrToken,
       _ => l10n.caldavTokenUnknown,

@@ -5586,6 +5586,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Nimm ein CalDAV-Token als Passwort. Dein Kontopasswort geht auch, außer die Zwei-Faktor-Authentifizierung ist an.';
 
   @override
+  String get caldavTokenRecommended =>
+      'Nimm als Passwort lieber ein CalDAV-Token statt deines Kontopassworts: Eine Kalender-App, die es weiter mit einem alten Passwort versucht, etwa nach einer Passwortänderung, sperrt dein Konto nach zehn Versuchen.';
+
+  @override
   String get caldavApiTokenHint =>
       'Ein API-Token mit der CalDAV-Berechtigung funktioniert ebenfalls als Passwort.';
 
@@ -5622,6 +5626,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get caldavDeleteBody =>
       'CalDAV-Apps, die es nutzen, können sich dann nicht mehr anmelden. Das lässt sich nicht rückgängig machen.';
+
+  @override
+  String get caldavDeleteBodyLockout =>
+      'CalDAV-Apps, die es nutzen, können sich dann nicht mehr anmelden. Das lässt sich nicht rückgängig machen. Entferne es vorher aus diesen Apps, sonst zählt jeder weitere Versuch damit als falsches Passwort, und zehn falsche Passwörter sperren dein Konto, bis du dein Passwort zurücksetzt.';
 
   @override
   String get caldavDelete => 'Löschen';

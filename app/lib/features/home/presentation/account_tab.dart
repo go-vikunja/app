@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
@@ -81,11 +82,14 @@ class AccountTab extends ConsumerWidget {
     final busy = signingOut || isSigningIn;
     final guest = entry.account.isLinkShare;
     // A guest has no profile on the server, so nothing to delete either.
-    final deletionScheduledAt = guest
-        ? null
+    final (deletionScheduledAt, isLocalUser) = guest
+        ? (null, false)
         : ref.watch(
             accountSettingsProvider.select(
-              (state) => state.value?.profile?.deletionScheduledAt,
+              (state) => (
+                state.value?.profile?.deletionScheduledAt,
+                state.value?.profile?.isLocalUser ?? false,
+              ),
             ),
           );
     final connection = entry.connection;
@@ -158,6 +162,10 @@ class AccountTab extends ConsumerWidget {
               if (deletionScheduledAt != null)
                 DeletionScheduledNote(
                   scheduledAt: deletionScheduledAt,
+                  isLocalUser: isLocalUser,
+                  accountLockout: connection.capabilities.has(
+                    Capability.accountLockout,
+                  ),
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                   // Cancelling needs the password, so the web's page does it
                   // (D14).

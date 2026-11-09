@@ -249,6 +249,73 @@ void main() {
     );
   });
 
+  testWidgets('values ignore accents and go in with their exact titles', (
+    tester,
+  ) async {
+    labels = FakeLabelRepository(
+      labels: [
+        sampleLabel(id: 1, title: 'Café'),
+        sampleLabel(id: 2, title: 'Work'),
+      ],
+    );
+    data.projects.all = [
+      ...data.projects.all,
+      sampleProject(id: 3, title: 'Señora'),
+    ];
+    users = FakeUserRepository(
+      known: const [
+        User(id: 7, username: 'zoe', name: 'Zoë'),
+        User(id: 8, username: 'jose', name: 'José'),
+      ],
+    );
+    await openNewSavedFilter(tester);
+
+    await type(tester, 'labels in cafe');
+    expect(chipLabels(tester), ['Café']);
+    await choose(tester, 'Café');
+    expect(filterText(tester), 'labels in Café ');
+
+    await type(tester, 'project = senora');
+    expect(chipLabels(tester), ['Señora']);
+    await choose(tester, 'Señora');
+    expect(filterText(tester), 'project = Señora ');
+
+    // Matched by name, inserted as the username.
+    await type(tester, 'assignees = zoë');
+    expect(chipLabels(tester), ['Zoë']);
+    await choose(tester, 'Zoë');
+    expect(filterText(tester), 'assignees = zoe ');
+  });
+
+  testWidgets('a value typed out is not offered again, ignoring case but '
+      'not accents', (tester) async {
+    labels = FakeLabelRepository(
+      labels: [
+        sampleLabel(id: 1, title: 'Café'),
+        sampleLabel(id: 2, title: 'Cafeteria'),
+      ],
+    );
+    users = FakeUserRepository(
+      known: const [
+        User(id: 8, username: 'jose', name: 'José'),
+        User(id: 9, username: 'josefa'),
+      ],
+    );
+    await openNewSavedFilter(tester);
+
+    await type(tester, 'labels in CAFÉ');
+    expect(chipLabels(tester), isNot(contains('Café')));
+    // The filter takes only the exact title.
+    await type(tester, 'labels in cafe');
+    expect(chipLabels(tester), unorderedEquals(['Café', 'Cafeteria']));
+    await type(tester, 'labels in cafeteria');
+    expect(chipLabels(tester), isNot(contains('Cafeteria')));
+
+    // The username is what goes in, whatever the name.
+    await type(tester, 'assignees = jose');
+    expect(chipLabels(tester), ['josefa']);
+  });
+
   testWidgets('project suggestions have their coloured folders, archived '
       'ones the archive icon', (tester) async {
     data.projects.all = [

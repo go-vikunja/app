@@ -26,6 +26,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/caldav_pag
 import 'package:vikunja_mobile/features/account_settings/presentation/data_export_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/one_time_secret_view.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/sessions_page.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/web_password_note.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/search_pill.dart';
@@ -3189,12 +3190,20 @@ void main() {
       data.shared.accountSettings.state = fakeAccountSettingsState(
         deletionScheduledAt: DateTime.now().add(const Duration(days: 3)),
       );
-      await pumpSignedInApp(tester, sync: data);
+      // 2.8.0's notes add the lockout, the longest texts.
+      await pumpSignedInApp(tester, sync: data, connection: fullServer280());
       await pushOverShell(tester, AppRoutes.accountSettings);
 
       expect(
         find.text(l10n.accountDeletionCancel, skipOffstage: false),
         findsOneWidget,
+      );
+      expect(
+        find.text(
+          webAsksPasswordNote(l10n, accountLockout: true),
+          skipOffstage: false,
+        ),
+        findsWidgets,
       );
       await scrollToEnd(tester, settingsList());
       expect(tester.takeException(), isNull);
@@ -3275,11 +3284,18 @@ void main() {
       data.shared.accountSettings.state = fakeAccountSettingsState(
         deletionScheduledAt: DateTime.now().add(const Duration(days: 3)),
       );
-      await pumpSignedInApp(tester, sync: data);
+      await pumpSignedInApp(tester, sync: data, connection: fullServer280());
       await openTab(tester, l10n.tabAccount);
 
       expect(
         find.text(l10n.accountDeletionCancel, skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          webAsksPasswordNote(l10n, accountLockout: true),
+          skipOffstage: false,
+        ),
         findsOneWidget,
       );
       await scrollToEnd(tester, find.byType(ListView));

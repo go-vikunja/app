@@ -4,6 +4,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_deletion.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/api_tokens_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/caldav_page.dart';
@@ -596,6 +597,216 @@ void main() {
       await tester.tap(find.text(en.accountDeletionCancel));
       await tester.pumpAndSettle();
       expect(harness.links.opened.last, webPage('user/settings/deletion'));
+    });
+
+    group('the note of a scheduled deletion, whose cancel the web asks the '
+        'password for', () {
+      Finder inNote(String text) => find.descendant(
+        of: find.byType(DeletionScheduledNote),
+        matching: find.text(text),
+      );
+
+      Future<void> showBothNotes(
+        WidgetTester tester,
+        void Function() expectNote, {
+        ServerConnection? connection,
+        bool isLocalUser = true,
+      }) async {
+        await harness.pump(
+          tester,
+          connection: connection,
+          state: fakeAccountSettingsState(
+            isLocalUser: isLocalUser,
+            deletionScheduledAt: harness.now.add(const Duration(days: 3)),
+          ),
+        );
+        expectNote();
+
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        await openTab(tester, en.tabAccount);
+        expect(find.byType(DeletionScheduledNote), findsOneWidget);
+        expectNote();
+      }
+
+      testWidgets('says so on the page and the Account tab, without the '
+          'lockout before 2.8.0', (tester) async {
+        await showBothNotes(tester, () {
+          expect(inNote(en.accountSettingsWebAsksPassword), findsOneWidget);
+          expect(
+            find.textContaining(en.accountSettingsAccountLockout),
+            findsNothing,
+          );
+        });
+      });
+
+      testWidgets('on 2.8.0 adds that ten wrong passwords lock the account', (
+        tester,
+      ) async {
+        await showBothNotes(
+          tester,
+          () => expect(
+            inNote(
+              '${en.accountSettingsWebAsksPassword} '
+              '${en.accountSettingsAccountLockout}',
+            ),
+            findsOneWidget,
+          ),
+          connection: securityServer(version: 'v2.8.0'),
+        );
+      });
+
+      testWidgets('an account of a sign-in provider is told neither', (
+        tester,
+      ) async {
+        await showBothNotes(
+          tester,
+          () {
+            expect(
+              find.textContaining(en.accountSettingsWebAsksPassword),
+              findsNothing,
+            );
+            expect(
+              find.textContaining(en.accountSettingsAccountLockout),
+              findsNothing,
+            );
+          },
+          connection: securityServer(version: 'v2.8.0'),
+          isLocalUser: false,
+        );
+      });
+
+      testWidgets('in German', (tester) async {
+        useLocale(tester, const Locale('de'));
+        await harness.pump(
+          tester,
+          connection: securityServer(version: 'v2.8.0'),
+          state: fakeAccountSettingsState(
+            deletionScheduledAt: harness.now.add(const Duration(days: 3)),
+          ),
+        );
+
+        expect(
+          inNote(
+            '${de.accountSettingsWebAsksPassword} '
+            '${de.accountSettingsAccountLockout}',
+          ),
+          findsOneWidget,
+        );
+      });
+    });
+
+    group('the Delete account row of a scheduled deletion, which opens the '
+        'web without a dialog, says so too', () {
+      Finder inRow(String text) => find.descendant(
+        of: find.widgetWithText(ListTile, en.accountSettingsDeleteAccount),
+        matching: find.text(text),
+      );
+
+      Future<void> showRow(
+        WidgetTester tester, {
+        ServerConnection? connection,
+        bool isLocalUser = true,
+        Duration until = const Duration(days: 3),
+      }) async {
+        await harness.pump(
+          tester,
+          connection: connection,
+          state: fakeAccountSettingsState(
+            isLocalUser: isLocalUser,
+            deletionScheduledAt: harness.now.add(until),
+          ),
+        );
+        await scrollTo(tester, find.text(en.accountSettingsDeleteAccount));
+      }
+
+      testWidgets('without the lockout before 2.8.0', (tester) async {
+        await showRow(tester);
+
+        expect(inRow(en.accountSettingsWebAsksPassword), findsOneWidget);
+        expect(
+          find.textContaining(en.accountSettingsAccountLockout),
+          findsNothing,
+        );
+      });
+
+      testWidgets('on 2.8.0 with it, also once the date has passed, and the '
+          'tap still opens the web', (tester) async {
+        await showRow(
+          tester,
+          connection: securityServer(version: 'v2.8.0'),
+          until: const Duration(days: -3),
+        );
+
+        expect(find.textContaining('Deletion due since'), findsOneWidget);
+        expect(
+          inRow(
+            '${en.accountSettingsWebAsksPassword} '
+            '${en.accountSettingsAccountLockout}',
+          ),
+          findsOneWidget,
+        );
+        await tester.tap(find.text(en.accountSettingsDeleteAccount));
+        await tester.pumpAndSettle();
+        expect(find.text(en.accountDeletionDialogTitle), findsNothing);
+        expect(harness.links.opened, [webPage('user/settings/deletion')]);
+      });
+
+      testWidgets('not for an account of a sign-in provider', (tester) async {
+        await showRow(
+          tester,
+          connection: securityServer(version: 'v2.8.0'),
+          isLocalUser: false,
+        );
+
+        expect(find.textContaining('Deletion on'), findsOneWidget);
+        expect(
+          find.textContaining(en.accountSettingsWebAsksPassword),
+          findsNothing,
+        );
+      });
+
+      testWidgets('nor before a deletion is scheduled, as the dialog says it', (
+        tester,
+      ) async {
+        await harness.pump(
+          tester,
+          connection: securityServer(version: 'v2.8.0'),
+        );
+        await scrollTo(tester, find.text(en.accountSettingsDeleteAccount));
+
+        expect(inRow(en.accountSettingsOpensWeb), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.widgetWithText(ListTile, en.accountSettingsDeleteAccount),
+            matching: find.textContaining(en.accountSettingsWebAsksPassword),
+          ),
+          findsNothing,
+        );
+      });
+
+      testWidgets('in German', (tester) async {
+        useLocale(tester, const Locale('de'));
+        await harness.pump(
+          tester,
+          connection: securityServer(version: 'v2.8.0'),
+          state: fakeAccountSettingsState(
+            deletionScheduledAt: harness.now.add(const Duration(days: 3)),
+          ),
+        );
+        await scrollTo(tester, find.text(de.accountSettingsDeleteAccount));
+
+        expect(
+          find.descendant(
+            of: find.widgetWithText(ListTile, de.accountSettingsDeleteAccount),
+            matching: find.text(
+              '${de.accountSettingsWebAsksPassword} '
+              '${de.accountSettingsAccountLockout}',
+            ),
+          ),
+          findsOneWidget,
+        );
+      });
     });
 
     testWidgets('a date that has passed reads as due since then', (

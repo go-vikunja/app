@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/core/filters/search_index.dart';
 import 'package:vikunja_mobile/core/repositories/task_search_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/common/presentation/motion.dart';
@@ -41,10 +42,10 @@ final class FilterInput {
 /// The filter builder of the views form and the saved filter form: the
 /// web's syntax with its parts highlighted, suggestions for the field,
 /// operator or value at the caret (labels and projects by title, people by
-/// username, relative dates) right under the text, the engine's verdict
-/// once typing pauses and how many of this device's tasks match. Titles
-/// show where the stored filter has ids; [onChanged] gets the filter with
-/// ids again, and its error at once.
+/// username, ignoring case and accents; relative dates) right under the
+/// text, the engine's verdict once typing pauses and how many of this
+/// device's tasks match. Titles show where the stored filter has ids;
+/// [onChanged] gets the filter with ids again, and its error at once.
 class FilterField extends ConsumerStatefulWidget {
   const new({
     required this.initialFilter,
@@ -538,10 +539,14 @@ class _FilterFieldState extends ConsumerState<FilterField>
         return [join(completion.start)];
       case ValueContext(:final partial, :final operator, :final kind):
         final list = isListOperator(operator);
-        final needle = partial.trim().toLowerCase();
-        bool fits(String value) =>
-            value.toLowerCase().contains(needle) &&
-            value.toLowerCase() != needle;
+        final typed = partial.trim().toLowerCase();
+        final needle = foldForSearch(typed);
+        // The filter matches a value ignoring case only, so one typed out is
+        // not offered again, but "cafe" still offers "Café".
+        bool fits(String value, {String? name}) =>
+            value.toLowerCase() != typed &&
+            (foldForSearch(value).contains(needle) ||
+                (name != null && foldForSearch(name).contains(needle)));
         void insertValue(String value) =>
             _complete(completion, filterValueText(value, list: list));
         final values = switch (kind) {
@@ -612,7 +617,7 @@ class _FilterFieldState extends ConsumerState<FilterField>
           ],
           FilterFieldKind.users => [
             for (final user in users)
-              if (fits(user.username) || fits(user.name))
+              if (fits(user.username, name: user.name))
                 _SuggestionChip(
                   avatar: ExcludeSemantics(
                     child: InitialsAvatar(name: user.displayName, radius: 10),
