@@ -26,6 +26,7 @@ Written after the snapshot, against the release named in each file:
 | File | Contents |
 |---|---|
 | [trash.md](trash.md) | The trash of Vikunja 2.8.0: routes, lists, counts, restore, permanent delete, retention, and the web's behaviour (2026-11-09) |
+| [subscriptions.md](subscriptions.md) | Subscriptions and reminders in Vikunja 2.8.0: who gets a reminder, the rows the server creates on its own, following and unfollowing, where the state shows, and what a sync cannot see (2026-11-09) |
 
 ## Corrections found since
 

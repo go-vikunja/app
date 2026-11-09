@@ -1,4 +1,5 @@
 import 'package:vikunja_api/src/dto/json_values.dart';
+import 'package:vikunja_api/src/dto/subscription_codec.dart';
 import 'package:vikunja_api/src/dto/user_codec.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
@@ -6,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// and in v2 single reads; [maxPermission], the v1 `x-max-permission`
 /// header of a single read, wins over the body, which servers before 2.6
 /// fill with 0 when nothing computed it. Null stays null: never read-only.
+/// The lists and single reads carry the resolved `subscription` too.
 Project parseProject(Object? json, {Permission? maxPermission}) {
   final map = objectOf(json, 'project');
   return Project(
@@ -25,7 +27,22 @@ Project parseProject(Object? json, {Permission? maxPermission}) {
     created: dateOf(map['created']),
     updated: dateOf(map['updated']),
     maxPermission: maxPermission ?? Permission.fromValue(map['max_permission']),
+    subscription: _projectSubscriptionOf(map),
   );
+}
+
+/// Lenient: an unreadable value is taken as unknown rather than failing the
+/// whole project list and with it the sync. A project is only ever covered
+/// by its own or a parent project's subscription.
+Subscription? _projectSubscriptionOf(Map<String, Object?> map) {
+  try {
+    final subscription = subscriptionOf(map);
+    return subscription?.entity == SubscriptionEntity.project
+        ? subscription
+        : null;
+  } on MalformedJson {
+    return null;
+  }
 }
 
 /// Null for a view kind this client does not know, so a newer server does

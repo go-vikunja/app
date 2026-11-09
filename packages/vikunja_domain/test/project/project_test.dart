@@ -154,4 +154,40 @@ void main() {
       expect(full.copyWith(parentProjectId: 0).isTopLevel, isTrue);
     });
   });
+
+  group('subscription', () {
+    const own = Subscription(entity: SubscriptionEntity.project, entityId: 5);
+    const viaParent = Subscription(
+      entity: SubscriptionEntity.project,
+      entityId: 4,
+    );
+    const followed = Project(id: 5, title: 'Followed', subscription: own);
+
+    test('copyWith keeps it when left out, replaces and clears it', () {
+      expect(followed.copyWith(title: 'Renamed').subscription, own);
+      expect(
+        followed.copyWith(subscription: viaParent).subscription,
+        viaParent,
+      );
+      expect(followed.copyWith(subscription: null).subscription, isNull);
+      expect(
+        const Project(id: 5, title: 'p').copyWith(subscription: own),
+        const Project(id: 5, title: 'p', subscription: own),
+      );
+    });
+
+    test('a different subscription makes another project', () {
+      const unfollowed = Project(id: 5, title: 'Followed');
+
+      expect(followed, isNot(unfollowed));
+      expect(followed.hashCode, isNot(unfollowed.hashCode));
+      expect(followed, isNot(followed.copyWith(subscription: viaParent)));
+      expect(
+        followed.hashCode,
+        isNot(followed.copyWith(subscription: viaParent).hashCode),
+      );
+      expect(followed.copyWith(), followed);
+      expect(followed.copyWith().hashCode, followed.hashCode);
+    });
+  });
 }

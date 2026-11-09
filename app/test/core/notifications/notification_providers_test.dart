@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -25,6 +26,7 @@ import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
 import '../../helpers/app_lock_fakes.dart';
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/guest_fakes.dart';
 import '../../helpers/notification_fakes.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
@@ -174,6 +176,111 @@ void main() {
     expect(gateway.pending.keys, [aliceDue]);
     expect(gateway.calls.where((c) => c.startsWith('schedule')), isEmpty);
     expect(gateway.cancelled, isEmpty);
+  });
+
+  group('following subscriptions (D80)', () {
+    const bob = User(id: 8, username: 'bob');
+
+    Subscription via(int projectId) =>
+        Subscription(entity: SubscriptionEntity.project, entityId: projectId);
+
+    /// Both projects are followed; the account's own task 1 is opted out,
+    /// bob's task 2 is not the account's but its project is followed.
+    Future<void> seedFollowing(RegisteredAccount entry) async {
+      final db = container.read(appDatabaseProvider(entry.id));
+      await db.projectsDao.upsertAll([
+        sampleProject(id: 7, title: 'Work').copyWith(subscription: via(7)),
+        sampleProject(id: 8, title: 'Shared').copyWith(subscription: via(8)),
+      ]);
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 1, title: 'Mine', projectId: 7, due: dueAt).copyWith(
+          createdBy: User(id: entry.account.userId, username: 'me'),
+        ),
+        sampleTask(
+          id: 2,
+          title: "Bob's",
+          projectId: 8,
+          due: dueAt,
+        ).copyWith(createdBy: bob),
+      ], syncRunId: 'run');
+      await db.tasksDao.storeOwnSubscription(
+        1,
+        null,
+        userId: entry.account.userId,
+      );
+    }
+
+    test('an account on 2.8.0 follows its subscriptions', () async {
+      final alice = await auth.seedAccount(
+        fullServer280(),
+        tokens: issueTokens(issuedAt: now),
+      );
+      await container.read(accountsProvider.future);
+      await seedFollowing(alice);
+
+      container.listen(notificationSchedulerProvider(alice.id), (_, _) {});
+      await pumpEventQueue();
+
+      expect(gateway.pending.keys, [notificationOsIdFor(alice.id, '2:due')]);
+    });
+
+    test('accounts on 2.7.0 and link-share guests keep D17', () async {
+      final alice = await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now),
+      );
+      final guest = await auth.seedGuest(
+        fullServer280(root: 'https://other.example.org'),
+        token: null,
+        activate: false,
+      );
+      await container.read(accountsProvider.future);
+      await seedFollowing(alice);
+      await seedFollowing(guest);
+
+      container
+        ..listen(notificationSchedulerProvider(alice.id), (_, _) {})
+        ..listen(notificationSchedulerProvider(guest.id), (_, _) {});
+      await pumpEventQueue();
+
+      expect(
+        gateway.pending.keys,
+        unorderedEquals([
+          notificationOsIdFor(alice.id, '1:due'),
+          notificationOsIdFor(guest.id, '1:due'),
+        ]),
+      );
+    });
+
+    test('a refreshed connection on 2.8.0 builds the scheduler again, which '
+        'reconciles at once; other registry writes do not', () async {
+      final alice = await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now),
+      );
+      await container.read(accountsProvider.future);
+      await seedFollowing(alice);
+      final scheduler = container.listen(
+        notificationSchedulerProvider(alice.id),
+        (_, _) {},
+      );
+      await pumpEventQueue();
+      final before = scheduler.read();
+      final mine = notificationOsIdFor(alice.id, '1:due');
+      expect(gateway.pending.keys, [mine]);
+      final registry = container.read(accountRegistryProvider);
+
+      await registry.updateDisplayName(alice.id, 'A.');
+      await pumpEventQueue();
+      expect(scheduler.read(), same(before));
+
+      await registry.updateConnection(alice.id, (_) => fullServer280());
+      await pumpEventQueue();
+
+      expect(scheduler.read(), allOf(isNotNull, isNot(same(before))));
+      expect(gateway.cancelled, [mine]);
+      expect(gateway.pending.keys, [notificationOsIdFor(alice.id, '2:due')]);
+    });
   });
 
   group('privacy settings', () {

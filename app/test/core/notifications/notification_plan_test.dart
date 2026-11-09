@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart'
+    show OwnTaskSubscription, SubscribedTasks;
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_plan.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
@@ -251,6 +253,157 @@ void main() {
         '3:reminder:0',
         '3:due',
       ]);
+    });
+  });
+
+  group('following subscriptions', () {
+    const garden = 5;
+
+    List<DesiredNotification> follow(
+      List<Task> tasks, {
+      Map<int, OwnTaskSubscription> own = const {},
+      Set<int> followedProjects = const {garden},
+      NotificationPreferences preferences = const NotificationPreferences(),
+    }) => planNotifications(
+      tasks: tasks,
+      userId: alice.id,
+      preferences: preferences,
+      now: now,
+      snoozes: const [],
+      describe: describe,
+      subscribed: SubscribedTasks(own: own, followedProjects: followedProjects),
+    );
+
+    Task task(
+      int id, {
+      User createdBy = bob,
+      int projectId = 1,
+      List<User> assignees = const [],
+    }) => sampleTask(
+      id: id,
+      title: 'Task $id',
+      projectId: projectId,
+      due: inTwoHours,
+      reminders: [TaskReminder(reminder: inAnHour)],
+      assignees: assignees,
+      createdBy: createdBy,
+    );
+
+    List<int> plannedTasks(List<DesiredNotification> desired) => [
+      for (final entry in desired)
+        if (entry.kind == ScheduledNotificationKind.reminder) entry.taskId,
+    ];
+
+    test('tasks not read yet: those the user created, is assigned to or '
+        'follows through the project', () {
+      final desired = follow([
+        task(1, createdBy: alice),
+        task(2, assignees: const [alice]),
+        task(3, projectId: garden),
+        task(4, assignees: const [bob]),
+      ]);
+
+      expect(plannedTasks(desired), [1, 2, 3]);
+    });
+
+    test('an own subscription reaches the user anywhere', () {
+      final desired = follow(
+        [task(1)],
+        own: const {1: OwnTaskSubscription.subscribed},
+        followedProjects: const {},
+      );
+
+      expect(desired.map((d) => d.key), ['1:reminder:0', '1:due']);
+    });
+
+    test('no own row: an assignment since the read subscribes the user, '
+        'creating it does not', () {
+      final desired = follow(
+        [
+          task(1, assignees: const [alice]),
+          task(2, createdBy: alice),
+        ],
+        own: const {1: OwnTaskSubscription.none, 2: OwnTaskSubscription.none},
+      );
+
+      expect(plannedTasks(desired), [1]);
+    });
+
+    test('no own row while assigned: only a followed project', () {
+      final desired = follow(
+        [
+          task(1, assignees: const [alice]),
+          task(2, projectId: garden, assignees: const [alice]),
+        ],
+        own: const {
+          1: OwnTaskSubscription.noneWhileAssigned,
+          2: OwnTaskSubscription.noneWhileAssigned,
+        },
+      );
+
+      expect(plannedTasks(desired), [2]);
+    });
+
+    test('opted out: nothing, also for a creator and assignee in a '
+        'followed project', () {
+      final desired = follow(
+        [
+          task(
+            1,
+            createdBy: alice,
+            projectId: garden,
+            assignees: const [alice],
+          ),
+        ],
+        own: const {1: OwnTaskSubscription.optedOut},
+      );
+
+      expect(desired, isEmpty);
+    });
+
+    test('a task created here under a temporary id', () {
+      final desired = follow([
+        sampleTask(id: -2, title: 'New', due: inAnHour),
+      ], followedProjects: const {});
+
+      expect(desired.map((d) => d.key), ['-2:due']);
+    });
+
+    test('due dates follow the same rule', () {
+      final desired = follow(
+        [
+          task(1, createdBy: alice),
+          task(2, createdBy: alice),
+          task(3, projectId: garden),
+          task(4),
+        ],
+        own: const {2: OwnTaskSubscription.optedOut},
+        preferences: const NotificationPreferences(reminders: false),
+      );
+
+      expect(desired.map((d) => d.key), ['1:due', '3:due']);
+    });
+
+    test('without them the creator and assignees decide (D17), whatever '
+        'is followed', () {
+      final tasks = [task(1, createdBy: alice), task(2, projectId: garden)];
+
+      expect(plannedTasks(plan(tasks)), [1]);
+      expect(
+        plannedTasks(
+          follow(tasks, own: const {1: OwnTaskSubscription.optedOut}),
+        ),
+        [2],
+      );
+    });
+
+    test('done tasks still get nothing', () {
+      final desired = follow(
+        [task(1, createdBy: alice).copyWith(done: true)],
+        own: const {1: OwnTaskSubscription.subscribed},
+      );
+
+      expect(desired, isEmpty);
     });
   });
 

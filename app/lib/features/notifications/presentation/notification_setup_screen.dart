@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
+import 'package:vikunja_mobile/core/notifications/subscriber_reminders.dart';
 import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
 import 'package:vikunja_mobile/features/notifications/application/os_notification_capabilities.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
@@ -106,6 +108,11 @@ class _NotificationSetupScreenState
   @override
   Widget build(BuildContext context) {
     ref.listen(osNotificationCapabilitiesProvider, _onCapabilitiesChanged);
+    final followsSubscriptions = ref.watch(
+      accountsProvider.select(
+        (accounts) => accounts.value?.activeAccount?.subscriberId != null,
+      ),
+    );
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final (title, body) = switch (_step) {
@@ -166,7 +173,9 @@ class _NotificationSetupScreenState
                     ),
                     _Point(
                       icon: Icons.person_outline,
-                      text: l10n.notificationSetupOnlyYours,
+                      text: followsSubscriptions
+                          ? l10n.notificationSetupFollowed
+                          : l10n.notificationSetupOnlyYours,
                     ),
                   ],
                   const SizedBox(height: 32),

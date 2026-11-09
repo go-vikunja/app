@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show OwnTaskSubscription;
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
@@ -40,7 +41,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 11);
+    await verifier.migrateAndValidate(db, 12);
 
     final task = (await db.tasksDao.find(1))!;
     expect(task.title, 'Keep me');
@@ -98,7 +99,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 11);
+    await verifier.migrateAndValidate(db, 12);
 
     final op = (await db.outboxDao.all()).single;
     expect(op.id, 'op-1');
@@ -156,7 +157,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 11);
+    await verifier.migrateAndValidate(db, 12);
 
     final task = (await db.tasksDao.find(50))!;
     expect(task.title, 'Remind me');
@@ -216,7 +217,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 11);
+    await verifier.migrateAndValidate(db, 12);
 
     expect((await db.tasksDao.find(50))!.title, 'Remind me');
     final scheduled = (await db.scheduledNotificationsDao.all()).single;
@@ -287,7 +288,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 11);
+    await verifier.migrateAndValidate(db, 12);
 
     final parent = (await db.tasksDao.find(60))!;
     expect(parent.subtasks.map((task) => task.id), [61]);
@@ -344,7 +345,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 11);
+    await verifier.migrateAndValidate(db, 12);
 
     final snapshot = await db.listSnapshotsDao.load('view:70');
     expect(snapshot.positions, {61: 1, 60: 2});
@@ -399,7 +400,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 11);
+    await verifier.migrateAndValidate(db, 12);
 
     final task = (await db.tasksDao.find(60))!;
     expect(task.title, 'Talked about');
@@ -451,7 +452,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 11);
+    await verifier.migrateAndValidate(db, 12);
 
     final project = (await db.projectsDao.loadProject(7))!;
     expect(project.title, 'Shared');
@@ -498,7 +499,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 11);
+    await verifier.migrateAndValidate(db, 12);
 
     final task = (await db.tasksDao.find(70))!;
     expect(task.title, 'Water the plants');
@@ -529,7 +530,7 @@ void main() {
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 11);
+    await verifier.migrateAndValidate(db, 12);
 
     final dao = db.scheduledNotificationsDao;
     final scheduled = (await dao.all()).single;
@@ -544,6 +545,64 @@ void main() {
     final updated = (await dao.all()).single;
     expect(updated.hiddenOnLockScreen, isTrue);
     expect(updated.doneNeedsUnlock, isTrue);
+  });
+
+  test('v11 → v12 keeps the rows and adds the follow state unknown, without '
+      'a full run', () async {
+    final verifier = SchemaVerifier(GeneratedHelper());
+    final schema = await verifier.schemaAt(11);
+    schema.rawDatabase
+      ..execute(
+        'INSERT INTO projects (id, title, description, identifier, hex_color, '
+        'parent_project_id, is_archived, is_favorite, position, owner_id, '
+        'created, updated, max_permission) '
+        "VALUES (7, 'Work', '', 'WRK', '', 0, 0, 0, 1.0, NULL, NULL, "
+        '1760000000000, 1)',
+      )
+      ..execute(
+        'INSERT INTO tasks (id, project_id, title, description, done, done_at, '
+        'due_date, start_date, end_date, priority, percent_done, hex_color, '
+        'identifier, "index", is_favorite, position, repeat_after, '
+        'repeat_mode, bucket_id, created_by_id, created, updated, '
+        'sync_run_id, pending_changes, pending_delete, comment_count, '
+        'is_unread) '
+        "VALUES (70, 7, 'Water the plants', '', 0, NULL, 1760100000000, NULL, "
+        "NULL, 0, 0.0, '', 'WRK-1', 1, 0, 0.0, 0, 0, 0, NULL, NULL, "
+        "1759000000000, 'run-1', NULL, 0, 2, 1)",
+      )
+      ..execute(
+        'INSERT INTO sync_state (key, value) '
+        "VALUES ('last_synced_at', '2026-11-09T12:00:00.000Z'), "
+        "('last_full_sync_at', '2026-11-09T11:00:00.000Z')",
+      );
+    final db = AppDatabase(schema.newConnection());
+    addTearDown(db.close);
+
+    await verifier.migrateAndValidate(db, 12);
+
+    final project = (await db.projectsDao.loadProject(7))!;
+    expect(project.title, 'Work');
+    expect(project.maxPermission, Permission.write);
+    expect(project.subscription, isNull);
+    final task = (await db.tasksDao.findRow(70))!;
+    expect(task.title, 'Water the plants');
+    expect(task.commentCount, 2);
+    expect(task.isUnread, isTrue);
+    expect(task.ownSubscription, isNull);
+    expect(await db.tasksDao.ownSubscriptions(), isEmpty);
+    final state = await db.syncStateDao.readAll();
+    expect(state[SyncStateKeys.lastFullSyncAt], '2026-11-09T11:00:00.000Z');
+
+    const followed = Subscription(
+      entity: SubscriptionEntity.project,
+      entityId: 7,
+    );
+    await db.projectsDao.storeSubscription(7, followed);
+    await db.tasksDao.storeOwnSubscription(70, null, userId: 1);
+    expect((await db.projectsDao.loadProject(7))!.subscription, followed);
+    expect(await db.tasksDao.ownSubscriptions(), {
+      70: OwnTaskSubscription.optedOut,
+    });
   });
 }
 

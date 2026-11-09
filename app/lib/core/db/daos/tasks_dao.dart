@@ -1,6 +1,8 @@
 import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart' show mapEquals;
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart'
+    show OwnTaskSubscription, ownTaskSubscriptionFrom;
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/kanban_dao.dart';
 import 'package:vikunja_mobile/core/db/epoch_millis.dart';
@@ -644,6 +646,70 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Records what a single read of the task, or the read after following
+  /// or unfollowing it, says about [userId]'s own subscription to it
+  /// ([read] is the task's `subscription`), judged with the follow state of
+  /// its project and its assignees as stored here
+  /// ([ownTaskSubscriptionFrom]). A read through a project first stores
+  /// that subscription for the task's project, when the stored one is that
+  /// project or lies below it (`ProjectsDao.storeSubscription`): it covers
+  /// the task's project too, and a later unfollow, read back as none, then
+  /// counts as the opt-out it is, also before the next project list. A
+  /// task not stored here is left alone, and an unchanged state is not
+  /// written, so that the lists and the scheduler do not reload for
+  /// nothing.
+  Future<void> storeOwnSubscription(
+    int id,
+    Subscription? read, {
+    required int userId,
+  }) => transaction(() async {
+    final row = await findRow(id);
+    if (row == null) return;
+    if (read case Subscription(
+      entity: SubscriptionEntity.project,
+      :final entityId,
+    )) {
+      final projectsDao = attachedDatabase.projectsDao;
+      if ((await projectsDao.subtreeOf(entityId)).contains(row.projectId)) {
+        await projectsDao.storeSubscription(row.projectId, read);
+      }
+    }
+    final followed = selectOnly(projects)
+      ..addColumns([projects.id])
+      ..where(
+        projects.id.equals(row.projectId) & projects.subscribedVia.isNotNull(),
+      );
+    final assignee = selectOnly(taskAssignees)
+      ..addColumns([taskAssignees.taskId])
+      ..where(
+        taskAssignees.taskId.equals(id) & taskAssignees.userId.equals(userId),
+      );
+    final state = ownTaskSubscriptionFrom(
+      read,
+      projectFollowed: await followed.getSingleOrNull() != null,
+      assigned: await assignee.getSingleOrNull() != null,
+    ).wireName;
+    if (row.ownSubscription == state) return;
+    await (update(tasks)..where((t) => t.id.equals(id))).write(
+      TasksCompanion(ownSubscription: Value(state)),
+    );
+  });
+
+  /// The user's own subscription of every task that has one recorded
+  /// ([storeOwnSubscription]); a name this build does not know is left
+  /// out, as unknown.
+  Future<Map<int, OwnTaskSubscription>> ownSubscriptions() async {
+    final query = selectOnly(tasks)
+      ..addColumns([tasks.id, tasks.ownSubscription])
+      ..where(tasks.ownSubscription.isNotNull());
+    return {
+      for (final row in await query.get())
+        row.read(tasks.id)!: ?OwnTaskSubscription.fromWire(
+          row.read(tasks.ownSubscription),
+        ),
+    };
+  }
+
   /// [delta] added to the stored comment count, never below 0.
   Future<void> addToCommentCount(int id, int delta) async {
     if (delta == 0) return;
@@ -844,7 +910,10 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// labels, assignees, reminders and relations; marks them seen in
   /// [syncRunId], or leaves the run a row has when null. The comment count
   /// and unread flag are taken only [withCommentState], from a read that
-  /// expanded both; otherwise the stored ones stay. A row with queued
+  /// expanded both; otherwise the stored ones stay. The user's own
+  /// subscription is never taken: no list or write answer carries it, so
+  /// the stored one stays and a new row starts unknown (see
+  /// [storeOwnSubscription]). A row with queued
   /// changes keeps those fields over the incoming values, its queued label,
   /// assignee and relation changes apply to the incoming sets and its
   /// queued reminders replace the incoming list; a row queued for deletion
@@ -890,7 +959,9 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
       if (queued[task.id] case final local?) {
         stored = _keepQueued(stored, local);
       }
-      var companion = stored.toCompanion(false);
+      var companion = stored
+          .toCompanion(false)
+          .copyWith(ownSubscription: const Value.absent());
       if (syncRunId == null) {
         companion = companion.copyWith(syncRunId: const Value.absent());
       }

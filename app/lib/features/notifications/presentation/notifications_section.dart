@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
+import 'package:vikunja_mobile/core/notifications/subscriber_reminders.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/notifications/application/account_notification_preferences.dart';
@@ -28,8 +29,9 @@ const testNotificationOsId = 1;
 /// tab instead of a task.
 const testNotificationTaskId = 0;
 
-/// The account's reminder, due-date and activity switches, what the OS
-/// allows, how many notifications are scheduled, and a test notification.
+/// The account's reminder, due-date and activity switches, which tasks the
+/// first two notify about, what the OS allows, how many notifications are
+/// scheduled, and a test notification.
 class NotificationsSection extends ConsumerWidget {
   const new({required this.entry, super.key});
 
@@ -109,6 +111,16 @@ class NotificationsSection extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
           child: Text(l10n.onThisDeviceSubtitle, style: secondary),
         ),
+        if (!entry.account.isLinkShare)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            child: Text(
+              entry.subscriberId != null
+                  ? l10n.notificationsForFollowedTasks
+                  : l10n.notificationsForOwnTasks,
+              style: secondary,
+            ),
+          ),
         SwitchListTile.adaptive(
           secondary: const Icon(Icons.alarm_outlined),
           title: Text(l10n.notificationsReminders),

@@ -70,7 +70,7 @@ final class AppDatabase extends _$AppDatabase {
   new(super.e);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -135,6 +135,12 @@ final class AppDatabase extends _$AppDatabase {
           scheduledNotifications,
           scheduledNotifications.doneNeedsUnlock,
         );
+      }
+      if (from < 12) {
+        await m.addColumn(tasks, tasks.ownSubscription);
+        // No full run needed: the incremental run compares every project
+        // with the list each time, so it writes each followed one next.
+        await m.addColumn(projects, projects.subscribedVia);
       }
     },
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),

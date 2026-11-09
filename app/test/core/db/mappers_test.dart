@@ -121,6 +121,25 @@ void main() {
       );
     });
 
+    test('the subscription that covers it comes back as a project one', () {
+      const viaParent = Subscription(
+        entity: SubscriptionEntity.project,
+        entityId: 9,
+      );
+      final followed = project.copyWith(subscription: viaParent);
+
+      expect(projectRow(followed).subscribedVia, 9);
+      expect(
+        projectFromRow(projectRow(followed), views: const []).subscription,
+        viaParent,
+      );
+      expect(projectRow(project).subscribedVia, isNull);
+      expect(
+        projectFromRow(projectRow(project), views: const []).subscription,
+        isNull,
+      );
+    });
+
     test('round trip with views, filter and owner', () {
       final row = projectRow(project);
       final viewRows = views.map(projectViewRow).toList();

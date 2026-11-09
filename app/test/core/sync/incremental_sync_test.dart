@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show OwnTaskSubscription;
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/incremental_run.dart';
@@ -133,7 +134,10 @@ void main() {
             parent: p.parentProjectId,
             archived: archived ?? p.isArchived,
             updated: updated ?? edited,
-          ).copyWith(maxPermission: p.maxPermission),
+          ).copyWith(
+            maxPermission: p.maxPermission,
+            subscription: p.subscription,
+          ),
     ];
   }
 
@@ -1377,6 +1381,77 @@ void main() {
       await sync.fullResync();
 
       expect((await stored())[1], Permission.read);
+    });
+  });
+
+  group('the subscription on each project', () {
+    Subscription via(int projectId) =>
+        Subscription(entity: SubscriptionEntity.project, entityId: projectId);
+
+    void follow(Map<int, Subscription?> subscriptions) => client.allProjects = [
+      for (final p in client.allProjects)
+        if (subscriptions.containsKey(p.id))
+          p.copyWith(subscription: subscriptions[p.id])
+        else
+          p,
+    ];
+
+    Future<Map<int, Subscription?>> stored() async => {
+      for (final p in await db.projectsDao.loadAll()) p.id: p.subscription,
+    };
+
+    setUp(() => follow({3: via(3), 4: via(3)}));
+
+    test(
+      'the initial sync stores it, a child naming its followed parent',
+      () async {
+        await engine().ensureInitialSync();
+
+        expect(await stored(), {1: null, 2: null, 3: via(3), 4: via(3)});
+      },
+    );
+
+    test('a refresh stores a change of the subscription alone, also on a '
+        'child', () async {
+      final sync = await synced();
+      var projectLoads = 0;
+      final subscription = db.projectsDao.watchAll().listen(
+        (_) => projectLoads++,
+      );
+      addTearDown(subscription.cancel);
+      while (projectLoads < 1) {
+        await pumpEventQueue();
+      }
+      follow({2: via(2), 4: null});
+
+      await sync.refresh();
+      await pumpEventQueue(times: 50);
+
+      expect(client.requests, quietRun);
+      expect(await stored(), {1: null, 2: via(2), 3: via(3), 4: null});
+      expect(projectLoads, 2, reason: 'one write for both');
+      expect((await db.projectsDao.loadProject(2))!.updated, base);
+    });
+
+    test("a full resync stores it and keeps the tasks' own", () async {
+      final sync = await synced();
+      await db.tasksDao.storeOwnSubscription(
+        1,
+        const Subscription(entity: SubscriptionEntity.task, entityId: 1),
+        userId: me.id,
+      );
+      follow({1: via(1)});
+      replaceTask(1, title: 'Renamed');
+      touchProjects([1]);
+
+      await sync.refresh();
+      await sync.fullResync();
+
+      expect((await stored())[1], via(1));
+      expect((await db.tasksDao.find(1))!.title, 'Renamed');
+      expect(await db.tasksDao.ownSubscriptions(), {
+        1: OwnTaskSubscription.subscribed,
+      });
     });
   });
 

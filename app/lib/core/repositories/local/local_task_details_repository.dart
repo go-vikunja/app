@@ -1,3 +1,4 @@
+import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
@@ -5,15 +6,23 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 
+final _log = Logger('AccountData');
+
 /// The details straight from the server, addressed by the task's server
 /// id: a task created here once its create was answered, before that
 /// [TaskNotSyncedYet] without a request.
 final class LocalTaskDetailsRepository implements TaskDetailsRepository {
-  new(this._db, this._read, this._write);
+  new(this._db, this._read, this._write, {this._subscriberId});
 
   final AppDatabase _db;
   final VikunjaReadClient _read;
   final VikunjaWriteClient _write;
+
+  /// The user's id on a server whose reminders follow the subscriptions
+  /// (D80): each details read then also records the user's own
+  /// subscription to the task, which only such a read carries, for the
+  /// notifications. Null records nothing.
+  final int? _subscriberId;
 
   @override
   Future<TaskDetails> details(int taskId) async {
@@ -25,7 +34,22 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
       commentCount: details.commentCount,
       isUnread: details.isUnread,
     );
+    await _recordSubscription(id, details.subscription);
     return details;
+  }
+
+  /// A failure only leaves the stored state as it was; the read stands.
+  Future<void> _recordSubscription(int id, Subscription? read) async {
+    final userId = _subscriberId;
+    if (userId == null) return;
+    try {
+      await _db.tasksDao.storeOwnSubscription(id, read, userId: userId);
+    } on Object catch (error) {
+      _log.warning(
+        'Could not store whether the user follows a task: '
+        '${error.runtimeType}',
+      );
+    }
   }
 
   @override

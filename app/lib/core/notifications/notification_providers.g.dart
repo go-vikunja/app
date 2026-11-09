@@ -62,8 +62,10 @@ String _$notificationPreferencesStoreHash() =>
 /// first run of a background action) and when the app comes back to the
 /// front, and rescheduling everything when the notification content, the
 /// app lock or the app's language changes; a content that shows less also
-/// withdraws what the account has in the tray. Null once the account is
-/// gone. Disposed with the account's database on sign-out, after which
+/// withdraws what the account has in the tray. Built again, and so
+/// reconciling at once, when a refreshed `/info` moves the server to one
+/// whose reminders follow the subscriptions (D80). Null once the account
+/// is gone. Disposed with the account's database on sign-out, after which
 /// [NotificationSchedulers] still holds it for the wipe.
 
 @ProviderFor(notificationScheduler)
@@ -73,8 +75,10 @@ final notificationSchedulerProvider = NotificationSchedulerFamily._();
 /// first run of a background action) and when the app comes back to the
 /// front, and rescheduling everything when the notification content, the
 /// app lock or the app's language changes; a content that shows less also
-/// withdraws what the account has in the tray. Null once the account is
-/// gone. Disposed with the account's database on sign-out, after which
+/// withdraws what the account has in the tray. Built again, and so
+/// reconciling at once, when a refreshed `/info` moves the server to one
+/// whose reminders follow the subscriptions (D80). Null once the account
+/// is gone. Disposed with the account's database on sign-out, after which
 /// [NotificationSchedulers] still holds it for the wipe.
 
 final class NotificationSchedulerProvider
@@ -89,8 +93,10 @@ final class NotificationSchedulerProvider
   /// first run of a background action) and when the app comes back to the
   /// front, and rescheduling everything when the notification content, the
   /// app lock or the app's language changes; a content that shows less also
-  /// withdraws what the account has in the tray. Null once the account is
-  /// gone. Disposed with the account's database on sign-out, after which
+  /// withdraws what the account has in the tray. Built again, and so
+  /// reconciling at once, when a refreshed `/info` moves the server to one
+  /// whose reminders follow the subscriptions (D80). Null once the account
+  /// is gone. Disposed with the account's database on sign-out, after which
   /// [NotificationSchedulers] still holds it for the wipe.
   NotificationSchedulerProvider._({
     required NotificationSchedulerFamily super.from,
@@ -145,14 +151,16 @@ final class NotificationSchedulerProvider
 }
 
 String _$notificationSchedulerHash() =>
-    r'd83b1696f6935a1fc369da1d2af6f9ba82982393';
+    r'ecda7f6f03ecc45c483726ae6a6e796306412968';
 
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action) and when the app comes back to the
 /// front, and rescheduling everything when the notification content, the
 /// app lock or the app's language changes; a content that shows less also
-/// withdraws what the account has in the tray. Null once the account is
-/// gone. Disposed with the account's database on sign-out, after which
+/// withdraws what the account has in the tray. Built again, and so
+/// reconciling at once, when a refreshed `/info` moves the server to one
+/// whose reminders follow the subscriptions (D80). Null once the account
+/// is gone. Disposed with the account's database on sign-out, after which
 /// [NotificationSchedulers] still holds it for the wipe.
 
 final class NotificationSchedulerFamily extends $Family
@@ -170,8 +178,10 @@ final class NotificationSchedulerFamily extends $Family
   /// first run of a background action) and when the app comes back to the
   /// front, and rescheduling everything when the notification content, the
   /// app lock or the app's language changes; a content that shows less also
-  /// withdraws what the account has in the tray. Null once the account is
-  /// gone. Disposed with the account's database on sign-out, after which
+  /// withdraws what the account has in the tray. Built again, and so
+  /// reconciling at once, when a refreshed `/info` moves the server to one
+  /// whose reminders follow the subscriptions (D80). Null once the account
+  /// is gone. Disposed with the account's database on sign-out, after which
   /// [NotificationSchedulers] still holds it for the wipe.
 
   NotificationSchedulerProvider call(String accountId) =>

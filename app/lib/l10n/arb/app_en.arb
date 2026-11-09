@@ -2201,11 +2201,18 @@
   "notificationSetupTitle": "Stay on top of your tasks",
   "notificationSetupBody": "Rurana can notify you on this device, without the server having to send anything:",
   "@notificationSetupBody": {
-    "description": "Body of the notification setup screen, followed by a list of what the app notifies about (reminders, due dates, only the user's own tasks), hence the colon. The app schedules these notifications on the device itself."
+    "description": "Body of the notification setup screen, followed by a list of what the app notifies about (reminders, due dates, and for which tasks), hence the colon. The app schedules these notifications on the device itself."
   },
   "notificationSetupReminders": "Reminders at their time",
   "notificationSetupDueDates": "Due dates at the exact time",
   "notificationSetupOnlyYours": "Only for tasks you created or are assigned to",
+  "@notificationSetupOnlyYours": {
+    "description": "Third point of the notification setup screen when the account's server is older than Vikunja 2.8.0, or for a guest through a shared link."
+  },
+  "notificationSetupFollowed": "Only for tasks you follow — you automatically follow the ones you create or are assigned to",
+  "@notificationSetupFollowed": {
+    "description": "Third point of the notification setup screen, instead of notificationSetupOnlyYours, when the account's server is Vikunja 2.8.0 or later: that server reminds only the people who follow a task, and the device notifies about the same tasks. Follow is the app's word for the server's subscription (the bell on a task)."
+  },
   "notificationSetupTurnOn": "Turn on notifications",
   "notificationSetupNotNow": "Not now",
   "notificationSetupExactTitle": "Reminders right on time",
@@ -2213,6 +2220,14 @@
   "notificationSetupExactAllow": "Allow exact alarms",
   "notificationSetupSkip": "Skip",
   "notificationsHeading": "Notifications",
+  "notificationsForFollowedTasks": "Reminders and due dates notify you about the tasks you follow: the ones you create or are assigned to, and those in projects you follow. Unfollow a task to stop its notifications.",
+  "@notificationsForFollowedTasks": {
+    "description": "Account tab, Notifications section, under the line that these settings stay on the device, for an account on Vikunja 2.8.0 or later: which tasks the Reminders and Due dates switches notify about. That server reminds only the people who follow a task, and the device does the same. Not shown for guests through a shared link."
+  },
+  "notificationsForOwnTasks": "Reminders and due dates notify you about the tasks you created or are assigned to.",
+  "@notificationsForOwnTasks": {
+    "description": "Account tab, Notifications section, under the line that these settings stay on the device, for an account on a server older than Vikunja 2.8.0: which tasks the Reminders and Due dates switches notify about (notificationsForFollowedTasks on 2.8.0 and later). Not shown for guests through a shared link."
+  },
   "notificationsReminders": "Reminders",
   "notificationsRemindersSubtitle": "At the time of each reminder",
   "notificationsDueDates": "Due dates",
@@ -2586,7 +2601,7 @@
   "unfollowProject": "Unfollow project",
   "followNeedsConnection": "Following needs a connection to the server.",
   "@followNeedsConnection": {
-    "description": "Error when following or unfollowing a task or project failed because there is no connection to the server. Following gets the user notified about its activity."
+    "description": "Error when following or unfollowing a task or project failed because there is no connection to the server. Following gets the user notified about its activity and, on Vikunja 2.8.0 and later, about its reminders, on this device too."
   },
   "followFailed": "Couldn't change whether you follow this. Try again.",
   "followTaskOnceSynced": "You can follow this task once it is synced.",

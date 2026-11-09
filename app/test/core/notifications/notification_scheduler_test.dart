@@ -57,6 +57,7 @@ void main() {
     AppDatabase? database,
     NotificationPrivacy privacy = const NotificationPrivacy(),
     String? linkKey,
+    bool followSubscriptions = false,
   }) {
     final scheduler = NotificationScheduler(
       accountId: accountId,
@@ -72,6 +73,7 @@ void main() {
       linkKey: () async => linkKey,
       now: () => now,
       createTimer: timers.create,
+      followSubscriptions: followSubscriptions,
     );
     addTearDown(scheduler.dispose);
     return scheduler;
@@ -635,6 +637,82 @@ void main() {
 
       expect(gateway.calls.where((c) => c.startsWith('schedule')), isEmpty);
       expect(await db.scheduledNotificationsDao.find('1:reminder:0'), isNull);
+    });
+  });
+
+  group('following subscriptions (D80)', () {
+    const followWork = Subscription(
+      entity: SubscriptionEntity.project,
+      entityId: 7,
+    );
+    final bobsDueId = notificationOsIdFor(accountId, '2:due');
+
+    setUp(() async {
+      await db.projectsDao.upsertAll([sampleProject(id: 8, title: 'Shared')]);
+      await db.tasksDao.upsertAll([
+        sampleTask(
+          id: 2,
+          title: "Bob's",
+          projectId: 8,
+          due: dueAt,
+        ).copyWith(createdBy: bob),
+      ], syncRunId: 'run');
+    });
+
+    test("a task of bob's is planned once its project is followed, through "
+        'the projects watch', () async {
+      final notifications = scheduler(followSubscriptions: true);
+      await notifications.reconcile();
+      expect(gateway.scheduled.map((n) => n.osId), [reminderId, dueId]);
+
+      await db.projectsDao.storeSubscription(
+        8,
+        const Subscription(entity: SubscriptionEntity.project, entityId: 8),
+      );
+      await pumpEventQueue();
+      expect(timers.pendingWait, const Duration(milliseconds: 700));
+      timers.fireNext();
+      await pumpEventQueue();
+
+      expect(gateway.pending.keys, contains(bobsDueId));
+      expect((await rows()).map((r) => r.key), [
+        '1:reminder:0',
+        '1:due',
+        '2:due',
+      ]);
+    });
+
+    test(
+      "an opt-out stored for alice's own task cancels its notifications",
+      () async {
+        await db.projectsDao.storeSubscription(7, followWork);
+        final notifications = scheduler(followSubscriptions: true);
+        await notifications.reconcile();
+        expect(gateway.pending.keys, unorderedEquals([reminderId, dueId]));
+
+        await db.tasksDao.storeOwnSubscription(1, null, userId: alice.id);
+        await pumpEventQueue();
+        timers.fireNext();
+        await pumpEventQueue();
+
+        expect(gateway.cancelled, unorderedEquals([reminderId, dueId]));
+        expect(gateway.pending, isEmpty);
+        expect(await rows(), isEmpty);
+      },
+    );
+
+    test('without the flag the same data plans by D17', () async {
+      await db.projectsDao.storeSubscription(7, followWork);
+      await db.projectsDao.storeSubscription(
+        8,
+        const Subscription(entity: SubscriptionEntity.project, entityId: 8),
+      );
+      await db.tasksDao.storeOwnSubscription(1, null, userId: alice.id);
+
+      await scheduler().reconcile();
+
+      expect(gateway.pending.keys, unorderedEquals([reminderId, dueId]));
+      expect((await rows()).map((r) => r.key), ['1:reminder:0', '1:due']);
     });
   });
 

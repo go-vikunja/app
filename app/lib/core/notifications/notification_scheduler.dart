@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show SubscribedTasks;
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
@@ -43,10 +44,10 @@ typedef CreateTimer = Timer Function(
 /// holds (minus what the OS has dropped meanwhile, so a fired or lost
 /// notification is scheduled again when it is still wanted), cancels and
 /// schedules through the gateway and writes the table. It runs after every
-/// change to the tasks, reminders or assignees (debounced), after a change
-/// of this account's preferences, and whenever the caller asks. Without
-/// the notification permission, or with every kind switched off, it
-/// cancels everything the account holds.
+/// change to the tasks, reminders, assignees or projects (debounced), after
+/// a change of this account's preferences, and whenever the caller asks.
+/// Without the notification permission, or with every kind switched off,
+/// it cancels everything the account holds.
 final class NotificationScheduler {
   new({
     required this.accountId,
@@ -60,6 +61,7 @@ final class NotificationScheduler {
     DateTime Function()? now,
     this.debounce = const Duration(milliseconds: 700),
     this._createTimer = Timer.new,
+    this._followSubscriptions = false,
   }) : _linkKey = linkKey ?? _noLinkKey,
        _now = now ?? DateTime.now {
     _tableUpdates = _db
@@ -68,6 +70,8 @@ final class NotificationScheduler {
             _db.tasks,
             _db.taskReminders,
             _db.taskAssignees,
+            // A project followed or unfollowed, and a renamed one's texts.
+            _db.projects,
           ]),
         )
         .listen((_) => _reconcileAfterDebounce());
@@ -93,6 +97,10 @@ final class NotificationScheduler {
   final Future<String?> Function() _linkKey;
   final DateTime Function() _now;
   final CreateTimer _createTimer;
+
+  /// Plans the tasks the user follows (D80) instead of D17's creator or
+  /// assignee; never for a link-share guest, who can follow nothing.
+  final bool _followSubscriptions;
   late final StreamSubscription<Object?> _tableUpdates;
   late final StreamSubscription<Object?> _preferenceChanges;
 
@@ -364,6 +372,15 @@ final class NotificationScheduler {
       now: _now(),
       snoozes: snoozes,
       describe: (task, kind) => describe(task, kind, projects[task.projectId]),
+      subscribed: _followSubscriptions
+          ? SubscribedTasks(
+              own: await _db.tasksDao.ownSubscriptions(),
+              followedProjects: {
+                for (final project in projects.values)
+                  if (project.subscription != null) project.id,
+              },
+            )
+          : null,
     );
     if (_disposed) return;
     final (:cancelOsIds, :schedule) = diffSchedule(

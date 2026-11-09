@@ -27,6 +27,7 @@ export 'src/quick_add/indented_lines.dart';
 export 'src/quick_add/parsed_task_text.dart';
 export 'src/quick_add/quick_add_parser.dart';
 export 'src/security/device_description.dart';
+export 'src/subscriptions/subscribed_tasks.dart';
 export 'src/teams/team_rules.dart';
 export 'src/text/checklist.dart';
 export 'src/text/checklist_toggle.dart';

@@ -2259,6 +2259,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Only for tasks you created or are assigned to';
 
   @override
+  String get notificationSetupFollowed =>
+      'Only for tasks you follow — you automatically follow the ones you create or are assigned to';
+
+  @override
   String get notificationSetupTurnOn => 'Turn on notifications';
 
   @override
@@ -2279,6 +2283,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationsHeading => 'Notifications';
+
+  @override
+  String get notificationsForFollowedTasks =>
+      'Reminders and due dates notify you about the tasks you follow: the ones you create or are assigned to, and those in projects you follow. Unfollow a task to stop its notifications.';
+
+  @override
+  String get notificationsForOwnTasks =>
+      'Reminders and due dates notify you about the tasks you created or are assigned to.';
 
   @override
   String get notificationsReminders => 'Reminders';

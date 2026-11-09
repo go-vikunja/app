@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show TableUpdateQuery;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -173,5 +174,139 @@ void main() {
     await db.projectsDao.purgeNotIn(const []);
     await pumpEventQueue();
     expect(seen.last, isEmpty);
+  });
+
+  group('the subscription that covers a project', () {
+    const ownRow = Subscription(
+      entity: SubscriptionEntity.project,
+      entityId: 1,
+    );
+    const parentRow = Subscription(
+      entity: SubscriptionEntity.project,
+      entityId: 2,
+    );
+
+    test('an upsert writes it and a load brings it back', () async {
+      await db.projectsDao.upsertAll([
+        work.copyWith(subscription: ownRow),
+        sampleProject(
+          id: 3,
+          title: 'Child',
+          parent: 2,
+        ).copyWith(subscription: parentRow),
+        sampleProject(id: 4, title: 'Not followed'),
+      ]);
+
+      final all = {
+        for (final project in await db.projectsDao.loadAll())
+          project.id: project.subscription,
+      };
+      expect(all, {1: ownRow, 3: parentRow, 4: null});
+      expect((await db.projectsDao.loadProject(3))!.subscription, parentRow);
+
+      await db.projectsDao.upsertAll([work]);
+      expect((await db.projectsDao.loadProject(1))!.subscription, isNull);
+    });
+
+    test('stored on its own: set, changed and cleared; a task subscription '
+        'counts as none; an unknown project stays unknown', () async {
+      await db.projectsDao.upsertAll([work]);
+      final dao = db.projectsDao;
+
+      await dao.storeSubscription(1, ownRow);
+      expect((await dao.loadProject(1))!.subscription, ownRow);
+      await dao.storeSubscription(1, parentRow);
+      expect((await dao.loadProject(1))!.subscription, parentRow);
+      await dao.storeSubscription(
+        1,
+        const Subscription(entity: SubscriptionEntity.task, entityId: 9),
+      );
+      expect((await dao.loadProject(1))!.subscription, isNull);
+      await dao.storeSubscription(1, ownRow);
+      await dao.storeSubscription(1, null);
+      expect((await dao.loadProject(1))!.subscription, isNull);
+
+      await dao.storeSubscription(99, ownRow);
+      expect(await dao.loadProject(99), isNull);
+      expect((await dao.loadProject(1))!.title, 'Work');
+    });
+
+    test('the projects below that were covered through it get the same; '
+        'those a nearer project covers, or none, keep theirs', () async {
+      Subscription via(int id) =>
+          Subscription(entity: SubscriptionEntity.project, entityId: id);
+      Project child(int id, int parent, {int? coveredBy}) => sampleProject(
+        id: id,
+        title: 'Child $id',
+        parent: parent,
+      ).copyWith(subscription: coveredBy == null ? null : via(coveredBy));
+      await db.projectsDao.upsertAll([
+        child(20, 0, coveredBy: 20),
+        child(1, 20, coveredBy: 1),
+        child(2, 1, coveredBy: 1),
+        child(3, 2, coveredBy: 1),
+        child(4, 1, coveredBy: 4),
+        child(5, 4, coveredBy: 4),
+        child(6, 1),
+        child(7, 20, coveredBy: 20),
+        child(8, 7, coveredBy: 20),
+        child(9, 8, coveredBy: 9),
+        child(30, 0, coveredBy: 30),
+      ]);
+      Future<Map<int, int?>> stored() async => {
+        for (final project in await db.projectsDao.loadAll())
+          project.id: project.subscription?.entityId,
+      };
+
+      // 1 unfollowed: its opt-out, as 20 still covers it, hides 1 for all
+      // that inherited through it.
+      await db.projectsDao.storeSubscription(1, null);
+      // 7, covered by 20 and unfollowed: an opt-out on 7 hides 20 for 8.
+      await db.projectsDao.storeSubscription(7, null);
+
+      expect(await stored(), {
+        20: 20,
+        1: null,
+        2: null,
+        3: null,
+        4: 4,
+        5: 4,
+        6: null,
+        7: null,
+        8: null,
+        9: 9,
+        30: 30,
+      });
+
+      // Followed again: 2 and 3 may have an opt-out of their own, which only
+      // the next project list can tell.
+      await db.projectsDao.storeSubscription(1, via(1));
+      expect(await stored(), containsPair(1, 1));
+      expect(await stored(), containsPair(2, null));
+      expect(await stored(), containsPair(3, null));
+    });
+
+    test('written only when it changes', () async {
+      await db.projectsDao.upsertAll([work]);
+      var writes = 0;
+      final updates = db
+          .tableUpdates(TableUpdateQuery.onTable(db.projects))
+          .listen((_) => writes++);
+      addTearDown(updates.cancel);
+      final dao = db.projectsDao;
+
+      await dao.storeSubscription(1, null);
+      await pumpEventQueue();
+      expect(writes, 0);
+      await dao.storeSubscription(1, ownRow);
+      await pumpEventQueue();
+      expect(writes, 1);
+      await dao.storeSubscription(1, ownRow);
+      await pumpEventQueue();
+      expect(writes, 1);
+      await dao.storeSubscription(1, null);
+      await pumpEventQueue();
+      expect(writes, 2);
+    });
   });
 }

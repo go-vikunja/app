@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show OwnTaskSubscription;
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_details_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
@@ -59,6 +60,76 @@ void main() {
     final row = (await db.tasksDao.find(1))!;
     expect(row.commentCount, 3);
     expect(row.isUnread, isFalse);
+  });
+
+  group("the user's own subscription (D80)", () {
+    const alice = 7;
+    const followWork = Subscription(
+      entity: SubscriptionEntity.project,
+      entityId: 7,
+    );
+
+    setUp(() async {
+      await db.projectsDao.upsertAll([
+        sampleProject(id: 7, title: 'Work').copyWith(subscription: followWork),
+      ]);
+    });
+
+    test('with a subscriber id each details read records it, judged with '
+        'the stored project', () async {
+      repository = LocalTaskDetailsRepository(
+        db,
+        read,
+        write,
+        subscriberId: alice,
+      );
+      read.taskDetails[1] = const TaskDetails(subscription: followWork);
+
+      await repository.details(1);
+      expect(await db.tasksDao.ownSubscriptions(), {
+        1: OwnTaskSubscription.none,
+      });
+
+      read.taskDetails[1] = const TaskDetails();
+      await repository.details(1);
+      expect(await db.tasksDao.ownSubscriptions(), {
+        1: OwnTaskSubscription.optedOut,
+      });
+    });
+
+    test('without one nothing is recorded', () async {
+      read.taskDetails[1] = const TaskDetails();
+
+      await repository.details(1);
+
+      expect(await db.tasksDao.ownSubscriptions(), isEmpty);
+    });
+
+    test('a recording failure, or a task not stored here, does not fail the '
+        'read', () async {
+      repository = LocalTaskDetailsRepository(
+        db,
+        read,
+        write,
+        subscriberId: alice,
+      );
+      read.allTasks = [...read.allTasks, sampleTask(id: 2, title: 'Two')];
+      const details = TaskDetails(commentCount: 2, subscription: followWork);
+      read
+        ..taskDetails[1] = details
+        ..taskDetails[2] = details;
+      await db.customStatement(
+        'CREATE TRIGGER no_task_state BEFORE UPDATE OF own_subscription '
+        "ON tasks BEGIN SELECT RAISE(ABORT, 'disk full'); END",
+      );
+
+      expect(await repository.details(1), same(details));
+      expect(await repository.details(2), same(details));
+
+      expect((await db.tasksDao.find(1))!.commentCount, 2);
+      expect(await db.tasksDao.ownSubscriptions(), isEmpty);
+      expect(await db.tasksDao.findRow(2), isNull);
+    });
   });
 
   test('a page of comments is sorted by created, then id, also within the '

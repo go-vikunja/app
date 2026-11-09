@@ -142,6 +142,7 @@ void main() {
         Capability.byIndexRedirect,
         Capability.userSettingsMergePatch,
         Capability.trash,
+        Capability.remindersToSubscribers,
       });
     });
 
@@ -251,6 +252,41 @@ void main() {
         apiVersions: _v1,
       );
       expect(capabilities.has(Capability.trash), isFalse);
+    });
+  });
+
+  group('reminders only to subscribers', () {
+    for (final (version, apiVersions, api) in [
+      ('v2.8.0', _both, 'v2'),
+      ('v2.8.0', _v1, 'only v1'),
+      ('v2.8.0-3-gabcdef1', _both, 'v2'),
+      ('dev', _both, 'v2'),
+    ]) {
+      test('$version with $api has it', () {
+        final capabilities = ServerCapabilities.derive(
+          info: _info(version),
+          apiVersions: apiVersions,
+        );
+        expect(capabilities.has(Capability.remindersToSubscribers), isTrue);
+      });
+    }
+
+    for (final version in ['v2.7.1', 'banana']) {
+      test('$version with v2 has none', () {
+        final capabilities = ServerCapabilities.derive(
+          info: _info(version),
+          apiVersions: _both,
+        );
+        expect(capabilities.has(Capability.remindersToSubscribers), isFalse);
+      });
+    }
+
+    test('a missing version with v2 has none', () {
+      final capabilities = ServerCapabilities.derive(
+        info: const ServerInfo(version: null),
+        apiVersions: _both,
+      );
+      expect(capabilities.has(Capability.remindersToSubscribers), isFalse);
     });
   });
 

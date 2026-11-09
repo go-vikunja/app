@@ -75,7 +75,7 @@ final class AccountSubscriptionRepositoryProvider
 }
 
 String _$accountSubscriptionRepositoryHash() =>
-    r'ad52d3fe6a0ff6ddde0a21723c33906b2d489f80';
+    r'3e9f24b7cf9056a575cd0a608fe4e8eeba3fd5d6';
 
 final class AccountSubscriptionRepositoryFamily extends $Family
     with $FunctionalFamilyOverride<SubscriptionRepository, String> {

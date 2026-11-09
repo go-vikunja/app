@@ -3386,7 +3386,7 @@ abstract class AppLocalizations {
   /// **'Stay on top of your tasks'**
   String get notificationSetupTitle;
 
-  /// Body of the notification setup screen, followed by a list of what the app notifies about (reminders, due dates, only the user's own tasks), hence the colon. The app schedules these notifications on the device itself.
+  /// Body of the notification setup screen, followed by a list of what the app notifies about (reminders, due dates, and for which tasks), hence the colon. The app schedules these notifications on the device itself.
   ///
   /// In en, this message translates to:
   /// **'Rurana can notify you on this device, without the server having to send anything:'**
@@ -3404,11 +3404,17 @@ abstract class AppLocalizations {
   /// **'Due dates at the exact time'**
   String get notificationSetupDueDates;
 
-  /// No description provided for @notificationSetupOnlyYours.
+  /// Third point of the notification setup screen when the account's server is older than Vikunja 2.8.0, or for a guest through a shared link.
   ///
   /// In en, this message translates to:
   /// **'Only for tasks you created or are assigned to'**
   String get notificationSetupOnlyYours;
+
+  /// Third point of the notification setup screen, instead of notificationSetupOnlyYours, when the account's server is Vikunja 2.8.0 or later: that server reminds only the people who follow a task, and the device notifies about the same tasks. Follow is the app's word for the server's subscription (the bell on a task).
+  ///
+  /// In en, this message translates to:
+  /// **'Only for tasks you follow — you automatically follow the ones you create or are assigned to'**
+  String get notificationSetupFollowed;
 
   /// No description provided for @notificationSetupTurnOn.
   ///
@@ -3451,6 +3457,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Notifications'**
   String get notificationsHeading;
+
+  /// Account tab, Notifications section, under the line that these settings stay on the device, for an account on Vikunja 2.8.0 or later: which tasks the Reminders and Due dates switches notify about. That server reminds only the people who follow a task, and the device does the same. Not shown for guests through a shared link.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders and due dates notify you about the tasks you follow: the ones you create or are assigned to, and those in projects you follow. Unfollow a task to stop its notifications.'**
+  String get notificationsForFollowedTasks;
+
+  /// Account tab, Notifications section, under the line that these settings stay on the device, for an account on a server older than Vikunja 2.8.0: which tasks the Reminders and Due dates switches notify about (notificationsForFollowedTasks on 2.8.0 and later). Not shown for guests through a shared link.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders and due dates notify you about the tasks you created or are assigned to.'**
+  String get notificationsForOwnTasks;
 
   /// No description provided for @notificationsReminders.
   ///
@@ -3966,7 +3984,7 @@ abstract class AppLocalizations {
   /// **'Unfollow project'**
   String get unfollowProject;
 
-  /// Error when following or unfollowing a task or project failed because there is no connection to the server. Following gets the user notified about its activity.
+  /// Error when following or unfollowing a task or project failed because there is no connection to the server. Following gets the user notified about its activity and, on Vikunja 2.8.0 and later, about its reminders, on this device too.
   ///
   /// In en, this message translates to:
   /// **'Following needs a connection to the server.'**

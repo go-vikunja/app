@@ -2282,6 +2282,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Nur für Aufgaben, die du erstellt hast oder die dir zugewiesen sind';
 
   @override
+  String get notificationSetupFollowed =>
+      'Nur für Aufgaben, denen du folgst – du folgst automatisch allen, die du erstellst oder die dir zugewiesen werden';
+
+  @override
   String get notificationSetupTurnOn => 'Benachrichtigungen einschalten';
 
   @override
@@ -2302,6 +2306,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get notificationsHeading => 'Benachrichtigungen';
+
+  @override
+  String get notificationsForFollowedTasks =>
+      'Erinnerungen und Fälligkeiten bekommst du zu den Aufgaben, denen du folgst: zu denen, die du erstellst oder die dir zugewiesen werden, und zu denen in Projekten, denen du folgst. Folge einer Aufgabe nicht mehr, um ihre Benachrichtigungen abzuschalten.';
+
+  @override
+  String get notificationsForOwnTasks =>
+      'Erinnerungen und Fälligkeiten bekommst du zu den Aufgaben, die du erstellt hast oder die dir zugewiesen sind.';
 
   @override
   String get notificationsReminders => 'Erinnerungen';

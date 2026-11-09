@@ -2,6 +2,7 @@ import 'package:meta/meta.dart';
 import 'package:vikunja_domain/src/account/user.dart';
 import 'package:vikunja_domain/src/project/permission.dart';
 import 'package:vikunja_domain/src/project/project_view.dart';
+import 'package:vikunja_domain/src/task/subscription.dart';
 
 @immutable
 final class Project {
@@ -20,6 +21,7 @@ final class Project {
     this.created,
     this.updated,
     this.maxPermission,
+    this.subscription,
   });
 
   /// The Favorites pseudo project; it only appears in the project list.
@@ -53,6 +55,14 @@ final class Project {
   /// Null must never be taken for read-only.
   final Permission? maxPermission;
 
+  /// The user's subscription that covers this project: its own, or a
+  /// parent project's, whose id is then [Subscription.entityId]. The
+  /// project lists and single reads carry it; null when the user does not
+  /// follow the project (also after opting out of a followed parent's) or
+  /// it is not known. Read-only: it changes through the subscription
+  /// routes.
+  final Subscription? subscription;
+
   bool get isTopLevel => parentProjectId == 0;
 
   /// Negative ids are pseudo projects: Favorites and saved filters.
@@ -66,7 +76,8 @@ final class Project {
   static const _unset = Object();
 
   /// This project with the given fields replaced; [owner], [created],
-  /// [updated] and [maxPermission] passed as null are cleared.
+  /// [updated], [maxPermission] and [subscription] passed as null are
+  /// cleared.
   Project copyWith({
     String? title,
     String? description,
@@ -81,6 +92,7 @@ final class Project {
     Object? created = _unset,
     Object? updated = _unset,
     Object? maxPermission = _unset,
+    Object? subscription = _unset,
   }) => Project(
     id: id,
     title: title ?? this.title,
@@ -98,6 +110,9 @@ final class Project {
     maxPermission: identical(maxPermission, _unset)
         ? this.maxPermission
         : maxPermission as Permission?,
+    subscription: identical(subscription, _unset)
+        ? this.subscription
+        : subscription as Subscription?,
   );
 
   @override
@@ -113,7 +128,8 @@ final class Project {
       other.isFavorite == isFavorite &&
       other.position == position &&
       other.updated == updated &&
-      other.maxPermission == maxPermission;
+      other.maxPermission == maxPermission &&
+      other.subscription == subscription;
 
   @override
   int get hashCode => Object.hash(
@@ -128,6 +144,7 @@ final class Project {
     position,
     updated,
     maxPermission,
+    subscription,
   );
 
   @override

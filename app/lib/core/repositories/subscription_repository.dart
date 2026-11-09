@@ -1,8 +1,10 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// Whether the user follows a task or project (comments, changes, …
-/// arrive as notifications). Online only: the state is only on single
-/// reads, and a toggle goes straight to the server.
+/// arrive as notifications; on Vikunja 2.8.0 and later also its
+/// reminders). Online only: the state is only on single reads, and a
+/// toggle goes straight to the server. What a read says is stored for the
+/// device's notifications (D80).
 abstract interface class SubscriptionRepository {
   /// Throws the `VikunjaFailure` (offline included), and for a task whose
   /// create has not been answered yet `TaskNotSyncedYet`.

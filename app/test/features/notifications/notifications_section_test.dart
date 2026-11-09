@@ -1,5 +1,7 @@
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
@@ -8,9 +10,11 @@ import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notifications_section.dart';
 
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/guest_app.dart';
 import '../../helpers/notification_ui_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/server_connections.dart';
+import '../../helpers/sync_fakes.dart';
 
 const granted = NotificationCapabilities(
   permission: NotificationPermission.granted,
@@ -29,25 +33,36 @@ void main() {
   String accountId(WidgetTester tester) =>
       containerOf(tester).read(accountsProvider).value!.activeAccountId!;
 
-  Future<void> pumpSection(WidgetTester tester) async {
+  Finder tabList() => find
+      .descendant(
+        of: find.byType(AccountTab),
+        matching: find.byType(Scrollable),
+      )
+      .first;
+
+  Future<void> pumpSection(
+    WidgetTester tester, {
+    ServerConnection? server,
+    String? accountTab,
+  }) async {
     await auth.seedAccount(
-      fullServer270(),
+      server ?? fullServer270(),
       tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
     );
     await pumpVikunjaApp(tester, auth: auth, notifications: notifications);
-    await openTab(tester, en.tabAccount);
+    await openTab(tester, accountTab ?? en.tabAccount);
     await tester.scrollUntilVisible(
       find.byType(NotificationsSection),
       100,
-      scrollable: find
-          .descendant(
-            of: find.byType(AccountTab),
-            matching: find.byType(Scrollable),
-          )
-          .first,
+      scrollable: tabList(),
     );
     await tester.pumpAndSettle();
   }
+
+  Finder inSection(String text) => find.descendant(
+    of: find.byType(NotificationsSection),
+    matching: find.text(text),
+  );
 
   Finder switchFor(String title) => find.ancestor(
     of: find.text(title),
@@ -68,6 +83,92 @@ void main() {
     expect(find.text(en.notificationsScheduled(12)), findsOneWidget);
     expect(find.text(en.notificationsOff), findsNothing);
     expect(find.text(en.notificationsMayBeLate), findsNothing);
+  });
+
+  group('which tasks the switches notify about', () {
+    testWidgets('on Vikunja 2.8.0 the tasks the user follows', (tester) async {
+      await pumpSection(tester, server: fullServer280());
+
+      expect(inSection(en.notificationsForFollowedTasks), findsOneWidget);
+      expect(find.text(en.notificationsForOwnTasks), findsNothing);
+    });
+
+    testWidgets('on an older server the tasks the user created or is '
+        'assigned to', (tester) async {
+      await pumpSection(tester);
+
+      expect(inSection(en.notificationsForOwnTasks), findsOneWidget);
+      expect(find.text(en.notificationsForFollowedTasks), findsNothing);
+    });
+
+    testWidgets('a guest through a shared link is told neither', (
+      tester,
+    ) async {
+      await pumpGuestApp(
+        tester,
+        auth: auth,
+        data: SyncFakes(),
+        connection: fullServer280(),
+      );
+      await openTab(tester, en.tabAccount);
+      await tester.scrollUntilVisible(
+        switchFor(en.notificationsDueDates),
+        100,
+        scrollable: tabList(),
+      );
+      await tester.pumpAndSettle();
+
+      expect(inSection(en.onThisDeviceSubtitle), findsOneWidget);
+      expect(find.text(en.notificationsForFollowedTasks), findsNothing);
+      expect(find.text(en.notificationsForOwnTasks), findsNothing);
+    });
+
+    testWidgets('at 200 % text the line wraps without an overflow', (
+      tester,
+    ) async {
+      usePhoneSurface(tester, logicalSize: const Size(320, 640));
+      useAccessibilityExtremes(tester);
+      await pumpSection(tester, server: fullServer280());
+      await tester.scrollUntilVisible(
+        inSection(en.notificationsForFollowedTasks),
+        100,
+        scrollable: tabList(),
+      );
+      await tester.pumpAndSettle();
+
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.descendant(
+          of: inSection(en.notificationsForFollowedTasks),
+          matching: find.byType(RichText),
+        ),
+      );
+      expect(
+        paragraph.getMaxIntrinsicWidth(double.infinity),
+        greaterThan(paragraph.size.width),
+      );
+      expect(paragraph.didExceedMaxLines, isFalse);
+      expect(paragraph.debugHasOverflowShader, isFalse);
+      expect(
+        paragraph.size.height,
+        greaterThanOrEqualTo(paragraph.textSize.height),
+      );
+      expect(
+        tester.getRect(inSection(en.notificationsForFollowedTasks)).right,
+        lessThanOrEqualTo(320),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('in German', (tester) async {
+      useLocale(tester, const Locale('de'));
+      await pumpSection(
+        tester,
+        server: fullServer280(),
+        accountTab: de.tabAccount,
+      );
+
+      expect(inSection(de.notificationsForFollowedTasks), findsOneWidget);
+    });
   });
 
   testWidgets('a switch writes the account preference', (tester) async {
@@ -283,6 +384,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(de.notificationsHeading), findsOneWidget);
+    expect(find.text(de.notificationsForOwnTasks), findsOneWidget);
     expect(find.text(de.notificationsReminders), findsOneWidget);
     expect(find.text(de.notificationsScheduled(12)), findsOneWidget);
   });

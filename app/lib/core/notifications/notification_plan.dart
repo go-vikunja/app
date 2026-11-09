@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show SubscribedTasks;
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 
@@ -77,16 +78,18 @@ parseNotificationKey(String key) {
   };
 }
 
-/// The notifications an account should have, from its local data alone
-/// (D17): undone tasks, not queued for deletion, where [userId] is the
-/// creator or an assignee (a task created here under a temporary id has no
-/// creator yet and counts as the user's); each reminder with an instant
-/// after [now] and, when [preferences] allow, the due date at its exact
-/// instant. A snooze whose `originalFireAt` is the entry's own instant and
-/// whose `until` is still ahead moves the entry there, which is how a
-/// notification that has fired comes back. Titles and bodies are built by
-/// [describe] (localised by the caller). Sorted by
-/// [DesiredNotification.fireAt], then by key.
+/// The notifications an account should have, from its local data alone:
+/// undone tasks, not queued for deletion, where [userId] is the creator or
+/// an assignee (D17; a task created here under a temporary id has no
+/// creator yet and counts as the user's). With [subscribed], which is
+/// passed for a server that sends reminders only to subscribers (D80), the
+/// tasks it covers instead, for reminders and due dates alike. For each,
+/// every reminder with an instant after [now] and, when [preferences]
+/// allow, the due date at its exact instant. A snooze whose
+/// `originalFireAt` is the entry's own instant and whose `until` is still
+/// ahead moves the entry there, which is how a notification that has fired
+/// comes back. Titles and bodies are built by [describe] (localised by the
+/// caller). Sorted by [DesiredNotification.fireAt], then by key.
 List<DesiredNotification> planNotifications({
   required List<Task> tasks,
   required int userId,
@@ -98,6 +101,7 @@ List<DesiredNotification> planNotifications({
     ScheduledNotificationKind kind,
   )
   describe,
+  SubscribedTasks? subscribed,
 }) {
   if (!preferences.anyEnabled) return const [];
   final snoozeByKey = {for (final snooze in snoozes) snooze.key: snooze};
@@ -127,7 +131,10 @@ List<DesiredNotification> planNotifications({
   }
 
   for (final task in tasks) {
-    if (task.done || !_isOwn(task, userId)) continue;
+    if (task.done ||
+        !(subscribed?.covers(task, userId: userId) ?? _isOwn(task, userId))) {
+      continue;
+    }
     if (preferences.reminders) {
       for (final (ordinal, reminder) in task.reminders.indexed) {
         if (reminder.reminder case final at?) {

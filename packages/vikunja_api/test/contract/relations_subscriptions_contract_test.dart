@@ -146,6 +146,7 @@ void main() {
               late _StaleReads staleReads;
               late SubscriptionsWritePort subscriptionWrites;
               late SubscriptionsPort subscriptions;
+              late ProjectsPort projects;
               late int projectId;
               late int childProjectId;
 
@@ -174,6 +175,7 @@ void main() {
                   writeClient.subscriptions,
                 );
                 subscriptions = readClient.subscriptions;
+                projects = readClient.projects;
                 // A project per version: subscriptions belong to the user,
                 // and one version's project subscription would show in the
                 // other's tasks.
@@ -676,6 +678,77 @@ void main() {
                     projectId,
                   );
                   expect(await subscriptions.forProject(projectId), isNull);
+                });
+
+                test('the project lists carry the resolved subscription; a '
+                    "child's opt-out shows nothing", () async {
+                  final ownProject = own(SubscriptionEntity.project, projectId);
+                  final ownChild = own(
+                    SubscriptionEntity.project,
+                    childProjectId,
+                  );
+                  Future<Map<int, Subscription?>> listed() async => {
+                    for (final project in await projects.listAll(
+                      includeArchived: true,
+                    ))
+                      if (project.id == projectId ||
+                          project.id == childProjectId)
+                        project.id: project.subscription,
+                  };
+
+                  await subscriptionWrites.subscribe(
+                    SubscriptionEntity.project,
+                    projectId,
+                  );
+                  expect(await listed(), {
+                    projectId: ownProject,
+                    childProjectId: ownProject,
+                  });
+                  expect(
+                    (await projects.read(childProjectId)).subscription,
+                    ownProject,
+                  );
+
+                  await subscriptionWrites.unsubscribe(
+                    SubscriptionEntity.project,
+                    childProjectId,
+                  );
+                  expect(await listed(), {
+                    projectId: ownProject,
+                    childProjectId: null,
+                  });
+                  expect(
+                    (await projects.read(childProjectId)).subscription,
+                    isNull,
+                  );
+
+                  await subscriptionWrites.subscribe(
+                    SubscriptionEntity.project,
+                    childProjectId,
+                  );
+                  expect(await listed(), {
+                    projectId: ownProject,
+                    childProjectId: ownChild,
+                  });
+
+                  // The parent first: unfollowing the child while the
+                  // parent covers it would store an opt-out again.
+                  await subscriptionWrites.unsubscribe(
+                    SubscriptionEntity.project,
+                    projectId,
+                  );
+                  expect(await listed(), {
+                    projectId: null,
+                    childProjectId: ownChild,
+                  });
+                  await subscriptionWrites.unsubscribe(
+                    SubscriptionEntity.project,
+                    childProjectId,
+                  );
+                  expect(await listed(), {
+                    projectId: null,
+                    childProjectId: null,
+                  });
                 });
 
                 test('a missing task cannot be followed', () async {

@@ -18,6 +18,12 @@ enum Capability {
   /// with routes to list, restore and delete them for good. Vikunja 2.8.0
   /// and newer, on `/api/v2` only.
   trash,
+
+  /// The server sends a task's reminders, and its overdue e-mail, only to
+  /// the task's subscribers. It subscribes creators and assignees on its
+  /// own, so unfollowing a task silences it. Vikunja 2.8.0 and newer,
+  /// whatever the API version: the server routes the reminders itself.
+  remindersToSubscribers,
   localAuth,
   ldapAuth,
   openIdConnect,

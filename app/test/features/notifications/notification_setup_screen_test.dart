@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -53,9 +54,13 @@ void main() {
   bool onboarded() =>
       auth.preferences.values[notificationsOnboardedKey] == 'true';
 
-  Future<void> pumpSetup(WidgetTester tester, {SyncFakes? sync}) async {
+  Future<void> pumpSetup(
+    WidgetTester tester, {
+    SyncFakes? sync,
+    ServerConnection? server,
+  }) async {
     await auth.seedAccount(
-      fullServer270(),
+      server ?? fullServer270(),
       tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
     );
     await pumpVikunjaApp(
@@ -97,7 +102,19 @@ void main() {
     expect(find.text(en.notificationSetupReminders), findsOneWidget);
     expect(find.text(en.notificationSetupDueDates), findsOneWidget);
     expect(find.text(en.notificationSetupOnlyYours), findsOneWidget);
+    expect(find.text(en.notificationSetupFollowed), findsNothing);
     expect(notifications.calls('requestPermission'), 0);
+  });
+
+  testWidgets('on Vikunja 2.8.0 the setup promises the tasks the user '
+      'follows', (tester) async {
+    await pumpSetup(tester, server: fullServer280());
+
+    expect(find.byType(NotificationSetupScreen), findsOneWidget);
+    expect(find.text(en.notificationSetupReminders), findsOneWidget);
+    expect(find.text(en.notificationSetupDueDates), findsOneWidget);
+    expect(find.text(en.notificationSetupFollowed), findsOneWidget);
+    expect(find.text(en.notificationSetupOnlyYours), findsNothing);
   });
 
   testWidgets('Turn on asks for the permission, then opens the shell', (

@@ -58,6 +58,12 @@ class Tasks extends Table {
   BoolColumn get pendingDelete =>
       boolean().withDefault(const Constant(false))();
 
+  /// The user's own subscription to this task as the app last learnt it
+  /// (`OwnTaskSubscription.wireName`), on a server that sends reminders
+  /// only to subscribers; null while unknown. Only a single read of the
+  /// task and a follow toggle tell, so no upsert writes it.
+  TextColumn get ownSubscription => text().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

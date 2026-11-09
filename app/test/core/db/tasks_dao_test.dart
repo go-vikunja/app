@@ -1,5 +1,7 @@
+import 'package:drift/drift.dart' show TableUpdateQuery;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show OwnTaskSubscription;
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
@@ -569,6 +571,188 @@ void main() {
       await db.tasksDao.addToCommentCount(1, -3);
       expect((await db.tasksDao.find(1))!.commentCount, 0);
       await db.tasksDao.addToCommentCount(99, 1);
+    });
+  });
+
+  group("the user's own subscription", () {
+    const followed = 5;
+    const unfollowed = 6;
+    const own = Subscription(entity: SubscriptionEntity.task, entityId: 1);
+    const inherited = Subscription(
+      entity: SubscriptionEntity.project,
+      entityId: followed,
+    );
+
+    setUp(() async {
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: followed,
+          title: 'Followed',
+        ).copyWith(subscription: inherited),
+        sampleProject(id: unfollowed, title: 'Not followed'),
+      ]);
+    });
+
+    test('a read is judged with the stored project and assignees', () async {
+      await upsert([
+        sampleTask(id: 1, title: 'Own row', projectId: unfollowed),
+        sampleTask(id: 2, title: 'Through the project', projectId: followed),
+        sampleTask(
+          id: 3,
+          title: 'Through the project, assigned',
+          projectId: followed,
+          assignees: const [alice],
+        ),
+        sampleTask(id: 4, title: 'Opted out', projectId: followed),
+        sampleTask(
+          id: 5,
+          title: 'Nothing, assigned to bob',
+          projectId: unfollowed,
+          assignees: const [bob],
+        ),
+        sampleTask(
+          id: 6,
+          title: 'Nothing, assigned',
+          projectId: unfollowed,
+          assignees: const [alice],
+        ),
+      ]);
+
+      final dao = db.tasksDao;
+      await dao.storeOwnSubscription(1, own, userId: alice.id);
+      await dao.storeOwnSubscription(2, inherited, userId: alice.id);
+      await dao.storeOwnSubscription(3, inherited, userId: alice.id);
+      await dao.storeOwnSubscription(4, null, userId: alice.id);
+      await dao.storeOwnSubscription(5, null, userId: alice.id);
+      await dao.storeOwnSubscription(6, null, userId: alice.id);
+
+      expect(await dao.ownSubscriptions(), {
+        1: OwnTaskSubscription.subscribed,
+        2: OwnTaskSubscription.none,
+        3: OwnTaskSubscription.noneWhileAssigned,
+        4: OwnTaskSubscription.optedOut,
+        5: OwnTaskSubscription.none,
+        6: OwnTaskSubscription.noneWhileAssigned,
+      });
+      expect((await dao.findRow(4))!.ownSubscription, 'opted_out');
+    });
+
+    test("a read through a project stores it for the task's project first, "
+        'so that an unfollow read back as none counts as an opt-out', () async {
+      const viaUnfollowed = Subscription(
+        entity: SubscriptionEntity.project,
+        entityId: unfollowed,
+      );
+      await db.projectsDao.upsertAll([
+        sampleProject(id: 7, title: 'Below', parent: unfollowed),
+        sampleProject(id: 8, title: 'Elsewhere'),
+      ]);
+      await upsert([
+        sampleTask(id: 1, title: 'In the project', projectId: unfollowed),
+        sampleTask(id: 2, title: 'In a subproject', projectId: 7),
+        sampleTask(id: 3, title: 'Moved since', projectId: 8),
+      ]);
+      final dao = db.tasksDao;
+
+      await dao.storeOwnSubscription(1, viaUnfollowed, userId: alice.id);
+      await dao.storeOwnSubscription(2, viaUnfollowed, userId: alice.id);
+      await dao.storeOwnSubscription(3, inherited, userId: alice.id);
+      final stored = {
+        for (final project in await db.projectsDao.loadAll())
+          project.id: project.subscription,
+      };
+      expect(stored, {
+        followed: inherited,
+        unfollowed: viaUnfollowed,
+        7: viaUnfollowed,
+        8: null,
+      });
+
+      await dao.storeOwnSubscription(1, null, userId: alice.id);
+      await dao.storeOwnSubscription(2, null, userId: alice.id);
+      await dao.storeOwnSubscription(3, null, userId: alice.id);
+      expect(await dao.ownSubscriptions(), {
+        1: OwnTaskSubscription.optedOut,
+        2: OwnTaskSubscription.optedOut,
+        3: OwnTaskSubscription.none,
+      });
+    });
+
+    test('a task not stored here is left alone', () async {
+      await db.tasksDao.storeOwnSubscription(99, own, userId: alice.id);
+
+      expect(await db.tasksDao.findRow(99), isNull);
+      expect(await db.tasksDao.ownSubscriptions(), isEmpty);
+    });
+
+    test('written only when it changes', () async {
+      await upsert([sampleTask(id: 1, title: 'Read', projectId: unfollowed)]);
+      var writes = 0;
+      final updates = db
+          .tableUpdates(TableUpdateQuery.onTable(db.tasks))
+          .listen((_) => writes++);
+      addTearDown(updates.cancel);
+      final dao = db.tasksDao;
+
+      await dao.storeOwnSubscription(1, own, userId: alice.id);
+      await pumpEventQueue();
+      expect(writes, 1);
+      await dao.storeOwnSubscription(1, own, userId: alice.id);
+      await pumpEventQueue();
+      expect(writes, 1);
+      await dao.storeOwnSubscription(1, null, userId: alice.id);
+      await pumpEventQueue();
+      expect(writes, 2);
+      expect(await dao.ownSubscriptions(), {1: OwnTaskSubscription.none});
+    });
+
+    test('a sync page, a write answer and a queued change keep it; a new row '
+        'starts unknown', () async {
+      await upsert([
+        sampleTask(id: 1, title: 'Read', projectId: followed),
+        sampleTask(id: 2, title: 'Also read', projectId: followed),
+      ]);
+      await db.tasksDao.storeOwnSubscription(1, own, userId: alice.id);
+      await db.tasksDao.storeOwnSubscription(2, null, userId: alice.id);
+
+      await db.tasksDao.upsertAll(
+        [
+          sampleTask(id: 1, title: 'Synced', projectId: followed),
+          sampleTask(id: 3, title: 'New', projectId: followed),
+        ],
+        syncRunId: 'run-2',
+        withCommentState: true,
+      );
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 2, title: 'Answered', projectId: followed),
+      ]);
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(title: 'Mine'),
+        now: monday,
+      );
+
+      expect((await db.tasksDao.find(1))!.title, 'Mine');
+      expect((await db.tasksDao.find(2))!.title, 'Answered');
+      expect(await db.tasksDao.ownSubscriptions(), {
+        1: OwnTaskSubscription.subscribed,
+        2: OwnTaskSubscription.optedOut,
+      });
+    });
+
+    test('a name this build does not know counts as unknown', () async {
+      await upsert([
+        sampleTask(id: 1, title: 'Known', projectId: unfollowed),
+        sampleTask(id: 2, title: 'From a newer build', projectId: unfollowed),
+      ]);
+      await db.tasksDao.storeOwnSubscription(1, own, userId: alice.id);
+      await db.customStatement(
+        "UPDATE tasks SET own_subscription = 'muted_forever' WHERE id = 2",
+      );
+
+      expect(await db.tasksDao.ownSubscriptions(), {
+        1: OwnTaskSubscription.subscribed,
+      });
     });
   });
 }

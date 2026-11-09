@@ -222,6 +222,33 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
     );
   }
 
+  /// Stores the user's subscription that covers the stored project, as a
+  /// read of the project or a follow toggle answered; only a project's
+  /// subscription can cover one, so anything else counts as none. The
+  /// stored projects below it that were covered through it, by it or by a
+  /// project above it, get the same, as the server resolves them through
+  /// it; one that a nearer project covers keeps that, and one that none
+  /// covers is left to the next project list, since an opt-out on the way
+  /// cannot be told apart. Writes only on a change, so that the scheduler
+  /// does not plan again for nothing; a project not stored here is not
+  /// added.
+  Future<void> storeSubscription(int projectId, Subscription? subscription) =>
+      transaction(() async {
+        final via = subscription?.entity == SubscriptionEntity.project
+            ? subscription!.entityId
+            : null;
+        final below = (await subtreeOf(projectId))..remove(projectId);
+        await (update(projects)..where(
+              (p) =>
+                  (p.id.equals(projectId) |
+                      (p.id.isIn(below) &
+                          p.subscribedVia.isNotNull() &
+                          p.subscribedVia.isNotIn(below))) &
+                  p.subscribedVia.isNotExp(Variable(via)),
+            ))
+            .write(ProjectsCompanion(subscribedVia: Value(via)));
+      });
+
   /// Changes only the project's position and parent, as a move answered by
   /// the server; the next sync stores the whole project again.
   Future<void> moveProject(

@@ -5,7 +5,10 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show OwnTaskSubscription;
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -13,6 +16,7 @@ import 'package:vikunja_mobile/core/notifications/local_notification_gateway_pro
 import 'package:vikunja_mobile/core/repositories/local/local_task_details_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_resolver.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
@@ -22,7 +26,9 @@ import 'package:vikunja_mobile/features/description_editor/application/descripti
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_write_client.dart';
+import '../../helpers/guest_fakes.dart';
 import '../../helpers/notification_fakes.dart';
+import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 
@@ -108,6 +114,86 @@ void main() {
       container.read(attachmentImagesProvider),
       same(container.read(accountAttachmentImagesProvider(bob.id))),
     );
+  });
+
+  group("the follow state the account's reads record (D80)", () {
+    const ownRow = Subscription(entity: SubscriptionEntity.task, entityId: 1);
+
+    Future<AppDatabase> seedTask(RegisteredAccount entry) async {
+      final task = sampleTask(id: 1, title: 'Read');
+      final db = container.read(appDatabaseProvider(entry.id));
+      await db.tasksDao.upsertAll([task]);
+      readClients.putIfAbsent(entry.id, FakeSyncClient.new)
+        ..allTasks = [task]
+        ..taskSubscriptions[1] = ownRow;
+      return db;
+    }
+
+    test("a task's details record the user's own subscription on 2.8.0; on "
+        '2.7.0 and for a link-share guest nothing is recorded', () async {
+      final alice = await auth.seedAccount(
+        fullServer280(),
+        tokens: issueTokens(issuedAt: noon),
+      );
+      final bob = await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: noon, userId: 8, username: 'bob'),
+        activate: false,
+      );
+      final guest = await auth.seedGuest(
+        fullServer280(root: 'https://other.example.org'),
+        token: null,
+        activate: false,
+      );
+      await container.read(accountsProvider.future);
+      final databases = {
+        for (final entry in [alice, bob, guest])
+          entry.id: await seedTask(entry),
+      };
+
+      await container.read(taskDetailsRepositoryProvider)!.details(1);
+      for (final entry in [bob, guest]) {
+        await container
+            .read(accountTaskDetailsRepositoryProvider(entry.id))
+            .details(1);
+      }
+
+      expect(await databases[alice.id]!.tasksDao.ownSubscriptions(), {
+        1: OwnTaskSubscription.subscribed,
+      });
+      expect(await databases[bob.id]!.tasksDao.ownSubscriptions(), isEmpty);
+      expect(await databases[guest.id]!.tasksDao.ownSubscriptions(), isEmpty);
+    });
+
+    test("the bell's reads record on 2.8.0 only; a project's toggle starts "
+        "the account's quiet refresh", () async {
+      final alice = await auth.seedAccount(
+        fullServer280(),
+        tokens: issueTokens(issuedAt: noon),
+      );
+      final bob = await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: noon, userId: 8, username: 'bob'),
+        activate: false,
+      );
+      await container.read(accountsProvider.future);
+      final aliceDb = await seedTask(alice);
+      final bobDb = await seedTask(bob);
+      final subscriptions = container.read(subscriptionRepositoryProvider)!;
+
+      await subscriptions.forTask(1);
+      await container
+          .read(accountSubscriptionRepositoryProvider(bob.id))
+          .forTask(1);
+      await subscriptions.setProjectSubscribed(1, subscribed: true);
+
+      expect(await aliceDb.tasksDao.ownSubscriptions(), {
+        1: OwnTaskSubscription.subscribed,
+      });
+      expect(await bobDb.tasksDao.ownSubscriptions(), isEmpty);
+      final engine = container.read(syncEngineProvider(alice.id));
+      expect((engine as FakeSyncEngine).refreshAfterWriteCalls, 1);
+    });
   });
 
   test('attachment images load through the account read client', () async {

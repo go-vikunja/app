@@ -75,7 +75,7 @@ final class AccountTaskDetailsRepositoryProvider
 }
 
 String _$accountTaskDetailsRepositoryHash() =>
-    r'6037fc5ab85b63f15ef4e71acd52f315f94a59ee';
+    r'ce46862345cd9883f8f3e2cef156a2e5a32640c7';
 
 final class AccountTaskDetailsRepositoryFamily extends $Family
     with $FunctionalFamilyOverride<TaskDetailsRepository, String> {

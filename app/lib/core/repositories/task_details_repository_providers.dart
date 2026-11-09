@@ -1,4 +1,7 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/notifications/subscriber_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_details_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository.dart';
@@ -11,6 +14,11 @@ TaskDetailsRepository accountTaskDetailsRepository(Ref ref, String accountId) =>
       ref.watch(appDatabaseProvider(accountId)),
       ref.watch(readClientProvider(accountId)),
       ref.watch(writeClientProvider(accountId)),
+      subscriberId: ref.watch(
+        accountsProvider.select(
+          (accounts) => accounts.value?.find(accountId)?.subscriberId,
+        ),
+      ),
     );
 
 /// The active account's; null while nobody is signed in.

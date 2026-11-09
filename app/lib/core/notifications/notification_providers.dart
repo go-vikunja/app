@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/notifications/notification_preferences_store
 import 'package:vikunja_mobile/core/notifications/notification_scheduler.dart';
 import 'package:vikunja_mobile/core/notifications/notification_schedulers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_texts.dart';
+import 'package:vikunja_mobile/core/notifications/subscriber_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
@@ -44,21 +45,26 @@ NotificationPreferencesStore notificationPreferencesStore(Ref ref) {
 /// first run of a background action) and when the app comes back to the
 /// front, and rescheduling everything when the notification content, the
 /// app lock or the app's language changes; a content that shows less also
-/// withdraws what the account has in the tray. Null once the account is
-/// gone. Disposed with the account's database on sign-out, after which
+/// withdraws what the account has in the tray. Built again, and so
+/// reconciling at once, when a refreshed `/info` moves the server to one
+/// whose reminders follow the subscriptions (D80). Null once the account
+/// is gone. Disposed with the account's database on sign-out, after which
 /// [NotificationSchedulers] still holds it for the wipe.
 @Riverpod(keepAlive: true)
 NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
-  final userId = ref.watch(
-    accountsProvider.select(
-      (accounts) => accounts.value?.find(accountId)?.account.userId,
-    ),
+  final user = ref.watch(
+    accountsProvider.select((accounts) {
+      final entry = accounts.value?.find(accountId);
+      if (entry == null) return null;
+      return (userId: entry.account.userId, follow: entry.subscriberId != null);
+    }),
   );
-  if (userId == null) return null;
+  if (user == null) return null;
   final gateway = ref.watch(notificationGatewayProvider);
   final scheduler = NotificationScheduler(
     accountId: accountId,
-    userId: userId,
+    userId: user.userId,
+    followSubscriptions: user.follow,
     db: ref.watch(appDatabaseProvider(accountId)),
     gateway: gateway,
     preferences: ref.watch(notificationPreferencesStoreProvider),

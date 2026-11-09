@@ -549,6 +549,7 @@ void main() {
       expect(derive('info_v2_2.8.0.json', {ApiVersion.v1, ApiVersion.v2}).all, {
         ...capabilities.all,
         Capability.trash,
+        Capability.remindersToSubscribers,
       });
 
       expect(capabilities.all, {
@@ -572,6 +573,21 @@ void main() {
         Capability.emailReminders,
         Capability.backgroundUpload,
       });
+    });
+
+    test('the 2.8.0 fixture over v1 alone still reminds only subscribers, '
+        'without the trash', () {
+      final capabilities = derive('info_v1_2.8.0.json', {ApiVersion.v1});
+
+      expect(capabilities.has(Capability.remindersToSubscribers), isTrue);
+      expect(capabilities.has(Capability.trash), isFalse);
+      expect(
+        derive('info_v2_2.7.0.json', {
+          ApiVersion.v1,
+          ApiVersion.v2,
+        }).has(Capability.remindersToSubscribers),
+        isFalse,
+      );
     });
   });
 }

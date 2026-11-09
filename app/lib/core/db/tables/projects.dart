@@ -21,6 +21,11 @@ class Projects extends Table {
   /// `Permission.value` of the signed-in user, null while not known.
   IntColumn get maxPermission => integer().nullable()();
 
+  /// The project whose subscription covers this one for the user (itself
+  /// or a parent), from the project lists and single reads; null when not
+  /// followed or not known yet.
+  IntColumn get subscribedVia => integer().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

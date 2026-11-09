@@ -150,6 +150,17 @@ class $ProjectsTable extends Projects
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _subscribedViaMeta = const VerificationMeta(
+    'subscribedVia',
+  );
+  @override
+  late final GeneratedColumn<int> subscribedVia = GeneratedColumn<int>(
+    'subscribed_via',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -165,6 +176,7 @@ class $ProjectsTable extends Projects
     created,
     updated,
     maxPermission,
+    subscribedVia,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -266,6 +278,15 @@ class $ProjectsTable extends Projects
         ),
       );
     }
+    if (data.containsKey('subscribed_via')) {
+      context.handle(
+        _subscribedViaMeta,
+        subscribedVia.isAcceptableOrUnknown(
+          data['subscribed_via']!,
+          _subscribedViaMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -331,6 +352,10 @@ class $ProjectsTable extends Projects
         DriftSqlType.int,
         data['${effectivePrefix}max_permission'],
       ),
+      subscribedVia: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}subscribed_via'],
+      ),
     );
   }
 
@@ -363,6 +388,11 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
 
   /// `Permission.value` of the signed-in user, null while not known.
   final int? maxPermission;
+
+  /// The project whose subscription covers this one for the user (itself
+  /// or a parent), from the project lists and single reads; null when not
+  /// followed or not known yet.
+  final int? subscribedVia;
   const ProjectRow({
     required this.id,
     required this.title,
@@ -377,6 +407,7 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
     this.created,
     this.updated,
     this.maxPermission,
+    this.subscribedVia,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -406,6 +437,9 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
     if (!nullToAbsent || maxPermission != null) {
       map['max_permission'] = Variable<int>(maxPermission);
     }
+    if (!nullToAbsent || subscribedVia != null) {
+      map['subscribed_via'] = Variable<int>(subscribedVia);
+    }
     return map;
   }
 
@@ -432,6 +466,9 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
       maxPermission: maxPermission == null && nullToAbsent
           ? const Value.absent()
           : Value(maxPermission),
+      subscribedVia: subscribedVia == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subscribedVia),
     );
   }
 
@@ -454,6 +491,7 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
       created: serializer.fromJson<DateTime?>(json['created']),
       updated: serializer.fromJson<DateTime?>(json['updated']),
       maxPermission: serializer.fromJson<int?>(json['maxPermission']),
+      subscribedVia: serializer.fromJson<int?>(json['subscribedVia']),
     );
   }
   @override
@@ -473,6 +511,7 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
       'created': serializer.toJson<DateTime?>(created),
       'updated': serializer.toJson<DateTime?>(updated),
       'maxPermission': serializer.toJson<int?>(maxPermission),
+      'subscribedVia': serializer.toJson<int?>(subscribedVia),
     };
   }
 
@@ -490,6 +529,7 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
     Value<DateTime?> created = const Value.absent(),
     Value<DateTime?> updated = const Value.absent(),
     Value<int?> maxPermission = const Value.absent(),
+    Value<int?> subscribedVia = const Value.absent(),
   }) => ProjectRow(
     id: id ?? this.id,
     title: title ?? this.title,
@@ -506,6 +546,9 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
     maxPermission: maxPermission.present
         ? maxPermission.value
         : this.maxPermission,
+    subscribedVia: subscribedVia.present
+        ? subscribedVia.value
+        : this.subscribedVia,
   );
   ProjectRow copyWithCompanion(ProjectsCompanion data) {
     return ProjectRow(
@@ -534,6 +577,9 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
       maxPermission: data.maxPermission.present
           ? data.maxPermission.value
           : this.maxPermission,
+      subscribedVia: data.subscribedVia.present
+          ? data.subscribedVia.value
+          : this.subscribedVia,
     );
   }
 
@@ -552,7 +598,8 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
           ..write('ownerId: $ownerId, ')
           ..write('created: $created, ')
           ..write('updated: $updated, ')
-          ..write('maxPermission: $maxPermission')
+          ..write('maxPermission: $maxPermission, ')
+          ..write('subscribedVia: $subscribedVia')
           ..write(')'))
         .toString();
   }
@@ -572,6 +619,7 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
     created,
     updated,
     maxPermission,
+    subscribedVia,
   );
   @override
   bool operator ==(Object other) =>
@@ -589,7 +637,8 @@ class ProjectRow extends DataClass implements Insertable<ProjectRow> {
           other.ownerId == this.ownerId &&
           other.created == this.created &&
           other.updated == this.updated &&
-          other.maxPermission == this.maxPermission);
+          other.maxPermission == this.maxPermission &&
+          other.subscribedVia == this.subscribedVia);
 }
 
 class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
@@ -606,6 +655,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
   final Value<DateTime?> created;
   final Value<DateTime?> updated;
   final Value<int?> maxPermission;
+  final Value<int?> subscribedVia;
   const ProjectsCompanion({
     this.id = const Value.absent(),
     this.title = const Value.absent(),
@@ -620,6 +670,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
     this.created = const Value.absent(),
     this.updated = const Value.absent(),
     this.maxPermission = const Value.absent(),
+    this.subscribedVia = const Value.absent(),
   });
   ProjectsCompanion.insert({
     this.id = const Value.absent(),
@@ -635,6 +686,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
     this.created = const Value.absent(),
     this.updated = const Value.absent(),
     this.maxPermission = const Value.absent(),
+    this.subscribedVia = const Value.absent(),
   }) : title = Value(title),
        description = Value(description),
        identifier = Value(identifier),
@@ -657,6 +709,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
     Expression<int>? created,
     Expression<int>? updated,
     Expression<int>? maxPermission,
+    Expression<int>? subscribedVia,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -672,6 +725,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
       if (created != null) 'created': created,
       if (updated != null) 'updated': updated,
       if (maxPermission != null) 'max_permission': maxPermission,
+      if (subscribedVia != null) 'subscribed_via': subscribedVia,
     });
   }
 
@@ -689,6 +743,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
     Value<DateTime?>? created,
     Value<DateTime?>? updated,
     Value<int?>? maxPermission,
+    Value<int?>? subscribedVia,
   }) {
     return ProjectsCompanion(
       id: id ?? this.id,
@@ -704,6 +759,7 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
       created: created ?? this.created,
       updated: updated ?? this.updated,
       maxPermission: maxPermission ?? this.maxPermission,
+      subscribedVia: subscribedVia ?? this.subscribedVia,
     );
   }
 
@@ -753,6 +809,9 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
     if (maxPermission.present) {
       map['max_permission'] = Variable<int>(maxPermission.value);
     }
+    if (subscribedVia.present) {
+      map['subscribed_via'] = Variable<int>(subscribedVia.value);
+    }
     return map;
   }
 
@@ -771,7 +830,8 @@ class ProjectsCompanion extends UpdateCompanion<ProjectRow> {
           ..write('ownerId: $ownerId, ')
           ..write('created: $created, ')
           ..write('updated: $updated, ')
-          ..write('maxPermission: $maxPermission')
+          ..write('maxPermission: $maxPermission, ')
+          ..write('subscribedVia: $subscribedVia')
           ..write(')'))
         .toString();
   }
@@ -2358,6 +2418,17 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _ownSubscriptionMeta = const VerificationMeta(
+    'ownSubscription',
+  );
+  @override
+  late final GeneratedColumn<String> ownSubscription = GeneratedColumn<String>(
+    'own_subscription',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -2387,6 +2458,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
     syncRunId,
     pendingChanges,
     pendingDelete,
+    ownSubscription,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2572,6 +2644,15 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         ),
       );
     }
+    if (data.containsKey('own_subscription')) {
+      context.handle(
+        _ownSubscriptionMeta,
+        ownSubscription.isAcceptableOrUnknown(
+          data['own_subscription']!,
+          _ownSubscriptionMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -2701,6 +2782,10 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, TaskRow> {
         DriftSqlType.bool,
         data['${effectivePrefix}pending_delete'],
       )!,
+      ownSubscription: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}own_subscription'],
+      ),
     );
   }
 
@@ -2776,6 +2861,12 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
   /// A queued delete: the row is hidden from every query and count until
   /// the server confirms.
   final bool pendingDelete;
+
+  /// The user's own subscription to this task as the app last learnt it
+  /// (`OwnTaskSubscription.wireName`), on a server that sends reminders
+  /// only to subscribers; null while unknown. Only a single read of the
+  /// task and a follow toggle tell, so no upsert writes it.
+  final String? ownSubscription;
   const TaskRow({
     required this.id,
     required this.projectId,
@@ -2804,6 +2895,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     this.syncRunId,
     this.pendingChanges,
     required this.pendingDelete,
+    this.ownSubscription,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -2865,6 +2957,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       map['pending_changes'] = Variable<String>(pendingChanges);
     }
     map['pending_delete'] = Variable<bool>(pendingDelete);
+    if (!nullToAbsent || ownSubscription != null) {
+      map['own_subscription'] = Variable<String>(ownSubscription);
+    }
     return map;
   }
 
@@ -2915,6 +3010,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           ? const Value.absent()
           : Value(pendingChanges),
       pendingDelete: Value(pendingDelete),
+      ownSubscription: ownSubscription == null && nullToAbsent
+          ? const Value.absent()
+          : Value(ownSubscription),
     );
   }
 
@@ -2951,6 +3049,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       syncRunId: serializer.fromJson<String?>(json['syncRunId']),
       pendingChanges: serializer.fromJson<String?>(json['pendingChanges']),
       pendingDelete: serializer.fromJson<bool>(json['pendingDelete']),
+      ownSubscription: serializer.fromJson<String?>(json['ownSubscription']),
     );
   }
   @override
@@ -2984,6 +3083,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       'syncRunId': serializer.toJson<String?>(syncRunId),
       'pendingChanges': serializer.toJson<String?>(pendingChanges),
       'pendingDelete': serializer.toJson<bool>(pendingDelete),
+      'ownSubscription': serializer.toJson<String?>(ownSubscription),
     };
   }
 
@@ -3015,6 +3115,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     Value<String?> syncRunId = const Value.absent(),
     Value<String?> pendingChanges = const Value.absent(),
     bool? pendingDelete,
+    Value<String?> ownSubscription = const Value.absent(),
   }) => TaskRow(
     id: id ?? this.id,
     projectId: projectId ?? this.projectId,
@@ -3045,6 +3146,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
         ? pendingChanges.value
         : this.pendingChanges,
     pendingDelete: pendingDelete ?? this.pendingDelete,
+    ownSubscription: ownSubscription.present
+        ? ownSubscription.value
+        : this.ownSubscription,
   );
   TaskRow copyWithCompanion(TasksCompanion data) {
     return TaskRow(
@@ -3095,6 +3199,9 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
       pendingDelete: data.pendingDelete.present
           ? data.pendingDelete.value
           : this.pendingDelete,
+      ownSubscription: data.ownSubscription.present
+          ? data.ownSubscription.value
+          : this.ownSubscription,
     );
   }
 
@@ -3127,7 +3234,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           ..write('isUnread: $isUnread, ')
           ..write('syncRunId: $syncRunId, ')
           ..write('pendingChanges: $pendingChanges, ')
-          ..write('pendingDelete: $pendingDelete')
+          ..write('pendingDelete: $pendingDelete, ')
+          ..write('ownSubscription: $ownSubscription')
           ..write(')'))
         .toString();
   }
@@ -3161,6 +3269,7 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
     syncRunId,
     pendingChanges,
     pendingDelete,
+    ownSubscription,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -3192,7 +3301,8 @@ class TaskRow extends DataClass implements Insertable<TaskRow> {
           other.isUnread == this.isUnread &&
           other.syncRunId == this.syncRunId &&
           other.pendingChanges == this.pendingChanges &&
-          other.pendingDelete == this.pendingDelete);
+          other.pendingDelete == this.pendingDelete &&
+          other.ownSubscription == this.ownSubscription);
 }
 
 class TasksCompanion extends UpdateCompanion<TaskRow> {
@@ -3223,6 +3333,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
   final Value<String?> syncRunId;
   final Value<String?> pendingChanges;
   final Value<bool> pendingDelete;
+  final Value<String?> ownSubscription;
   const TasksCompanion({
     this.id = const Value.absent(),
     this.projectId = const Value.absent(),
@@ -3251,6 +3362,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.syncRunId = const Value.absent(),
     this.pendingChanges = const Value.absent(),
     this.pendingDelete = const Value.absent(),
+    this.ownSubscription = const Value.absent(),
   });
   TasksCompanion.insert({
     this.id = const Value.absent(),
@@ -3280,6 +3392,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     this.syncRunId = const Value.absent(),
     this.pendingChanges = const Value.absent(),
     this.pendingDelete = const Value.absent(),
+    this.ownSubscription = const Value.absent(),
   }) : projectId = Value(projectId),
        title = Value(title),
        description = Value(description),
@@ -3322,6 +3435,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Expression<String>? syncRunId,
     Expression<String>? pendingChanges,
     Expression<bool>? pendingDelete,
+    Expression<String>? ownSubscription,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -3351,6 +3465,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       if (syncRunId != null) 'sync_run_id': syncRunId,
       if (pendingChanges != null) 'pending_changes': pendingChanges,
       if (pendingDelete != null) 'pending_delete': pendingDelete,
+      if (ownSubscription != null) 'own_subscription': ownSubscription,
     });
   }
 
@@ -3382,6 +3497,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     Value<String?>? syncRunId,
     Value<String?>? pendingChanges,
     Value<bool>? pendingDelete,
+    Value<String?>? ownSubscription,
   }) {
     return TasksCompanion(
       id: id ?? this.id,
@@ -3411,6 +3527,7 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
       syncRunId: syncRunId ?? this.syncRunId,
       pendingChanges: pendingChanges ?? this.pendingChanges,
       pendingDelete: pendingDelete ?? this.pendingDelete,
+      ownSubscription: ownSubscription ?? this.ownSubscription,
     );
   }
 
@@ -3510,6 +3627,9 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
     if (pendingDelete.present) {
       map['pending_delete'] = Variable<bool>(pendingDelete.value);
     }
+    if (ownSubscription.present) {
+      map['own_subscription'] = Variable<String>(ownSubscription.value);
+    }
     return map;
   }
 
@@ -3542,7 +3662,8 @@ class TasksCompanion extends UpdateCompanion<TaskRow> {
           ..write('isUnread: $isUnread, ')
           ..write('syncRunId: $syncRunId, ')
           ..write('pendingChanges: $pendingChanges, ')
-          ..write('pendingDelete: $pendingDelete')
+          ..write('pendingDelete: $pendingDelete, ')
+          ..write('ownSubscription: $ownSubscription')
           ..write(')'))
         .toString();
   }
@@ -8666,6 +8787,7 @@ typedef $$ProjectsTableCreateCompanionBuilder = ProjectsCompanion Function({
   Value<DateTime?> created,
   Value<DateTime?> updated,
   Value<int?> maxPermission,
+  Value<int?> subscribedVia,
 });
 typedef $$ProjectsTableUpdateCompanionBuilder = ProjectsCompanion Function({
   Value<int> id,
@@ -8681,6 +8803,7 @@ typedef $$ProjectsTableUpdateCompanionBuilder = ProjectsCompanion Function({
   Value<DateTime?> created,
   Value<DateTime?> updated,
   Value<int?> maxPermission,
+  Value<int?> subscribedVia,
 });
 
 final class $$ProjectsTableReferences
@@ -8779,6 +8902,11 @@ class $$ProjectsTableFilterComposer
 
   ColumnFilters<int> get maxPermission => $composableBuilder(
     column: $table.maxPermission,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get subscribedVia => $composableBuilder(
+    column: $table.subscribedVia,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8881,6 +9009,11 @@ class $$ProjectsTableOrderingComposer
     column: $table.maxPermission,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get subscribedVia => $composableBuilder(
+    column: $table.subscribedVia,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$ProjectsTableAnnotationComposer
@@ -8940,6 +9073,11 @@ class $$ProjectsTableAnnotationComposer
 
   GeneratedColumn<int> get maxPermission => $composableBuilder(
     column: $table.maxPermission,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get subscribedVia => $composableBuilder(
+    column: $table.subscribedVia,
     builder: (column) => column,
   );
 
@@ -9010,6 +9148,7 @@ class $$ProjectsTableTableManager
                 Value<DateTime?> created = const Value.absent(),
                 Value<DateTime?> updated = const Value.absent(),
                 Value<int?> maxPermission = const Value.absent(),
+                Value<int?> subscribedVia = const Value.absent(),
               }) => ProjectsCompanion(
                 id: id,
                 title: title,
@@ -9024,6 +9163,7 @@ class $$ProjectsTableTableManager
                 created: created,
                 updated: updated,
                 maxPermission: maxPermission,
+                subscribedVia: subscribedVia,
               ),
           createCompanionCallback:
               ({
@@ -9040,6 +9180,7 @@ class $$ProjectsTableTableManager
                 Value<DateTime?> created = const Value.absent(),
                 Value<DateTime?> updated = const Value.absent(),
                 Value<int?> maxPermission = const Value.absent(),
+                Value<int?> subscribedVia = const Value.absent(),
               }) => ProjectsCompanion.insert(
                 id: id,
                 title: title,
@@ -9054,6 +9195,7 @@ class $$ProjectsTableTableManager
                 created: created,
                 updated: updated,
                 maxPermission: maxPermission,
+                subscribedVia: subscribedVia,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -10109,6 +10251,7 @@ typedef $$TasksTableCreateCompanionBuilder = TasksCompanion Function({
   Value<String?> syncRunId,
   Value<String?> pendingChanges,
   Value<bool> pendingDelete,
+  Value<String?> ownSubscription,
 });
 typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<int> id,
@@ -10138,6 +10281,7 @@ typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<String?> syncRunId,
   Value<String?> pendingChanges,
   Value<bool> pendingDelete,
+  Value<String?> ownSubscription,
 });
 
 final class $$TasksTableReferences
@@ -10363,6 +10507,11 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<bool> get pendingDelete => $composableBuilder(
     column: $table.pendingDelete,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get ownSubscription => $composableBuilder(
+    column: $table.ownSubscription,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -10610,6 +10759,11 @@ class $$TasksTableOrderingComposer
     column: $table.pendingDelete,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get ownSubscription => $composableBuilder(
+    column: $table.ownSubscription,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$TasksTableAnnotationComposer
@@ -10719,6 +10873,11 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<bool> get pendingDelete => $composableBuilder(
     column: $table.pendingDelete,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get ownSubscription => $composableBuilder(
+    column: $table.ownSubscription,
     builder: (column) => column,
   );
 
@@ -10883,6 +11042,7 @@ class $$TasksTableTableManager
                 Value<String?> syncRunId = const Value.absent(),
                 Value<String?> pendingChanges = const Value.absent(),
                 Value<bool> pendingDelete = const Value.absent(),
+                Value<String?> ownSubscription = const Value.absent(),
               }) => TasksCompanion(
                 id: id,
                 projectId: projectId,
@@ -10911,6 +11071,7 @@ class $$TasksTableTableManager
                 syncRunId: syncRunId,
                 pendingChanges: pendingChanges,
                 pendingDelete: pendingDelete,
+                ownSubscription: ownSubscription,
               ),
           createCompanionCallback:
               ({
@@ -10941,6 +11102,7 @@ class $$TasksTableTableManager
                 Value<String?> syncRunId = const Value.absent(),
                 Value<String?> pendingChanges = const Value.absent(),
                 Value<bool> pendingDelete = const Value.absent(),
+                Value<String?> ownSubscription = const Value.absent(),
               }) => TasksCompanion.insert(
                 id: id,
                 projectId: projectId,
@@ -10969,6 +11131,7 @@ class $$TasksTableTableManager
                 syncRunId: syncRunId,
                 pendingChanges: pendingChanges,
                 pendingDelete: pendingDelete,
+                ownSubscription: ownSubscription,
               ),
           withReferenceMapper: (p0) => p0
               .map(

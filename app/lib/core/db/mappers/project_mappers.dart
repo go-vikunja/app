@@ -17,6 +17,7 @@ ProjectRow projectRow(Project project) => ProjectRow(
   created: project.created,
   updated: project.updated,
   maxPermission: project.maxPermission?.value,
+  subscribedVia: project.subscription?.entityId,
 );
 
 ProjectViewRow projectViewRow(ProjectView view) => ProjectViewRow(
@@ -50,6 +51,13 @@ Project projectFromRow(
   created: row.created,
   updated: row.updated,
   maxPermission: Permission.fromValue(row.maxPermission),
+  subscription: switch (row.subscribedVia) {
+    final projectId? => Subscription(
+      entity: SubscriptionEntity.project,
+      entityId: projectId,
+    ),
+    null => null,
+  },
 );
 
 /// Null for a view kind this build does not know, like the codec does.
