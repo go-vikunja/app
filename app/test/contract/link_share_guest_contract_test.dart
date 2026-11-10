@@ -26,12 +26,13 @@ import '../helpers/guest_fakes.dart';
 import '../helpers/test_database.dart';
 import 'helpers.dart';
 
-/// The writes are paced, so the SQLite server keeps up with the files
-/// running in parallel.
+/// The writes are paced, so that a SQLite server without the immediate
+/// transactions of test_servers/docker-compose.yaml keeps up.
 Future<void> _pace() => Future<void>.delayed(const Duration(milliseconds: 500));
 
-/// Share authentication shares the limit of 10 a minute and IP with every
-/// sign-in of every test file: [GuestSignIn] reports a 429 as a result,
+/// Share authentication shares the sign-in limit per minute and IP with
+/// every sign-in of every test file (10 unless raised, as
+/// test_servers/docker-compose.yaml does): [GuestSignIn] reports a 429 as a result,
 /// which is waited out here like [patiently] does for a thrown one.
 Future<GuestSignInResult> _patiently(
   Future<GuestSignInResult> Function() signIn,

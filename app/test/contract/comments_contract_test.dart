@@ -16,7 +16,9 @@ import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import '../helpers/test_database.dart';
 import 'helpers.dart';
 
-/// The SQLite server may answer "database is locked" right after a write.
+/// A SQLite server without the immediate transactions of
+/// test_servers/docker-compose.yaml may answer "database is locked" right
+/// after a write.
 Future<void> _pause() =>
     Future<void>.delayed(const Duration(milliseconds: 500));
 

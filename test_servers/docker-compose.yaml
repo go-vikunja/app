@@ -31,12 +31,26 @@ x-vikunja-env: &vikunja-env
   # memory, so every restart starts from an empty server.
   VIKUNJA_FILES_BASEPATH: /tmp/files
   VIKUNJA_DATABASE_TYPE: sqlite
-  VIKUNJA_DATABASE_PATH: /tmp/vikunja.db
+  # Vikunja appends "?_busy_timeout=5000&_journal_mode=WAL" to this path, and
+  # its SQLite driver reads everything after the first "?" as options:
+  # _txlock=immediate makes a transaction wait for the write lock instead of
+  # failing parallel writes with "database is locked" (500), and _x= takes
+  # Vikunja's own "?_busy_timeout=5000" as its value, which would otherwise
+  # stop the server from starting. After an image bump, check the startup
+  # line "Using SQLite database at:" and that a contract run logs no
+  # "database is locked". A transaction now waits up to 30 s for the lock;
+  # should the server exit with "Failed to begin database transaction", drop
+  # _txlock=immediate, keep the raised limit and run the vikunja_api contract
+  # files one at a time.
+  VIKUNJA_DATABASE_PATH: "/tmp/vikunja.db?_txlock=immediate&_busy_timeout=30000&_x="
   # The contract tests and tool/seed_e2e_user.sh create users through /register.
   VIKUNJA_SERVICE_ENABLEREGISTRATION: "true"
-  # All test traffic comes from one IP. The login limiter (10/min) cannot be
-  # disabled and still applies.
+  # All test traffic comes from one IP. The general limit is off; the limit
+  # that sign-in, registration, link-share sign-in and the WebSocket upgrade
+  # share (10 a minute per IP) cannot be turned off, only raised. The lockout
+  # after ten wrong passwords for one account stays.
   VIKUNJA_RATELIMIT_ENABLED: "false"
+  VIKUNJA_RATELIMIT_NOAUTHLIMIT: "1000"
   # A legal link besides the imprint and the privacy policy for the contract
   # tests, named neither "Imprint" nor "Privacy Policy": they expect the
   # server to have neither.

@@ -84,8 +84,10 @@ fi
 setup_flutter
 "${repo_root}/tool/wait_for_test_servers.sh"
 
-(cd "${repo_root}/packages/vikunja_api" && VIKUNJA_CONTRACT=1 flutter test --tags contract)
+# Every contract test lives in test/contract; naming it spares compiling the
+# other test files only to skip them.
+(cd "${repo_root}/packages/vikunja_api" && VIKUNJA_CONTRACT=1 flutter test --tags contract test/contract)
 # Upcoming is compared with the server's filter strings in this zone. One
-# file at a time: the test servers keep their data in SQLite, which answers
-# concurrent writes from parallel files with "database is locked" (500).
-(cd "${repo_root}/app" && VIKUNJA_CONTRACT=1 TZ=Europe/Berlin flutter test --tags contract --concurrency=1)
+# file at a time: the app's files have not been run in parallel since the
+# test server stopped answering parallel writes with "database is locked".
+(cd "${repo_root}/app" && VIKUNJA_CONTRACT=1 TZ=Europe/Berlin flutter test --tags contract --concurrency=1 test/contract)

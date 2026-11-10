@@ -9,9 +9,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 // The contract tests need the server of test_servers/docker-compose.yaml:
 // VIKUNJA_CONTRACT=1 flutter test --tags contract
 //
-// /login and /register share a limit of 10 requests per minute and IP that
-// cannot be switched off, so a run registers one user and every
-// unauthenticated call waits out a 429. Mirrors
+// /login and /register share a limit per minute and IP that cannot be
+// switched off (10 unless raised, as test_servers/docker-compose.yaml does),
+// so every unauthenticated call waits out a 429 when one comes. Mirrors
 // packages/vikunja_api/test/contract/helpers.dart, which a Flutter package
 // cannot import.
 final String? contractSkip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
@@ -101,9 +101,10 @@ registerAndLoginAgainLater(Dio dio, ServerConnection connection) async {
   );
 }
 
-/// The SQLite test server answers a lost write race ("database is locked")
-/// with a 500, which test files running in parallel provoke. Raw dio calls
-/// throw it as a `DioException`, the clients as a `ServerFailure`.
+/// A SQLite server without the immediate transactions of
+/// test_servers/docker-compose.yaml answers a lost write race ("database is
+/// locked") with a 500, which test files running in parallel provoke. Raw
+/// dio calls throw it as a `DioException`, the clients as a `ServerFailure`.
 Future<T> despiteWriteRaces<T>(Future<T> Function() call) async {
   for (var attempt = 1; ; attempt++) {
     try {

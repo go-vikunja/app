@@ -14,8 +14,9 @@ import 'helpers.dart';
 // One throwaway owner shares a project per API version by a read link and
 // a password link; the guests sign in, renew, read, and lose access when the
 // read link is deleted. Link share sign-in and the invite check count
-// against the limit of 10 requests per minute and IP that sign-in and
-// registration share across every test file, so those calls are spaced.
+// against the limit per minute and IP that sign-in and registration share
+// across every test file (10 unless raised, as test_servers/docker-compose.yaml
+// does), so those calls are spaced for a server with the default.
 // No hash, token or password is ever printed: failures name shapes only.
 const _unauthenticatedSpacing = Duration(seconds: 7);
 const _pace = Duration(milliseconds: 500);

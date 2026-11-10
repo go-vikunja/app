@@ -150,8 +150,10 @@ def call(method, path, token=None, body=None, version='v1', ctype='application/j
             if error.code == 429:
                 time.sleep(int(error.headers.get('Retry-After', '30')) + 1)
                 continue
-            # The test server's SQLite answers "database is locked" now and
-            # then (seen right after adding an assignee), having written nothing.
+            # A SQLite server without the immediate transactions of
+            # test_servers/docker-compose.yaml (an older container, for one)
+            # may answer "database is locked" right after an assignee change,
+            # having written nothing.
             if error.code == 500:
                 time.sleep(1)
                 continue

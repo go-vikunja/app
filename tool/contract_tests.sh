@@ -30,4 +30,10 @@ fi
 
 cd "${repo_root}/packages/vikunja_api"
 export VIKUNJA_CONTRACT=1
-exec flutter test --tags contract "$@"
+# Without a test path, only test/contract, where every contract test lives.
+for arg in "$@"; do
+  if [[ -e "${arg%%\?*}" ]]; then
+    exec flutter test --tags contract "$@"
+  fi
+done
+exec flutter test --tags contract "$@" test/contract

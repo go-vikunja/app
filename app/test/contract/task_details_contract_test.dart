@@ -38,7 +38,9 @@ typedef _Seed = ({
   int movedOldIndex,
 });
 
-/// The SQLite server may answer "database is locked" right after a write.
+/// A SQLite server without the immediate transactions of
+/// test_servers/docker-compose.yaml may answer "database is locked" right
+/// after a write.
 Future<void> _pause() =>
     Future<void>.delayed(const Duration(milliseconds: 500));
 

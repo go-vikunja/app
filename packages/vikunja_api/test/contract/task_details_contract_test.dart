@@ -78,8 +78,9 @@ Future<Object?> _send(
 
 Map<String, Object?> _object(Object? value) => value! as Map<String, Object?>;
 
-// SQLite answers a read right after a write with "database is locked" now
-// and then.
+// A SQLite server without the immediate transactions of
+// test_servers/docker-compose.yaml answers a read right after a write with
+// "database is locked" now and then.
 Future<void> _settle() =>
     Future<void>.delayed(const Duration(milliseconds: 500));
 

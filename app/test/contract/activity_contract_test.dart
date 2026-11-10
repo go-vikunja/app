@@ -126,6 +126,28 @@ void main() {
           }
         }
 
+        /// [seen] and what later syncs bring, until two syncs a second apart
+        /// bring no notification not seen yet, so that a late task.created
+        /// (see the first test) is stored before the test goes on. A sync
+        /// returns every unhandled notification again, so new ones are told
+        /// apart by their ids.
+        Future<List<ServerNotification>> settled(
+          List<ServerNotification> seen,
+        ) async {
+          final ids = {for (final n in seen) n.id};
+          final all = [...seen];
+          for (var quiet = 0; quiet < 2;) {
+            await Future<void>.delayed(const Duration(seconds: 1));
+            final more = [
+              for (final n in await sync.run())
+                if (ids.add(n.id)) n,
+            ];
+            quiet = more.isEmpty ? quiet + 1 : 0;
+            all.addAll(more);
+          }
+          return all;
+        }
+
         Future<ServerNotification> onServer(int id) async =>
             (await reads.list()).items.singleWhere((n) => n.id == id);
 
@@ -190,7 +212,26 @@ void main() {
             db: db,
             fresh: fresh,
           );
-          expect(shown, expectedKinds().length);
+          // The server's task.created listener runs on its own; when it runs
+          // after the assignment subscribed the reader, the reader gets
+          // task.created too, in this sync or a later one. Each notification
+          // of the task shows once.
+          final ofTask = [
+            for (final n in fresh)
+              if (n.taskId == taskId) n,
+          ];
+          final described = [for (final n in ofTask) '${n.name} ${n.id}'];
+          expect(
+            ofTask.map((n) => n.id).toSet(),
+            hasLength(ofTask.length),
+            reason: '$described',
+          );
+          expect(
+            ofTask.map((n) => n.name).toSet().difference(expectedKinds()),
+            anyOf(isEmpty, equals({'task.created'})),
+            reason: '$described',
+          );
+          expect(shown, ofTask.length, reason: '$described');
           final notice = gateway.activities.firstWhere(
             (a) => a.payload.contains('activity:${assigned.id}'),
           );
@@ -205,7 +246,17 @@ void main() {
               ),
             );
           }
-          expect(await sync.run(), isEmpty, reason: 'never twice');
+          final later = await sync.run();
+          expect(
+            later.where((n) => ofTask.any((seen) => seen.id == n.id)),
+            isEmpty,
+            reason: 'never twice',
+          );
+          expect(
+            later.map((n) => n.name).toSet().difference({'task.created'}),
+            isEmpty,
+            reason: 'only a late task.created: $described',
+          );
 
           await db.serverNotificationsDao.markRead([
             assigned.id,
@@ -226,7 +277,7 @@ void main() {
           final taskId = await assignedTask(
             'Repot the fern ${apiVersion.pathSegment} $runId',
           );
-          final fresh = await syncUntilArrived(taskId);
+          final fresh = await settled(await syncUntilArrived(taskId));
           await db.serverNotificationsDao.markHandled(fresh.map((n) => n.id));
           writes.calls.clear();
 

@@ -9,8 +9,9 @@
 # Env:   VIKUNJA_TEST_HOST  host for bare ports (default: localhost)
 #        E2E_USER_ENV       credentials file (default: test_servers/seed/e2e-user.env)
 #
-# /register and /login share the server's login rate limiter (10 per minute
-# per IP, cannot be disabled); a 429 is waited out once.
+# /register and /login share the server's sign-in limit (10 per minute per IP
+# unless raised, as on the test servers; it cannot be disabled); a 429 is
+# waited out once.
 # Must run on macOS's bash 3.2.
 set -euo pipefail
 

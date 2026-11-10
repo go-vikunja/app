@@ -9,9 +9,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 // VIKUNJA_CONTRACT=1 flutter test --tags contract
 //
 // /login, /register, the /ws upgrade and, before 2.7.0, /api/v1/oauth/token
-// share a limit of 10 requests per minute and IP that cannot be switched
-// off, so each server gets one user per run and every unauthenticated call
-// waits out a 429.
+// share a limit per minute and IP that cannot be switched off (10 unless
+// raised, as test_servers/docker-compose.yaml does), so every
+// unauthenticated call waits out a 429 when one comes.
 final String? contractSkip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
     ? 'Set VIKUNJA_CONTRACT=1 and start test_servers/docker-compose.yaml'
     : null;
@@ -105,8 +105,9 @@ registerAndLoginAgainLater(Dio dio, ServerConnection connection) async {
 
 /// Test files run in parallel and register at the same moment, and a write
 /// right after an assignee change collides with the server's own listener
-/// that bumps the task; the SQLite test server answers a lost write race
-/// with a 500. Raw dio calls throw it as a `DioException`, the clients as a
+/// that bumps the task; a SQLite server without the immediate transactions
+/// of test_servers/docker-compose.yaml answers a lost write race with a
+/// 500. Raw dio calls throw it as a `DioException`, the clients as a
 /// `ServerFailure`.
 Future<T> despiteWriteRaces<T>(Future<T> Function() call) async {
   for (var attempt = 1; ; attempt++) {
@@ -125,7 +126,7 @@ Future<T> despiteWriteRaces<T>(Future<T> Function() call) async {
 }
 
 /// Retries every call over the lost write races of [despiteWriteRaces]. A
-/// write the SQLite server refused with "database is locked" changed
+/// write a SQLite server refused with "database is locked" changed
 /// nothing, and an update is safe to repeat anyway.
 final class RetryingTasksWrites implements TasksWritePort {
   new(this._writes);
