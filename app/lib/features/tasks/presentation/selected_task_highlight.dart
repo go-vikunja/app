@@ -4,7 +4,8 @@ import 'package:material_ui/material_ui.dart';
 /// tint, and an indicator in the primary colour, as the tint alone stands
 /// out too little from the cards. Painted on the nearest [Material], under
 /// the ink of [child], and laid out the same either way; always in the
-/// tree, so a change of the selection keeps [child]'s state.
+/// tree, so a change of the selection keeps [child]'s state. It also marks
+/// the rows of the project or list open beside the project tree's column.
 class SelectedTaskHighlight extends StatelessWidget {
   const new({
     required this.selected,

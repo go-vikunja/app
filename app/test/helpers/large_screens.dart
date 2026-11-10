@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/layout/window_layout.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 
 const androidPhone = Size(360, 740);
 const androidSmallLandscape = Size(740, 360);
@@ -20,6 +21,12 @@ const androidTabletLandscape = Size(1280, 800);
 const iPad11Portrait = Size(834, 1194);
 const iPad11Landscape = Size(1194, 834);
 const iPad13Portrait = Size(1024, 1366);
+
+/// A large Android tablet in landscape: three panes with room to spare.
+const androidLargeLandscape = Size(1600, 1000);
+
+/// The narrowest iPad in landscape, just above the three panes' 1,120.
+const iPadMiniLandscape = Size(1133, 744);
 
 const List<Size> androidSizes = [
   androidPhone,
@@ -72,6 +79,19 @@ double railRight(WidgetTester tester) {
   final rail = find.byType(NavigationRail);
   return rail.evaluate().isEmpty ? 0 : tester.getRect(rail).right;
 }
+
+/// The project tree's column beside the Projects tab, or null.
+Rect? treeColumnRect(WidgetTester tester) {
+  final column = find.byType(ProjectTreeColumn);
+  return column.evaluate().isEmpty ? null : tester.getRect(column);
+}
+
+/// Where the tabs' pages start: after the project tree's column and its
+/// divider, else beside the rail.
+double contentLeft(WidgetTester tester) => switch (treeColumnRect(tester)) {
+  final column? => column.right + 1,
+  null => railRight(tester),
+};
 
 typedef Band = ({double left, double right});
 

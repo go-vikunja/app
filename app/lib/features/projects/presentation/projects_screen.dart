@@ -11,6 +11,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -40,6 +41,8 @@ final _log = Logger('Projects');
 
 enum _Action { refresh, newSavedFilter, toggleSavedFilters, toggleArchived }
 
+const _menuRouteName = 'project-tree-menu';
+
 /// The web's sidebar: the favourites (the Favorites list, saved filters and
 /// projects), every saved filter, and the project tree, archived projects
 /// on request; saved filters, favourite ones too, can be hidden. In the
@@ -47,9 +50,14 @@ enum _Action { refresh, newSavedFilter, toggleSavedFilters, toggleArchived }
 /// between other projects or onto one, and screen readers move it with the
 /// row's actions; each move goes to the server at once. New projects start
 /// from the app bar or the empty state, new saved filters from the menu,
-/// the end of their section or the empty state.
+/// the end of their section or the empty state. In the project tree's
+/// column it marks the rows of [selectedId].
 class ProjectsScreen extends ConsumerStatefulWidget {
-  const new({super.key});
+  const new({this.selectedId, super.key});
+
+  /// The project, saved filter or Favorites list open beside the tree's
+  /// column: its rows are marked, and a tap on one of them changes nothing.
+  final int? selectedId;
 
   @override
   ConsumerState<ProjectsScreen> createState() => _ProjectsScreenState();
@@ -57,6 +65,22 @@ class ProjectsScreen extends ConsumerStatefulWidget {
 
 class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
     with RefreshableList<ProjectsScreen> {
+  /// Null while the menu is closed.
+  NavigatorState? _menuNavigator;
+
+  @override
+  void dispose() {
+    // A resize across the gate of the tree's column replaces this tree with
+    // another; its menu would stay open and drop the choice made in it.
+    if (_menuNavigator case final navigator?) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!navigator.mounted) return;
+        navigator.popUntil((route) => route.settings.name != _menuRouteName);
+      });
+    }
+    super.dispose();
+  }
+
   @override
   ProviderListenable<Object?> get repositoryProvider =>
       projectRepositoryProvider;
@@ -87,7 +111,10 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
     );
   }
 
-  void _open(int projectId) => context.go(AppRoutes.project(projectId));
+  void _open(int projectId) {
+    if (projectId == widget.selectedId) return;
+    context.go(AppRoutes.project(projectId));
+  }
 
   void _createProject() => unawaited(createProjectAndOpen(context));
 
@@ -138,15 +165,27 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
           // narrow phone; pulling the list refreshes too.
           PopupMenuButton<_Action>(
             tooltip: l10n.moreActions,
-            onSelected: (action) => switch (action) {
-              _Action.refresh => unawaited(refresh()),
-              _Action.newSavedFilter => _createSavedFilter(),
-              _Action.toggleSavedFilters => _save(
-                preferences.copyWith(showSavedFilters: !showSavedFilters),
-              ),
-              _Action.toggleArchived => _save(
-                preferences.copyWith(showArchived: !preferences.showArchived),
-              ),
+            routeSettings: const RouteSettings(name: _menuRouteName),
+            onOpened: () => _menuNavigator = Navigator.of(context),
+            onCanceled: () => _menuNavigator = null,
+            onSelected: (action) {
+              _menuNavigator = null;
+              switch (action) {
+                case _Action.refresh:
+                  unawaited(refresh());
+                case _Action.newSavedFilter:
+                  _createSavedFilter();
+                case _Action.toggleSavedFilters:
+                  _save(
+                    preferences.copyWith(showSavedFilters: !showSavedFilters),
+                  );
+                case _Action.toggleArchived:
+                  _save(
+                    preferences.copyWith(
+                      showArchived: !preferences.showArchived,
+                    ),
+                  );
+              }
             },
             itemBuilder: (context) => [
               PopupMenuItem(
@@ -187,6 +226,7 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
           favoriteTaskCount: favoriteTaskCount,
           openTaskCounts: openTaskCounts.value ?? const {},
           notice: notice,
+          selectedId: widget.selectedId,
           onOpen: _open,
           onCreate: guest ? null : _createProject,
           // Hidden filters leave it to the menu.
@@ -266,6 +306,7 @@ class _Sections extends ConsumerStatefulWidget {
     required this.favoriteTaskCount,
     required this.openTaskCounts,
     required this.notice,
+    required this.selectedId,
     required this.onOpen,
     required this.onCreate,
     required this.onCreateSavedFilter,
@@ -283,6 +324,7 @@ class _Sections extends ConsumerStatefulWidget {
   /// By project id.
   final Map<int, int> openTaskCounts;
   final Widget? notice;
+  final int? selectedId;
   final ValueChanged<int> onOpen;
   final VoidCallback? onCreate;
   final VoidCallback? onCreateSavedFilter;
@@ -662,6 +704,7 @@ class _SectionsState extends ConsumerState<_Sections> {
       onToggleExpanded: () => widget.onToggle(project.id),
       onTap: () => widget.onOpen(project.id),
       actions: archived ? const {} : _actionsFor(project),
+      selected: project.id == widget.selectedId,
     );
     return ReorderSlot<int>(
       key: ValueKey(('tree', project.id)),
@@ -780,6 +823,7 @@ class _SectionsState extends ConsumerState<_Sections> {
         projectId: filter.projectId,
       ),
       favorite: filter.isFavorite,
+      selected: filter.projectId == widget.selectedId,
       onTap: () => widget.onOpen(filter.projectId),
     );
 
@@ -790,6 +834,7 @@ class _SectionsState extends ConsumerState<_Sections> {
           icon: Icons.star_outline,
           title: l10n.projectsFavouriteTasks,
           subtitle: l10n.smartListOpenTaskCount(widget.favoriteTaskCount),
+          selected: widget.selectedId == Project.favoritesId,
           onTap: () => widget.onOpen(Project.favoritesId),
         ),
       for (final filter in favouriteFilters) filterRow(filter, 'favourite'),
@@ -798,6 +843,7 @@ class _SectionsState extends ConsumerState<_Sections> {
           key: ValueKey(('favourite', project.id)),
           project: project,
           openTaskCount: widget.openTaskCounts[project.id] ?? 0,
+          selected: project.id == widget.selectedId,
           onTap: () => widget.onOpen(project.id),
         ),
     ];
@@ -810,12 +856,18 @@ class _SectionsState extends ConsumerState<_Sections> {
       ..._subtreeRows(_held),
       ..._subtreeRows(sending?.projectId),
     };
+    // Keeps the column's offset across a tab switch, but not into another
+    // account's tree.
+    final accountId = ref.watch(
+      accountsProvider.select((accounts) => accounts.value?.activeAccountId),
+    );
     return ReadableWidth.builder(
       maxWidth: ReadableWidth.list,
       builder: (context, contentWidth, inset) => DragTarget<_ProjectDrag>(
         onAcceptWithDetails: (_) => _drop(),
         onLeave: (_) => _setTarget(null),
         builder: (context, _, _) => CustomScrollView(
+          key: PageStorageKey<(String, String?)>(('project tree', accountId)),
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverPadding(

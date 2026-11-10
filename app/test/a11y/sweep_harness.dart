@@ -8,6 +8,8 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 
 import '../helpers/large_screens.dart';
@@ -314,6 +316,7 @@ Future<void> runScenario(
   }
   expect(scenario.expectScreen(l10n), findsOneWidget);
   expect(tester.takeException(), isNull);
+  _expectTreeColumn(tester, scenario, surface);
   if (surface != SweepSurface.phone && !largeText) {
     _expectReadableWidths(tester, scenario);
   }
@@ -336,7 +339,7 @@ Future<void> runScenario(
   final pane = _paneScrollable(tester);
   for (final (where, scrollable) in [
     if (pane != null) ('pane ', pane),
-    ('', _mainScrollable(tester)),
+    ('', _mainScrollable(tester, scenario)),
   ]) {
     final position = scrollable?.position;
     for (var stop = 1; stop < maxScrollStops && position != null; stop++) {
@@ -372,18 +375,58 @@ Future<void> _settle(WidgetTester tester, SweepScenario scenario) async {
   }
 }
 
+/// The project tree's own scenarios, whose list beside the tree's column
+/// is the column's.
+bool _isTree(SweepScenario scenario) => scenario.route == AppRoutes.projects;
+
+bool _onProjectsTab(SweepScenario scenario) => switch (scenario.route) {
+  final route? =>
+    route == AppRoutes.projects || route.startsWith('${AppRoutes.projects}/'),
+  null => false,
+};
+
+/// The project tree's column shows on the tablet in landscape, on the
+/// Projects tab of a user who is no link-share guest, from the rail's edge
+/// at its own width; nowhere else.
+void _expectTreeColumn(
+  WidgetTester tester,
+  SweepScenario scenario,
+  SweepSurface surface,
+) {
+  final column = treeColumnRect(tester);
+  final shows =
+      surface == SweepSurface.tabletLandscape &&
+      _onProjectsTab(scenario) &&
+      !containerOf(tester).read(activeAccountIsGuestProvider);
+  if (!shows) {
+    expect(column, isNull, reason: '${scenario.key} has no tree column');
+    return;
+  }
+  expect(column, isNotNull, reason: '${scenario.key} has the tree column');
+  expect(column!.left, railRight(tester), reason: scenario.key);
+  expect(column.width, ProjectTreeColumn.width, reason: scenario.key);
+}
+
 /// The largest vertical list in front: a sheet's or a dialog's over the
-/// page below; beside the task pane, the list's, not the pane's.
-ScrollableState? _mainScrollable(WidgetTester tester) => _largestVertical(
-  find
-      .byType(Scrollable)
-      .hitTestable()
-      .evaluate()
-      .where(
-        (element) =>
-            element.findAncestorWidgetOfExactType<TaskDetailPane>() == null,
-      ),
-);
+/// page below; beside the task pane, the list's, not the pane's; beside
+/// the project tree's column, the tab's page's, but in the tree's own
+/// scenarios the column's.
+ScrollableState? _mainScrollable(WidgetTester tester, SweepScenario scenario) {
+  final inColumn = _isTree(scenario) && treeColumnRect(tester) != null;
+  return _largestVertical(
+    find
+        .byType(Scrollable)
+        .hitTestable()
+        .evaluate()
+        .where(
+          (element) =>
+              element.findAncestorWidgetOfExactType<TaskDetailPane>() == null &&
+              (element.findAncestorWidgetOfExactType<ProjectTreeColumn>() !=
+                      null) ==
+                  inColumn,
+        ),
+  );
+}
 
 /// The task pane's own list, when a task is open in the pane.
 ScrollableState? _paneScrollable(WidgetTester tester) => _largestVertical(
@@ -412,9 +455,21 @@ ScrollableState? _largestVertical(Iterable<Element> scrollables) {
   return largest;
 }
 
-/// Where the list ends: at the task pane's divider while a task is open
-/// in the pane, else at the window's edge.
-double _listRight(WidgetTester tester) {
+/// Where the list starts: beside the project tree's column its divider,
+/// unless the list is the tree's; else at the rail.
+double _listLeft(WidgetTester tester, SweepScenario scenario) =>
+    switch (treeColumnRect(tester)) {
+      final column? when !_isTree(scenario) => column.right + 1,
+      _ => railRight(tester),
+    };
+
+/// Where the list ends: the tree's at its column's divider; else at the
+/// task pane's divider while a task is open in the pane, or at the
+/// window's edge.
+double _listRight(WidgetTester tester, SweepScenario scenario) {
+  if (treeColumnRect(tester) case final column? when _isTree(scenario)) {
+    return column.right;
+  }
   final pane = find.byType(TaskDetailPane);
   return pane.evaluate().isEmpty
       ? windowSize(tester).width
@@ -424,10 +479,10 @@ double _listRight(WidgetTester tester) {
 /// What a card keeps clear of its band's edges.
 const _cardMargin = 16.0;
 
-/// A capped screen's main list spans the window beside the rail, so its
-/// margins scroll, and its boxes fill the band; an uncapped screen reaches
-/// past the list band, a screen with its own cap keeps to it; an overlay
-/// keeps to its cap.
+/// A capped screen's main list spans the window beside the rail (or the
+/// project tree's column), so its margins scroll, and its boxes fill the
+/// band; an uncapped screen reaches past the list band, a screen with its
+/// own cap keeps to it; an overlay keeps to its cap.
 void _expectReadableWidths(WidgetTester tester, SweepScenario scenario) {
   switch (scenario.kind) {
     case SweepKind.route:
@@ -484,7 +539,7 @@ Rect _rectOf(WidgetTester tester, Element element) => tester.getRect(
 );
 
 Finder _mainList(WidgetTester tester, SweepScenario scenario) {
-  final scrollable = _mainScrollable(tester);
+  final scrollable = _mainScrollable(tester, scenario);
   expect(scrollable, isNotNull, reason: '${scenario.key} has no list');
   return find.byElementPredicate((element) => element == scrollable!.context);
 }
@@ -497,16 +552,17 @@ void _expectInBand(
   double maxWidth,
 ) {
   final list = _mainList(tester, scenario);
-  final right = _listRight(tester);
+  final left = _listLeft(tester, scenario);
+  final right = _listRight(tester, scenario);
   expectFillsBand(tester.getRect(list), (
-    left: railRight(tester),
+    left: left,
     right: right,
   ), reason: 'the list of ${scenario.key} spans the window');
   final (boxes, _) =
       readableBoxOverrides[scenario.key] ?? (readableContentBoxes, '');
   final inList = find.descendant(of: list, matching: boxes);
   expect(inList, findsAtLeastNWidgets(1), reason: scenario.key);
-  final band = readableBand(tester, maxWidth, right: right);
+  final band = readableBand(tester, maxWidth, left: left, right: right);
   final found = [
     for (final box in inList.evaluate())
       (type: box.widget.runtimeType, rect: _rectOf(tester, box)),
@@ -532,7 +588,8 @@ void _expectInBand(
 void _expectPastListBand(WidgetTester tester, SweepScenario scenario) {
   final boxes = uncappedContentBoxes.evaluate();
   expect(boxes, isNotEmpty, reason: scenario.key);
-  final right = _listRight(tester);
+  final left = _listLeft(tester, scenario);
+  final right = _listRight(tester, scenario);
   if (find.byType(TaskDetailPane).evaluate().isNotEmpty) {
     final rights = boxes.map((box) => _rectOf(tester, box).right);
     expect(
@@ -541,8 +598,13 @@ void _expectPastListBand(WidgetTester tester, SweepScenario scenario) {
       reason: '${scenario.key} reaches the pane',
     );
   }
-  final band = readableBand(tester, ReadableWidth.list, right: right);
-  if (band.left - railRight(tester) <= _cardMargin) return;
+  final band = readableBand(
+    tester,
+    ReadableWidth.list,
+    left: left,
+    right: right,
+  );
+  if (band.left - left <= _cardMargin) return;
   expect(
     boxes
         .map((box) => _rectOf(tester, box))

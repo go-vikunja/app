@@ -115,8 +115,9 @@ void main() {
     storeBoard();
   });
 
-  /// Wide enough for the three columns side by side.
-  const wide = Size(1200, 900);
+  /// Wide enough for the three columns side by side, below the width that
+  /// puts the project tree beside the board.
+  const wide = Size(1100, 900);
 
   Future<void> pumpBoard(
     WidgetTester tester, {

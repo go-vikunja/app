@@ -17,6 +17,13 @@ final class WindowLayout {
   static const mediumHeightFrom = 480.0;
   static const expandedHeightFrom = 900.0;
 
+  /// Material 3's navigation rail. The shell's own grows with long labels
+  /// and large text; [threePane] leaves that out on purpose.
+  static const railWidth = 80.0;
+
+  /// Material 3's large windows (1,200 dp) less [railWidth].
+  static const threePaneContentFrom = 1120.0;
+
   final Size size;
 
   WindowSizeClass get sizeClass => switch (size.width) {
@@ -32,6 +39,14 @@ final class WindowLayout {
 
   /// Room for a pane beside the content.
   bool get twoPane => size.width >= expandedWidthFrom && !compactHeight;
+
+  /// Room for a column on the start side as well as the pane: [twoPane]
+  /// with [threePaneContentFrom] beside a rail of [railWidth], if
+  /// [besideRail]. It comes from the window alone, so the rail's labels
+  /// in another language or at a larger text size cannot change it.
+  bool threePane({required bool besideRail}) =>
+      twoPane &&
+      size.width - (besideRail ? railWidth : 0) >= threePaneContentFrom;
 
   /// Whether readable widths, the dialog cap and the iOS sheet cap apply: a
   /// tablet-sized window. Phones in either orientation and the 800×600 test

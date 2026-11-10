@@ -27,7 +27,9 @@ enum ReadableClass {
 
 /// Every route scenario of the sweep, by its key. The tablet pass checks
 /// the `list840` and `form640` screens' boxes against their band, which
-/// ends at the task pane's divider when a task is open beside the list.
+/// ends at the task pane's divider when a task is open beside the list and
+/// starts at the project tree's divider beside its column; the tree's own
+/// band is its column.
 const readableWidths = <String, ReadableClass>{
   '/home/overview': ReadableClass.list840,
   '/home/upcoming': ReadableClass.list840,

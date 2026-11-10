@@ -582,6 +582,14 @@
     "description": "The row of the Favourites list in the Favourites section of the Projects tab; the list's own title is projectFavouritesTitle."
   },
   "projectsAllHeading": "All projects",
+  "projectsNoneOpenTitle": "No project open",
+  "@projectsNoneOpenTitle": {
+    "description": "Title beside the Projects tab's list on wide windows while no project, saved filter or Favourites list is open."
+  },
+  "projectsNoneOpenBody": "Open a project from the list to see its tasks here.",
+  "@projectsNoneOpenBody": {
+    "description": "Body below projectsNoneOpenTitle."
+  },
   "projectsShowSavedFilters": "Show saved filters",
   "@projectsShowSavedFilters": {
     "description": "Checked item in the Projects tab's menu: whether the Saved filters section and favourite saved filters show."

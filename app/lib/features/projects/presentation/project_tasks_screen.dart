@@ -37,6 +37,7 @@ import 'package:vikunja_mobile/features/projects/presentation/manage/project_act
 import 'package:vikunja_mobile/features/projects/presentation/project_header.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_list_body.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_table_body.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_view_labels.dart';
 import 'package:vikunja_mobile/features/projects/presentation/table_columns_sheet.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/project_timeline_body.dart';
@@ -404,7 +405,10 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     if (project != null) _seen = true;
     if (_seen && project == null && projects.hasValue) {
       return Scaffold(
-        appBar: AppBar(title: ScreenTitle(l10n.projectUnknownTitle)),
+        appBar: AppBar(
+          automaticallyImplyLeading: !ProjectTreeColumnScope.shownOf(context),
+          title: ScreenTitle(l10n.projectUnknownTitle),
+        ),
         body: CenteredScrollView(
           maxWidth: ReadableWidth.list,
           child: EmptyState(
@@ -596,6 +600,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
 
     return Scaffold(
       appBar: AppBar(
+        // The tree beside it is where to go next; back still goes back.
+        automaticallyImplyLeading: !ProjectTreeColumnScope.shownOf(context),
         title: ScreenTitle(
           project?.displayTitle(l10n) ?? l10n.projectUnknownTitle,
         ),

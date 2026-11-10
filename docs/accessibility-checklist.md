@@ -18,6 +18,7 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 - The six core screens have no overflow at 3.12× on iOS, at 375 × 667 and 320 × 568 points.
 - Since step 36b ([D69]) each scenario also runs on its platform's tablet in both orientations (Android 1280 × 800 and 800 × 1280, iPad 1194 × 834 and 834 × 1194), in dark mode, English and German: with the guidelines above and the readable-width checks, and once more at 200 % text, where it has to show without an exception at every scroll stop.
 - Since step 36c ([D70]) nine scenarios with a task open in the pane beside the list run on the tablet in landscape only (Android 1280 × 800, iPad 1194 × 834), in light and dark, English and German with the guidelines and the readable-width checks of the list beside the pane, and dark at 200 % text; two of them also on an unfolded foldable (841 × 701, Android) at 200 %. Their scroll stops go through the pane's list, then the list's.
+- Since step 36g ([D82]) the tablet passes in landscape (Android 1280 × 800, iPad 1194 × 834) run every scenario of the Projects tab of an account that is no link-share guest with the project tree's column beside it, 320 dp wide from the rail's edge, the bands of a project's or a list's screen measured from the divider of the tree's column; the guest's scenario and every other pass have no column. No scenario is new.
 - Every `header: true` has a heading level, and every announcement goes through the announcer.
 
 ## 2. Manual, on Android
@@ -70,7 +71,19 @@ On the tablet emulator in landscape (1280 × 800), with TalkBack, Switch Access 
 - [ ] **Close:** activate "Details schließen". The pane closes and focus returns to the row that opened the task; record where it lands when that row has scrolled away.
 - [ ] **Switch Access** reaches the rows, the pane's back arrow, its close button and its menu; the Scanner finds nothing new on the screen with the pane.
 
-### 2.5 The flows
+### 2.5 Checks of step 36g
+
+On the tablet emulator in landscape (1280 × 800), with TalkBack, Switch Access and the Scanner, signed in to an account with a favourite project and a saved filter ([D82]):
+
+- [ ] **Order and regions:** open a project and a task in its pane. Swiping goes through the tree's column, then the project, then the pane, each as a region of its own; nothing of one is read inside another.
+- [ ] **Headings:** the Headings control reaches "Projekte" (the title of the tree's column), then the project's title, then the task's title, each at level 1, with their sections at level 2. With nothing open, the page beside the tree's column has "Kein Projekt geöffnet" at level 1, and going back from a project to it, or selecting "Projekte" while a project is open, announces "Kein Projekt geöffnet" as the screen's name.
+- [ ] **Marked rows:** the open project's rows in the tree's column read "ausgewählt", for a favourite project both its row under "Favoriten" and its row in the tree; so do "Favorisierte Aufgaben" and a saved filter's rows while they are open. No other row does.
+- [ ] **Another project:** activate another project in the tree's column. Record where TalkBack's focus lands and what is read; the middle shows the new project, the pane is closed, and the new project's rows read "ausgewählt".
+- [ ] **Back:** with a task in the pane, back closes the pane, then leaves the project for "Kein Projekt geöffnet", then goes to "Überblick". Beside the tree's column the project has no back arrow.
+- [ ] **Switch Access** reaches the rows of the tree's column, their expand buttons and its app bar (search, "Neues Projekt", the menu, the account switcher), then the project's controls; the Scanner finds nothing new with the tree's column, the project and the pane side by side.
+- [ ] **A guest:** signed in through a link share, the tree gets no column; the shared project takes the room and has its back arrow.
+
+### 2.6 The flows
 
 Each flow lists what to do, what to expect and what to record, beyond section 2.2.
 
@@ -99,10 +112,11 @@ Once, on a device (the simulator for what it can show):
 3. **Increase Contrast:** the app uses the high-contrast scheme; the alerts' actions (delete task, sign out, the http question) with and without it, the 1.4.3 deviation of [D68].
 4. **Reduce Motion:** the board, the task sheet and "Go to today" jump; page and sheet transitions still slide, as [D68] records.
 5. **The tab bar:** inactive labels readable in light and dark.
-6. **iPad** ([D69]): the task sheet and a picker as centred cards (an 11" iPad in both orientations, an iPad mini in portrait) take VoiceOver's focus, and nothing on the page beside the card is reachable; in Split View with half of a 13" iPad the sheet fills the window. At the largest text, the centred settings and forms show everything. The task pane ([D70]) on an 11" iPad in landscape and a 13" iPad in portrait: VoiceOver reads the list, then the pane; its focus moves into the pane when a task opens, and back to the row when it closes; the row reads "selected".
+6. **iPad** ([D69]): the task sheet and a picker as centred cards (an 11" iPad in both orientations, an iPad mini in portrait) take VoiceOver's focus, and nothing on the page beside the card is reachable; in Split View with half of a 13" iPad the sheet fills the window. At the largest text, the centred settings and forms show everything. The task pane ([D70]) on an 11" iPad in landscape and a 13" iPad in portrait: VoiceOver reads the list, then the pane; its focus moves into the pane when a task opens, and back to the row when it closes; the row reads "selected". The project tree's column ([D82]) on an 11" iPad and an iPad mini in landscape: VoiceOver reads the tree's column, the project, then the pane; the open project's rows read "selected"; a swipe from the project's own edge goes back to "No project open".
 
 [D68]: decisions.md#d68-screen-readers-heading-levels-on-screen-titles-and-section-headers-one-announcer-with-the-apps-own-live-region-on-android-high-contrast-and-reduce-motion-followed-and-a-route-sweep-that-every-route-pushed-page-and-overlay-must-pass-wcag-22-aa-as-the-yardstick-with-written-deviations
 [D69]: decisions.md#d69-large-screens-one-window-layout-helper-readable-widths-of-840-dp-for-lists-and-640-dp-for-settings-and-forms-with-scrolling-margins-dialogs-at-most-560-dp-and-ios-sheets-at-most-640-dp-only-on-tablet-sized-windows
 [D70]: decisions.md#d70-task-detail-pane-on-windows-at-least-840-dp-wide-and-480-dp-high-a-task-opens-beside-the-list-one-pane-per-tab-with-a-back-stack-and-a-selected-row-the-sheet-everywhere-else-back-through-the-pane-first-and-pages-in-a-tab-without-androids-predictive-back
 [D77]: decisions.md#d77-beta-preparation-the-app-id-devcoderoftimerurana-the-owners-own-app-signing-key-every-coderoftime-project-public-a-help-row-on-the-about-page-testers-through-a-google-group-and-a-public-testflight-link
+[D82]: decisions.md#d82-projects-listdetail-from-about-1120-dp-of-content-the-project-tree-in-a-320-dp-column-beside-the-open-project-and-its-task-pane-the-route-still-the-source-the-tabs-first-page-saying-that-no-project-is-open-no-column-for-link-share-guests
 [Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass

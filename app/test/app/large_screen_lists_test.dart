@@ -25,6 +25,7 @@ import 'package:vikunja_mobile/features/projects/presentation/board/project_boar
 import 'package:vikunja_mobile/features/projects/presentation/project_header.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/project_timeline_body.dart';
@@ -52,11 +53,17 @@ typedef ListScreen = ({
   Finder rows,
   double margin,
   bool root,
+  bool projectsTab,
 });
+
+/// Below the project tree's column, with two panes: the Projects tab as at
+/// 1280×800 before the column.
+const androidBelowTreeColumn = Size(1000, 800);
 
 // The list screens, the table included, at readable width (840) on large
 // windows, the board and timeline left at the whole width, and phones as
-// they were.
+// they were; beside the project tree's column, the Projects tab's screens
+// in the room it leaves.
 void main() {
   final now = DateTime(2026, 10, 10, 12);
   final finance = sampleLabel(id: 1, title: 'Finance', hexColor: 'ffeb10');
@@ -185,10 +192,11 @@ void main() {
       .first;
 
   /// The screen's list spans the window beside the rail (and within
-  /// [sideInset], the safe area the screen keeps clear), and every one of
-  /// [rows] fills the list's middle [ReadableWidth.list] less [margin] on
-  /// each side, [inset] from the list's edges where given; beside the rail
-  /// it follows from the rail's measured width.
+  /// [sideInset], the safe area the screen keeps clear), or from [left] to
+  /// [right] where given, and every one of [rows] fills the list's middle
+  /// [ReadableWidth.list] less [margin] on each side, [inset] from the
+  /// list's edges where given; beside the rail it follows from the rail's
+  /// measured width.
   void expectListAt(
     WidgetTester tester, {
     required Finder screen,
@@ -196,19 +204,23 @@ void main() {
     required double margin,
     double? inset,
     double sideInset = 0,
+    double? left,
+    double? right,
   }) {
     final window = windowSize(tester);
     final caps = WindowLayout(window).capsWidths;
     final list = tester.getRect(verticalScrollableIn(screen));
     expect(
       list.left,
-      moreOrLessEquals(railRight(tester) + sideInset, epsilon: 0.5),
-      reason: 'the list starts at the rail or the window edge',
+      moreOrLessEquals(left ?? railRight(tester) + sideInset, epsilon: 0.5),
+      reason:
+          "the list starts at the rail, the window edge or the tree's "
+          'divider',
     );
     expect(
       list.right,
-      moreOrLessEquals(window.width - sideInset, epsilon: 0.5),
-      reason: 'the list ends at the window edge',
+      moreOrLessEquals(right ?? window.width - sideInset, epsilon: 0.5),
+      reason: "the list ends at the window edge or the tree's divider",
     );
     final measured = ReadableWidth.insetFor(
       available: list.width,
@@ -383,6 +395,7 @@ void main() {
         ),
         margin: 16,
         root: false,
+        projectsTab: false,
       ),
       (
         type: ProjectsScreen,
@@ -390,6 +403,7 @@ void main() {
         rows: find.byType(ProjectRow),
         margin: 16,
         root: false,
+        projectsTab: true,
       ),
       (
         type: ProjectTasksScreen,
@@ -397,6 +411,7 @@ void main() {
         rows: find.byType(TaskRow),
         margin: 0,
         root: false,
+        projectsTab: true,
       ),
       (
         type: SmartListScreen,
@@ -404,6 +419,7 @@ void main() {
         rows: find.byType(TaskRow),
         margin: 16,
         root: false,
+        projectsTab: true,
       ),
       (
         type: LabelTasksScreen,
@@ -411,6 +427,7 @@ void main() {
         rows: find.byType(TaskRow),
         margin: 16,
         root: true,
+        projectsTab: false,
       ),
       (
         type: SearchPage,
@@ -418,6 +435,7 @@ void main() {
         rows: find.byType(TaskRow),
         margin: 16,
         root: true,
+        projectsTab: false,
       ),
       (
         type: InboxScreen,
@@ -425,15 +443,25 @@ void main() {
         rows: find.byType(InboxRow),
         margin: 16,
         root: true,
+        projectsTab: false,
       ),
     ];
     for (final screen in screens) {
       // Null: centred beside the rail.
-      for (final (platform, size, shellInset, rootInset) in [
-        (TargetPlatform.android, androidLandscape, 0.0, 0.0),
-        (TargetPlatform.android, androidTabletLandscape, null, 220.0),
-        (TargetPlatform.iOS, iPad11Landscape, 177.0, 177.0),
-      ]) {
+      for (final (platform, size, shellInset, rootInset)
+          in <(TargetPlatform, Size, double?, double?)>[
+            (TargetPlatform.android, androidLandscape, 0.0, 0.0),
+            (TargetPlatform.android, androidTabletLandscape, null, 220.0),
+            (TargetPlatform.iOS, iPad11Landscape, 177.0, 177.0),
+            if (screen.projectsTab) ...[
+              (TargetPlatform.android, androidBelowTreeColumn, null, null),
+              (TargetPlatform.iOS, iPad13Portrait, 92.0, 92.0),
+            ],
+          ]) {
+        final besideColumn =
+            screen.projectsTab &&
+            (size == androidTabletLandscape || size == iPad11Landscape);
+        if (besideColumn) continue;
         final inset = screen.root ? rootInset : shellInset;
         testWidgets('${screen.type} at ${sizeName(size)}: the rows in the '
             'middle, ${inset?.round() ?? 'centred beside the rail'}', (
@@ -442,6 +470,7 @@ void main() {
           await pumpAt(tester, size);
           await screen.open(tester);
 
+          expect(treeColumnRect(tester), isNull);
           final found = find.byType(screen.type);
           expect(found, findsOneWidget);
           expectListAt(
@@ -455,129 +484,222 @@ void main() {
         }, variant: TargetPlatformVariant.only(platform));
       }
     }
+
+    // The tree fills its column; the open project or list has the room
+    // between the column's divider and the window's edge.
+    for (final (platform, size, listInset) in [
+      (TargetPlatform.android, androidTabletLandscape, 0.0),
+      (TargetPlatform.iOS, iPad11Landscape, 16.5),
+    ]) {
+      for (final screen in screens.where((screen) => screen.projectsTab)) {
+        final tree = screen.type == ProjectsScreen;
+        final where = tree
+            ? "the rows across the tree's column"
+            : "the rows beside the tree's column, $listInset";
+        testWidgets('${screen.type} at ${sizeName(size)}: $where', (
+          tester,
+        ) async {
+          await pumpAt(tester, size);
+          await screen.open(tester);
+
+          final column = treeColumnRect(tester);
+          expect(column, isNotNull);
+          expect(column!.left, railRight(tester));
+          expect(column.width, ProjectTreeColumn.width);
+          final found = find.byType(screen.type);
+          expect(found, findsOneWidget);
+          expect(
+            find.descendant(
+              of: find.byType(ProjectTreeColumn),
+              matching: found,
+            ),
+            tree ? findsOneWidget : findsNothing,
+          );
+          expectListAt(
+            tester,
+            screen: found,
+            rows: find.descendant(of: found, matching: screen.rows),
+            margin: screen.margin,
+            inset: tree ? 0 : listInset,
+            left: tree ? column.left : column.right + 1,
+            right: tree ? column.right : size.width,
+          );
+          expect(tester.takeException(), isNull);
+        }, variant: TargetPlatformVariant.only(platform));
+      }
+    }
   });
 
-  group('beside the rail at 1280×800', () {
-    Finder rowOf(String title) =>
-        find.ancestor(of: find.text(title), matching: find.byType(TaskRow));
+  // D69's band beside the rail, below the project tree's column; beside the
+  // column the open project has the room the column leaves.
+  for (final (size, column) in [
+    (androidBelowTreeColumn, false),
+    (androidTabletLandscape, true),
+  ]) {
+    group(
+      column
+          ? "beside the project tree's column at ${sizeName(size)}"
+          : 'beside the rail at ${sizeName(size)}',
+      () {
+        Finder rowOf(String title) =>
+            find.ancestor(of: find.text(title), matching: find.byType(TaskRow));
 
-    Rect liftedRect(WidgetTester tester) => tester.getRect(
-      find
-          .descendant(
-            of: find.byType(LiftedRows),
-            matching: find.byType(Material),
-          )
-          .first,
+        Rect liftedRect(WidgetTester tester) => tester.getRect(
+          find
+              .descendant(
+                of: find.byType(LiftedRows),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+
+        Future<Band> openWork(WidgetTester tester) async {
+          await pumpAt(tester, size);
+          await go(tester, AppRoutes.project(1));
+          expect(treeColumnRect(tester) != null, column);
+          return readableBand(
+            tester,
+            ReadableWidth.list,
+            left: contentLeft(tester),
+          );
+        }
+
+        testWidgets("a lifted list row is as wide as the list's rows", (
+          tester,
+        ) async {
+          final band = await openWork(tester);
+
+          final row = tester.getRect(rowOf('Task 1'));
+          expectFillsBand(row, band);
+          final gesture = await tester.startGesture(row.center);
+          await tester.pump(const Duration(milliseconds: 600));
+          await gesture.moveBy(const Offset(0, 40));
+          await tester.pump();
+
+          expect(liftedRect(tester).width, moreOrLessEquals(row.width));
+
+          await gesture.up();
+          await tester.pumpAndSettle();
+        });
+
+        testWidgets("a lifted project is as wide as the tree's rows", (
+          tester,
+        ) async {
+          await pumpAt(tester, size);
+          await openTab(tester, en.tabProjects);
+          final treeColumn = treeColumnRect(tester);
+          expect(treeColumn != null, column);
+
+          final project = find.ancestor(
+            of: find.text('Home'),
+            matching: find.byType(ProjectRow),
+          );
+          final row = tester.getRect(project);
+          final band = readableBand(
+            tester,
+            ReadableWidth.list,
+            right: treeColumn?.right,
+          );
+          expectFillsBand(row, (left: band.left + 16, right: band.right - 16));
+          final gesture = await tester.startGesture(row.center);
+          await tester.pump(const Duration(milliseconds: 600));
+          await gesture.moveBy(const Offset(0, 40));
+          await tester.pump();
+
+          expect(liftedRect(tester).width, moreOrLessEquals(row.width));
+
+          await gesture.up();
+          await tester.pumpAndSettle();
+        });
+
+        testWidgets("a project's tabs and progress stay over the list's rows "
+            'whichever view shows', (tester) async {
+          final band = await openWork(tester);
+
+          final listTabs = tester.getRect(find.byType(TabBar));
+          expectFillsBand(listTabs, band);
+          expectInBand(tester.getRect(find.byType(ProjectProgressLine)), band);
+
+          await tester.tap(find.text(views.last.title));
+          await tester.pumpAndSettle();
+
+          expect(
+            tester.getRect(find.byType(TabBar)),
+            rectMoreOrLessEquals(listTabs, epsilon: 0.5),
+          );
+        });
+
+        testWidgets('the controls of the list, the table and the timeline '
+            'keep one place under the tabs', (tester) async {
+          final band = await openWork(tester);
+          final under = (left: band.left + 16, right: band.right - 16);
+
+          expectFillsBand(
+            tester.getRect(find.byType(ProjectListControls)),
+            under,
+          );
+
+          await tester.tap(find.text('Table'));
+          await tester.pumpAndSettle();
+          expectFillsBand(
+            tester.getRect(find.byType(ProjectTableControls)),
+            under,
+          );
+
+          await tester.tap(find.text('Gantt'));
+          await tester.pumpAndSettle();
+          expectFillsBand(
+            tester.getRect(find.byType(ProjectTimelineControls)),
+            under,
+          );
+        });
+
+        testWidgets("the table's rows are as wide as the list's", (
+          tester,
+        ) async {
+          final band = await openWork(tester);
+          final listRow = tester.getRect(rowOf('Task 1'));
+          expectFillsBand(listRow, band);
+
+          await tester.tap(find.text('Table'));
+          await tester.pumpAndSettle();
+          final rows = find.byType(TaskRow).evaluate();
+          expect(rows, isNotEmpty);
+          for (final row in rows) {
+            final rect = tester.getRect(
+              find.byElementPredicate((e) => e == row),
+            );
+            expectFillsBand(rect, band);
+            expect(rect.width, moreOrLessEquals(listRow.width));
+          }
+        });
+      },
     );
+  }
 
-    testWidgets("a lifted list row is as wide as the list's rows", (
+  // Where the room beside the rail or the project tree's column is wider
+  // than the list's band; at 1280×800 the column leaves less than 840.
+  for (final (size, column) in [
+    (androidBelowTreeColumn, false),
+    (androidLargeLandscape, true),
+  ]) {
+    testWidgets('at ${sizeName(size)} the board and the timeline take the '
+        "whole width beside the ${column ? "tree's column" : 'rail'}", (
       tester,
     ) async {
-      await pumpAt(tester, androidTabletLandscape);
+      await pumpAt(tester, size);
       await go(tester, AppRoutes.project(1));
-
-      final row = tester.getRect(rowOf('Task 1'));
-      final band = readableBand(tester, ReadableWidth.list);
-      expectFillsBand(row, band);
-      final gesture = await tester.startGesture(row.center);
-      await tester.pump(const Duration(milliseconds: 600));
-      await gesture.moveBy(const Offset(0, 40));
-      await tester.pump();
-
-      expect(liftedRect(tester).width, moreOrLessEquals(row.width));
-
-      await gesture.up();
-      await tester.pumpAndSettle();
-    });
-
-    testWidgets("a lifted project is as wide as the tree's rows", (
-      tester,
-    ) async {
-      await pumpAt(tester, androidTabletLandscape);
-      await openTab(tester, en.tabProjects);
-
-      final project = find.ancestor(
-        of: find.text('Home'),
-        matching: find.byType(ProjectRow),
+      expect(treeColumnRect(tester) != null, column);
+      final whole = (
+        left: contentLeft(tester),
+        right: windowSize(tester).width,
       );
-      final row = tester.getRect(project);
-      final band = readableBand(tester, ReadableWidth.list);
-      expectFillsBand(row, (left: band.left + 16, right: band.right - 16));
-      final gesture = await tester.startGesture(row.center);
-      await tester.pump(const Duration(milliseconds: 600));
-      await gesture.moveBy(const Offset(0, 40));
-      await tester.pump();
-
-      expect(liftedRect(tester).width, moreOrLessEquals(row.width));
-
-      await gesture.up();
-      await tester.pumpAndSettle();
-    });
-
-    testWidgets("a project's tabs and progress stay over the list's rows "
-        'whichever view shows', (tester) async {
-      await pumpAt(tester, androidTabletLandscape);
-      await go(tester, AppRoutes.project(1));
-      final band = readableBand(tester, ReadableWidth.list);
-
-      final listTabs = tester.getRect(find.byType(TabBar));
-      expectFillsBand(listTabs, band);
-      expectInBand(tester.getRect(find.byType(ProjectProgressLine)), band);
-
-      await tester.tap(find.text(views.last.title));
-      await tester.pumpAndSettle();
-
-      expect(
-        tester.getRect(find.byType(TabBar)),
-        rectMoreOrLessEquals(listTabs, epsilon: 0.5),
+      final band = readableBand(
+        tester,
+        ReadableWidth.list,
+        left: contentLeft(tester),
       );
-    });
-
-    testWidgets('the controls of the list, the table and the timeline keep '
-        'one place under the tabs', (tester) async {
-      await pumpAt(tester, androidTabletLandscape);
-      await go(tester, AppRoutes.project(1));
-      final band = readableBand(tester, ReadableWidth.list);
-      final under = (left: band.left + 16, right: band.right - 16);
-
-      expectFillsBand(tester.getRect(find.byType(ProjectListControls)), under);
-
-      await tester.tap(find.text('Table'));
-      await tester.pumpAndSettle();
-      expectFillsBand(tester.getRect(find.byType(ProjectTableControls)), under);
-
-      await tester.tap(find.text('Gantt'));
-      await tester.pumpAndSettle();
-      expectFillsBand(
-        tester.getRect(find.byType(ProjectTimelineControls)),
-        under,
-      );
-    });
-
-    testWidgets("the table's rows are as wide as the list's", (tester) async {
-      await pumpAt(tester, androidTabletLandscape);
-      await go(tester, AppRoutes.project(1));
-      final band = readableBand(tester, ReadableWidth.list);
-      final listRow = tester.getRect(rowOf('Task 1'));
-      expectFillsBand(listRow, band);
-
-      await tester.tap(find.text('Table'));
-      await tester.pumpAndSettle();
-      final rows = find.byType(TaskRow).evaluate();
-      expect(rows, isNotEmpty);
-      for (final row in rows) {
-        final rect = tester.getRect(find.byElementPredicate((e) => e == row));
-        expectFillsBand(rect, band);
-        expect(rect.width, moreOrLessEquals(listRow.width));
-      }
-    });
-
-    testWidgets('the board and the timeline take the whole width', (
-      tester,
-    ) async {
-      await pumpAt(tester, androidTabletLandscape);
-      await go(tester, AppRoutes.project(1));
-      final whole = (left: railRight(tester), right: windowSize(tester).width);
+      expect(band.left, greaterThan(whole.left));
 
       await tester.tap(find.text('Gantt'));
       await tester.pumpAndSettle();
@@ -588,10 +710,10 @@ void main() {
       expectFillsBand(tester.getRect(find.byType(ProjectBoard)), whole);
       expect(
         tester.getRect(find.byType(BoardColumnView).last).right,
-        greaterThan(readableBand(tester, ReadableWidth.list).right),
+        greaterThan(band.right),
       );
     });
-  });
+  }
 
   for (final size in [androidPhone, androidTabletLandscape]) {
     testWidgets("at ${sizeName(size)} the tabs' divider runs across the app "
@@ -615,7 +737,12 @@ void main() {
       );
       expect(divider, findsOneWidget);
       final line = tester.getRect(divider);
-      final appBar = tester.getRect(find.byType(AppBar));
+      final appBar = tester.getRect(
+        find.descendant(
+          of: find.byType(ProjectTasksScreen),
+          matching: find.byType(AppBar),
+        ),
+      );
       expect((line.left, line.right), (appBar.left, appBar.right));
       expect(line.bottom, tester.getRect(tabs).bottom);
       final side =

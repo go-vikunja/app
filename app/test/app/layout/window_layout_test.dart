@@ -4,6 +4,7 @@ import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/layout/window_layout.dart';
 
 import '../../helpers/large_screens.dart';
+import '../../helpers/task_detail_panes.dart' show iPad13Landscape;
 
 void main() {
   test('the width classes, the height classes and two panes follow M3', () {
@@ -30,6 +31,44 @@ void main() {
     expect(const WindowLayout(androidLandscape).twoPane, isFalse);
     expect(const WindowLayout(Size(840, 480)).twoPane, isTrue);
     expect(const WindowLayout(androidTabletPortrait).twoPane, isFalse);
+  });
+
+  test('three panes from 1,120 of content beside a rail of 80: Android '
+      'windows from 1,200, iOS windows from 1,120, at least 480 high', () {
+    expect(
+      const WindowLayout(Size(1200, 800)).threePane(besideRail: true),
+      isTrue,
+    );
+    expect(
+      const WindowLayout(Size(1199, 800)).threePane(besideRail: true),
+      isFalse,
+    );
+    expect(
+      const WindowLayout(Size(1120, 800)).threePane(besideRail: false),
+      isTrue,
+    );
+    expect(
+      const WindowLayout(Size(1119, 800)).threePane(besideRail: false),
+      isFalse,
+    );
+    expect(
+      const WindowLayout(Size(1280, 479)).threePane(besideRail: false),
+      isFalse,
+    );
+    for (final size in [iPad11Landscape, iPadMiniLandscape, iPad13Landscape]) {
+      expect(
+        WindowLayout(size).threePane(besideRail: false),
+        isTrue,
+        reason: sizeName(size),
+      );
+    }
+    for (final size in [iPad13Portrait, iPad11Portrait]) {
+      expect(
+        WindowLayout(size).threePane(besideRail: false),
+        isFalse,
+        reason: sizeName(size),
+      );
+    }
   });
 
   test('widths are capped on tablet-sized windows only: never on a phone in '

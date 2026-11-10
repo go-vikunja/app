@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
@@ -30,8 +31,9 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dar
 
 /// The signed-in app: the tab bar (or, in a wide window, the rail) around
 /// the Overview, Upcoming, Projects and Account branches, each tab's task
-/// detail pane beside it where the window has room, the offline
-/// banner, the session check when the app opens or resumes,
+/// detail pane beside it where the window has room, the project tree's
+/// column beside the Projects tab where it has room for that too, the
+/// offline banner, the session check when the app opens or resumes,
 /// the quiet sync when it opens, the scheduler that keeps syncing while it
 /// is in front, the socket that brings the server's notifications at once,
 /// the other accounts' outboxes, the notification schedulers
@@ -57,6 +59,7 @@ final class _PendingSheet {
 
 class _HomeShellState extends ConsumerState<HomeShell>
     implements TaskDetailPaneShell {
+  static const _projectsTab = 2;
   static const _accountTab = 3;
   static const _maxPaneEntries = 10;
 
@@ -509,6 +512,16 @@ class _HomeShellState extends ConsumerState<HomeShell>
     final inFront = ModalRoute.isCurrentOf(context) ?? false;
     if (_pendingSheet != null && inFront) _schedulePendingSheet();
     final top = paneShown ? _paneStacks[tab].last : null;
+    // A link-share guest has one project, and a fold would cut a column.
+    final guest = ref.watch(activeAccountIsGuestProvider);
+    final treeBeside =
+        (_paneMode ?? false) &&
+        !guest &&
+        WindowLayout.of(context).threePane(besideRail: rail) &&
+        !hasVerticalFold(MediaQuery.displayFeaturesOf(context));
+    final treeColumn = treeBeside && tab == _projectsTab && !_resettingTabs
+        ? ProjectTreeColumn(selectedId: AppRoutes.projectIdIn(_location))
+        : null;
     final tabs = TaskDetailPaneScope(
       available: (_paneMode ?? false) && tab != _accountTab,
       selectedTaskId: top == null
@@ -519,11 +532,14 @@ class _HomeShellState extends ConsumerState<HomeShell>
                 ) ??
                 top.task.id,
       open: _openFromList,
-      child: Theme(
-        data: _branchThemeOf(Theme.of(context)),
-        child: _resettingTabs
-            ? const SizedBox.expand()
-            : widget.navigationShell,
+      child: ProjectTreeColumnScope(
+        shown: treeBeside,
+        child: Theme(
+          data: _branchThemeOf(Theme.of(context)),
+          child: _resettingTabs
+              ? const SizedBox.expand()
+              : widget.navigationShell,
+        ),
       ),
     );
     final pane = top != null
@@ -546,11 +562,12 @@ class _HomeShellState extends ConsumerState<HomeShell>
               child: MediaQuery(
                 data: padding.removePadding(removeBottom: offline),
                 child: OfflineBannerArea(
-                  // Always this row, so opening or closing a pane keeps
-                  // the tabs' state.
+                  // Always this row, so opening or closing a pane or the
+                  // tree's column keeps the tabs' state.
                   child: LayoutBuilder(
                     builder: (context, constraints) => _TabsBesidePane(
                       contentWidth: constraints.maxWidth,
+                      treeColumn: treeColumn,
                       tabs: tabs,
                       pane: pane,
                     ),
@@ -609,18 +626,22 @@ class _HomeShellState extends ConsumerState<HomeShell>
   }
 }
 
-/// The tabs, and beside them on their end side the pane with its divider
-/// (or the fold it is split on). Each keeps clear of the inset on the
-/// other's side, and is a region of its own for screen readers and
-/// keyboards while the pane shows.
+/// The tabs, beside them on their end side the pane with its divider (or
+/// the fold it is split on), and on their start side the project tree's
+/// column with its divider. Each keeps clear of the inset on the others'
+/// sides, and is a region of its own for screen readers and keyboards
+/// while the pane or the column shows: up to three regions. The pane's
+/// width comes from the whole content, as without the column.
 class _TabsBesidePane extends StatelessWidget {
   const new({
     required this.contentWidth,
+    required this.treeColumn,
     required this.tabs,
     required this.pane,
   });
 
   final double contentWidth;
+  final Widget? treeColumn;
   final Widget tabs;
   final Widget? pane;
 
@@ -629,6 +650,7 @@ class _TabsBesidePane extends StatelessWidget {
     final media = MediaQuery.of(context);
     final ltr = Directionality.of(context) == TextDirection.ltr;
     final pane = this.pane;
+    final treeColumn = this.treeColumn;
     final split = pane == null
         ? null
         : paneSplitFor(
@@ -637,27 +659,55 @@ class _TabsBesidePane extends StatelessWidget {
             textDirection: Directionality.of(context),
             displayFeatures: media.displayFeatures,
           );
+    final hasColumn = treeColumn != null;
+    final hasPane = split != null;
+    final regions = hasPane || hasColumn;
+    // Keyed: where both ends of the row change at once, as between the
+    // Projects tab's column and another tab's pane, a Row builds its
+    // unkeyed children in between anew, the tabs' region among them.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (treeColumn != null) ...[
+          SizedBox(
+            key: const ValueKey('tree column'),
+            width: ProjectTreeColumn.width,
+            child: MediaQuery(
+              data: media.removePadding(removeLeft: !ltr, removeRight: ltr),
+              child: treeColumn,
+            ),
+          ),
+          const VerticalDivider(
+            key: ValueKey('tree divider'),
+            width: 1,
+            thickness: 1,
+          ),
+        ],
         Expanded(
+          key: const ValueKey('tabs'),
           child: MediaQuery(
-            data: split == null
-                ? media
-                : media.removePadding(removeLeft: !ltr, removeRight: ltr),
+            data: media.removePadding(
+              removeLeft: ltr ? hasColumn : hasPane,
+              removeRight: ltr ? hasPane : hasColumn,
+            ),
             child: Semantics(
-              container: split != null,
-              explicitChildNodes: split != null,
+              container: regions,
+              explicitChildNodes: regions,
               child: FocusTraversalGroup(child: tabs),
             ),
           ),
         ),
         if (split != null && pane != null) ...[
           if (split.divider)
-            const VerticalDivider(width: 1, thickness: 1)
+            const VerticalDivider(
+              key: ValueKey('pane divider'),
+              width: 1,
+              thickness: 1,
+            )
           else
-            SizedBox(width: split.gap),
+            SizedBox(key: const ValueKey('pane gap'), width: split.gap),
           SizedBox(
+            key: const ValueKey('pane'),
             width: split.paneWidth,
             child: MediaQuery(
               data: media.removePadding(removeLeft: ltr, removeRight: !ltr),

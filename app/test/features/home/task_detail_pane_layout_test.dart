@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_chart.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
@@ -53,13 +54,16 @@ Future<void> _pumpWithView(
   await tester.pumpAndSettle();
 }
 
-/// Where the focused node is: the rail, the list (the tab's screen with its
-/// FAB), the pane or the offline banner.
+/// Where the focused node is: the rail, the project tree's column, the list
+/// (the tab's screen with its FAB), the pane or the offline banner.
 String? _focusRegion() {
   final context = FocusManager.instance.primaryFocus?.context;
   if (context == null) return null;
   if (context.findAncestorWidgetOfExactType<NavigationRail>() != null) {
     return 'rail';
+  }
+  if (context.findAncestorWidgetOfExactType<ProjectTreeColumn>() != null) {
+    return 'column';
   }
   if (context.findAncestorWidgetOfExactType<TaskDetailPane>() != null) {
     return 'pane';
@@ -503,6 +507,86 @@ void main() {
       }
       // From the pane round to it once more.
       expect(regions.take(5), ['pane', 'banner', 'rail', 'list', 'pane']);
+    });
+
+    testWidgets('at a project Tab goes from the rail through the project '
+        "tree's column and the project to the pane, then the banner", (
+      tester,
+    ) async {
+      useWindow(tester, androidTabletLandscape);
+      await pumpSweepApp(tester, data: _offlineData());
+      goTo(tester, AppRoutes.project(workProjectId));
+      await tester.pumpAndSettle();
+      await tapTaskRow(tester, 4);
+      expect(find.byType(ProjectTreeColumn), findsOneWidget);
+      expect(_focusRegion(), 'pane');
+
+      final regions = <String?>[_focusRegion()];
+      for (var presses = 0; presses < 200; presses++) {
+        await _tab(tester);
+        final region = _focusRegion();
+        if (region != regions.last) regions.add(region);
+        if (regions.length > 6) break;
+      }
+      expect(regions.take(6), [
+        'pane',
+        'banner',
+        'rail',
+        'column',
+        'list',
+        'pane',
+      ]);
+    });
+
+    testWidgets('at a project a screen reader reads the rail, the project '
+        "tree's column, the project, then the pane", (tester) async {
+      useWindow(tester, androidTabletLandscape);
+      final semantics = tester.ensureSemantics();
+      await pumpSweepApp(tester);
+      goTo(tester, AppRoutes.project(workProjectId));
+      await tester.pumpAndSettle();
+      await tapTaskRow(tester, 4);
+
+      final regions = {
+        tester.getSemantics(find.byType(ProjectTreeColumn)): 'column',
+        tester.getSemantics(find.byType(TaskDetailPaneScope)): 'list',
+        paneRegion(tester): 'pane',
+      };
+      final destinations = {
+        en.tabOverview,
+        en.tabUpcoming,
+        en.tabProjects,
+        en.tabAccount,
+      };
+      final order = <String>[];
+      void visit(SemanticsNode node, String? region) {
+        if (node.isMergedIntoParent) return;
+        final inside = regions[node] ?? region;
+        final label = node.getSemanticsData().label;
+        final at =
+            inside ?? (destinations.any(label.startsWith) ? 'rail' : null);
+        if (at != null && label.isNotEmpty && order.lastOrNull != at) {
+          order.add(at);
+        }
+        for (final child in node.debugListChildrenInOrder(
+          DebugSemanticsDumpOrder.traversalOrder,
+        )) {
+          visit(child, inside);
+        }
+      }
+
+      visit(
+        tester
+            .binding
+            .renderViews
+            .single
+            .owner!
+            .semanticsOwner!
+            .rootSemanticsNode!,
+        null,
+      );
+      expect(order, ['rail', 'column', 'list', 'pane']);
+      semantics.dispose();
     });
 
     testWidgets('a screen reader reads the list before the pane', (

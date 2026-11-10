@@ -71,6 +71,18 @@ Future<void> _deleteFromPane(WidgetTester tester) async {
   await tester.pumpAndSettle();
 }
 
+/// Beside the project tree's column its app bar bears the Projects tab's
+/// name too.
+Future<void> _tapRail(WidgetTester tester, String label) async {
+  await tester.tap(
+    find.descendant(
+      of: find.byType(NavigationRail),
+      matching: find.text(label),
+    ),
+  );
+  await tester.pumpAndSettle();
+}
+
 Future<void> _back(WidgetTester tester) async {
   await tester.binding.handlePopRoute();
   await tester.pumpAndSettle();
@@ -426,7 +438,7 @@ void main() {
       await openTab(tester, en.tabProjects);
       expectPane(tester, taskId: 4);
 
-      await openTab(tester, en.tabProjects);
+      await _tapRail(tester, en.tabProjects);
       expect(find.byType(TaskDetailPane), findsNothing);
       expect(_location(tester), AppRoutes.projects);
       await openTab(tester, en.tabOverview);

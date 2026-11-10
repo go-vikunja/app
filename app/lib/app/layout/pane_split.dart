@@ -20,6 +20,20 @@ bool _isFoldOrHinge(DisplayFeature feature) =>
     feature.type == DisplayFeatureType.fold ||
     feature.type == DisplayFeatureType.hinge;
 
+bool _dividesSideBySide(DisplayFeature feature) {
+  final bounds = feature.bounds;
+  // A flat fold of no width divides nothing on the screen.
+  return _isFoldOrHinge(feature) &&
+      bounds.height > bounds.width &&
+      (bounds.width > 0 ||
+          feature.state == DisplayFeatureState.postureHalfOpened);
+}
+
+/// A vertical fold or hinge that divides the window into a left and a
+/// right screen, wherever it lies.
+bool hasVerticalFold(List<DisplayFeature> displayFeatures) =>
+    displayFeatures.any(_dividesSideBySide);
+
 /// A device half opened like a laptop: a horizontal fold or hinge, so the
 /// window is two screens one above the other, too low for a pane.
 bool isTabletop(List<DisplayFeature> displayFeatures) => displayFeatures.any(
@@ -45,12 +59,7 @@ PaneSplit paneSplitFor({
   final contentRight = contentLeft + contentWidth;
   for (final feature in displayFeatures) {
     final bounds = feature.bounds;
-    final vertical = bounds.height > bounds.width;
-    // A flat fold of no width divides nothing on the screen.
-    final divides =
-        bounds.width > 0 ||
-        feature.state == DisplayFeatureState.postureHalfOpened;
-    if (!_isFoldOrHinge(feature) || !vertical || !divides) continue;
+    if (!_dividesSideBySide(feature)) continue;
     if (bounds.left <= contentLeft || bounds.right >= contentRight) continue;
     final leftSide = bounds.left - contentLeft;
     final rightSide = contentRight - bounds.right;

@@ -40,7 +40,7 @@ import 'package:vikunja_mobile/features/privacy/presentation/privacy_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_edit_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_views_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
-import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/search/presentation/search_page.dart';
 import 'package:vikunja_mobile/features/sharing/presentation/project_share_page.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/label_tasks_screen.dart';
@@ -95,6 +95,13 @@ abstract final class AppRoutes {
   /// [viewId] opens that view first, as a guest's link names it.
   static String project(int id, {int? viewId}) =>
       viewId == null ? '$projects/$id' : '$projects/$id?view=$viewId';
+
+  static final _projectLocation = RegExp('^$projects/(-?\\d+)\$');
+
+  /// The id in a [project] location without a query, as a matched location
+  /// is; null for [projects] itself and any other location.
+  static int? projectIdIn(String location) =>
+      int.tryParse(_projectLocation.firstMatch(location)?.group(1) ?? '');
 
   /// Full screen over the shell, from the detail sheet or a new task.
   static String taskEdit(int id) => '$home/tasks/$id/edit';
@@ -609,7 +616,7 @@ GoRouter appRouter(Ref ref) {
             routes: [
               GoRoute(
                 path: AppRoutes.projects,
-                builder: (context, state) => const ProjectsScreen(),
+                builder: (context, state) => const ProjectsTab(),
                 routes: [
                   GoRoute(
                     path: ':id',

@@ -665,6 +665,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get projectsAllHeading => 'Alle Projekte';
 
   @override
+  String get projectsNoneOpenTitle => 'Kein Projekt geöffnet';
+
+  @override
+  String get projectsNoneOpenBody =>
+      'Öffne ein Projekt aus der Liste, um seine Aufgaben hier zu sehen.';
+
+  @override
   String get projectsShowSavedFilters => 'Gespeicherte Filter anzeigen';
 
   @override

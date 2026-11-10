@@ -660,6 +660,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectsAllHeading => 'All projects';
 
   @override
+  String get projectsNoneOpenTitle => 'No project open';
+
+  @override
+  String get projectsNoneOpenBody =>
+      'Open a project from the list to see its tasks here.';
+
+  @override
   String get projectsShowSavedFilters => 'Show saved filters';
 
   @override

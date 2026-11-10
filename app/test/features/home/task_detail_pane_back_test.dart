@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/search/presentation/search_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
@@ -117,27 +118,52 @@ void main() {
     });
 
     for (final (how, back) in [('swipe', swipeBack), ('button', _pressBack)]) {
-      testWidgets("by $how: the tab's menu closes before the pane", (
-        tester,
-      ) async {
-        useWindow(tester, androidTabletLandscape);
-        await pumpSweepApp(tester);
-        await _openProject(tester);
-        await tapTaskRow(tester, 4);
-        await tapOutsidePane(tester, find.byTooltip(en.moreActions));
-        final menu = find.byWidgetPredicate(
-          (widget) => widget is PopupMenuItem,
-        );
-        expect(menu, findsWidgets);
+      // The tab's menu opens on the tab's navigator, the column's, outside
+      // the tabs, on the root navigator.
+      for (final (whose, screen, root) in [
+        ("the tab's menu", ProjectTasksScreen, false),
+        ("the project tree's column's menu", ProjectTreeColumn, true),
+      ]) {
+        testWidgets('by $how: $whose closes before the pane', (tester) async {
+          useWindow(tester, androidTabletLandscape);
+          await pumpSweepApp(tester);
+          await _openProject(tester);
+          await tapTaskRow(tester, 4);
+          await tapOutsidePane(
+            tester,
+            find.descendant(
+              of: find.byType(screen),
+              matching: find.byTooltip(en.moreActions),
+            ),
+          );
+          final menu = find.byWidgetPredicate(
+            (widget) => widget is PopupMenuItem,
+          );
+          expect(menu, findsWidgets);
+          final rootNavigator = routerOf(tester)
+              .routerDelegate
+              .navigatorKey
+              .currentState;
+          expect(
+            ModalRoute.of(tester.element(menu.first))!.navigator,
+            root
+                ? same(rootNavigator)
+                : same(
+                    Navigator.of(
+                      tester.element(find.byType(ProjectTasksScreen)),
+                    ),
+                  ),
+          );
 
-        await back(tester);
-        expect(menu, findsNothing);
-        expectPane(tester, taskId: 4);
+          await back(tester);
+          expect(menu, findsNothing);
+          expectPane(tester, taskId: 4);
 
-        await back(tester);
-        expect(find.byType(TaskDetailPane), findsNothing);
-        expect(_location(tester), AppRoutes.project(workProjectId));
-      });
+          await back(tester);
+          expect(find.byType(TaskDetailPane), findsNothing);
+          expect(_location(tester), AppRoutes.project(workProjectId));
+        });
+      }
     }
   });
 

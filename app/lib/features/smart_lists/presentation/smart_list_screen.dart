@@ -23,6 +23,7 @@ import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_actions.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/smart_lists/application/smart_list_providers.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/due_sections_list.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_failure.dart';
@@ -319,6 +320,8 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
 
     return Scaffold(
       appBar: AppBar(
+        // The tree beside it is where to go next; back still goes back.
+        automaticallyImplyLeading: !ProjectTreeColumnScope.shownOf(context),
         title: ScreenTitle(title),
         actions: [
           RefreshButton(onPressed: refreshing ? null : refresh),

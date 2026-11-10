@@ -123,6 +123,52 @@ void main() {
     );
   });
 
+  test('a vertical fold is a half-opened one or a hinge with a width, not '
+      'a flat fold of no width, a horizontal fold or a cutout', () {
+    expect(hasVerticalFold([_fold(640, height: 800)]), isTrue);
+    expect(
+      hasVerticalFold([
+        _fold(
+          630,
+          width: 20,
+          height: 800,
+          type: DisplayFeatureType.hinge,
+          state: DisplayFeatureState.postureFlat,
+        ),
+      ]),
+      isTrue,
+    );
+    expect(
+      hasVerticalFold([
+        _fold(640, height: 800, state: DisplayFeatureState.postureFlat),
+      ]),
+      isFalse,
+    );
+    expect(
+      hasVerticalFold([
+        const DisplayFeature(
+          bounds: Rect.fromLTWH(0, 400, 1280, 0),
+          type: DisplayFeatureType.fold,
+          state: DisplayFeatureState.postureHalfOpened,
+        ),
+      ]),
+      isFalse,
+    );
+    expect(
+      hasVerticalFold([
+        _fold(
+          600,
+          width: 30,
+          height: 80,
+          type: DisplayFeatureType.cutout,
+          state: DisplayFeatureState.unknown,
+        ),
+      ]),
+      isFalse,
+    );
+    expect(hasVerticalFold(const []), isFalse);
+  });
+
   test('tabletop is a half-opened horizontal fold or hinge', () {
     DisplayFeature horizontal(DisplayFeatureState state) => DisplayFeature(
       bounds: const Rect.fromLTWH(0, 400, 1280, 0),

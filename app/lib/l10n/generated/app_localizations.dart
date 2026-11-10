@@ -1106,6 +1106,18 @@ abstract class AppLocalizations {
   /// **'All projects'**
   String get projectsAllHeading;
 
+  /// Title beside the Projects tab's list on wide windows while no project, saved filter or Favourites list is open.
+  ///
+  /// In en, this message translates to:
+  /// **'No project open'**
+  String get projectsNoneOpenTitle;
+
+  /// Body below projectsNoneOpenTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a project from the list to see its tasks here.'**
+  String get projectsNoneOpenBody;
+
   /// Checked item in the Projects tab's menu: whether the Saved filters section and favourite saved filters show.
   ///
   /// In en, this message translates to:

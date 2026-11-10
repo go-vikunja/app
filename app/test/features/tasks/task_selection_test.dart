@@ -6,6 +6,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/board_card.dart';
+import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_row.dart';
 import 'package:vikunja_mobile/features/search/presentation/search_page.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/label_tasks_screen.dart';
@@ -114,9 +115,17 @@ void _expectRow(WidgetTester tester, String title, {required bool selected}) {
   );
 }
 
+/// The project tree's column marks the open list's rows on its own.
+final Finder _taskHighlights = find.byElementPredicate(
+  (element) =>
+      element.widget is SelectedTaskHighlight &&
+      element.findAncestorWidgetOfExactType<ProjectTreeColumn>() == null,
+);
+
 void _expectNoRowSelected(WidgetTester tester) {
+  expect(_taskHighlights, findsWidgets);
   for (final highlight in tester.widgetList<SelectedTaskHighlight>(
-    find.byType(SelectedTaskHighlight),
+    _taskHighlights,
   )) {
     expect(highlight.selected, isFalse);
   }
@@ -272,6 +281,22 @@ void main() {
     await _openRelated(tester);
     expect(_paneTaskId(tester), 3);
     _expectNoRowSelected(tester);
+    final marked = tester
+        .widgetList<SelectedTaskHighlight>(
+          find.descendant(
+            of: find.byType(ProjectTreeColumn),
+            matching: find.byType(SelectedTaskHighlight),
+          ),
+        )
+        .where((highlight) => highlight.selected);
+    expect(marked, hasLength(1));
+    expect(
+      find.descendant(
+        of: find.byWidget(marked.single),
+        matching: find.text(en.projectsFavouriteTasks),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('the board card of the task in the pane is selected, with an '

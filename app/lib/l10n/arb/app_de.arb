@@ -168,6 +168,8 @@
   "projectsFavouritesHeading": "Favoriten",
   "projectsFavouriteTasks": "Favorisierte Aufgaben",
   "projectsAllHeading": "Alle Projekte",
+  "projectsNoneOpenTitle": "Kein Projekt geöffnet",
+  "projectsNoneOpenBody": "Öffne ein Projekt aus der Liste, um seine Aufgaben hier zu sehen.",
   "projectsShowSavedFilters": "Gespeicherte Filter anzeigen",
   "projectsShowArchived": "Archivierte Projekte anzeigen",
   "projectArchived": "Archiviert",
