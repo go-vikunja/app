@@ -1,6 +1,6 @@
 # Glossary and style
 
-The terms and the style of the app's texts in English and German ([D71](decisions.md#d71-complete-english-and-german-british-english-as-the-base-a-glossary-a-wording-pass-over-every-string-more-server-error-codes-in-the-apps-own-words-with-the-servers-detail-as-the-fallback-the-devices-language-followed-while-the-app-runs-names-sorted-with-accents-folded-an-app-language-row-that-opens-the-systems-page)). They apply to `app/lib/l10n/arb/app_*.arb` and to the native strings (Android `res/values*/strings.xml`; on iOS the permission texts in `ios/Runner/Info.plist` and `ios/Runner/de.lproj/InfoPlist.strings`, and the widget extension's texts, whose English is the key in its Swift sources and in `en.lproj` and `de.lproj` `Localizable.strings`, or `Localizable.stringsdict` for the plurals), and every new string follows them. Translators of a future language read the English part for the app's terms. How to add a string is in [CONTRIBUTING.md](../CONTRIBUTING.md#translations).
+The terms and the style of the app's texts in English and German ([D71](decisions.md#d71-english-and-german-british-base-glossary-error-texts-live-language-changes)). They apply to `app/lib/l10n/arb/app_*.arb` and to the native strings (Android `res/values*/strings.xml`; on iOS the permission texts in `ios/Runner/Info.plist` and `ios/Runner/de.lproj/InfoPlist.strings`, and the widget extension's texts, whose English is the key in its Swift sources and in `en.lproj` and `de.lproj` `Localizable.strings`, or `Localizable.stringsdict` for the plurals), and every new string follows them. Translators of a future language read the English part for the app's terms. How to add a string is in [CONTRIBUTING.md](../CONTRIBUTING.md#translations).
 
 ## Both languages
 
@@ -10,7 +10,7 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - filter syntax and operators (`done = false && labels in Work`, `&&`, `||`, `not in`);
   - date-format patterns (DD/MM/YYYY);
   - the server's untranslated permission names and error details.
-- The server's default names (Inbox, Favorites, My Open Tasks, List, Gantt, Table, Kanban) are translated for display only ([D45](decisions.md#d45-app-shell-on-wide-android-screens-the-colour-scheme-and-dynamic-colour-the-webs-display-settings-applied-only-when-set-translated-default-names-the-project-tree-with-favourites-saved-filters-and-archived-projects-smart-lists-a-sticky-offline-banner)).
+- The server's default names (Inbox, Favorites, My Open Tasks, List, Gantt, Table, Kanban) are translated for display only ([D45](decisions.md#d45-app-shell-colour-scheme-display-settings-projects-tab-smart-lists-offline-banner)).
 - Placeholders keep their names. Sentences are not assembled from fragments unless the description says so (for example `assigneePickerFallback`).
 
 ## English (British; `app_en.arb` is the base)

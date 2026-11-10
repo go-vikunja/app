@@ -245,7 +245,7 @@ The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-
 
 ## The message to the Vikunja maintainers
 
-[D15](decisions.md#d15-app-id-devcoderoftimevikunja) asks for the check of the name and the logo with the Vikunja maintainers before the store release ([branding/README.md](../branding/README.md#open-points)). Vikunja publishes no brand or trademark policy, and Apple names no procedure, only the evidence it accepts: email correspondence that shows the permission ([complete review][apple-complete-review]).
+[D15](decisions.md#d15-app-id-devcoderoftimerurana-and-the-name-rurana) asks for the check of the name and the logo with the Vikunja maintainers before the store release ([branding/README.md](../branding/README.md#open-points)). Vikunja publishes no brand or trademark policy, and Apple names no procedure, only the evidence it accepts: email correspondence that shows the permission ([complete review][apple-complete-review]).
 
 **The channel:** `maintainers@vikunja.io`, which [vikunja.io/contact][vikunja-contact] lists for the maintainers; its answer is private and in writing, so it can be shown to App Review. `hello@vikunja.io` takes general requests; the forum (community.vikunja.io) and Matrix (#vikunja:matrix.org) are public, and issues do not fit a permission request. The owner sends it once the project is public, so that its link opens, with `branding/png/icon-ios-1024.png`, `preview-sheet.png` and `feature-graphic-1024x500.png` attached. Without an answer after two weeks, ask once more through `hello@vikunja.io`; if they refuse the icon, the "checkbox ears" icon (`branding/explorations-v2/checkbox-ears/final/`) or a new one replaces it before 1.0.0.
 
@@ -309,9 +309,9 @@ Read on 2026-11-02.
 - US export: [86 FR 16482][bis-rule], [15 CFR 740.17][cfr-740-17]
 - Vikunja: [contact][vikunja-contact]
 
-[D67]: decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-contributions-under-the-dco-the-name-and-the-logo-reserved-no-f-droid-the-legal-notices-on-an-about-page-and-the-licence-page-the-source-code-published-before-the-first-store-release
-[D71]: decisions.md#d71-complete-english-and-german-british-english-as-the-base-a-glossary-a-wording-pass-over-every-string-more-server-error-codes-in-the-apps-own-words-with-the-servers-detail-as-the-fallback-the-devices-language-followed-while-the-app-runs-names-sorted-with-accents-folded-an-app-language-row-that-opens-the-systems-page
-[D74]: decisions.md#d74-the-ios-phase-privacy-manifests-and-the-system-sqlite-on-ios-testflight-from-the-owners-mac-the-ipad-and-iphone-checked-in-the-simulator-photo-locations-stripped-one-time-secrets-covered-while-the-screen-is-captured-the-share-extension-after-10
-[D75]: decisions.md#d75-the-owners-ui-review-no-task-identifier-shown-a-coloured-folder-for-every-project-saved-filters-that-can-be-hidden-no-remembered-view-a-new-task-sheet-with-chip-rows-for-the-due-date-and-priority-and-more-options-in-place-one-appearance-section-on-the-account-tab-with-sync-up-and-server-down
-[D76]: decisions.md#d76-store-listings-and-policies-the-name-rurana-alone-the-public-demo-for-the-reviewers-data-safety-answered-cautiously-without-a-location-photo-locations-removed-on-android-too-ruranas-pages-on-coderoftimedev-non-trader-in-both-stores
-[D77]: decisions.md#d77-beta-preparation-the-app-id-devcoderoftimerurana-the-owners-own-app-signing-key-every-coderoftime-project-public-a-help-row-on-the-about-page-testers-through-a-google-group-and-a-public-testflight-link
+[D67]: decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet
+[D71]: decisions.md#d71-english-and-german-british-base-glossary-error-texts-live-language-changes
+[D74]: decisions.md#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover
+[D75]: decisions.md#d75-owners-ui-review-no-task-identifier-coloured-folders-new-task-sheet-account-tab
+[D76]: decisions.md#d76-store-listings-and-policies-ruranas-pages-photo-locations-removed-on-android
+[D77]: decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers

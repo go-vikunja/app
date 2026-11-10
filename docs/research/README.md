@@ -44,7 +44,7 @@ Items 1 and 2 were verified against the Docker test servers in [`test_servers/`]
 3. **iOS must not get `NSAllowsLocalNetworking` while `NSAllowsArbitraryLoads` is needed.**
    - synthesis.md §3 lists `NSAllowsLocalNetworking` for the iOS configuration, and step 35 plans a "per-host cleartext opt-in".
    - iOS ignores `NSAllowsArbitraryLoads` as soon as `NSAllowsLocalNetworking` is present, and ATS exception domains cannot name hosts typed at runtime.
-   - The per-host opt-in is therefore the in-app confirmation only; the OS keys stay open. See [D8](../decisions.md#d8-cleartext-policy).
+   - The per-host opt-in is therefore the in-app confirmation only; the OS keys stay open. See [D8](../decisions.md#d8-cleartext-only-after-the-users-consent).
 
 Items 4 to 9 were verified during step 2+3 against the 2.3.0, 2.4.0 and 2.7.0 Docker images, by the contract tests in `packages/vikunja_api/test/contract/auth_contract_test.dart` and the captures in `packages/vikunja_api/test/fixtures/errors/` and `fixtures/user/`. They correct [auth.md](auth.md).
 
@@ -73,19 +73,19 @@ Item 10 comes from the step 2+3 security review and was read from the source.
 10. **A reused web login is the app's problem too** (auth.md §7 "No consent screen", §15.1).
     - The authorize callback carries only `code` and `state`, no RFC 9207 `iss` (`frontend/src/views/user/OAuthAuthorize.vue:65-71`), and there is no consent screen.
     - A malicious server can therefore point the app at another server's authorize page. With the browser's web login reused, that server issues a code silently, and the app hands it and the PKCE verifier to the malicious server's token endpoint.
-    - The app therefore uses an ephemeral browser session, contrary to §15.1 ([D23](../decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-client-id-and-redirect-uri)).
+    - The app therefore uses an ephemeral browser session, contrary to §15.1 ([D23](../decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)).
 
 Item 11 comes from the step 35b research and was read from the dio 5.11.1 and Dart SDK sources.
 
 11. **dio's `validateCertificate` cannot pin a certificate** (flutter-stack.md §3.4).
     - It runs after the request was sent and the response headers arrived, and only for a chain the `SecurityContext` already accepted: a self-signed server fails before it is asked, and an impostor would get the token first.
-    - The app pins in the TLS handshake instead, and one adapter in the base `Dio`s sends only pinned, CA-trusted and client-certificate servers through `dart:io` ([D65](../decisions.md#d65-connection-settings-per-server-address-in-the-apps-transport-a-certificate-pinned-in-the-tls-handshake-or-a-trusted-ca-certificate-a-client-certificate-access-headers-and-unencrypted-connections-only-with-consent-failing-closed)).
+    - The app pins in the TLS handshake instead, and one adapter in the base `Dio`s sends only pinned, CA-trusted and client-certificate servers through `dart:io` ([D65](../decisions.md#d65-connection-settings-per-server-address-applied-in-the-apps-transport)).
 
 Item 12 comes from the step 35c audit and was read from Android's documentation on Auto Backup and on the backup changes of Android 12.
 
 12. **`android:allowBackup="false"` does not stop a device-to-device transfer** (auth.md §15.2, synthesis.md §2.5 and §3).
     - For an app targeting Android 12 or later it turns cloud backup off, but on devices of some manufacturers not a transfer to a new phone. That takes `android:dataExtractionRules` with a `<device-transfer>` section; below Android 12 `allowBackup="false"` covers both.
-    - The app excludes everything from both since step 35c ([D66](../decisions.md#d66-a-threat-model-uncaught-errors-redacted-and-never-printed-in-release-builds-the-apps-data-out-of-backups-and-device-transfer-routes-pushed-by-the-platform-taken-only-as-app-scheme-links-widget-links-and-notification-taps-switching-accounts-only-with-a-per-install-key-exported-components-and-dependencies-checked-in-ci)).
+    - The app excludes everything from both since step 35c ([D66](../decisions.md#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links)).
 
 ## Confirmed on live servers
 

@@ -114,9 +114,9 @@ Once, on a device (the simulator for what it can show):
 5. **The tab bar:** inactive labels readable in light and dark.
 6. **iPad** ([D69]): the task sheet and a picker as centred cards (an 11" iPad in both orientations, an iPad mini in portrait) take VoiceOver's focus, and nothing on the page beside the card is reachable; in Split View with half of a 13" iPad the sheet fills the window. At the largest text, the centred settings and forms show everything. The task pane ([D70]) on an 11" iPad in landscape and a 13" iPad in portrait: VoiceOver reads the list, then the pane; its focus moves into the pane when a task opens, and back to the row when it closes; the row reads "selected". The project tree's column ([D82]) on an 11" iPad and an iPad mini in landscape: VoiceOver reads the tree's column, the project, then the pane; the open project's rows read "selected"; a swipe from the project's own edge goes back to "No project open".
 
-[D68]: decisions.md#d68-screen-readers-heading-levels-on-screen-titles-and-section-headers-one-announcer-with-the-apps-own-live-region-on-android-high-contrast-and-reduce-motion-followed-and-a-route-sweep-that-every-route-pushed-page-and-overlay-must-pass-wcag-22-aa-as-the-yardstick-with-written-deviations
-[D69]: decisions.md#d69-large-screens-one-window-layout-helper-readable-widths-of-840-dp-for-lists-and-640-dp-for-settings-and-forms-with-scrolling-margins-dialogs-at-most-560-dp-and-ios-sheets-at-most-640-dp-only-on-tablet-sized-windows
-[D70]: decisions.md#d70-task-detail-pane-on-windows-at-least-840-dp-wide-and-480-dp-high-a-task-opens-beside-the-list-one-pane-per-tab-with-a-back-stack-and-a-selected-row-the-sheet-everywhere-else-back-through-the-pane-first-and-pages-in-a-tab-without-androids-predictive-back
-[D77]: decisions.md#d77-beta-preparation-the-app-id-devcoderoftimerurana-the-owners-own-app-signing-key-every-coderoftime-project-public-a-help-row-on-the-about-page-testers-through-a-google-group-and-a-public-testflight-link
-[D82]: decisions.md#d82-projects-listdetail-from-about-1120-dp-of-content-the-project-tree-in-a-320-dp-column-beside-the-open-project-and-its-task-pane-the-route-still-the-source-the-tabs-first-page-saying-that-no-project-is-open-no-column-for-link-share-guests
+[D68]: decisions.md#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep
+[D69]: decisions.md#d69-large-screens-a-window-layout-helper-readable-widths-capped-dialogs-and-sheets
+[D70]: decisions.md#d70-task-detail-pane-beside-the-list-on-two-pane-windows-the-sheet-elsewhere
+[D77]: decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers
+[D82]: decisions.md#d82-projects-listdetail-the-project-tree-beside-the-project-on-wide-windows
 [Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass
