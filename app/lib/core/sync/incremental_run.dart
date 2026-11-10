@@ -5,6 +5,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/sync/archived_projects.dart';
 import 'package:vikunja_mobile/core/sync/list_downloads.dart';
+import 'package:vikunja_mobile/core/sync/newest_updated.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/stable_pages.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
@@ -42,15 +43,15 @@ typedef _ProjectDiff = ({
 /// and the tasks changed since `since` come by keyset over `(updated, id)`
 /// from `GET /tasks`, plus `GET /projects/{id}/tasks` for archived projects
 /// that changed. New and un-archived projects are pulled whole. A deleted
-/// task leaves no trace, so the server's count of live tasks is compared
-/// with the local one; only when they differ are the live projects counted
-/// one by one and the mismatching ones reconciled by id. A project's
-/// `updated` is not the trigger for that: it has second precision and misses
-/// a change within the second a sync last saw. A project's tasks are purged
-/// only once its ids are complete, so a failed run never deletes. Rows that
-/// equal the local ones are not written, so a run that finds nothing new
-/// leaves the database's watchers alone. Last comes the Overview's saved
-/// filter, see `downloadOverviewFilter`.
+/// task leaves no trace, so the server's count of `GET /tasks` is compared
+/// with the local one of the same scope; only when they differ are the live
+/// projects counted one by one and the mismatching ones reconciled by id. A
+/// project's `updated` is not the trigger for that: it has second precision
+/// and misses a change within the second a sync last saw. A project's tasks
+/// are purged only once its ids are complete, so a failed run never
+/// deletes. Rows that equal the local ones are not written, so a run that
+/// finds nothing new leaves the database's watchers alone. Last comes the
+/// Overview's saved filter, see `downloadOverviewFilter`.
 final class IncrementalRun {
   new({
     required this._db,
@@ -62,6 +63,7 @@ final class IncrementalRun {
     required this._checkActive,
     required this._keepLease,
     required this._report,
+    required this.newestUpdated,
   });
 
   final AppDatabase _db;
@@ -80,6 +82,11 @@ final class IncrementalRun {
   int requests = 0;
   SyncPhase phase = SyncPhase.projects;
 
+  /// For the watermark, fed by the `GET /tasks` delta pages alone, the walk
+  /// the next run continues: the run's later reads and the rows other code
+  /// writes meanwhile can lie above changes that walk has not seen.
+  final NewestUpdated newestUpdated;
+
   Future<void> execute() async {
     _report(SyncPhase.projects);
     final diff = await _syncProjects();
@@ -92,7 +99,11 @@ final class IncrementalRun {
     await _syncLabels();
     phase = SyncPhase.delta;
     _report(SyncPhase.delta);
-    var pulled = await _pullDelta(_client.tasks.list, done: 0);
+    var pulled = await _pullDelta(
+      _client.tasks.list,
+      done: 0,
+      newest: newestUpdated,
+    );
     final pulledWhole = diff.pulledWhole.toSet();
     final gone = <int>{};
     for (final id in diff.archivedChanged) {
@@ -112,17 +123,25 @@ final class IncrementalRun {
       await _inProject(id, gone, () => _reconcile(id));
       _report(SyncPhase.reconcile, done: ++examined, total: whole.length);
     }
-    if (await _liveCountDiffers(diff.archived)) {
+    if (await _totalsToWalk(diff.archived) case final totals?) {
       final live = [
         for (final id in diff.all)
           if (!diff.archived.contains(id) && !pulledWhole.contains(id)) id,
       ];
       final total = whole.length + live.length;
+      final goneBefore = gone.length;
+      var reconciled = 0;
       for (final id in live) {
         await _inProject(id, gone, () async {
-          if (await _countDiffers(id)) await _reconcile(id);
+          if (await _countDiffers(id)) {
+            reconciled++;
+            await _reconcile(id);
+          }
         });
         _report(SyncPhase.reconcile, done: ++examined, total: total);
+      }
+      if (reconciled == 0 && gone.length == goneBefore) {
+        await _db.syncStateDao.write({SyncStateKeys.unexplainedTotals: totals});
       }
     }
     await downloadOverviewFilter(
@@ -256,6 +275,7 @@ final class IncrementalRun {
   Future<int> _pullDelta(
     Future<Page<Task>> Function(TaskQuery query) fetch, {
     required int done,
+    NewestUpdated? newest,
   }) async {
     var filter = TaskFilters.updatedSince(_since);
     (DateTime, int)? cursor;
@@ -291,6 +311,7 @@ final class IncrementalRun {
         cursor = position;
       }
       await _upsertChanged(items);
+      newest?.addTasks(items);
       count += items.length;
       _report(SyncPhase.delta, done: count);
       if (items.length < page.perPage && !page.hasMore) return count;
@@ -298,20 +319,33 @@ final class IncrementalRun {
     }
   }
 
-  /// `GET /tasks` counts the tasks of every project that is not archived,
-  /// which is what the local rows outside [archived] mirror.
-  Future<bool> _liveCountDiffers(Set<int> archived) async {
+  /// The server's total of `GET /tasks` and the local one of that scope
+  /// (`TasksDao.countAcrossProjects`), `remote,local`, when they differ and
+  /// the live projects are to be walked. Null when they match, or when such
+  /// a walk found no project that differed at these very totals: it cannot
+  /// locate a difference among an archived project's favourites (one
+  /// deleted on the server right before its project was archived, a toggle
+  /// the server refused there), so it is not repeated on every run. Other
+  /// totals forget them.
+  Future<String?> _totalsToWalk(Set<int> archived) async {
     final page = await _request(
       () => _client.tasks.list(const TaskQuery(perPage: 1)),
     );
     final remote = page.total ?? page.totalPages;
-    final local = await _db.tasksDao.countNotInProjects(archived);
-    if (remote != local) {
-      _log.info(
-        'Sync run $runId: $remote live tasks on the server and $local here',
-      );
+    final local = await _db.tasksDao.countAcrossProjects(archived);
+    final totals = '$remote,$local';
+    final unexplained = (await _db.syncStateDao
+        .readAll())[SyncStateKeys.unexplainedTotals];
+    if (unexplained != null && unexplained != totals) {
+      await _db.syncStateDao.write({SyncStateKeys.unexplainedTotals: null});
     }
-    return remote != local;
+    if (remote == local) return null;
+    final walked = unexplained == totals;
+    _log.info(
+      'Sync run $runId: $remote tasks on the server and $local here'
+      '${walked ? ', which a walk over the projects did not explain' : ''}',
+    );
+    return walked ? null : totals;
   }
 
   /// `per_page=1` reports the count: `total` on v2, the page count on v1.

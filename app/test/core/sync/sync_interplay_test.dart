@@ -238,7 +238,7 @@ void main() {
         client.requests.where((r) => r.contains('per_page=1 ')),
         hasLength(1),
       );
-      expect(await db.tasksDao.countNotInProjects([]), 4);
+      expect(await db.tasksDao.countAcrossProjects([]), 4);
       expect(await db.tasksDao.find(2), isNull);
     },
   );

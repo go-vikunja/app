@@ -152,6 +152,31 @@ void main() {
     expect((await opened.single.tasksDao.find(task.id))!.labels, [label]);
   });
 
+  test("a lost label create adopts the signed-in user's own label, not "
+      "another member's of that title", () async {
+    await signedIn();
+    final labels = container.read(labelRepositoryProvider)!;
+    const alice = User(id: 7, username: 'alice');
+    const ana = User(id: 6, username: 'ana');
+    // The repository judges the lookup window by the device clock.
+    final created = DateTime.now().toUtc();
+    read.allLabels = [
+      Label(id: 30, title: 'errand', created: created, createdBy: ana),
+      Label(
+        id: 29,
+        title: 'errand',
+        created: created.subtract(const Duration(minutes: 5)),
+        createdBy: alice,
+      ),
+    ];
+    write.beforeRequest = (_) =>
+        throw const NetworkFailure(NetworkProblem.timeout);
+
+    final found = await labels.create(const NewLabel(title: 'errand'));
+
+    expect(found.id, 29);
+  });
+
   test('signing out with an op in flight disposes the sender and wipes the '
       'account without errors', () async {
     final (accountId, repository) = await signedIn();

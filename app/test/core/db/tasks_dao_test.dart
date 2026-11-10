@@ -331,23 +331,27 @@ void main() {
       expect(found[3]!.title, 'C');
     });
 
-    test('the newest updated can be bounded', () async {
-      expect(await db.tasksDao.maxUpdated(notAfter: tuesday), tuesday);
-      expect(await db.tasksDao.maxUpdated(notAfter: monday), monday);
+    test("the count of GET /tasks leaves out the archived projects' tasks "
+        'but not their favourites, like the saved filters', () async {
+      await db.projectsDao.upsertAll([
+        sampleProject(id: 5, title: 'Live'),
+        sampleProject(id: 6, title: 'Archived', archived: true),
+        sampleProject(id: 7, title: 'Archived child', parent: 6),
+      ]);
+      await upsert([
+        sampleTask(id: 5, title: 'E', projectId: 6, favorite: true),
+        sampleTask(id: 6, title: 'F', projectId: 7, done: true, favorite: true),
+        sampleTask(id: 7, title: 'G', projectId: 7),
+      ]);
+
+      expect(await db.tasksDao.countAcrossProjects([6, 7]), 5);
+      expect(await db.tasksDao.countAcrossProjects([]), 7);
       expect(
-        await db.tasksDao.maxUpdated(
-          notAfter: monday.subtract(const Duration(days: 1)),
+        (await db.tasksDao.loadFilterRowsOfSavedFilters()).map(
+          (row) => row.task.id,
         ),
-        isNull,
+        unorderedEquals([1, 2, 3, 5, 6]),
       );
-    });
-
-    test('the newest updated ignores tasks without one', () async {
-      expect(await db.tasksDao.maxUpdated(), tuesday);
-
-      await db.tasksDao.purgeInProjects([5]);
-
-      expect(await db.tasksDao.maxUpdated(), isNull);
     });
 
     test('purging a project takes its tasks and their rows', () async {
@@ -411,8 +415,7 @@ void main() {
 
       expect(await db.tasksDao.count(), 3);
       expect(await db.tasksDao.countInProject(5), 2);
-      expect(await db.tasksDao.countNotInProjects([6]), 2);
-      expect(await db.tasksDao.maxUpdated(), monday);
+      expect(await db.tasksDao.countAcrossProjects([6]), 2);
     });
 
     test('are never purged', () async {

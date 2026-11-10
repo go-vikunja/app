@@ -11,10 +11,17 @@ abstract final class SyncStateKeys {
   /// pull again once this is a day old.
   static const lastFullSyncAt = 'last_full_sync_at';
 
-  /// The newest task `updated` the database holds, server time, ISO 8601
-  /// UTC; an incremental run pulls what changed from shortly below it.
-  /// Absent in a database written before incremental sync existed.
+  /// The newest task `updated` the last runs read on `GET /tasks`, server
+  /// time, ISO 8601 UTC; an incremental run pulls what changed from shortly
+  /// below it. Absent in a database written before incremental sync
+  /// existed.
   static const watermark = 'watermark';
+
+  /// The server's and the local total of `GET /tasks`, comma separated, at
+  /// which the last walk over the live projects found none that differed:
+  /// incremental runs skip that walk while both stay the same. Other
+  /// totals and a completed full run clear it.
+  static const unexplainedTotals = 'unexplained_totals';
 
   /// Ids of the projects whose tasks still have to be pulled whole, comma
   /// separated: an incremental run writes them with the project rows, so a

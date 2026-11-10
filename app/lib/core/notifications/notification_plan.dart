@@ -85,11 +85,12 @@ parseNotificationKey(String key) {
 /// passed for a server that sends reminders only to subscribers (D80), the
 /// tasks it covers instead, for reminders and due dates alike. For each,
 /// every reminder with an instant after [now] and, when [preferences]
-/// allow, the due date at its exact instant. A snooze whose
-/// `originalFireAt` is the entry's own instant and whose `until` is still
-/// ahead moves the entry there, which is how a notification that has fired
-/// comes back. Titles and bodies are built by [describe] (localised by the
-/// caller). Sorted by [DesiredNotification.fireAt], then by key.
+/// allow, the due date at its exact instant; a reminder at that same
+/// instant is left to the due date, so the moment rings once. A snooze
+/// whose `originalFireAt` is the entry's own instant and whose `until` is
+/// still ahead moves the entry there, which is how a notification that has
+/// fired comes back. Titles and bodies are built by [describe] (localised
+/// by the caller). Sorted by [DesiredNotification.fireAt], then by key.
 List<DesiredNotification> planNotifications({
   required List<Task> tasks,
   required int userId,
@@ -107,7 +108,12 @@ List<DesiredNotification> planNotifications({
   final snoozeByKey = {for (final snooze in snoozes) snooze.key: snooze};
   final desired = <DesiredNotification>[];
 
-  void add(Task task, String key, ScheduledNotificationKind kind, DateTime at) {
+  DesiredNotification? entry(
+    Task task,
+    String key,
+    ScheduledNotificationKind kind,
+    DateTime at,
+  ) {
     final instant = at.toUtc();
     final snooze = snoozeByKey[key];
     final applies =
@@ -115,18 +121,16 @@ List<DesiredNotification> planNotifications({
         snooze.originalFireAt.toUtc() == instant &&
         snooze.until.isAfter(now);
     final fireAt = applies ? snooze.until.toUtc() : instant;
-    if (!fireAt.isAfter(now)) return;
+    if (!fireAt.isAfter(now)) return null;
     final (:title, :body) = describe(task, kind);
-    desired.add(
-      DesiredNotification(
-        key: key,
-        taskId: task.id,
-        kind: kind,
-        fireAt: fireAt,
-        title: title,
-        body: body,
-        snooze: applies ? snooze : null,
-      ),
+    return DesiredNotification(
+      key: key,
+      taskId: task.id,
+      kind: kind,
+      fireAt: fireAt,
+      title: title,
+      body: body,
+      snooze: applies ? snooze : null,
     );
   }
 
@@ -135,31 +139,42 @@ List<DesiredNotification> planNotifications({
         !(subscribed?.covers(task, userId: userId) ?? _isOwn(task, userId))) {
       continue;
     }
+    final due = switch (task.dueDate) {
+      final at? when preferences.dueDates => entry(
+        task,
+        dueNotificationKey(task.id),
+        ScheduledNotificationKind.dueDate,
+        at,
+      ),
+      _ => null,
+    };
+    if (due != null) desired.add(due);
     if (preferences.reminders) {
       for (final (ordinal, reminder) in task.reminders.indexed) {
         if (reminder.reminder case final at?) {
-          add(
+          final planned = entry(
             task,
             reminderNotificationKey(task.id, ordinal),
             ScheduledNotificationKind.reminder,
             at,
           );
+          if (planned != null && !_ringsWithDue(planned, due)) {
+            desired.add(planned);
+          }
         }
-      }
-    }
-    if (preferences.dueDates) {
-      if (task.dueDate case final due?) {
-        add(
-          task,
-          dueNotificationKey(task.id),
-          ScheduledNotificationKind.dueDate,
-          due,
-        );
       }
     }
   }
   return desired..sort(_byFireAtThenKey);
 }
+
+/// Whether [reminder] would ring together with [due] at the task's own due
+/// instant. Neither may be snoozed: a snooze is a time the user picked.
+bool _ringsWithDue(DesiredNotification reminder, DesiredNotification? due) =>
+    due != null &&
+    due.snooze == null &&
+    reminder.snooze == null &&
+    reminder.fireAt == due.fireAt;
 
 bool _isOwn(Task task, int userId) =>
     task.id < 0 ||

@@ -27,6 +27,9 @@ abstract final class TaskFilters {
   static String updatedSince(DateTime since) =>
       "updated >= '${rfc3339(since)}'";
 
+  static String updatedUntil(DateTime until) =>
+      "updated <= '${rfc3339(until)}'";
+
   static String createdSince(DateTime since) =>
       "created >= '${rfc3339(since)}'";
 

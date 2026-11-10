@@ -481,11 +481,17 @@ TaskRepository accountTaskRepository(Ref ref, String accountId) {
 
 @riverpod
 LabelRepository accountLabelRepository(Ref ref, String accountId) {
+  final userId = ref.watch(
+    accountsProvider.select(
+      (accounts) => accounts.value?.find(accountId)?.account.userId,
+    ),
+  );
   final repository = LocalLabelRepository(
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(writeClientProvider(accountId)),
     ref.watch(readClientProvider(accountId)),
     sync: ref.watch(syncEngineProvider(accountId)),
+    currentUserId: () => userId,
   );
   ref.onDispose(repository.dispose);
   return repository;

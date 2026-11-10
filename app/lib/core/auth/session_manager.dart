@@ -74,6 +74,7 @@ final class SessionManager implements AccessTokenSource {
   Future<_Session>? _inFlight;
   Future<void>? _pendingWrite;
   _Unpersisted? _unpersisted;
+  Future<void>? _keptWrite;
   DateTime? _refreshBlockedUntil;
   SessionEnded? _ended;
   bool _retired = false;
@@ -85,6 +86,7 @@ final class SessionManager implements AccessTokenSource {
   Future<String> validAccessToken() async {
     final epoch = _epoch;
     try {
+      await _storeKeptTokens(epoch);
       final session = await _currentSession(epoch);
       if (!_expiresSoon(session)) return session.accessToken;
       if (!_refreshes) return await _withoutRefresh(session, epoch);
@@ -106,6 +108,7 @@ final class SessionManager implements AccessTokenSource {
   Future<String?> refreshAfterRejection(String rejectedToken) async {
     final epoch = _epoch;
     try {
+      await _storeKeptTokens(epoch);
       final session = await _currentSession(epoch);
       if (session.accessToken != rejectedToken) return session.accessToken;
       if (!_refreshes) {
@@ -166,7 +169,8 @@ final class SessionManager implements AccessTokenSource {
 
   /// Completes once no refresh is on its way and no token write is pending,
   /// so the isolate may end without abandoning a rotation the server has
-  /// made; the refresh's outcome is its caller's.
+  /// made; tokens a refresh could not store get one more try. The refresh's
+  /// outcome is its caller's.
   Future<void> settle() async {
     for (final pending in <Future<Object?>?>[_inFlight, _pendingWrite]) {
       if (pending == null) continue;
@@ -175,6 +179,11 @@ final class SessionManager implements AccessTokenSource {
       } on Object {
         // Only completion matters here.
       }
+    }
+    try {
+      await _storeKeptTokens(_epoch);
+    } on Object {
+      // Only completion matters here.
     }
   }
 
@@ -219,6 +228,11 @@ final class SessionManager implements AccessTokenSource {
   // fcntl locks). Instead, storage is read again before every refresh and
   // after a lost rotation race, and newer tokens found there are adopted.
   Future<_Session> _refreshExclusively(String snapshot, int epoch) async {
+    try {
+      await _keptWrite;
+    } on Object {
+      // The retry below meets the same failure.
+    }
     await _retryUnpersistedWrite(epoch);
     var refreshToken = snapshot;
     final stored = await _readStored(epoch);
@@ -311,7 +325,26 @@ final class SessionManager implements AccessTokenSource {
     required DateTime receivedAt,
     required int epoch,
   }) async {
-    final stored = await _readStored(epoch);
+    final StoredTokens? read;
+    try {
+      read = await _tokenStore.read(accountId);
+    } on Object catch (error) {
+      _ensureUsable(epoch);
+      // Storage may hold a newer sign-in, so the tokens are not written now;
+      // the write at the next call compares with storage first.
+      _log.severe(
+        'Could not read the tokens of account $accountId before storing the '
+        'rotated ones: ${error.runtimeType}',
+      );
+      _learnClockOffset(fresh.issuedAt.difference(receivedAt));
+      _unpersisted = _Unpersisted(
+        fresh,
+        replacedRefreshToken:
+            _unpersisted?.replacedRefreshToken ?? usedRefreshToken,
+      );
+      return _session = _Session.fromTokenSet(fresh);
+    }
+    final stored = await _resolveStored(read, epoch);
     if (stored.refreshToken != usedRefreshToken) {
       // A new sign-in replaced the session while this refresh was in flight;
       // the tokens just received belong to the superseded session.
@@ -327,8 +360,8 @@ final class SessionManager implements AccessTokenSource {
       rethrow;
     } on Object catch (error) {
       // The server has already invalidated the stored refresh token, so the
-      // new one is used from memory and written again before the next
-      // refresh. Only the type is logged: platform errors can echo values.
+      // new one is used from memory and written again at the next call.
+      // Only the type is logged: platform errors can echo values.
       _log.severe(
         'Could not store the rotated tokens of account $accountId: '
         '${error.runtimeType}',
@@ -360,6 +393,31 @@ final class SessionManager implements AccessTokenSource {
     }
   }
 
+  /// Tokens a refresh could not store are written at the next call, not
+  /// only before the next refresh: until then storage holds the refresh
+  /// token the server has invalidated, and a sibling isolate that refreshes
+  /// with it ends the session.
+  Future<void> _storeKeptTokens(int epoch) {
+    if (_unpersisted == null || _inFlight != null) return Future.value();
+    return _keptWrite ??= _tryKeptWrite(epoch)
+        .whenComplete(() => _keptWrite = null);
+  }
+
+  Future<void> _tryKeptWrite(int epoch) async {
+    try {
+      await _retryUnpersistedWrite(epoch);
+    } on _Retired {
+      rethrow;
+    } on SessionEnded {
+      rethrow;
+    } on Object catch (error) {
+      _log.warning(
+        'Could not read the tokens of account $accountId to store the kept '
+        'ones: ${error.runtimeType}',
+      );
+    }
+  }
+
   /// [retire] waits for this write, so nothing may be awaited between the
   /// retirement check and recording the write.
   Future<void> _writeTokens(TokenSet tokens, int epoch) {
@@ -381,11 +439,14 @@ final class SessionManager implements AccessTokenSource {
     }
   }
 
-  /// When an earlier write failed and storage still holds the refresh token
-  /// that was rotated away, the unpersisted tokens stand in for it.
   Future<StoredTokens> _readStored(int epoch) async {
     await (_clockOffsetLoad ??= _loadClockOffset());
-    final stored = await _tokenStore.read(accountId);
+    return await _resolveStored(await _tokenStore.read(accountId), epoch);
+  }
+
+  /// When an earlier write failed and storage still holds the refresh token
+  /// that was rotated away, the unpersisted tokens stand in for it.
+  Future<StoredTokens> _resolveStored(StoredTokens? stored, int epoch) async {
     _ensureUsable(epoch);
     if (stored == null) {
       throw await _end(

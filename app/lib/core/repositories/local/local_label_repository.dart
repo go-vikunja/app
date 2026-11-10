@@ -16,12 +16,21 @@ const _labelMissing = 8002;
 /// Labels from the account's database; a create goes to the server first.
 /// A create without an answer may still have reached the server, which
 /// keeps labels of the same title side by side: the label is looked for
-/// before the failure is reported and before the next create of that
-/// title. Changes and deletes are online too, stored once answered, and
-/// a quiet [SyncEngine.refreshAfterWrite] follows them.
+/// among the user's own before the failure is reported and before the
+/// next create of that title. Changes and deletes are online too, stored
+/// once answered, and a quiet [SyncEngine.refreshAfterWrite] follows them.
 final class LocalLabelRepository implements LabelRepository {
-  new(this._db, this._write, this._read, {this._sync, DateTime Function()? now})
-    : _now = now ?? DateTime.now;
+  new(
+    this._db,
+    this._write,
+    this._read, {
+    this._sync,
+    DateTime Function()? now,
+    int? Function()? currentUserId,
+  }) : _now = now ?? DateTime.now,
+       _currentUserId = currentUserId ?? _unknownUser;
+
+  static int? _unknownUser() => null;
 
   /// How far before an unanswered create the lookup reaches: the server's
   /// `created` is its own clock; the same hour of skew the outbox allows.
@@ -32,6 +41,7 @@ final class LocalLabelRepository implements LabelRepository {
   final VikunjaReadClient _read;
   final SyncEngine? _sync;
   final DateTime Function() _now;
+  final int? Function() _currentUserId;
 
   /// Titles whose create may have reached the server unanswered, with the
   /// time of the first such attempt.
@@ -180,17 +190,21 @@ final class LocalLabelRepository implements LabelRepository {
     }
   }
 
-  /// The newest label titled exactly [title] that the server created since
-  /// [lostResponseWindow] before [since] and this device has no row for.
+  /// The newest label titled exactly [title] that this user created since
+  /// [lostResponseWindow] before [since] and this device has no row for;
+  /// another member's label of that title, visible through a shared task,
+  /// is not the one the lost create made.
   Future<Label?> _createdSince(String title, DateTime since) async {
     final stored = {
       for (final label in await _db.labelsDao.loadAll()) label.id,
     };
     final from = since.subtract(lostResponseWindow);
+    final userId = _currentUserId();
     Label? found;
     for (final label in await _sameTitleOnServer(title)) {
       final created = label.created;
       if (label.title != title ||
+          (userId != null && label.createdBy?.id != userId) ||
           stored.contains(label.id) ||
           created == null ||
           created.isBefore(from)) {

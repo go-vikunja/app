@@ -69,7 +69,8 @@ enum OutboxSenderState {
 /// server without an answer (a network failure, a 5xx a proxy answers for
 /// a slow upstream, a kill while the request was in flight) is not simply
 /// sent again: the next attempt first looks for a task with the sent title
-/// created since [lostResponseWindow] before that attempt and adopts it.
+/// that this user created since [lostResponseWindow] before that attempt
+/// and adopts it.
 /// A create never sent whose task was deleted meanwhile goes with the
 /// delete and the row, without a request.
 ///
@@ -912,34 +913,41 @@ final class OutboxSender {
 
   /// The task an earlier, unanswered attempt of this create left on the
   /// server, if there is one: the newest task of the project with the sent
-  /// title, created since [lostResponseWindow] before that attempt, that
-  /// no other create of this device has adopted already; of two created in
-  /// the same second (the server's order among them is undefined) the one
-  /// with the higher id. Null when the create was never sent or nothing is
-  /// found, so it must go (again).
+  /// title, created by this user (for a guest the share's pseudo user)
+  /// since [lostResponseWindow] before that attempt, read page by page
+  /// back to that time, that no other create of this device has adopted
+  /// already; of two created in the same second (the server's order among
+  /// them is undefined) the one with the higher id. Null when the create
+  /// was never sent or nothing is found, so it must go (again). Another
+  /// member's task of the same title is never taken: the ops queued behind
+  /// the create would change it.
   Future<Task?> _recoverCreate(OutboxRow op, NewTask newTask) async {
     final sentAt = op.sentAt;
     if (sentAt == null) return null;
-    final page = await _read.tasks.listInProject(
-      newTask.projectId,
-      TaskQuery(
-        filter: TaskFilters.createdSince(sentAt.subtract(lostResponseWindow)),
-        sort: TaskFilters.byCreatedDescending,
-      ),
+    final query = TaskQuery(
+      filter: TaskFilters.createdSince(sentAt.subtract(lostResponseWindow)),
+      sort: TaskFilters.byCreatedDescending,
     );
     final title = withoutNul(newTask.title);
+    final userId = _currentUserId();
     final adopted = await _db.tasksDao.remappedServerIds();
     Task? found;
-    for (final candidate in page.items) {
-      if (candidate.title != title || adopted.contains(candidate.id)) {
-        continue;
+    search:
+    for (var number = 1; ; number++) {
+      final page = await _read.tasks.listInProject(
+        newTask.projectId,
+        query.copyWith(page: number),
+      );
+      for (final candidate in page.items) {
+        if (found != null && candidate.created != found.created) break search;
+        if (candidate.title != title ||
+            (userId != null && candidate.createdBy?.id != userId) ||
+            adopted.contains(candidate.id)) {
+          continue;
+        }
+        if (found == null || candidate.id > found.id) found = candidate;
       }
-      if (found == null ||
-          (candidate.created == found.created && candidate.id > found.id)) {
-        found = candidate;
-      } else if (candidate.created != found.created) {
-        break;
-      }
+      if (!page.hasMore) break;
     }
     if (found != null) {
       _log.info(

@@ -820,6 +820,58 @@ void main() {
       );
     });
 
+    test('a difference no project shows is walked for once, not on every '
+        'run, until the totals change or a full resync', () async {
+      // A favourite counts in GET /tasks wherever it is, so one deleted
+      // right before its project was archived stays here and in the local
+      // total, where no walk over the live projects finds it.
+      client.allTasks = [
+        for (final t in tasks())
+          if (t.id == 2) t.copyWith(isFavorite: true) else t,
+      ];
+      final sync = await synced();
+      client.allTasks.removeWhere((t) => t.id == 2);
+      replaceProject(2, archived: true);
+      const walk = 'project 1 tasks (all) per_page=1 page=1';
+
+      await sync.refresh();
+
+      expect(requestsFor('project 1 tasks'), [walk]);
+      expect((await state())[SyncStateKeys.unexplainedTotals], '20,21');
+      client.requests.clear();
+
+      await sync.refresh();
+
+      expect(client.requests, quietRun);
+      client.allTasks.removeWhere((t) => t.id == 1);
+      client.requests.clear();
+
+      await sync.refresh();
+
+      expect(requestsFor('project 1 tasks'), [
+        walk,
+        'project 1 tasks id > 0 per_page=50 page=1',
+      ]);
+      expect(await db.tasksDao.find(1), isNull);
+      expect((await state())[SyncStateKeys.unexplainedTotals], isNull);
+      client.requests.clear();
+
+      await sync.refresh();
+
+      expect(requestsFor('project 1 tasks'), [walk]);
+      expect((await state())[SyncStateKeys.unexplainedTotals], '19,20');
+
+      await sync.fullResync();
+
+      expect(await db.tasksDao.find(2), isNull);
+      expect((await state())[SyncStateKeys.unexplainedTotals], isNull);
+      client.requests.clear();
+
+      await sync.refresh();
+
+      expect(requestsFor('project '), isEmpty);
+    });
+
     test('a reconcile pages by id and purges after the last page', () async {
       final sync = await synced(perPage: 4);
       client.allTasks.removeWhere((t) => t.id == 1 || t.id == 29);
@@ -1097,6 +1149,144 @@ void main() {
         records.where((r) => r.level == Level.WARNING).map((r) => r.message),
         contains(contains('ahead of the clock')),
       );
+    });
+
+    test('a full resync with a task updated ahead of the clock keeps the '
+        'newest real one as the watermark', () async {
+      final sync = await synced();
+      client.allTasks.add(
+        task(
+          id: 600,
+          title: 'From the future',
+          projectId: 2,
+          updated: now.add(const Duration(days: 3)),
+        ),
+      );
+      replaceTask(3, title: 'Task 3 edited');
+
+      await sync.fullResync();
+
+      expect((await db.tasksDao.find(600))!.title, 'From the future');
+      expect(
+        (await state())[SyncStateKeys.watermark],
+        edited.toIso8601String(),
+      );
+      client.requests.clear();
+
+      await sync.refresh();
+
+      expect(requestsFor('tasks updated'), [
+        "tasks updated >= '2026-10-10T11:58:00Z' per_page=50 page=1",
+      ]);
+    });
+
+    test(
+      'the watermark is what the delta read: a row written here later in '
+      'the run does not raise it past what others changed meanwhile',
+      () async {
+        final sync = await synced();
+        replaceTask(7, title: 'Task 7 edited');
+        client.beforeRequest = (request) async {
+          if (request != 'tasks (all) per_page=1 page=1') return;
+          // Someone else's edit after the delta, then a Done tapped here
+          // whose answer the outbox stores.
+          replaceTask(
+            5,
+            title: 'Task 5 edited elsewhere',
+            updated: DateTime.utc(2026, 10, 10, 12, 10),
+          );
+          final doneHere = DateTime.utc(2026, 10, 10, 12, 30);
+          replaceTask(3, done: true, updated: doneHere);
+          await db.tasksDao.upsertAll([
+            task(id: 3, title: 'Task 3', done: true, updated: doneHere),
+          ]);
+        };
+
+        await sync.refresh();
+
+        expect(
+          (await state())[SyncStateKeys.watermark],
+          edited.toIso8601String(),
+        );
+        client.beforeRequest = null;
+
+        await sync.refresh();
+
+        expect((await db.tasksDao.find(5))!.title, 'Task 5 edited elsewhere');
+      },
+    );
+
+    test("a full resync's watermark is the newest `updated` its task phase "
+        'began with, not a row written here after it', () async {
+      final sync = await synced(perPage: 1);
+      replaceTask(5, title: 'Task 5 edited');
+      replaceTask(7, title: 'Task 7 edited');
+      client.beforeRequest = (request) async {
+        if (!request.contains("updated >= '2026-10-10T11:58:00Z' && id > 7")) {
+          return;
+        }
+        // The pass has read tasks 5 and 7; someone else edits 5, and a
+        // Done tapped here is stored from its answer.
+        replaceTask(
+          5,
+          title: 'Task 5 edited again',
+          updated: DateTime.utc(2026, 10, 10, 12, 10),
+        );
+        final doneHere = DateTime.utc(2026, 10, 10, 12, 30);
+        replaceTask(3, done: true, updated: doneHere);
+        await db.tasksDao.upsertAll([
+          task(id: 3, title: 'Task 3', done: true, updated: doneHere),
+        ]);
+      };
+
+      await sync.fullResync();
+
+      expect(
+        (await state())[SyncStateKeys.watermark],
+        edited.toIso8601String(),
+      );
+      client.beforeRequest = null;
+
+      await sync.refresh();
+
+      expect((await db.tasksDao.find(5))!.title, 'Task 5 edited again');
+    });
+
+    test("a full resync's watermark is not a later page of its catch-up "
+        'pass, which walks by id past an edit it has read', () async {
+      final sync = await synced(perPage: 1);
+      replaceTask(5, title: 'Task 5 edited');
+      replaceTask(7, title: 'Task 7 edited');
+      client.beforeRequest = (request) async {
+        if (!request.contains("updated >= '2026-10-10T11:58:00Z' && id > 5")) {
+          return;
+        }
+        // The pass has read task 5; someone edits it again, then task 9,
+        // which the pass reads later.
+        replaceTask(
+          5,
+          title: 'Task 5 edited again',
+          updated: DateTime.utc(2026, 10, 10, 12, 10),
+        );
+        replaceTask(
+          9,
+          title: 'Task 9 edited',
+          updated: DateTime.utc(2026, 10, 10, 12, 30),
+        );
+      };
+
+      await sync.fullResync();
+
+      expect((await db.tasksDao.find(9))!.title, 'Task 9 edited');
+      expect(
+        (await state())[SyncStateKeys.watermark],
+        edited.toIso8601String(),
+      );
+      client.beforeRequest = null;
+
+      await sync.refresh();
+
+      expect((await db.tasksDao.find(5))!.title, 'Task 5 edited again');
     });
 
     test('a full resync sets the watermark afresh, so one that lies in the '

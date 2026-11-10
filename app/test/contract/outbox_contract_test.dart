@@ -258,6 +258,7 @@ void main() {
             writeClient: writes,
             readClient: reads,
             sync: engine,
+            currentUserId: () => user.id,
           );
           addTearDown(sender.dispose);
           repository = LocalTaskRepository(db, engine, sender, writes);

@@ -80,6 +80,13 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// whose create is still queued.
   Expression<bool> get _onServer => tasks.id.isBiggerThanValue(0);
 
+  /// The tasks `GET /tasks` returns, given the archived projects and their
+  /// subprojects: those outside them, and the user's favourites anywhere,
+  /// done ones included (2.8.0, on v1 and v2).
+  Expression<bool> _acrossProjects(List<int> archived) => archived.isEmpty
+      ? const Constant(true)
+      : tasks.projectId.isNotIn(archived) | tasks.isFavorite.equals(true);
+
   /// A row with a queued op is never purged: it exists on the server or is
   /// being deleted anyway, and the pull after the op is sent sorts it out.
   Expression<bool> get _purgeable =>
@@ -285,22 +292,16 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         (openOnly ? tasks.done.equals(false) : const Constant(true)),
   );
 
-  /// The tasks a saved filter covers: those outside archived projects and
-  /// their subprojects, and the favourite ones anywhere, as the server's
-  /// `GET /tasks`; with [openOnly] the open ones.
+  /// The tasks a saved filter covers, those of `GET /tasks`
+  /// ([_acrossProjects]); with [openOnly] the open ones.
   Future<List<FilterRow>> loadFilterRowsOfSavedFilters({
     bool openOnly = false,
   }) async {
-    final archived = await _archivedProjectIds();
     final candidates = openOnly
         ? _visible & tasks.done.equals(false)
         : _visible;
     return await _loadFilterRows(
-      archived.isEmpty
-          ? candidates
-          : candidates &
-                (tasks.projectId.isNotIn(archived) |
-                    tasks.isFavorite.equals(true)),
+      candidates & _acrossProjects(await _archivedProjectIds()),
     );
   }
 
@@ -741,15 +742,13 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     return query.map((row) => row.read(count)!).getSingle();
   }
 
-  /// The tasks outside [projectIds]: with the archived projects given, the
-  /// tasks `GET /tasks` would return.
-  Future<int> countNotInProjects(Iterable<int> projectIds) {
-    final excluded = projectIds.toList();
-    if (excluded.isEmpty) return count();
+  /// [count] over the tasks `GET /tasks` returns, given the archived
+  /// projects and their subprojects ([_acrossProjects]).
+  Future<int> countAcrossProjects(Iterable<int> archived) {
     final total = tasks.id.count();
     final query = selectOnly(tasks)
       ..addColumns([total])
-      ..where(tasks.projectId.isNotIn(excluded) & _onServer);
+      ..where(_acrossProjects(archived.toList()) & _onServer);
     return query.map((row) => row.read(total)!).getSingle();
   }
 
@@ -801,22 +800,6 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
       ..addColumns([tasks.id])
       ..where(where);
     return query.map((row) => row.read(tasks.id)!).get();
-  }
-
-  /// The newest server `updated` of any task, at most [notAfter]; null
-  /// without one.
-  Future<DateTime?> maxUpdated({DateTime? notAfter}) async {
-    final newest = tasks.updated.max();
-    final query = selectOnly(tasks)..addColumns([newest]);
-    if (notAfter != null) {
-      query.where(
-        tasks.updated.isSmallerOrEqualValue(
-          const EpochMillis().toSql(notAfter),
-        ),
-      );
-    }
-    final millis = await query.map((row) => row.read(newest)).getSingle();
-    return millis == null ? null : const EpochMillis().fromSql(millis);
   }
 
   Future<int> purgeInProjects(Iterable<int> projectIds) => transaction(

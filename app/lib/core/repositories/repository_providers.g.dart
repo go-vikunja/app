@@ -1646,7 +1646,7 @@ final class AccountLabelRepositoryProvider
 }
 
 String _$accountLabelRepositoryHash() =>
-    r'a4d33e5e8085a84ccec355e5053a055fd97b6e1a';
+    r'be44302fa163e6d0179134ea2dc4c8f3564eb64f';
 
 final class AccountLabelRepositoryFamily extends $Family
     with $FunctionalFamilyOverride<LabelRepository, String> {

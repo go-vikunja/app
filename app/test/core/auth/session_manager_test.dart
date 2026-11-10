@@ -1,16 +1,45 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/server_connections.dart';
 
 const _accountId = 'a1';
 const _raceLost = RefreshRaceLost(message: 'already used');
+
+typedef _Call = Future<Object?> Function(SessionManager manager);
+
+final class _FlakySecureStore implements SecureStore {
+  new(this._store);
+
+  final SecureStore _store;
+  bool failNextRead = false;
+
+  @override
+  Future<String?> read(String key) async {
+    if (failNextRead) {
+      failNextRead = false;
+      throw PlatformException(code: '-25308');
+    }
+    return await _store.read(key);
+  }
+
+  @override
+  Future<void> write(String key, String value) => _store.write(key, value);
+
+  @override
+  Future<void> delete(String key) => _store.delete(key);
+
+  @override
+  Future<void> deleteAll() => _store.deleteAll();
+}
 
 void main() {
   late DateTime now;
@@ -405,6 +434,94 @@ void main() {
       );
       expect(refreshCalls, hasLength(1));
     });
+
+    for (final (name, call) in <(String, _Call)>[
+      ('the next call', (manager) => manager.validAccessToken()),
+      (
+        'a rejection of an older token',
+        (manager) => manager.refreshAfterRejection('older-access-token'),
+      ),
+      ('settling', (manager) => manager.settle()),
+    ]) {
+      test('tokens kept after a failed read are stored at $name, so a '
+          'sibling that refreshes from storage keeps the session', () async {
+        final flaky = _FlakySecureStore(secureStore);
+        tokenStore = TokenStore(flaky);
+        final old = await store(expiresIn: Duration.zero);
+        // Like Vikunja: a refresh token works once.
+        var valid = old.refreshToken;
+        Future<TokenSet> server(String refreshToken) async {
+          if (refreshToken != valid) {
+            throw const SessionEnded(
+              SessionEndReason.invalidRefreshToken,
+              code: 16002,
+            );
+          }
+          final fresh = issueTokens(issuedAt: now);
+          valid = fresh.refreshToken;
+          return fresh;
+        }
+
+        onRefresh = (refreshToken) async {
+          final fresh = await server(refreshToken);
+          flaky.failNextRead = true;
+          return fresh;
+        };
+        final manager = createManager();
+        await manager.validAccessToken();
+        expect(await storedRefreshToken(), old.refreshToken);
+
+        await call(manager);
+
+        expect(await storedRefreshToken(), valid);
+        now = now.add(const Duration(minutes: 10));
+        final sibling = SessionManager(
+          accountId: _accountId,
+          tokenStore: TokenStore(secureStore),
+          refresh: server,
+          onSessionEnded: (failure) async => ended.add(failure),
+          clock: () => now,
+          sleep: (_) async {},
+        );
+        await sibling.validAccessToken();
+        expect(ended, isEmpty);
+      });
+    }
+
+    test('a refresh waits for a write of kept tokens that has started, so '
+        'the older tokens do not land last', () async {
+      final flaky = _FlakySecureStore(secureStore);
+      tokenStore = TokenStore(flaky);
+      final old = await store(expiresIn: Duration.zero);
+      final t1 = issueTokens(issuedAt: now);
+      final t2 = issueTokens(issuedAt: now);
+      final rotations = [t1, t2];
+      onRefresh = (_) async {
+        flaky.failNextRead = refreshCalls.length == 1;
+        return rotations.removeAt(0);
+      };
+      final manager = createManager();
+      await manager.validAccessToken();
+      final gate = Completer<void>();
+      var held = false;
+      secureStore.beforeWrite = (_) {
+        if (held) return Future.value();
+        held = true;
+        return gate.future;
+      };
+
+      final call = manager.validAccessToken();
+      await pumpEventQueue();
+      final refresh = manager.refreshNow();
+      await pumpEventQueue();
+      expect(refreshCalls, [old.refreshToken]);
+
+      gate.complete();
+      expect(await call, t1.accessToken);
+      await refresh;
+      expect(refreshCalls, [old.refreshToken, t1.refreshToken]);
+      expect(await storedRefreshToken(), t2.refreshToken);
+    });
   });
 
   group('failures', () {
@@ -591,6 +708,95 @@ void main() {
       expect(refreshCalls, hasLength(1));
     });
 
+    test('a failed read before storing the rotated tokens keeps them in '
+        'memory and stores them before the next refresh', () async {
+      final flaky = _FlakySecureStore(secureStore);
+      tokenStore = TokenStore(flaky);
+      final old = await store(expiresIn: Duration.zero);
+      final fresh = issueTokens(issuedAt: now);
+      final next = issueTokens(issuedAt: now.add(const Duration(minutes: 10)));
+      final rotations = [fresh, next];
+      final storedAtRefresh = <String?>[];
+      onRefresh = (_) async {
+        storedAtRefresh.add(await storedRefreshToken());
+        flaky.failNextRead = refreshCalls.length == 1;
+        return rotations.removeAt(0);
+      };
+      final manager = createManager();
+
+      expect(await manager.validAccessToken(), fresh.accessToken);
+      expect(await storedRefreshToken(), old.refreshToken);
+
+      now = now.add(const Duration(minutes: 10));
+      expect(await manager.validAccessToken(), next.accessToken);
+      expect(refreshCalls, [old.refreshToken, fresh.refreshToken]);
+      expect(storedAtRefresh, [old.refreshToken, fresh.refreshToken]);
+      expect(await storedRefreshToken(), next.refreshToken);
+      expect(ended, isEmpty);
+    });
+
+    test('after a failed read, the rotated tokens do not replace a newer '
+        'sign-in', () async {
+      final flaky = _FlakySecureStore(secureStore);
+      tokenStore = TokenStore(flaky);
+      await store(expiresIn: Duration.zero);
+      final signIn = issueTokens(
+        issuedAt: now.add(const Duration(minutes: 5)),
+        sessionId: 'session-2',
+      );
+      onRefresh = (_) async {
+        // A sign-in in another isolate while the refresh is on the network.
+        await tokenStore.write(_accountId, signIn);
+        flaky.failNextRead = true;
+        return issueTokens(issuedAt: now);
+      };
+      final manager = createManager();
+      await manager.validAccessToken();
+      expect(await storedRefreshToken(), signIn.refreshToken);
+
+      now = now.add(const Duration(minutes: 10));
+      expect(await manager.validAccessToken(), signIn.accessToken);
+      expect(await storedRefreshToken(), signIn.refreshToken);
+      expect(refreshCalls, hasLength(1));
+      expect(ended, isEmpty);
+    });
+
+    test('a failed read after a write that failed twice keeps the tokens '
+        'tied to the refresh token storage still holds', () async {
+      final flaky = _FlakySecureStore(secureStore);
+      tokenStore = TokenStore(flaky);
+      final old = await store(expiresIn: Duration.zero);
+      final t1 = issueTokens(issuedAt: now);
+      final t2 = issueTokens(issuedAt: now.add(const Duration(minutes: 10)));
+      final t3 = issueTokens(issuedAt: now.add(const Duration(minutes: 20)));
+      final rotations = [t1, t2, t3];
+      var failWrites = true;
+      secureStore.beforeWrite = (_) async {
+        if (failWrites) throw StateError('keystore');
+      };
+      onRefresh = (_) async {
+        flaky.failNextRead = refreshCalls.length == 2;
+        return rotations.removeAt(0);
+      };
+      final manager = createManager();
+      expect(await manager.validAccessToken(), t1.accessToken);
+
+      now = now.add(const Duration(minutes: 10));
+      expect(await manager.validAccessToken(), t2.accessToken);
+      expect(await storedRefreshToken(), old.refreshToken);
+
+      failWrites = false;
+      now = now.add(const Duration(minutes: 10));
+      expect(await manager.validAccessToken(), t3.accessToken);
+      expect(refreshCalls, [
+        old.refreshToken,
+        t1.refreshToken,
+        t2.refreshToken,
+      ]);
+      expect(await storedRefreshToken(), t3.refreshToken);
+      expect(ended, isEmpty);
+    });
+
     test('no stored tokens means the session ended', () async {
       await expectLater(
         createManager().validAccessToken(),
@@ -620,6 +826,29 @@ void main() {
       await pending;
       expect(await storedRefreshToken(), stored.refreshToken);
       expect(secureStore.operations, isNot(contains(startsWith('write'))));
+      expect(ended, isEmpty);
+    });
+
+    test('discards a late refresh result even when storage cannot be '
+        'read', () async {
+      final flaky = _FlakySecureStore(secureStore);
+      tokenStore = TokenStore(flaky);
+      final stored = await store(expiresIn: Duration.zero);
+      final response = Completer<TokenSet>();
+      onRefresh = (_) => response.future;
+      final manager = createManager();
+
+      final pending = expectLater(
+        manager.validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+      await pumpEventQueue();
+      await manager.retire();
+
+      flaky.failNextRead = true;
+      response.complete(issueTokens(issuedAt: now));
+      await pending;
+      expect(await storedRefreshToken(), stored.refreshToken);
       expect(ended, isEmpty);
     });
 

@@ -328,7 +328,7 @@ Every sign-in starts with an empty browser session and shows the login form ([D2
 
 ## Documentation
 
-- [Architecture](docs/architecture.md): what exists after steps 1 to 17, 20 to 32, 35a to 35c, 36a to 36c, 36e, 37a to 37c and 37e to 37h and the owner's UI review, what steps 18, 19, 36g and 37d add (in review), and what is planned.
+- [Architecture](docs/architecture.md): what exists after steps 1 to 17, 20 to 32, 35a to 35c, 36a to 36c, 36e, 37a to 37c and 37e to 37h and the owner's UI review, what steps 18, 19, 36g, 37d and 37i add (in review), and what is planned.
 - [Threat model](docs/threat-model.md): assets, trust boundaries, entry points, mitigations with their tests, residual risks with their decisions, and the security sign-off checklist.
 - [Beta](docs/beta.md): how the beta runs, from the owner's steps before the first tag to the testers, the feedback and Play's production application.
 - [Releasing](docs/releasing.md): the release checklist: the project's settings and the signing variables, the website and the store consoles in order, the version and the tag, what the release job publishes, the manual Play upload, retries and the dry run, and the iOS build's way to TestFlight from the Mac with its privacy manifests and export compliance.

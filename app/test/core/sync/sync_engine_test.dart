@@ -145,15 +145,18 @@ void main() {
       () async {
         await engine().ensureInitialSync();
 
-        // The third request finds the newest `updated` the server has, the
-        // bound of the last one: the pass over what changed during the run,
-        // before the purge. The sample tasks carry none, so the bound is
-        // the floor.
+        // The third request finds the newest `updated` the server has up to
+        // an hour ahead of the clock, the bound of the last one: the pass
+        // over what changed during the run, before the purge. The sample
+        // tasks carry none, so the bound is the floor.
         const catchUp = "tasks updated >= '1970-01-01T00:00:00Z' && id > 0";
+        const probe =
+            "tasks updated <= '2026-10-10T13:00:00Z' sort=updated desc "
+            'per_page=1 page=1';
         expect(client.requests.where((r) => r.startsWith('tasks ')), [
           'tasks done = false per_page=1 page=1',
           'tasks done = true per_page=1 page=1',
-          'tasks (all) sort=updated desc per_page=1 page=1',
+          probe,
           'tasks done = false && id > 0 per_page=50 page=1',
           'tasks done = false && id > 50 per_page=50 page=1',
           'tasks done = false && id > 100 per_page=50 page=1',

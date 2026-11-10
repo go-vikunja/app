@@ -213,7 +213,7 @@ void main() {
       // The counts mirror the server, which still holds the task.
       expect(await db.tasksDao.count(), 3);
       expect(await db.tasksDao.countInProject(7), 2);
-      expect(await db.tasksDao.countNotInProjects([8]), 2);
+      expect(await db.tasksDao.countAcrossProjects([8]), 2);
     });
 
     test('a second delete changes nothing', () async {

@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/settings/current_user_store.dart';
 import 'package:vikunja_mobile/core/sync/archived_projects.dart';
 import 'package:vikunja_mobile/core/sync/incremental_run.dart';
 import 'package:vikunja_mobile/core/sync/list_downloads.dart';
+import 'package:vikunja_mobile/core/sync/newest_updated.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/stable_pages.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
@@ -388,6 +389,7 @@ final class DefaultSyncEngine implements SyncEngine {
       report: (phase, {done = 0, total}) => _emit(
         SyncRunning(phase: phase, done: done, total: total, initial: false),
       ),
+      newestUpdated: _newestUpdatedTracker(),
     );
     _log.info('Starting incremental sync run $runId from ${_watermark!}');
     await _guarded(runId, () => run.phase.name, () async {
@@ -405,7 +407,11 @@ final class DefaultSyncEngine implements SyncEngine {
       );
       await _db.transaction(() async {
         await _holdLease();
-        await _writeCompletion(finishedAt, full: false);
+        await _writeCompletion(
+          finishedAt,
+          full: false,
+          newest: run.newestUpdated,
+        );
       });
       _log.info('Sync run $runId done');
       _emit(SyncIdle(lastSyncedAt: finishedAt));
@@ -614,7 +620,10 @@ final class DefaultSyncEngine implements SyncEngine {
   /// completed again after the done pass had, is in neither list and would
   /// be purged as gone. Such a change lies above the newest `updated` the
   /// server had when the task phase began, a server time, so the device
-  /// clock plays no part. Tasks of archived projects cannot change.
+  /// clock plays no part. Tasks of archived projects cannot change. That
+  /// newest `updated` is also the watermark, not what the pass reads: it
+  /// walks by id, so a later page can lie above an edit to an id it has
+  /// passed, or one made before a resumed pass started.
   Future<void> _finish(SyncCheckpoint checkpoint) async {
     _report(checkpoint);
     final since = switch (checkpoint.newestUpdatedAtStart) {
@@ -627,6 +636,8 @@ final class DefaultSyncEngine implements SyncEngine {
       changedSince: since,
       report: false,
     );
+    final newest = _newestUpdatedTracker()
+      ..addAll([checkpoint.newestUpdatedAtStart]);
     await downloadOverviewFilter(
       db: _db,
       client: _client,
@@ -644,34 +655,35 @@ final class DefaultSyncEngine implements SyncEngine {
     final purged = await _db.transaction(() async {
       await _holdLease();
       final purged = await _db.tasksDao.purgeNotInRun(caughtUp.runId);
-      await _writeCompletion(finishedAt, full: true);
+      await _writeCompletion(finishedAt, full: true, newest: newest);
       return purged;
     });
     _log.info('Sync run ${checkpoint.runId} done, $purged tasks purged');
     _emit(SyncIdle(lastSyncedAt: finishedAt));
   }
 
-  /// The watermark is the newest `updated` the database holds within
-  /// [clockTolerance] of the device clock; the next incremental run starts
-  /// [catchUpOverlap] below it. An incremental run never lowers it, a full
-  /// run sets it afresh, so a value a fast clock once stored goes with the
-  /// daily full pull.
+  NewestUpdated _newestUpdatedTracker() =>
+      NewestUpdated(now: _now, tolerance: clockTolerance);
+
+  /// The watermark is the [newest] `updated` the run read on `GET /tasks`
+  /// in `(updated, id)` order, for a full run the newest when its task
+  /// phase began; the next incremental run starts [catchUpOverlap] below
+  /// it. An incremental run never lowers it, a full run sets it afresh, so
+  /// a value a fast clock once stored goes with the daily full pull.
   Future<void> _writeCompletion(
     DateTime finishedAt, {
     required bool full,
+    required NewestUpdated newest,
   }) async {
-    final bound = finishedAt.add(clockTolerance);
-    final newest = await _db.tasksDao.maxUpdated(notAfter: bound);
-    final beyond = await _db.tasksDao.maxUpdated();
-    if (beyond != null && beyond.isAfter(bound)) {
+    if (newest.aheadOfClock case final ahead?) {
       _log.warning(
-        'A task updated at $beyond lies ahead of the clock; the watermark '
-        'stays below $bound',
+        'A task updated at $ahead lies ahead of the clock; the watermark '
+        'leaves it out',
       );
     }
     final watermark = [
       if (!full) _watermark,
-      newest,
+      newest.value,
       watermarkFloor,
     ].nonNulls.reduce((a, b) => a.isAfter(b) ? a : b);
     await _db.syncStateDao.write({
@@ -679,6 +691,7 @@ final class DefaultSyncEngine implements SyncEngine {
       SyncStateKeys.pendingWholePull: null,
       SyncStateKeys.lastSyncedAt: finishedAt.toIso8601String(),
       if (full) SyncStateKeys.lastFullSyncAt: finishedAt.toIso8601String(),
+      if (full) SyncStateKeys.unexplainedTotals: null,
       SyncStateKeys.watermark: watermark.toIso8601String(),
     });
     _lastSyncedAt = finishedAt;
@@ -758,12 +771,19 @@ final class DefaultSyncEngine implements SyncEngine {
     }
   }
 
-  /// The newest task `updated` the server has: everything that changes from
-  /// now on lies above it. Null for an account without live tasks.
+  /// The newest task `updated` the server has within [clockTolerance] of
+  /// the device clock: everything that changes from now on lies above it.
+  /// A row further ahead, from a server clock that once ran fast, would put
+  /// the catch-up pass and the watermark above every real change. Null for
+  /// an account without such live tasks.
   Future<DateTime?> _newestUpdated() async {
     _checkDisposed();
     final page = await _client.tasks.list(
-      const TaskQuery(sort: TaskFilters.byUpdatedDescending, perPage: 1),
+      TaskQuery(
+        filter: TaskFilters.updatedUntil(_now().toUtc().add(clockTolerance)),
+        sort: TaskFilters.byUpdatedDescending,
+        perPage: 1,
+      ),
     );
     return page.items.firstOrNull?.updated;
   }

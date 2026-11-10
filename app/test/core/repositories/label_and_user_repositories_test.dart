@@ -219,6 +219,65 @@ void main() {
       expect(read.requests, hasLength(2));
     });
 
+    group('with the user known', () {
+      const me = User(id: 5, username: 'me');
+      const ana = User(id: 6, username: 'ana');
+      const errand = NewLabel(title: 'errand');
+
+      setUp(() {
+        repository = LocalLabelRepository(
+          db,
+          write,
+          read,
+          sync: sync,
+          now: () => now,
+          currentUserId: () => me.id,
+        );
+        addTearDown(repository.dispose);
+        write.beforeRequest = (_) =>
+            throw const NetworkFailure(NetworkProblem.timeout);
+      });
+
+      test("a lost create adopts the user's own label, not another "
+          "member's of that title", () async {
+        read.allLabels = [
+          Label(id: 30, title: 'errand', created: now, createdBy: ana),
+          Label(
+            id: 29,
+            title: 'errand',
+            created: now.subtract(const Duration(minutes: 5)),
+            createdBy: me,
+          ),
+        ];
+
+        final found = await repository.create(errand);
+
+        expect(found.id, 29);
+      });
+
+      test("another member's label alone is no answer: the failure "
+          'propagates and the next create posts', () async {
+        read.allLabels = [
+          Label(id: 30, title: 'errand', created: now, createdBy: ana),
+        ];
+
+        await expectLater(
+          repository.create(errand),
+          throwsA(isA<NetworkFailure>()),
+        );
+
+        write.beforeRequest = null;
+        final created = await repository.create(errand);
+
+        expect(created.id, 900);
+        expect(write.requests, ['create label errand', 'create label errand']);
+        expect(read.requests, [
+          'labels page 1 search errand',
+          'labels page 1 search errand',
+        ]);
+      });
+    });
+
     test('findOrCreate adopts a label the server has under that title, '
         'ignoring case, instead of making a second one', () async {
       read.allLabels = [

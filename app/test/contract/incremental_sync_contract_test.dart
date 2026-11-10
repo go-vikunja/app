@@ -7,8 +7,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/sync/archived_projects.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
+import 'package:vikunja_mobile/core/sync/task_filters.dart';
 
 import '../helpers/test_database.dart';
 import 'helpers.dart';
@@ -404,6 +406,143 @@ void main() {
           expect(
             await db.tasksDao.count(),
             _liveTasks + 2 - 2 + 3 + _soonArchivedTasks,
+          );
+        });
+
+        test('the newest `updated` up to a bound leaves out the tasks above '
+            'it over ${apiVersion.pathSegment}', () async {
+          final user = await registerAndLogin(dio, connection);
+          final seeder = Seeder(dio, connection, user);
+          final projectId = await seeder.create('/projects', {'title': 'P'});
+          final firstId = await seeder.create('/projects/$projectId/tasks', {
+            'title': 'First',
+          });
+          // The server's timestamps have second precision.
+          await Future<void>.delayed(const Duration(milliseconds: 2100));
+          final secondId = await seeder.create('/projects/$projectId/tasks', {
+            'title': 'Second',
+          });
+          final only = onlyApiVersion(connection, apiVersion);
+          final client = createReadClient(
+            dio: createAuthenticatedDio(
+              base: dio,
+              connection: only,
+              tokens: StaticJwt(user.jwt),
+            ),
+            connection: only,
+          );
+          Future<Task?> newestUntil(DateTime bound) async =>
+              (await client.tasks.list(
+                TaskQuery(
+                  filter: TaskFilters.updatedUntil(bound),
+                  sort: TaskFilters.byUpdatedDescending,
+                  perPage: 1,
+                ),
+              )).items.firstOrNull;
+
+          final second = (await newestUntil(
+            DateTime.now().toUtc().add(DefaultSyncEngine.clockTolerance),
+          ))!;
+          expect(second.id, secondId);
+          final atSecond = await newestUntil(second.updated!);
+          expect(atSecond?.id, secondId);
+          final below = await newestUntil(
+            second.updated!.subtract(const Duration(seconds: 1)),
+          );
+          expect(below?.id, firstId);
+          expect(await newestUntil(DateTime.utc(2000)), isNull);
+        });
+
+        test('a favourite in an archived project counts on both sides, so '
+            "no project's count is walked after the archive over "
+            '${apiVersion.pathSegment}', () async {
+          final user = await registerAndLogin(dio, connection);
+          final seeder = Seeder(dio, connection, user);
+          final liveId = await seeder.create('/projects', {'title': 'Live'});
+          final starredId = await seeder.create('/projects', {
+            'title': 'Starred',
+          });
+          final childId = await seeder.create('/projects', {
+            'title': 'Starred child',
+            'parent_project_id': starredId,
+          });
+          for (var i = 1; i <= 3; i++) {
+            await seeder.create('/projects/$liveId/tasks', {
+              'title': 'Live $i',
+            });
+          }
+          await seeder.create('/projects/$starredId/tasks', {
+            'title': 'Favourite',
+            'is_favorite': true,
+          });
+          await seeder.create('/projects/$starredId/tasks', {'title': 'Plain'});
+          await seeder.create('/projects/$childId/tasks', {
+            'title': 'Done favourite below',
+            'is_favorite': true,
+            'done': true,
+          });
+          final only = onlyApiVersion(connection, apiVersion);
+          final requests = <Uri>[];
+          final authenticated = createAuthenticatedDio(
+            base: dio,
+            connection: only,
+            tokens: StaticJwt(user.jwt),
+            interceptors: [
+              InterceptorsWrapper(
+                onRequest: (options, handler) {
+                  requests.add(options.uri);
+                  handler.next(options);
+                },
+              ),
+            ],
+          );
+          final client = createReadClient(dio: authenticated, connection: only);
+          final db = testDatabase();
+          final engine = DefaultSyncEngine(
+            db: db,
+            client: client,
+            perPage: only.info.maxItemsPerPage,
+            currentUser: AccountApi(
+              authenticated,
+              only,
+            ).currentUserWithSettings,
+          );
+          addTearDown(engine.dispose);
+          await engine.ensureInitialSync();
+          await seeder.patch('/projects/$starredId', {'is_archived': true});
+          Iterable<Uri> countWalk() => requests.where(
+            (uri) =>
+                uri.path.contains('/projects/') &&
+                uri.path.endsWith('/tasks') &&
+                uri.queryParameters['per_page'] == '1',
+          );
+          requests.clear();
+
+          await engine.refresh();
+
+          printOnFailure(
+            [for (final uri in requests) '${uri.path}?${uri.query}'].join('\n'),
+          );
+          expect(countWalk(), isEmpty);
+          final archived = archivedProjectIds(await db.projectsDao.loadAll());
+          expect(archived, unorderedEquals([starredId, childId]));
+          final probe = await client.tasks.list(const TaskQuery(perPage: 1));
+          expect(probe.total ?? probe.totalPages, 3 + 2);
+          expect(await db.tasksDao.countAcrossProjects(archived), 3 + 2);
+          requests.clear();
+
+          await engine.refresh();
+
+          expect(requests.map((uri) => uri.pathSegments.last), [
+            'user',
+            'projects',
+            'labels',
+            'tasks',
+            'tasks',
+          ]);
+          expect(
+            (await db.syncStateDao.readAll())[SyncStateKeys.unexplainedTotals],
+            isNull,
           );
         });
       }

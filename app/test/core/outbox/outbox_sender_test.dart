@@ -46,7 +46,7 @@ void main() {
     ),
   ];
 
-  OutboxSender sender({DateTime Function()? clock}) {
+  OutboxSender sender({DateTime Function()? clock, int? userId}) {
     final sender = OutboxSender(
       db: db,
       writeClient: write,
@@ -55,6 +55,7 @@ void main() {
       now: clock ?? () => now,
       createTimer: timers.create,
       random: ZeroRandom(),
+      currentUserId: () => userId,
     );
     addTearDown(sender.dispose);
     return sender;
@@ -1505,6 +1506,128 @@ void main() {
       expect(await db.tasksDao.findRow(first), isNull);
       expect(await db.tasksDao.findRow(second), isNull);
       expect(await db.outboxDao.count(), 0);
+    });
+
+    group('only a task the own user created is adopted', () {
+      const me = User(id: 5, username: 'me', name: 'Me');
+      const ana = User(id: 6, username: 'ana', name: 'Ana');
+
+      void storedBy(User creator) => write.serverTasks[100] = write
+          .serverTasks[100]!
+          .copyWith(createdBy: creator);
+
+      void loseAnswers() =>
+          write.afterRequest = (_) =>
+              fail(const NetworkFailure(NetworkProblem.timeout));
+
+      test(
+        "another member's task of the same title is not taken over: the "
+        'create goes again and the ops behind it reach the own task',
+        () async {
+          final id = await create();
+          write.beforeRequest = (_) =>
+              fail(const NetworkFailure(NetworkProblem.timeout));
+          final outbox = sender(userId: me.id);
+          await outbox.drain();
+          expect((await ops()).single.sentAt, now);
+          await queue(id, done);
+          write.serverTasks[50] = sampleTask(
+            id: 50,
+            title: 'Buy milk',
+            projectId: 7,
+            created: now,
+            createdBy: ana,
+          );
+          mirrorServer();
+
+          write.beforeRequest = null;
+          await outbox.sendNow();
+
+          expect(write.requests, [
+            'create Buy milk',
+            'create Buy milk',
+            'update 100',
+          ]);
+          expect(await db.tasksDao.resolveId(id), 100);
+          expect(write.serverTasks[100]!.done, isTrue);
+          expect(write.serverTasks[50]!.done, isFalse);
+          expect(await db.outboxDao.count(), 0);
+        },
+      );
+
+      test('the own task is found on a later page of the window', () async {
+        read = FakeSyncClient(maxPerPage: 2)
+          ..allProjects = [sampleProject(id: 7, title: 'Work')];
+        final id = await create();
+        loseAnswers();
+        final outbox = sender(userId: me.id);
+        await outbox.drain();
+        storedBy(me);
+        // Created after it, so the first page holds only these two.
+        write.serverTasks[60] = sampleTask(
+          id: 60,
+          title: 'Buy milk',
+          projectId: 7,
+          created: now.add(const Duration(minutes: 2)),
+          createdBy: ana,
+        );
+        write.serverTasks[61] = sampleTask(
+          id: 61,
+          title: 'Call Ana',
+          projectId: 7,
+          created: now.add(const Duration(minutes: 1)),
+          createdBy: me,
+        );
+        mirrorServer();
+
+        write.afterRequest = null;
+        await outbox.sendNow();
+
+        expect(write.requests, ['create Buy milk']);
+        const window =
+            "project 7 tasks created >= '2026-10-10T11:00:00Z' "
+            'sort=created desc per_page=null';
+        expect(read.requests, ['$window page=1', '$window page=2']);
+        expect(await db.tasksDao.resolveId(id), 100);
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test("a guest's create is matched by the share's pseudo user", () async {
+        const guest = User(
+          id: -12,
+          username: 'link-share-12',
+          name: 'Link Share',
+        );
+        const otherGuest = User(
+          id: -13,
+          username: 'link-share-13',
+          name: 'Link Share',
+        );
+        // The id of the share is someone's user id as well.
+        const bob = User(id: 12, username: 'bob', name: 'Bob');
+        final id = await create();
+        loseAnswers();
+        final outbox = sender(userId: guest.id);
+        await outbox.drain();
+        storedBy(guest);
+        for (final (taskId, creator) in [(60, bob), (61, otherGuest)]) {
+          write.serverTasks[taskId] = sampleTask(
+            id: taskId,
+            title: 'Buy milk',
+            projectId: 7,
+            created: now.add(const Duration(minutes: 1)),
+            createdBy: creator,
+          );
+        }
+        mirrorServer();
+
+        write.afterRequest = null;
+        await outbox.sendNow();
+
+        expect(write.requests, ['create Buy milk']);
+        expect(await db.tasksDao.resolveId(id), 100);
+        expect(await db.outboxDao.count(), 0);
+      });
     });
 
     test('the create payload the sender sends is the merged one', () async {

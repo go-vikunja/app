@@ -195,6 +195,110 @@ void main() {
       });
     });
 
+    group('a reminder at the due time', () {
+      test('a relative reminder of zero leaves it to the due date; the '
+          'other reminders keep their keys', () {
+        final desired = plan([
+          own(
+            id: 1,
+            due: inTwoHours,
+            reminders: [
+              TaskReminder(
+                reminder: inTwoHours,
+                relativeTo: ReminderRelativeTo.dueDate,
+              ),
+              TaskReminder(reminder: inAnHour),
+            ],
+          ),
+        ]);
+
+        expect(desired.map((d) => d.key), ['1:reminder:1', '1:due']);
+        expect(desired.last.kind, ScheduledNotificationKind.dueDate);
+        expect(desired.last.body, 'dueDate');
+      });
+
+      test('an absolute reminder at the same instant rings once', () {
+        final desired = plan([
+          own(
+            id: 1,
+            due: inAnHour.toLocal(),
+            reminders: [TaskReminder(reminder: inAnHour)],
+          ),
+        ]);
+
+        expect(desired.single.key, '1:due');
+        expect(desired.single.fireAt, inAnHour);
+      });
+
+      test('with due dates off the reminder stays', () {
+        final desired = plan([
+          own(
+            id: 1,
+            due: inAnHour,
+            reminders: [TaskReminder(reminder: inAnHour)],
+          ),
+        ], preferences: const NotificationPreferences(dueDates: false));
+
+        expect(desired.single.key, '1:reminder:0');
+        expect(desired.single.body, 'reminder');
+      });
+
+      test('a snoozed due date is compared by its own instant', () {
+        final snooze = Snooze(
+          key: '1:due',
+          until: inAnHour,
+          originalFireAt: anHourAgo,
+        );
+
+        final atTheSnooze = plan(
+          [
+            own(
+              id: 1,
+              due: anHourAgo,
+              reminders: [TaskReminder(reminder: inAnHour)],
+            ),
+          ],
+          snoozes: [snooze],
+        );
+        expect(atTheSnooze.map((d) => d.key), ['1:due', '1:reminder:0']);
+        expect(atTheSnooze.first.snooze, same(snooze));
+
+        final atTheDueTime = plan(
+          [
+            own(
+              id: 1,
+              due: anHourAgo,
+              reminders: [TaskReminder(reminder: anHourAgo)],
+            ),
+          ],
+          snoozes: [snooze],
+        );
+        expect(atTheDueTime.single.key, '1:due');
+        expect(atTheDueTime.single.fireAt, inAnHour);
+      });
+
+      test('a snoozed reminder at the due time still comes back', () {
+        final snooze = Snooze(
+          key: '1:reminder:0',
+          until: inAnHour,
+          originalFireAt: anHourAgo,
+        );
+        final desired = plan(
+          [
+            own(
+              id: 1,
+              due: anHourAgo,
+              reminders: [TaskReminder(reminder: anHourAgo)],
+            ),
+          ],
+          snoozes: [snooze],
+        );
+
+        expect(desired.single.key, '1:reminder:0');
+        expect(desired.single.snooze, same(snooze));
+      });
+    });
+
     group('preferences', () {
       final tasks = [
         own(
@@ -394,6 +498,28 @@ void main() {
           follow(tasks, own: const {1: OwnTaskSubscription.optedOut}),
         ),
         [2],
+      );
+    });
+
+    test('a reminder at the due time leaves it to the due date, for the '
+        'tasks the rule covers only', () {
+      Task atDue(Task task) =>
+          task.copyWith(reminders: [TaskReminder(reminder: inTwoHours)]);
+      final tasks = [
+        atDue(task(1, projectId: garden)),
+        atDue(task(2, projectId: garden)),
+        atDue(task(3)),
+      ];
+      const optedOut = {2: OwnTaskSubscription.optedOut};
+
+      expect(follow(tasks, own: optedOut).map((d) => d.key), ['1:due']);
+      expect(
+        follow(
+          tasks,
+          own: optedOut,
+          preferences: const NotificationPreferences(dueDates: false),
+        ).map((d) => d.key),
+        ['1:reminder:0'],
       );
     });
 
