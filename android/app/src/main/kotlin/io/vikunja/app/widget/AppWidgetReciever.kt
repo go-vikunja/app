@@ -48,6 +48,7 @@ class AppWidgetReciever : HomeWidgetGlanceWidgetReceiver<AppWidget>() {
             editor.remove("widget_title_$id")
             editor.remove("widget_project_id_$id")
             editor.remove("widget_project_name_$id")
+            editor.remove("widget_show_due_date_$id")
         }
         editor.apply()
     }

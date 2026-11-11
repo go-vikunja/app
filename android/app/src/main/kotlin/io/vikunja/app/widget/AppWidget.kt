@@ -40,6 +40,7 @@ import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import com.google.gson.Gson
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
+import es.antonborri.home_widget.HomeWidgetPlugin
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -47,12 +48,15 @@ import java.util.Date
 import java.util.Locale
 import androidx.glance.ImageProvider
 import androidx.glance.action.ActionParameters
+import androidx.glance.action.clickable
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.components.CircleIconButton
 import io.vikunja.app.MainActivity
 import io.vikunja.app.R
 import androidx.glance.appwidget.action.ActionCallback
+import io.vikunja.app.EXTRA_PROJECT_ID
 import io.vikunja.app.INTENT_TYPE_ADD_TASK
+import io.vikunja.app.INTENT_TYPE_OPEN_PROJECT
 
 class InteractiveAction : ActionCallback {
     override suspend fun onAction(
@@ -79,6 +83,33 @@ class ConfigureWidgetAction : ActionCallback {
         val intent = Intent(context, WidgetConfigureActivity::class.java).apply {
             putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    }
+}
+
+// Opens the app, deep linked to the project of this widget if it shows one.
+class OpenAppAction : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters,
+    ) {
+        val appWidgetId = GlanceAppWidgetManager(context).getAppWidgetId(glanceId)
+        val prefs = HomeWidgetPlugin.getData(context)
+        val projectId = if (prefs.getString("widget_view_$appWidgetId", "today") == "project") {
+            prefs.getString("widget_project_id_$appWidgetId", null)?.toIntOrNull() ?: 0
+        } else {
+            0
+        }
+
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            if (projectId != 0) {
+                action = Intent.ACTION_VIEW
+                type = INTENT_TYPE_OPEN_PROJECT
+                putExtra(EXTRA_PROJECT_ID, projectId)
+            }
         }
         context.startActivity(intent)
     }
@@ -153,6 +184,7 @@ class AppWidget : GlanceAppWidget() {
 
         val viewType = prefs.getString("widget_view_$appWidgetId", "today") ?: "today"
         val widgetTitle = prefs.getString("widget_title_$appWidgetId", "Vikunja") ?: "Vikunja"
+        val showDueDate = prefs.getBoolean("widget_show_due_date_$appWidgetId", true)
         val otherSectionLabel = when (viewType) {
             "upcoming" -> "This Week:"
             "inbox", "project" -> "Tasks:"
@@ -181,7 +213,7 @@ class AppWidget : GlanceAppWidget() {
                             )
                         }
                         items(todayTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
-                            RenderRow(context, task, prefs)
+                            RenderRow(context, task, prefs, showDueDate = showDueDate)
                         }
                     }
                     if (otherTasks.isNotEmpty()) {
@@ -192,7 +224,9 @@ class AppWidget : GlanceAppWidget() {
                             )
                         }
                         items(otherTasks.sortedBy { it.dueDate ?: Long.MAX_VALUE }) { task ->
-                            RenderRow(context, task, prefs, showDate = true)
+                            RenderRow(
+                                context, task, prefs, showFullDate = true, showDueDate = showDueDate
+                            )
                         }
                     }
                 }
@@ -204,7 +238,8 @@ class AppWidget : GlanceAppWidget() {
     private fun WidgetTitleBar(title: String = "Vikunja") {
         Box(
             modifier = GlanceModifier
-                .background(ColorProvider(Color(0xFF126cfd), Color(0xFF013992))),
+                .background(ColorProvider(Color(0xFF126cfd), Color(0xFF013992)))
+                .clickable(actionRunCallback<OpenAppAction>()),
             contentAlignment = Alignment.Center,
         ) {
             TitleBar(
@@ -241,7 +276,11 @@ class AppWidget : GlanceAppWidget() {
 
     @Composable
     private fun RenderRow(
-        context: Context, task: Task, prefs: SharedPreferences, showDate: Boolean = false
+        context: Context,
+        task: Task,
+        prefs: SharedPreferences,
+        showFullDate: Boolean = false,
+        showDueDate: Boolean = true,
     ) {
         Row(
             modifier = GlanceModifier.fillMaxWidth().padding(8.dp)
@@ -253,13 +292,13 @@ class AppWidget : GlanceAppWidget() {
                 onCheckedChange = { doneTask(context, prefs, task.id) },
                 modifier = GlanceModifier.padding(start = 0.dp)
             )
-            val taskDueDate = task.dueDateAsDate()
+            val taskDueDate = if (showDueDate) task.dueDateAsDate() else null
             if (taskDueDate != null) {
                 Box(
                     modifier = GlanceModifier.padding(start = 8.dp)
                 ) {
                     Text(
-                        text = formatDueDate(taskDueDate, showDate), style = TextStyle(
+                        text = formatDueDate(taskDueDate, showFullDate), style = TextStyle(
                             fontSize = 18.sp, color = ColorProvider(Color.Black, Color.White)
                         )
                     )
@@ -277,8 +316,8 @@ class AppWidget : GlanceAppWidget() {
         }
     }
 
-    private fun formatDueDate(dueDate: Date, showDate: Boolean): String {
-        if (showDate) {
+    private fun formatDueDate(dueDate: Date, showFullDate: Boolean): String {
+        if (showFullDate) {
             val pattern = DateFormat.getBestDateTimePattern(Locale.getDefault(), "MM dd j:m")
             val formatter = DateTimeFormatter.ofPattern(pattern)
             return dueDate.toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime().format(
