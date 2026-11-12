@@ -161,7 +161,7 @@ void main() {
   Future<BackgroundRunOutcome?> lastOutcome() async =>
       (await BackgroundRunLog(auth.preferences).lastResult())?.outcome;
 
-  test('every step for an account: sync, drain, activity with its '
+  test('every step for an account: drain, sync, activity with its '
       'notification, reconcile, noted for the UI', () async {
     final entry = await signedIn(1, syncedAt: monday);
     final db = databases[entry.id]!;
@@ -181,7 +181,7 @@ void main() {
     final outcome = await runner().run();
 
     expect(outcome, BackgroundRunOutcome.completed);
-    expect(engineOf(entry.id).refreshCalls, greaterThanOrEqualTo(1));
+    expect(engineOf(entry.id).refreshCalls, 1);
     expect(writeOf(entry.id).requests, ['update 1']);
     expect(await db.outboxDao.count(), 0);
     expect(readOf(entry.id).requests, contains('notifications 1'));
@@ -193,6 +193,123 @@ void main() {
     expect(await BackgroundRunLog(auth.preferences).lastRunAt(entry.id), now);
     expect(await lastOutcome(), BackgroundRunOutcome.completed);
     expect(disposedEngines, {entry.id});
+  });
+
+  group('a sync run sends every queue first', () {
+    Future<void> queueDone(RegisteredAccount entry) async {
+      final db = databases[entry.id]!;
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 1, title: 'Water', projectId: 7),
+      ], syncRunId: 'run');
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(done: true),
+        now: monday,
+      );
+      writeOf(entry.id)
+        ..serverTasks[1] = sampleTask(id: 1, title: 'Water')
+        ..beforeRequest = (request) async => order.add(request);
+    }
+
+    test('then syncs, once', () async {
+      final entry = await signedIn(1, syncedAt: monday);
+      await queueDone(entry);
+
+      expect(await runner().run(), BackgroundRunOutcome.completed);
+
+      expect(order, ['update 1', 'sync ${entry.id}']);
+      expect(engineOf(entry.id).refreshCalls, 1);
+      expect(await databases[entry.id]!.outboxDao.count(), 0);
+    });
+
+    test('before any account syncs; an empty queue costs no request', () async {
+      final empty = await signedIn(
+        1,
+        syncedAt: monday.subtract(const Duration(days: 2)),
+      );
+      final queued = await signedIn(2, syncedAt: monday);
+      await queueDone(queued);
+      bool? senderBuilt;
+      engineOf(empty.id).onRefresh = () async {
+        order.add('sync ${empty.id}');
+        senderBuilt = container.exists(outboxSenderProvider(empty.id));
+      };
+
+      expect(await runner().run(), BackgroundRunOutcome.completed);
+
+      expect(order, ['update 1', 'sync ${empty.id}', 'sync ${queued.id}']);
+      expect(senderBuilt, isFalse);
+      expect(writeOf(empty.id).requests, isEmpty);
+    });
+
+    test("a server that cannot be reached skips the account's sync and "
+        'activity; the others still sync', () async {
+      final down = await signedIn(
+        1,
+        syncedAt: monday.subtract(const Duration(hours: 2)),
+      );
+      final up = await signedIn(2, syncedAt: monday);
+      await queueDone(down);
+      writeOf(down.id).beforeRequest = (request) async {
+        order.add(request);
+        throw const NetworkFailure(NetworkProblem.unreachable);
+      };
+      readOf(down.id).serverNotifications = [sampleNotification(id: 3)];
+      readOf(up.id).serverNotifications = [sampleNotification(id: 4)];
+
+      expect(await runner().run(), BackgroundRunOutcome.partial);
+
+      expect(order, ['update 1', 'sync ${up.id}']);
+      expect(engines[down.id]?.refreshCalls ?? 0, 0);
+      expect(readOf(down.id).requests, isEmpty);
+      expect(readOf(up.id).requests, contains('notifications 1'));
+      expect(await databases[down.id]!.outboxDao.count(), 1);
+    });
+
+    test('and stops at the deadline rule, before any sync', () async {
+      final first = await signedIn(
+        1,
+        syncedAt: monday.subtract(const Duration(hours: 2)),
+      );
+      final second = await signedIn(2, syncedAt: monday);
+      await queueDone(first);
+      await queueDone(second);
+      writeOf(first.id).beforeRequest = (request) async {
+        order.add(request);
+        now = now.add(const Duration(seconds: 55));
+      };
+
+      final outcome = await runner(deadline: const Duration(minutes: 1)).run();
+
+      expect(outcome, BackgroundRunOutcome.deadline);
+      expect(order, ['update 1']);
+      expect(writeOf(second.id).requests, isEmpty);
+      expect(engines[first.id]?.refreshCalls ?? 0, 0);
+      expect(engines[second.id]?.refreshCalls ?? 0, 0);
+      expect(await lastOutcome(), BackgroundRunOutcome.deadline);
+    });
+
+    test('but not of an account that never synced or must sign in '
+        'again', () async {
+      final fresh = await signedIn(1);
+      final ended = await signedIn(2, syncedAt: monday, needsReauth: true);
+      await queueDone(fresh);
+      final db = databases[ended.id]!;
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 1, title: 'Water', projectId: 7),
+      ], syncRunId: 'run');
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(done: true),
+        now: monday,
+      );
+
+      await runner().run();
+
+      expect(writeOf(fresh.id).requests, isEmpty);
+      // A sender is built only for a queue it sends.
+      expect(writes, isNot(contains(ended.id)));
+    });
   });
 
   test("publishes each account's widgets after its turn, an ended "
@@ -224,8 +341,7 @@ void main() {
     );
   });
 
-  test("imports the widgets' Done taps first, so the account's turn sends "
-      'them', () async {
+  test("imports the widgets' Done taps first, so the run sends them", () async {
     final entry = await signedIn(1, syncedAt: monday);
     final db = databases[entry.id]!;
     await db.projectsDao.upsertAll([sampleProject(id: 7, title: 'Work')]);

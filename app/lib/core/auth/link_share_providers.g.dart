@@ -152,4 +152,4 @@ final class LinkShareSessionsProvider
   }
 }
 
-String _$linkShareSessionsHash() => r'b1ed7441ec338a1d061694bc8880ec5f74d7e243';
+String _$linkShareSessionsHash() => r'04de91ae05559fe4778abd5b588b97e1c9672e25';

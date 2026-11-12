@@ -290,6 +290,80 @@ void main() {
     });
   });
 
+  group('done base', () {
+    test('round-trips with dates and nulls, instants in UTC', () {
+      final changes = TaskChanges(
+        done: true,
+        doneBase: DoneBase(
+          dueDate: DateTime.utc(2026, 10, 12, 9),
+          endDate: DateTime.parse('2026-10-12T11:30:00+02:00'),
+        ),
+      );
+
+      final json = encodeTaskChanges(changes);
+
+      expect(jsonDecode(json), {
+        'done': true,
+        'done_base': {
+          'due': '2026-10-12T09:00:00.000Z',
+          'start': null,
+          'end': '2026-10-12T09:30:00.000Z',
+          'done_at': null,
+        },
+      });
+      final decoded = decodeTaskChanges(json);
+      expect(decoded.doneBase!.dueDate, DateTime.utc(2026, 10, 12, 9));
+      expect(decoded.doneBase!.endDate, DateTime.utc(2026, 10, 12, 9, 30));
+      expect(decoded.doneBase!.endDate!.isUtc, isTrue);
+      expect(decoded.doneBase!.startDate, isNull);
+      expect(decoded.doneBase!.doneAt, isNull);
+
+      final all = TaskChanges(
+        done: true,
+        doneBase: DoneBase(
+          dueDate: DateTime.utc(2026, 10, 12, 9),
+          startDate: DateTime.utc(2026, 10, 11, 9),
+          endDate: DateTime.utc(2026, 10, 13, 9),
+          doneAt: DateTime.utc(2026, 10, 11, 18, 5, 7),
+        ),
+      );
+      expect(decodeTaskChanges(encodeTaskChanges(all)), all);
+    });
+
+    test('a payload without one, or with one that cannot be read, has '
+        'none', () {
+      expect(decodeTaskChanges('{"done":true}'), const TaskChanges(done: true));
+      expect(decodeTaskChanges('{"done":true,"done_base":3}').doneBase, isNull);
+      expect(
+        decodeTaskChanges(
+          '{"done":true,"done_base":{"due":5,"start":"x","done_at":true}}',
+        ).doneBase,
+        const DoneBase(),
+      );
+    });
+
+    test('matches none of the probes on stored payloads', () {
+      final json = encodeTaskChanges(
+        TaskChanges(
+          doneBase: DoneBase(
+            dueDate: DateTime.utc(2026, 10, 12, 9),
+            doneAt: DateTime.utc(2026, 10, 11),
+          ),
+        ),
+      );
+
+      for (final probe in [
+        '"done"',
+        '"kanban"',
+        '"positions"',
+        '"relations"',
+        '"project_id"',
+      ]) {
+        expect(json, isNot(contains(probe)));
+      }
+    });
+  });
+
   group('cover image', () {
     test('a cover change round-trips; 0 clears', () {
       for (final id in [0, 12]) {

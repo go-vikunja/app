@@ -137,7 +137,7 @@ void main() {
     );
     await pumpEventQueue();
 
-    expect(result.labelsNotCreated, ['neu']);
+    expect(result.labelsKept, ['*neu']);
     expect(result.unresolvedAssignees, ['bob']);
     expect(await db.outboxDao.count(), 2);
     expect(write.serverTasks, isEmpty);
@@ -148,7 +148,7 @@ void main() {
 
     expect(await db.outboxDao.count(), 0);
     final onServer = write.serverTasks.values.single;
-    expect(onServer.title, 'Offline erledigen @bob');
+    expect(onServer.title, 'Offline erledigen @bob *neu');
     expect(onServer.labels.map((label) => label.id), [10]);
     expect(onServer.assignees.map((user) => user.id), [20]);
   });

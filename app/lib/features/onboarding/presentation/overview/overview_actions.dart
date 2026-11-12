@@ -9,6 +9,7 @@ class OverviewActions extends StatelessWidget {
     required this.isSigningIn,
     required this.onContinue,
     required this.onUseDifferentServer,
+    this.isSettling = false,
     this.onCreateAccount,
     this.onForgotPassword,
     this.registrationNeedsInvitation = false,
@@ -17,6 +18,10 @@ class OverviewActions extends StatelessWidget {
 
   final bool canSignIn;
   final bool isSigningIn;
+
+  /// Waiting for an earlier sign-out before the browser opens; leaving
+  /// stays possible.
+  final bool isSettling;
   final VoidCallback onContinue;
   final VoidCallback onUseDifferentServer;
   final VoidCallback? onCreateAccount;
@@ -40,7 +45,8 @@ class OverviewActions extends StatelessWidget {
         if (canSignIn) ...[
           SignInButton(
             label: l10n.continueToSignIn,
-            isSigningIn: isSigningIn,
+            isSigningIn: isSigningIn || isSettling,
+            waitingLabel: isSettling ? l10n.signInFinishingSignOut : null,
             onPressed: onContinue,
           ),
           const SizedBox(height: 4),
@@ -62,7 +68,9 @@ class OverviewActions extends StatelessWidget {
               children: [
                 if (onCreateAccount != null)
                   TextButton(
-                    onPressed: isSigningIn ? null : onCreateAccount,
+                    onPressed: isSigningIn || isSettling
+                        ? null
+                        : onCreateAccount,
                     child: Text(
                       l10n.overviewCreateAccount,
                       textAlign: TextAlign.center,

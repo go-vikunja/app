@@ -14,6 +14,32 @@ Future<void> shareWebLink(
   WidgetRef ref, {
   required Uri url,
   required String subject,
+}) => _share(
+  context,
+  ref,
+  (actions, origin) => actions.shareLink(url, subject: subject, origin: origin),
+  what: 'a link',
+);
+
+/// Like [shareWebLink], for [text].
+Future<void> shareText(
+  BuildContext context,
+  WidgetRef ref, {
+  required String text,
+  required String subject,
+}) => _share(
+  context,
+  ref,
+  (actions, origin) =>
+      actions.shareText(text, subject: subject, origin: origin),
+  what: 'a text',
+);
+
+Future<void> _share(
+  BuildContext context,
+  WidgetRef ref,
+  Future<bool> Function(LinkShareActions actions, Rect? origin) share, {
+  required String what,
 }) async {
   final l10n = context.l10n;
   final messenger = ScaffoldMessenger.maybeOf(context);
@@ -23,11 +49,9 @@ Future<void> shareWebLink(
       : null;
   var shared = false;
   try {
-    shared = await ref
-        .read(linkShareActionsProvider)
-        .shareLink(url, subject: subject, origin: origin);
+    shared = await share(ref.read(linkShareActionsProvider), origin);
   } on Object catch (error) {
-    _log.info('Sharing a link failed: ${error.runtimeType}');
+    _log.info('Sharing $what failed: ${error.runtimeType}');
   }
   if (!shared) {
     messenger

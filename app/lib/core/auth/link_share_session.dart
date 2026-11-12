@@ -349,6 +349,7 @@ final class LinkShareSessions {
     required this._gateway,
     required this._connectionFor,
     required this._markNeedsReauth,
+    this._onSessionEnded,
     this._clock = DateTime.now,
     this._maxAuthentications,
   });
@@ -357,6 +358,8 @@ final class LinkShareSessions {
   final LinkShareGateway _gateway;
   final Future<ServerConnection?> Function(String accountId) _connectionFor;
   final Future<void> Function(String accountId) _markNeedsReauth;
+  final Future<void> Function(String accountId, SessionEnded failure)?
+  _onSessionEnded;
   final DateTime Function() _clock;
   final int? _maxAuthentications;
   final _sessions = <String, LinkShareSession>{};
@@ -395,7 +398,10 @@ final class LinkShareSessions {
       renew: (token) async => await _gateway.renew(await connection(), token),
       authenticate: (hash) async =>
           await _gateway.authenticate(await connection(), hash),
-      onEnded: (_) => _markNeedsReauth(accountId),
+      onEnded: (failure) async {
+        await _markNeedsReauth(accountId);
+        await _onSessionEnded?.call(accountId, failure);
+      },
       clock: _clock,
       maxAuthentications: _maxAuthentications,
     );

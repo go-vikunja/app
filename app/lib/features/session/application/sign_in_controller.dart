@@ -7,8 +7,11 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/browser_sign_in.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/db/account_database_files.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/logging/redaction.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_hosts.dart';
@@ -26,6 +29,13 @@ final class SignInIdle extends SignInState {
   const new();
 }
 
+/// Waiting, before the browser opens, for an account signed out a moment
+/// ago whose data part of the app still holds; leaving drops the sign-in
+/// ([SignInController.reset]).
+final class SignInSettling extends SignInState {
+  const new();
+}
+
 final class SignInInProgress extends SignInState {
   const new();
 }
@@ -35,7 +45,8 @@ final class SignInFailed extends SignInState {
 
   /// A `VikunjaFailure`, `ServerConnectionFailure`,
   /// `AuthorizationCallbackException`, `WebAuthenticationFailed`,
-  /// `SignedInAsDifferentUser` or anything unexpected.
+  /// `SignedInAsDifferentUser`, `SignOutStillFinishing` or anything
+  /// unexpected.
   final Object error;
   final Uri serverRoot;
 }
@@ -79,22 +90,28 @@ class SignInController extends _$SignInController {
   @override
   SignInState build() => const SignInIdle();
 
+  var _settles = 0;
+
   /// [confirm] is asked before the browser opens, while the state is still
   /// idle.
   Future<void> signIn(
     ServerConnection connection, {
     required ConfirmBrowserLeg confirm,
   }) async {
-    if (state is SignInInProgress) return;
+    if (state is SignInInProgress || state is SignInSettling) return;
     final registry = ref.read(accountRegistryProvider);
     final browserSignIn = ref.read(browserSignInProvider);
     final hosts = ConfirmedSignInHosts(ref.read(preferencesStoreProvider));
+    final files = ref.read(accountDatabaseFilesProvider);
     final container = ref.container;
     final otherHost = otherSignInHost(connection);
     final confirmed = await confirm(
       BrowserLeg(connection, otherHost: otherHost),
     );
     if (!confirmed || !ref.mounted) return;
+    if (hasSignOutLeftovers && !await _settle(connection.rootUri, files)) {
+      return;
+    }
     return await _run(connection.rootUri, () async {
       final known = await registry.load();
       final account = await browserSignIn.signIn(
@@ -152,6 +169,25 @@ class SignInController extends _$SignInController {
     if (state is! SignInInProgress) state = const SignInIdle();
   }
 
+  /// True to go on to the browser: the wait is over and nobody left or
+  /// started another sign-in meanwhile.
+  Future<bool> _settle(Uri serverRoot, AccountDatabaseFiles files) async {
+    final settle = ++_settles;
+    state = const SignInSettling();
+    bool current() =>
+        ref.mounted && state is SignInSettling && settle == _settles;
+    try {
+      // The account is known only once the browser returns, so any leftover
+      // could be it.
+      await settleSignedOutDatabases(files);
+    } on Object catch (error, stackTrace) {
+      final failed = _failed(error, stackTrace, serverRoot);
+      if (current()) state = failed;
+      return false;
+    }
+    return current();
+  }
+
   Future<void> _run(
     Uri serverRoot,
     Future<SignInSucceeded?> Function() signIn,
@@ -166,18 +202,22 @@ class SignInController extends _$SignInController {
       }
       next = succeeded ?? const SignInIdle();
     } on Object catch (error, stackTrace) {
-      if (_isExpected(error)) {
-        _log.info('Sign-in failed: $error');
-      } else {
-        _log.severe(
-          'Unexpected sign-in failure: ${redactSecrets('$error')}',
-          null,
-          stackTrace,
-        );
-      }
-      next = SignInFailed(error, serverRoot: serverRoot);
+      next = _failed(error, stackTrace, serverRoot);
     }
     if (ref.mounted) state = next;
+  }
+
+  SignInFailed _failed(Object error, StackTrace stackTrace, Uri serverRoot) {
+    if (_isExpected(error)) {
+      _log.info('Sign-in failed: $error');
+    } else {
+      _log.severe(
+        'Unexpected sign-in failure: ${redactSecrets('$error')}',
+        null,
+        stackTrace,
+      );
+    }
+    return SignInFailed(error, serverRoot: serverRoot);
   }
 
   Future<ServerConnection> _renegotiate(ServerConnection stored) async {
@@ -206,5 +246,6 @@ class SignInController extends _$SignInController {
       error is ServerConnectionFailure ||
       error is AuthorizationCallbackException ||
       error is WebAuthenticationFailed ||
-      error is SignedInAsDifferentUser;
+      error is SignedInAsDifferentUser ||
+      error is SignOutStillFinishing;
 }

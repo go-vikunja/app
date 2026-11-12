@@ -42,6 +42,7 @@ import 'package:vikunja_mobile/core/repositories/project_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/user_repository.dart';
 import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
+import 'package:vikunja_mobile/core/support/session_end_log.dart';
 import 'package:vikunja_mobile/core/sync/guest_read_client.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
@@ -541,12 +542,12 @@ UserRepository? userRepository(Ref ref) {
 /// The last step of a sign-out: makes a background run in another isolate
 /// let go of the account, drops its avatars and attachment images from
 /// memory, cancels the account's notifications (scheduled and in the
-/// tray) and forgets their preferences, the background notes, the sign-in
-/// page on another host it confirmed, the unsent comments and the
-/// description draft, replaces its home-screen widgets' content with
-/// "Account removed", stops its outbox sender and sync engine, closes its
-/// database and deletes the files: the database, the stored copies of
-/// queued uploads and the downloaded attachments.
+/// tray) and forgets their preferences, the background notes, the last
+/// session end, the sign-in page on another host it confirmed, the unsent
+/// comments and the description draft, replaces its home-screen widgets'
+/// content with "Account removed", stops its outbox sender and sync
+/// engine, closes its database and deletes the files: the database, the
+/// stored copies of queued uploads and the downloaded attachments.
 @Riverpod(keepAlive: true)
 AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
   BackgroundRunnerChannel.release(accountId);
@@ -555,6 +556,7 @@ AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
     ..invalidate(accountAttachmentImagesProvider(accountId));
   await _disposeQuietly('Background notes', accountId, () async {
     await ref.read(backgroundRunLogProvider).forget(accountId);
+    await ref.read(sessionEndLogProvider).forget(accountId);
     await ref
         .read(preferencesStoreProvider)
         .remove(ActivityNotifier.sessionEndedKey(accountId));

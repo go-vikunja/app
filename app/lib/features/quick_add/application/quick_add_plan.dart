@@ -47,7 +47,8 @@ final class QuickAddPlan {
   final List<Label> labels;
 
   /// `*label` titles without a label of that title; created on submit,
-  /// which needs a connection.
+  /// which needs a connection. One that could not be created stays at the
+  /// end of the title as typed.
   final List<String> newLabels;
   final List<User> assignees;
 
@@ -125,15 +126,23 @@ final class QuickAddResult {
   const new({
     required this.createdTaskIds,
     this.labelsNotCreated = const [],
+    this.labelsKept = const [],
     this.unresolvedAssignees = const [],
   });
 
   /// Local ids (negative until each create is sent), in input order.
   final List<int> createdTaskIds;
 
-  /// New label titles whose label could not be created (offline, or the
-  /// server refused); the tasks were created without them.
+  /// Titles of the new labels of [QuickAddExtras] whose label could not be
+  /// created (offline, or the server refused); the tasks were created
+  /// without them.
   final List<String> labelsNotCreated;
+
+  /// The lines' new labels that could not be created (offline, refused,
+  /// too long, or for a guest), as typed with their prefix and once
+  /// whatever their case; each stays at the end of its line's title. A
+  /// title also picked in the sheet is in [labelsNotCreated] too.
+  final List<String> labelsKept;
 
   /// `@names` that stayed in a title because no user matched.
   final List<String> unresolvedAssignees;
@@ -158,11 +167,13 @@ abstract interface class QuickAddService {
   /// the one before becomes a subtask of the nearest line above it with
   /// less indent, in that line's project unless it names its own (the
   /// `parenttask` relation queued behind both creates); `*label`s that do
-  /// not exist and the new labels of [extras] are created online first,
-  /// `@names` are resolved with the server's user search in the task's
-  /// project when it is reachable and with the known users otherwise;
-  /// every task also gets [extras]. A title over the server's limit is cut
-  /// and its rest starts the description. Throws
+  /// not exist and the new labels of [extras] are created online first, and
+  /// a `*label` that could not be created stays at the end of its line's
+  /// title as typed; `@names` are resolved with the server's user search in
+  /// the task's project when it is reachable and with the known users
+  /// otherwise; every task also gets [extras]. A title over the server's
+  /// limit is cut, after the labels kept were added, and its rest starts
+  /// the description. Throws
   /// [QuickAddNoProject] before creating anything when a line has no
   /// project, and [QuickAddPartlyFailed] when a line fails after earlier
   /// ones were created.

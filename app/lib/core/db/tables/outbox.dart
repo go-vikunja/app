@@ -37,8 +37,11 @@ class Outbox extends Table {
 
   /// When a create's request may have reached the server although no
   /// answer came back: set on the first such attempt, so the next one looks
-  /// for the task before sending it again. Null for every other op and for
-  /// a create the server rejected.
+  /// for the task before sending it again. An update with a repeating
+  /// task's Done gets it before its first request, with what the server had
+  /// then (see `TaskChanges.doneBase`), so a later attempt checks whether
+  /// the Done landed. Null for every other op and for a create the server
+  /// rejected.
   IntColumn get sentAt => integer().map(const EpochMillis()).nullable()();
 
   @override

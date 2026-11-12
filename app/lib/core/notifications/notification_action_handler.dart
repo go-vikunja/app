@@ -16,8 +16,10 @@ import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_scheduler.dart';
 import 'package:vikunja_mobile/core/outbox/external_done.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
+import 'package:vikunja_mobile/core/support/session_end_log.dart';
 
 final _log = Logger('NotificationAction');
 
@@ -38,7 +40,7 @@ Future<void> handleNotificationAction(NotificationResponse response) async {
         deviceAppLocalizationsProvider.overrideWithValue(
           await loadDeviceAppLocalizations(SharedPreferencesStore()),
         ),
-        ...backgroundActionOverrides,
+        ...notificationActionOverrides,
       ],
     );
   } on Object catch (error) {
@@ -67,6 +69,11 @@ final List<Override> backgroundActionOverrides = [
   runsHeadlessProvider.overrideWithValue(true),
 ];
 
+final List<Override> notificationActionOverrides = [
+  ...backgroundActionOverrides,
+  appPartProvider.overrideWithValue(AppPart.notificationAction),
+];
+
 SessionManagers _nonRefreshingSessionManagers(Ref ref) {
   final registry = ref.watch(accountRegistryProvider);
   return SessionManagers(
@@ -76,6 +83,7 @@ SessionManagers _nonRefreshingSessionManagers(Ref ref) {
     connectionFor: (accountId) async =>
         (await registry.find(accountId))?.connection,
     markNeedsReauth: registry.markNeedsReauth,
+    onSessionEnded: sessionEndRecorder(ref),
     refreshes: false,
   );
 }

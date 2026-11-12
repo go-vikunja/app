@@ -12,7 +12,10 @@ import 'package:vikunja_mobile/core/auth/link_share_gateway.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
+import 'package:vikunja_mobile/core/db/account_database_files.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_landing.dart';
 
 part 'guest_sign_in.g.dart';
@@ -78,8 +81,9 @@ final class GuestSignIn {
     required this._connector,
     required this._landing,
     required this._projectTitle,
+    AccountDatabaseFiles? files,
     this._clock = DateTime.now,
-  });
+  }) : _files = files ?? PathProviderAccountDatabaseFiles();
 
   final LinkShareGateway _gateway;
   final LinkShareStore _store;
@@ -88,6 +92,7 @@ final class GuestSignIn {
   final ServerConnector _connector;
   final GuestLandings _landing;
   final SharedProjectTitle _projectTitle;
+  final AccountDatabaseFiles _files;
   final DateTime Function() _clock;
 
   /// The server behind [link]: a stored account's server whose web frontend
@@ -117,6 +122,8 @@ final class GuestSignIn {
   /// has one, stores the guest and makes it active, remembering the link's
   /// project and view for the first screen. [beforeActivatingExisting] runs
   /// for a share already on this device before it becomes active again.
+  /// Throws [SignOutStillFinishing] while the database of the same guest's
+  /// sign-out is still held.
   Future<GuestSignInResult> signIn(
     ServerConnection connection,
     ParsedLinkShareUrl link, {
@@ -166,6 +173,7 @@ final class GuestSignIn {
     final receivedAt = _clock();
 
     final accountId = linkShareAccountIdFor(connection.rootUri, auth.shareId);
+    await settleSignedOutDatabases(_files, accountId: accountId);
     await _store.write(accountId, hash: link.hash, token: auth.token.jwt);
     // The old session goes only now: retired before, it would answer the
     // requests in between as ended, which pauses the outbox. A token it
@@ -290,4 +298,5 @@ GuestSignIn guestSignIn(Ref ref) => GuestSignIn(
   connector: ref.watch(serverConnectorProvider),
   landing: ref.watch(guestLandingsProvider),
   projectTitle: ref.watch(sharedProjectTitleProvider),
+  files: ref.watch(accountDatabaseFilesProvider),
 );

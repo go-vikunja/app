@@ -395,6 +395,7 @@ final class FakeTasksWritePort implements TasksWritePort {
       (_client.listPositions[viewId] ??= {})[id] = position;
     }
     _client.updates.add((id, changes));
+    await _client.afterRequest?.call('update $id');
     return _client.serverTasks[id]!;
   }
 

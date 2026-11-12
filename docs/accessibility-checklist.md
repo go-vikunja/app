@@ -97,7 +97,18 @@ On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to
 - [ ] **Keyboard and focus:** with the comment field focused, open an editor and close it; the keyboard stays down. Switch Access reaches every row, the add row's buttons, "Labels ändern" and the menu's items; the Scanner finds nothing new on the sheet, the lists and the reminders sheet.
 - [ ] **The pane:** on the tablet in landscape, open a card into the pane. The lists and the reminders sheet open over the shell with the pane under them; after a pick, focus returns to the row in the pane; "In Spalte verschieben …" is in the pane's menu.
 
-### 2.7 The flows
+### 2.7 Checks of step 37l
+
+On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to a user account and a guest ([D20], [D38]); in review:
+
+- [ ] **The row:** Konto › the version › "Über Rurana". After "Hilfe und Fehler melden" comes "Support-Details" with "Was du beilegen kannst, wenn du einen Fehler meldest; du siehst es, bevor du es teilst", one button. Signed out, the row is there too (the button under the Connect screen's form).
+- [ ] **The page:** it opens full screen with "Support-Details" as its level-1 heading and a close button; while the details are collected the spinner says "Support-Details", and "Teilen" is not available until the text is there. The note, the switch "Serveradressen anzeigen" with "Sonst erscheinen sie als <server-1>, <server-2> und so weiter" (TalkBack reads it as a switch with its state), then the text. Turning the switch on changes the text in place; leaving and opening the page again finds it off. Record how TalkBack reads the monospaced text block (by line, or as one long text) and whether swiping through it is usable.
+- [ ] **Share:** "Teilen" opens the system's share sheet; with the app lock on, the app is not locked on return. Switch Access reaches the close button, "Teilen" and the switch; the Scanner finds nothing new on the page, also at the largest font, where the text wraps inside its card.
+- [ ] **Quick add offline:** airplane mode on until the offline banner shows, then "Neue Aufgabe" and type `Einkaufen *neuesLabel`. The new label's chip reads "neuesLabel · braucht eine Verbindung" with a cloud icon, and TalkBack "Neues Label neuesLabel, braucht eine Verbindung, sonst bleibt es im Titel". After "Hinzufügen" the snackbar says "„Einkaufen *neuesLabel“ hinzugefügt" and "Diese Labels konnten nicht erstellt werden und bleiben deshalb im Titel: *neuesLabel"; it stays while TalkBack is on.
+- [ ] **Quick add as a guest:** switch to the guest; the same text gives the chip "neuesLabel · bleibt im Titel" and TalkBack "Das Label neuesLabel gibt es nicht; es bleibt im Titel". The help (`?`) says under Labels that as a guest you can't create new ones.
+- [ ] **Signing straight back in:** mark a task done from a reminder notification while the server cannot be reached, then at once sign that account out and sign in to it again from the Connect screen; the wait shows only while the notification's Done still holds the account's data, so record whether it was seen. The button reads "Abmeldung wird abgeschlossen …" while it waits (TalkBack reads it once it has focus), and back leaves the screen. If the wait gives up after 30 s, the error card reads "Die Abmeldung läuft noch" with its explanation and suggestion and is read when it appears.
+
+### 2.8 The flows
 
 Each flow lists what to do, what to expect and what to record, beyond section 2.2.
 
@@ -128,6 +139,8 @@ Once, on a device (the simulator for what it can show):
 5. **The tab bar:** inactive labels readable in light and dark.
 6. **iPad** ([D69]): the task sheet and a picker as centred cards (an 11" iPad in both orientations, an iPad mini in portrait) take VoiceOver's focus, and nothing on the page beside the card is reachable; in Split View with half of a 13" iPad the sheet fills the window. At the largest text, the centred settings and forms show everything. The task pane ([D70]) on an 11" iPad in landscape and a 13" iPad in portrait: VoiceOver reads the list, then the pane; its focus moves into the pane when a task opens, and back to the row when it closes; the row reads "selected". The project tree's column ([D82]) on an 11" iPad and an iPad mini in landscape: VoiceOver reads the tree's column, the project, then the pane; the open project's rows read "selected"; a swipe from the project's own edge goes back to "No project open".
 
+[D20]: decisions.md#d20-scope-cuts-and-mobile-forms-of-desktop-features
+[D38]: decisions.md#d38-quick-add-the-webs-grammar-with-fixes-through-the-outbox
 [D68]: decisions.md#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep
 [D69]: decisions.md#d69-large-screens-a-window-layout-helper-readable-widths-capped-dialogs-and-sheets
 [D70]: decisions.md#d70-task-detail-pane-beside-the-list-on-two-pane-windows-the-sheet-elsewhere

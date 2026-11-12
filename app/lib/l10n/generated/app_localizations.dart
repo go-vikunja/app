@@ -2636,7 +2636,7 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{Added 1 task} other{Added {count} tasks}}'**
   String newTaskCreatedMany(int count);
 
-  /// Warning after adding a task when labels written with Quick Add could not be created; labels is a comma-separated list of their titles.
+  /// Warning after adding a task when labels picked in the sheet's label picker to be created could not be created; labels is a comma-separated list of their titles.
   ///
   /// In en, this message translates to:
   /// **'Some labels couldn\'t be created, so the task doesn\'t have them: {labels}'**
@@ -2795,7 +2795,7 @@ abstract class AppLocalizations {
   /// Text of the Labels section of the Quick Add help sheet; prefix is the label prefix, for example *, kept as it is.
   ///
   /// In en, this message translates to:
-  /// **'A word starting with {prefix}. Labels that don\'t exist yet are created when you add the task. Use quotes for spaces.'**
+  /// **'A word starting with {prefix}. Labels that don\'t exist yet are created when you add the task; without a connection the word stays in the title. Use quotes for spaces.'**
   String quickAddHelpLabelsBody(String prefix);
 
   /// No description provided for @quickAddHelpProjectTitle.
@@ -13188,7 +13188,7 @@ abstract class AppLocalizations {
   /// **'View the source code'**
   String get aboutSourceCodeOpen;
 
-  /// Section header on the About page over the links to Rurana's support page, privacy policy and legal notice on the developer's website, coderoftime.dev.
+  /// Section header on the About page over the links to Rurana's support page, privacy policy and legal notice on the developer's website, coderoftime.dev, and over the row that opens the support details (supportDetailsTitle).
   ///
   /// In en, this message translates to:
   /// **'Help, privacy and legal notice'**
@@ -13493,6 +13493,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open the linked task'**
   String get searchOpenLinkedTask;
+
+  /// Title of the error on the sign-in screen when the sign-in waited in vain: part of the app (a notification or widget action) still holds the data of an account signed out, or a guest access removed, a moment ago.
+  ///
+  /// In en, this message translates to:
+  /// **'Still finishing the sign-out'**
+  String get signOutStillFinishingTitle;
+
+  /// Explanation of that error.
+  ///
+  /// In en, this message translates to:
+  /// **'Part of the app is still closing the data of an account you signed out of.'**
+  String get signOutStillFinishingExplanation;
+
+  /// Suggestion of that error, and of guestRemoveStillFinishingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait a moment and try again. If it keeps happening, close the app and open it again.'**
+  String get signOutStillFinishingSuggestion;
+
+  /// Warning after adding a task when labels written with Quick Add could not be created (offline, refused, too long, or for a guest); their words stay at the end of the title; labels is a comma-separated list of the words as typed, with their prefix.
+  ///
+  /// In en, this message translates to:
+  /// **'These labels couldn\'t be created, so they stay in the title: {labels}'**
+  String newTaskLabelsKept(String labels);
+
+  /// Preview chip under the Quick Add field for a label that does not exist yet while the app is offline; label is its title.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} · needs a connection'**
+  String quickAddNewLabelOffline(String label);
+
+  /// Screen reader: label of the preview chip quickAddNewLabelOffline; label is its title.
+  ///
+  /// In en, this message translates to:
+  /// **'New label {label}, needs a connection, otherwise it stays in the title'**
+  String quickAddNewLabelOfflineSemantics(String label);
+
+  /// Preview chip under the Quick Add field for a guest's label that does not exist: guests cannot create labels; label is its title.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} · stays in the title'**
+  String quickAddLabelStaysInTitle(String label);
+
+  /// Screen reader: label of the preview chip quickAddLabelStaysInTitle; label is its title.
+  ///
+  /// In en, this message translates to:
+  /// **'Label {label} doesn\'t exist and stays in the title'**
+  String quickAddLabelStaysInTitleSemantics(String label);
+
+  /// Title of the About page's row that opens the support details, of that page, and the subject when they are shared.
+  ///
+  /// In en, this message translates to:
+  /// **'Support details'**
+  String get supportDetailsTitle;
+
+  /// Subtitle of that row on the About page.
+  ///
+  /// In en, this message translates to:
+  /// **'What to add to a bug report; you see it before you share it'**
+  String get supportDetailsSubtitle;
+
+  /// Note at the top of the support details page.
+  ///
+  /// In en, this message translates to:
+  /// **'These details help to find a bug: versions, times, counts and settings. They never hold your tasks, titles, names, email addresses or passwords. Nothing leaves your device until you share it.'**
+  String get supportDetailsIntro;
+
+  /// Switch on the support details page that puts the servers' addresses into the text.
+  ///
+  /// In en, this message translates to:
+  /// **'Show server addresses'**
+  String get supportDetailsShowServers;
+
+  /// Subtitle of that switch. The placeholders in angle brackets are what the text shows instead of an address; keep them as they are.
+  ///
+  /// In en, this message translates to:
+  /// **'Otherwise they show as <server-1>, <server-2> and so on'**
+  String get supportDetailsShowServersSubtitle;
+
+  /// Button in the app bar of the support details page; opens the share sheet with the text.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get supportDetailsShare;
+
+  /// Text of the disabled sign-in button, next to a spinner, while a sign-in waits before the browser opens: part of the app (a notification or widget action) still holds the data of an account signed out, or a guest access removed, a moment ago. Back and Use a different server still work.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing the sign-out…'**
+  String get signInFinishingSignOut;
+
+  /// Title of the error on the connect screen when a shared link is opened again while part of the app (a notification or widget action) still holds the data of its guest access, removed a moment ago. Its suggestion is signOutStillFinishingSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Still removing the guest access'**
+  String get guestRemoveStillFinishingTitle;
+
+  /// Explanation of that error.
+  ///
+  /// In en, this message translates to:
+  /// **'Part of the app is still closing the data of a guest access you removed.'**
+  String get guestRemoveStillFinishingExplanation;
+
+  /// Text of the Labels section of the Quick Add help sheet for a link-share guest, who can't create labels; prefix is the label prefix, for example *, kept as it is.
+  ///
+  /// In en, this message translates to:
+  /// **'A word starting with {prefix}. Labels that already exist are added; as a guest you can\'t create new ones, so any other word stays in the title. Use quotes for spaces.'**
+  String quickAddHelpLabelsBodyGuest(String prefix);
 }
 
 class _AppLocalizationsDelegate

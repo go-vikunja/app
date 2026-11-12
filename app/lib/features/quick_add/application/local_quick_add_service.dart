@@ -38,7 +38,7 @@ final class QuickAddSnapshot {
 /// Quick add over a [QuickAddSnapshot]; a new snapshot means a new service.
 /// A link-share guest neither searches users nor creates labels, which
 /// the server refuses it: its `@name` is matched against the people this
-/// device knows, and its new labels are reported as not created.
+/// device knows, and its new labels stay in the title.
 final class LocalQuickAddService implements QuickAddService {
   new({
     required this._snapshot,
@@ -202,6 +202,10 @@ final class LocalQuickAddService implements QuickAddService {
 
     final ids = <int>[];
     final unresolved = <String>[];
+    final labelsKept = <String>[];
+    final labelPrefix = _grammar
+        .prefixes(_snapshot.settings.quickAddMagicMode)
+        ?.label;
     Never failAt(int line, Object error, StackTrace stackTrace) {
       if (ids.isEmpty) Error.throwWithStackTrace(error, stackTrace);
       Error.throwWithStackTrace(
@@ -221,7 +225,23 @@ final class LocalQuickAddService implements QuickAddService {
         final repeat? => _grammar.repeatOf(repeat),
         null => null,
       };
-      final cut = cutTaskTitle(title);
+      final kept = [
+        if (labelPrefix != null)
+          for (final newLabel in plan.newLabels)
+            if (submission.createdLabel(newLabel) == null)
+              _typedLabel(plan.input, newLabel, labelPrefix),
+      ];
+      for (final token in kept) {
+        if (!_containsIgnoringCase(labelsKept, token)) labelsKept.add(token);
+      }
+      final cut = cutTaskTitle(
+        [
+          title,
+          for (final token in kept)
+            // The parser leaves a label with an unclosed quote in the text.
+            if (!title.contains(token)) token,
+        ].join(' '),
+      );
       final int id;
       try {
         id = await _tasks.createTask(
@@ -292,7 +312,11 @@ final class LocalQuickAddService implements QuickAddService {
     }
     return QuickAddResult(
       createdTaskIds: ids,
-      labelsNotCreated: submission.labelsNotCreated,
+      labelsNotCreated: [
+        for (final title in submission.labelsNotCreated)
+          if (_containsIgnoringCase(extras.newLabels, title)) title,
+      ],
+      labelsKept: labelsKept,
       unresolvedAssignees: unresolved,
     );
   }
@@ -426,6 +450,19 @@ final class LocalQuickAddService implements QuickAddService {
         null => null,
       },
     );
+  }
+
+  /// [title]'s label as typed in [line] (`*Urgent`, `*"road trip"`, `**x`),
+  /// else [prefix] and the title, quoted when it holds a space.
+  static String _typedLabel(String line, String title, String prefix) {
+    final p = RegExp.escape(prefix);
+    final item = RegExp.escape(title);
+    final token = RegExp(
+      '(?:^| )($p(?:$p)?(?:"$item"|\'$item\'|"$item|\'$item|$item(?= |\$)))',
+      caseSensitive: false,
+    ).firstMatch(line);
+    return token?[1] ??
+        (title.contains(' ') ? '$prefix"$title"' : '$prefix$title');
   }
 
   // Archived projects would refuse the task.

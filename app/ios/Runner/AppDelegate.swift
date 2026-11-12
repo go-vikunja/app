@@ -102,10 +102,27 @@ private enum DeviceChannel {
           return
         }
         UIApplication.shared.open(url) { opened in result(opened) }
+      case "backgroundState":
+        result(DeviceChannel.backgroundState())
       default:
         result(FlutterMethodNotImplemented)
       }
     }
+  }
+
+  @MainActor
+  private static func backgroundState() -> [String: Any] {
+    let refresh =
+      switch UIApplication.shared.backgroundRefreshStatus {
+      case .available: "available"
+      case .denied: "denied"
+      case .restricted: "restricted"
+      @unknown default: "unknown"
+      }
+    return [
+      "backgroundRefresh": refresh,
+      "lowPowerMode": ProcessInfo.processInfo.isLowPowerModeEnabled,
+    ]
   }
 
   /// Creates each folder when missing. A restore or a move to another device clears the flag,

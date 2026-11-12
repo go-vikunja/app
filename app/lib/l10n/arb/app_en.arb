@@ -1557,7 +1557,7 @@
   },
   "newTaskLabelsNotCreated": "Some labels couldn't be created, so the task doesn't have them: {labels}",
   "@newTaskLabelsNotCreated": {
-    "description": "Warning after adding a task when labels written with Quick Add could not be created; labels is a comma-separated list of their titles.",
+    "description": "Warning after adding a task when labels picked in the sheet's label picker to be created could not be created; labels is a comma-separated list of their titles.",
     "placeholders": {
       "labels": {
         "type": "String",
@@ -1757,7 +1757,7 @@
   "quickAddHelpTitle": "Quick Add Magic",
   "quickAddHelpIntro": "Write the whole task in one line. These parts are recognised, marked in colour and taken out of the title:",
   "quickAddHelpLabelsTitle": "Labels",
-  "quickAddHelpLabelsBody": "A word starting with {prefix}. Labels that don't exist yet are created when you add the task. Use quotes for spaces.",
+  "quickAddHelpLabelsBody": "A word starting with {prefix}. Labels that don't exist yet are created when you add the task; without a connection the word stays in the title. Use quotes for spaces.",
   "@quickAddHelpLabelsBody": {
     "description": "Text of the Labels section of the Quick Add help sheet; prefix is the label prefix, for example *, kept as it is.",
     "placeholders": {
@@ -8309,7 +8309,7 @@
   },
   "aboutWebsiteHeading": "Help, privacy and legal notice",
   "@aboutWebsiteHeading": {
-    "description": "Section header on the About page over the links to Rurana's support page, privacy policy and legal notice on the developer's website, coderoftime.dev."
+    "description": "Section header on the About page over the links to Rurana's support page, privacy policy and legal notice on the developer's website, coderoftime.dev, and over the row that opens the support details (supportDetailsTitle)."
   },
   "aboutSupport": "Help and bug reports",
   "@aboutSupport": {
@@ -8556,5 +8556,113 @@
   "searchOpenLinkedTask": "Open the linked task",
   "@searchOpenLinkedTask": {
     "description": "The one row under searchLinkedTask in the search when this device does not have the linked task; a tap reads it from the server and opens it."
+  },
+  "signOutStillFinishingTitle": "Still finishing the sign-out",
+  "@signOutStillFinishingTitle": {
+    "description": "Title of the error on the sign-in screen when the sign-in waited in vain: part of the app (a notification or widget action) still holds the data of an account signed out, or a guest access removed, a moment ago."
+  },
+  "signOutStillFinishingExplanation": "Part of the app is still closing the data of an account you signed out of.",
+  "@signOutStillFinishingExplanation": {
+    "description": "Explanation of that error."
+  },
+  "signOutStillFinishingSuggestion": "Wait a moment and try again. If it keeps happening, close the app and open it again.",
+  "@signOutStillFinishingSuggestion": {
+    "description": "Suggestion of that error, and of guestRemoveStillFinishingTitle."
+  },
+  "newTaskLabelsKept": "These labels couldn't be created, so they stay in the title: {labels}",
+  "@newTaskLabelsKept": {
+    "description": "Warning after adding a task when labels written with Quick Add could not be created (offline, refused, too long, or for a guest); their words stay at the end of the title; labels is a comma-separated list of the words as typed, with their prefix.",
+    "placeholders": {
+      "labels": {
+        "type": "String",
+        "example": "*urgent, *car"
+      }
+    }
+  },
+  "quickAddNewLabelOffline": "{label} · needs a connection",
+  "@quickAddNewLabelOffline": {
+    "description": "Preview chip under the Quick Add field for a label that does not exist yet while the app is offline; label is its title.",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "car"
+      }
+    }
+  },
+  "quickAddNewLabelOfflineSemantics": "New label {label}, needs a connection, otherwise it stays in the title",
+  "@quickAddNewLabelOfflineSemantics": {
+    "description": "Screen reader: label of the preview chip quickAddNewLabelOffline; label is its title.",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "car"
+      }
+    }
+  },
+  "quickAddLabelStaysInTitle": "{label} · stays in the title",
+  "@quickAddLabelStaysInTitle": {
+    "description": "Preview chip under the Quick Add field for a guest's label that does not exist: guests cannot create labels; label is its title.",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "car"
+      }
+    }
+  },
+  "quickAddLabelStaysInTitleSemantics": "Label {label} doesn't exist and stays in the title",
+  "@quickAddLabelStaysInTitleSemantics": {
+    "description": "Screen reader: label of the preview chip quickAddLabelStaysInTitle; label is its title.",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "car"
+      }
+    }
+  },
+  "supportDetailsTitle": "Support details",
+  "@supportDetailsTitle": {
+    "description": "Title of the About page's row that opens the support details, of that page, and the subject when they are shared."
+  },
+  "supportDetailsSubtitle": "What to add to a bug report; you see it before you share it",
+  "@supportDetailsSubtitle": {
+    "description": "Subtitle of that row on the About page."
+  },
+  "supportDetailsIntro": "These details help to find a bug: versions, times, counts and settings. They never hold your tasks, titles, names, email addresses or passwords. Nothing leaves your device until you share it.",
+  "@supportDetailsIntro": {
+    "description": "Note at the top of the support details page."
+  },
+  "supportDetailsShowServers": "Show server addresses",
+  "@supportDetailsShowServers": {
+    "description": "Switch on the support details page that puts the servers' addresses into the text."
+  },
+  "supportDetailsShowServersSubtitle": "Otherwise they show as <server-1>, <server-2> and so on",
+  "@supportDetailsShowServersSubtitle": {
+    "description": "Subtitle of that switch. The placeholders in angle brackets are what the text shows instead of an address; keep them as they are."
+  },
+  "supportDetailsShare": "Share",
+  "@supportDetailsShare": {
+    "description": "Button in the app bar of the support details page; opens the share sheet with the text."
+  },
+  "signInFinishingSignOut": "Finishing the sign-out…",
+  "@signInFinishingSignOut": {
+    "description": "Text of the disabled sign-in button, next to a spinner, while a sign-in waits before the browser opens: part of the app (a notification or widget action) still holds the data of an account signed out, or a guest access removed, a moment ago. Back and Use a different server still work."
+  },
+  "guestRemoveStillFinishingTitle": "Still removing the guest access",
+  "@guestRemoveStillFinishingTitle": {
+    "description": "Title of the error on the connect screen when a shared link is opened again while part of the app (a notification or widget action) still holds the data of its guest access, removed a moment ago. Its suggestion is signOutStillFinishingSuggestion."
+  },
+  "guestRemoveStillFinishingExplanation": "Part of the app is still closing the data of a guest access you removed.",
+  "@guestRemoveStillFinishingExplanation": {
+    "description": "Explanation of that error."
+  },
+  "quickAddHelpLabelsBodyGuest": "A word starting with {prefix}. Labels that already exist are added; as a guest you can't create new ones, so any other word stays in the title. Use quotes for spaces.",
+  "@quickAddHelpLabelsBodyGuest": {
+    "description": "Text of the Labels section of the Quick Add help sheet for a link-share guest, who can't create labels; prefix is the label prefix, for example *, kept as it is.",
+    "placeholders": {
+      "prefix": {
+        "type": "String",
+        "example": "*"
+      }
+    }
   }
 }

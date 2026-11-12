@@ -5,6 +5,7 @@ import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/support/session_end_log.dart';
 
 part 'link_share_providers.g.dart';
 
@@ -28,6 +29,7 @@ LinkShareSessions linkShareSessions(Ref ref) {
     connectionFor: (accountId) async =>
         (await registry.find(accountId))?.connection,
     markNeedsReauth: registry.markNeedsReauth,
+    onSessionEnded: sessionEndRecorder(ref),
     maxAuthentications: ref.watch(runsHeadlessProvider) ? 1 : null,
   );
 }

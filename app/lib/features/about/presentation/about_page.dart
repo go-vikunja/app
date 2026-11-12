@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/l10n/licence_page_localizations.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/legal.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
+import 'package:vikunja_mobile/features/about/presentation/support_details_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
@@ -16,9 +17,9 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_
 /// The app's legal notices (AGPL section 5(d)): its version and copyright,
 /// that it is unofficial and not the Vikunja project's, the licence with the
 /// app store permission and no warranty, the licence page, where the source
-/// code is, and the name and logo, which the licence does not cover; and
-/// Rurana's support page, privacy policy and legal notice. Open signed out
-/// and to guests.
+/// code is, and the name and logo, which the licence does not cover;
+/// Rurana's support page, privacy policy and legal notice, and the support
+/// details for a bug report. Open signed out and to guests.
 class AboutPage extends ConsumerWidget {
   const new({this.sourceCode = sourceCodeUrl, super.key});
 
@@ -32,7 +33,6 @@ class AboutPage extends ConsumerWidget {
         ? l10n.aboutVersionWithoutBuild(version)
         : l10n.aboutVersion(version, build);
     final sourceCode = this.sourceCode;
-    final languageCode = Localizations.localeOf(context).languageCode;
 
     return Scaffold(
       appBar: AppBar(title: ScreenTitle(l10n.aboutTitle)),
@@ -47,39 +47,37 @@ class AboutPage extends ConsumerWidget {
               SectionCard(
                 title: l10n.aboutWebsiteHeading,
                 children: [
-                  for (final (page, icon, title, subtitle) in [
-                    (
-                      WebsitePage.support,
-                      Icons.help_outline,
-                      l10n.aboutSupport,
-                      l10n.aboutSupportSubtitle,
-                    ),
-                    (
-                      WebsitePage.privacy,
-                      Icons.privacy_tip_outlined,
-                      l10n.aboutPrivacyPolicy,
-                      l10n.aboutPrivacyPolicySubtitle,
-                    ),
-                    (
-                      WebsitePage.legalNotice,
-                      Icons.contact_mail_outlined,
-                      l10n.aboutLegalNotice,
-                      l10n.aboutLegalNoticeSubtitle,
-                    ),
-                  ])
-                    ListTile(
-                      leading: Icon(icon),
-                      title: Text(title),
-                      subtitle: Text(subtitle),
-                      trailing: const Icon(Icons.open_in_new),
-                      onTap: () => unawaited(
-                        _open(
-                          context,
-                          ref,
-                          page.uri(languageCode: languageCode),
-                        ),
-                      ),
-                    ),
+                  _websiteTile(
+                    context,
+                    ref,
+                    WebsitePage.support,
+                    icon: Icons.help_outline,
+                    title: l10n.aboutSupport,
+                    subtitle: l10n.aboutSupportSubtitle,
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.bug_report_outlined),
+                    title: Text(l10n.supportDetailsTitle),
+                    subtitle: Text(l10n.supportDetailsSubtitle),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _showSupportDetails(context),
+                  ),
+                  _websiteTile(
+                    context,
+                    ref,
+                    WebsitePage.privacy,
+                    icon: Icons.privacy_tip_outlined,
+                    title: l10n.aboutPrivacyPolicy,
+                    subtitle: l10n.aboutPrivacyPolicySubtitle,
+                  ),
+                  _websiteTile(
+                    context,
+                    ref,
+                    WebsitePage.legalNotice,
+                    icon: Icons.contact_mail_outlined,
+                    title: l10n.aboutLegalNotice,
+                    subtitle: l10n.aboutLegalNoticeSubtitle,
+                  ),
                 ],
               ),
               SectionCard(
@@ -136,6 +134,35 @@ class AboutPage extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _websiteTile(
+    BuildContext context,
+    WidgetRef ref,
+    WebsitePage page, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) => ListTile(
+    leading: Icon(icon),
+    title: Text(title),
+    subtitle: Text(subtitle),
+    trailing: const Icon(Icons.open_in_new),
+    onTap: () => unawaited(
+      _open(
+        context,
+        ref,
+        page.uri(languageCode: Localizations.localeOf(context).languageCode),
+      ),
+    ),
+  );
+
+  void _showSupportDetails(BuildContext context) =>
+      Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => const SupportDetailsPage(),
+        ),
+      );
 
   /// Flutter's `showLicensePage` with the page's English in British
   /// spelling.

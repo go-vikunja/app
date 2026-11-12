@@ -4,12 +4,14 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_text_controller.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_formatting.dart';
+import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
@@ -62,7 +64,12 @@ class QuickAddPreview extends ConsumerWidget {
     final colors = theme.colorScheme;
     final chips = plan.magicOnly
         ? const <Widget>[]
-        : _chips(context, MomentFormatter.watch(context, ref));
+        : _chips(
+            context,
+            MomentFormatter.watch(context, ref),
+            offline: ref.watch(offlineProvider) != null,
+            guest: ref.watch(activeAccountIsGuestProvider),
+          );
     final notes = [
       if (lineCount > 1 && subtaskCount > 0 && chips.isEmpty)
         l10n.newTaskTreeCountOnly(lineCount, subtaskCount)
@@ -97,7 +104,12 @@ class QuickAddPreview extends ConsumerWidget {
     );
   }
 
-  List<Widget> _chips(BuildContext context, MomentFormatter formatter) {
+  List<Widget> _chips(
+    BuildContext context,
+    MomentFormatter formatter, {
+    required bool offline,
+    required bool guest,
+  }) {
     final l10n = context.l10n;
     final parsed = plan.parsed;
     final assigneePrefix = prefixes?.assignee ?? '';
@@ -150,13 +162,7 @@ class QuickAddPreview extends ConsumerWidget {
           onRemove: () => onRemove(MagicSpanKind.label, items: [label.title]),
         ),
       for (final title in plan.newLabels)
-        _PartChip(
-          kind: MagicSpanKind.label,
-          icon: const Icon(Icons.new_label_outlined),
-          label: l10n.quickAddNewLabel(title),
-          semanticsLabel: l10n.quickAddNewLabelSemantics(title),
-          onRemove: () => onRemove(MagicSpanKind.label, items: [title]),
-        ),
+        _newLabelChip(l10n, title, offline: offline, guest: guest),
       for (final user in plan.assignees)
         _PartChip(
           kind: MagicSpanKind.assignee,
@@ -209,6 +215,38 @@ class QuickAddPreview extends ConsumerWidget {
           ),
         ),
     ];
+  }
+
+  Widget _newLabelChip(
+    AppLocalizations l10n,
+    String title, {
+    required bool offline,
+    required bool guest,
+  }) {
+    final (icon, label, semanticsLabel) = guest
+        ? (
+            Icons.label_off_outlined,
+            l10n.quickAddLabelStaysInTitle(title),
+            l10n.quickAddLabelStaysInTitleSemantics(title),
+          )
+        : offline
+        ? (
+            Icons.cloud_off_outlined,
+            l10n.quickAddNewLabelOffline(title),
+            l10n.quickAddNewLabelOfflineSemantics(title),
+          )
+        : (
+            Icons.new_label_outlined,
+            l10n.quickAddNewLabel(title),
+            l10n.quickAddNewLabelSemantics(title),
+          );
+    return _PartChip(
+      kind: MagicSpanKind.label,
+      icon: Icon(icon),
+      label: label,
+      semanticsLabel: semanticsLabel,
+      onRemove: () => onRemove(MagicSpanKind.label, items: [title]),
+    );
   }
 
   Widget _dueChip(

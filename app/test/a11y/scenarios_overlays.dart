@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/about/presentation/support_details_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/avatar_crop_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/default_project_picker.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/one_time_secret_view.dart';
@@ -37,6 +38,7 @@ import '../helpers/guest_app.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/sync_fakes.dart';
 import '../helpers/task_details_fakes.dart';
+import '../helpers/test_database.dart';
 import 'sweep_data.dart';
 import 'sweep_harness.dart';
 
@@ -63,6 +65,7 @@ const overlayRegistry = <String>[
   'done snackbar',
   'bin snackbar',
   'one-time secret page',
+  'support details page',
   'avatar crop page',
   'image viewer',
 ];
@@ -314,6 +317,24 @@ final List<SweepScenario> overlayScenarios = [
       );
     },
     expectScreen: (_) => find.byType(OneTimeSecretPage),
+  ),
+  SweepScenario(
+    kind: SweepKind.overlay,
+    name: 'support details page',
+    route: AppRoutes.overview,
+    // The details read the account's database.
+    setUp: (tester, _) => pumpSweepApp(
+      tester,
+      overrides: [
+        appDatabaseProvider.overrideWith((ref, accountId) => testDatabase()),
+      ],
+    ),
+    navigate: (tester, _) async {
+      unawaited(_pushPage(_page(tester), const SupportDetailsPage()));
+      // Settles once the details are collected and the spinner is gone.
+      await tester.pumpAndSettle();
+    },
+    expectScreen: (_) => find.byType(SupportDetailsPage),
   ),
   SweepScenario(
     kind: SweepKind.overlay,

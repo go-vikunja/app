@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/features/quick_add/application/local_quick_add_service.dart';
+import 'package:vikunja_mobile/features/quick_add/application/quick_add_grammar.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 
 import '../../../helpers/label_user_fakes.dart';
@@ -63,6 +64,7 @@ void main() {
     UserSettings settings = const UserSettings(),
     DateTime? at,
     bool guest = false,
+    QuickAddGrammar grammar = fakeGrammar,
   }) => LocalQuickAddService(
     snapshot: QuickAddSnapshot(
       projects: projects ?? [inbox, garage, work, archived, shadow],
@@ -75,7 +77,7 @@ void main() {
     users: users,
     now: () => at ?? now,
     guest: guest,
-    grammar: fakeGrammar,
+    grammar: grammar,
     random: ZeroRandom(),
   );
 
@@ -601,6 +603,21 @@ void main() {
       expect(tasks.creates.single.title, 'a');
       expect(tasks.updates, isEmpty);
       expect(result.labelsNotCreated, ['Errands']);
+      expect(result.labelsKept, isEmpty);
+    });
+
+    test('a label both typed and picked in the sheet that could not be '
+        'created is reported as both', () async {
+      labels.createFailure = const NetworkFailure(NetworkProblem.unreachable);
+
+      final result = await service().submit(
+        'a *neu',
+        extras: const QuickAddExtras(newLabels: ['Errands', 'Neu']),
+      );
+
+      expect(tasks.creates.single.title, 'a *neu');
+      expect(result.labelsNotCreated, ['Errands', 'Neu']);
+      expect(result.labelsKept, ['*neu']);
     });
 
     test('a monthly repeat from the sheet keeps its mode', () async {
@@ -649,22 +666,23 @@ void main() {
       expect(tasks.updates.single.$1, -2);
     });
 
-    test('a label that cannot be created is reported once; the tasks go '
-        'without it', () async {
+    test('a label that cannot be created stays at the end of each title as '
+        'typed and is reported once; the tasks go without it', () async {
       labels.createFailure = const ServerFailure(500);
 
       final result = await service().submit(
-        'Buy milk *Urgent *wichtig\nSell milk *urgent',
+        'Buy *Urgent milk *wichtig\nSell milk *urgent',
       );
 
       expect(tasks.creates.map((task) => task.title), [
-        'Buy milk',
-        'Sell milk',
+        'Buy milk *Urgent',
+        'Sell milk *urgent',
       ]);
       expect(tasks.updates, [
         (-1, const TaskChanges(labels: IdSetChange(added: {10}))),
       ]);
-      expect(result.labelsNotCreated, ['Urgent']);
+      expect(result.labelsKept, ['*Urgent']);
+      expect(result.labelsNotCreated, isEmpty);
     });
 
     test('offline, the first failed label create skips the others', () async {
@@ -676,8 +694,79 @@ void main() {
       final result = await service().submit('a *one *two *three');
 
       expect(attempts, 1);
-      expect(result.labelsNotCreated, ['one', 'two', 'three']);
-      expect(tasks.creates.single.title, 'a');
+      expect(result.labelsKept, ['*one', '*two', '*three']);
+      expect(tasks.creates.single.title, 'a *one *two *three');
+    });
+
+    test('offline, a quoted label stays quoted, and one with an unclosed '
+        'quote, which the parser leaves in the text, stays once', () async {
+      labels.createFailure = const NetworkFailure(NetworkProblem.unreachable);
+
+      final result = await service(grammar: const QuickAddGrammar())
+          .submit('Plan *"road trip" soon\nPack *\'two bags');
+
+      expect(tasks.creates.map((task) => task.title), [
+        'Plan soon *"road trip"',
+        "Pack *'two bags",
+      ]);
+      expect(result.labelsKept, ['*"road trip"', "*'two bags"]);
+    });
+
+    test('a doubled prefix stays as typed', () async {
+      labels.createFailure = const NetworkFailure(NetworkProblem.unreachable);
+
+      final result = await service(grammar: const QuickAddGrammar())
+          .submit('Fix **bike');
+
+      // The parser takes the label without one prefix, the web's rule.
+      expect(tasks.creates.single.title, 'Fix * **bike');
+      expect(result.labelsKept, ['**bike']);
+    });
+
+    test("in Todoist mode a label stays with Todoist's prefix", () async {
+      labels.createFailure = const ServerFailure(500);
+
+      final result = await service(
+        settings: const UserSettings(
+          quickAddMagicMode: QuickAddMagicMode.todoist,
+        ),
+      ).submit('Buy milk @neu');
+
+      expect(tasks.creates.single.title, 'Buy milk @neu');
+      expect(result.labelsKept, ['@neu']);
+    });
+
+    test('a label the line does not hold as typed stays as its prefix and '
+        'title, quoted for a space', () async {
+      labels.createFailure = const ServerFailure(500);
+      ParsedTaskText parse(
+        String text, {
+        required DateTime now,
+        required QuickAddMagicMode mode,
+      }) => ParsedTaskText(text: text, labels: const ['road trip']);
+
+      final result = await service(
+        grammar: QuickAddGrammar(
+          parse: parse,
+          cleanup: fakeCleanup,
+          prefixes: fakePrefixes,
+          repeatOf: fakeRepeatOf,
+          subtasks: fakeSubtasks,
+        ),
+      ).submit('Plan');
+
+      expect(tasks.creates.single.title, 'Plan *"road trip"');
+      expect(result.labelsKept, ['*"road trip"']);
+    });
+
+    test('a title made too long by a label kept is cut with it', () async {
+      labels.createFailure = const ServerFailure(500);
+      final words = '${'x' * 996} y';
+
+      await service().submit('$words *neu');
+
+      expect(tasks.creates.single.title, words);
+      expect(tasks.creates.single.description, contains('*neu'));
     });
 
     test('a label title the server cannot take is reported without a '
@@ -688,7 +777,8 @@ void main() {
 
       expect(labels.created, isEmpty);
       expect(labels.lookups, isEmpty);
-      expect(result.labelsNotCreated, [long]);
+      expect(result.labelsKept, ['*$long']);
+      expect(tasks.creates.single.title, 'a *$long');
     });
 
     test('the title length counts characters, not UTF-16 units', () async {
@@ -848,13 +938,16 @@ void main() {
 
         expect(users.searches, [(4, 'bob')]);
         expect(labels.created, isEmpty);
-        expect(tasks.creates.map((task) => task.title), ['a @bob', 'b @carl']);
+        expect(tasks.creates.map((task) => task.title), [
+          'a @bob *neu',
+          'b @carl',
+        ]);
         expect(tasks.updates.single, (
           -1,
           const TaskChanges(assignees: IdSetChange(added: {20})),
         ));
         expect(result.unresolvedAssignees, ['bob', 'carl']);
-        expect(result.labelsNotCreated, ['neu']);
+        expect(result.labelsKept, ['*neu']);
       });
 
       test('a search the server refuses leaves only that name '
@@ -874,7 +967,7 @@ void main() {
 
         expect(users.searches, isEmpty);
         expect(labels.created, isEmpty);
-        expect(tasks.creates.single.title, 'a @bob');
+        expect(tasks.creates.single.title, 'a @bob *neu');
         expect(tasks.updates.single, (
           -1,
           const TaskChanges(
@@ -883,7 +976,8 @@ void main() {
           ),
         ));
         expect(result.unresolvedAssignees, ['bob']);
-        expect(result.labelsNotCreated, ['neu']);
+        expect(result.labelsKept, ['*neu']);
+        expect(result.labelsNotCreated, isEmpty);
       });
 
       test('a line of nothing but a person keeps the name as the title and '

@@ -1894,7 +1894,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String quickAddHelpLabelsBody(String prefix) {
-    return 'Ein Wort, das mit $prefix beginnt. Labels, die es noch nicht gibt, werden beim Hinzufügen erstellt. Für Leerzeichen nimm Anführungszeichen.';
+    return 'Ein Wort, das mit $prefix beginnt. Labels, die es noch nicht gibt, werden beim Hinzufügen erstellt; ohne Verbindung bleibt das Wort im Titel. Für Leerzeichen nimm Anführungszeichen.';
   }
 
   @override
@@ -8714,4 +8714,77 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get searchOpenLinkedTask => 'Verlinkte Aufgabe öffnen';
+
+  @override
+  String get signOutStillFinishingTitle => 'Die Abmeldung läuft noch';
+
+  @override
+  String get signOutStillFinishingExplanation =>
+      'Ein Teil der App schließt noch die Daten eines Kontos, von dem du dich abgemeldet hast.';
+
+  @override
+  String get signOutStillFinishingSuggestion =>
+      'Warte einen Moment und versuche es noch einmal. Wenn es so bleibt, schließe die App und öffne sie wieder.';
+
+  @override
+  String newTaskLabelsKept(String labels) {
+    return 'Diese Labels konnten nicht erstellt werden und bleiben deshalb im Titel: $labels';
+  }
+
+  @override
+  String quickAddNewLabelOffline(String label) {
+    return '$label · braucht eine Verbindung';
+  }
+
+  @override
+  String quickAddNewLabelOfflineSemantics(String label) {
+    return 'Neues Label $label, braucht eine Verbindung, sonst bleibt es im Titel';
+  }
+
+  @override
+  String quickAddLabelStaysInTitle(String label) {
+    return '$label · bleibt im Titel';
+  }
+
+  @override
+  String quickAddLabelStaysInTitleSemantics(String label) {
+    return 'Das Label $label gibt es nicht; es bleibt im Titel';
+  }
+
+  @override
+  String get supportDetailsTitle => 'Support-Details';
+
+  @override
+  String get supportDetailsSubtitle =>
+      'Was du beilegen kannst, wenn du einen Fehler meldest; du siehst es, bevor du es teilst';
+
+  @override
+  String get supportDetailsIntro =>
+      'Diese Details helfen, einen Fehler zu finden: Versionen, Zeiten, Anzahlen und Einstellungen. Sie enthalten nie deine Aufgaben, Titel, Namen, E-Mail-Adressen oder Passwörter. Nichts verlässt dein Gerät, bevor du es teilst.';
+
+  @override
+  String get supportDetailsShowServers => 'Serveradressen anzeigen';
+
+  @override
+  String get supportDetailsShowServersSubtitle =>
+      'Sonst erscheinen sie als <server-1>, <server-2> und so weiter';
+
+  @override
+  String get supportDetailsShare => 'Teilen';
+
+  @override
+  String get signInFinishingSignOut => 'Abmeldung wird abgeschlossen …';
+
+  @override
+  String get guestRemoveStillFinishingTitle =>
+      'Der Gastzugang wird noch entfernt';
+
+  @override
+  String get guestRemoveStillFinishingExplanation =>
+      'Ein Teil der App schließt noch die Daten eines Gastzugangs, den du entfernt hast.';
+
+  @override
+  String quickAddHelpLabelsBodyGuest(String prefix) {
+    return 'Ein Wort, das mit $prefix beginnt. Labels, die es schon gibt, werden hinzugefügt; als Gast kannst du keine neuen erstellen, deshalb bleiben andere Wörter im Titel. Für Leerzeichen nimm Anführungszeichen.';
+  }
 }

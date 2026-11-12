@@ -2,6 +2,7 @@ import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
@@ -11,6 +12,7 @@ import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_entry_points.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:workmanager/workmanager.dart';
@@ -81,6 +83,11 @@ Future<ProviderContainer> createBackgroundContainer() async =>
         notificationBackgroundEntryPointProvider.overrideWithValue(
           onNotificationActionInBackground,
         ),
-        runsHeadlessProvider.overrideWithValue(true),
+        ...backgroundRunOverrides,
       ],
     );
+
+final List<Override> backgroundRunOverrides = [
+  runsHeadlessProvider.overrideWithValue(true),
+  appPartProvider.overrideWithValue(AppPart.backgroundRun),
+];

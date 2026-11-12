@@ -8,7 +8,9 @@ import 'package:vikunja_mobile/app/l10n/licence_page_localizations.dart';
 import 'package:vikunja_mobile/app/legal.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/about/presentation/about_page.dart';
+import 'package:vikunja_mobile/features/about/presentation/support_details_page.dart';
 import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
@@ -18,6 +20,7 @@ import '../../helpers/fakes.dart';
 import '../../helpers/guest_app.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/test_database.dart';
 
 void main() {
   Finder aboutList() => find
@@ -37,6 +40,7 @@ void main() {
     expect(find.text(en.aboutUnofficial), findsOneWidget);
     for (final text in [
       en.aboutSupport,
+      en.supportDetailsTitle,
       en.aboutPrivacyPolicy,
       en.aboutLegalNotice,
       en.aboutLicence,
@@ -91,6 +95,59 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ConnectServerScreen), findsOneWidget);
     expect(find.byType(AboutPage), findsNothing);
+  });
+
+  Future<void> openSupportDetails(WidgetTester tester) async {
+    await scrollTo(tester, find.text(en.supportDetailsTitle));
+    await tester.tap(find.text(en.supportDetailsTitle));
+    await tester.pumpAndSettle();
+  }
+
+  Finder detailsText() => find.textContaining('Support details\nCreated:');
+
+  testWidgets('signed out, Support details opens its page from About, and '
+      'back returns to About', (tester) async {
+    usePhoneSurface(tester);
+    await pumpVikunjaApp(tester);
+    unawaited(
+      containerOf(tester).read(appRouterProvider).push(AppRoutes.about),
+    );
+    await tester.pumpAndSettle();
+
+    await openSupportDetails(tester);
+
+    expect(find.byType(SupportDetailsPage), findsOneWidget);
+    expect(
+      tester.widget<Text>(detailsText()).data,
+      endsWith('\nAccounts: none'),
+    );
+    await tester.tap(find.byType(CloseButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(SupportDetailsPage), findsNothing);
+    expect(find.byType(AboutPage), findsOneWidget);
+  });
+
+  testWidgets('a link-share guest opens the support details from About', (
+    tester,
+  ) async {
+    usePhoneSurface(tester);
+    await pumpGuestApp(
+      tester,
+      auth: AuthFakes(),
+      data: SyncFakes(),
+      overrides: [
+        appDatabaseProvider.overrideWith((ref, accountId) => testDatabase()),
+      ],
+    );
+    await openFromAccountTab(tester);
+
+    await openSupportDetails(tester);
+
+    expect(find.byType(SupportDetailsPage), findsOneWidget);
+    expect(
+      tester.widget<Text>(detailsText()).data,
+      contains('\nAccount 1 (active)\nKind: guest\n'),
+    );
   });
 
   testWidgets('the connect screen keeps About from being opened while it '
@@ -253,8 +310,7 @@ void main() {
     testWidgets('a link that does not open says so', (tester) async {
       await pumpAbout(tester, opens: false);
 
-      await tester.tap(find.text(en.aboutPrivacyPolicy));
-      await tester.pumpAndSettle();
+      await openRows(tester, [en.aboutPrivacyPolicy]);
 
       expect(find.text(en.legalOpenFailed), findsOneWidget);
     });

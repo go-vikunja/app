@@ -180,8 +180,9 @@ void main() {
 
     expect(users.searches, isEmpty);
     expect(labels.created, isEmpty);
+    expect(tasks.creates.single.title, 'Buy milk @ben *errand');
     expect(result.unresolvedAssignees, ['ben']);
-    expect(result.labelsNotCreated, ['errand']);
+    expect(result.labelsKept, ['*errand']);
   });
 
   test('submit creates through the task repository', () async {

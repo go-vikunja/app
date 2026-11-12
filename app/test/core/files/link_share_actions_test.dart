@@ -37,6 +37,29 @@ void main() {
     expect(params.sharePositionOrigin, origin);
   });
 
+  test('hands a text to the share sheet as text with its subject and '
+      'anchor, without a URI', () async {
+    const origin = Rect.fromLTWH(10, 20, 30, 40);
+
+    expect(
+      await actions().shareText(
+        'Support details\nApp: 1.0.0',
+        subject: 'Support details',
+        origin: origin,
+      ),
+      isTrue,
+    );
+
+    final params = shared.single;
+    expect(params.text, 'Support details\nApp: 1.0.0');
+    expect(params.uri, isNull);
+    expect(params.subject, 'Support details');
+    expect(params.sharePositionOrigin, origin);
+
+    status = ShareResultStatus.unavailable;
+    expect(await actions().shareText('Support details'), isFalse);
+  });
+
   test('a dismissed sheet counts as shown, a missing one does not', () async {
     status = ShareResultStatus.dismissed;
     expect(await actions().shareLink(url), isTrue);

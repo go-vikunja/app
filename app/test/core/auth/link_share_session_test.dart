@@ -326,6 +326,32 @@ void main() {
       );
       expect(gateway.authentications, isEmpty);
     });
+
+    test('is handed on with its reason once the guest is flagged', () async {
+      final guest = await seed(issuedAgo(const Duration(hours: 40)));
+      gateway.onRenew = (_) async => throw const LinkShareGone(code: 13003);
+      final handed = <(String, SessionEnded, bool)>[];
+      final reporting = LinkShareSessions(
+        store: fakes.linkShareStore,
+        gateway: gateway,
+        connectionFor: (id) async =>
+            (await fakes.registry.find(id))?.connection,
+        markNeedsReauth: fakes.registry.markNeedsReauth,
+        onSessionEnded: (accountId, failure) async =>
+            handed.add((accountId, failure, await needsReauth(accountId))),
+        clock: () => now,
+      );
+
+      await expectLater(
+        reporting.forAccount(guest.id).validAccessToken(),
+        throwsA(isA<LinkShareGone>()),
+      );
+
+      final (accountId, failure, flaggedFirst) = handed.single;
+      expect(accountId, guest.id);
+      expect(failure.reason, SessionEndReason.linkShareGone);
+      expect(flaggedFirst, isTrue);
+    });
   });
 
   test('lost secrets end the session', () async {

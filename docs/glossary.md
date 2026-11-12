@@ -36,6 +36,7 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - device settings: connection settings; access headers; app lock;
   - Rurana's pages on the website: help (the support page, "Help and bug reports"), privacy policy, legal notice (the Impressum); a server's own are its privacy policy and imprint;
   - bug for a fault in Rurana that someone reports ("report a bug").
+  - support details for what the About page's row of that name shows and shares for a bug report ("Support details"); the details' own text stays English in every language.
   - the bin for the server's trash (Vikunja 2.8.0 and later; the web says Trash): a task or project is moved to the bin, restored, deleted forever (also for the server's purge after 30 days; never "for good"); the bin is emptied ("Empty bin"). Code, ARB keys and the API keep "trash".
   - following for the server's subscriptions: a user follows a task or project and unfollows it ("Follow task", "Unfollow task", "Following the project …"); never subscribe or watch. On Vikunja 2.8.0 and later the tasks a user follows are the ones whose reminders reach them. Only the share cleanup notice keeps "subscriptions", for what the server deletes.
 - **Sign in:** "sign in" (verb), "sign-in" (noun or adjective: sign-in page), "sign out". Never log in, login or log out.
@@ -91,7 +92,8 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - Startbildschirm (Home-Bildschirm only in iOS steps);
   - 12-/24-Stunden-Format;
   - "die Person, die den Server betreut" for whoever runs the server;
-  - Rurana's pages on the website: Hilfe (the support page, „Hilfe und Fehler melden“), Datenschutzerklärung, Impressum; Fehler also for a bug („einen Fehler melden“).
+  - Rurana's pages on the website: Hilfe (the support page, „Hilfe und Fehler melden“), Datenschutzerklärung, Impressum; Fehler also for a bug („einen Fehler melden“, „wenn du einen Fehler meldest“), never „Fehlermeldung“, which reads as a message the app shows (`app/test/l10n/german_texts_test.dart`);
+  - Support-Details, plural, for the support details („die Support-Details“; the row and the page „Support-Details“).
   - Papierkorb for the server's trash: in den Papierkorb verschieben, wiederherstellen, endgültig löschen, „Papierkorb leeren“; Rückgängig for Undo.
   - folgen for the server's subscriptions, with the dative (einer Aufgabe, einem Projekt folgen), and „nicht mehr folgen“; never abonnieren or beobachten. Only the share cleanup notice keeps „Abonnements“.
 - **Compounds:** German nouns form closed compounds (Standardspalte, Standardprojekt, Spaltenlimit). A hyphen only with English words, abbreviations or participles (Projekt-Admin, Label-Titel, CalDAV-Token, Erledigt-Spalte).

@@ -12,9 +12,11 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_activity_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/support/session_end_log.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
@@ -304,8 +306,8 @@ void main() {
       );
     });
 
-    test('sign-out forgets the background notes of the account and takes '
-        'what it has in the tray', () async {
+    test('sign-out forgets the background notes and the last session end '
+        'of the account and takes what it has in the tray', () async {
       final alice = await auth.seedAccount(
         fullServer270(),
         tokens: issueTokens(issuedAt: noon),
@@ -327,10 +329,17 @@ void main() {
         ActivityNotifier.sessionEndedKey(alice.id),
         'true',
       );
+      final sessionEnds = SessionEndLog(auth.preferences);
+      await sessionEnds.record(
+        alice.id,
+        SessionEndReason.expired,
+        part: AppPart.backgroundRun,
+      );
 
       await container.read(accountDataWiperProvider)(alice.id);
 
       expect(await log.lastRunAt(alice.id), isNull);
+      expect(await sessionEnds.read(alice.id), isNull);
       expect(
         auth.preferences.values[ActivityNotifier.sessionEndedKey(alice.id)],
         isNull,

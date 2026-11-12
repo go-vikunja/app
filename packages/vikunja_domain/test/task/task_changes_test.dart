@@ -572,6 +572,89 @@ void main() {
     });
   });
 
+  group('TaskChanges.doneBase', () {
+    final base = DoneBase(dueDate: monday, doneAt: friday);
+    final later = DoneBase(dueDate: friday);
+
+    test('merge keeps the earlier base', () {
+      expect(
+        TaskChanges(
+          done: true,
+          doneBase: base,
+        ).merge(TaskChanges(done: true, doneBase: later)).doneBase,
+        base,
+      );
+      expect(
+        TaskChanges(
+          done: true,
+          doneBase: base,
+        ).merge(const TaskChanges(title: 't')).doneBase,
+        base,
+      );
+    });
+
+    test('a later base fills an empty one', () {
+      expect(
+        const TaskChanges(done: true)
+            .merge(TaskChanges(isFavorite: true, doneBase: later))
+            .doneBase,
+        later,
+      );
+    });
+
+    test('takes part in equality, the hash and toString, not in isEmpty', () {
+      expect(
+        TaskChanges(done: true, doneBase: base),
+        TaskChanges(
+          done: true,
+          doneBase: DoneBase(dueDate: monday, doneAt: friday),
+        ),
+      );
+      expect(
+        TaskChanges(done: true, doneBase: base).hashCode,
+        TaskChanges(
+          done: true,
+          doneBase: DoneBase(dueDate: monday, doneAt: friday),
+        ).hashCode,
+      );
+      expect(
+        TaskChanges(done: true, doneBase: base),
+        isNot(TaskChanges(done: true, doneBase: later)),
+      );
+      expect(
+        TaskChanges(done: true, doneBase: base),
+        isNot(const TaskChanges(done: true)),
+      );
+      expect('${TaskChanges(doneBase: base)}', 'TaskChanges(doneBase)');
+      expect(TaskChanges(doneBase: base).isEmpty, isTrue);
+    });
+
+    test('of takes the dates and the done time of a task', () {
+      final task = Task(
+        id: 1,
+        title: 'Daily',
+        projectId: 7,
+        dueDate: monday,
+        startDate: monday,
+        endDate: friday,
+        doneAt: friday,
+        repeatAfter: const Duration(days: 1),
+      );
+
+      expect(
+        DoneBase.of(task),
+        DoneBase(
+          dueDate: monday,
+          startDate: monday,
+          endDate: friday,
+          doneAt: friday,
+        ),
+      );
+      expect(DoneBase(dueDate: monday), isNot(DoneBase(startDate: monday)));
+      expect(DoneBase(endDate: monday), isNot(DoneBase(doneAt: monday)));
+    });
+  });
+
   group('TaskChanges.merge of relations', () {
     const parent = TaskRelationRef(TaskRelationKind.parentTask, 1);
     const blocks = TaskRelationRef(TaskRelationKind.blocking, 2);

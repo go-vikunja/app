@@ -1874,7 +1874,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String quickAddHelpLabelsBody(String prefix) {
-    return 'A word starting with $prefix. Labels that don\'t exist yet are created when you add the task. Use quotes for spaces.';
+    return 'A word starting with $prefix. Labels that don\'t exist yet are created when you add the task; without a connection the word stays in the title. Use quotes for spaces.';
   }
 
   @override
@@ -8617,4 +8617,77 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchOpenLinkedTask => 'Open the linked task';
+
+  @override
+  String get signOutStillFinishingTitle => 'Still finishing the sign-out';
+
+  @override
+  String get signOutStillFinishingExplanation =>
+      'Part of the app is still closing the data of an account you signed out of.';
+
+  @override
+  String get signOutStillFinishingSuggestion =>
+      'Wait a moment and try again. If it keeps happening, close the app and open it again.';
+
+  @override
+  String newTaskLabelsKept(String labels) {
+    return 'These labels couldn\'t be created, so they stay in the title: $labels';
+  }
+
+  @override
+  String quickAddNewLabelOffline(String label) {
+    return '$label · needs a connection';
+  }
+
+  @override
+  String quickAddNewLabelOfflineSemantics(String label) {
+    return 'New label $label, needs a connection, otherwise it stays in the title';
+  }
+
+  @override
+  String quickAddLabelStaysInTitle(String label) {
+    return '$label · stays in the title';
+  }
+
+  @override
+  String quickAddLabelStaysInTitleSemantics(String label) {
+    return 'Label $label doesn\'t exist and stays in the title';
+  }
+
+  @override
+  String get supportDetailsTitle => 'Support details';
+
+  @override
+  String get supportDetailsSubtitle =>
+      'What to add to a bug report; you see it before you share it';
+
+  @override
+  String get supportDetailsIntro =>
+      'These details help to find a bug: versions, times, counts and settings. They never hold your tasks, titles, names, email addresses or passwords. Nothing leaves your device until you share it.';
+
+  @override
+  String get supportDetailsShowServers => 'Show server addresses';
+
+  @override
+  String get supportDetailsShowServersSubtitle =>
+      'Otherwise they show as <server-1>, <server-2> and so on';
+
+  @override
+  String get supportDetailsShare => 'Share';
+
+  @override
+  String get signInFinishingSignOut => 'Finishing the sign-out…';
+
+  @override
+  String get guestRemoveStillFinishingTitle =>
+      'Still removing the guest access';
+
+  @override
+  String get guestRemoveStillFinishingExplanation =>
+      'Part of the app is still closing the data of a guest access you removed.';
+
+  @override
+  String quickAddHelpLabelsBodyGuest(String prefix) {
+    return 'A word starting with $prefix. Labels that already exist are added; as a guest you can\'t create new ones, so any other word stays in the title. Use quotes for spaces.';
+  }
 }

@@ -8,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 
 // The contract tests need the server of test_servers/docker-compose.yaml:
 // VIKUNJA_CONTRACT=1 flutter test --tags contract
+// VIKUNJA_CONTRACT_PORT points them at a server on another port.
 //
 // /login and /register share a limit per minute and IP that cannot be
 // switched off (10 unless raised, as test_servers/docker-compose.yaml does),
@@ -18,7 +19,8 @@ final String? contractSkip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
     ? 'Set VIKUNJA_CONTRACT=1 and start test_servers/docker-compose.yaml'
     : null;
 
-const contractServerPort = 34527;
+final int contractServerPort =
+    int.tryParse(Platform.environment['VIKUNJA_CONTRACT_PORT'] ?? '') ?? 34527;
 
 Dio contractDio() => Dio(
   BaseOptions(

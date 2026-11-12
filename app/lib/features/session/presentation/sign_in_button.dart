@@ -6,12 +6,16 @@ class SignInButton extends StatelessWidget {
     required this.label,
     required this.isSigningIn,
     required this.onPressed,
+    this.waitingLabel,
     super.key,
   });
 
   final String label;
   final bool isSigningIn;
   final VoidCallback onPressed;
+
+  /// Shown while signing in; "Waiting for sign-in…" without it.
+  final String? waitingLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +35,7 @@ class SignInButton extends StatelessWidget {
             child: CircularProgressIndicator.adaptive(strokeWidth: 2),
           ),
           const SizedBox(width: 12),
-          Flexible(child: Text(context.l10n.signInWaiting)),
+          Flexible(child: Text(waitingLabel ?? context.l10n.signInWaiting)),
         ],
       ),
     );

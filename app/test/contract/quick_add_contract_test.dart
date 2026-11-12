@@ -288,6 +288,7 @@ void main() {
           );
 
           expect(result.labelsNotCreated, isEmpty);
+          expect(result.labelsKept, isEmpty);
           expect(result.unresolvedAssignees, isEmpty);
           await sender.drain();
           final task = await sentTask(result.createdTaskIds.single);

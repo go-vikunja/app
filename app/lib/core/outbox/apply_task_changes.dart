@@ -67,6 +67,29 @@ TaskChanges changesAfterCreate(TaskChanges changes) => TaskChanges(
   kanban: changes.kanban,
   positions: changes.positions,
   coverImageAttachmentId: changes.coverImageAttachmentId,
+  doneBase: changes.doneBase,
+);
+
+/// [changes] with [base] as the server's state before its Done was first
+/// sent.
+TaskChanges withDoneBase(TaskChanges changes, DoneBase base) => _rebuilt(
+  changes,
+  labels: changes.labels,
+  relations: changes.relations,
+  kanban: changes.kanban,
+  positions: changes.positions,
+  doneBase: base,
+);
+
+/// What of [changes] has requests of its own: label, assignee and relation
+/// changes, kanban placements and list positions. The rest is the task's
+/// body, which reaches the server in one request.
+TaskChanges withoutBody(TaskChanges changes) => TaskChanges(
+  labels: changes.labels,
+  assignees: changes.assignees,
+  relations: changes.relations,
+  kanban: changes.kanban,
+  positions: changes.positions,
 );
 
 /// [changes] without any change to the labels in [labelIds].
@@ -153,7 +176,8 @@ TaskChanges withoutDescription(TaskChanges changes) => _rebuilt(
   positions: changes.positions,
 );
 
-/// A [description] of null keeps the description, its base and its taps.
+/// A [description] of null keeps the description, its base and its taps;
+/// a [doneBase] of null keeps the one of [changes].
 TaskChanges _rebuilt(
   TaskChanges changes, {
   required IdSetChange? labels,
@@ -161,6 +185,7 @@ TaskChanges _rebuilt(
   required Map<int, BucketPlacement>? kanban,
   required Map<int, double>? positions,
   ({String? html, String? base, List<ChecklistToggle>? toggles})? description,
+  DoneBase? doneBase,
 }) => TaskChanges(
   title: changes.title,
   description: description == null ? changes.description : description.html,
@@ -188,6 +213,7 @@ TaskChanges _rebuilt(
   kanban: kanban,
   positions: positions,
   coverImageAttachmentId: changes.coverImageAttachmentId,
+  doneBase: doneBase ?? changes.doneBase,
 );
 
 bool changesDates(TaskChanges changes) =>

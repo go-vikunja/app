@@ -86,7 +86,7 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
             );
           }
         }
-      case SignInIdle() || SignInInProgress():
+      case SignInIdle() || SignInSettling() || SignInInProgress():
         break;
     }
   }
@@ -132,6 +132,12 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
     );
   }
 
+  void _dropSettling() {
+    if (ref.read(signInControllerProvider) is SignInSettling) {
+      ref.read(signInControllerProvider.notifier).reset();
+    }
+  }
+
   void _openPasswordReset(ServerConnection connection) => unawaited(
     openExternalOrSay(context, ref, passwordResetPageUri(connection)),
   );
@@ -145,6 +151,7 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
 
     final signIn = ref.watch(signInControllerProvider);
     final isSigningIn = signIn is SignInInProgress;
+    final isSettling = signIn is SignInSettling;
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final isSupported = connection.capabilities.isSupported;
@@ -161,9 +168,12 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
     final actions = OverviewActions(
       canSignIn: signInMethod != null,
       isSigningIn: isSigningIn,
+      isSettling: isSettling,
       onContinue: () => _continueToSignIn(connection),
-      onUseDifferentServer: () =>
-          widget.adding ? context.pop() : context.go(AppRoutes.connect),
+      onUseDifferentServer: () {
+        _dropSettling();
+        widget.adding ? context.pop() : context.go(AppRoutes.connect);
+      },
       onCreateAccount: signInMethod?.offersRegistration ?? false
           ? () => _createAccount(connection)
           : null,
@@ -176,6 +186,8 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
 
     // Once the browser has returned, the code is being exchanged and the
     // account stored; leaving now would strand a half-finished sign-in.
+    // The wait for an earlier sign-out before the browser opens may be
+    // left, which drops the sign-in.
     return PopScope(
       canPop: !isSigningIn,
       // Over the shell, which keeps the sign-in state alive, a failure here
@@ -183,8 +195,9 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
       // a failure: the router also pops this page, during a build, once a
       // sign-in has succeeded.
       onPopInvokedWithResult: (didPop, _) {
-        if (didPop &&
-            widget.adding &&
+        if (!didPop) return;
+        _dropSettling();
+        if (widget.adding &&
             ref.read(signInControllerProvider) is SignInFailed) {
           ref.read(signInControllerProvider.notifier).reset();
         }

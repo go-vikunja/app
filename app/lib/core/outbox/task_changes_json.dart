@@ -8,10 +8,12 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// relation deltas as `{"added": [{"kind", "other"}], "removed": [...]}`,
 /// kanban placements as `{"<view id>": {"bucket_id", "position"}}`
 /// (`position` absent to keep the server's), list positions as
-/// `{"<view id>": <position>}`, and the description's base and checkbox
+/// `{"<view id>": <position>}`, the description's base and checkbox
 /// taps as `description_base` and `checklist_toggles`
 /// (`[{"item_id", "checked"}]` or `[{"ordinal", "text", "checked"}]`),
-/// which are never sent.
+/// and a repeating task's done base as
+/// `done_base: {"due", "start", "end", "done_at"}` (instants in UTC or
+/// null), which are never sent.
 String encodeTaskChanges(TaskChanges changes) =>
     jsonEncode(taskChangesToJson(changes));
 
@@ -48,6 +50,7 @@ Map<String, Object?> taskChangesToJson(TaskChanges changes) => {
   if (changes.positions case final positions?)
     'positions': _positionsJson(positions),
   'cover_image_attachment_id': ?changes.coverImageAttachmentId,
+  if (changes.doneBase case final base?) 'done_base': _doneBaseJson(base),
 };
 
 TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
@@ -82,6 +85,7 @@ TaskChanges taskChangesFromJson(Map<String, Object?> json) => TaskChanges(
   kanban: _kanban(json['kanban']),
   positions: _positions(json['positions']),
   coverImageAttachmentId: json['cover_image_attachment_id'] as int?,
+  doneBase: _doneBase(json['done_base']),
 );
 
 /// Instants in UTC; `reminder` is absent while a relative one has none.
@@ -235,6 +239,32 @@ Map<int, double>? _positions(Object? value) => switch (value) {
       if ((int.tryParse(key), value) case (final viewId?, final num position))
         viewId: position.toDouble(),
   },
+  _ => null,
+};
+
+// The keys match none of the `LIKE '%"…"%'` probes on stored payloads,
+// such as `"done"`.
+Map<String, Object?> _doneBaseJson(DoneBase base) => {
+  'due': _instantJson(base.dueDate),
+  'start': _instantJson(base.startDate),
+  'end': _instantJson(base.endDate),
+  'done_at': _instantJson(base.doneAt),
+};
+
+DoneBase? _doneBase(Object? value) => switch (value) {
+  final Map<String, Object?> map => DoneBase(
+    dueDate: _instant(map['due']),
+    startDate: _instant(map['start']),
+    endDate: _instant(map['end']),
+    doneAt: _instant(map['done_at']),
+  ),
+  _ => null,
+};
+
+String? _instantJson(DateTime? instant) => instant?.toUtc().toIso8601String();
+
+DateTime? _instant(Object? value) => switch (value) {
+  final String iso => DateTime.tryParse(iso)?.toUtc(),
   _ => null,
 };
 

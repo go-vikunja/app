@@ -54,9 +54,17 @@ enum OutboxSenderState {
 /// later ops never overtake it. A session that ended pauses the sender
 /// with the op still queued. Everything else is final: the op becomes a
 /// `SyncProblem` until it is retried or discarded. After a drain that sent
-/// something the sync engine refreshes, so server-computed fields arrive;
-/// and a sync that reaches the server while an op waits out a network
-/// failure sends at once, because the network is evidently back.
+/// something the sync engine refreshes, so server-computed fields arrive,
+/// unless its caller syncs itself ([sendNow]); and a sync that reaches the
+/// server while an op waits out a network failure sends at once, because
+/// the network is evidently back.
+///
+/// A repeating task's Done is not applied twice when an answer was lost:
+/// the server moves the dates on every Done it gets. Before the first
+/// attempt of an update with a Done the sender reads the task and keeps
+/// its dates and `done_at` with the op; every later attempt reads it again,
+/// and when both moved the Done had landed, so only what has requests of
+/// its own (labels, assignees, relations, placements, positions) goes.
 ///
 /// A description change that knows the description it started from is
 /// checked against the server's right before it is written, so a change
@@ -187,6 +195,7 @@ final class OutboxSender {
   var _uploadRequested = false;
   var _paused = false;
   var _disposed = false;
+  var _refreshAfterSending = true;
   Timer? _timer;
   Timer? _uploadTimer;
 
@@ -252,11 +261,18 @@ final class OutboxSender {
     return queue.then((_) => _uploadRunning);
   }
 
-  /// A drain that skips every backoff: "Send now". Returns the failure
-  /// that still blocks the queue or the uploads afterwards, null when
-  /// nothing does.
-  Future<VikunjaFailure?> sendNow() async {
+  /// A drain that skips every backoff: "Send now". Returns the failure that
+  /// still blocks the queue or the uploads afterwards, null when nothing
+  /// does. With [refreshAfter] false the sender leaves the sync to its
+  /// caller from now on, for the drain this starts or joins and every later
+  /// one: a background run syncs each account right after sending, and its
+  /// container lives for one run.
+  Future<VikunjaFailure?> sendNow({bool refreshAfter = true}) async {
     if (_disposed) return null;
+    // Before the first await: the drain the provider started when it built
+    // this sender, which this call joins, has not sent yet; it yields at its
+    // sweep first.
+    if (!refreshAfter) _refreshAfterSending = false;
     await _db.outboxDao.clearBackoff();
     await drain();
     return blockedBy;
@@ -446,7 +462,7 @@ final class OutboxSender {
       while (_requested && !_disposed && !_paused) {
         _requested = false;
         final sent = await _sendUntilBlocked();
-        if (sent > 0) await _refreshQuietly();
+        if (sent > 0 && _refreshAfterSending) await _refreshQuietly();
       }
     } finally {
       _exiting = true;
@@ -591,7 +607,8 @@ final class OutboxSender {
   /// propagates and leaves the op `sending`, so nothing is re-sent on the
   /// spot; once it is [staleSendingAfter] old a drain resets it and sends
   /// an update or delete again (at least once), while a create is looked
-  /// up first.
+  /// up first, and an update with a repeating task's Done is checked
+  /// against the server first ([_updateOnce]).
   Future<bool> _send(OutboxRow op) async {
     final kind = OutboxOperationKind.values.asNameMap()[op.kind];
     if (kind == null) {
@@ -631,7 +648,9 @@ final class OutboxSender {
               await _recoverCreate(op, newTask) ??
               await _write.tasks.create(newTask);
         case OutboxOperationKind.updateTask:
-          task = await _update(op, changes!);
+          final (sent, answer) = await _updateOnce(op, changes!);
+          changes = sent;
+          task = answer;
         case OutboxOperationKind.deleteTask:
           await _write.tasks.delete(op.taskId);
           task = null;
@@ -675,6 +694,60 @@ final class OutboxSender {
     _log.fine('Sent ${op.kind} for task ${op.taskId}');
     return true;
   }
+
+  /// [changes] sent as an update of [op], unless they carry a repeating
+  /// task's Done that already reached the server on an earlier attempt:
+  /// then only what has requests of its own goes ([withoutBody]), and
+  /// nothing when that is empty. Returns what was sent and the server's
+  /// task.
+  Future<(TaskChanges, Task)> _updateOnce(
+    OutboxRow op,
+    TaskChanges changes,
+  ) async {
+    if (changes.done != true) return (changes, await _update(op, changes));
+    final base = changes.doneBase;
+    if (op.sentAt == null) {
+      if ((await _db.tasksDao.find(op.taskId))?.repeats ?? false) {
+        final fresh = await _readOrGone(op.taskId);
+        if (fresh != null && fresh.repeats && !fresh.done) {
+          await _db.outboxDao.markDoneAttempt(
+            op.id,
+            base: DoneBase.of(fresh),
+            sentAt: op.lastAttemptAt ?? _now(),
+          );
+        }
+      }
+    } else if (base != null) {
+      final fresh = await _readOrGone(op.taskId);
+      if (fresh != null && _doneLanded(fresh, base)) {
+        _log.info(
+          'The done of task ${op.taskId} had reached the server; not sent '
+          'again',
+        );
+        final rest = withoutBody(changes);
+        if (rest.isEmpty) return (rest, fresh);
+        return (rest, await _update(op, rest));
+      }
+    }
+    return (changes, await _update(op, changes));
+  }
+
+  /// The server moves a repeating task's dates and stamps `done_at` for
+  /// each Done; a date edited on the web leaves `done_at` alone. A task
+  /// without dates has only `done_at` to tell (its reminders move too, but
+  /// so does one edited on the web).
+  static bool _doneLanded(Task task, DoneBase base) =>
+      ((base.dueDate == null &&
+              base.startDate == null &&
+              base.endDate == null) ||
+          !_sameSecond(task.dueDate, base.dueDate) ||
+          !_sameSecond(task.startDate, base.startDate) ||
+          !_sameSecond(task.endDate, base.endDate)) &&
+      !_sameSecond(task.doneAt, base.doneAt);
+
+  static bool _sameSecond(DateTime? a, DateTime? b) => a == null || b == null
+      ? a == b
+      : a.millisecondsSinceEpoch ~/ 1000 == b.millisecondsSinceEpoch ~/ 1000;
 
   /// The update of [op], sent once more with the cover cleared when the
   /// task still points at a deleted cover attachment (code 4020): every

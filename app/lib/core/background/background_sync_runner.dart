@@ -27,8 +27,8 @@ typedef CreateTimer = Timer Function(
 );
 
 enum BackgroundRunKind {
-  /// The periodic run: every account synced, its outbox drained, its
-  /// activity fetched and its notifications refilled.
+  /// The periodic run: every account's outbox sent first, then every
+  /// account synced, its activity fetched and its notifications refilled.
   sync,
 
   /// Only the outboxes, soon after a change that waited for a token
@@ -45,13 +45,16 @@ enum BackgroundRunKind {
 /// app came to the front: the app keeps its accounts fresh itself.
 /// Otherwise the accounts take turns, the one whose last turn is oldest
 /// first, so one that never gets through (an unreachable server, a slow
-/// one) does not keep the others waiting; each starts only while at least
-/// [minimumTimeToStart] of the [deadline] remains, because the first
-/// request of a sync may rotate the refresh token and a rotation whose
-/// answer is lost when the OS suspends the process ends the session. At
-/// the deadline, or when the OS stops the run ([stop]), a token refresh
-/// still on its way gets up to [settleGrace] to be stored, then the
-/// container is disposed, which aborts a sync between two requests.
+/// one) does not keep the others waiting. A sync run sends every account's
+/// queue before any account syncs, in the same order, so the user's own
+/// changes go out even when the OS ends the run early. Each drain and turn
+/// starts only while at least [minimumTimeToStart] of the [deadline]
+/// remains, because the first request may rotate the refresh token and a
+/// rotation whose answer is lost when the OS suspends the process ends the
+/// session. At the deadline, or when the OS stops the run ([stop]), a
+/// token refresh still on its way gets up to [settleGrace] to be stored,
+/// then the container is disposed, which aborts a sync between two
+/// requests.
 final class BackgroundSyncRunner {
   new({
     required this._createContainer,
@@ -232,11 +235,17 @@ final class _Run {
     try {
       final state = await container.read(accountsProvider.future);
       if (state.accounts.isEmpty) return BackgroundRunOutcome.nothing;
-      // The widgets' Done taps go into the outboxes the turns then drain.
+      // The widgets' Done taps go into the outboxes the run then sends.
       await importWidgetTaps(container, drains: false);
       final log = container.read(backgroundRunLogProvider);
       final ordered = await _longestWaitingFirst(state.accounts, log);
       final labelled = state.accounts.length > 1;
+      final sent = <String, _Step>{};
+      if (kind == BackgroundRunKind.sync) {
+        if (await _sendQueues(ordered, sent) case final outcome?) {
+          return outcome;
+        }
+      }
       for (final (entry, lastSyncedAt) in ordered) {
         if (_stopped) break;
         if (deadlineAt.difference(now()) < minimumTimeToStart) {
@@ -248,7 +257,12 @@ final class _Run {
           return BackgroundRunOutcome.skipped;
         }
         await log.recordAttempt(entry.id, now());
-        await _account(entry, lastSyncedAt, labelled: labelled);
+        await _account(
+          entry,
+          lastSyncedAt,
+          labelled: labelled,
+          queueSent: sent[entry.id],
+        );
       }
       if (_stopped) return BackgroundRunOutcome.deadline;
       return _failed
@@ -258,6 +272,54 @@ final class _Run {
       if (_stopped) return BackgroundRunOutcome.deadline;
       _log.warning('Background run stopped: ${error.runtimeType}');
       return BackgroundRunOutcome.nothing;
+    }
+  }
+
+  /// Every account's queue goes before any account syncs: the user's own
+  /// changes are worth more than fresh data when the OS ends the run early.
+  /// Null to go on with the turns, else the outcome the run ends with.
+  Future<BackgroundRunOutcome?> _sendQueues(
+    List<(RegisteredAccount, DateTime?)> ordered,
+    Map<String, _Step> sent,
+  ) async {
+    for (final (entry, lastSyncedAt) in ordered) {
+      if (_stopped) return null;
+      final account = entry.account;
+      if (account.needsReauth ||
+          lastSyncedAt == null ||
+          !_goesOn(entry.id) ||
+          !await _hasQueue(entry.id)) {
+        continue;
+      }
+      if (deadlineAt.difference(now()) < minimumTimeToStart) {
+        _log.info(
+          'Too little time left to send the queue of account ${entry.id}',
+        );
+        return BackgroundRunOutcome.deadline;
+      }
+      if (await appInFront()) {
+        _log.info('The app came to the front; the run stops');
+        return BackgroundRunOutcome.skipped;
+      }
+      sent[entry.id] = await _network(account, 'drain', _drain);
+    }
+    return null;
+  }
+
+  /// An empty queue builds no sender and costs no request.
+  Future<bool> _hasQueue(String accountId) async {
+    try {
+      return await container
+              .read(appDatabaseProvider(accountId))
+              .outboxDao
+              .count() >
+          0;
+    } on Object catch (error) {
+      _log.info(
+        'Could not count the queue of account $accountId: '
+        '${error.runtimeType}',
+      );
+      return false;
     }
   }
 
@@ -298,13 +360,16 @@ final class _Run {
   }
 
   /// The notification window is refilled first, from what the database
-  /// holds, so it is never left to the network steps' share of the time;
-  /// once the server proved unreachable the account's other network steps
-  /// are skipped, each would wait for its own timeout.
+  /// holds, so it is never left to the network steps' share of the time.
+  /// In a sync run the queue went before the turns ([queueSent], null when
+  /// it was not sent); the turn syncs, then fetches the activity. Once the
+  /// server proved unreachable the account's other network steps are
+  /// skipped, each would wait for its own timeout. A drain run only drains.
   Future<void> _account(
     RegisteredAccount entry,
     DateTime? lastSyncedAt, {
     required bool labelled,
+    _Step? queueSent,
   }) async {
     final account = entry.account;
     final notifier = container.read(activityNoticesProvider);
@@ -322,29 +387,28 @@ final class _Run {
     var synced = _Step.skipped;
     if (!syncing) {
       await _network(account, 'drain', _drain);
-    } else {
+    } else if (queueSent != _Step.unreachable) {
       synced = await _network(
         account,
         'sync',
         (_) => container.read(syncEngineProvider(account.id)).refresh(),
       );
-      if (synced != _Step.sessionEnded && synced != _Step.unreachable) {
-        final drained = await _network(account, 'drain', _drain);
-        // The server keeps no activity for a guest and answers 403.
-        if (drained != _Step.unreachable && !account.isLinkShare) {
-          await _network(account, 'activity', (_) async {
-            final fresh = await container
-                .read(activitySyncProvider(account.id))
-                .run();
-            if (!_goesOn(account.id)) return;
-            await notifier.show(
-              account: account,
-              db: container.read(appDatabaseProvider(account.id)),
-              fresh: fresh,
-              labelled: labelled,
-            );
-          });
-        }
+      // The server keeps no activity for a guest and answers 403.
+      if (synced != _Step.sessionEnded &&
+          synced != _Step.unreachable &&
+          !account.isLinkShare) {
+        await _network(account, 'activity', (_) async {
+          final fresh = await container
+              .read(activitySyncProvider(account.id))
+              .run();
+          if (!_goesOn(account.id)) return;
+          await notifier.show(
+            account: account,
+            db: container.read(appDatabaseProvider(account.id)),
+            fresh: fresh,
+            labelled: labelled,
+          );
+        });
       }
     }
     // The sender pauses on an ended session instead of throwing, so the
@@ -383,11 +447,12 @@ final class _Run {
   /// backoff another isolate armed (the notification action's attempt
   /// with an expired token) would otherwise make it skip the very op it
   /// was started for. The sender keeps a failed request to itself; one
-  /// that could not reach the server is reported here.
+  /// that could not reach the server is reported here. In a sync run the
+  /// turn syncs right after, so the sender does not.
   Future<void> _drain(Account account) async {
     final blockedBy = await container
         .read(outboxSenderProvider(account.id))
-        .sendNow();
+        .sendNow(refreshAfter: kind == BackgroundRunKind.drain);
     if (blockedBy is NetworkFailure) throw blockedBy;
   }
 

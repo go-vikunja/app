@@ -38,6 +38,10 @@ const overlayInventory = <String, OverlayCoverage>{
     'deviation (framework headings without a level). Opened in '
     'test/features/about/about_page_test.dart',
   ),
+  'features/about/presentation/about_page.dart '
+      'AboutPage._showSupportDetails MaterialPageRoute': Swept(
+    'support details page',
+  ),
   'features/account_settings/presentation/account_deletion.dart '
       'confirmAccountDeletion showAdaptiveDialog': Exempt(
     '$_sameAlertAsDelete; opened at 200 % in '

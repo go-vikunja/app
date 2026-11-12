@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -15,20 +16,32 @@ import 'package:vikunja_mobile/core/auth/link_share_gateway.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/links/widget_link.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
+import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/network/request_log_interceptor.dart';
+import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
+import 'package:vikunja_mobile/core/outbox/failure_json.dart';
+import 'package:vikunja_mobile/core/platform/background_permissions.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/about/application/support_details.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 
 import '../helpers/auth_fakes.dart';
 import '../helpers/fakes.dart';
 import '../helpers/guest_entry_fakes.dart';
 import '../helpers/guest_fakes.dart';
+import '../helpers/notification_fakes.dart';
+import '../helpers/sample_data.dart';
 import '../helpers/server_connections.dart';
 import '../helpers/sync_fakes.dart';
+import '../helpers/test_database.dart';
 import '../helpers/tls_fixtures.dart';
 
 // Every secret shaped like the real one, and personal data that must not
@@ -79,6 +92,11 @@ String? _bearerOf(RequestOptions options) =>
       ),
       _ => null,
     };
+
+final class _NoBackgroundState implements BackgroundPermissions {
+  @override
+  Future<BackgroundState> read() async => const BackgroundState();
+}
 
 final class _FixedToken implements AccessTokenSource {
   new(this.token);
@@ -492,6 +510,161 @@ void main() {
       expect(lines.join('\n'), contains('[redacted]'));
       expectNowhere([tokens.accessToken, tokens.refreshToken]);
     });
+  });
+
+  test('the support details hold no secret, name, title, message or '
+      'setting, and a server address only when asked for', () async {
+    capture(printToConsole: true);
+    final auth = AuthFakes();
+    const host = 'tasks.leak-host.example';
+    final info = ServerInfo(
+      version: ServerVersion.tryParse('v2.8.0'),
+      rawVersion: 'v2.8.0',
+      motd: 'MOTD-MARKER maintenance tonight',
+      frontendUrl: Uri.parse('https://frontend-marker.example/web'),
+      linkSharingEnabled: true,
+    );
+    const apis = {ApiVersion.v1, ApiVersion.v2};
+    final connection = ServerConnection(
+      rootUri: Uri.parse(
+        'https://HOSTUSER:HOSTPASSWORD@$host/vik?q=QUERY-MARKER#FRAGMENT',
+      ),
+      apiVersions: apis,
+      info: info,
+      capabilities: ServerCapabilities.derive(info: info, apiVersions: apis),
+    );
+    final tokens = issueTokens(
+      issuedAt: _now,
+      username: _email,
+      refreshToken: _refreshMarker(6),
+    );
+    final user = await auth.seedAccount(
+      connection,
+      tokens: tokens,
+      displayName: 'DISPLAY-NAME-MARKER',
+    );
+    final guestToken = issueLinkShareToken(issuedAt: _now);
+    final guest = await auth.seedGuest(
+      connection,
+      token: guestToken,
+      displayName: 'GUEST-NAME-MARKER',
+      shareName: 'SHARE-NAME-MARKER',
+      activate: false,
+    );
+    final databases = <String, AppDatabase>{};
+    for (final entry in [user, guest]) {
+      final db = databases[entry.id] = testDatabase();
+      await db.projectsDao.upsertAll([
+        sampleProject(id: 1, title: 'PROJECT-MARKER'),
+      ]);
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 1, title: _title),
+      ], syncRunId: 'run');
+      await db.syncStateDao.write({
+        SyncStateKeys.lastSyncedAt: _now.toIso8601String(),
+        SyncStateKeys.userSettings: jsonEncode({
+          'name': 'SETTINGS-NAME-MARKER',
+          'email': _email,
+        }),
+      });
+      await db
+          .into(db.outbox)
+          .insert(
+            OutboxCompanion.insert(
+              id: 'op-1',
+              sequence: 1,
+              kind: 'updateTask',
+              taskId: 1,
+              payload: jsonEncode({'title': 'PAYLOAD-MARKER $_title'}),
+              createdAt: _now,
+              attempts: 1,
+              state: 'failed',
+              lastError: Value(
+                encodeFailure(
+                  const ValidationFailed(
+                    code: 2002,
+                    message: 'LAST-ERROR-MARKER',
+                    fieldErrors: {
+                      'title': ['FIELD-ERROR-MARKER'],
+                    },
+                  ),
+                ),
+              ),
+            ),
+          );
+    }
+    final container = ProviderContainer(
+      overrides: [
+        ...auth.overrides,
+        clockProvider.overrideWithValue(() => _now),
+        clientIdentityProvider.overrideWithValue(
+          const ClientIdentity(
+            appVersion: '1.0.0',
+            buildNumber: '42',
+            platform: 'android',
+            osVersion: '14',
+          ),
+        ),
+        notificationGatewayProvider.overrideWithValue(
+          FakeNotificationGateway(),
+        ),
+        backgroundPermissionsProvider.overrideWithValue(_NoBackgroundState()),
+        appDatabaseProvider.overrideWith(
+          (ref, accountId) => databases[accountId]!,
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final snapshot = await container.read(supportSnapshotProvider.future);
+    final hidden = renderSupportDetails(
+      snapshot,
+      showServers: false,
+      appLanguage: 'en',
+    );
+    final shown = renderSupportDetails(
+      snapshot,
+      showServers: true,
+      appLanguage: 'en',
+    );
+
+    expect(hidden, contains('Kind: guest'));
+    expect(hidden, contains('validation_failed code 2002'));
+    expect(hidden, isNot(contains(host)));
+    expect(shown, contains('Server: https://$host/vik\n'));
+    final secrets = [
+      tokens.accessToken,
+      tokens.refreshToken,
+      guestToken.jwt,
+      fakeShareHash,
+      _email,
+      'marker.user',
+      'DISPLAY-NAME-MARKER',
+      'GUEST-NAME-MARKER',
+      'SHARE-NAME-MARKER',
+      'link-share-',
+      _title,
+      'PROJECT-MARKER',
+      'PAYLOAD-MARKER',
+      'LAST-ERROR-MARKER',
+      'FIELD-ERROR-MARKER',
+      'SETTINGS-NAME-MARKER',
+      'MOTD-MARKER',
+      'frontend-marker',
+      'HOSTUSER',
+      'HOSTPASSWORD',
+      'QUERY-MARKER',
+      'FRAGMENT',
+      'Keycloak',
+      user.id,
+      guest.id,
+    ];
+    for (final text in [hidden, shown]) {
+      for (final piece in piecesOf(secrets)) {
+        expect(text, isNot(contains(piece)), reason: piece);
+      }
+    }
+    expectNowhere(secrets);
   });
 
   test('a release build prints nothing for an uncaught error, whatever it '

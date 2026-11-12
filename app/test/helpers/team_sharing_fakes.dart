@@ -549,6 +549,7 @@ final class FakeProjectSharingRepository
 /// set, and [available] false answers like a system without a share sheet.
 final class FakeLinkShareActions implements LinkShareActions {
   final List<({Uri url, String? subject, Rect? origin})> shared = [];
+  final List<({String text, String? subject, Rect? origin})> sharedTexts = [];
   Exception? failure;
   bool available = true;
 
@@ -556,6 +557,13 @@ final class FakeLinkShareActions implements LinkShareActions {
   Future<bool> shareLink(Uri url, {String? subject, Rect? origin}) async {
     if (failure case final failure?) throw failure;
     shared.add((url: url, subject: subject, origin: origin));
+    return available;
+  }
+
+  @override
+  Future<bool> shareText(String text, {String? subject, Rect? origin}) async {
+    if (failure case final failure?) throw failure;
+    sharedTexts.add((text: text, subject: subject, origin: origin));
     return available;
   }
 }

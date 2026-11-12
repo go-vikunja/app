@@ -1,7 +1,15 @@
+import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui' show IsolateNameServer;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/db/account_database_files.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_hosts.dart';
 
@@ -27,14 +35,17 @@ void main() {
   late ProviderSubscription<SignInState> signIn;
 
   late FakeServerConnector connector;
+  late _Deletions deletions;
 
   setUp(() {
     auth = AuthFakes();
     connector = FakeServerConnector.succeeding(fullServer270());
+    deletions = _Deletions();
     container = ProviderContainer(
       overrides: [
         ...auth.overrides,
         serverConnectorProvider.overrideWithValue(connector),
+        accountDatabaseFilesProvider.overrideWithValue(deletions),
       ],
     );
     addTearDown(container.dispose);
@@ -133,6 +144,102 @@ void main() {
       expect(auth.webAuthenticator.urls, isEmpty);
     },
   );
+
+  group('after a sign-out that gave up waiting for its database', () {
+    const signedOut = 'fedcba9876543210fedcba9876543210';
+    final portName = accountDatabasePortName(signedOut);
+
+    setUp(() async {
+      final heldElsewhere = ReceivePort();
+      IsolateNameServer.registerPortWithName(heldElsewhere.sendPort, portName);
+      addTearDown(() {
+        IsolateNameServer.removePortNameMapping(portName);
+        heldElsewhere.close();
+        forgetSignOutLeftovers();
+      });
+      expect(
+        await awaitAccountDatabaseClosed(signedOut, timeout: Duration.zero),
+        isFalse,
+      );
+      auth.serveUser(_alice, now: DateTime.now().toUtc());
+    });
+
+    test('a sign-in waits until that database has gone before the browser '
+        'opens', () async {
+      final signingIn = controller().signIn(fullServer270(), confirm: _yes);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      // Not yet in progress, which would hold the user on the screen.
+      expect(signIn.read(), isA<SignInSettling>());
+      expect(auth.webAuthenticator.urls, isEmpty);
+
+      IsolateNameServer.removePortNameMapping(portName);
+      await signingIn;
+
+      expect(signIn.read(), isA<SignInSucceeded>());
+      expect(auth.webAuthenticator.urls, hasLength(1));
+      expect(deletions.deleted, [signedOut]);
+    });
+
+    test('leaving while it waits drops the sign-in', () async {
+      final signingIn = controller().signIn(fullServer270(), confirm: _yes);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      controller().reset();
+      IsolateNameServer.removePortNameMapping(portName);
+      await signingIn;
+
+      expect(signIn.read(), isA<SignInIdle>());
+      expect(auth.webAuthenticator.urls, isEmpty);
+      expect(deletions.deleted, [signedOut]);
+    });
+
+    test('a sign-in started again after leaving goes on alone, to its own '
+        'server', () async {
+      final left = controller().signIn(fullServer270(), confirm: _yes);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      controller().reset();
+      final again = controller().signIn(oauthServer230(), confirm: _yes);
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      IsolateNameServer.removePortNameMapping(portName);
+      await Future.wait([left, again]);
+
+      expect(auth.webAuthenticator.urls, hasLength(1));
+      expect(
+        auth.webAuthenticator.urls.single.host,
+        oauthServer230().rootUri.host,
+      );
+    });
+
+    test('a sign-out that does not finish fails the sign-in, as expected, '
+        'and the browser stays closed', () async {
+      final records = <LogRecord>[];
+      final subscription = Logger.root.onRecord.listen(records.add);
+      addTearDown(subscription.cancel);
+      IsolateNameServer.removePortNameMapping(portName);
+      deletions.givingUp = true;
+
+      await controller().signIn(fullServer270(), confirm: _yes);
+
+      expect(
+        signIn.read(),
+        isA<SignInFailed>().having(
+          (state) => state.error,
+          'error',
+          isA<SignOutStillFinishing>(),
+        ),
+      );
+      expect(auth.webAuthenticator.urls, isEmpty);
+      expect(records.where((record) => record.level >= Level.SEVERE), isEmpty);
+      expect(
+        records.where(
+          (record) => record.message.contains('SignOutStillFinishing'),
+        ),
+        isNotEmpty,
+      );
+    });
+  });
 
   group('a sign-in page on another host', () {
     late List<BrowserLeg> legs;
@@ -278,4 +385,24 @@ void main() {
       );
     });
   });
+}
+
+/// Records the deletions; with [givingUp] it stands in for a gate that gives
+/// up, which the real one does only after 30 s.
+final class _Deletions implements AccountDatabaseFiles {
+  final List<String> deleted = [];
+  bool givingUp = false;
+
+  @override
+  Future<String> pathFor(String accountId) => throw UnimplementedError();
+
+  @override
+  Future<Directory> uploadsDirectoryFor(String accountId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteFor(String accountId) async {
+    if (givingUp) throw const SignOutStillFinishing();
+    deleted.add(accountId);
+  }
 }

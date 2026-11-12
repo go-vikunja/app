@@ -772,6 +772,33 @@ void main() {
       expect(await db.outboxDao.count(), 0);
     });
 
+    test('Send now refreshes after sending, unless its caller syncs itself: '
+        'then neither it nor a drain after it does', () async {
+      await queue(1, done);
+      final outbox = sender();
+      expect(await outbox.sendNow(), isNull);
+      expect(sync.refreshCalls, 1);
+
+      await queue(2, done);
+      final quiet = sender();
+      expect(await quiet.sendNow(refreshAfter: false), isNull);
+      expect(write.requests, ['update 1', 'update 2']);
+      expect(sync.refreshCalls, 1);
+
+      write.beforeRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.unreachable));
+      await queue(1, favorite);
+      expect(await quiet.sendNow(), isA<NetworkFailure>());
+      write.beforeRequest = null;
+      now = now.add(timers.pendingWait);
+      timers.fireNext();
+      await pumpEventQueue();
+
+      expect(write.updates.last, (1, favorite));
+      expect(await db.outboxDao.count(), 0);
+      expect(sync.refreshCalls, 1);
+    });
+
     test('pause stops the drain between ops', () async {
       await queue(1, done);
       await queue(2, done);
@@ -788,6 +815,264 @@ void main() {
       expect(write.requests, ['update 1']);
       expect(await db.outboxDao.count(), 1);
       expect(outbox.state, OutboxSenderState.paused);
+    });
+  });
+
+  group("a repeating task's Done", () {
+    final tuesday = monday.add(const Duration(days: 1));
+
+    setUp(() {
+      // A read shows what the server holds at that moment.
+      read.beforeRequest = (_) async =>
+          read.allTasks = [...write.serverTasks.values];
+    });
+
+    void loseAnswers() =>
+        write.afterRequest = (_) =>
+            fail(const NetworkFailure(NetworkProblem.timeout));
+
+    Future<void> retry() async {
+      now = now.add(timers.pendingWait);
+      timers.fireNext();
+      await pumpEventQueue();
+    }
+
+    test('whose answer was lost after the server applied it is not applied '
+        'again', () async {
+      await queue(3, done);
+      loseAnswers();
+      final outbox = sender();
+
+      await outbox.drain();
+
+      expect(write.serverTasks[3]!.dueDate, tuesday);
+      final op = (await ops()).single;
+      expect(op.state, OutboxState.pending.name);
+      expect(op.sentAt, now);
+      expect(decodeTaskChanges(op.payload).doneBase, DoneBase(dueDate: monday));
+
+      write.afterRequest = null;
+      await retry();
+
+      expect(write.requests, ['update 3']);
+      expect(read.requests, ['task 3', 'task 3']);
+      final server = write.serverTasks[3]!;
+      expect(server.dueDate, tuesday);
+      expect(server.done, isFalse);
+      final daily = (await db.tasksDao.find(3))!;
+      expect(daily.dueDate, tuesday);
+      expect(daily.done, isFalse);
+      expect(daily.doneAt, server.doneAt);
+      expect(await db.outboxDao.count(), 0);
+      expect(outbox.state, OutboxSenderState.idle);
+      expect(sync.refreshCalls, 1);
+    });
+
+    test('sent with a label whose request failed after the body goes again '
+        'with only the label', () async {
+      write.serverLabels[5] = sampleLabel(id: 5, title: 'urgent');
+      await queue(
+        3,
+        done.merge(const TaskChanges(labels: IdSetChange(added: {5}))),
+      );
+      // The body is stored, the label request fails.
+      write.afterRequest = (_) async {
+        write.serverTasks[3] = write.serverTasks[3]!.copyWith(labels: []);
+        throw const ServerFailure(502);
+      };
+      final outbox = sender();
+      await outbox.drain();
+      expect(write.serverTasks[3]!.dueDate, tuesday);
+      expect(write.serverTasks[3]!.labels, isEmpty);
+
+      write.afterRequest = null;
+      await retry();
+
+      expect(write.requests, ['update 3', 'update 3']);
+      expect(write.updates.last, (
+        3,
+        const TaskChanges(labels: IdSetChange(added: {5})),
+      ));
+      final server = write.serverTasks[3]!;
+      expect(server.dueDate, tuesday);
+      expect(server.labels.map((label) => label.id), [5]);
+      expect((await db.tasksDao.find(3))!.dueDate, tuesday);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('whose first attempt never reached the server is sent on the '
+        'retry', () async {
+      await queue(3, done);
+      write.beforeRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      final outbox = sender();
+      await outbox.drain();
+      expect(write.serverTasks[3]!.dueDate, monday);
+      expect((await ops()).single.sentAt, now);
+
+      write.beforeRequest = null;
+      await retry();
+
+      expect(write.requests, ['update 3', 'update 3']);
+      expect(write.updates, [
+        (3, TaskChanges(done: true, doneBase: DoneBase(dueDate: monday))),
+      ]);
+      expect(write.serverTasks[3]!.dueDate, tuesday);
+      expect((await db.tasksDao.find(3))!.dueDate, tuesday);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('left in flight by a sender disposed after the request is not '
+        'applied again once it is stale', () async {
+      await queue(3, done);
+      final first = sender();
+      write.afterRequest = (_) => first.dispose();
+
+      await first.drain();
+
+      final left = (await ops()).single;
+      expect(left.state, OutboxState.sending.name);
+      expect(left.sentAt, now);
+      expect(write.serverTasks[3]!.dueDate, tuesday);
+
+      write.afterRequest = null;
+      now = now.add(OutboxSender.staleSendingAfter);
+      await sender().drain();
+
+      expect(write.requests, ['update 3']);
+      expect(write.serverTasks[3]!.dueDate, tuesday);
+      expect((await db.tasksDao.find(3))!.dueDate, tuesday);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    group('of a task without dates, which only its reminders and done time '
+        'tell', () {
+      final reminder = DateTime.utc(2026, 10, 20, 9);
+      final next = reminder.add(const Duration(days: 1));
+
+      setUp(() async {
+        final undated = sampleTask(
+          id: 4,
+          title: 'Water the plants',
+          projectId: 7,
+          repeatAfter: const Duration(days: 1),
+          reminders: [TaskReminder(reminder: reminder)],
+        );
+        await db.tasksDao.upsertAll([undated], syncRunId: 'run');
+        write.serverTasks[4] = undated;
+      });
+
+      test('whose answer was lost is not applied again', () async {
+        await queue(4, done);
+        loseAnswers();
+        final outbox = sender();
+        await outbox.drain();
+        expect(
+          decodeTaskChanges((await ops()).single.payload).doneBase,
+          const DoneBase(),
+        );
+
+        write.afterRequest = null;
+        await retry();
+
+        expect(write.requests, ['update 4']);
+        final server = write.serverTasks[4]!;
+        expect(server.reminders.single.reminder, next);
+        expect(server.done, isFalse);
+        final local = (await db.tasksDao.find(4))!;
+        expect(local.reminders.single.reminder, next);
+        expect(local.doneAt, server.doneAt);
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test('whose first attempt never reached the server is sent on the '
+          'retry', () async {
+        await queue(4, done);
+        write.beforeRequest = (_) =>
+            fail(const NetworkFailure(NetworkProblem.timeout));
+        final outbox = sender();
+        await outbox.drain();
+
+        write.beforeRequest = null;
+        await retry();
+
+        expect(write.requests, ['update 4', 'update 4']);
+        expect(write.serverTasks[4]!.reminders.single.reminder, next);
+        expect(await db.outboxDao.count(), 0);
+      });
+    });
+
+    test('of a task that does not repeat costs no read', () async {
+      await queue(1, done);
+
+      await sender().drain();
+
+      expect(read.requests, isEmpty);
+      expect(write.updates, [(1, done)]);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('is sent when only a date was edited on the server between the '
+        'attempts', () async {
+      final thursday = monday.add(const Duration(days: 3));
+      await queue(3, done);
+      write.beforeRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      final outbox = sender();
+      await outbox.drain();
+      write.serverTasks[3] = copyTask(write.serverTasks[3]!, dueDate: thursday);
+
+      write.beforeRequest = null;
+      await retry();
+
+      expect(write.requests, ['update 3', 'update 3']);
+      expect(
+        write.serverTasks[3]!.dueDate,
+        thursday.add(const Duration(days: 1)),
+      );
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('an edit queued after the lost answer is an op of its own and goes '
+        'after it, so it is not dropped with the body', () async {
+      await queue(3, done);
+      loseAnswers();
+      final outbox = sender();
+      await outbox.drain();
+      write.afterRequest = null;
+
+      await queue(3, favorite);
+
+      expect(await ops(), hasLength(2));
+      await outbox.sendNow();
+
+      expect(write.requests, ['update 3', 'update 3']);
+      expect(write.updates.last, (3, favorite));
+      final server = write.serverTasks[3]!;
+      expect(server.dueDate, tuesday);
+      expect(server.isFavorite, isTrue);
+      final daily = (await db.tasksDao.find(3))!;
+      expect(daily.dueDate, tuesday);
+      expect(daily.isFavorite, isTrue);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('an Undo queued after the lost answer goes after it', () async {
+      await queue(3, done);
+      loseAnswers();
+      final outbox = sender();
+      await outbox.drain();
+      write.afterRequest = null;
+
+      await queue(3, const TaskChanges(done: false));
+      await outbox.sendNow();
+
+      expect(write.requests, ['update 3', 'update 3']);
+      expect(write.updates.last, (3, const TaskChanges(done: false)));
+      expect(write.serverTasks[3]!.dueDate, tuesday);
+      expect(write.serverTasks[3]!.done, isFalse);
+      expect((await db.tasksDao.find(3))!.done, isFalse);
+      expect(await db.outboxDao.count(), 0);
     });
   });
 

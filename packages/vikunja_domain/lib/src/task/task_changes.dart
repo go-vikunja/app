@@ -39,6 +39,38 @@ final class ClearDate extends DateChange {
   int get hashCode => 0;
 }
 
+/// A repeating task's dates and done time on the server right before an
+/// update's Done was first sent. A later attempt that finds both moved, or
+/// only `done_at` when the task has no dates, knows the Done had reached
+/// the server: the server moved the dates and stamped `done_at`.
+@immutable
+final class DoneBase {
+  const new({this.dueDate, this.startDate, this.endDate, this.doneAt});
+
+  factory of(Task task) => DoneBase(
+    dueDate: task.dueDate,
+    startDate: task.startDate,
+    endDate: task.endDate,
+    doneAt: task.doneAt,
+  );
+
+  final DateTime? dueDate;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final DateTime? doneAt;
+
+  @override
+  bool operator ==(Object other) =>
+      other is DoneBase &&
+      other.dueDate == dueDate &&
+      other.startDate == startDate &&
+      other.endDate == endDate &&
+      other.doneAt == doneAt;
+
+  @override
+  int get hashCode => Object.hash(dueDate, startDate, endDate, doneAt);
+}
+
 /// The fields of one task edit. Every null field is left as it is on the
 /// server; the adapters send only what is set (v2 merge-patch) or overlay
 /// it on a fresh read (v1 full replace).
@@ -67,6 +99,7 @@ final class TaskChanges {
     this.kanban,
     this.positions,
     this.coverImageAttachmentId,
+    this.doneBase,
   });
 
   final String? title;
@@ -125,6 +158,10 @@ final class TaskChanges {
   /// clear it (400 code 4020).
   final int? coverImageAttachmentId;
 
+  /// The server's state before [done] was first sent, never sent itself;
+  /// null until the op's first attempt (see `OutboxSender`).
+  final DoneBase? doneBase;
+
   bool get isEmpty =>
       title == null &&
       description == null &&
@@ -154,8 +191,8 @@ final class TaskChanges {
   /// drops the earlier placements too: the moves go after the body, and
   /// one into or out of a done bucket would set the done state back. List
   /// positions do not touch the done state, so they stay. The earliest
-  /// description base stays, and taps stay taps only while every
-  /// description change was one.
+  /// description base and done base stay, and taps stay taps only while
+  /// every description change was one.
   TaskChanges merge(TaskChanges later) => TaskChanges(
     title: later.title ?? title,
     description: later.description ?? description,
@@ -206,6 +243,7 @@ final class TaskChanges {
     },
     coverImageAttachmentId:
         later.coverImageAttachmentId ?? coverImageAttachmentId,
+    doneBase: doneBase ?? later.doneBase,
   );
 
   static IdSetChange? _mergeSets(IdSetChange? earlier, IdSetChange? later) =>
@@ -239,7 +277,8 @@ final class TaskChanges {
       other.relations == relations &&
       _sameMaps(other.kanban, kanban) &&
       _sameMaps(other.positions, positions) &&
-      other.coverImageAttachmentId == coverImageAttachmentId;
+      other.coverImageAttachmentId == coverImageAttachmentId &&
+      other.doneBase == doneBase;
 
   static bool _sameLists<T>(List<T>? a, List<T>? b) {
     if (a == null || b == null) return a == b;
@@ -290,7 +329,7 @@ final class TaskChanges {
     relations,
     _hashMap(kanban),
     _hashMap(positions),
-    coverImageAttachmentId,
+    Object.hash(coverImageAttachmentId, doneBase),
   );
 
   /// Names the fields set, without user text such as the title.
@@ -321,6 +360,7 @@ final class TaskChanges {
       if (positions != null) 'positions: $positions',
       if (coverImageAttachmentId != null)
         'coverImageAttachmentId: $coverImageAttachmentId',
+      if (doneBase != null) 'doneBase',
     ];
     return 'TaskChanges(${fields.join(', ')})';
   }

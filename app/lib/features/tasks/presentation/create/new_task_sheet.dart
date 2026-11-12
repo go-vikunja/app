@@ -250,7 +250,13 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     QuickAddPrefixes prefixes,
     DateTime now,
   ) async {
-    await showQuickAddHelp(context, mode: mode, prefixes: prefixes, now: now);
+    await showQuickAddHelp(
+      context,
+      mode: mode,
+      prefixes: prefixes,
+      now: now,
+      guest: ref.read(activeAccountIsGuestProvider),
+    );
     if (mounted) _focus.requestFocus();
   }
 
@@ -438,6 +444,8 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       ?_leftInDefaultColumn(l10n, left),
       if (result.labelsNotCreated.isNotEmpty)
         l10n.newTaskLabelsNotCreated(result.labelsNotCreated.join(', ')),
+      if (result.labelsKept.isNotEmpty)
+        l10n.newTaskLabelsKept(result.labelsKept.join(', ')),
       if (result.unresolvedAssignees.isNotEmpty)
         l10n.newTaskNamesKept(
           [
@@ -542,8 +550,22 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       };
 
   /// [plan]'s title as created: without the names the server search
-  /// resolved, which are not always the ones the plan resolved.
+  /// resolved, which are not always the ones the plan resolved, and with
+  /// the labels that could not be created at its end.
   static String _createdTitle(
+    QuickAddPlan plan,
+    QuickAddResult result,
+    QuickAddPrefixes? prefixes,
+  ) {
+    final title = _titleWithoutResolved(plan, result, prefixes);
+    return [
+      title,
+      for (final token in result.labelsKept)
+        if (!title.contains(token)) token,
+    ].join(' ');
+  }
+
+  static String _titleWithoutResolved(
     QuickAddPlan plan,
     QuickAddResult result,
     QuickAddPrefixes? prefixes,

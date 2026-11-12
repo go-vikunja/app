@@ -3,12 +3,14 @@ import 'dart:ui' show DartPluginRegistrant;
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show WidgetsFlutterBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_action_handler.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_taps.dart';
@@ -72,6 +74,11 @@ Future<ProviderContainer> createWidgetActionContainer() async =>
         deviceAppLocalizationsProvider.overrideWithValue(
           await loadDeviceAppLocalizations(SharedPreferencesStore()),
         ),
-        ...backgroundActionOverrides,
+        ...widgetActionOverrides,
       ],
     );
+
+final List<Override> widgetActionOverrides = [
+  ...backgroundActionOverrides,
+  appPartProvider.overrideWithValue(AppPart.widgetAction),
+];

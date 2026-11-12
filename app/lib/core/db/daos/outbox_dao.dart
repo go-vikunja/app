@@ -152,7 +152,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
 
   /// Applies [requested] to the row and its labels, assignees, reminders
   /// and relations and queues it, merged into the task's unsent update op
-  /// when there is one, or into its create while that has not left the
+  /// when there is one that was never sent without an answer (see
+  /// [_unsentUpdate]), or into its create while that has not left the
   /// device: reminders fold into the create, while labels, assignees,
   /// relations, kanban placements, list positions and done, which need the
   /// task's id on the server, stay queued behind it; a project move drops
@@ -502,6 +503,34 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     ),
   );
 
+  /// The first attempt of an update with a repeating task's Done: [base] is
+  /// what the server had right before it, [sentAt] the attempt. Only while
+  /// the op is still claimed (`sending`) and has no `sent_at`; false
+  /// otherwise.
+  Future<bool> markDoneAttempt(
+    String id, {
+    required DoneBase base,
+    required DateTime sentAt,
+  }) => transaction(() async {
+    final op = await find(id);
+    if (op == null ||
+        op.kind != OutboxOperationKind.updateTask.name ||
+        op.state != OutboxState.sending.name ||
+        op.sentAt != null) {
+      return false;
+    }
+    await _write(
+      id,
+      OutboxCompanion(
+        payload: Value(
+          encodeTaskChanges(withDoneBase(decodeTaskChanges(op.payload), base)),
+        ),
+        sentAt: Value(sentAt.toUtc()),
+      ),
+    );
+    return true;
+  });
+
   /// A create or upload whose request may have reached the server: the
   /// first such attempt's time stays, so the lookup window covers every
   /// attempt.
@@ -516,6 +545,10 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// instead: an update takes the fields the newer update does not set, a
   /// delete makes it moot. So a task never has two ops the sender could
   /// send in either order, and a Retry can never overwrite a newer edit.
+  /// Two updates are not folded when either has `sent_at` (its Done may
+  /// have reached the server, see [markDoneAttempt]): the failed one stays
+  /// failed for Retry or Discard, since its next attempt may drop the body
+  /// it sent once, and an edit folded into it would go with it.
   /// A rejected create takes the edit queued behind it while it was in
   /// flight, so that edit cannot revert a later one folded into the
   /// create; only done, labels and assignees stay queued behind it. A
@@ -587,7 +620,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
           );
           return;
         }
-        if (newer == null) {
+        if (newer == null ||
+            (newer.kind == OutboxOperationKind.updateTask.name &&
+                (op.sentAt != null || newer.sentAt != null))) {
           await _write(
             id,
             OutboxCompanion(
@@ -1104,17 +1139,24 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
 
   /// The newest one: an older one, left behind failed while a later edit
   /// was in flight, must not take an edit the newer op would then revert.
-  Future<OutboxRow?> _unsentUpdate(int taskId) =>
-      (select(outbox)
-            ..where(
-              (o) =>
-                  o.taskId.equals(taskId) &
-                  o.kind.equals(OutboxOperationKind.updateTask.name) &
-                  o.state.equals(OutboxState.sending.name).not(),
-            )
-            ..orderBy([(o) => OrderingTerm.desc(o.sequence)])
-            ..limit(1))
-          .getSingleOrNull();
+  /// None when that one's Done may have reached the server (`sent_at`): it
+  /// takes no more edits, as a later attempt drops the body it sent once it
+  /// finds the Done landed, and an edit merged in after the attempt would
+  /// go with it.
+  Future<OutboxRow?> _unsentUpdate(int taskId) async {
+    final newest =
+        await (select(outbox)
+              ..where(
+                (o) =>
+                    o.taskId.equals(taskId) &
+                    o.kind.equals(OutboxOperationKind.updateTask.name) &
+                    o.state.equals(OutboxState.sending.name).not(),
+              )
+              ..orderBy([(o) => OrderingTerm.desc(o.sequence)])
+              ..limit(1))
+            .getSingleOrNull();
+    return newest?.sentAt == null ? newest : null;
+  }
 
   /// The create now goes to another project, so the placements and
   /// positions queued behind it would name views of the previous one.

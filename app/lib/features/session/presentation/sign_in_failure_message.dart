@@ -4,6 +4,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/browser_sign_in.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
@@ -133,6 +134,11 @@ FailureMessage describeSignInFailure(
       l10n.signInBrowserFailedTitle,
       l10n.signInBrowserFailedExplanation,
       l10n.signInBrowserFailedSuggestion,
+    ),
+    SignOutStillFinishing() => message(
+      l10n.signOutStillFinishingTitle,
+      l10n.signOutStillFinishingExplanation,
+      l10n.signOutStillFinishingSuggestion,
     ),
     _ => message(
       l10n.failureUnexpectedTitle,

@@ -1,5 +1,7 @@
 package dev.coderoftime.rurana
 
+import android.app.ActivityManager
+import android.app.usage.UsageStatsManager
 import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -8,6 +10,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PersistableBundle
+import android.os.PowerManager
 import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
@@ -48,6 +51,7 @@ internal class DeviceChannel(
             "canOpenAppLocaleSettings" -> result.success(canOpenAppLocaleSettings())
             "openAppLocaleSettings" -> result.success(openAppLocaleSettings())
             "removeLocation" -> removeLocation(call.argument<String>("path"), result)
+            "backgroundState" -> result.success(backgroundState())
             else -> result.notImplemented()
         }
     }
@@ -133,6 +137,24 @@ internal class DeviceChannel(
             false
         }
     }
+
+    private fun backgroundState(): Map<String, Any> {
+        val reads = linkedMapOf<String, () -> Any>(
+            "ignoresBatteryOptimizations" to {
+                service<PowerManager>().isIgnoringBatteryOptimizations(context.packageName)
+            },
+            "powerSaveMode" to { service<PowerManager>().isPowerSaveMode },
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            reads["backgroundRestricted"] = { service<ActivityManager>().isBackgroundRestricted }
+            reads["standbyBucket"] = {
+                BackgroundState.bucketName(service<UsageStatsManager>().appStandbyBucket)
+            }
+        }
+        return BackgroundState.collect(reads)
+    }
+
+    private inline fun <reified T : Any> service(): T = context.getSystemService(T::class.java)
 
     private companion object {
         const val CHANNEL = "dev.coderoftime.rurana/device"

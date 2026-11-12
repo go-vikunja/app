@@ -124,7 +124,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 > **Reporting a problem or an idea:**
 >
 > - in the app: Account tab, the version at the very bottom, then "Help and bug reports";
-> - by email to coderoftime@gmail.com, with the app's version, your device and system version, your Vikunja server's version and the steps that show the problem;
+> - by email to coderoftime@gmail.com, with the app's version, your device and system version, your Vikunja server's version and the steps that show the problem; the row "Support details" after "Help and bug reports" shows these and more and shares them when you tap Share, without your tasks, names or passwords;
 > - on Android as private feedback on Rurana's page in Google Play; on iPhone and iPad through TestFlight: take a screenshot in Rurana and share it as beta feedback, or send feedback from Rurana's page in the TestFlight app.
 >
 > Please leave passwords and tokens out of every report, and report a security problem by email, not in a public issue.
@@ -153,7 +153,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 > **Fehler oder Ideen melden:**
 >
 > - in der App: Tippe im Tab „Konto“ ganz unten auf die Version, dann auf „Hilfe und Fehler melden“;
-> - per E-Mail an coderoftime@gmail.com, mit der Version der App, deinem Gerät und seiner Systemversion, der Version deines Vikunja-Servers und den Schritten, die den Fehler zeigen;
+> - per E-Mail an coderoftime@gmail.com, mit der Version der App, deinem Gerät und seiner Systemversion, der Version deines Vikunja-Servers und den Schritten, die den Fehler zeigen; die Zeile „Support-Details“ nach „Hilfe und Fehler melden“ zeigt das und mehr und teilt es, wenn du auf „Teilen“ tippst, ohne deine Aufgaben, Namen oder Passwörter;
 > - unter Android als privates Feedback auf der Seite von Rurana in Google Play; auf iPhone und iPad über TestFlight: Mach in Rurana einen Screenshot und teile ihn als Beta-Feedback, oder sende Feedback von der Seite von Rurana in der TestFlight-App.
 >
 > Lass Passwörter und Tokens bitte aus jeder Meldung heraus, und melde ein Sicherheitsproblem per E-Mail, nicht öffentlich.
@@ -177,7 +177,7 @@ TestFlight's What to Test for the first build, with Apple's names (Home Screen, 
 > - the app lock: Account tab, App lock and privacy;
 > - Rurana in English and in German.
 >
-> Tell me about anything that crashes, looks wrong, is slow, is hard to use or is missing: in the app with Help and bug reports on the About page (Account tab, the version at the bottom), through TestFlight's feedback, or by email to coderoftime@gmail.com.
+> Tell me about anything that crashes, looks wrong, is slow, is hard to use or is missing: in the app with Help and bug reports on the About page (Account tab, the version at the bottom), through TestFlight's feedback, or by email to coderoftime@gmail.com. The row Support details on the same page gives you what to add to a report.
 
 ### Was du in beta.1 testen kannst
 
@@ -194,14 +194,14 @@ TestFlight's What to Test for the first build, with Apple's names (Home Screen, 
 > - die App-Sperre: im Tab „Konto“ unter „App-Sperre und Privatsphäre“;
 > - Rurana auf Deutsch und auf Englisch.
 >
-> Schreib mir zu allem, was abstürzt, falsch aussieht, langsam ist, schwer zu bedienen ist oder fehlt: in der App mit „Hilfe und Fehler melden“ auf der Seite „Über Rurana“ (im Tab „Konto“ ganz unten auf die Version tippen), über das Feedback von TestFlight oder per E-Mail an coderoftime@gmail.com.
+> Schreib mir zu allem, was abstürzt, falsch aussieht, langsam ist, schwer zu bedienen ist oder fehlt: in der App mit „Hilfe und Fehler melden“ auf der Seite „Über Rurana“ (im Tab „Konto“ ganz unten auf die Version tippen), über das Feedback von TestFlight oder per E-Mail an coderoftime@gmail.com. Die Zeile „Support-Details“ auf derselben Seite gibt dir, was du einer Meldung beilegen kannst.
 
 ## During the beta
 
 - **Where reports land:** the inbox of `coderoftime@gmail.com` (also the replies to TestFlight's invitations and the address on Play's opt-in page); Play's private feedback from testers in the Play Console [uncertain: where the Console lists it]; TestFlight's feedback with screenshots and its crash reports in App Store Connect under TestFlight; GitLab issues once the project is public. A security problem goes by email first, or into a confidential issue, never into a public one ([D77]).
 - **The beta log:** for each report its date, channel, platform and version, what happened, and the fix with its beta.N, without testers' names or addresses. It answers Play's production application and goes into the 37d decision.
 - **Each fix ships as the next `v1.0.0-beta.N`,** never as a moved tag ([releasing.md](releasing.md#cutting-a-release)): a commit on `main`, its green pipeline, the tag and its pipeline, two pipelines in all; then the bundle to the closed test with a line on what changed in Play's release notes, and the iOS build to TestFlight with its What to Test. Google's page counts the days testers stay opted in and says nothing about new releases restarting them.
-- **Crash data** comes only from Play vitals and TestFlight's crash reports: release builds log nothing, and the app has no crash reporting.
+- **Crash data** comes only from Play vitals and TestFlight's crash reports: release builds log nothing, and the app has no crash reporting. A tester's report can carry the support details ([D20](decisions.md#d20-scope-cuts-and-mobile-forms-of-desktop-features)): the versions, the background state, the queue's counts and failure kinds and the last session end, never a log.
 - **The privacy policy** describes the testers' list, the stores' statistics and the APK on GitLab before any of them existed: read those statements again once the beta has started (D76's open points, below).
 
 ## Before 1.0.0
@@ -227,6 +227,7 @@ The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-
 - [ ] [D75]'s iOS parts: the help button, the new-task sheet above the home indicator, the Cupertino Theme control on the Account tab, the project folder in light, dark and tinted rendering.
 - [ ] [D71]'s App language row: the Language entry in Settings with one and with two preferred languages.
 - [ ] The About page's "Help and bug reports" row opens the support page.
+- [ ] The support details ([threat model 8.3](threat-model.md#83-final-ios-phase) #13): the Runner builds with the device channel's `backgroundState`, the page's Background App Refresh and Low Power Mode lines follow the settings, and Share opens the share sheet from its button on an iPad.
 - [ ] iOS 15 to 17.3 (8.3 #10): the sign-in fallback below iOS 17.4 and the system SQLite on iOS 15, if a device is at hand. Otherwise the owner decides: accept it untested, borrow a device (Xcode 27 is reported to debug only on iOS 17 or later, so such a device may take TestFlight builds only [unverified]), or raise the minimum.
 
 ### The rest, in any order

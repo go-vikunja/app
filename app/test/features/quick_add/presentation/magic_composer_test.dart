@@ -4,6 +4,8 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart';
@@ -196,6 +198,89 @@ void main() {
       expect(chip(due), findsOneWidget);
       expect(tester.widget<Chip>(chip(due)).onDeleted, isNull);
       expect(chip(en.repeatEveryDays(3)), findsOneWidget);
+    });
+
+    testWidgets('a new label needs a connection, offline it says so', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await harness.open(tester);
+      await typeLine(tester, 'Fix bike *neu');
+
+      expect(chip(en.quickAddNewLabel('neu')), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(
+          RegExp('^${RegExp.escape(en.quickAddNewLabelSemantics('neu'))}'),
+        ),
+        findsOneWidget,
+      );
+
+      harness.data.engine.emit(
+        SyncFailed(
+          failure: const NetworkFailure(NetworkProblem.unreachable),
+          lastSyncedAt: composerNow,
+        ),
+      );
+      await tester.pump();
+
+      final offline = chip(en.quickAddNewLabelOffline('neu'));
+      expect(offline, findsOneWidget);
+      expect(
+        find.descendant(
+          of: offline,
+          matching: find.byIcon(Icons.cloud_off_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(
+          RegExp(
+            '^${RegExp.escape(en.quickAddNewLabelOfflineSemantics('neu'))}',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(chip(en.quickAddNewLabel('neu')), findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets("a guest's new label stays in the title, online too", (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      usePhoneSurface(tester);
+      await pumpSignedInApp(
+        tester,
+        sync: harness.data,
+        now: composerNow,
+        overrides: [
+          ...harness.overrides,
+          activeAccountIsGuestProvider.overrideWithValue(true),
+        ],
+      );
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      await typeLine(tester, 'Fix bike *neu');
+
+      final kept = chip(en.quickAddLabelStaysInTitle('neu'));
+      expect(kept, findsOneWidget);
+      expect(
+        find.descendant(
+          of: kept,
+          matching: find.byIcon(Icons.label_off_outlined),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.bySemanticsLabel(
+          RegExp(
+            '^${RegExp.escape(en.quickAddLabelStaysInTitleSemantics('neu'))}',
+          ),
+        ),
+        findsOneWidget,
+      );
+      expect(chip(en.quickAddNewLabel('neu')), findsNothing);
+      semantics.dispose();
     });
 
     testWidgets('chips read out what they stand for', (tester) async {
@@ -438,6 +523,27 @@ void main() {
             .first,
       );
       expect(find.text(en.quickAddHelpMode('Todoist')), findsOneWidget);
+    });
+
+    testWidgets('a guest reads that new labels stay in the title, since a '
+        'guest cannot create them', (tester) async {
+      usePhoneSurface(tester);
+      await pumpSignedInApp(
+        tester,
+        sync: harness.data,
+        now: composerNow,
+        overrides: [
+          ...harness.overrides,
+          activeAccountIsGuestProvider.overrideWithValue(true),
+        ],
+      );
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip(en.quickAddHelp));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.quickAddHelpLabelsBodyGuest('*')), findsOneWidget);
+      expect(find.text(en.quickAddHelpLabelsBody('*')), findsNothing);
     });
   });
 
@@ -735,11 +841,12 @@ void main() {
       expect(addButton(2), findsOneWidget);
     });
 
-    testWidgets('the confirmation names labels not created and people not '
-        'found', (tester) async {
+    testWidgets('the confirmation names labels kept in the title, labels of '
+        'the sheet not created and people not found', (tester) async {
       harness.service.result = const QuickAddResult(
         createdTaskIds: [-1],
-        labelsNotCreated: ['neu'],
+        labelsNotCreated: ['Errands'],
+        labelsKept: ['*neu'],
         unresolvedAssignees: ['bob'],
       );
       await harness.open(tester);
@@ -747,9 +854,32 @@ void main() {
       await tester.tap(addButton());
       await tester.pumpAndSettle();
 
-      expect(find.text(en.newTaskCreated('Fix bike @bob')), findsOneWidget);
-      expect(find.text(en.newTaskLabelsNotCreated('neu')), findsOneWidget);
+      expect(
+        find.text(en.newTaskCreated('Fix bike @bob *neu')),
+        findsOneWidget,
+      );
+      expect(find.text(en.newTaskLabelsKept('*neu')), findsOneWidget);
+      expect(find.text(en.newTaskLabelsNotCreated('Errands')), findsOneWidget);
       expect(find.text(en.newTaskNamesKept('@bob')), findsOneWidget);
+    });
+
+    testWidgets('a label kept that the title holds already shows once', (
+      tester,
+    ) async {
+      harness.service.result = const QuickAddResult(
+        createdTaskIds: [-1],
+        labelsKept: ["*'road trip"],
+      );
+      await harness.open(tester);
+      await typeLine(tester, "Fix bike *'road trip");
+      await tester.tap(addButton());
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(en.newTaskCreated("Fix bike *'road trip")),
+        findsOneWidget,
+      );
+      expect(find.text(en.newTaskLabelsKept("*'road trip")), findsOneWidget);
     });
 
     testWidgets('names the server found leave the confirmed title', (

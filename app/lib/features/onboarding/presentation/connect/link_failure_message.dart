@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_sign_in.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
@@ -9,7 +10,8 @@ import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_mes
 const _inviteInvalid = 2005;
 
 /// Why a shared link or an invite could not be opened on [serverRoot]:
-/// [error] is a `VikunjaFailure`, a [GuestLinkGone] or anything unexpected.
+/// [error] is a `VikunjaFailure`, a [GuestLinkGone], a
+/// [SignOutStillFinishing] or anything unexpected.
 FailureMessage describeLinkFailure(
   AppLocalizations l10n,
   Object error, {
@@ -30,6 +32,12 @@ FailureMessage describeLinkFailure(
     title: l10n.guestLinkGoneTitle,
     explanation: l10n.guestLinkGoneExplanation(displayHost(serverRoot)),
     suggestion: l10n.guestLinkGoneSuggestion,
+  ),
+  // Only the guest's own removal holds its link up.
+  SignOutStillFinishing() => FailureMessage(
+    title: l10n.guestRemoveStillFinishingTitle,
+    explanation: l10n.guestRemoveStillFinishingExplanation,
+    suggestion: l10n.signOutStillFinishingSuggestion,
   ),
   _ => describeSignInFailure(
     l10n,

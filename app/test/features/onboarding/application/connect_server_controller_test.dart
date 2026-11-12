@@ -1,15 +1,24 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui' show IsolateNameServer;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/link_share_account_id.dart';
+import 'package:vikunja_mobile/core/db/account_database_files.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 
 import '../../../helpers/auth_fakes.dart';
 import '../../../helpers/fakes.dart';
+import '../../../helpers/guest_entry_fakes.dart';
+import '../../../helpers/guest_fakes.dart';
 import '../../../helpers/server_connections.dart';
 
 void main() {
@@ -25,6 +34,8 @@ void main() {
       overrides: [
         serverConnectorProvider.overrideWithValue(connector),
         ...auth.overrides,
+        ...guestEntryOverrides(),
+        accountDatabaseFilesProvider.overrideWithValue(const _GivingUp()),
       ],
     );
     states = [];
@@ -220,6 +231,47 @@ void main() {
     controller().cancel();
   });
 
+  test('a shared link whose guest is still being signed out fails, logged '
+      'as expected', () async {
+    final server = fullServer270();
+    final guestId = linkShareAccountIdFor(server.rootUri, 84);
+    final portName = accountDatabasePortName(guestId);
+    final heldElsewhere = ReceivePort();
+    IsolateNameServer.registerPortWithName(heldElsewhere.sendPort, portName);
+    addTearDown(() {
+      IsolateNameServer.removePortNameMapping(portName);
+      heldElsewhere.close();
+      forgetSignOutLeftovers();
+    });
+    await awaitAccountDatabaseClosed(guestId, timeout: Duration.zero);
+    IsolateNameServer.removePortNameMapping(portName);
+    connector.handler = (_) async => server;
+    auth.linkShareGateway.serve(issueLinkShareToken(issuedAt: DateTime.now()));
+    final records = <LogRecord>[];
+    final subscription = Logger.root.onRecord.listen(records.add);
+    addTearDown(subscription.cancel);
+
+    await controller().connect(shareLink());
+
+    expect(
+      state(),
+      isA<ConnectServerLinkFailed>().having(
+        (s) => s.error,
+        'error',
+        isA<SignOutStillFinishing>(),
+      ),
+    );
+    expect(records.where((record) => record.level >= Level.SEVERE), isEmpty);
+    expect(
+      records.where(
+        (record) =>
+            record.level == Level.INFO &&
+            record.message.contains('SignOutStillFinishing'),
+      ),
+      isNotEmpty,
+    );
+  });
+
   test('disposing the controller cancels the running request', () {
     final ownContainer = ProviderContainer(
       overrides: [serverConnectorProvider.overrideWithValue(connector)],
@@ -234,4 +286,21 @@ void main() {
 
     expect(connector.cancelTokens.single?.isCancelled, isTrue);
   });
+}
+
+/// Gives up like the gate of a sign-out that does not finish, which the
+/// real one does only after 30 s.
+final class _GivingUp implements AccountDatabaseFiles {
+  const new();
+
+  @override
+  Future<String> pathFor(String accountId) => throw UnimplementedError();
+
+  @override
+  Future<Directory> uploadsDirectoryFor(String accountId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteFor(String accountId) async =>
+      throw const SignOutStillFinishing();
 }

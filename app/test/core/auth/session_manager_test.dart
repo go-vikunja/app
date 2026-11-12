@@ -984,5 +984,37 @@ void main() {
       expect(gateway.refreshedTokens, [stored.refreshToken]);
       expect(flagged, [_accountId]);
     });
+
+    test('hands an ended session on with its reason, once the account is '
+        'flagged', () async {
+      await store(expiresIn: Duration.zero);
+      gateway.onRefresh = (_) async =>
+          throw const SessionEnded(SessionEndReason.expired, code: 16003);
+      final events = <String>[];
+      final handed = <(String, SessionEnded)>[];
+      final reporting = SessionManagers(
+        tokenStore: tokenStore,
+        clockOffsets: clockOffsets,
+        tokenGateway: gateway,
+        connectionFor: (accountId) async => fullServer270(),
+        markNeedsReauth: (accountId) async => events.add('flagged $accountId'),
+        onSessionEnded: (accountId, failure) async {
+          events.add('handed on $accountId');
+          handed.add((accountId, failure));
+        },
+        clock: () => now,
+        sleep: (_) async {},
+      );
+
+      await expectLater(
+        reporting.forAccount(_accountId).validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+
+      expect(events, ['flagged $_accountId', 'handed on $_accountId']);
+      final (accountId, failure) = handed.single;
+      expect(accountId, _accountId);
+      expect(failure.reason, SessionEndReason.expired);
+    });
   });
 }

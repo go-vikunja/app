@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
+import 'package:vikunja_mobile/core/support/session_end_log.dart';
 
 part 'auth_providers.g.dart';
 
@@ -63,6 +64,7 @@ SessionManagers sessionManagers(Ref ref) {
     connectionFor: (accountId) async =>
         (await registry.find(accountId))?.connection,
     markNeedsReauth: registry.markNeedsReauth,
+    onSessionEnded: sessionEndRecorder(ref),
   );
 }
 

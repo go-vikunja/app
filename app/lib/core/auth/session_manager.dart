@@ -570,6 +570,7 @@ final class SessionManagers {
     required this._tokenGateway,
     required this._connectionFor,
     required this._markNeedsReauth,
+    this._onSessionEnded,
     this._clock = DateTime.now,
     this._sleep = _delay,
     this._refreshes = true,
@@ -580,6 +581,8 @@ final class SessionManagers {
   final TokenGateway _tokenGateway;
   final Future<ServerConnection?> Function(String accountId) _connectionFor;
   final Future<void> Function(String accountId) _markNeedsReauth;
+  final Future<void> Function(String accountId, SessionEnded failure)?
+  _onSessionEnded;
   final Clock _clock;
   final Sleep _sleep;
   final bool _refreshes;
@@ -621,7 +624,10 @@ final class SessionManagers {
       }
       return await _tokenGateway.refresh(connection, refreshToken);
     },
-    onSessionEnded: (_) => _markNeedsReauth(accountId),
+    onSessionEnded: (failure) async {
+      await _markNeedsReauth(accountId);
+      await _onSessionEnded?.call(accountId, failure);
+    },
     clock: _clock,
     sleep: _sleep,
     refreshes: _refreshes,

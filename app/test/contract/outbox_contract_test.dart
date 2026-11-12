@@ -82,12 +82,14 @@ Future<_Seed> _seed(Seeder seeder, TestUser user) async {
 }
 
 /// The real write client behind a connection that drops the next
-/// [failNext] requests before they leave the device.
+/// [failNext] requests before they leave the device, and loses the answer
+/// of the next [loseNextAnswer] task updates after the server applied them.
 final class _FlakyWriteClient implements VikunjaWriteClient {
   new(this._real);
 
   final VikunjaWriteClient _real;
   int failNext = 0;
+  int loseNextAnswer = 0;
   int attempts = 0;
 
   @override
@@ -148,13 +150,18 @@ final class _FlakyTasks implements TasksWritePort {
     int id,
     TaskChanges changes, {
     String Function(String current)? rebaseDescription,
-  }) {
+  }) async {
     _maybeFail();
-    return _client._real.tasks.update(
+    final task = await _client._real.tasks.update(
       id,
       changes,
       rebaseDescription: rebaseDescription,
     );
+    if (_client.loseNextAnswer > 0) {
+      _client.loseNextAnswer--;
+      throw const NetworkFailure(NetworkProblem.timeout);
+    }
+    return task;
   }
 
   @override
@@ -746,6 +753,84 @@ void main() {
           );
           expect(await db.outboxDao.count(), 0);
           expect(sender.state, OutboxSenderState.idle);
+        });
+
+        test("a repeating task's done whose answer was lost is not applied "
+            'twice: the retry finds the dates moved and done_at stamped, and '
+            'sends nothing', () async {
+          final today = DateTime.now().toUtc();
+          final due = DateTime.utc(today.year, today.month, today.day + 2, 9);
+          final dailyId = await Seeder(dio, connection, user).create(
+            '/projects/${seed.projectId}/tasks',
+            {
+              'title': 'Daily, answer lost',
+              'due_date': due.toIso8601String(),
+              'repeat_after': 86400,
+            },
+          );
+          await engine.refresh();
+          expect((await db.tasksDao.find(dailyId))!.repeats, isTrue);
+          final before = await reads.tasks.read(dailyId);
+          final attemptsBefore = writes.attempts;
+
+          writes.loseNextAnswer = 1;
+          await repository.setDone(dailyId, done: true);
+          await _drainFully(sender, db);
+
+          final next = due.add(const Duration(days: 1));
+          final onServer = await reads.tasks.read(dailyId);
+          expect(onServer.done, isFalse);
+          expect(onServer.dueDate, _within1s(next));
+          expect(onServer.doneAt, isNotNull);
+          expect(onServer.doneAt, isNot(before.doneAt));
+          final local = (await db.tasksDao.find(dailyId))!;
+          expect(local.done, isFalse);
+          expect(local.dueDate, _within1s(next));
+          expect(writes.loseNextAnswer, 0);
+          expect(writes.attempts, attemptsBefore + 1);
+          expect(await db.outboxDao.count(), 0);
+        });
+
+        test("a repeating task without dates whose done's answer was lost is "
+            'not applied twice: its reminder moves once', () async {
+          final today = DateTime.now().toUtc();
+          final reminder = DateTime.utc(
+            today.year,
+            today.month,
+            today.day + 2,
+            9,
+          );
+          final dailyId = await Seeder(dio, connection, user).create(
+            '/projects/${seed.projectId}/tasks',
+            {
+              'title': 'Daily without dates, answer lost',
+              'repeat_after': 86400,
+              'reminders': [
+                {'reminder': reminder.toIso8601String()},
+              ],
+            },
+          );
+          await engine.refresh();
+          final seeded = (await db.tasksDao.find(dailyId))!;
+          expect(seeded.repeats, isTrue);
+          expect(seeded.dueDate, isNull);
+          final attemptsBefore = writes.attempts;
+
+          writes.loseNextAnswer = 1;
+          await repository.setDone(dailyId, done: true);
+          await _drainFully(sender, db);
+
+          final next = reminder.add(const Duration(days: 1));
+          final onServer = await reads.tasks.read(dailyId);
+          expect(onServer.done, isFalse);
+          expect(onServer.dueDate, isNull);
+          expect(onServer.reminders.single.reminder, _within1s(next));
+          expect(onServer.doneAt, isNotNull);
+          final local = (await db.tasksDao.find(dailyId))!;
+          expect(local.reminders.single.reminder, _within1s(next));
+          expect(writes.loseNextAnswer, 0);
+          expect(writes.attempts, attemptsBefore + 1);
+          expect(await db.outboxDao.count(), 0);
         });
       });
     }

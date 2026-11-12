@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/logging/redaction.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -397,11 +398,17 @@ class ConnectServerController extends _$ConnectServerController {
     _ => false,
   };
 
-  void _logUnexpected(Object error, StackTrace stackTrace) => _log.severe(
-    'Unexpected connect failure: ${redactSecrets('$error')}',
-    null,
-    stackTrace,
-  );
+  void _logUnexpected(Object error, StackTrace stackTrace) {
+    if (error is SignOutStillFinishing) {
+      _log.info('Opening the shared link failed: $error');
+      return;
+    }
+    _log.severe(
+      'Unexpected connect failure: ${redactSecrets('$error')}',
+      null,
+      stackTrace,
+    );
+  }
 }
 
 sealed class _PendingTarget {

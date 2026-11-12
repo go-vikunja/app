@@ -1,3 +1,7 @@
+import 'dart:io';
+import 'dart:isolate';
+import 'dart:ui' show IsolateNameServer;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -5,6 +9,8 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/auth/link_share_account_id.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
+import 'package:vikunja_mobile/core/db/account_database_files.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_landing.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_sign_in.dart';
 
@@ -23,6 +29,7 @@ void main() {
   late GuestLandings landings;
   late List<int> titleReads;
   late Future<String?> Function() projectTitle;
+  late _Deletions deletions;
   late GuestSignIn guestSignIn;
 
   ParsedLinkShareUrl link({int? viewId = 4}) => ParsedLinkShareUrl(
@@ -45,6 +52,7 @@ void main() {
     landings = GuestLandings();
     titleReads = [];
     projectTitle = () async => 'Garden';
+    deletions = _Deletions();
     guestSignIn = GuestSignIn(
       gateway: gateway,
       store: auth.linkShareStore,
@@ -57,6 +65,7 @@ void main() {
         await tokens.validAccessToken();
         return await projectTitle();
       },
+      files: deletions,
       clock: () => now,
     );
   });
@@ -285,6 +294,68 @@ void main() {
     });
   });
 
+  group('after a sign-out that gave up waiting for its database', () {
+    const otherAccountId = 'fedcba9876543210fedcba9876543210';
+
+    /// Its database isolate is held elsewhere, like by a notification's
+    /// Done in flight; the returned call lets it go.
+    Future<void Function()> signedOutWhileHeld(String accountId) async {
+      final portName = accountDatabasePortName(accountId);
+      final heldElsewhere = ReceivePort();
+      IsolateNameServer.registerPortWithName(heldElsewhere.sendPort, portName);
+      addTearDown(() {
+        IsolateNameServer.removePortNameMapping(portName);
+        heldElsewhere.close();
+        forgetSignOutLeftovers();
+      });
+      expect(
+        await awaitAccountDatabaseClosed(accountId, timeout: Duration.zero),
+        isFalse,
+      );
+      return () => IsolateNameServer.removePortNameMapping(portName);
+    }
+
+    setUp(() => gateway.serve(issueLinkShareToken(issuedAt: now)));
+
+    test('the same guest waits until it has gone before anything is '
+        'stored', () async {
+      final letGo = await signedOutWhileHeld(guestId);
+
+      final signingIn = guestSignIn.signIn(server, link());
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      expect(auth.secureStore.values, isEmpty);
+      expect((await auth.registry.load()).accounts, isEmpty);
+
+      letGo();
+      expect(await signingIn, isA<GuestSignedIn>());
+      expect(deletions.deleted, [guestId]);
+      expect(await auth.linkShareStore.read(guestId), isNotNull);
+    });
+
+    test('a sign-out that does not finish fails the guest and stores '
+        'nothing', () async {
+      (await signedOutWhileHeld(guestId))();
+      deletions.givingUp = true;
+
+      await expectLater(
+        guestSignIn.signIn(server, link()),
+        throwsA(isA<SignOutStillFinishing>()),
+      );
+
+      expect(auth.secureStore.values, isEmpty);
+      expect((await auth.registry.load()).accounts, isEmpty);
+      expect(landings.take(guestId), isNull);
+    });
+
+    test("another account's does not hold the guest up", () async {
+      await signedOutWhileHeld(otherAccountId);
+
+      expect(await guestSignIn.signIn(server, link()), isA<GuestSignedIn>());
+      expect(deletions.deleted, isEmpty);
+    });
+  });
+
   group('connect', () {
     test("takes a stored account's server whose web frontend the link is "
         'under, without probing', () async {
@@ -354,4 +425,24 @@ void main() {
       expect(gateway.authentications, isEmpty);
     });
   });
+}
+
+/// Records the deletions; with [givingUp] it stands in for a gate that gives
+/// up, which the real one does only after 30 s.
+final class _Deletions implements AccountDatabaseFiles {
+  final List<String> deleted = [];
+  bool givingUp = false;
+
+  @override
+  Future<String> pathFor(String accountId) => throw UnimplementedError();
+
+  @override
+  Future<Directory> uploadsDirectoryFor(String accountId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> deleteFor(String accountId) async {
+    if (givingUp) throw const SignOutStillFinishing();
+    deleted.add(accountId);
+  }
 }

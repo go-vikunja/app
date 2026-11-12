@@ -190,6 +190,197 @@ void main() {
     });
   });
 
+  group("an update with a repeating task's Done", () {
+    final base = DoneBase(dueDate: monday, doneAt: now);
+
+    Future<OutboxRow> claimed(TaskChanges changes) async {
+      await queue(1, changes);
+      final op = (await ops()).single;
+      return (await db.outboxDao.claim(op.id, at: later))!;
+    }
+
+    Future<OutboxRow> attempted(TaskChanges changes) async {
+      final op = await claimed(changes);
+      expect(
+        await db.outboxDao.markDoneAttempt(op.id, base: base, sentAt: later),
+        isTrue,
+      );
+      return op;
+    }
+
+    Future<void> answerLost(String id) => db.outboxDao.scheduleRetry(
+      id,
+      attempts: 1,
+      failure: const NetworkFailure(NetworkProblem.timeout),
+      nextAttemptAt: later,
+    );
+
+    test('keeps the base and the attempt time once, while it is claimed and '
+        'unsent', () async {
+      final op = await attempted(done);
+
+      final marked = (await ops()).single;
+      expect(marked.state, OutboxState.sending.name);
+      expect(marked.sentAt, later);
+      expect(
+        decodeTaskChanges(marked.payload),
+        TaskChanges(done: true, doneBase: base),
+      );
+
+      expect(
+        await db.outboxDao.markDoneAttempt(
+          op.id,
+          base: DoneBase(dueDate: later),
+          sentAt: now,
+        ),
+        isFalse,
+      );
+      final again = (await ops()).single;
+      expect(again.sentAt, later);
+      expect(decodeTaskChanges(again.payload).doneBase, base);
+    });
+
+    test('an op that is not claimed or gone keeps no base', () async {
+      await queue(1, done);
+      final op = (await ops()).single;
+
+      expect(
+        await db.outboxDao.markDoneAttempt(op.id, base: base, sentAt: later),
+        isFalse,
+      );
+      expect(
+        await db.outboxDao.markDoneAttempt('gone', base: base, sentAt: later),
+        isFalse,
+      );
+
+      final unchanged = (await ops()).single;
+      expect(unchanged.sentAt, isNull);
+      expect(decodeTaskChanges(unchanged.payload), done);
+    });
+
+    test('takes no more edits after the attempt: a later one becomes an op '
+        'of its own behind it, which takes the edits after it', () async {
+      final op = await attempted(done);
+      await answerLost(op.id);
+
+      await queue(1, favorite);
+      await queue(1, const TaskChanges(priority: 2));
+
+      final all = await ops();
+      expect(all.map((op) => op.id).first, op.id);
+      expect(all, hasLength(2));
+      expect(
+        decodeTaskChanges(all.first.payload),
+        TaskChanges(done: true, doneBase: base),
+      );
+      expect(
+        decodeTaskChanges(all.last.payload),
+        const TaskChanges(isFavorite: true, priority: 2),
+      );
+      expect(all.last.sentAt, isNull);
+      expect((await db.tasksDao.find(1))!.isFavorite, isTrue);
+    });
+
+    test('a failed one takes no edit either', () async {
+      final op = await attempted(done);
+      await db.outboxDao.markFailed(op.id, const Forbidden(code: 7003));
+
+      await queue(1, favorite);
+
+      final all = await ops();
+      expect(all.map((op) => op.state), ['failed', 'pending']);
+      expect(
+        decodeTaskChanges(all.first.payload),
+        TaskChanges(done: true, doneBase: base),
+      );
+      expect(decodeTaskChanges(all.last.payload), favorite);
+    });
+
+    test('a failed one is not folded into a newer update, and stays a '
+        'problem', () async {
+      final op = await attempted(done);
+      // Queued while the attempt is in flight: an op of its own.
+      await queue(1, favorite);
+
+      await db.outboxDao.markFailed(op.id, const Forbidden(code: 7003));
+
+      final all = await ops();
+      expect(all.map((op) => op.id).first, op.id);
+      expect(all.map((op) => op.state), ['failed', 'pending']);
+      expect(
+        decodeTaskChanges(all.first.payload),
+        TaskChanges(done: true, doneBase: base),
+      );
+      expect(decodeTaskChanges(all.last.payload), favorite);
+      expect((await db.outboxDao.loadProblems()).single.operationId, op.id);
+      final pending = (await pendingOf(1))!;
+      expect(pending.done, isTrue);
+      expect(pending.isFavorite, isTrue);
+    });
+
+    test('nor is a failed update folded into a newer one that was '
+        'attempted', () async {
+      await queue(1, favorite);
+      final first = (await ops()).single;
+      await db.outboxDao.markSending(first.id, at: now);
+      await queue(1, done);
+      final second = (await ops()).last;
+      await db.outboxDao.markSending(second.id, at: later);
+      await db.outboxDao.markDoneAttempt(second.id, base: base, sentAt: later);
+      await answerLost(second.id);
+
+      await db.outboxDao.markFailed(first.id, const Forbidden(code: 7003));
+
+      final all = await ops();
+      expect(all.map((op) => op.id), [first.id, second.id]);
+      expect(all.first.state, OutboxState.failed.name);
+      expect(decodeTaskChanges(all.first.payload), favorite);
+      expect(
+        decodeTaskChanges(all.last.payload),
+        TaskChanges(done: true, doneBase: base),
+      );
+    });
+
+    test('a failed one is still moot behind a delete', () async {
+      final op = await attempted(done);
+      await db.outboxDao.queueDelete(1, now: now);
+
+      await db.outboxDao.markFailed(op.id, const Forbidden(code: 7003));
+
+      expect((await ops()).map((op) => op.kind), ['deleteTask']);
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+    });
+
+    test("the base survives Keep mine, Use the web's and the labels a sync "
+        'forgets', () async {
+      final op = await attempted(
+        const TaskChanges(
+          done: true,
+          description: '<p>mine</p>',
+          descriptionBase: '<p>old</p>',
+          labels: IdSetChange(added: {5}),
+        ),
+      );
+      await db.outboxDao.markFailed(op.id, const DescriptionConflict());
+
+      await db.outboxDao.retryOverwritingDescription(op.id, base: '<p>web</p>');
+      expect(decodeTaskChanges((await ops()).single.payload).doneBase, base);
+
+      await db.outboxDao.claim(op.id, at: later);
+      await db.outboxDao.markFailed(op.id, const DescriptionConflict());
+      expect(await db.outboxDao.dropDescription(op.id), isTrue);
+      expect(decodeTaskChanges((await ops()).single.payload).doneBase, base);
+
+      await db.outboxDao.forgetLabels({5});
+      final kept = (await ops()).single;
+      expect(
+        decodeTaskChanges(kept.payload),
+        TaskChanges(done: true, doneBase: base),
+      );
+      expect(kept.sentAt, later);
+    });
+  });
+
   group('queueing a delete', () {
     test('hides the row and keeps the queued update ahead of it, with its '
         'pending changes', () async {

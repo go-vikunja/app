@@ -11,6 +11,7 @@ Future<void> showQuickAddHelp(
   required QuickAddMagicMode mode,
   required QuickAddPrefixes prefixes,
   required DateTime now,
+  bool guest = false,
 }) => showModalBottomSheet<void>(
   context: context,
   useRootNavigator: true,
@@ -25,6 +26,7 @@ Future<void> showQuickAddHelp(
       mode: mode,
       prefixes: prefixes,
       now: now,
+      guest: guest,
       scrollController: scrollController,
     ),
   ),
@@ -93,6 +95,7 @@ class QuickAddHelpSheet extends StatelessWidget {
     required this.mode,
     required this.prefixes,
     required this.now,
+    this.guest = false,
     this.scrollController,
     super.key,
   });
@@ -100,6 +103,9 @@ class QuickAddHelpSheet extends StatelessWidget {
   final QuickAddMagicMode mode;
   final QuickAddPrefixes prefixes;
   final DateTime now;
+
+  /// A link-share guest, who cannot create labels.
+  final bool guest;
   final ScrollController? scrollController;
 
   @override
@@ -139,7 +145,11 @@ class QuickAddHelpSheet extends StatelessWidget {
           icon: Icons.label_outline,
           title: l10n.quickAddHelpLabelsTitle,
           children: [
-            Text(l10n.quickAddHelpLabelsBody(prefixes.label)),
+            Text(
+              guest
+                  ? l10n.quickAddHelpLabelsBodyGuest(prefixes.label)
+                  : l10n.quickAddHelpLabelsBody(prefixes.label),
+            ),
             _Examples([
               '${prefixes.label}${l10n.quickAddHelpExampleLabel}',
               '${prefixes.label}"${l10n.quickAddHelpExampleLabel} 2"',

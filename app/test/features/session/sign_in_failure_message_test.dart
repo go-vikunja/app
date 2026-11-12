@@ -4,7 +4,9 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/browser_sign_in.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/connect/link_failure_message.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
 
 import '../../helpers/pump_app.dart';
@@ -96,6 +98,11 @@ void main() {
         en.signInBrowserFailedExplanation,
         en.signInBrowserFailedSuggestion,
       ),
+      const SignOutStillFinishing(): (
+        en.signOutStillFinishingTitle,
+        en.signOutStillFinishingExplanation,
+        en.signOutStillFinishingSuggestion,
+      ),
       StateError('bug'): (
         en.failureUnexpectedTitle,
         en.signInUnexpectedExplanation,
@@ -145,9 +152,26 @@ void main() {
     expect(message.suggestion, en.connectionTlsSuggestionIos);
   });
 
+  test('a shared link opened again while the removal of its guest access '
+      'is still finishing says so in guest words', () {
+    for (final l10n in [en, de]) {
+      final message = describeLinkFailure(
+        l10n,
+        const SignOutStillFinishing(),
+        serverRoot: root,
+        platform: TargetPlatform.android,
+      );
+
+      expect(message.title, l10n.guestRemoveStillFinishingTitle);
+      expect(message.explanation, l10n.guestRemoveStillFinishingExplanation);
+      expect(message.suggestion, l10n.signOutStillFinishingSuggestion);
+    }
+  });
+
   test('every message exists in German', () {
     for (final error in [
       const RateLimited(retryAfter: Duration(minutes: 2)),
+      const SignOutStillFinishing(),
       const OAuthFailure(OAuthProblem.clientMismatch),
       const WebAuthenticationFailed(WebAuthenticationProblem.noBrowser),
       const SignedInAsDifferentUser(

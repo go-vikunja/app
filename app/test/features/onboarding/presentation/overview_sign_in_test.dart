@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:isolate';
+import 'dart:ui' show IsolateNameServer;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -7,9 +9,12 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
+import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
+import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 
 import '../../../helpers/auth_fakes.dart';
 import '../../../helpers/pump_app.dart';
@@ -130,6 +135,78 @@ void main() {
     browser.complete(null);
     await tester.pumpAndSettle();
     expect(backButton().onPressed, isNotNull);
+  });
+
+  group('after a sign-out that gave up waiting for its database', () {
+    const signedOut = 'fedcba9876543210fedcba9876543210';
+    final portName = accountDatabasePortName(signedOut);
+
+    setUp(() async {
+      // Stands in for the database isolate a widget action keeps running.
+      final heldElsewhere = ReceivePort();
+      IsolateNameServer.registerPortWithName(heldElsewhere.sendPort, portName);
+      addTearDown(() {
+        IsolateNameServer.removePortNameMapping(portName);
+        heldElsewhere.close();
+        forgetSignOutLeftovers();
+      });
+      expect(
+        await awaitAccountDatabaseClosed(signedOut, timeout: Duration.zero),
+        isFalse,
+      );
+    });
+
+    testWidgets('an account being added waits for it with back and another '
+        'server still at hand, and leaving drops the sign-in', (tester) async {
+      await pumpSignedInApp(tester, auth: auth);
+      final container = containerOf(tester);
+      container.read(currentServerProvider.notifier).select(oauthServer230());
+      unawaited(container.read(appRouterProvider).push(AppRoutes.addAccount));
+      await tester.pumpAndSettle();
+      unawaited(
+        container.read(appRouterProvider).push(AppRoutes.addAccountServer),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(_continueButton);
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text(en.signInFinishingSignOut), findsOneWidget);
+      expect(find.text(en.signInWaiting), findsNothing);
+      final otherServer = tester.widget<TextButton>(
+        find.widgetWithText(TextButton, en.useDifferentServer),
+      );
+      expect(otherServer.onPressed, isNotNull);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.byType(ServerOverviewScreen), findsNothing);
+
+      IsolateNameServer.removePortNameMapping(portName);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      expect(auth.webAuthenticator.urls, isEmpty);
+      expect(container.read(signInControllerProvider), isA<SignInIdle>());
+    });
+
+    testWidgets('choosing another server while it waits drops the sign-in', (
+      tester,
+    ) async {
+      await pumpServerOverview(tester, fullServer270(), auth: auth);
+
+      await tester.tap(_continueButton);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.tap(find.widgetWithText(TextButton, en.useDifferentServer));
+      await tester.pumpAndSettle();
+      expect(location(tester), AppRoutes.connect);
+
+      IsolateNameServer.removePortNameMapping(portName);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      expect(auth.webAuthenticator.urls, isEmpty);
+    });
   });
 
   testWidgets('back leaves the overview again once the attempt is over', (
