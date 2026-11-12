@@ -45,6 +45,10 @@ final class ProjectAccess {
 
   bool get canManageViews => isAdmin;
 
+  /// The board's done and default column, and a new default before a
+  /// column's delete: changes of the view, as is managing views.
+  bool get canChooseDoneAndDefaultColumn => isAdmin;
+
   /// User, team and link shares; reading the user and team shares needs
   /// read access only.
   bool get canManageShares => isAdmin;

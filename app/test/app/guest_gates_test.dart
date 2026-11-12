@@ -32,22 +32,26 @@ import '../helpers/sync_fakes.dart';
 
 const _needsUser =
     'the server refuses what it does for anyone who is not a user';
-const _ownersProject =
-    "the shared project is its owner's to describe, rename, set up views "
-    'for and share';
+const _typedAddressOnly =
+    "the web offers a link share the project's settings only by a typed "
+    'address, which the app does not offer (owner)';
+const _labelsNeedUser =
+    'the server lets only users create, edit and delete labels, and the web '
+    'offers a link share its labels page only by a typed address';
 
 /// Every route outside `AppRoutes.openToGuests`, by its full path, with the
 /// reason a guest is kept from it.
 const closedToGuests = <String, String>{
-  '/home/project/:id/description': _ownersProject,
-  '/home/project/:id/edit': _ownersProject,
-  '/home/project/:id/views': _ownersProject,
-  '/home/project/:id/share': _ownersProject,
+  '/home/project/:id/description': _typedAddressOnly,
+  '/home/project/:id/edit': _typedAddressOnly,
+  '/home/project/:id/views': _typedAddressOnly,
+  '/home/project/:id/share':
+      'the server refuses a link share reading or changing the shares',
   '/home/inbox': 'the server keeps no notifications for a guest',
-  '/home/labels': _needsUser,
-  '/home/labels/new': _needsUser,
-  '/home/labels/:id/edit': _needsUser,
-  '/home/labels/:id/description': _needsUser,
+  '/home/labels': _labelsNeedUser,
+  '/home/labels/new': _labelsNeedUser,
+  '/home/labels/:id/edit': _labelsNeedUser,
+  '/home/labels/:id/description': _labelsNeedUser,
   '/home/teams': _needsUser,
   '/home/teams/:id': _needsUser,
   '/home/teams/:id/description': _needsUser,
@@ -318,8 +322,8 @@ void main() {
       expect(data.subscriptions.calls, isEmpty);
     });
 
-    testWidgets("an admin guest can neither delete the owner's project nor "
-        'set up its views', (tester) async {
+    testWidgets('an admin guest is offered neither Delete nor Views, which '
+        'the web offers a link share only by a typed address', (tester) async {
       data.projects.all = [guestProject(permission: Permission.admin)];
       await pumpProject(tester);
       await openMenu(tester);
@@ -386,8 +390,8 @@ void main() {
     });
 
     testWidgets("a write guest's task sheet edits in place, and its menu "
-        'offers the link as the comment link is (proposed, for the owner '
-        'to confirm)', (tester) async {
+        "offers the task's link, as the web copies it for every link "
+        'share', (tester) async {
       data.details.detailsByTask[4] = const TaskDetails(
         maxPermission: Permission.write,
       );

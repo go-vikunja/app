@@ -10,8 +10,9 @@ import 'guest_gates_test.dart' show closedToGuests;
 void main() {
   final lib = Directory('lib');
 
-  test('every use of what a guest cannot use is gated for guests or open '
-      'to them with a reason, so a new action has to decide', () {
+  test('every use of what needs a decision for guests is gated for guests, '
+      'behind closed routes or open with a reason, so a new action has to '
+      'decide', () {
     final sites = scanGuestActionSites(lib);
     final found = {for (final site in sites) site.key};
     final unlisted = [

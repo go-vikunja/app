@@ -74,8 +74,10 @@ class ProjectBoard extends ConsumerStatefulWidget {
   /// changes its columns.
   final bool readOnly;
 
-  /// Admin rights: choosing the done and the default column changes the
-  /// view itself.
+  /// Admin permission, a link-share guest's by its share: choosing the
+  /// done or the default column changes the view itself, and so does the
+  /// new default a delete may need first ([BucketDeletion]'s
+  /// `defaultFirst`).
   final bool canChangeView;
 
   /// Further pages then load only when asked for.
@@ -673,9 +675,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
     );
     if (!confirmed || !mounted) return;
     await _changeColumns(
-      plan.defaultFirst
-          ? ColumnChange.deleteAfterNewDefault
-          : ColumnChange.delete,
+      ColumnChange.delete,
       bucketId: bucket.id,
       changed: l10n.boardColumnDeleted,
       send: (repository) =>
@@ -683,22 +683,13 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
     );
   }
 
-  /// A link-share [guest] gets no change of the view, which is the project
-  /// owner's whatever the share's permission: no done or default column,
-  /// and no delete that changes either ([guestDeletion]).
-  Widget _menuOf(BoardColumn column, int index, {required bool guest}) {
+  Widget _menuOf(BoardColumn column, int index) {
     final l10n = context.l10n;
     final view = widget.view;
     final bucketId = column.bucket.id;
     final change = _columnChange;
-    final guestRefusal = guest
-        ? guestDeletion(
-            bucketId,
-            _deletionOf(column),
-            doneBucketId: view.doneBucketId,
-            defaultBucketId: view.defaultBucketId,
-          )
-        : null;
+    final needsNewDefault =
+        !widget.canChangeView && (_deletionOf(column)?.defaultFirst ?? false);
     return ColumnMenuButton(
       bucket: column.bucket,
       isDone: view.doneBucketId != 0 && view.doneBucketId == bucketId,
@@ -707,10 +698,10 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
       canMoveRight: _canMove(bucketId, index + 1),
       cannotDelete: _columns.length < 2
           ? l10n.boardColumnDeleteLast
-          : guestRefusal == null
-          ? null
-          : guestDeletionText(l10n, guestRefusal),
-      canChangeView: widget.canChangeView && !guest,
+          : needsNewDefault
+          ? l10n.boardColumnDeleteMoveTasksFirst
+          : null,
+      canChangeView: widget.canChangeView,
       saving: change != null && change.bucketId == bucketId,
       enabled: change == null,
       onSelected: (action) => _onColumnAction(column, action),
@@ -824,7 +815,6 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
     final columns = _board;
     final view = widget.view;
     final manages = !widget.readOnly;
-    final guest = ref.watch(activeAccountIsGuestProvider);
     final insets = MediaQuery.paddingOf(context);
     _followMovedColumn(columns);
     return LayoutBuilder(
@@ -877,7 +867,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
                   onLoadMore: () => unawaited(_loadMore(column.bucket.id)),
                   onNearEnd: () => _loadMoreOnScroll(column),
                   onAddTask: widget.readOnly ? null : () => _addTaskTo(column),
-                  menu: manages ? _menuOf(column, i, guest: guest) : null,
+                  menu: manages ? _menuOf(column, i) : null,
                   headerActions: manages
                       ? _headerActionsOf(column, i)
                       : const {},

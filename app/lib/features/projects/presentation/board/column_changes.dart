@@ -5,19 +5,7 @@ import 'package:vikunja_mobile/core/repositories/bucket_repository.dart';
 import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 
-enum ColumnChange {
-  create,
-  rename,
-  limit,
-  move,
-  delete,
-
-  /// A delete that first makes another column the default, as the server
-  /// would otherwise strand the column's tasks outside every column.
-  deleteAfterNewDefault,
-  done,
-  defaultColumn,
-}
+enum ColumnChange { create, rename, limit, move, delete, done, defaultColumn }
 
 String columnChangeFailureText(
   AppLocalizations l10n,
@@ -28,8 +16,9 @@ String columnChangeFailureText(
   return switch (error) {
     DeleteFailedAfterNewDefault(:final bucket, :final newDefault) =>
       l10n.boardColumnDeleteFailedNewDefault(newDefault.title, bucket.title),
-    GuestViewChange(:final deletion?) => guestDeletionText(l10n, deletion),
-    GuestViewChange() => l10n.boardColumnForbidden,
+    NewDefaultRefused() => l10n.boardColumnDeleteMoveTasksFirst,
+    NewDefaultGone(:final bucket, :final newDefault) =>
+      l10n.boardColumnDeleteNewDefaultGone(newDefault.title, bucket.title),
     // The server may have made the change before the answer was lost.
     NetworkFailure(problem: NetworkProblem.timeout) =>
       l10n.boardColumnUnconfirmed,
@@ -39,8 +28,6 @@ String columnChangeFailureText(
     Forbidden() when change == ColumnChange.done => l10n.boardColumnAdminOnly,
     Forbidden() when change == ColumnChange.defaultColumn =>
       l10n.boardColumnAdminOnly,
-    Forbidden() when change == ColumnChange.deleteAfterNewDefault =>
-      l10n.boardColumnDeleteAdminOnly,
     Forbidden() => l10n.boardColumnForbidden,
     VikunjaFailure(code: 10003) => l10n.boardColumnLastOne,
     // 2.7.1 caps a view at 100 buckets.
@@ -56,15 +43,6 @@ String columnChangeFailureText(
     _ => l10n.boardColumnChangeFailed,
   };
 }
-
-/// Under a link-share guest's disabled Delete, and when the view as the
-/// server has it refuses the delete.
-String guestDeletionText(AppLocalizations l10n, GuestDeletion deletion) =>
-    switch (deletion) {
-      GuestDeletion.doneBucket => l10n.boardColumnDeleteGuestDone,
-      GuestDeletion.defaultBucket => l10n.boardColumnDeleteGuestDefault,
-      GuestDeletion.newDefaultFirst => l10n.boardColumnDeleteGuest,
-    };
 
 /// The web's question before a delete; [tasksGoTo] names the column the
 /// server moves the column's tasks to, null when it holds none. When

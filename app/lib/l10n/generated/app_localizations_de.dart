@@ -3160,16 +3160,8 @@ class AppLocalizationsDe extends AppLocalizations {
       'Du kannst die letzte Spalte nicht löschen.';
 
   @override
-  String get boardColumnDeleteGuest =>
-      'Als Gast kannst du die Spalte für neue Aufgaben nicht löschen, solange Aufgaben darin sind. Verschieb ihre Aufgaben zuerst in eine andere Spalte.';
-
-  @override
-  String get boardColumnDeleteGuestDone =>
-      'Als Gast kannst du die Erledigt-Spalte nicht löschen, weil das die Einstellungen des Boards ändern würde.';
-
-  @override
-  String get boardColumnDeleteGuestDefault =>
-      'Als Gast kannst du die Spalte für neue Aufgaben nicht löschen, weil das die Einstellungen des Boards ändern würde.';
+  String get boardColumnDeleteMoveTasksFirst =>
+      'Verschiebe ihre Aufgaben zuerst in eine andere Spalte: Löschst du die Spalte jetzt, landen sie in keiner Spalte, und nur Projekt-Admins können eine andere Standardspalte festlegen.';
 
   @override
   String get boardColumnRenameTitle => 'Spalte umbenennen';
@@ -3268,12 +3260,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Nur Projekt-Admins können die Erledigt- oder Standardspalte festlegen.';
 
   @override
-  String get boardColumnDeleteAdminOnly =>
-      'Nur Projekt-Admins können die Spalte für neue Aufgaben löschen, solange Aufgaben darin sind.';
-
-  @override
   String boardColumnDeleteFailedNewDefault(String newDefault, String column) {
     return '„$newDefault“ ist jetzt die Standardspalte, aber „$column“ ließ sich nicht löschen.';
+  }
+
+  @override
+  String boardColumnDeleteNewDefaultGone(String newDefault, String column) {
+    return '„$newDefault“ gibt es nicht mehr, deshalb wurde „$column“ nicht gelöscht.';
   }
 
   @override

@@ -30,6 +30,9 @@ void main() {
         'canChangeParent' => (a) => a.canChangeParent,
         'canDelete' => (a) => a.canDelete,
         'canManageViews' => (a) => a.canManageViews,
+        'canChooseDoneAndDefaultColumn' => (
+          a,
+        ) => a.canChooseDoneAndDefaultColumn,
         'canManageShares' => (a) => a.canManageShares,
         'canDuplicate' => (a) => a.canDuplicate,
         _ => throw ArgumentError(name),
@@ -50,6 +53,7 @@ void main() {
         'canChangeParent',
         'canDelete',
         'canManageViews',
+        'canChooseDoneAndDefaultColumn',
         'canManageShares',
       ];
       for (final name in writeRules) {

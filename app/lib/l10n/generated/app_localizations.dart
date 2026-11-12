@@ -4770,23 +4770,11 @@ abstract class AppLocalizations {
   /// **'You can\'t delete the last column.'**
   String get boardColumnDeleteLast;
 
-  /// Under the disabled "Delete" item of a kanban column for a link-share guest, and as an error: the leftmost column, which gets new tasks while no default column is chosen, holds tasks, so deleting it needs another default column first, and the project's board is its owner's to set up.
+  /// Under the disabled "Delete" item of a kanban column, for someone with write but not admin permission on the project (a link-share guest by its share's permission), and as the error when the server refused that new default: the leftmost column, which gets new tasks while no other column is the chosen default, holds tasks; deleting it would leave them in no column unless another column became the default first, which only project admins may choose. Once its tasks are in other columns, it can be deleted.
   ///
   /// In en, this message translates to:
-  /// **'As a guest, you can\'t delete the column new tasks go to while it holds tasks. Move its tasks to another column first.'**
-  String get boardColumnDeleteGuest;
-
-  /// Under the disabled "Delete" item of a kanban board's done column (boardDoneColumn) for a link-share guest, and as an error: the server clears the board's done column when it is deleted, and the project's board is its owner's to set up.
-  ///
-  /// In en, this message translates to:
-  /// **'As a guest, you can\'t delete the done column, as that would change the board\'s settings.'**
-  String get boardColumnDeleteGuestDone;
-
-  /// Under the disabled "Delete" item of a kanban board's chosen default column (boardDefaultColumn) for a link-share guest, and as an error: the server clears the board's default column when it is deleted, and the project's board is its owner's to set up.
-  ///
-  /// In en, this message translates to:
-  /// **'As a guest, you can\'t delete the column new tasks go to, as that would change the board\'s settings.'**
-  String get boardColumnDeleteGuestDefault;
+  /// **'Move its tasks to another column first: deleting it now would leave them in no column, and only project admins can choose another default column.'**
+  String get boardColumnDeleteMoveTasksFirst;
 
   /// No description provided for @boardColumnRenameTitle.
   ///
@@ -4944,17 +4932,17 @@ abstract class AppLocalizations {
   /// **'Only project admins can choose the done or default column.'**
   String get boardColumnAdminOnly;
 
-  /// Deleting the column the server puts new tasks into, while it has tasks, needs another default column first, which only project admins may choose.
-  ///
-  /// In en, this message translates to:
-  /// **'Only project admins can delete the column new tasks go to while it holds tasks.'**
-  String get boardColumnDeleteAdminOnly;
-
   /// Deleting a kanban column failed after the app had made another column the default for it, and putting the old default back failed too; newDefault is the title of the column that is now the default, column the title of the column that was not deleted.
   ///
   /// In en, this message translates to:
   /// **'“{newDefault}” is now the default column; deleting “{column}” failed.'**
   String boardColumnDeleteFailedNewDefault(String newDefault, String column);
+
+  /// Deleting a kanban column was stopped before anything changed: the column the app was about to make the default first, so that the deleted column's tasks don't end up in no column, was deleted elsewhere since the board was last downloaded. The board then downloads again. newDefault is the title of that column, column the title of the column that was not deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'“{newDefault}” no longer exists, so “{column}” wasn\'t deleted.'**
+  String boardColumnDeleteNewDefaultGone(String newDefault, String column);
 
   /// No description provided for @boardColumnForbidden.
   ///

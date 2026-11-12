@@ -3125,16 +3125,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boardColumnDeleteLast => 'You can\'t delete the last column.';
 
   @override
-  String get boardColumnDeleteGuest =>
-      'As a guest, you can\'t delete the column new tasks go to while it holds tasks. Move its tasks to another column first.';
-
-  @override
-  String get boardColumnDeleteGuestDone =>
-      'As a guest, you can\'t delete the done column, as that would change the board\'s settings.';
-
-  @override
-  String get boardColumnDeleteGuestDefault =>
-      'As a guest, you can\'t delete the column new tasks go to, as that would change the board\'s settings.';
+  String get boardColumnDeleteMoveTasksFirst =>
+      'Move its tasks to another column first: deleting it now would leave them in no column, and only project admins can choose another default column.';
 
   @override
   String get boardColumnRenameTitle => 'Rename column';
@@ -3233,12 +3225,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Only project admins can choose the done or default column.';
 
   @override
-  String get boardColumnDeleteAdminOnly =>
-      'Only project admins can delete the column new tasks go to while it holds tasks.';
-
-  @override
   String boardColumnDeleteFailedNewDefault(String newDefault, String column) {
     return '“$newDefault” is now the default column; deleting “$column” failed.';
+  }
+
+  @override
+  String boardColumnDeleteNewDefaultGone(String newDefault, String column) {
+    return '“$newDefault” no longer exists, so “$column” wasn\'t deleted.';
   }
 
   @override

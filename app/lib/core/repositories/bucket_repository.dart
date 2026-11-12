@@ -30,59 +30,37 @@ abstract interface class BucketRepository {
   /// The server moves the bucket's tasks to [planBucketDeletion]'s target,
   /// planned from the view as the server has it right before. When that
   /// plan needs a new default first, it is set before the delete, and when
-  /// setting it fails the delete is not sent. When the delete then fails,
-  /// the old default is put back; when that fails too, a
-  /// [DeleteFailedAfterNewDefault] is thrown. A bucket the tasks would fall
-  /// back to that looks empty here is checked with a board download first:
-  /// tasks created elsewhere since the last one are only in the server's
-  /// count. A link-share guest's delete that would change the view
-  /// ([guestDeletion]) is a [GuestViewChange], judged by the view as the
-  /// server has it.
+  /// setting it fails the delete is not sent: a refusal is a
+  /// [NewDefaultRefused], and a new default the server no longer has is a
+  /// [NewDefaultGone]. When the delete then fails, the old default is put
+  /// back; when that fails too, a [DeleteFailedAfterNewDefault] is thrown.
+  /// A bucket the tasks would fall back to that looks empty here is checked
+  /// with a board download first: tasks created elsewhere since the last
+  /// one are only in the server's count.
   Future<void> delete(int projectId, int viewId, int bucketId);
 
-  /// Null clears it. Changes no task's done state. A [GuestViewChange] for
-  /// a link-share guest, as [setDefaultBucket].
+  /// Null clears it. Changes no task's done state.
   Future<void> setDoneBucket(int projectId, int viewId, int? bucketId);
 
   Future<void> setDefaultBucket(int projectId, int viewId, int? bucketId);
 }
 
-/// A link-share guest's change of the view's done or default bucket,
-/// refused before any write whatever the share's permission: the view is
-/// the project owner's. [deletion] says why a delete was refused.
-final class GuestViewChange implements Exception {
-  const new([this.deletion]);
-
-  final GuestDeletion? deletion;
+/// The server refused the new default a delete needed first, as it does
+/// below admin permission; nothing was deleted.
+final class NewDefaultRefused implements Exception {
+  const new();
 }
 
-/// Why a link-share guest may not delete a bucket.
-enum GuestDeletion {
-  /// The server clears the view's done bucket when it goes.
-  doneBucket,
+/// [newDefault], which was to become the view's default before [bucket]'s
+/// delete, was deleted elsewhere since the last board download; the server
+/// stores a default it does not have as none, so the delete would have
+/// left [bucket]'s tasks in no bucket. Nothing was deleted, the old
+/// default is back, and the board downloads quietly.
+final class NewDefaultGone implements Exception {
+  const new({required this.bucket, required this.newDefault});
 
-  /// The server clears the view's default bucket when it goes.
-  defaultBucket,
-
-  /// The leftmost bucket while no default is set, holding tasks: the
-  /// delete needs a new default first.
-  newDefaultFirst,
-}
-
-/// Null when a link-share guest may delete [bucketId] as [plan]ned, with
-/// the view's [doneBucketId] and [defaultBucketId] (0: none). Without a
-/// plan, as for the stored board's last bucket, the view alone decides.
-GuestDeletion? guestDeletion(
-  int bucketId,
-  BucketDeletion? plan, {
-  required int doneBucketId,
-  required int defaultBucketId,
-}) {
-  if (bucketId == doneBucketId) return GuestDeletion.doneBucket;
-  if (bucketId == defaultBucketId) return GuestDeletion.defaultBucket;
-  return plan != null && plan.defaultFirst
-      ? GuestDeletion.newDefaultFirst
-      : null;
+  final Bucket bucket;
+  final Bucket newDefault;
 }
 
 /// A delete that failed after [newDefault] had become the view's default
@@ -105,7 +83,8 @@ final class DeleteFailedAfterNewDefault implements Exception {
 /// server moves the tasks to the leftmost bucket counted before the
 /// delete, so deleting the leftmost bucket strands its tasks outside every
 /// bucket. `defaultFirst`: such a bucket holds tasks, so `tasksGoTo` must
-/// become the default before the delete.
+/// become the default before the delete, a change of the view that needs
+/// admin permission.
 typedef BucketDeletion = ({
   Bucket tasksGoTo,
   bool isFallback,

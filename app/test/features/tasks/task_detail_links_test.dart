@@ -321,10 +321,8 @@ void main() {
     }
   });
 
-  testWidgets('a link-share guest gets Copy link and Share, as for the '
-      "comment link (the design's proposal, for the owner to confirm)", (
-    tester,
-  ) async {
+  testWidgets('a link-share guest gets Copy link and Share, as the web '
+      "copies a task's link for every link share", (tester) async {
     mockPlatform(tester);
     data.projects.all = [];
     data.tasks.all = [

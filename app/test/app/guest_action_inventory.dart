@@ -1,10 +1,11 @@
-/// What a link-share guest cannot use, by the reason: the providers of
-/// the ports and repositories that need a user, the label and people
-/// repositories, whose writes and server lookups need one, and the
-/// project views and the board's columns, whose view is the owner's to set
-/// up. Every use in `app/lib` needs an entry in [guestActionInventory]; a
-/// use inside the annotated declaration that generates another provider
-/// listed here is that provider's wiring.
+/// The providers whose every use needs a decision for link-share guests,
+/// by the reason: those of the ports and repositories that need a user, of
+/// the label and people repositories, whose writes and server lookups need
+/// one, of the project views, which the web offers a link share only by a
+/// typed address, and of the board's columns, which the web offers a link
+/// share by its permission. Every use in `app/lib` needs an entry in
+/// [guestActionInventory]; a use inside the annotated declaration that
+/// generates another provider listed here is that provider's wiring.
 const guestWatchedProviders = <String, List<String>>{
   'Follow': [
     'subscriptionRepositoryProvider',
@@ -75,12 +76,13 @@ const guestWatchedFeatureProviders = <String, List<String>>{
   ],
 };
 
-/// Calls on repositories a guest uses too that need a user or are not a
-/// guest's to make, watched under `features/`, where actions are built.
+/// Calls on repositories a guest uses too that need a user, that the web
+/// offers a link share only by a typed address, or that need more than
+/// write permission, watched under `features/`, where actions are built.
 const guestWatchedCalls = <String, List<String>>{
   'favourites': ['setFavorite'],
   'reactions': ['addReaction', 'removeReaction'],
-  "the owner's project": [
+  'creating and changing projects': [
     'createProject',
     'updateProject',
     'updateDescription',
@@ -88,7 +90,10 @@ const guestWatchedCalls = <String, List<String>>{
     'duplicateProject',
     'deleteProject',
   ],
-  "the owner's board view": ['setDoneBucket', 'setDefaultBucket'],
+  "the board view's done and default column": [
+    'setDoneBucket',
+    'setDefaultBucket',
+  ],
   'restores from the bin': ['restoreTask', 'restoreProject'],
 };
 
@@ -434,21 +439,23 @@ const guestActionInventory = <String, GuestActionEntry>{
   'features/projects/presentation/board/project_board.dart '
       '_ProjectBoardState._changeColumns': (
     Open(
-      'runs every column change through the bucket repository, which refuses '
-      "a guest's change of the view before any write: the done or default "
-      'column, and the delete of either or of the leftmost column holding '
-      'tasks while none is the default; the rest (create, rename, limit, '
-      'move and other deletes) needs project write permission only, and a '
-      'read guest gets no column menu',
+      'runs every column change through the bucket repository, which, like '
+      "the board, treats a guest as a user of its share's permission, as "
+      'the web and the server do: a read guest gets no column menu, a write '
+      'guest creates, renames, limits, moves and deletes columns, the done '
+      'and the default column too, and an admin guest also chooses the done '
+      'and the default column',
     ),
     uses: {'bucketRepositoryProvider'},
   ),
   'features/projects/presentation/board/project_board.dart '
       '_ProjectBoardState._onColumnAction': (
-    Gated(
-      'the column menu leaves the done and default column out for a guest, '
-      "whatever the share's permission, and the bucket repository refuses "
-      "a guest's change of them",
+    Open(
+      'the column menu offers the done and default column with admin '
+      "permission only, a guest's from its share, as the web offers them to "
+      'an admin share; the web also shows them to a write share, but the '
+      'server refuses that share the change of the view, so a write guest '
+      'is not offered them, as a write user is not',
     ),
     uses: {'setDefaultBucket', 'setDoneBucket'},
   ),
@@ -543,9 +550,8 @@ const guestActionInventory = <String, GuestActionEntry>{
     Open(
       "appends to a task's description through the task repository's "
       "updateDescription, not the project repository's that is watched, "
-      'a task edit a write guest may make; as for a read-only user, Add to '
-      'task also offers the tasks a read guest may not change, and the '
-      'server refuses the change',
+      'a task edit a write guest may make; Add to task offers only tasks '
+      'of projects the share may write (shareTargets), as for a user',
     ),
     uses: {'updateDescription'},
   ),

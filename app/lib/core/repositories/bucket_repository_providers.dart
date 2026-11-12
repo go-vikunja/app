@@ -14,7 +14,6 @@ BucketRepository accountBucketRepository(Ref ref, String accountId) =>
       refreshBoard: ref
           .watch(accountTaskRepositoryProvider(accountId))
           .refreshBoard,
-      guest: ref.watch(accountIsGuestProvider(accountId)),
       now: ref.watch(clockProvider),
     );
 

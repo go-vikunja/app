@@ -501,9 +501,10 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     final offline = ref.watch(offlineProvider) != null;
     final archived = isArchivedInTree(widget.projectId, projectsById);
     final access = ref.watch(projectAccessProvider(widget.projectId));
-    // The server ignores a guest's favourites and refuses its
-    // subscriptions; the project is the owner's to rename, archive, copy,
-    // share, set up views for or delete, whatever the share's permission.
+    // Whatever the share's permission: the server ignores a guest's
+    // favourites and refuses it Follow, sharing and new projects, copies
+    // included, and the web reaches the project's settings, views and
+    // delete only by a typed address, which the app does not offer.
     final guest = ref.watch(activeAccountIsGuestProvider);
     final defaultProjectId = ref.watch(
       userSettingsProvider.select(
@@ -706,7 +707,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
               source: value,
               archived: archived,
               writable: access.canReorderOrBoard,
-              canChangeView: access.canManageViews,
+              canChangeView: access.canChooseDoneAndDefaultColumn,
               offline: offlineOrUnreachable,
               downloadFailed: downloadFailed,
               notes: [?notice, ?archivedNote],
@@ -881,7 +882,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   /// in groups, without what [access] does not allow; an archived project
   /// only offers to unarchive it, which waits for its archived parent.
   /// Like the web, the user's default project cannot be archived and offers
-  /// no Delete. A [guest] gets none of them: the project is its owner's.
+  /// no Delete. A [guest] gets none of them, as the web offers a link share
+  /// no project menu and the server refuses it the rest.
   List<PopupMenuEntry<_Action>> _projectItems(
     BuildContext context, {
     required Project? project,
@@ -1039,7 +1041,8 @@ class _BoardBody extends StatelessWidget {
   /// The user may change the board: move cards, manage columns.
   final bool writable;
 
-  /// The user may also choose the done and the default column.
+  /// The user, or a guest by its share, may also change the view: the done
+  /// and the default column, and a new default before a delete.
   final bool canChangeView;
 
   /// The device is offline, as far as the last sync or download knows.

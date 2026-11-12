@@ -229,6 +229,22 @@ void main() {
     return calls;
   }
 
+  Future<void> expectNoDelete(
+    WidgetTester tester,
+    String column,
+    String why,
+  ) async {
+    await openMenuOf(tester, column);
+    expect(menuItem(tester, ColumnAction.delete).enabled, isFalse);
+    expect(find.text(why), findsOne);
+
+    await tester.tap(itemOf(ColumnAction.delete), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.text(en.boardDeleteColumnTitle), findsNothing);
+    expect(data.buckets.calls, isEmpty);
+    await closeMenu(tester);
+  }
+
   group('the header menu', () {
     testWidgets("every header has an options button with the web's items in "
         'its order, moves only where the column can go', (tester) async {
@@ -306,6 +322,70 @@ void main() {
       expect(find.text(en.boardDefaultColumn), findsNothing);
     });
 
+    testWidgets('with write but no admin rights the leftmost column cannot '
+        'be deleted while it holds tasks and none is the default, as that '
+        'needs a new default first, and says why; the others can', (
+      tester,
+    ) async {
+      storeBoard(
+        view: sampleKanbanView(id: 14, projectId: 1, doneBucketId: 23),
+        permission: Permission.write,
+      );
+      await pumpBoard(tester);
+
+      await expectNoDelete(
+        tester,
+        'Backlog',
+        en.boardColumnDeleteMoveTasksFirst,
+      );
+      for (final column in ['Doing', 'Complete']) {
+        await openMenuOf(tester, column);
+        expect(menuItem(tester, ColumnAction.delete).enabled, isTrue);
+        await closeMenu(tester);
+      }
+    });
+
+    testWidgets('with write but no admin rights the leftmost column that '
+        'is the default cannot be deleted either while it holds tasks', (
+      tester,
+    ) async {
+      storeBoard(permission: Permission.write);
+      await pumpBoard(tester);
+
+      await expectNoDelete(
+        tester,
+        'Backlog',
+        en.boardColumnDeleteMoveTasksFirst,
+      );
+    });
+
+    testWidgets('with write but no admin rights an empty leftmost column is '
+        'deleted, as it needs no new default', (tester) async {
+      storeBoard(
+        view: sampleKanbanView(id: 14, projectId: 1, doneBucketId: 23),
+        columns: [
+          bucket(21, 'Backlog'),
+          bucket(22, 'Doing', count: 2),
+          bucket(23, 'Complete', count: 1),
+        ],
+        cards: {
+          for (final MapEntry(:key, :value) in snapshot.entries)
+            if (value.bucketId != 21) key: value,
+        },
+        permission: Permission.write,
+      );
+      await pumpBoard(tester);
+
+      await choose(tester, 'Backlog', ColumnAction.delete);
+      await tester.tap(
+        find.widgetWithText(TextButton, en.boardDeleteColumnConfirm),
+      );
+      await tester.pumpAndSettle();
+
+      expect(data.buckets.calls, ['delete 1 14 21']);
+      expect(columnTitles(tester), ['Doing', 'Complete']);
+    });
+
     testWidgets('a limit shows in the menu', (tester) async {
       storeBoard(
         columns: [
@@ -346,11 +426,12 @@ void main() {
     });
   });
 
-  group('for a link-share guest with an admin share', () {
-    // The share's permission allows changing the view, but the view is the
-    // project owner's.
+  group('for a link-share guest', () {
+    // As for a user with the share's permission: the server and the web
+    // decide the board by it.
     Future<void> pumpGuestBoard(
       WidgetTester tester, {
+      required Permission permission,
       int defaultBucketId = 21,
     }) async {
       final view = sampleKanbanView(
@@ -367,7 +448,7 @@ void main() {
             sampleListView(id: 11, projectId: guestProjectId),
             view,
           ],
-        ).copyWith(maxPermission: Permission.admin),
+        ).copyWith(maxPermission: permission),
       ];
       data.tasks.setBoard(
         view,
@@ -380,7 +461,7 @@ void main() {
         tester,
         auth: AuthFakes(),
         data: data,
-        permission: Permission.admin,
+        permission: permission,
         overrides: [
           labelRepositoryProvider.overrideWithValue(FakeLabelRepository()),
           userRepositoryProvider.overrideWithValue(FakeUserRepository()),
@@ -392,8 +473,70 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('the menu offers no done or default column', (tester) async {
-      await pumpGuestBoard(tester);
+    Future<void> deleteColumn(WidgetTester tester, String column) async {
+      await choose(tester, column, ColumnAction.delete);
+      await tester.tap(
+        find.widgetWithText(TextButton, en.boardDeleteColumnConfirm),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('with an admin share the menu offers the done and default '
+        'column, as the web does, and sends them', (tester) async {
+      await pumpGuestBoard(tester, permission: Permission.admin);
+
+      await openMenuOf(tester, 'Doing');
+      expect(menuItems(tester), [
+        ColumnAction.rename,
+        ColumnAction.limit,
+        ColumnAction.done,
+        ColumnAction.defaultColumn,
+        ColumnAction.moveLeft,
+        ColumnAction.moveRight,
+        ColumnAction.delete,
+      ]);
+      await tester.tap(itemOf(ColumnAction.done));
+      await tester.pumpAndSettle();
+      await choose(tester, 'Doing', ColumnAction.defaultColumn);
+
+      expect(data.buckets.calls, [
+        'setDoneBucket $guestProjectId 14 22',
+        'setDefaultBucket $guestProjectId 14 22',
+      ]);
+    });
+
+    testWidgets('with an admin share the leftmost column holding tasks while '
+        'none is the default is deleted after a new default, as for an '
+        'admin', (tester) async {
+      await pumpGuestBoard(
+        tester,
+        permission: Permission.admin,
+        defaultBucketId: 0,
+      );
+
+      await choose(tester, 'Backlog', ColumnAction.delete);
+      expect(
+        find.text(
+          '${en.boardDeleteColumnBody('Backlog')}\n'
+          '${en.boardDeleteColumnTasksMove('Doing')}\n'
+          '${en.boardDeleteColumnBecomesDefault('Doing')}',
+        ),
+        findsOne,
+      );
+      await tester.tap(
+        find.widgetWithText(TextButton, en.boardDeleteColumnConfirm),
+      );
+      await tester.pumpAndSettle();
+
+      expect(data.buckets.calls, ['delete $guestProjectId 14 21']);
+      expect(columnTitles(tester), ['Doing', 'Complete']);
+    });
+
+    testWidgets('with a write share the menu offers no done or default '
+        'column, which the server refuses it, as for a write user', (
+      tester,
+    ) async {
+      await pumpGuestBoard(tester, permission: Permission.write);
 
       await openMenuOf(tester, 'Doing');
       expect(menuItems(tester), [
@@ -405,42 +548,57 @@ void main() {
       ]);
       expect(find.text(en.boardDoneColumn), findsNothing);
       expect(find.text(en.boardDefaultColumn), findsNothing);
-      expect(menuItem(tester, ColumnAction.delete).enabled, isTrue);
     });
 
-    Future<void> expectNoDelete(
-      WidgetTester tester,
-      String column,
-      String why,
-    ) async {
-      await openMenuOf(tester, column);
-      expect(menuItem(tester, ColumnAction.delete).enabled, isFalse);
-      expect(find.text(why), findsOne);
+    testWidgets('with a write share the done column and the default column '
+        'are deleted, as the web offers and the server allows', (tester) async {
+      await pumpGuestBoard(
+        tester,
+        permission: Permission.write,
+        defaultBucketId: 22,
+      );
 
-      await tester.tap(itemOf(ColumnAction.delete), warnIfMissed: false);
-      await tester.pumpAndSettle();
-      expect(find.text(en.boardDeleteColumnTitle), findsNothing);
-      expect(data.buckets.calls, isEmpty);
-      await closeMenu(tester);
-    }
+      await deleteColumn(tester, 'Complete');
+      await deleteColumn(tester, 'Doing');
 
-    testWidgets('while no default is set, the leftmost column cannot be '
-        'deleted while it holds tasks, which would need a new default '
-        'first, and says why', (tester) async {
-      await pumpGuestBoard(tester, defaultBucketId: 0);
-
-      await expectNoDelete(tester, 'Backlog', en.boardColumnDeleteGuest);
+      expect(data.buckets.calls, [
+        'delete $guestProjectId 14 23',
+        'delete $guestProjectId 14 22',
+      ]);
+      expect(columnTitles(tester), ['Backlog']);
     });
 
-    testWidgets('the default column cannot be deleted wherever it stands, '
-        'nor the done column, as the server would clear them in the view, '
-        'and each says why; another column can', (tester) async {
-      await pumpGuestBoard(tester, defaultBucketId: 22);
+    testWidgets('with a write share the leftmost column holding tasks while '
+        'none is the default cannot be deleted, saying why, as for a write '
+        'user', (tester) async {
+      await pumpGuestBoard(
+        tester,
+        permission: Permission.write,
+        defaultBucketId: 0,
+      );
 
-      await expectNoDelete(tester, 'Doing', en.boardColumnDeleteGuestDefault);
-      await expectNoDelete(tester, 'Complete', en.boardColumnDeleteGuestDone);
-      await openMenuOf(tester, 'Backlog');
-      expect(menuItem(tester, ColumnAction.delete).enabled, isTrue);
+      await expectNoDelete(
+        tester,
+        'Backlog',
+        en.boardColumnDeleteMoveTasksFirst,
+      );
+    });
+
+    testWidgets('with a write share a delete that only the server finds to '
+        'need a new default is refused saying why, as for a write '
+        'user', (tester) async {
+      // The device still has Doing as the default; the server no longer.
+      await pumpGuestBoard(
+        tester,
+        permission: Permission.write,
+        defaultBucketId: 22,
+      );
+      data.buckets.failures['delete'] = const NewDefaultRefused();
+
+      await deleteColumn(tester, 'Backlog');
+
+      expect(find.text(en.boardColumnDeleteMoveTasksFirst), findsOne);
+      expect(columnTitles(tester), ['Backlog', 'Doing', 'Complete']);
     });
   });
 
@@ -1021,9 +1179,9 @@ void main() {
       );
     });
 
-    testWidgets('a refused delete of the column new tasks go to says only '
-        'admins may', (tester) async {
-      data.buckets.failures['delete'] = const Forbidden();
+    testWidgets('a refused new default before the delete of the column new '
+        'tasks go to says to move its tasks first', (tester) async {
+      data.buckets.failures['delete'] = const NewDefaultRefused();
       await pumpBoard(tester);
 
       await choose(tester, 'Backlog', ColumnAction.delete);
@@ -1032,7 +1190,28 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text(en.boardColumnDeleteAdminOnly), findsOne);
+      expect(find.text(en.boardColumnDeleteMoveTasksFirst), findsOne);
+      expect(columnTitles(tester), ['Backlog', 'Doing', 'Complete']);
+    });
+
+    testWidgets('a new default that no longer exists names it; nothing is '
+        'deleted', (tester) async {
+      data.buckets.failures['delete'] = NewDefaultGone(
+        bucket: bucket(21, 'Backlog', count: 3),
+        newDefault: bucket(22, 'Doing', count: 2),
+      );
+      await pumpBoard(tester);
+
+      await choose(tester, 'Backlog', ColumnAction.delete);
+      await tester.tap(
+        find.widgetWithText(TextButton, en.boardDeleteColumnConfirm),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(en.boardColumnDeleteNewDefaultGone('Doing', 'Backlog')),
+        findsOne,
+      );
       expect(columnTitles(tester), ['Backlog', 'Doing', 'Complete']);
     });
   });
@@ -1055,37 +1234,22 @@ void main() {
         en.boardColumnAdminOnly,
       );
       expect(
-        text(const Forbidden(), ColumnChange.deleteAfterNewDefault),
-        en.boardColumnDeleteAdminOnly,
-      );
-      expect(
         text(const Forbidden(), ColumnChange.delete),
         en.boardColumnForbidden,
       );
       expect(
-        text(
-          const GuestViewChange(GuestDeletion.newDefaultFirst),
-          ColumnChange.delete,
-        ),
-        en.boardColumnDeleteGuest,
+        text(const NewDefaultRefused(), ColumnChange.delete),
+        en.boardColumnDeleteMoveTasksFirst,
       );
       expect(
         text(
-          const GuestViewChange(GuestDeletion.defaultBucket),
+          NewDefaultGone(
+            bucket: bucket(21, 'Backlog'),
+            newDefault: bucket(22, 'Doing'),
+          ),
           ColumnChange.delete,
         ),
-        en.boardColumnDeleteGuestDefault,
-      );
-      expect(
-        text(
-          const GuestViewChange(GuestDeletion.doneBucket),
-          ColumnChange.delete,
-        ),
-        en.boardColumnDeleteGuestDone,
-      );
-      expect(
-        text(const GuestViewChange(), ColumnChange.done),
-        en.boardColumnForbidden,
+        "“Doing” no longer exists, so “Backlog” wasn't deleted.",
       );
       expect(
         text(const DomainError(412, code: 10003), ColumnChange.delete),
@@ -1127,7 +1291,7 @@ void main() {
             bucket: bucket(21, 'Backlog'),
             newDefault: bucket(22, 'Doing'),
           ),
-          ColumnChange.deleteAfterNewDefault,
+          ColumnChange.delete,
         ),
         '“Doing” is now the default column; deleting “Backlog” failed.',
       );
@@ -1139,6 +1303,10 @@ void main() {
         de.boardColumnAdminOnly,
         'Nur Projekt-Admins können die Erledigt- oder Standardspalte '
         'festlegen.',
+      );
+      expect(
+        de.boardColumnDeleteNewDefaultGone('Doing', 'Backlog'),
+        '„Doing“ gibt es nicht mehr, deshalb wurde „Backlog“ nicht gelöscht.',
       );
     });
 

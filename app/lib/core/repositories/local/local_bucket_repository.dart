@@ -24,16 +24,12 @@ final class LocalBucketRepository implements BucketRepository {
     this._db,
     this._write, {
     required this._refreshBoard,
-    this._guest = false,
     DateTime Function()? now,
   }) : _filters = LocalFilters(_db, now: now ?? DateTime.now);
 
   final AppDatabase _db;
   final VikunjaWriteClient _write;
   final BoardRefresh _refreshBoard;
-
-  /// A link-share guest's, which never changes the view.
-  final bool _guest;
   final LocalFilters _filters;
 
   @override
@@ -131,15 +127,6 @@ final class LocalBucketRepository implements BucketRepository {
       await _refreshBoard(projectId, viewId);
       plan = await _planDeletion(projectId, viewId, view, bucketId);
     }
-    if (_guest) {
-      final refused = guestDeletion(
-        bucketId,
-        plan,
-        doneBucketId: view.doneBucketId,
-        defaultBucketId: view.defaultBucketId,
-      );
-      if (refused != null) throw GuestViewChange(refused);
-    }
     if (plan != null && plan.defaultFirst) {
       await _deleteAfterNewDefault(
         projectId,
@@ -212,14 +199,34 @@ final class LocalBucketRepository implements BucketRepository {
     required Bucket newDefault,
     required int oldDefaultId,
   }) async {
-    await _storeView(
-      viewId,
-      await _write.views.setBuckets(
+    final ProjectView answered;
+    try {
+      answered = await _write.views.setBuckets(
         projectId,
         viewId,
         defaultBucketId: newDefault.id,
-      ),
-    );
+      );
+    } on Forbidden {
+      throw const NewDefaultRefused();
+    }
+    await _storeView(viewId, answered);
+    if (answered.defaultBucketId != newDefault.id) {
+      try {
+        if (answered.defaultBucketId != oldDefaultId) {
+          await _storeView(
+            viewId,
+            await _write.views.setBuckets(
+              projectId,
+              viewId,
+              defaultBucketId: oldDefaultId,
+            ),
+          );
+        }
+      } finally {
+        _settle(projectId, viewId, 'Bucket ${newDefault.id} is gone');
+      }
+      throw NewDefaultGone(bucket: doomed, newDefault: newDefault);
+    }
     try {
       await _write.buckets.delete(projectId, viewId, doomed.id);
     } on Object catch (failure) {
@@ -245,7 +252,6 @@ final class LocalBucketRepository implements BucketRepository {
 
   @override
   Future<void> setDoneBucket(int projectId, int viewId, int? bucketId) async {
-    if (_guest) throw const GuestViewChange();
     await _storeView(
       viewId,
       await _write.views.setBuckets(
@@ -263,7 +269,6 @@ final class LocalBucketRepository implements BucketRepository {
     int viewId,
     int? bucketId,
   ) async {
-    if (_guest) throw const GuestViewChange();
     await _storeView(
       viewId,
       await _write.views.setBuckets(
