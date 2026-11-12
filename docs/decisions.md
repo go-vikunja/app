@@ -1481,7 +1481,7 @@ Limits:
 
 Limits:
 - iOS backups still hold the preferences: drafts, the account registry, the connection metadata of [D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport), the privacy settings, the install marker and the widget-link key. Restored to a new device, accounts need a new sign-in and settings with secrets re-entry; restored to the same device from an encrypted backup, the `ThisDeviceOnly` Keychain items come back too and the databases sync again. Whether the drafts leave the preferences is open with the owner (R21 to R23).
-- The widget host can act as the app through Glance's collection template for the list rows, and it sees the key (R17); the fix, a plain `Column` that no longer scrolls, is the owner's decision.
+- The widget host can act as the app through Glance's collection template for the list rows, and it sees the key (R17): accepted for the beta (owner, 2026-11-12), as for every app with a Glance list, and reported to Google; if Glance does not change, the owner chooses before 1.0 between a fixed list with "+N more" and a hand-built scrolling list.
 - An app that starts `MainActivity` from its own activity without `FLAG_ACTIVITY_NEW_TASK` gets a second UI engine in its task (R33).
 - Keyless links still act in the active account; notifications scheduled before step 35c stay keyless until replaced, and their taps ask or do nothing (R18, R19).
 - Outside the hooks: the drift database isolate, errors before `configureLogging`, plugins' own prints and native logs (R24). No redaction at capture, as there is no log buffer yet.

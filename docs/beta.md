@@ -58,7 +58,7 @@ Each beta is public: its tag publishes a GitLab release with the APK, which GitL
 
 - [ ] **Section [8.2](threat-model.md#82-manual-on-the-android-emulator) on the emulator** in full with the release build, the owner signing in the two accounts, items 5 and 10 on a Google Play image; with it the R33 check, a start of `MainActivity` from another app's activity without `FLAG_ACTIVITY_NEW_TASK` (`adb shell am start` adds that flag, so it needs a caller app), with the fix R33 describes.
 - [ ] **Section 8.1** on the tree to be tagged, with its checks of the GitLab settings.
-- [ ] **The owner's sign-off** in [section 8.4](threat-model.md#84-sign-off): the residual risks of section 7 accepted or reopened, and the questions that R17, R19, R21, R33 and R36 leave to the owner answered. Section 8.3 waits for the device test; the row says so.
+- [ ] **The owner's sign-off** in [section 8.4](threat-model.md#84-sign-off): the residual risks of section 7 accepted or reopened, and the questions that R19, R21, R33 and R36 leave to the owner answered (R17 is accepted for the beta, owner 2026-11-12). Section 8.3 waits for the device test; the row says so.
 
 ### 9. Cutting beta.1
 
