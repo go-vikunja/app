@@ -28,6 +28,8 @@ String columnChangeFailureText(
   return switch (error) {
     DeleteFailedAfterNewDefault(:final bucket, :final newDefault) =>
       l10n.boardColumnDeleteFailedNewDefault(newDefault.title, bucket.title),
+    GuestViewChange(:final deletion?) => guestDeletionText(l10n, deletion),
+    GuestViewChange() => l10n.boardColumnForbidden,
     // The server may have made the change before the answer was lost.
     NetworkFailure(problem: NetworkProblem.timeout) =>
       l10n.boardColumnUnconfirmed,
@@ -54,6 +56,15 @@ String columnChangeFailureText(
     _ => l10n.boardColumnChangeFailed,
   };
 }
+
+/// Under a link-share guest's disabled Delete, and when the view as the
+/// server has it refuses the delete.
+String guestDeletionText(AppLocalizations l10n, GuestDeletion deletion) =>
+    switch (deletion) {
+      GuestDeletion.doneBucket => l10n.boardColumnDeleteGuestDone,
+      GuestDeletion.defaultBucket => l10n.boardColumnDeleteGuestDefault,
+      GuestDeletion.newDefaultFirst => l10n.boardColumnDeleteGuest,
+    };
 
 /// The web's question before a delete; [tasksGoTo] names the column the
 /// server moves the column's tasks to, null when it holds none. When

@@ -16,8 +16,38 @@ final String? contractSkip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
     ? 'Set VIKUNJA_CONTRACT=1 and start test_servers/docker-compose.yaml'
     : null;
 
-const List<({int port, String version})> contractServers = [
-  (port: 34527, version: '2.8.0'),
+/// The image of test_servers/docker-compose.yaml when
+/// RURANA_TEST_VIKUNJA_IMAGE is unset or empty.
+const defaultTestServerImage = 'vikunja/vikunja:2.8.0';
+
+/// The release the test server runs: the tag of RURANA_TEST_VIKUNJA_IMAGE,
+/// which test_servers/docker-compose.yaml starts instead of
+/// [defaultTestServerImage].
+final ServerVersion contractServerVersion = testServerVersion(
+  Platform.environment['RURANA_TEST_VIKUNJA_IMAGE'],
+);
+
+ServerVersion testServerVersion(String? image) {
+  final name = (image == null || image.isEmpty)
+      ? defaultTestServerImage
+      : image;
+  final lastSegment = name.substring(name.lastIndexOf('/') + 1);
+  final colon = lastSegment.indexOf(':');
+  final version = colon < 0
+      ? null
+      : ServerVersion.tryParse(lastSegment.substring(colon + 1));
+  if (version == null || version.isDevelopmentBuild) {
+    throw ArgumentError.value(
+      image,
+      'RURANA_TEST_VIKUNJA_IMAGE',
+      'needs a release tag, for example vikunja/vikunja:2.7.1',
+    );
+  }
+  return version;
+}
+
+final List<({int port, String version})> contractServers = [
+  (port: 34527, version: contractServerVersion.display),
 ];
 
 Dio contractDio() => Dio(

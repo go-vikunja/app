@@ -3125,6 +3125,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get boardColumnDeleteLast => 'You can\'t delete the last column.';
 
   @override
+  String get boardColumnDeleteGuest =>
+      'As a guest, you can\'t delete the column new tasks go to while it holds tasks. Move its tasks to another column first.';
+
+  @override
+  String get boardColumnDeleteGuestDone =>
+      'As a guest, you can\'t delete the done column, as that would change the board\'s settings.';
+
+  @override
+  String get boardColumnDeleteGuestDefault =>
+      'As a guest, you can\'t delete the column new tasks go to, as that would change the board\'s settings.';
+
+  @override
   String get boardColumnRenameTitle => 'Rename column';
 
   @override
@@ -8295,6 +8307,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get connectionBrowserHintContinue => 'Continue';
+
+  @override
+  String signInOtherHostTitle(String signInHost) {
+    return 'Sign in at $signInHost?';
+  }
+
+  @override
+  String get signInOtherHostConfirm => 'Sign in';
+
+  @override
+  String signInOtherHostBody(String server, String signInHost) {
+    return 'Sign-in for $server opens $signInHost. $server gets access to the account you sign in with at $signInHost. Only continue if $signInHost belongs to $server.';
+  }
 
   @override
   String get connectionForgetCheckbox =>

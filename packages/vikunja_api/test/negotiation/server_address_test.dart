@@ -158,6 +158,17 @@ void main() {
       }
     });
 
+    test('a host alone becomes punycode the same way, an ASCII one stays '
+        'as it is', () {
+      expect(
+        punycodeHost('Aufgaben.MÜLLER.example'),
+        'aufgaben.xn--mller-kva.example',
+      );
+      expect(punycodeHost('Tasks.Example.org.'), 'Tasks.Example.org.');
+      expect(punycodeHost('bücher..example'), isNull);
+      expect(punycodeHost('${'a' * 70}ü.example'), isNull);
+    });
+
     group('drops invisible characters from copy and paste', () {
       for (final input in [
         'https://example.com\u200B',

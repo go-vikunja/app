@@ -13,8 +13,8 @@ enum ColumnAction {
 }
 
 /// A column's options in the web's order, in groups. Move left and right
-/// show only where the column can go; Delete is disabled, saying why, for
-/// the last column. The done and default column change the view, which
+/// show only where the column can go; Delete is disabled, saying why, with
+/// [cannotDelete]. The done and default column change the view, which
 /// needs admin rights, so they show only with [canChangeView]. While
 /// [saving], a progress indicator stands in for the button.
 class ColumnMenuButton extends StatelessWidget {
@@ -24,8 +24,8 @@ class ColumnMenuButton extends StatelessWidget {
     required this.isDefault,
     required this.canMoveLeft,
     required this.canMoveRight,
-    required this.canDelete,
     required this.onSelected,
+    this.cannotDelete,
     this.canChangeView = true,
     this.saving = false,
     this.enabled = true,
@@ -37,8 +37,10 @@ class ColumnMenuButton extends StatelessWidget {
   final bool isDefault;
   final bool canMoveLeft;
   final bool canMoveRight;
-  final bool canDelete;
   final ValueChanged<ColumnAction> onSelected;
+
+  /// Why the column cannot be deleted, e.g. as the board's last one.
+  final String? cannotDelete;
   final bool canChangeView;
   final bool saving;
 
@@ -115,9 +117,9 @@ class ColumnMenuButton extends StatelessWidget {
           ColumnAction.delete,
           Icons.delete_outline,
           l10n.boardColumnDelete,
-          color: canDelete ? error : null,
-          enabled: canDelete,
-          hint: canDelete ? null : l10n.boardColumnDeleteLast,
+          color: cannotDelete == null ? error : null,
+          enabled: cannotDelete == null,
+          hint: cannotDelete,
         ),
       ],
     );

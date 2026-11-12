@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/network/network_profiles.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/features/connection/presentation/fingerprint_view.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
+import 'package:vikunja_mobile/features/session/application/sign_in_hosts.dart';
 
 final _log = Logger('BrowserLegHint');
 
@@ -39,12 +40,14 @@ final class BrowserLegHint {
 /// Null when neither the API's address nor the sign-in page's has a pinned
 /// or CA certificate, a client certificate or headers; a permission for
 /// http alone needs no hint. The sign-in page is where the authorize
-/// request opens: the server's `frontend_url` when usable.
+/// request opens: the server's `frontend_url` when usable. Without
+/// [sayOtherHost] the sign-in page's host is left to the warning.
 Future<BrowserLegHint?> browserLegHint(
   AppLocalizations l10n,
   NetworkProfiles profiles,
-  ServerConnection connection,
-) async {
+  ServerConnection connection, {
+  bool sayOtherHost = true,
+}) async {
   final apiOrigin = OriginKey.tryOf(connection.rootUri);
   final pageOrigin = OriginKey.tryOf(
     webFrontendBase(
@@ -66,7 +69,7 @@ Future<BrowserLegHint?> browserLegHint(
       if (api?.clientCertificate != null)
         l10n.connectionBrowserHintClientCertificate,
       if (api?.hasHeaders ?? false) l10n.connectionBrowserHintHeaders,
-      if (pageOrigin != apiOrigin)
+      if (sayOtherHost && pageOrigin != apiOrigin)
         l10n.connectionBrowserHintOtherHost(pageOrigin.authority),
     ],
   );
@@ -93,26 +96,48 @@ Future<NetworkProfile?> _metadata(
   }
 }
 
-/// Before the browser opens for [connection]'s sign-in: the hint, with
-/// Continue and Cancel; true at once when there is nothing to say.
+/// The sign-in controller's question before the browser opens, asked on
+/// [context]'s page. The settings and texts are taken now: the question may
+/// come after [ref]'s widget is gone.
+ConfirmBrowserLeg browserLegConfirmation(BuildContext context, WidgetRef ref) {
+  final l10n = context.l10n;
+  final profiles = ref.read(networkProfilesProvider);
+  return (leg) => confirmBrowserLeg(context, l10n, profiles, leg);
+}
+
+/// The warning for a sign-in page on another host than the server.
+String otherSignInHostWarning(AppLocalizations l10n, OtherSignInHost host) =>
+    l10n.signInOtherHostBody(host.server, host.signInPage);
+
+/// Before the browser opens for [leg]'s sign-in: the warning about a
+/// sign-in page on another host and the hint, with Cancel and Sign in or,
+/// for the hint alone, Continue;
+/// true at once when there is nothing to say, false when there is but the
+/// page is gone.
 Future<bool> confirmBrowserLeg(
   BuildContext context,
-  WidgetRef ref,
-  ServerConnection connection,
+  AppLocalizations l10n,
+  NetworkProfiles profiles,
+  BrowserLeg leg,
 ) async {
-  final l10n = context.l10n;
+  final otherHost = leg.otherHost;
   final hint = await browserLegHint(
     l10n,
-    ref.read(networkProfilesProvider),
-    connection,
+    profiles,
+    leg.connection,
+    sayOtherHost: otherHost == null,
   );
-  if (hint == null) return true;
+  if (hint == null && otherHost == null) return true;
   if (!context.mounted) return false;
   final go = await showAdaptiveDialog<bool>(
     context: context,
     builder: (context) => AlertDialog.adaptive(
       scrollable: true,
-      title: Text(l10n.connectionBrowserHintTitle),
+      title: Text(
+        otherHost == null
+            ? l10n.connectionBrowserHintTitle
+            : l10n.signInOtherHostTitle(otherHost.signInPage),
+      ),
       // A Cupertino dialog has no Material for the selectable fingerprint.
       content: Material(
         type: MaterialType.transparency,
@@ -121,11 +146,13 @@ Future<bool> confirmBrowserLeg(
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 12,
           children: [
-            if (hint.pinnedFingerprint case final pairs?) ...[
+            if (otherHost != null)
+              Text(otherSignInHostWarning(l10n, otherHost)),
+            if (hint?.pinnedFingerprint case final pairs?) ...[
               Text(l10n.connectionBrowserHintPinned),
               FingerprintView(pairs: pairs, copyable: false),
             ],
-            for (final note in hint.notes) Text(note),
+            for (final note in hint?.notes ?? const <String>[]) Text(note),
           ],
         ),
       ),
@@ -136,7 +163,11 @@ Future<bool> confirmBrowserLeg(
         ),
         AdaptiveDialogAction(
           onPressed: () => Navigator.of(context).pop(true),
-          child: Text(l10n.connectionBrowserHintContinue),
+          child: Text(
+            otherHost == null
+                ? l10n.connectionBrowserHintContinue
+                : l10n.signInOtherHostConfirm,
+          ),
         ),
       ],
     ),
@@ -144,14 +175,12 @@ Future<bool> confirmBrowserLeg(
   return go ?? false;
 }
 
-/// "Sign in again" with the browser hint first.
+/// "Sign in again", asking [browserLegConfirmation] about the page the new
+/// negotiation gives.
 Future<void> signInAgainAfterHint(
   BuildContext context,
   WidgetRef ref,
   RegisteredAccount entry,
-) async {
-  final controller = ref.read(signInControllerProvider.notifier);
-  if (!await confirmBrowserLeg(context, ref, entry.connection)) return;
-  if (!context.mounted) return;
-  await controller.signInAgain(entry);
-}
+) => ref
+    .read(signInControllerProvider.notifier)
+    .signInAgain(entry, confirm: browserLegConfirmation(context, ref));

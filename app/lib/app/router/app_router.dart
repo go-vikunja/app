@@ -191,19 +191,39 @@ abstract final class AppRoutes {
   static bool isTab(String location) =>
       _tabs.any((tab) => location == tab || location.startsWith('$tab/'));
 
-  static final _closedToGuests = RegExp(
-    '^(?:(?:$accountSettings|$teams|$trash)(?:/.*)?|$inbox|'
-    '$labels(?:/new|/\\d+/edit|/\\d+/description)?|'
-    '$home/filters/(?:new|-?\\d+/edit)|'
-    '$home/project/-?\\d+/(?:edit|description|views|share))\$',
-  );
+  /// The routes a link-share guest may open, by their full path as
+  /// go_router matches them. Every other route sends a guest to [overview],
+  /// so a new route stays closed to guests until it is added here;
+  /// `guest_gates_test.dart` makes every route decide.
+  static const Set<String> openToGuests = {
+    splash,
+    connect,
+    serverOverview,
+    firstSync,
+    notificationsSetup,
+    connection,
+    about,
+    home,
+    overview,
+    upcoming,
+    projects,
+    '$projects/:id',
+    account,
+    '$home/tasks/:id/edit',
+    '$home/tasks/:id/description',
+    '$home/tasks/:id/comments/:commentId/edit',
+    search,
+    '$labels/:id',
+    widgets,
+    '$widgets/configure',
+    privacy,
+    addAccount,
+    addAccountServer,
+  };
 
-  /// The pages a link-share guest has no use for: the server refuses what
-  /// they do for anyone who is not a user, or the share's project is its
-  /// owner's to rename, share or set up views for. A label's tasks stay
-  /// open.
-  static bool isClosedToGuests(String location) =>
-      _closedToGuests.hasMatch(location);
+  /// Whether a guest is sent away from [route], a full path such as
+  /// `/home/labels/:id/edit`, not a location.
+  static bool isClosedToGuests(String route) => !openToGuests.contains(route);
 }
 
 /// Observes the root navigator, whose dialogs and sheets an account switch
@@ -275,7 +295,7 @@ GoRouter appRouter(Ref ref) {
       );
       if (redirect != null) return redirect;
       final guest = registry.value?.activeAccount?.account.isLinkShare ?? false;
-      return guest && AppRoutes.isClosedToGuests(state.matchedLocation)
+      return guest && AppRoutes.isClosedToGuests(state.fullPath ?? '')
           ? AppRoutes.overview
           : null;
     },

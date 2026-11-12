@@ -104,19 +104,21 @@ ServerAddress normalizeServerAddress(String input) {
 }
 
 // Dart's Uri percent-encodes a non-ASCII host, which no resolver accepts.
-String _asciiHost(String host, String input) {
-  if (host.runes.every((codePoint) => codePoint < 0x80)) return host;
-  return host
-      .toLowerCase()
-      .split('.')
-      .map((label) {
-        final ascii = label.runes.every((codePoint) => codePoint < 0x80)
-            ? label
-            : 'xn--${punycodeEncode(label)}';
-        if (label.isEmpty || ascii.length > _maxLabelLength) {
-          throw InvalidServerAddress(input);
-        }
-        return ascii;
-      })
-      .join('.');
+String _asciiHost(String host, String input) =>
+    punycodeHost(host) ?? (throw InvalidServerAddress(input));
+
+/// [host] as a resolver takes it: an ASCII host as it is, any other in
+/// lower case with its non-ASCII labels in punycode (`xn--…`). Null when
+/// such a host has an empty label or one longer than DNS allows.
+String? punycodeHost(String host) {
+  if (_isAscii(host)) return host;
+  final labels = [
+    for (final label in host.toLowerCase().split('.'))
+      if (_isAscii(label)) label else 'xn--${punycodeEncode(label)}',
+  ];
+  return labels.any((label) => label.isEmpty || label.length > _maxLabelLength)
+      ? null
+      : labels.join('.');
 }
+
+bool _isAscii(String text) => text.runes.every((codePoint) => codePoint < 0x80);

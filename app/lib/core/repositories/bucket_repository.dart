@@ -35,13 +35,54 @@ abstract interface class BucketRepository {
   /// [DeleteFailedAfterNewDefault] is thrown. A bucket the tasks would fall
   /// back to that looks empty here is checked with a board download first:
   /// tasks created elsewhere since the last one are only in the server's
-  /// count.
+  /// count. A link-share guest's delete that would change the view
+  /// ([guestDeletion]) is a [GuestViewChange], judged by the view as the
+  /// server has it.
   Future<void> delete(int projectId, int viewId, int bucketId);
 
-  /// Null clears it. Changes no task's done state.
+  /// Null clears it. Changes no task's done state. A [GuestViewChange] for
+  /// a link-share guest, as [setDefaultBucket].
   Future<void> setDoneBucket(int projectId, int viewId, int? bucketId);
 
   Future<void> setDefaultBucket(int projectId, int viewId, int? bucketId);
+}
+
+/// A link-share guest's change of the view's done or default bucket,
+/// refused before any write whatever the share's permission: the view is
+/// the project owner's. [deletion] says why a delete was refused.
+final class GuestViewChange implements Exception {
+  const new([this.deletion]);
+
+  final GuestDeletion? deletion;
+}
+
+/// Why a link-share guest may not delete a bucket.
+enum GuestDeletion {
+  /// The server clears the view's done bucket when it goes.
+  doneBucket,
+
+  /// The server clears the view's default bucket when it goes.
+  defaultBucket,
+
+  /// The leftmost bucket while no default is set, holding tasks: the
+  /// delete needs a new default first.
+  newDefaultFirst,
+}
+
+/// Null when a link-share guest may delete [bucketId] as [plan]ned, with
+/// the view's [doneBucketId] and [defaultBucketId] (0: none). Without a
+/// plan, as for the stored board's last bucket, the view alone decides.
+GuestDeletion? guestDeletion(
+  int bucketId,
+  BucketDeletion? plan, {
+  required int doneBucketId,
+  required int defaultBucketId,
+}) {
+  if (bucketId == doneBucketId) return GuestDeletion.doneBucket;
+  if (bucketId == defaultBucketId) return GuestDeletion.defaultBucket;
+  return plan != null && plan.defaultFirst
+      ? GuestDeletion.newDefaultFirst
+      : null;
 }
 
 /// A delete that failed after [newDefault] had become the view's default

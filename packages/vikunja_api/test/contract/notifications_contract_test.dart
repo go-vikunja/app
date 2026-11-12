@@ -103,6 +103,22 @@ void main() {
               }
             }
 
+            // Some notifications come from listeners that run on their own,
+            // like a late task.created (see
+            // app/test/contract/activity_contract_test.dart), and may be
+            // stored after [waitFor] returned, between two reads of a test.
+            Future<void> settled() async {
+              Future<int> newest() async =>
+                  (await notifications.list(perPage: 1)).items.single.id;
+              var last = await newest();
+              for (var quiet = 0; quiet < 2;) {
+                await Future<void>.delayed(const Duration(seconds: 1));
+                final now = await newest();
+                quiet = now == last ? quiet + 1 : 0;
+                last = now;
+              }
+            }
+
             Future<ServerNotification> current(int id) async {
               final page = await notifications.list();
               return page.items.singleWhere((n) => n.id == id);
@@ -151,6 +167,7 @@ void main() {
                 'task.assigned',
                 if (commentsEnabled) 'task.comment',
               });
+              await settled();
             });
 
             test(

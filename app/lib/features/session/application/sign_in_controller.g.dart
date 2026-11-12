@@ -41,7 +41,7 @@ final class SignInControllerProvider
   }
 }
 
-String _$signInControllerHash() => r'9da70391724df913c6af43ccb2b51e4bc47348c3';
+String _$signInControllerHash() => r'f8cc52b74f04bc0cb027cf38607af06aa95863ec';
 
 abstract class _$SignInController extends $Notifier<SignInState> {
   SignInState build();

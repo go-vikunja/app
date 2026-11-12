@@ -278,7 +278,7 @@ void main() {
     unawaited(
       containerOf(tester)
           .read(signInControllerProvider.notifier)
-          .signInAgain(accounts.bob),
+          .signInAgain(accounts.bob, confirm: (_) async => true),
     );
     await tester.pump();
 

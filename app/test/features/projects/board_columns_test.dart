@@ -16,6 +16,8 @@ import 'package:vikunja_mobile/features/projects/presentation/board/column_menu.
 import 'package:vikunja_mobile/features/projects/presentation/board/column_sheets.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/new_column_tile.dart';
 
+import '../../helpers/auth_fakes.dart';
+import '../../helpers/guest_app.dart';
 import '../../helpers/label_user_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
@@ -341,6 +343,104 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(en.boardDeleteColumnTitle), findsNothing);
       expect(data.buckets.calls, isEmpty);
+    });
+  });
+
+  group('for a link-share guest with an admin share', () {
+    // The share's permission allows changing the view, but the view is the
+    // project owner's.
+    Future<void> pumpGuestBoard(
+      WidgetTester tester, {
+      int defaultBucketId = 21,
+    }) async {
+      final view = sampleKanbanView(
+        id: 14,
+        projectId: guestProjectId,
+        defaultBucketId: defaultBucketId,
+        doneBucketId: 23,
+      );
+      data.projects.all = [
+        sampleProject(
+          id: guestProjectId,
+          title: 'Garden',
+          views: [
+            sampleListView(id: 11, projectId: guestProjectId),
+            view,
+          ],
+        ).copyWith(maxPermission: Permission.admin),
+      ];
+      data.tasks.setBoard(
+        view,
+        buckets: buckets(),
+        snapshot: snapshot,
+        loadedAt: now,
+      );
+      usePhoneSurface(tester, logicalSize: wide);
+      await pumpGuestApp(
+        tester,
+        auth: AuthFakes(),
+        data: data,
+        permission: Permission.admin,
+        overrides: [
+          labelRepositoryProvider.overrideWithValue(FakeLabelRepository()),
+          userRepositoryProvider.overrideWithValue(FakeUserRepository()),
+        ],
+      );
+      containerOf(tester)
+          .read(appRouterProvider)
+          .go(AppRoutes.project(guestProjectId, viewId: 14));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the menu offers no done or default column', (tester) async {
+      await pumpGuestBoard(tester);
+
+      await openMenuOf(tester, 'Doing');
+      expect(menuItems(tester), [
+        ColumnAction.rename,
+        ColumnAction.limit,
+        ColumnAction.moveLeft,
+        ColumnAction.moveRight,
+        ColumnAction.delete,
+      ]);
+      expect(find.text(en.boardDoneColumn), findsNothing);
+      expect(find.text(en.boardDefaultColumn), findsNothing);
+      expect(menuItem(tester, ColumnAction.delete).enabled, isTrue);
+    });
+
+    Future<void> expectNoDelete(
+      WidgetTester tester,
+      String column,
+      String why,
+    ) async {
+      await openMenuOf(tester, column);
+      expect(menuItem(tester, ColumnAction.delete).enabled, isFalse);
+      expect(find.text(why), findsOne);
+
+      await tester.tap(itemOf(ColumnAction.delete), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(find.text(en.boardDeleteColumnTitle), findsNothing);
+      expect(data.buckets.calls, isEmpty);
+      await closeMenu(tester);
+    }
+
+    testWidgets('while no default is set, the leftmost column cannot be '
+        'deleted while it holds tasks, which would need a new default '
+        'first, and says why', (tester) async {
+      await pumpGuestBoard(tester, defaultBucketId: 0);
+
+      await expectNoDelete(tester, 'Backlog', en.boardColumnDeleteGuest);
+    });
+
+    testWidgets('the default column cannot be deleted wherever it stands, '
+        'nor the done column, as the server would clear them in the view, '
+        'and each says why; another column can', (tester) async {
+      await pumpGuestBoard(tester, defaultBucketId: 22);
+
+      await expectNoDelete(tester, 'Doing', en.boardColumnDeleteGuestDefault);
+      await expectNoDelete(tester, 'Complete', en.boardColumnDeleteGuestDone);
+      await openMenuOf(tester, 'Backlog');
+      expect(menuItem(tester, ColumnAction.delete).enabled, isTrue);
     });
   });
 
@@ -960,6 +1060,31 @@ void main() {
       );
       expect(
         text(const Forbidden(), ColumnChange.delete),
+        en.boardColumnForbidden,
+      );
+      expect(
+        text(
+          const GuestViewChange(GuestDeletion.newDefaultFirst),
+          ColumnChange.delete,
+        ),
+        en.boardColumnDeleteGuest,
+      );
+      expect(
+        text(
+          const GuestViewChange(GuestDeletion.defaultBucket),
+          ColumnChange.delete,
+        ),
+        en.boardColumnDeleteGuestDefault,
+      );
+      expect(
+        text(
+          const GuestViewChange(GuestDeletion.doneBucket),
+          ColumnChange.delete,
+        ),
+        en.boardColumnDeleteGuestDone,
+      );
+      expect(
+        text(const GuestViewChange(), ColumnChange.done),
         en.boardColumnForbidden,
       );
       expect(

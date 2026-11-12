@@ -91,37 +91,45 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
     }
   }
 
-  void _signIn(ServerConnection connection) {
-    unawaited(ref.read(signInControllerProvider.notifier).signIn(connection));
-  }
-
-  Future<void> _continueToSignIn(ServerConnection connection) async {
-    if (await confirmBrowserLeg(context, ref, connection) && mounted) {
-      _signIn(connection);
-    }
-  }
+  void _continueToSignIn(ServerConnection connection) => unawaited(
+    ref
+        .read(signInControllerProvider.notifier)
+        .signIn(connection, confirm: browserLegConfirmation(context, ref)),
+  );
 
   // The web's login page links to its registration form and comes back
-  // here once the account exists. What the browser meets despite the
-  // connection settings goes into the same question.
-  Future<void> _createAccount(ServerConnection connection) async {
+  // here once the account exists. A sign-in page on another host and what
+  // the browser meets despite the connection settings go into the same
+  // question.
+  void _createAccount(ServerConnection connection) {
     final l10n = context.l10n;
-    final hint = await browserLegHint(
-      l10n,
-      ref.read(networkProfilesProvider),
-      connection,
+    final profiles = ref.read(networkProfilesProvider);
+    Future<bool> confirm(BrowserLeg leg) async {
+      final otherHost = leg.otherHost;
+      final hint = await browserLegHint(
+        l10n,
+        profiles,
+        leg.connection,
+        sayOtherHost: otherHost == null,
+      );
+      if (!mounted) return false;
+      return await confirmAdaptive(
+        context,
+        title: l10n.overviewCreateAccount,
+        body: [
+          if (otherHost != null) otherSignInHostWarning(l10n, otherHost),
+          l10n.overviewCreateAccountHint,
+          if (hint != null) hint.asText(l10n),
+        ].join('\n\n'),
+        confirmLabel: l10n.continueToSignIn,
+      );
+    }
+
+    unawaited(
+      ref
+          .read(signInControllerProvider.notifier)
+          .signIn(connection, confirm: confirm),
     );
-    if (!mounted) return;
-    final confirmed = await confirmAdaptive(
-      context,
-      title: l10n.overviewCreateAccount,
-      body: [
-        l10n.overviewCreateAccountHint,
-        if (hint != null) hint.asText(l10n),
-      ].join('\n\n'),
-      confirmLabel: l10n.continueToSignIn,
-    );
-    if (confirmed && mounted) _signIn(connection);
   }
 
   void _openPasswordReset(ServerConnection connection) => unawaited(
@@ -153,11 +161,11 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
     final actions = OverviewActions(
       canSignIn: signInMethod != null,
       isSigningIn: isSigningIn,
-      onContinue: () => unawaited(_continueToSignIn(connection)),
+      onContinue: () => _continueToSignIn(connection),
       onUseDifferentServer: () =>
           widget.adding ? context.pop() : context.go(AppRoutes.connect),
       onCreateAccount: signInMethod?.offersRegistration ?? false
-          ? () => unawaited(_createAccount(connection))
+          ? () => _createAccount(connection)
           : null,
       onForgotPassword: signInMethod?.offersPasswordReset ?? false
           ? () => _openPasswordReset(connection)

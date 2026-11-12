@@ -277,19 +277,24 @@ void main() {
 
           // The test server sets no message, demo mode, imprint or privacy
           // policy; its one legal link is the terms
-          // (test_servers/docker-compose.yaml).
+          // (test_servers/docker-compose.yaml), which /info lists from 2.8.0.
           expect(info.motd, isEmpty);
           expect(info.demoModeEnabled, isFalse);
           expect(info.auth.localEnabled, isTrue);
           expect(info.auth.registrationEnabled, isTrue);
           expect(info.legal.imprintUrl, isNull);
           expect(info.legal.privacyPolicyUrl, isNull);
-          expect(info.legal.links, [
-            LegalLink(
-              text: 'Terms of Service',
-              url: Uri.parse('https://example.org/terms'),
-            ),
-          ]);
+          expect(
+            info.legal.links,
+            info.version!.isAtLeast(2, 8)
+                ? [
+                    LegalLink(
+                      text: 'Terms of Service',
+                      url: Uri.parse('https://example.org/terms'),
+                    ),
+                  ]
+                : isEmpty,
+          );
           expect(info.enabledProFeatures, isNot(contains('user_invites')));
           expect(connection.capabilities.has(Capability.userInvites), isFalse);
         });

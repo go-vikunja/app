@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/session/application/sign_in_hosts.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/sample_data.dart';
@@ -238,6 +239,33 @@ void main() {
     expect(sync.engine.disposed, isTrue);
     expect(sync.files.deleted, [alice.id]);
     expect(errors, isEmpty);
+  });
+
+  test('signing out forgets the sign-in host the account confirmed, and '
+      'only its own', () async {
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: now),
+    );
+    final bob = await auth.seedAccount(
+      oauthServer230(),
+      tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
+      activate: false,
+    );
+    await container.read(accountsProvider.future);
+    final hosts = ConfirmedSignInHosts(auth.preferences);
+    final page = otherSignInHost(
+      accountPagesServer270(
+        frontendUrl: Uri.parse('https://auth.example.org/'),
+      ),
+    )!;
+    await hosts.signedIn(alice.id, page);
+    await hosts.signedIn(bob.id, page);
+
+    await container.read(signOutProvider).call(alice.id);
+
+    expect(await hosts.isConfirmed(alice.id, page), isFalse);
+    expect(await hosts.isConfirmed(bob.id, page), isTrue);
   });
 
   test('signing out an account whose engine was never built only deletes '

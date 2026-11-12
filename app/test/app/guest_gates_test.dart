@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
@@ -10,7 +11,6 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/description_editor/presentation/mention_bar.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
-import 'package:vikunja_mobile/features/smart_lists/presentation/label_tasks_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comment_composer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
@@ -28,6 +28,39 @@ import '../helpers/pump_app.dart';
 import '../helpers/sample_data.dart';
 import '../helpers/server_connections.dart';
 import '../helpers/sync_fakes.dart';
+
+const _needsUser =
+    'the server refuses what it does for anyone who is not a user';
+const _ownersProject =
+    "the shared project is its owner's to describe, rename, set up views "
+    'for and share';
+
+/// Every route outside `AppRoutes.openToGuests`, by its full path, with the
+/// reason a guest is kept from it.
+const closedToGuests = <String, String>{
+  '/home/project/:id/description': _ownersProject,
+  '/home/project/:id/edit': _ownersProject,
+  '/home/project/:id/views': _ownersProject,
+  '/home/project/:id/share': _ownersProject,
+  '/home/inbox': 'the server keeps no notifications for a guest',
+  '/home/labels': _needsUser,
+  '/home/labels/new': _needsUser,
+  '/home/labels/:id/edit': _needsUser,
+  '/home/labels/:id/description': _needsUser,
+  '/home/teams': _needsUser,
+  '/home/teams/:id': _needsUser,
+  '/home/teams/:id/description': _needsUser,
+  '/home/trash': 'the server shows a guest no bin',
+  '/home/filters/new': _needsUser,
+  '/home/filters/:id/edit': _needsUser,
+  '/home/account-settings': _needsUser,
+  '/home/account-settings/avatar': _needsUser,
+  '/home/account-settings/sessions': _needsUser,
+  '/home/account-settings/api-tokens': _needsUser,
+  '/home/account-settings/api-tokens/new': _needsUser,
+  '/home/account-settings/caldav': _needsUser,
+  '/home/account-settings/data-export': _needsUser,
+};
 
 void main() {
   const anna = User(id: 5, username: 'anna', name: 'Anna');
@@ -76,49 +109,35 @@ void main() {
   Finder inSheet(Finder finder) =>
       find.descendant(of: find.byType(TaskDetailSheet), matching: finder);
 
-  test('the pages closed to guests are those of the account, the server '
-      "and the project's owner; a label's tasks stay open", () {
-    for (final location in [
-      AppRoutes.accountSettings,
-      AppRoutes.accountSessions,
-      AppRoutes.accountApiTokenNew,
-      AppRoutes.teams,
-      AppRoutes.team(3),
-      AppRoutes.teamDescription(3),
-      AppRoutes.trash,
-      AppRoutes.inbox,
-      AppRoutes.labels,
-      AppRoutes.labelNew,
-      AppRoutes.labelEdit(5),
-      AppRoutes.labelDescription(5),
-      AppRoutes.savedFilterNew,
-      AppRoutes.savedFilterEdit(-2),
-      AppRoutes.projectEdit(guestProjectId),
-      AppRoutes.projectDescription(guestProjectId),
-      AppRoutes.projectViews(guestProjectId),
-      AppRoutes.projectShare(guestProjectId),
-    ]) {
-      expect(AppRoutes.isClosedToGuests(location), isTrue, reason: location);
+  testWidgets('every route is open to guests or closed to them with a '
+      'reason, so a new route has to decide', (tester) async {
+    await pumpVikunjaApp(tester);
+    final configuration = containerOf(tester)
+        .read(appRouterProvider)
+        .configuration;
+    final routes = <String>{};
+    void walk(List<RouteBase> children) {
+      for (final route in children) {
+        if (route is GoRoute) {
+          routes.add(configuration.locationForRoute(route)!);
+        }
+        walk(route.routes);
+      }
     }
-    for (final location in [
-      AppRoutes.overview,
-      AppRoutes.upcoming,
-      AppRoutes.projects,
-      AppRoutes.project(guestProjectId),
-      AppRoutes.account,
-      AppRoutes.labelTasks(5),
-      AppRoutes.search,
-      AppRoutes.taskEdit(4),
-      AppRoutes.taskDescription(4),
-      AppRoutes.addAccount,
-      AppRoutes.widgets,
-      AppRoutes.privacy,
-      AppRoutes.about,
-      '${AppRoutes.labels}x',
-      '${AppRoutes.trash}x',
-    ]) {
-      expect(AppRoutes.isClosedToGuests(location), isFalse, reason: location);
-    }
+
+    walk(configuration.routes);
+    const open = AppRoutes.openToGuests;
+    final closed = closedToGuests.keys.toSet();
+
+    expect(
+      routes.difference({...open, ...closed}),
+      isEmpty,
+      reason:
+          'add each route to AppRoutes.openToGuests or to closedToGuests '
+          'in this file',
+    );
+    expect({...open, ...closed}.difference(routes), isEmpty);
+    expect(open.intersection(closed), isEmpty);
   });
 
   testWidgets('a guest sent to a closed page lands on the Overview', (
@@ -126,22 +145,44 @@ void main() {
   ) async {
     await pumpGuestApp(tester, auth: auth, data: data);
 
-    for (final closed in [
-      AppRoutes.accountSettings,
-      AppRoutes.accountSessions,
-      AppRoutes.teams,
-      AppRoutes.inbox,
-      AppRoutes.labels,
-      AppRoutes.savedFilterNew,
-      AppRoutes.projectShare(guestProjectId),
-      AppRoutes.projectEdit(guestProjectId),
-    ]) {
+    for (final route in closedToGuests.keys) {
+      final closed = route
+          .replaceAll(':commentId', '7')
+          .replaceAll(':id', '$guestProjectId');
       await go(tester, closed);
       expect(location(tester), AppRoutes.overview, reason: closed);
       expect(find.byType(OverviewScreen), findsOneWidget, reason: closed);
     }
     await push(tester, AppRoutes.accountSettings);
     expect(find.byType(AccountSettingsPage), findsNothing);
+  });
+
+  testWidgets('a guest opens the pages open to it whatever their ids', (
+    tester,
+  ) async {
+    await pumpGuestApp(
+      tester,
+      auth: auth,
+      data: data,
+      overrides: [
+        labelRepositoryProvider.overrideWithValue(
+          FakeLabelRepository(labels: [sampleLabel(id: 5, title: 'Outside')]),
+        ),
+      ],
+    );
+
+    for (final open in [
+      AppRoutes.project(guestProjectId),
+      AppRoutes.taskEdit(4),
+      AppRoutes.labelTasks(5),
+      AppRoutes.search,
+      AppRoutes.widgets,
+      AppRoutes.privacy,
+      AppRoutes.about,
+    ]) {
+      await go(tester, open);
+      expect(location(tester), open, reason: open);
+    }
   });
 
   testWidgets('a guest on a server with the bin pushed to it lands on the '
@@ -160,24 +201,6 @@ void main() {
     expect(location(tester), AppRoutes.overview);
     expect(find.byType(OverviewScreen), findsOneWidget);
     expect(data.trash.calls, isEmpty);
-  });
-
-  testWidgets("a label's tasks still open for a guest", (tester) async {
-    await pumpGuestApp(
-      tester,
-      auth: auth,
-      data: data,
-      overrides: [
-        labelRepositoryProvider.overrideWithValue(
-          FakeLabelRepository(labels: [sampleLabel(id: 5, title: 'Outside')]),
-        ),
-      ],
-    );
-
-    await go(tester, AppRoutes.labelTasks(5));
-
-    expect(location(tester), AppRoutes.labelTasks(5));
-    expect(find.byType(LabelTasksScreen), findsOneWidget);
   });
 
   testWidgets('the Overview greets a guest without a name', (tester) async {

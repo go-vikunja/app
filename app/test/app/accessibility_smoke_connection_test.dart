@@ -282,8 +282,10 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('the browser hint with the pinned fingerprint at 200 % in '
-        'dark mode ($code)', (tester) async {
+    testWidgets('the warning about another sign-in host with the browser '
+        'hint and the pinned fingerprint at 200 % in dark mode ($code)', (
+      tester,
+    ) async {
       useWorstCase(tester, locale);
       final l10n = lookupAppLocalizations(locale);
       final auth = AuthFakes();
@@ -305,7 +307,10 @@ void main() {
       await tester.tap(find.text(l10n.continueToSignIn));
       await tester.pumpAndSettle();
 
-      expect(find.text(l10n.connectionBrowserHintTitle), findsOneWidget);
+      expect(
+        find.text(l10n.signInOtherHostTitle('web.example.org')),
+        findsOneWidget,
+      );
       expect(find.text(l10n.connectionBrowserHintPinned), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

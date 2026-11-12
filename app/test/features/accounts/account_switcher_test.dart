@@ -301,7 +301,7 @@ void main() {
     unawaited(
       container
           .read(signInControllerProvider.notifier)
-          .signIn(oauthServer230()),
+          .signIn(oauthServer230(), confirm: (_) async => true),
     );
     await tester.pump();
 

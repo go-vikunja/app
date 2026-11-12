@@ -3160,6 +3160,18 @@ class AppLocalizationsDe extends AppLocalizations {
       'Du kannst die letzte Spalte nicht löschen.';
 
   @override
+  String get boardColumnDeleteGuest =>
+      'Als Gast kannst du die Spalte für neue Aufgaben nicht löschen, solange Aufgaben darin sind. Verschieb ihre Aufgaben zuerst in eine andere Spalte.';
+
+  @override
+  String get boardColumnDeleteGuestDone =>
+      'Als Gast kannst du die Erledigt-Spalte nicht löschen, weil das die Einstellungen des Boards ändern würde.';
+
+  @override
+  String get boardColumnDeleteGuestDefault =>
+      'Als Gast kannst du die Spalte für neue Aufgaben nicht löschen, weil das die Einstellungen des Boards ändern würde.';
+
+  @override
   String get boardColumnRenameTitle => 'Spalte umbenennen';
 
   @override
@@ -8390,6 +8402,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get connectionBrowserHintContinue => 'Weiter';
+
+  @override
+  String signInOtherHostTitle(String signInHost) {
+    return 'Bei $signInHost anmelden?';
+  }
+
+  @override
+  String get signInOtherHostConfirm => 'Anmelden';
+
+  @override
+  String signInOtherHostBody(String server, String signInHost) {
+    return 'Die Anmeldung für $server öffnet $signInHost. $server erhält Zugriff auf das Konto, mit dem du dich bei $signInHost anmeldest. Fahre nur fort, wenn $signInHost zu $server gehört.';
+  }
 
   @override
   String get connectionForgetCheckbox =>

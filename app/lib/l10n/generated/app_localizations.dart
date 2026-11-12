@@ -4770,6 +4770,24 @@ abstract class AppLocalizations {
   /// **'You can\'t delete the last column.'**
   String get boardColumnDeleteLast;
 
+  /// Under the disabled "Delete" item of a kanban column for a link-share guest, and as an error: the leftmost column, which gets new tasks while no default column is chosen, holds tasks, so deleting it needs another default column first, and the project's board is its owner's to set up.
+  ///
+  /// In en, this message translates to:
+  /// **'As a guest, you can\'t delete the column new tasks go to while it holds tasks. Move its tasks to another column first.'**
+  String get boardColumnDeleteGuest;
+
+  /// Under the disabled "Delete" item of a kanban board's done column (boardDoneColumn) for a link-share guest, and as an error: the server clears the board's done column when it is deleted, and the project's board is its owner's to set up.
+  ///
+  /// In en, this message translates to:
+  /// **'As a guest, you can\'t delete the done column, as that would change the board\'s settings.'**
+  String get boardColumnDeleteGuestDone;
+
+  /// Under the disabled "Delete" item of a kanban board's chosen default column (boardDefaultColumn) for a link-share guest, and as an error: the server clears the board's default column when it is deleted, and the project's board is its owner's to set up.
+  ///
+  /// In en, this message translates to:
+  /// **'As a guest, you can\'t delete the column new tasks go to, as that would change the board\'s settings.'**
+  String get boardColumnDeleteGuestDefault;
+
   /// No description provided for @boardColumnRenameTitle.
   ///
   /// In en, this message translates to:
@@ -12977,6 +12995,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Continue'**
   String get connectionBrowserHintContinue;
+
+  /// Title of the question before the browser sign-in opens a sign-in page on another host than the server; signInOtherHostBody explains it. Buttons: Cancel and signInOtherHostConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in at {signInHost}?'**
+  String signInOtherHostTitle(String signInHost);
+
+  /// Button of the signInOtherHostTitle question: opens the browser sign-in on the other host.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get signInOtherHostConfirm;
+
+  /// Before the browser sign-in, when the server's sign-in page is on another host: a server can send the sign-in to someone else's server and so get into the account there. Also part of the Create account question.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in for {server} opens {signInHost}. {server} gets access to the account you sign in with at {signInHost}. Only continue if {signInHost} belongs to {server}.'**
+  String signInOtherHostBody(String server, String signInHost);
 
   /// Checkbox in the sign-out or remove dialog of the last account on a server that has connection settings.
   ///

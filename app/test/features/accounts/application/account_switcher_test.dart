@@ -125,7 +125,9 @@ void main() {
     final browser = Completer<Uri?>();
     auth.webAuthenticator.handler = (_, _) => browser.future;
     unawaited(
-      container.read(signInControllerProvider.notifier).signIn(fullServer270()),
+      container
+          .read(signInControllerProvider.notifier)
+          .signIn(fullServer270(), confirm: (_) async => true),
     );
     await pumpEventQueue();
     expect(container.read(signInControllerProvider), isA<SignInInProgress>());

@@ -1,18 +1,12 @@
 @Tags(['contract'])
 library;
 
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-// Needs the servers of test_servers/docker-compose.yaml:
-// VIKUNJA_CONTRACT=1 flutter test --tags contract
-final String? _skip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
-    ? 'Set VIKUNJA_CONTRACT=1 and start test_servers/docker-compose.yaml'
-    : null;
+import 'helpers.dart';
 
 void main() {
   late Dio dio;
@@ -30,11 +24,11 @@ void main() {
 
   tearDown(() => dio.close(force: true));
 
-  group('local Docker servers', skip: _skip, () {
+  group('local Docker servers', skip: contractSkip, () {
     for (final (port, version, apiVersions, tier, concurrentWrites) in [
       (
         34527,
-        const ServerVersion(2, 8, 0),
+        contractServerVersion,
         {ApiVersion.v1, ApiVersion.v2},
         SupportTier.full,
         false,
@@ -89,11 +83,18 @@ void main() {
       );
       expect(info.concurrentWrites, body['concurrent_writes']);
       final legal = body['legal']! as Map<String, Object?>;
-      expect(legal['links'], isNotEmpty);
-      expect([
-        for (final link in info.legal.links)
-          {'text': link.text, 'url': '${link.url}'},
-      ], legal['links']);
+      if (info.version!.isAtLeast(2, 8)) {
+        expect(legal['links'], isNotEmpty);
+        expect([
+          for (final link in info.legal.links)
+            {'text': link.text, 'url': '${link.url}'},
+        ], legal['links']);
+      } else {
+        // Before 2.8.0 /info has no links, and the test server sets neither
+        // the imprint nor the privacy policy.
+        expect(legal, isNot(contains('links')));
+        expect(info.legal.links, isEmpty);
+      }
       expect(info.legal.imprintUrl?.toString() ?? '', legal['imprint_url']);
       expect(
         info.legal.privacyPolicyUrl?.toString() ?? '',
@@ -103,6 +104,10 @@ void main() {
 
     test('the test server lists its terms as its one legal link', () async {
       final connection = await connector.connect('http://localhost:34527');
+      if (!connection.info.version!.isAtLeast(2, 8)) {
+        markTestSkipped('servers before 2.8.0 list no legal links');
+        return;
+      }
       final legal = connection.info.legal;
 
       expect(legal.links, [

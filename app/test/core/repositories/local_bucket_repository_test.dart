@@ -1,17 +1,25 @@
 import 'package:drift/drift.dart' show driftRuntimeOptions;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/kanban_dao.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository.dart';
+import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_bucket_repository.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/list_downloads.dart';
 
+import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_write_client.dart';
+import '../../helpers/guest_fakes.dart';
 import '../../helpers/sample_data.dart';
+import '../../helpers/server_connections.dart';
+import '../../helpers/sync_fakes.dart';
 import '../../helpers/test_database.dart';
 
 void main() {
@@ -81,6 +89,7 @@ void main() {
     int defaultBucketId = 1,
     int doneBucketId = 3,
     int? serverDefaultBucketId,
+    int? serverDoneBucketId,
     ViewFilter? filter,
   }) async {
     final view = kanban(
@@ -89,6 +98,7 @@ void main() {
       filter: filter,
     );
     final serverDefault = serverDefaultBucketId ?? defaultBucketId;
+    final serverDone = serverDoneBucketId ?? doneBucketId;
     await db.projectsDao.upsertAll([
       sampleProject(
         id: 7,
@@ -107,12 +117,12 @@ void main() {
       ..serverBuckets[80] = {for (final bucket in buckets) bucket.id: bucket}
       ..bucketSlots[80] = {...cards}
       ..kanbanViews[80] = (
-        doneBucketId: doneBucketId,
+        doneBucketId: serverDone,
         defaultBucketId: serverDefault,
       )
       ..serverViews[80] = kanban(
         defaultBucketId: serverDefault,
-        doneBucketId: doneBucketId,
+        doneBucketId: serverDone,
         filter: filter,
       );
   }
@@ -826,6 +836,191 @@ void main() {
       await pumpEventQueue();
 
       expect(seen.last.view?.doneBucketId, 2);
+    });
+  });
+
+  group("a link-share guest's", () {
+    late LocalBucketRepository guests;
+
+    setUp(() {
+      guests = LocalBucketRepository(
+        db,
+        write,
+        refreshBoard: (projectId, viewId) async =>
+            refreshes.add((projectId, viewId)),
+        guest: true,
+      );
+    });
+
+    test('refuses the done and default bucket without a request', () async {
+      await seed();
+
+      await expectLater(
+        guests.setDoneBucket(7, 80, 2),
+        throwsA(isA<GuestViewChange>()),
+      );
+      await expectLater(
+        guests.setDefaultBucket(7, 80, null),
+        throwsA(isA<GuestViewChange>()),
+      );
+
+      expect(write.requests, isEmpty);
+      final view = await db.projectsDao.loadView(80);
+      expect((view?.doneBucketId, view?.defaultBucketId), (3, 1));
+    });
+
+    // Deleting the view's done or default bucket makes the server clear it
+    // in the view; deleting the leftmost one holding tasks while none is
+    // the default needs a new default first.
+    for (final (label, bucketId, deletion, local, server) in [
+      ('the default bucket, leftmost', 1, GuestDeletion.defaultBucket, 1, null),
+      (
+        'the default bucket right of others',
+        2,
+        GuestDeletion.defaultBucket,
+        2,
+        null,
+      ),
+      ('the done bucket', 3, GuestDeletion.doneBucket, 1, null),
+      (
+        'a bucket the web made the default since the sync',
+        2,
+        GuestDeletion.defaultBucket,
+        1,
+        (done: 3, defaultBucket: 2),
+      ),
+      (
+        'a bucket the web made the done bucket since the sync',
+        2,
+        GuestDeletion.doneBucket,
+        1,
+        (done: 2, defaultBucket: 1),
+      ),
+      (
+        'the leftmost bucket holding tasks, whose default the web cleared '
+            'since the sync',
+        1,
+        GuestDeletion.newDefaultFirst,
+        1,
+        (done: 3, defaultBucket: 0),
+      ),
+    ]) {
+      test('refuses deleting $label after reading the view and before any '
+          'write', () async {
+        await seed(
+          defaultBucketId: local,
+          serverDefaultBucketId: server?.defaultBucket,
+          serverDoneBucketId: server?.done,
+        );
+
+        await expectLater(
+          guests.delete(7, 80, bucketId),
+          throwsA(
+            isA<GuestViewChange>().having(
+              (refused) => refused.deletion,
+              'deletion',
+              deletion,
+            ),
+          ),
+        );
+
+        expect(write.requests, ['read view 80']);
+        expect(idsOf(await db.kanbanDao.buckets(80)), [1, 2, 3]);
+        expect(write.serverBuckets[80]?.keys, [1, 2, 3]);
+      });
+    }
+
+    // With no other bucket stored there is no plan; the server, a bucket
+    // further, would still clear the view's bucket.
+    for (final (label, server, deletion) in [
+      ('done', (done: 1, defaultBucket: 0), GuestDeletion.doneBucket),
+      ('default', (done: 0, defaultBucket: 1), GuestDeletion.defaultBucket),
+    ]) {
+      test('refuses deleting the $label bucket that the stored board holds '
+          'alone, before any write', () async {
+        await seed(
+          buckets: [todo],
+          cards: {1: slots[1]!, 2: slots[2]!},
+          defaultBucketId: 0,
+          doneBucketId: 0,
+          serverDefaultBucketId: server.defaultBucket,
+          serverDoneBucketId: server.done,
+        );
+        write.serverBuckets[80] = {1: todo, 2: doing};
+
+        await expectLater(
+          guests.delete(7, 80, 1),
+          throwsA(
+            isA<GuestViewChange>().having(
+              (refused) => refused.deletion,
+              'deletion',
+              deletion,
+            ),
+          ),
+        );
+
+        expect(write.requests, ['read view 80']);
+        expect(write.serverBuckets[80]?.keys, [1, 2]);
+        expect(idsOf(await db.kanbanDao.buckets(80)), [1]);
+      });
+    }
+
+    test('deletes a bucket that is neither the done nor the default '
+        'bucket', () async {
+      await seed();
+
+      await guests.delete(7, 80, 2);
+
+      expect(write.requests, ['read view 80', 'delete bucket 2 view 80']);
+      expect(idsOf(await db.kanbanDao.buckets(80)), [1, 3]);
+    });
+
+    test('deletes the leftmost bucket while no default is set and it holds '
+        'no tasks, which changes nothing in the view', () async {
+      await seed(
+        buckets: [
+          const Bucket(id: 1, viewId: 80, title: 'To-Do', position: 100),
+          doing,
+          doneBucket,
+        ],
+        cards: {3: slots[3]!, 4: slots[4]!},
+        defaultBucketId: 0,
+      );
+
+      await guests.delete(7, 80, 1);
+
+      expect(write.requests, ['read view 80', 'delete bucket 1 view 80']);
+      final view = await db.projectsDao.loadView(80);
+      expect((view?.doneBucketId, view?.defaultBucketId), (3, 0));
+    });
+
+    test("is what the account's provider makes for a guest", () async {
+      final auth = AuthFakes();
+      final guest = await auth.seedGuest(
+        fullServer270(),
+        token: issueLinkShareToken(issuedAt: now, permission: Permission.admin),
+      );
+      final container = ProviderContainer(
+        overrides: [
+          ...auth.overrides,
+          appDatabaseProvider.overrideWith((ref, _) => db),
+          writeClientProvider.overrideWith((ref, _) => write),
+          accountTaskRepositoryProvider.overrideWith(
+            (ref, _) => FakeTaskRepository(FakeSyncEngine()),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(accountsProvider.future);
+      await seed();
+
+      await expectLater(
+        container
+            .read(accountBucketRepositoryProvider(guest.id))
+            .setDoneBucket(7, 80, 2),
+        throwsA(isA<GuestViewChange>()),
+      );
+      expect(write.requests, isEmpty);
     });
   });
 

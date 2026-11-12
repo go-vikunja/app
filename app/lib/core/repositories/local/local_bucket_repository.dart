@@ -24,12 +24,16 @@ final class LocalBucketRepository implements BucketRepository {
     this._db,
     this._write, {
     required this._refreshBoard,
+    this._guest = false,
     DateTime Function()? now,
   }) : _filters = LocalFilters(_db, now: now ?? DateTime.now);
 
   final AppDatabase _db;
   final VikunjaWriteClient _write;
   final BoardRefresh _refreshBoard;
+
+  /// A link-share guest's, which never changes the view.
+  final bool _guest;
   final LocalFilters _filters;
 
   @override
@@ -126,6 +130,15 @@ final class LocalBucketRepository implements BucketRepository {
     if (plan != null && plan.isFallback && !plan.defaultFirst) {
       await _refreshBoard(projectId, viewId);
       plan = await _planDeletion(projectId, viewId, view, bucketId);
+    }
+    if (_guest) {
+      final refused = guestDeletion(
+        bucketId,
+        plan,
+        doneBucketId: view.doneBucketId,
+        defaultBucketId: view.defaultBucketId,
+      );
+      if (refused != null) throw GuestViewChange(refused);
     }
     if (plan != null && plan.defaultFirst) {
       await _deleteAfterNewDefault(
@@ -232,6 +245,7 @@ final class LocalBucketRepository implements BucketRepository {
 
   @override
   Future<void> setDoneBucket(int projectId, int viewId, int? bucketId) async {
+    if (_guest) throw const GuestViewChange();
     await _storeView(
       viewId,
       await _write.views.setBuckets(
@@ -249,6 +263,7 @@ final class LocalBucketRepository implements BucketRepository {
     int viewId,
     int? bucketId,
   ) async {
+    if (_guest) throw const GuestViewChange();
     await _storeView(
       viewId,
       await _write.views.setBuckets(

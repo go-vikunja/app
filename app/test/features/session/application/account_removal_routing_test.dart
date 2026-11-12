@@ -140,7 +140,9 @@ void main() {
       (_, next) => signIns.add(next),
     );
     addTearDown(signIn.close);
-    await container.read(signInControllerProvider.notifier).signIn(carolServer);
+    await container
+        .read(signInControllerProvider.notifier)
+        .signIn(carolServer, confirm: (_) async => true);
     await pumpUntil(tester, find.byType(FirstSyncScreen));
     expect(signIns.whereType<SignInSucceeded>().single.isNewAccount, isTrue);
     expect(carolData.engine.ensureInitialSyncCalls, greaterThan(0));

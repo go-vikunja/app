@@ -2,7 +2,11 @@
 # tests. Only the latest release is tested (owner decision, 2026-10-09):
 #   34527  2.8.0  latest release
 #   34528-34531  the same release behind TLS, opt-in profile `tls` (below)
-# Bump the image tag when a new Vikunja release comes out.
+# Bump the image tag when a new Vikunja release comes out, here and in
+# defaultTestServerImage of packages/vikunja_api/test/contract/helpers.dart.
+# RURANA_TEST_VIKUNJA_IMAGE runs another release instead, for example
+# vikunja/vikunja:2.7.1 before a tag (docs/releasing.md); the contract tests
+# then expect the version of its tag.
 # The host port is referenced by the contract tests, tool/*.sh and the docs;
 # do not change it. It is published on 127.0.0.1 only, because the server
 # allows open registration with a public JWT secret; CI sets 0.0.0.0 inside
@@ -53,7 +57,8 @@ x-vikunja-env: &vikunja-env
   VIKUNJA_RATELIMIT_NOAUTHLIMIT: "1000"
   # A legal link besides the imprint and the privacy policy for the contract
   # tests, named neither "Imprint" nor "Privacy Policy": they expect the
-  # server to have neither.
+  # server to have neither. /info lists it from 2.8.0; older releases ignore
+  # it.
   VIKUNJA_LEGAL_TERMS_TEXT: "Terms of Service"
   VIKUNJA_LEGAL_TERMS_URL: "https://example.org/terms"
 
@@ -63,7 +68,7 @@ x-vikunja-env: &vikunja-env
 # host's network) and the Android emulator with `adb reverse`.
 services:
   vikunja:
-    image: vikunja/vikunja:2.8.0
+    image: ${RURANA_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0}
     environment:
       <<: *vikunja-env
       VIKUNJA_SERVICE_PUBLICURL: http://localhost:34527/
@@ -79,7 +84,7 @@ services:
   #   34530  access-header gate like Cloudflare Access, test CA
   #   34531  plain HTTP straight to Vikunja, for seeding from the host only
   vikunja-tls:
-    image: vikunja/vikunja:2.8.0
+    image: ${RURANA_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0}
     profiles: ["tls"]
     environment:
       <<: *vikunja-env
