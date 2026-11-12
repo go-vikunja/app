@@ -294,17 +294,24 @@ void main() {
       expect(messages, [en.boardMovedTo('Done')]);
     });
 
-    testWidgets('a full column refuses the card with the limit text and a '
-        'heavy haptic', (tester) async {
+    testWidgets('a full column is greyed out and a tap on it neither picks '
+        'nor moves', (tester) async {
       await pumpApp(tester);
       await open(tester, report);
 
-      await pick(tester, 'Later (4)');
-      await moving;
+      bool enabled(String name) => tester
+          .widget<ListTile>(inSheet(find.widgetWithText(ListTile, name)))
+          .enabled;
+      expect(enabled('Later (4)'), isFalse);
+      expect(enabled('Later (2)'), isTrue);
+      expect(enabled('Done'), isTrue);
+      await tester.tap(inSheet(find.text('Later (4)')), warnIfMissed: false);
+      await tester.pumpAndSettle();
 
+      expect(inSheet(find.text(en.taskMoveToColumnTitle)), findsOneWidget);
       expect(data.tasks.placements, isEmpty);
-      expect(messages, [en.boardColumnLimitReached]);
-      expect(haptics, ['HapticFeedbackType.heavyImpact']);
+      expect(messages, isEmpty);
+      expect(haptics, isEmpty);
     });
 
     testWidgets('a pick plans against the board as it is by then: a column '
@@ -376,8 +383,14 @@ void main() {
       final again = await ScreenToLeave.push(tester);
       await open(tester, report, from: again.context);
       await again.leave(tester);
-      await pick(tester, 'Later (4)');
+      board = choiceOf(report, [
+        columns[0],
+        column(2, 'Later', [card(4, 1000)], limit: 1),
+        ...columns.skip(2),
+      ]);
+      await pick(tester, 'Later (2)');
       await moving;
+      expect(data.tasks.placements, hasLength(1));
       expect(messages, isEmpty);
       expect(haptics, isEmpty);
     });

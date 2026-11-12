@@ -248,8 +248,8 @@ void main() {
       expect(find.text(en.taskMoveToColumn), findsOneWidget);
     }, variant: iOSOnly);
 
-    testWidgets('a full column says so and refuses the card with the limit '
-        'text', (tester) async {
+    testWidgets('a full column is greyed out, says so, and a tap on it '
+        'moves nothing', (tester) async {
       final haptics = recordHaptics(tester);
       data.tasks.setBoard(
         kanban,
@@ -264,17 +264,17 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(columnChoices(tester).first, ('Doing', en.boardColumnFull));
-      await tester.tap(
-        find.descendant(
-          of: find.byType(BottomSheet).last,
-          matching: find.text('Doing'),
-        ),
+      final doing = find.descendant(
+        of: find.byType(BottomSheet).last,
+        matching: find.widgetWithText(ListTile, 'Doing'),
       );
+      expect(tester.widget<ListTile>(doing).enabled, isFalse);
+      await tester.tap(doing, warnIfMissed: false);
       await tester.pumpAndSettle();
 
+      expect(find.text(en.taskMoveToColumnTitle), findsOneWidget);
       expect(data.tasks.placements, isEmpty);
-      expect(inDetail(find.text(en.boardColumnLimitReached)), findsOneWidget);
-      expect(haptics, contains('HapticFeedbackType.heavyImpact'));
+      expect(haptics, isNot(contains('HapticFeedbackType.heavyImpact')));
       expect(detail(), findsOneWidget);
     });
 

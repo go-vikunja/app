@@ -101,6 +101,7 @@ Future<void> moveToColumn(
           SheetOption(
             value: column.bucket.id,
             label: names[column.bucket.id]!,
+            enabled: !columnIsFull(column),
             subtitle: columnIsFull(column)
                 ? l10n.boardColumnFull
                 : view.doneBucketId != 0 &&

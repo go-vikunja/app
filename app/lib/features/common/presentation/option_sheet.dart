@@ -9,11 +9,15 @@ final class SheetOption<T> {
     this.destructive = false,
     this.subtitle,
     this.subtitleSemanticsLabel,
+    this.enabled = true,
   });
 
   final T value;
   final String label;
   final bool selected;
+
+  /// Shown greyed out and not picked on a tap; [subtitle] says why.
+  final bool enabled;
 
   /// In the error colour, such as Remove below a list of permissions.
   final bool destructive;
@@ -112,6 +116,7 @@ class _OptionList<T extends Object> extends StatelessWidget {
               ? null
               : Text(subtitle, semanticsLabel: option.subtitleSemanticsLabel),
           selected: option.selected,
+          enabled: option.enabled,
           trailing: option.selected ? const Icon(Icons.check) : null,
           onTap: () => Navigator.of(context).pop(option.value),
         );

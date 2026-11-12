@@ -1386,7 +1386,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                           IconButton(
                             onPressed: changeLabels,
                             tooltip: l10n.taskDetailChangeLabels,
-                            icon: const Icon(Icons.edit_outlined),
+                            icon: const Icon(Icons.new_label_outlined),
                           ),
                       ],
                     ),

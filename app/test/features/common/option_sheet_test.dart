@@ -73,6 +73,30 @@ void main() {
     semantics.dispose();
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
+  testWidgets('an option that is not enabled is greyed out, read as '
+      'disabled, and a tap on it picks nothing', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await open(tester, const [
+      SheetOption(value: 1, label: 'Later', subtitle: 'Full', enabled: false),
+      SheetOption(value: 2, label: 'Done'),
+    ]);
+
+    expect(tile(tester, 'Later').enabled, isFalse);
+    expect(tile(tester, 'Done').enabled, isTrue);
+    expect(
+      tester.getSemantics(find.text('Later')),
+      isSemantics(hasEnabledState: true, isEnabled: false),
+    );
+    await tester.tap(find.text('Later'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.text('Due date'), findsOneWidget);
+
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(await picked, 2);
+    semantics.dispose();
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
   testWidgets('the subtitle shows in the iOS sheet too', (tester) async {
     await open(tester, const [
       SheetOption(value: 1, label: 'Today', subtitle: '10/10/2026 12:00'),

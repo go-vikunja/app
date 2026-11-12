@@ -317,6 +317,15 @@ void main() {
         ),
       );
       expect(changeLabels, findsOneWidget);
+      // Not the pencil of the header's Edit task.
+      expect(
+        tester.widget<IconButton>(changeLabels).icon,
+        isA<Icon>().having(
+          (icon) => icon.icon,
+          'icon',
+          Icons.new_label_outlined,
+        ),
+      );
       final size = tester.getSize(changeLabels);
       expect(size.width, greaterThanOrEqualTo(48));
       expect(size.height, greaterThanOrEqualTo(48));
