@@ -2313,3 +2313,21 @@ Limits:
 - Play's tablet screenshots 02-kanban and 04-project-detail predate the tree's column ([store listing](store-listing.md#screenshots)).
 - Not checked yet with real data on a tablet, on iPad, on a foldable or with TalkBack ([checklist](accessibility-checklist.md#25-checks-of-step-36g)).
 - Not built: an option to hide the tree (it may come later, owner); the tree making way while a task is open; dragging a task onto a project in the tree; revealing the open project in a collapsed or scrolled tree; keyboard and Esc between the column, the project and the pane (36d).
+
+## D83: Successor of the official Vikunja app in go-vikunja/app
+
+*Accepted 2026-11-12, the owner's decision, agreed with the Vikunja maintainers.*
+
+- The app becomes the official Vikunja mobile app and moves into https://github.com/go-vikunja/app; the owner is its main maintainer.
+- **Android:** the Play listing `io.vikunja.app` stays in Vikunja's Play account, and the app ships there as an update of the old app: the same application id, signed with Vikunja's upload key, with a higher version code (why: the old app's installs keep updating).
+- **iOS:** which Apple account publishes the app is open.
+- **Licence:** MIT, in place of [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)'s AGPL with the app store permission, from the move on.
+- **Name and icon:** those of the official app, "Vikunja" and its icon, in place of Rurana and its llama ([D15](#d15-app-id-devcoderoftimerurana-and-the-name-rurana), [D42](#d42-app-icon-the-illustrated-llama-every-variant-derived-by-script)), from the move on.
+- **Translations:** Vikunja's existing Crowdin project; its integration is still to be built, and it replaces step 36f.
+- **Order:** the remaining steps of the roadmap are finished first; the switch follows as steps of its own. Until then the app is built as Rurana under `dev.coderoftime.rurana`, but nothing that would fix that id is created: no signing keys, Play app, Apple App IDs or release tag (why: [D15](#d15-app-id-devcoderoftimerurana-and-the-name-rurana) makes an id permanent once these exist).
+- At the move [D15](#d15-app-id-devcoderoftimerurana-and-the-name-rurana), [D42](#d42-app-icon-the-illustrated-llama-every-variant-derived-by-script), [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet), [D72](#d72-first-release-android-and-ios-together-play-and-a-gitlab-apk-beta-first), [D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing), [D76](#d76-store-listings-and-policies-ruranas-pages-photo-locations-removed-on-android) and [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers) change.
+
+Open:
+- Whether the owner gets release rights in Vikunja's Play Console.
+- The Apple account.
+- How the old app's history and this repository's history are joined.

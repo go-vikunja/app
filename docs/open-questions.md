@@ -105,7 +105,7 @@ The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 20
 
 ## Q16: Community translation platform
 
-**Open**, needed by step 36f.
+**Answered 2026-11-12** by the owner: Vikunja's existing Crowdin project, which the official app's repository already uses ([D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)); its integration is still to be built.
 
 - **Asked:** which platform the community translates on, and when it is connected.
 - **Options:** Hosted Weblate (Libre plan; the repository prepared in 36f, the project connected in step 37 once the repository is public); Crowdin's open-source plan (commits as a bot, proprietary); self-hosted Weblate; no platform, merge requests only.
@@ -113,7 +113,7 @@ The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 20
 
 ## Q17: Licence path for community translations
 
-**Open**, needed by step 36f.
+**Answered 2026-11-12** by the owner: with the move to go-vikunja/app the licence becomes MIT, which needs no extra permission from translators ([D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)).
 
 - **Asked:** how translations come in under the AGPL with the app store permission and the DCO ([D67](decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)).
 - **Options:** a contributor agreement on the platform that covers the DCO 1.1, the AGPL with the app store permission and "nothing copied from Vikunja", plus a `Signed-off-by` line in the platform's commit template (a narrow DCO-check exemption only for the platform's own add-on commits, if the pilot shows they need it); exempting all platform commits from the DCO check with the agreement only; deciding in step 37.
@@ -121,7 +121,7 @@ The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 20
 
 ## Q18: Generated localisation code in git
 
-**Open**, needed by step 36f.
+**Open**, needed by the Crowdin integration, whose pull requests change the ARB files.
 
 - **Asked:** whether `app/lib/l10n/generated/` (about 210 KB per language) stays committed. Today every commit that changes only an ARB file fails CI's check for stale generated code, so every translation merge request would fail.
 - **Options:** stop committing it (gen-l10n runs on `pub get`, on every build and in every CI job); keep committing it and regenerate on every translation merge request; keep committing it and let a CI bot push the regenerated files to the platform's branch.
