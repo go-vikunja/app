@@ -225,9 +225,9 @@ Limits:
   - Keyboard shortcuts on every platform, ⌘ on Apple and Ctrl elsewhere (owner), with the iPad key menu, in step 36d after the first release.
   - Home-screen widgets and app shortcuts replace the desktop quick-entry window ([D63](#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios)).
   - No seasonal logo and no PWA banners.
-- **Dropped:** the MCP information page and the admin panel (owner).
+- **Dropped:** the MCP information page and the admin panel (owner); the power-user features of step 33, webhooks, bot users, project backgrounds and imports from other services, which stay in the web (owner, 2026-11-12).
+- **Time tracking** (step 34) comes in release 1.4 (owner), tested against a licence or a test instance from the Vikunja maintainers; the app parses `enabled_pro_features`, so it can be gated by the server.
 - **Deferred, not planned for now** (owner):
-  - Time tracking (step 34), until the owner has a Vikunja licence to test against. The app keeps parsing `enabled_pro_features`, so it can be gated correctly then.
   - Push on Android through a Vikunja webhook, ntfy and UnifiedPush.
   - Crash reporting: no Sentry, GlitchTip or similar SDK.
   - The diagnostics export; the threat model's rules for its log buffer bind it ([D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links)).
