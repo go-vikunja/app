@@ -230,7 +230,8 @@ Limits:
 - **Deferred, not planned for now** (owner):
   - Push on Android through a Vikunja webhook, ntfy and UnifiedPush.
   - Crash reporting: no Sentry, GlitchTip or similar SDK.
-  - The diagnostics export; the threat model's rules for its log buffer bind it ([D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links)).
+  - A diagnostics export with a stored log buffer; the threat model's rules for such a buffer bind it ([D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links)).
+- **Support details** (owner, 2026-11-12): a "Copy support details" row beside "Help and bug reports" builds a snapshot of the app's state when tapped (app and server versions, the last sync and background run, the queue by state, the permissions, the reason of the last session end), shows it first and lets it leave only through the share sheet; servers show as `<server-N>` unless the user chooses otherwise. Nothing is sent automatically and no SDK is involved; only the last session end is stored, as a tiny record.
 - The server overview lists neither the admin panel nor time tracking, even for a licensed server.
 - Without third-party SDKs the privacy manifests and store data declarations stay simple; release builds log nothing, so no logs reach the developer.
 
@@ -1229,6 +1230,7 @@ Limits:
 - Account tab, Server section, for every account, guests included: a demo-server note in the amber accent, the MOTD card and every legal link of the server ([D81](#d81-vikunja-280-details-legal-links-okabeito-colours-lockout-hints-subtask-tree-accents)), from the stored `/info`, read again while signed in ([D78](#d78-vikunja-280-bin-codes-as-gone-its-limits-no-nul-info-re-read)).
 
 **The guest account:**
+- Kept in the official app (owner, 2026-11-12), with one rule: new routes and actions are closed to guests unless decided otherwise, which a test enforces for every route; a guest branch is built only for what is central to a shared project.
 - A share link comes in by paste or through the Android share target; no QR scanner (owner).
 - `Account.linkShare` (`AccountKind.linkShare`) with the share id, project id and share name; `userId` `-shareId` and username `link-share-<id>`, as the server writes the guest, so upload recovery and the guest's own comments match. Its id follows [D25](#d25-account-registry-in-sharedpreferences-without-secrets), so the same link opened again replaces the guest's session. The registry entry has `kind: link_share`, `link_share_id`, `project_id`, `share_name` and no `user_id`.
 - Name: the share's name, else the project's title (read at sign-in, then followed from each sync's project list, `AccountRegistry.updateGuestTitle`), else `link-share-<id>`; never the server's "Link Share".
@@ -1722,7 +1724,7 @@ Limits:
 
 *Accepted 2026-10-29 (step 37), the owner's decision.*
 
-- Android and iOS come out in the same first release.
+- Android and iOS reach 1.0.0 separately (owner, 2026-11-12): Android once its own checks pass; iOS stays in TestFlight until its device test passes, and both may still come out together if iOS is ready in time.
 - Google Play, plus a signed APK in every GitLab release for devices without Play. No F-Droid ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)).
 - The repository is on GitLab, https://gitlab.com/coderoftime/rurana, and CI runs on GitLab CI ([D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)); it goes public before the first beta, with every project of its group ([D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)).
 - 1.0.0 comes after a beta: test builds are `1.0.0-beta.N` (Play's closed test, TestFlight, and GitLab releases marked " (beta)", [D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)), then `1.0.0` for everyone.
