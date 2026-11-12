@@ -7,6 +7,8 @@ final class SheetOption<T> {
     required this.label,
     this.selected = false,
     this.destructive = false,
+    this.subtitle,
+    this.subtitleSemanticsLabel,
   });
 
   final T value;
@@ -15,6 +17,12 @@ final class SheetOption<T> {
 
   /// In the error colour, such as Remove below a list of permissions.
   final bool destructive;
+
+  /// A second line under [label], such as the date a shortcut stands for.
+  final String? subtitle;
+
+  /// How screen readers hear [subtitle]; null reads it as written.
+  final String? subtitleSemanticsLabel;
 }
 
 /// One choice out of [options] in a sheet over the page, the current one
@@ -92,6 +100,7 @@ class _OptionList<T extends Object> extends StatelessWidget {
           );
         }
         final option = options[index - 1];
+        final subtitle = option.subtitle;
         return ListTile(
           title: Text(
             option.label,
@@ -99,6 +108,9 @@ class _OptionList<T extends Object> extends StatelessWidget {
                 ? TextStyle(color: theme.colorScheme.error)
                 : null,
           ),
+          subtitle: subtitle == null
+              ? null
+              : Text(subtitle, semanticsLabel: option.subtitleSemanticsLabel),
           selected: option.selected,
           trailing: option.selected ? const Icon(Icons.check) : null,
           onTap: () => Navigator.of(context).pop(option.value),

@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
+import 'package:vikunja_mobile/features/common/presentation/share_web_link.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -871,7 +872,7 @@ class _LinkRow extends ConsumerWidget {
                 onPressed: url == null || onTap == null
                     ? null
                     : () => unawaited(
-                        shareLinkShareUrl(
+                        shareWebLink(
                           context,
                           ref,
                           url: url,

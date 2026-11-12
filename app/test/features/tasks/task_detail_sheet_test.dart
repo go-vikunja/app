@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/attribute_editors.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 
@@ -108,9 +109,8 @@ void main() {
     );
   });
 
-  testWidgets('a bare task shows only its status and offers a description', (
-    tester,
-  ) async {
+  testWidgets('a bare task shows its status, no property rows, and offers '
+      'a description and each property', (tester) async {
     await openDetail(tester, 'Bare task');
 
     final sheet = find.byType(TaskDetailSheet);
@@ -125,14 +125,29 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(
-      find.descendant(of: sheet, matching: find.text(en.taskDetailDueDateRow)),
-      findsNothing,
+    final addLine = find.descendant(
+      of: sheet,
+      matching: find.byType(AddAttributeLine),
     );
-    expect(
-      find.descendant(of: sheet, matching: find.text(en.taskDetailPriority)),
-      findsNothing,
-    );
+    expect(addLine, findsOneWidget);
+    // In English the due-date row's name reads as the add button does, so
+    // its one "Due date" is the button's.
+    expect(en.taskDetailDueDateRow, en.taskDetailDueDate);
+    for (final name in [en.taskDetailDueDate, en.taskDetailPriority]) {
+      expect(
+        find.descendant(of: sheet, matching: find.text(name)),
+        findsOneWidget,
+        reason: name,
+      );
+      expect(
+        find.descendant(
+          of: addLine,
+          matching: find.widgetWithText(TextButton, name),
+        ),
+        findsOneWidget,
+        reason: name,
+      );
+    }
   });
 
   testWidgets('the close button dismisses the sheet', (tester) async {

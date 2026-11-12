@@ -70,6 +70,28 @@ final class AccountLinkBases {
     return base.path.endsWith('/') ? base : base.replace(path: '${base.path}/');
   }
 
+  /// The web's address of a task, at the comment [commentId] when given:
+  /// on the frontend when it is http(s), never an http one for an https
+  /// server, else on the server root.
+  Uri taskLink(int taskId, {int? commentId}) {
+    final link = webFrontendBase(
+      serverRoot: serverRoot,
+      frontendUrl: frontendUrl,
+    ).resolve('tasks/$taskId');
+    return commentId == null
+        ? link
+        : link.replace(fragment: 'comment-$commentId');
+  }
+
+  /// The task a pasted [text] links to: an absolute http(s) address of a
+  /// task on the server or the frontend, its query and fragment ignored.
+  /// Null for anything else, a relative or schemeless path too.
+  int? pastedTaskLinkId(String text) {
+    final trimmed = text.trim();
+    if (!isWebLink(Uri.tryParse(trimmed))) return null;
+    return parseTaskIdFromUrl(trimmed, bases: taskLinkBases);
+  }
+
   @override
   bool operator ==(Object other) =>
       other is AccountLinkBases &&

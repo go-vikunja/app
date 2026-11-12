@@ -622,6 +622,29 @@ void main() {
       ]);
     });
 
+    testWidgets('a drop into one of two columns of the same title names it '
+        'by its place, as the screen-reader actions do', (tester) async {
+      storeBoard(
+        columns: [
+          bucket(21, 'To-Do', count: 3),
+          bucket(22, 'Later', count: 2),
+          bucket(23, 'Later', count: 1),
+        ],
+      );
+      await pumpBoard(tester);
+
+      await dragCard(
+        tester,
+        'Call Anna',
+        gapBelow(tester, 'Fix bike', below: 'Read book'),
+      );
+
+      expect(data.tasks.placements.single.$3.bucketId, 22);
+      expect(tester.takeAnnouncements(), [
+        isAccessibilityAnnouncement(en.boardMovedTo('Later (2)')),
+      ]);
+    });
+
     testWidgets('within a column a card goes between its new neighbours', (
       tester,
     ) async {

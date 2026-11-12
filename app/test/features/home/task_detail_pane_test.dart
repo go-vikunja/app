@@ -139,6 +139,7 @@ void main() {
       200,
       scrollable: _inPane(find.byType(Scrollable)).first,
     );
+    await tester.pumpAndSettle();
     await tester.tap(related);
     await tester.pumpAndSettle();
     expect(find.byType(TaskDetailPane), findsOneWidget);

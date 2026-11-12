@@ -1,12 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/core/files/link_share_actions.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
+import 'package:vikunja_mobile/features/common/presentation/share_web_link.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/view_labels.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_view_labels.dart';
 import 'package:vikunja_mobile/features/sharing/application/link_share_links.dart';
@@ -15,37 +14,6 @@ import 'package:vikunja_mobile/features/sharing/presentation/link_share_clipboar
 import 'package:vikunja_mobile/features/sharing/presentation/share_texts.dart';
 import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
-
-final _log = Logger('LinkShareSheet');
-
-/// The system's share sheet for a link share's [url], anchored on the
-/// widget of [context] on an iPad.
-Future<void> shareLinkShareUrl(
-  BuildContext context,
-  WidgetRef ref, {
-  required Uri url,
-  required String subject,
-}) async {
-  final l10n = context.l10n;
-  final messenger = ScaffoldMessenger.maybeOf(context);
-  final box = context.findRenderObject();
-  final origin = box is RenderBox && box.hasSize
-      ? box.localToGlobal(Offset.zero) & box.size
-      : null;
-  var shared = false;
-  try {
-    shared = await ref
-        .read(linkShareActionsProvider)
-        .shareLink(url, subject: subject, origin: origin);
-  } on Object catch (error) {
-    _log.info('Sharing a link failed: ${error.runtimeType}');
-  }
-  if (!shared) {
-    messenger
-      ?..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.shareFailureGeneric)));
-  }
-}
 
 /// A link share's name, or what stands in for a missing one.
 String linkShareTitle(AppLocalizations l10n, LinkShare share) =>
@@ -203,7 +171,7 @@ class _LinkShareSheetState extends ConsumerState<LinkShareSheet> {
           icon: Icons.share_outlined,
           label: l10n.linkShareShare,
           onTap: (context, url) => unawaited(
-            shareLinkShareUrl(
+            shareWebLink(
               context,
               ref,
               url: url,

@@ -8,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/avatar_crop_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/default_project_picker.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/one_time_secret_view.dart';
@@ -18,6 +19,7 @@ import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/attribute_editors.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/date_time_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
@@ -52,6 +54,7 @@ const overlayRegistry = <String>[
   'day-range picker',
   'project picker',
   'label picker',
+  'reminders sheet',
   'assignee picker',
   'default-project picker',
   'option sheet',
@@ -197,6 +200,17 @@ final List<SweepScenario> overlayScenarios = [
     expectScreen: (_) => find.byType(LabelPicker),
   ),
   _overlay(
+    'reminders sheet',
+    show: (context, tester) => unawaited(
+      editReminders(
+        context,
+        repository: containerOf(tester).read(taskRepositoryProvider)!,
+        taskId: 2,
+      ),
+    ),
+    expectScreen: (_) => find.byType(TaskRemindersSheet),
+  ),
+  _overlay(
     'assignee picker',
     show: (context, _) => unawaited(
       pickAssignees(context, projectId: workProjectId, selected: const [kim]),
@@ -228,6 +242,9 @@ final List<SweepScenario> overlayScenarios = [
                 value: priority.value,
                 label: priority.name,
                 selected: priority == TaskPriority.high,
+                subtitle: priority == TaskPriority.doNow
+                    ? l10n.boardDoneColumnHint
+                    : null,
               ),
           ],
         ),

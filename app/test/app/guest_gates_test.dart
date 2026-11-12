@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/description_editor/presentation/mention_bar.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/attribute_editors.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comment_composer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
@@ -382,6 +383,52 @@ void main() {
             .enabled,
         isTrue,
       );
+    });
+
+    testWidgets("a write guest's task sheet edits in place, and its menu "
+        'offers the link as the comment link is (proposed, for the owner '
+        'to confirm)', (tester) async {
+      data.details.detailsByTask[4] = const TaskDetails(
+        maxPermission: Permission.write,
+      );
+      await pumpProject(tester);
+      await tester.tap(find.text('Water the plants'));
+      await tester.pumpAndSettle();
+
+      expect(inSheet(find.byType(AddAttributeLine)), findsOneWidget);
+      await tester.tap(inSheet(find.byTooltip(en.moreActions)));
+      await tester.pumpAndSettle();
+      for (final item in [
+        en.taskCopyLink,
+        en.taskShareLink,
+        en.taskDuplicate,
+        en.taskDelete,
+      ]) {
+        expect(find.text(item), findsOneWidget, reason: item);
+      }
+      expect(find.text(en.taskMoveToColumn), findsNothing);
+    });
+
+    testWidgets("a read guest's task sheet offers no change, only the link", (
+      tester,
+    ) async {
+      data.projects.all = [guestProject()];
+      data.details.detailsByTask[4] = const TaskDetails(
+        maxPermission: Permission.read,
+      );
+      await pumpProject(tester);
+      await tester.tap(find.text('Water the plants'));
+      await tester.pumpAndSettle();
+
+      expect(inSheet(find.byTooltip(en.taskEdit)), findsNothing);
+      expect(inSheet(find.text(en.taskDetailMarkDone)), findsNothing);
+      expect(inSheet(find.byType(AddAttributeLine)), findsNothing);
+      await tester.tap(inSheet(find.byTooltip(en.moreActions)));
+      await tester.pumpAndSettle();
+      expect(find.text(en.taskCopyLink), findsOneWidget);
+      expect(find.text(en.taskShareLink), findsOneWidget);
+      expect(find.text(en.taskDuplicate), findsNothing);
+      expect(find.text(en.taskDelete), findsNothing);
     });
 
     testWidgets('@ in a comment suggests the people this device knows '

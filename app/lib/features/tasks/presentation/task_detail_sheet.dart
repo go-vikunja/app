@@ -27,20 +27,23 @@ import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
+import 'package:vikunja_mobile/features/common/presentation/share_web_link.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
+import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
-import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
+import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/application/reaction_toggle.dart';
 import 'package:vikunja_mobile/features/tasks/application/relation_search.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
@@ -50,6 +53,7 @@ import 'package:vikunja_mobile/features/tasks/application/task_write_access.dart
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/attachments_section.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/attribute_editors.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comment_composer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comment_messages.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_controller.dart';
@@ -57,6 +61,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/details/comments_sect
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_header_layout.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/details_notice.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/move_to_column.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/project_breadcrumb.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_picker.dart';
@@ -85,12 +90,14 @@ final _log = Logger('TaskDetail');
 /// server has (attachments, reactions, comments, whether the user follows
 /// it). [messengerBelow] is the messenger of the sheet this one opens over,
 /// see [TaskDetailSheet.messengerBelow]; [commentId] is a comment to show,
-/// see [TaskDetailSheet.commentId].
+/// see [TaskDetailSheet.commentId]; [board] is the board whose card opened
+/// it, see [TaskDetailSheet.board].
 Future<void> showTaskDetail(
   BuildContext context, {
   required Task task,
   GlobalKey<ScaffoldMessengerState>? messengerBelow,
   int? commentId,
+  TaskBoardOrigin? board,
 }) {
   switch (Theme.of(context).platform) {
     case TargetPlatform.iOS || TargetPlatform.macOS:
@@ -102,6 +109,7 @@ Future<void> showTaskDetail(
           scrollController: scrollController,
           messengerBelow: messengerBelow,
           commentId: commentId,
+          board: board,
         ),
       );
     case _:
@@ -118,6 +126,7 @@ Future<void> showTaskDetail(
           task: task,
           messengerBelow: messengerBelow,
           commentId: commentId,
+          board: board,
         ),
       );
   }
@@ -131,11 +140,13 @@ class _DraggableTaskDetail extends StatefulWidget {
     required this.task,
     required this.messengerBelow,
     required this.commentId,
+    required this.board,
   });
 
   final Task task;
   final GlobalKey<ScaffoldMessengerState>? messengerBelow;
   final int? commentId;
+  final TaskBoardOrigin? board;
 
   @override
   State<_DraggableTaskDetail> createState() => _DraggableTaskDetailState();
@@ -177,12 +188,13 @@ class _DraggableTaskDetailState extends State<_DraggableTaskDetail> {
       scrollController: scrollController,
       messengerBelow: widget.messengerBelow,
       commentId: widget.commentId,
+      board: widget.board,
       expand: _expand,
     ),
   );
 }
 
-enum _SheetAction { duplicate, delete }
+enum _SheetAction { moveToColumn, copyLink, share, duplicate, delete }
 
 /// What the detail does in the pane beside the list instead of in a sheet:
 /// [close] closes the pane, [openOther] shows another task inside it,
@@ -219,6 +231,7 @@ class TaskDetailSheet extends ConsumerStatefulWidget {
     required this.scrollController,
     this.messengerBelow,
     this.commentId,
+    this.board,
     this.expand,
     this.pane,
     super.key,
@@ -226,6 +239,9 @@ class TaskDetailSheet extends ConsumerStatefulWidget {
 
   final Task task;
   final ScrollController scrollController;
+
+  /// The board whose card opened the detail; null elsewhere.
+  final TaskBoardOrigin? board;
 
   /// Set in the pane beside the list; null in a sheet.
   final TaskDetailPaneHost? pane;
@@ -270,6 +286,10 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   late final String? _account;
   late final TaskWriteAccess _access;
   final GlobalKey _commentsHeader = GlobalKey();
+  final GlobalKey _menuKey = GlobalKey();
+  final _columnMoves = ColumnMoves();
+  // As of the last build: Move to column… plans against it once picked.
+  ColumnMoveChoice? _moveChoice;
   final _commentKeys = <int, GlobalKey>{};
   final _busyComments = <int>{};
   final _pendingTaskReactions = <String>{};
@@ -574,22 +594,16 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     widget.expand?.call();
   }
 
-  /// The web's permalink, which opens the task there at the comment.
-  /// Android 13 and later confirm a copy themselves.
-  Future<void> _copyLink(
-    Task task,
-    TaskComment comment,
-    AccountLinkBases bases,
-  ) async {
+  /// [link] to the web, confirmed with [copied]. A task link carries no
+  /// secret, so the plain clipboard does. Android 13 and later confirm a
+  /// copy themselves.
+  Future<void> _copyLink(Uri link, String copied) async {
     final l10n = context.l10n;
     final systemConfirms = ref.read(systemConfirmsCopiesProvider.future);
-    final link = bases.relativeBase
-        .resolve('tasks/${task.id}')
-        .replace(fragment: 'comment-${comment.id}');
     try {
       await Clipboard.setData(ClipboardData(text: '$link'));
     } on Object catch (error) {
-      _log.info('Copying a comment link failed: ${error.runtimeType}');
+      _log.info('Copying a link failed: ${error.runtimeType}');
       if (mounted) _showMessage(l10n.copyToClipboardFailed);
       return;
     }
@@ -597,19 +611,30 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     if (!mounted) return;
     unawaited(HapticFeedback.selectionClick());
     if (confirmed) {
-      announce(context, l10n.commentLinkCopied);
+      announce(context, copied);
     } else {
-      _showMessage(l10n.commentLinkCopied);
+      _showMessage(copied);
     }
   }
 
   /// Before a full-screen editor opens: the field that had the focus would
   /// get it back on return and the keyboard would cover what was edited.
   /// Unfocusing the field itself also clears the sheet's focus history; a
-  /// menu that just closed hands the focus back in a microtask first.
+  /// menu that just closed hands the focus back in a microtask first. A
+  /// row or button a keyboard user is on keeps the focus to come back to.
   Future<void> _dropFieldFocus() async {
     await Future<void>.delayed(Duration.zero);
-    FocusManager.instance.primaryFocus?.unfocus();
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus?.context?.findAncestorStateOfType<EditableTextState>() != null) {
+      focus!.unfocus();
+    }
+  }
+
+  /// A picker over the sheet, after which the comment field would take the
+  /// focus back and bring up the keyboard.
+  Future<void> _editInPlace(Future<void> Function() edit) async {
+    await _dropFieldFocus();
+    if (mounted) await edit();
   }
 
   /// In the full editor; it comes back with the comment as stored.
@@ -1097,7 +1122,10 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     final colors = theme.colorScheme;
     final pane = widget.pane;
     final repository = ref.watch(taskRepositoryProvider);
-    final stored = ref.watch(taskByIdProvider(widget.task.id)).value;
+    final storedValue = ref.watch(taskByIdProvider(widget.task.id));
+    final stored = storedValue.value;
+    // While it loads the row counts as there, so nothing flickers.
+    final rowMissing = storedValue.hasValue && stored == null;
     final task = stored ?? widget.task;
     // A queued create named by the server while the sheet is open.
     ref.listen(taskByIdProvider(widget.task.id), (_, next) {
@@ -1132,6 +1160,10 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     // and ignores its favourites.
     final guest = ref.watch(activeAccountIsGuestProvider);
     final linkBases = ref.watch(activeLinkBasesProvider);
+    final origin = widget.board;
+    final boardSource = origin == null
+        ? null
+        : ref.watch(boardSourceProvider(origin.projectId, origin.viewId)).value;
     String? otherProjectTitle(Task other) => other.projectId == task.projectId
         ? null
         : projectTitles[other.projectId];
@@ -1154,111 +1186,17 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       DateTime moment, {
       String? semanticsText,
       TextStyle? style,
+      VoidCallback? onTap,
+      String? tapHint,
     }) => _Attribute.text(
       icon: icon,
       label: label,
       text: formatter.absolute(moment),
       semanticsText: semanticsText ?? formatter.semanticsLabel(moment),
       style: style,
+      onTap: onTap,
+      tapHint: tapHint,
     );
-    final dueTone = DueTone.of(task, now: now);
-    final attributes = [
-      if (task.dueDate case final dueDate?)
-        dateAttribute(
-          dueTone == DueTone.overdue
-              ? Icons.error_outline
-              : Icons.event_outlined,
-          l10n.taskDetailDueDateRow,
-          dueDate,
-          semanticsText: dueTone == DueTone.overdue
-              ? l10n.taskOverdueSemantics(formatter.spokenAbsolute(dueDate))
-              : null,
-          style: TextStyle(
-            fontWeight: FontWeight.w500,
-            color: switch (dueTone) {
-              DueTone.overdue => colors.error,
-              DueTone.today => colors.primary,
-              DueTone.later => colors.onSurface,
-              DueTone.done => colors.onSurfaceVariant,
-            },
-          ),
-        ),
-      if (task.startDate case final startDate?)
-        dateAttribute(
-          Icons.play_arrow_outlined,
-          l10n.taskDetailStartDate,
-          startDate,
-        ),
-      if (task.endDate case final endDate?)
-        dateAttribute(Icons.stop_outlined, l10n.taskDetailEndDate, endDate),
-      if (task.priority != TaskPriority.unset)
-        _Attribute(
-          icon: Icons.flag_outlined,
-          label: l10n.taskDetailPriority,
-          value: (_) => _PriorityValue(priority: task.priority),
-        ),
-      if (percent > 0)
-        _Attribute.text(
-          icon: Icons.percent,
-          label: l10n.taskDetailProgress,
-          text: l10n.taskPercentDone(percent),
-        ),
-      if (repeat != null)
-        _Attribute.text(
-          icon: Icons.repeat,
-          label: l10n.taskDetailRepeat,
-          text: repeat,
-        ),
-      if (task.reminders.isNotEmpty)
-        _Attribute.text(
-          icon: Icons.alarm_outlined,
-          label: l10n.taskDetailReminders,
-          text: [
-            for (final reminder in task.reminders)
-              formatReminder(
-                l10n,
-                reminder,
-                formatAbsolute: formatter.absolute,
-              ),
-          ].join('\n'),
-          semanticsText: [
-            for (final reminder in task.reminders)
-              formatReminder(
-                l10n,
-                reminder,
-                formatAbsolute: formatter.spokenAbsolute,
-              ),
-          ].join('\n'),
-        ),
-      if (task.labels.isNotEmpty)
-        _Attribute(
-          icon: Icons.label_outline,
-          label: l10n.taskDetailLabels,
-          merge: false,
-          value: (alignment) => Wrap(
-            alignment: alignment,
-            spacing: 6,
-            children: [
-              for (final label in rowLabels(task.labels))
-                LabelPill(label: label, onTap: () => _openLabel(label)),
-            ],
-          ),
-        ),
-      if (task.assignees.isNotEmpty)
-        _Attribute(
-          icon: Icons.people_outline,
-          label: l10n.taskDetailAssignees,
-          value: (alignment) => Wrap(
-            alignment: alignment,
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              for (final user in task.assignees) _Assignee(user: user),
-            ],
-          ),
-        ),
-    ];
-
     return ScaffoldMessenger(
       key: _messenger,
       child: Scaffold(
@@ -1285,19 +1223,210 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   } ??
                   (details == null ? null : _writable(details));
               final readOnly = writable == false;
-              // Every task write in a read-only project would end as a
-              // sync problem.
-              final changer = readOnly ? null : repository;
+              // Every task write in a read-only or archived project would
+              // end as a sync problem.
+              final locked = readOnly || archived;
+              final changer = locked ? null : repository;
+              // A change for a task without a row would be dropped.
+              final editor = rowMissing ? null : changer;
               // A subtask may live in another project.
               bool subtaskReadOnly(Task subtask) =>
                   subtask.projectId == task.projectId
-                  ? readOnly
+                  ? locked
                   : switch (projectsById[subtask.projectId]) {
-                      final project? => !ProjectAccess.of(
-                        project,
-                      ).canChangeTasks,
+                      final project? =>
+                        isArchivedInTree(subtask.projectId, projectsById) ||
+                            !ProjectAccess.of(project).canChangeTasks,
                       null => false,
                     };
+              final moveChoice = origin == null || changer == null
+                  ? null
+                  : _columnMoves.choiceFor(
+                      task,
+                      origin: origin,
+                      source: boardSource,
+                      archived: archived,
+                      writable: writable != false,
+                    );
+              _moveChoice = moveChoice;
+              VoidCallback? inPlace(
+                Future<void> Function(TaskRepository editor) edit,
+              ) => switch (editor) {
+                final editor? => () => unawaited(
+                  _editInPlace(() => edit(editor)),
+                ),
+                null => null,
+              };
+              final changeDueDate = inPlace(
+                (editor) => editDueDate(
+                  context,
+                  repository: editor,
+                  task: task,
+                  now: ref.read(clockProvider)(),
+                  display: ref.read(displaySettingsProvider),
+                ),
+              );
+              final changePriority = inPlace(
+                (editor) =>
+                    editPriority(context, repository: editor, task: task),
+              );
+              final changeReminders = inPlace(
+                (editor) =>
+                    editReminders(context, repository: editor, taskId: task.id),
+              );
+              final changeLabels = inPlace(
+                (editor) => editLabels(context, repository: editor, task: task),
+              );
+              final firstReminder = inPlace(
+                (editor) => addReminder(
+                  context,
+                  repository: editor,
+                  task: task,
+                  now: ref.read(clockProvider)(),
+                  showMessage: _showMessage,
+                ),
+              );
+              final dueTone = DueTone.of(task, now: now);
+              final attributes = [
+                if (task.dueDate case final dueDate?)
+                  dateAttribute(
+                    dueTone == DueTone.overdue
+                        ? Icons.error_outline
+                        : Icons.event_outlined,
+                    l10n.taskDetailDueDateRow,
+                    dueDate,
+                    semanticsText: dueTone == DueTone.overdue
+                        ? l10n.taskOverdueSemantics(
+                            formatter.spokenAbsolute(dueDate),
+                          )
+                        : null,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w500,
+                      color: switch (dueTone) {
+                        DueTone.overdue => colors.error,
+                        DueTone.today => colors.primary,
+                        DueTone.later => colors.onSurface,
+                        DueTone.done => colors.onSurfaceVariant,
+                      },
+                    ),
+                    onTap: changeDueDate,
+                    tapHint: l10n.taskDetailChangeDueDate,
+                  ),
+                if (task.startDate case final startDate?)
+                  dateAttribute(
+                    Icons.play_arrow_outlined,
+                    l10n.taskDetailStartDate,
+                    startDate,
+                  ),
+                if (task.endDate case final endDate?)
+                  dateAttribute(
+                    Icons.stop_outlined,
+                    l10n.taskDetailEndDate,
+                    endDate,
+                  ),
+                if (task.priority != TaskPriority.unset)
+                  _Attribute(
+                    icon: Icons.flag_outlined,
+                    label: l10n.taskDetailPriority,
+                    value: (_) => _PriorityValue(priority: task.priority),
+                    onTap: changePriority,
+                    tapHint: l10n.taskDetailChangePriority,
+                  ),
+                if (percent > 0)
+                  _Attribute.text(
+                    icon: Icons.percent,
+                    label: l10n.taskDetailProgress,
+                    text: l10n.taskPercentDone(percent),
+                  ),
+                if (repeat != null)
+                  _Attribute.text(
+                    icon: Icons.repeat,
+                    label: l10n.taskDetailRepeat,
+                    text: repeat,
+                  ),
+                if (task.reminders.isNotEmpty)
+                  _Attribute.text(
+                    icon: Icons.alarm_outlined,
+                    label: l10n.taskDetailReminders,
+                    text: [
+                      for (final reminder in task.reminders)
+                        formatReminder(
+                          l10n,
+                          reminder,
+                          formatAbsolute: formatter.absolute,
+                        ),
+                    ].join('\n'),
+                    semanticsText: [
+                      for (final reminder in task.reminders)
+                        formatReminder(
+                          l10n,
+                          reminder,
+                          formatAbsolute: formatter.spokenAbsolute,
+                        ),
+                    ].join('\n'),
+                    onTap: changeReminders,
+                    tapHint: l10n.taskDetailEditReminders,
+                  ),
+                if (task.labels.isNotEmpty)
+                  _Attribute(
+                    icon: Icons.label_outline,
+                    label: l10n.taskDetailLabels,
+                    merge: false,
+                    value: (alignment) => Wrap(
+                      alignment: alignment,
+                      spacing: 6,
+                      children: [
+                        for (final label in rowLabels(task.labels))
+                          LabelPill(
+                            label: label,
+                            onTap: () => _openLabel(label),
+                          ),
+                        // The pills open their labels' tasks (D60).
+                        if (changeLabels != null)
+                          IconButton(
+                            onPressed: changeLabels,
+                            tooltip: l10n.taskDetailChangeLabels,
+                            icon: const Icon(Icons.edit_outlined),
+                          ),
+                      ],
+                    ),
+                  ),
+                if (task.assignees.isNotEmpty)
+                  _Attribute(
+                    icon: Icons.people_outline,
+                    label: l10n.taskDetailAssignees,
+                    value: (alignment) => Wrap(
+                      alignment: alignment,
+                      spacing: 12,
+                      runSpacing: 8,
+                      children: [
+                        for (final user in task.assignees)
+                          _Assignee(user: user),
+                      ],
+                    ),
+                  ),
+              ];
+              final addDueDate = task.dueDate == null ? changeDueDate : null;
+              final addPriority = task.priority == TaskPriority.unset
+                  ? changePriority
+                  : null;
+              final addFirstReminder = task.reminders.isEmpty
+                  ? firstReminder
+                  : null;
+              final addLabel = task.labels.isEmpty ? changeLabels : null;
+              final footer =
+                  addDueDate == null &&
+                      addPriority == null &&
+                      addFirstReminder == null &&
+                      addLabel == null
+                  ? null
+                  : AddAttributeLine(
+                      onDueDate: addDueDate,
+                      onPriority: addPriority,
+                      onReminder: addFirstReminder,
+                      onLabel: addLabel,
+                    );
+
               final mayWrite = onlineWrites && writable == true;
               final mayReact = mayWrite && !guest;
               final canComment = mayWrite && commentsOffered;
@@ -1321,8 +1450,12 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 offline: offline,
                 onCopyLink: linkBases == null || task.id <= 0
                     ? null
-                    : (comment) =>
-                          unawaited(_copyLink(task, comment, linkBases)),
+                    : (comment) => unawaited(
+                        _copyLink(
+                          linkBases.taskLink(task.id, commentId: comment.id),
+                          l10n.commentLinkCopied,
+                        ),
+                      ),
                 onReply: canComment ? _reply : null,
                 onEdit: canComment
                     ? (comment) => unawaited(_editComment(task, comment))
@@ -1344,6 +1477,107 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 busy: _busyComments,
                 pendingReactions: _pendingCommentReactions,
               );
+              PopupMenuItem<_SheetAction> menuItem(
+                _SheetAction action,
+                IconData icon,
+                String text, {
+                bool enabled = true,
+                Color? color,
+              }) => PopupMenuItem(
+                value: action,
+                enabled: enabled,
+                child: Row(
+                  children: [
+                    Icon(icon, color: color),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        text,
+                        style: color == null ? null : TextStyle(color: color),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+              final moves = moveChoice != null;
+              final links = linkBases != null && task.id > 0;
+              final menuItems = <PopupMenuEntry<_SheetAction>>[
+                if (moves)
+                  menuItem(
+                    _SheetAction.moveToColumn,
+                    Icons.view_kanban_outlined,
+                    l10n.taskMoveToColumn,
+                  ),
+                if (links) ...[
+                  menuItem(
+                    _SheetAction.copyLink,
+                    Icons.link,
+                    l10n.taskCopyLink,
+                  ),
+                  menuItem(
+                    _SheetAction.share,
+                    Icons.share_outlined,
+                    l10n.taskShareLink,
+                  ),
+                ],
+                if (changer != null) ...[
+                  if (moves || links) const PopupMenuDivider(),
+                  menuItem(
+                    _SheetAction.duplicate,
+                    Icons.content_copy_outlined,
+                    l10n.taskDuplicate,
+                    enabled: !_duplicating,
+                  ),
+                  const PopupMenuDivider(),
+                  menuItem(
+                    _SheetAction.delete,
+                    Icons.delete_outline,
+                    l10n.taskDelete,
+                    color: colors.error,
+                  ),
+                ],
+              ];
+              // What the menu offered may be gone by the time it closes.
+              void onMenu(_SheetAction action) {
+                switch (action) {
+                  case _SheetAction.moveToColumn:
+                    if (changer == null) return;
+                    unawaited(
+                      _editInPlace(
+                        () => moveToColumn(
+                          context,
+                          repository: changer,
+                          task: task,
+                          choice: () => _moveChoice,
+                          showMessage: _showMessage,
+                        ),
+                      ),
+                    );
+                  case _SheetAction.copyLink:
+                    if (linkBases == null) return;
+                    unawaited(
+                      _copyLink(
+                        linkBases.taskLink(task.id),
+                        l10n.taskLinkCopied,
+                      ),
+                    );
+                  case _SheetAction.share:
+                    if (linkBases == null) return;
+                    unawaited(
+                      shareWebLink(
+                        _menuKey.currentContext ?? context,
+                        ref,
+                        url: linkBases.taskLink(task.id),
+                        subject: task.title,
+                      ),
+                    );
+                  case _SheetAction.duplicate:
+                    if (changer != null) unawaited(_duplicate(changer, task));
+                  case _SheetAction.delete:
+                    if (changer != null) unawaited(_delete(changer, task));
+                }
+              }
+
               final back = pane?.back;
               final header = Padding(
                 padding: EdgeInsetsDirectional.only(
@@ -1373,7 +1607,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   actions: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (!readOnly)
+                      if (!locked)
                         IconButton(
                           onPressed: repository == null
                               ? null
@@ -1403,53 +1637,15 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                                 ),
                         ),
                       ],
-                      if (!readOnly)
+                      if (menuItems.isNotEmpty)
                         PopupMenuButton<_SheetAction>(
+                          key: _menuKey,
                           // Beside the screen's own More in the pane.
                           tooltip: pane == null
                               ? l10n.moreActions
                               : l10n.taskDetailPaneMore(task.title),
-                          enabled: repository != null,
-                          onSelected: (action) => switch (action) {
-                            _SheetAction.duplicate => unawaited(
-                              _duplicate(repository!, task),
-                            ),
-                            _SheetAction.delete => unawaited(
-                              _delete(repository!, task),
-                            ),
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: _SheetAction.duplicate,
-                              enabled: !_duplicating,
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.content_copy_outlined),
-                                  const SizedBox(width: 12),
-                                  Flexible(child: Text(l10n.taskDuplicate)),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuDivider(),
-                            PopupMenuItem(
-                              value: _SheetAction.delete,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.delete_outline,
-                                    color: colors.error,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Flexible(
-                                    child: Text(
-                                      l10n.taskDelete,
-                                      style: TextStyle(color: colors.error),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                          onSelected: onMenu,
+                          itemBuilder: (context) => menuItems,
                         ),
                       IconButton(
                         onPressed:
@@ -1533,7 +1729,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       ),
                     ),
                   const SizedBox(height: 12),
-                  if (!readOnly)
+                  if (!locked)
                     _Inset(
                       child: _DoneButton(
                         done: task.done,
@@ -1548,9 +1744,9 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                               ),
                       ),
                     ),
-                  if (attributes.isNotEmpty) ...[
+                  if (attributes.isNotEmpty || footer != null) ...[
                     const SizedBox(height: 20),
-                    _AttributeCard(attributes: attributes),
+                    _AttributeCard(attributes: attributes, footer: footer),
                   ],
                   if (task.parentTasks.isNotEmpty)
                     ParentTasksBlock(
@@ -1996,11 +2192,12 @@ class _PendingNote extends StatelessWidget {
 
 /// The attribute card, whose rows share one column for their names, as
 /// wide as the widest name on one line, so that they line up and go from
-/// side by side to stacked together.
+/// side by side to stacked together; [footer] is its last row.
 class _AttributeCard extends StatelessWidget {
-  const new({required this.attributes});
+  const new({required this.attributes, this.footer});
 
   final List<_Attribute> attributes;
+  final Widget? footer;
 
   static const _minLabelWidth = 96.0;
 
@@ -2031,7 +2228,7 @@ class _AttributeCard extends StatelessWidget {
         .ceilToDouble();
     return _NameColumn(
       width: width,
-      child: SectionCard(children: attributes),
+      child: SectionCard(children: [...attributes, ?footer]),
     );
   }
 }
@@ -2048,13 +2245,16 @@ class _NameColumn extends InheritedWidget {
 /// One row of the attribute card: an icon, the name in the card's column
 /// and the value at the end; the value goes under the name when the two do
 /// not fit side by side, as at a large text size. [value] gets the
-/// alignment of the side it is on.
+/// alignment of the side it is on. With [onTap] the whole row is a button,
+/// whose tap [tapHint] names.
 class _Attribute extends StatelessWidget {
   const new({
     required this.icon,
     required this.label,
     required this.value,
     this.merge = true,
+    this.onTap,
+    this.tapHint,
   });
 
   factory text({
@@ -2063,9 +2263,13 @@ class _Attribute extends StatelessWidget {
     required String text,
     String? semanticsText,
     TextStyle? style,
+    VoidCallback? onTap,
+    String? tapHint,
   }) => _Attribute(
     icon: icon,
     label: label,
+    onTap: onTap,
+    tapHint: tapHint,
     value: (alignment) => Text(
       text,
       semanticsLabel: semanticsText,
@@ -2083,6 +2287,9 @@ class _Attribute extends StatelessWidget {
   /// False when [value] holds buttons, each of which a screen reader must
   /// reach on its own.
   final bool merge;
+
+  final VoidCallback? onTap;
+  final String? tapHint;
 
   static const _minValueWidth = 120.0;
 
@@ -2107,7 +2314,7 @@ class _Attribute extends StatelessWidget {
         .width;
     final name = Text(label, style: nameStyle(context));
     final glyph = Icon(icon, size: 20, color: colors.onSurfaceVariant);
-    final row = DefaultTextStyle.merge(
+    final padded = DefaultTextStyle.merge(
       style: theme.textTheme.bodyMedium,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -2161,6 +2368,14 @@ class _Attribute extends StatelessWidget {
         ),
       ),
     );
+    final onTap = this.onTap;
+    final row = onTap == null
+        ? padded
+        : Semantics(
+            button: true,
+            onTapHint: tapHint,
+            child: InkWell(onTap: onTap, child: padded),
+          );
     return merge ? MergeSemantics(child: row) : row;
   }
 }

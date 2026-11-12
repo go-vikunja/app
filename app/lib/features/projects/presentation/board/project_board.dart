@@ -160,17 +160,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
     if (!identical(source, _builtFrom) || !identical(view, _builtFor)) {
       _builtFrom = source;
       _builtFor = view;
-      _columns = buildBoard(
-        view: view,
-        buckets: source.buckets,
-        snapshot: source.snapshot,
-        loadedAt: source.loadedAt,
-        projectTasks: source.projectTasks,
-        queued: source.queued,
-        movedHere: source.movedHere,
-        queuedDoneChanges: source.queuedDoneChanges,
-        matchingIds: source.matchingIds,
-      );
+      _columns = boardColumnsOf(view, source);
     }
     return _columns;
   }
@@ -209,23 +199,14 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
         return;
       case ColumnFull():
         _refuseFullColumn();
-      case MarkCardDone(:final placement):
+      case MarkCardDone() || PlaceCard():
         unawaited(HapticFeedback.selectionClick());
         announce(context, moved);
-        await repository.placeTask(
+        await queueCardMove(
+          repository,
           task.id,
           viewId: widget.view.id,
-          placement: placement,
-          done: true,
-        );
-      case PlaceCard(:final placement, :final done):
-        unawaited(HapticFeedback.selectionClick());
-        announce(context, moved);
-        await repository.placeTask(
-          task.id,
-          viewId: widget.view.id,
-          placement: placement,
-          done: done,
+          move: move,
         );
     }
   }
@@ -239,15 +220,9 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
     void moveTo(int bucketId, int index, String moved) => unawaited(
       _move(task, toBucketId: bucketId, index: index, moved: moved),
     );
-    final titleUses = <String, int>{};
-    for (final other in _columns) {
-      titleUses.update(other.bucket.title, (n) => n + 1, ifAbsent: () => 1);
-    }
     // Actions with the same label are one action to the semantics tree, so
     // columns of the same title are told apart by their place.
-    String nameOf(int place, Bucket bucket) => titleUses[bucket.title]! > 1
-        ? '${bucket.title} (${place + 1})'
-        : bucket.title;
+    final names = columnNamesOf(_columns);
     // A repeating task keeps no place in the done column (it reopens), and
     // nothing goes below the last card loaded of a column with more.
     final doneBucketId = widget.view.doneBucketId;
@@ -257,14 +232,14 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
             column.bucket.id == doneBucketId);
     final lowest = column.tasks.length - (column.hasMore ? 2 : 1);
     return {
-      for (final (place, other) in _columns.indexed)
+      for (final other in _columns)
         if (other.bucket.id != column.bucket.id)
           CustomSemanticsAction(
-            label: l10n.boardMoveTo(nameOf(place, other.bucket)),
+            label: l10n.boardMoveTo(names[other.bucket.id]!),
           ): () => moveTo(
             other.bucket.id,
             0,
-            l10n.boardMovedTo(nameOf(place, other.bucket)),
+            l10n.boardMovedTo(names[other.bucket.id]!),
           ),
       if (reorders && index > 0)
         CustomSemanticsAction(label: l10n.moveUp): () =>
@@ -449,7 +424,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
           drag.task,
           toBucketId: target.bucketId,
           index: target.index,
-          moved: l10n.boardMovedTo(column.bucket.title),
+          moved: l10n.boardMovedTo(columnNamesOf(_columns)[target.bucketId]!),
         ),
       );
       return;
@@ -813,7 +788,14 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
       now: widget.now,
       minimumPriority: widget.minimumPriority,
       pending: pending,
-      onTap: () => openTaskDetail(context, task: task),
+      onTap: () => openTaskDetail(
+        context,
+        task: task,
+        board: TaskBoardOrigin(
+          projectId: widget.projectId,
+          viewId: widget.view.id,
+        ),
+      ),
       actions: widget.readOnly ? const {} : _actionsFor(column, task, index),
     );
     if (widget.readOnly) return card;

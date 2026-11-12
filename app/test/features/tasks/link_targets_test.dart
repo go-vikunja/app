@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
 
 import '../../helpers/server_connections.dart';
@@ -108,5 +109,102 @@ void main() {
       uri('https://api.example.org'),
       uri('https://app.example.org/web/'),
     ]);
+  });
+
+  group("a task's web address", () {
+    final httpFrontend = AccountLinkBases(
+      serverRoot: Uri.parse('https://tasks.example.org/vikunja'),
+      frontendUrl: Uri.parse('http://tasks.example.org:8080/'),
+    );
+
+    test('is on the server root without a frontend, at a comment with its '
+        'fragment', () {
+      expect(
+        server.taskLink(4),
+        uri('https://tasks.example.org/vikunja/tasks/4'),
+      );
+      expect(
+        server.taskLink(4, commentId: 1),
+        uri('https://tasks.example.org/vikunja/tasks/4#comment-1'),
+      );
+    });
+
+    test('is on an https frontend', () {
+      expect(
+        withFrontend.taskLink(9),
+        uri('https://app.example.org/web/tasks/9'),
+      );
+      expect(
+        withFrontend.taskLink(9, commentId: 3),
+        uri('https://app.example.org/web/tasks/9#comment-3'),
+      );
+    });
+
+    test('is on the server root when the frontend is http and the server '
+        'https', () {
+      expect(
+        httpFrontend.taskLink(4),
+        uri('https://tasks.example.org/vikunja/tasks/4'),
+      );
+    });
+
+    test('leads back to its task', () {
+      for (final bases in [server, withFrontend, httpFrontend]) {
+        for (final link in [
+          bases.taskLink(42),
+          bases.taskLink(42, commentId: 7),
+        ]) {
+          expect(
+            parseTaskIdFromUrl(link.toString(), bases: bases.taskLinkBases),
+            42,
+            reason: '$link',
+          );
+          expect(bases.pastedTaskLinkId(link.toString()), 42, reason: '$link');
+        }
+      }
+    });
+  });
+
+  group('a pasted link names a task', () {
+    for (final (text, bases, id) in [
+      ('https://tasks.example.org/vikunja/tasks/12', server, 12),
+      ('  https://tasks.example.org/vikunja/tasks/12\n', server, 12),
+      (
+        'https://tasks.example.org/vikunja/tasks/12?view=3#comment-5',
+        server,
+        12,
+      ),
+      ('https://app.example.org/web/tasks/9', withFrontend, 9),
+      ('https://api.example.org/tasks/9#comment-1', withFrontend, 9),
+    ]) {
+      test(text, () {
+        expect(bases.pastedTaskLinkId(text), id);
+      });
+    }
+  });
+
+  group('a pasted text names no task', () {
+    // Without a path prefix, the web's parser takes these relative texts
+    // as task links of the server.
+    final noPrefix = AccountLinkBases(
+      serverRoot: Uri.parse('https://vikunja.example.com'),
+    );
+    for (final (text, bases) in [
+      ('/tasks/12', noPrefix),
+      ('tasks/12', noPrefix),
+      ('/vikunja/tasks/12', server),
+      ('vikunja.example.com/tasks/12', noPrefix),
+      ('https://evil.example.org/vikunja/tasks/12', server),
+      ('https://tasks.example.org/vikunja/tasks/12/edit', server),
+      ('/tasks/12/edit', noPrefix),
+      ('https://tasks.example.org/vikunja/projects/3', server),
+      ('Quarterly report', server),
+      ('#12', server),
+      ('', server),
+    ]) {
+      test(text.isEmpty ? '(empty)' : text, () {
+        expect(bases.pastedTaskLinkId(text), isNull);
+      });
+    }
   });
 }

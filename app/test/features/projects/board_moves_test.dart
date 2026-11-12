@@ -1,9 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 
 import '../../helpers/sample_data.dart';
+import '../../helpers/sync_fakes.dart';
 
 void main() {
   final view = sampleKanbanView(
@@ -276,6 +278,196 @@ void main() {
     test('an empty column spaces them 2^16 apart', () {
       expect(positionsOnTop(null, count: 1), [65536]);
       expect(positionsOnTop(null, count: 3), [65536, 131072, 196608]);
+    });
+  });
+
+  test("a board origin is its project's and view's ids", () {
+    const origin = TaskBoardOrigin(projectId: 1, viewId: 5);
+    expect(origin, const TaskBoardOrigin(projectId: 1, viewId: 5));
+    expect(
+      origin.hashCode,
+      const TaskBoardOrigin(projectId: 1, viewId: 5).hashCode,
+    );
+    expect(origin, isNot(const TaskBoardOrigin(projectId: 1, viewId: 6)));
+    expect(origin, isNot(const TaskBoardOrigin(projectId: 2, viewId: 5)));
+  });
+
+  group('column names', () {
+    BoardColumn titled(int bucketId, String title) => BoardColumn(
+      bucket: Bucket(
+        id: bucketId,
+        viewId: 5,
+        title: title,
+        position: bucketId * 100,
+      ),
+      tasks: const [],
+      shownCount: 0,
+      hasMore: false,
+    );
+
+    test('are the titles when each is used once', () {
+      expect(columnNamesOf([titled(1, 'To do'), titled(2, 'Doing')]), {
+        1: 'To do',
+        2: 'Doing',
+      });
+    });
+
+    test('carry their place on the board when a title repeats', () {
+      expect(
+        columnNamesOf([
+          titled(7, 'Later'),
+          titled(3, 'Now'),
+          titled(9, 'Later'),
+        ]),
+        {7: 'Later (1)', 3: 'Now', 9: 'Later (3)'},
+      );
+    });
+  });
+
+  group('the columns of a source', () {
+    final loadedAt = DateTime.utc(2026, 10, 10, 12);
+    const buckets = [
+      Bucket(id: 1, viewId: 5, title: 'To do', position: 100, count: 2),
+      Bucket(id: 2, viewId: 5, title: 'Doing', position: 200, count: 1),
+      Bucket(id: 3, viewId: 5, title: 'Done', position: 300),
+    ];
+    const snapshot = <int, BoardSlot>{
+      1: (bucketId: 1, position: 100),
+      2: (bucketId: 2, position: 200),
+      3: (bucketId: 1, position: 300),
+      5: (bucketId: 1, position: 400),
+    };
+    final projectTasks = [
+      sampleTask(id: 6, title: 'New', created: DateTime(2026, 10, 10, 13)),
+      sampleTask(id: 1, title: 'Queued'),
+      sampleTask(id: 2, title: 'Doing'),
+      sampleTask(id: 3, title: 'Filtered out'),
+      sampleTask(id: 4, title: 'Moved here'),
+      sampleTask(id: 5, title: 'Done here', done: true),
+    ];
+    const queued = {1: BucketPlacement(bucketId: 2, position: 50)};
+    const movedHere = {4};
+    const queuedDoneChanges = {5};
+    const matchingIds = {1, 2, 4, 5, 6};
+
+    BoardSource source({Set<String> without = const {}}) => BoardSource(
+      view: view,
+      buckets: without.contains('buckets') ? const [] : buckets,
+      snapshot: without.contains('snapshot') ? const {} : snapshot,
+      loadedAt: without.contains('loadedAt') ? null : loadedAt,
+      projectTasks: without.contains('projectTasks') ? const [] : projectTasks,
+      queued: without.contains('queued') ? const {} : queued,
+      movedHere: without.contains('movedHere') ? const {} : movedHere,
+      queuedDoneChanges: without.contains('queuedDoneChanges')
+          ? const {}
+          : queuedDoneChanges,
+      matchingIds: without.contains('matchingIds') ? null : matchingIds,
+    );
+
+    List<String> shape(List<BoardColumn> columns) => [
+      for (final column in columns)
+        [
+          column.bucket.id,
+          for (final task in column.tasks) '${task.id}@${task.position}',
+          column.shownCount,
+          column.hasMore,
+        ].join(' '),
+    ];
+
+    test("are the board's own, built from every part of it", () {
+      expect(
+        shape(boardColumnsOf(view, source())),
+        shape(
+          buildBoard(
+            view: view,
+            buckets: buckets,
+            snapshot: snapshot,
+            loadedAt: loadedAt,
+            projectTasks: projectTasks,
+            queued: queued,
+            movedHere: movedHere,
+            queuedDoneChanges: queuedDoneChanges,
+            matchingIds: matchingIds,
+          ),
+        ),
+      );
+    });
+
+    test('change with each part of it', () {
+      final full = shape(boardColumnsOf(view, source()));
+      for (final part in [
+        'buckets',
+        'snapshot',
+        'loadedAt',
+        'projectTasks',
+        'queued',
+        'movedHere',
+        'queuedDoneChanges',
+        'matchingIds',
+      ]) {
+        expect(
+          shape(boardColumnsOf(view, source(without: {part}))),
+          isNot(full),
+          reason: part,
+        );
+      }
+    });
+  });
+
+  group('queueing a move', () {
+    late SyncFakes data;
+
+    setUp(() {
+      data = SyncFakes(now: DateTime(2026, 10, 10, 12));
+      data.tasks.all = [card(1, 100), card(2, 200, repeats: true)];
+    });
+
+    test('places the card with the done state the move changes', () async {
+      const placement = BucketPlacement(bucketId: 3, position: 50);
+      await queueCardMove(
+        data.tasks,
+        1,
+        viewId: 5,
+        move: const PlaceCard(placement, done: true),
+      );
+      await queueCardMove(
+        data.tasks,
+        1,
+        viewId: 5,
+        move: const PlaceCard(BucketPlacement(bucketId: 1, position: 10)),
+      );
+      await queueCardMove(
+        data.tasks,
+        1,
+        viewId: 5,
+        move: const PlaceCard(placement, done: false),
+      );
+
+      expect(data.tasks.placements, [
+        (1, 5, placement, true),
+        (1, 5, const BucketPlacement(bucketId: 1, position: 10), null),
+        (1, 5, placement, false),
+      ]);
+    });
+
+    test('marks a repeating task done in the column it reopens in', () async {
+      await queueCardMove(
+        data.tasks,
+        2,
+        viewId: 5,
+        move: const MarkCardDone(1),
+      );
+
+      expect(data.tasks.placements, [
+        (2, 5, const BucketPlacement(bucketId: 1), true),
+      ]);
+    });
+
+    test('queues nothing for a full column', () async {
+      await queueCardMove(data.tasks, 1, viewId: 5, move: const ColumnFull());
+
+      expect(data.tasks.placements, isEmpty);
+      expect(data.tasks.writes, isEmpty);
     });
   });
 }

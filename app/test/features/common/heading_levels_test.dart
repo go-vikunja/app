@@ -153,6 +153,17 @@ void main() {
     Finder inSheet(Finder finder) =>
         find.descendant(of: find.byType(TaskDetailSheet), matching: finder);
     expectHeading(tester, inSheet(find.text('Write report')), 1);
+    // Below the property card, which a bare task has too.
+    await tester.ensureVisible(
+      find
+          .descendant(
+            of: find.byType(TaskDetailSheet),
+            matching: find.byType(DetailSectionHeader, skipOffstage: false),
+            skipOffstage: false,
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
     final sections = inSheet(find.byType(DetailSectionHeader));
     expect(sections, findsWidgets);
     expectHeading(

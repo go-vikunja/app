@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 part 'task_detail_pane.g.dart';
@@ -10,9 +11,12 @@ part 'task_detail_pane.g.dart';
 /// A task in a tab's detail pane. The pane keeps a stack of them, the tasks
 /// opened from one another inside it, and shows the top one.
 final class TaskDetailPaneEntry {
-  new(this.task, {this.commentId});
+  new(this.task, {this.commentId, this.board});
 
   final Task task;
+
+  /// The board whose card opened it; its menu then offers Move to column….
+  TaskBoardOrigin? board;
 
   /// The comment to show, handed over when the entry first shows.
   int? commentId;
@@ -36,7 +40,7 @@ class TaskDetailPaneScope extends InheritedModel<int> {
 
   final bool available;
   final int? selectedTaskId;
-  final void Function(Task task) open;
+  final void Function(Task task, {TaskBoardOrigin? board}) open;
 
   /// The task the current tab's pane shows; null without a pane and
   /// outside the tabs. Rebuilds [context] whenever that changes.
@@ -70,12 +74,17 @@ class TaskDetailPaneScope extends InheritedModel<int> {
 
 /// The detail of [task] for a row, a card or a timeline bar: in the
 /// current tab's pane when the window has room for one, else in a sheet.
-void openTaskDetail(BuildContext context, {required Task task}) {
+/// [board] is the board of the card it was opened from.
+void openTaskDetail(
+  BuildContext context, {
+  required Task task,
+  TaskBoardOrigin? board,
+}) {
   final scope = context.getInheritedWidgetOfExactType<TaskDetailPaneScope>();
   if (scope != null && scope.available) {
-    scope.open(task);
+    scope.open(task, board: board);
   } else {
-    unawaited(showTaskDetail(context, task: task));
+    unawaited(showTaskDetail(context, task: task, board: board));
   }
 }
 
@@ -194,6 +203,7 @@ class _PaneEntryState extends State<_PaneEntry> {
     task: widget.entry.task,
     scrollController: _scroll,
     commentId: _commentId,
+    board: widget.entry.board,
     pane: widget.host,
   );
 }

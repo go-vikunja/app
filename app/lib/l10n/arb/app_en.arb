@@ -3044,7 +3044,7 @@
   },
   "boardDoneColumnHint": "Moving a task here marks it as done.",
   "@boardDoneColumnHint": {
-    "description": "Tooltip of the double check mark on the done bucket of a kanban board (the web's \"done bucket\")."
+    "description": "Tooltip of the double check mark on the done bucket of a kanban board (the web's \"done bucket\"), also read by screen readers for that column; also the line under the done column in the list of taskMoveToColumnTitle."
   },
   "boardColumnTaskCount": "{count, plural, =1{1 task} other{{count} tasks}}",
   "@boardColumnTaskCount": {
@@ -3072,7 +3072,7 @@
   },
   "boardColumnFull": "Full",
   "@boardColumnFull": {
-    "description": "Read by screen readers for a kanban column that has reached its task limit."
+    "description": "Read by screen readers for a kanban column that has reached its task limit; also the line under such a column in the list of taskMoveToColumnTitle."
   },
   "boardColumnLimitReached": "This column is full. To add a task here, move one out or raise the column's limit.",
   "@boardColumnLimitReached": {
@@ -3118,7 +3118,7 @@
   },
   "boardMovedTo": "Moved to {column}",
   "@boardMovedTo": {
-    "description": "Announced to screen readers after a kanban card moved to another column.",
+    "description": "Announced to screen readers after a kanban card moved to another column; also the message shown in the task sheet or pane after taskMoveToColumn moved its card.",
     "placeholders": {
       "column": {
         "type": "String",
@@ -8470,5 +8470,89 @@
   "taskDetailDueDateRow": "Due date",
   "@taskDetailDueDateRow": {
     "description": "Label of the due date row in the task detail sheet, in a narrow label column beside the date. German uses the short 'Fällig am' here; the field elsewhere is taskDetailDueDate."
+  },
+  "taskDetailAddDueDate": "Add due date",
+  "@taskDetailAddDueDate": {
+    "description": "Screen reader: spoken label of the due-date button in the add row at the end of the task sheet's property card, which shows taskDetailDueDate after a plus."
+  },
+  "taskDetailAddPriority": "Set priority",
+  "@taskDetailAddPriority": {
+    "description": "Screen reader: spoken label of the priority button in the add row at the end of the task sheet's property card, which shows taskDetailPriority after a plus."
+  },
+  "taskDetailAddLineReminder": "Reminder",
+  "@taskDetailAddLineReminder": {
+    "description": "Visible text of the reminder button in the add row at the end of the task sheet's property card, after a plus; screen readers hear taskEditAddReminder."
+  },
+  "taskDetailAddLineLabel": "Label",
+  "@taskDetailAddLineLabel": {
+    "description": "Visible text of the label button in the add row at the end of the task sheet's property card, after a plus; screen readers hear taskEditAddLabel."
+  },
+  "taskDetailChangeDueDate": "Change due date",
+  "@taskDetailChangeDueDate": {
+    "description": "Screen reader: the tap hint of the due-date row in the task sheet, which opens the due-date choices."
+  },
+  "taskDetailChangePriority": "Change priority",
+  "@taskDetailChangePriority": {
+    "description": "Screen reader: the tap hint of the priority row in the task sheet, which opens the priority levels."
+  },
+  "taskDetailEditReminders": "Edit reminders",
+  "@taskDetailEditReminders": {
+    "description": "Screen reader: the tap hint of the reminders row in the task sheet, which opens the sheet of its reminders."
+  },
+  "taskDetailChangeLabels": "Change labels",
+  "@taskDetailChangeLabels": {
+    "description": "Tooltip and label of the button after the label pills in the task sheet; it opens the label picker."
+  },
+  "taskDetailDueDateRemoved": "Due date removed",
+  "@taskDetailDueDateRemoved": {
+    "description": "Screen reader: said after Clear due date (taskEditClearDueDate) in the task sheet's due-date choices removed the due date."
+  },
+  "taskDetailReminderAdded": "Reminder added",
+  "@taskDetailReminderAdded": {
+    "description": "Screen reader: said after a reminder was added from the task sheet."
+  },
+  "taskDetailReminderChanged": "Reminder changed",
+  "@taskDetailReminderChanged": {
+    "description": "Screen reader: said after a reminder was changed in the task sheet's reminders sheet."
+  },
+  "taskDetailReminderRemoved": "Reminder removed",
+  "@taskDetailReminderRemoved": {
+    "description": "Screen reader: said after a reminder was removed in the task sheet's reminders sheet."
+  },
+  "taskDetailLabelsChanged": "Labels changed",
+  "@taskDetailLabelsChanged": {
+    "description": "Screen reader: said after Done in the label picker opened from the task sheet changed the task's labels."
+  },
+  "taskDetailReminderSameMoment": "Another reminder is already set for that moment.",
+  "@taskDetailReminderSameMoment": {
+    "description": "Shown when a reminder added or changed from the task sheet would fire at the same moment as another of the task's reminders: under the title of the task sheet's reminders sheet (and said to screen readers), else as a message in the sheet. The server keeps only one reminder per moment, so nothing is saved."
+  },
+  "taskCopyLink": "Copy link",
+  "@taskCopyLink": {
+    "description": "Item of the More menu of the task sheet and the task pane; copies the task's web address."
+  },
+  "taskShareLink": "Share",
+  "@taskShareLink": {
+    "description": "Item of the More menu of the task sheet and the task pane; hands the task's web address to the system's share sheet, with the task's title as the subject."
+  },
+  "taskLinkCopied": "Link copied",
+  "@taskLinkCopied": {
+    "description": "Confirms taskCopyLink in the task sheet or pane where the system does not confirm copies itself."
+  },
+  "taskMoveToColumn": "Move to column…",
+  "@taskMoveToColumn": {
+    "description": "Item of the More menu of a task sheet or pane opened from a card on a board; opens the list of the board's other columns."
+  },
+  "taskMoveToColumnTitle": "Move to column",
+  "@taskMoveToColumnTitle": {
+    "description": "Title of the sheet that lists the board's other columns after taskMoveToColumn; a tap moves the card to the top of that column."
+  },
+  "searchLinkedTask": "Task from the link",
+  "@searchLinkedTask": {
+    "description": "Section title in the search when the query is the web address of a task on the active account's server."
+  },
+  "searchOpenLinkedTask": "Open the linked task",
+  "@searchOpenLinkedTask": {
+    "description": "The one row under searchLinkedTask in the search when this device does not have the linked task; a tap reads it from the server and opens it."
   }
 }

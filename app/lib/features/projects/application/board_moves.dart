@@ -1,6 +1,60 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+
+/// The board, a project's kanban view, whose card a task detail was opened
+/// from.
+@immutable
+final class TaskBoardOrigin {
+  const new({required this.projectId, required this.viewId});
+
+  final int projectId;
+  final int viewId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TaskBoardOrigin &&
+      other.projectId == projectId &&
+      other.viewId == viewId;
+
+  @override
+  int get hashCode => Object.hash(projectId, viewId);
+
+  @override
+  String toString() => 'TaskBoardOrigin($projectId, view $viewId)';
+}
+
+/// The columns of [view] as its board shows them from [source].
+List<BoardColumn> boardColumnsOf(ProjectView view, BoardSource source) =>
+    buildBoard(
+      view: view,
+      buckets: source.buckets,
+      snapshot: source.snapshot,
+      loadedAt: source.loadedAt,
+      projectTasks: source.projectTasks,
+      queued: source.queued,
+      movedHere: source.movedHere,
+      queuedDoneChanges: source.queuedDoneChanges,
+      matchingIds: source.matchingIds,
+    );
+
+/// Each column's name by bucket id: its title, followed by its place on
+/// the board when another column has the same title ("Later (2)"), so
+/// that a screen reader can tell them apart.
+Map<int, String> columnNamesOf(List<BoardColumn> columns) {
+  final titleUses = <String, int>{};
+  for (final column in columns) {
+    titleUses.update(column.bucket.title, (n) => n + 1, ifAbsent: () => 1);
+  }
+  return {
+    for (final (place, column) in columns.indexed)
+      column.bucket.id: titleUses[column.bucket.title]! > 1
+          ? '${column.bucket.title} (${place + 1})'
+          : column.bucket.title,
+  };
+}
 
 /// The web's rule: cards move only on a manual board the user may change,
 /// in a project not archived and [writable] for the user.
@@ -146,3 +200,26 @@ List<double> positionsOnTop(double? topPosition, {required int count}) => [
     else
       topPosition * i / (count + 1),
 ];
+
+/// Queues [move] of the task [taskId] on the view [viewId]; a full column
+/// queues nothing.
+Future<void> queueCardMove(
+  TaskRepository repository,
+  int taskId, {
+  required int viewId,
+  required CardMove move,
+}) => switch (move) {
+  ColumnFull() => Future<void>.value(),
+  MarkCardDone(:final placement) => repository.placeTask(
+    taskId,
+    viewId: viewId,
+    placement: placement,
+    done: true,
+  ),
+  PlaceCard(:final placement, :final done) => repository.placeTask(
+    taskId,
+    viewId: viewId,
+    placement: placement,
+    done: done,
+  ),
+};

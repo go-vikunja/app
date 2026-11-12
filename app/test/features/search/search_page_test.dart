@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show TaskById;
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_search.dart';
@@ -263,6 +264,86 @@ void main() {
 
     expect(find.bySemanticsLabel(en.searchPreparing), findsNothing);
     expect(taskTitles(tester), ['Quarterly report']);
+  });
+
+  group('a pasted task link', () {
+    const server = 'https://tasks.example.org/vikunja';
+
+    testWidgets("of a task on this device shows that task's row alone, which "
+        'opens it; one result is announced', (tester) async {
+      await openSearch(tester);
+      tester.takeAnnouncements();
+
+      await search(tester, '  $server/tasks/12?view=4#comment-3 ');
+      await tester.pump(SearchPage.announceDelay);
+
+      expect(headings(tester), [en.searchLinkedTask]);
+      expect(taskTitles(tester), ['Twelve']);
+      expect(find.text(en.searchNoResultsTitle), findsNothing);
+      expect(
+        tester.takeAnnouncements(),
+        contains(isAccessibilityAnnouncement(en.searchResultCount(1))),
+      );
+
+      await tester.tap(find.text('Twelve'));
+      await tester.pumpAndSettle();
+      expect(
+        tester.widget<TaskDetailSheet>(find.byType(TaskDetailSheet)).task.id,
+        12,
+      );
+      expect(find.byType(SearchPage), findsOneWidget);
+    });
+
+    testWidgets('of a task this device does not have offers to open it, '
+        'which reads it from the server', (tester) async {
+      data.resolver.online[const TaskById(99)] = sampleTask(
+        id: 99,
+        title: 'From the server',
+      );
+      await openSearch(tester);
+
+      await search(tester, '$server/tasks/99');
+
+      expect(headings(tester), [en.searchLinkedTask]);
+      expect(find.byType(TaskRow), findsNothing);
+      await tester.tap(find.text(en.searchOpenLinkedTask));
+      await tester.pumpAndSettle();
+
+      expect(data.resolver.onlineRequests, [const TaskById(99)]);
+      expect(find.byType(TaskDetailSheet), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(TaskDetailSheet),
+          matching: find.text('From the server'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets("another server's link, a relative path and another page of "
+        'the server are searched as text', (tester) async {
+      await openSearch(tester);
+
+      for (final query in [
+        'https://evil.example.org/vikunja/tasks/12',
+        '/vikunja/tasks/12',
+        'tasks/12',
+        '$server/tasks/12/edit',
+        '$server/projects/1',
+      ]) {
+        await search(tester, query);
+        expect(find.text(en.searchLinkedTask), findsNothing, reason: query);
+        expect(find.text(en.searchOpenLinkedTask), findsNothing, reason: query);
+        expect(
+          find.text(en.searchNoResultsTitle),
+          findsOneWidget,
+          reason: query,
+        );
+      }
+
+      await search(tester, 'twelve');
+      expect(taskTitles(tester), ['Twelve']);
+    });
   });
 
   group('opens', () {

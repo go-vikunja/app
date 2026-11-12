@@ -4602,7 +4602,7 @@ abstract class AppLocalizations {
   /// **'This board\'s columns come from filters, so its cards can\'t be moved here.'**
   String get boardFilterColumnsNote;
 
-  /// Tooltip of the double check mark on the done bucket of a kanban board (the web's "done bucket").
+  /// Tooltip of the double check mark on the done bucket of a kanban board (the web's "done bucket"), also read by screen readers for that column; also the line under the done column in the list of taskMoveToColumnTitle.
   ///
   /// In en, this message translates to:
   /// **'Moving a task here marks it as done.'**
@@ -4620,7 +4620,7 @@ abstract class AppLocalizations {
   /// **'{count} of at most {limit, plural, =1{1 task} other{{limit} tasks}}'**
   String boardColumnTaskCountOfLimit(int count, int limit);
 
-  /// Read by screen readers for a kanban column that has reached its task limit.
+  /// Read by screen readers for a kanban column that has reached its task limit; also the line under such a column in the list of taskMoveToColumnTitle.
   ///
   /// In en, this message translates to:
   /// **'Full'**
@@ -4674,7 +4674,7 @@ abstract class AppLocalizations {
   /// **'Move to {column}'**
   String boardMoveTo(String column);
 
-  /// Announced to screen readers after a kanban card moved to another column.
+  /// Announced to screen readers after a kanban card moved to another column; also the message shown in the task sheet or pane after taskMoveToColumn moved its card.
   ///
   /// In en, this message translates to:
   /// **'Moved to {column}'**
@@ -13379,6 +13379,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Due date'**
   String get taskDetailDueDateRow;
+
+  /// Screen reader: spoken label of the due-date button in the add row at the end of the task sheet's property card, which shows taskDetailDueDate after a plus.
+  ///
+  /// In en, this message translates to:
+  /// **'Add due date'**
+  String get taskDetailAddDueDate;
+
+  /// Screen reader: spoken label of the priority button in the add row at the end of the task sheet's property card, which shows taskDetailPriority after a plus.
+  ///
+  /// In en, this message translates to:
+  /// **'Set priority'**
+  String get taskDetailAddPriority;
+
+  /// Visible text of the reminder button in the add row at the end of the task sheet's property card, after a plus; screen readers hear taskEditAddReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder'**
+  String get taskDetailAddLineReminder;
+
+  /// Visible text of the label button in the add row at the end of the task sheet's property card, after a plus; screen readers hear taskEditAddLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Label'**
+  String get taskDetailAddLineLabel;
+
+  /// Screen reader: the tap hint of the due-date row in the task sheet, which opens the due-date choices.
+  ///
+  /// In en, this message translates to:
+  /// **'Change due date'**
+  String get taskDetailChangeDueDate;
+
+  /// Screen reader: the tap hint of the priority row in the task sheet, which opens the priority levels.
+  ///
+  /// In en, this message translates to:
+  /// **'Change priority'**
+  String get taskDetailChangePriority;
+
+  /// Screen reader: the tap hint of the reminders row in the task sheet, which opens the sheet of its reminders.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit reminders'**
+  String get taskDetailEditReminders;
+
+  /// Tooltip and label of the button after the label pills in the task sheet; it opens the label picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Change labels'**
+  String get taskDetailChangeLabels;
+
+  /// Screen reader: said after Clear due date (taskEditClearDueDate) in the task sheet's due-date choices removed the due date.
+  ///
+  /// In en, this message translates to:
+  /// **'Due date removed'**
+  String get taskDetailDueDateRemoved;
+
+  /// Screen reader: said after a reminder was added from the task sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder added'**
+  String get taskDetailReminderAdded;
+
+  /// Screen reader: said after a reminder was changed in the task sheet's reminders sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder changed'**
+  String get taskDetailReminderChanged;
+
+  /// Screen reader: said after a reminder was removed in the task sheet's reminders sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder removed'**
+  String get taskDetailReminderRemoved;
+
+  /// Screen reader: said after Done in the label picker opened from the task sheet changed the task's labels.
+  ///
+  /// In en, this message translates to:
+  /// **'Labels changed'**
+  String get taskDetailLabelsChanged;
+
+  /// Shown when a reminder added or changed from the task sheet would fire at the same moment as another of the task's reminders: under the title of the task sheet's reminders sheet (and said to screen readers), else as a message in the sheet. The server keeps only one reminder per moment, so nothing is saved.
+  ///
+  /// In en, this message translates to:
+  /// **'Another reminder is already set for that moment.'**
+  String get taskDetailReminderSameMoment;
+
+  /// Item of the More menu of the task sheet and the task pane; copies the task's web address.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get taskCopyLink;
+
+  /// Item of the More menu of the task sheet and the task pane; hands the task's web address to the system's share sheet, with the task's title as the subject.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get taskShareLink;
+
+  /// Confirms taskCopyLink in the task sheet or pane where the system does not confirm copies itself.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied'**
+  String get taskLinkCopied;
+
+  /// Item of the More menu of a task sheet or pane opened from a card on a board; opens the list of the board's other columns.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to column…'**
+  String get taskMoveToColumn;
+
+  /// Title of the sheet that lists the board's other columns after taskMoveToColumn; a tap moves the card to the top of that column.
+  ///
+  /// In en, this message translates to:
+  /// **'Move to column'**
+  String get taskMoveToColumnTitle;
+
+  /// Section title in the search when the query is the web address of a task on the active account's server.
+  ///
+  /// In en, this message translates to:
+  /// **'Task from the link'**
+  String get searchLinkedTask;
+
+  /// The one row under searchLinkedTask in the search when this device does not have the linked task; a tap reads it from the server and opens it.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the linked task'**
+  String get searchOpenLinkedTask;
 }
 
 class _AppLocalizationsDelegate

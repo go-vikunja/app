@@ -8657,4 +8657,68 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get taskDetailDueDateRow => 'Fällig am';
+
+  @override
+  String get taskDetailAddDueDate => 'Fälligkeitsdatum festlegen';
+
+  @override
+  String get taskDetailAddPriority => 'Priorität festlegen';
+
+  @override
+  String get taskDetailAddLineReminder => 'Erinnerung';
+
+  @override
+  String get taskDetailAddLineLabel => 'Label';
+
+  @override
+  String get taskDetailChangeDueDate => 'Fälligkeitsdatum ändern';
+
+  @override
+  String get taskDetailChangePriority => 'Priorität ändern';
+
+  @override
+  String get taskDetailEditReminders => 'Erinnerungen bearbeiten';
+
+  @override
+  String get taskDetailChangeLabels => 'Labels ändern';
+
+  @override
+  String get taskDetailDueDateRemoved => 'Fälligkeitsdatum entfernt';
+
+  @override
+  String get taskDetailReminderAdded => 'Erinnerung hinzugefügt';
+
+  @override
+  String get taskDetailReminderChanged => 'Erinnerung geändert';
+
+  @override
+  String get taskDetailReminderRemoved => 'Erinnerung entfernt';
+
+  @override
+  String get taskDetailLabelsChanged => 'Labels geändert';
+
+  @override
+  String get taskDetailReminderSameMoment =>
+      'Für diesen Zeitpunkt gibt es schon eine Erinnerung.';
+
+  @override
+  String get taskCopyLink => 'Link kopieren';
+
+  @override
+  String get taskShareLink => 'Teilen';
+
+  @override
+  String get taskLinkCopied => 'Link kopiert';
+
+  @override
+  String get taskMoveToColumn => 'In Spalte verschieben …';
+
+  @override
+  String get taskMoveToColumnTitle => 'In Spalte verschieben';
+
+  @override
+  String get searchLinkedTask => 'Aufgabe aus dem Link';
+
+  @override
+  String get searchOpenLinkedTask => 'Verlinkte Aufgabe öffnen';
 }

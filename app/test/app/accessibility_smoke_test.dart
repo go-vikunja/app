@@ -1822,6 +1822,57 @@ void main() {
       });
     }
 
+    testWidgets("a board card's task sheet, its menu and Move to column… at "
+        '200 % in dark mode (${locale.languageCode})', (tester) async {
+      useWorstCase(tester, locale);
+      final l10n = lookupAppLocalizations(locale);
+      await pumpSignedInApp(tester, sync: kanbanData());
+      containerOf(tester)
+          .read(appRouterProvider)
+          .go(AppRoutes.project(1, viewId: 14));
+      await tester.pumpAndSettle();
+      final card = find.textContaining('Task 5 ');
+      await tester.tapAt(tester.getTopLeft(card) + const Offset(4, 4));
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailSheet), findsOneWidget);
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(TaskDetailSheet),
+          matching: find.byTooltip(l10n.moreActions),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      for (final item in [
+        l10n.taskMoveToColumn,
+        l10n.taskCopyLink,
+        l10n.taskShareLink,
+        l10n.taskDuplicate,
+        l10n.taskDelete,
+      ]) {
+        expect(find.text(item), findsOneWidget, reason: item);
+      }
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+
+      await tester.tap(find.text(l10n.taskMoveToColumn));
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await tester.scrollUntilVisible(
+        find.text(l10n.boardDoneColumnHint),
+        100,
+        scrollable: find
+            .descendant(
+              of: find.byType(BottomSheet).last,
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    });
+
     testWidgets(
       "a kanban column's menu, sheets and delete confirmation at 200 % in "
       'dark mode with the keyboard up (${locale.languageCode})',

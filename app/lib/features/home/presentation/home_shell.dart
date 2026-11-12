@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
+import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
@@ -216,7 +217,11 @@ class _HomeShellState extends ConsumerState<HomeShell>
       if (!(ModalRoute.isCurrentOf(context) ?? false)) return;
       _pendingSheet = null;
       unawaited(
-        showTaskDetail(Navigator.of(context).context, task: pending.entry.task),
+        showTaskDetail(
+          Navigator.of(context).context,
+          task: pending.entry.task,
+          board: pending.entry.board,
+        ),
       );
     });
   }
@@ -259,11 +264,16 @@ class _HomeShellState extends ConsumerState<HomeShell>
   int _currentIdOf(TaskDetailPaneEntry entry) =>
       ref.read(taskByIdProvider(entry.task.id)).value?.id ?? entry.task.id;
 
-  void _openFromList(Task task) {
+  /// [board] is the board of the card it came from; the same task on top
+  /// takes it over, without opening anew.
+  void _openFromList(Task task, {TaskBoardOrigin? board}) {
     final tab = _currentTab;
     final top = _paneStacks[tab].lastOrNull;
-    if (top != null && _currentIdOf(top) == task.id) return;
-    _replacePane(tab, TaskDetailPaneEntry(task));
+    if (top != null && _currentIdOf(top) == task.id) {
+      if (top.board != board) setState(() => top.board = board);
+      return;
+    }
+    _replacePane(tab, TaskDetailPaneEntry(task, board: board));
   }
 
   void _pushPane(int tab, Task task) => _showPane(tab, (stack) {

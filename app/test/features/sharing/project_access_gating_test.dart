@@ -162,7 +162,8 @@ void main() {
       expect(star.onChanged, isNull);
     });
 
-    testWidgets('the task sheet offers no change to the task', (tester) async {
+    testWidgets('the task sheet offers no change to the task, only its '
+        'link', (tester) async {
       await pumpProject(tester, 1);
 
       await tester.tap(find.text('Read me'));
@@ -171,11 +172,14 @@ void main() {
       expect(find.byType(TaskDetailSheet), findsOneWidget);
       expect(find.text(en.taskDetailMarkDone), findsNothing);
       expect(find.byTooltip(en.taskEdit), findsNothing);
-      final sheetMenu = find.descendant(
-        of: find.byType(TaskDetailSheet),
-        matching: find.byTooltip(en.moreActions),
-      );
-      expect(sheetMenu, findsNothing);
+      await tester.tap(inSheet(find.byTooltip(en.moreActions)));
+      await tester.pumpAndSettle();
+      expect(find.text(en.taskCopyLink), findsOneWidget);
+      expect(find.text(en.taskShareLink), findsOneWidget);
+      expect(find.text(en.taskDuplicate), findsNothing);
+      expect(find.text(en.taskDelete), findsNothing);
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
       // Comments follow the stored permission while the server's details
       // leave it open.
       await tester.scrollUntilVisible(

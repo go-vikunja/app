@@ -59,7 +59,7 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 - [ ] **Gantt:** one text above the rows reads "Heute, *Datum*; Zeitraum: *von* bis *bis*" and is no button; the blocking row ends with "blockiert *Titel*", its target with "blockiert durch *Titel*"; the precedes pair with "geht *Titel* voraus" and "folgt auf *Titel*".
 - [ ] **Contrast:** Settings › Accessibility › Colour and motion › Contrast at medium and at high, each with "Use system colours" (Account tab › Appearance) on and off: the app uses the high-contrast scheme (stronger outlines and text), with system colours in the wallpaper's hue. Back at standard, the normal scheme returns.
 - [ ] **Remove animations** on: the board jumps to the column after a drop or a move instead of gliding; focusing the comment field jumps the task sheet to full height; "Zu heute springen" in Gantt jumps. Record any other motion that remains.
-- [ ] **Dragging without TalkBack** (WCAG 2.5.7): as a pointer user, confirm that moving a card to another column, reordering cards, list rows and sibling projects has no single-pointer way, and that a column's place (its menu), a project's parent (project edit › parent) and a task's project (task edit › project) do. [D68] records exactly this.
+- [ ] **Dragging without TalkBack** (WCAG 2.5.7): as a pointer user, confirm that reordering cards within a column, list rows and sibling projects has no single-pointer way, and that a card's column (Mehr › "In Spalte verschieben …" in its task detail, since step 37k), a column's place (its menu), a project's parent (project edit › parent) and a task's project (task edit › project) do. [D68] records exactly this.
 
 ### 2.4 Checks of step 36c
 
@@ -83,7 +83,21 @@ On the tablet emulator in landscape (1280 × 800), with TalkBack, Switch Access 
 - [ ] **Switch Access** reaches the rows of the tree's column, their expand buttons and its app bar (search, "Neues Projekt", the menu, the account switcher), then the project's controls; the Scanner finds nothing new with the tree's column, the project and the pane side by side.
 - [ ] **A guest:** signed in through a link share, the tree gets no column; the shared project takes the room and has its back arrow.
 
-### 2.6 The flows
+### 2.6 Checks of step 37k
+
+On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to an account with a project you may change and a board whose columns include two of the same title ([D84]); the pane once more on the tablet emulator in landscape:
+
+- [ ] **The rows:** open a task with a due date, a priority and a reminder. "Fällig am", "Priorität" and "Erinnerungen" each read as one button with their value, and TalkBack's hint names the action ("Fälligkeitsdatum ändern", "Priorität ändern", "Erinnerungen bearbeiten"); start date, progress and repeat are no buttons. In a project you may only read, and in an archived one, no row is a button.
+- [ ] **The add row:** open a task without due date, priority, reminders and labels. The attribute card's last row reads "Fälligkeitsdatum festlegen", "Priorität festlegen", "Erinnerung hinzufügen" and "Label hinzufügen", four buttons, each holding the word it shows. At the largest font the row wraps inside the card and nothing is cut off.
+- [ ] **Labels:** each label pill is a button of its own that opens the label's tasks, then "Labels ändern" follows; Switch Access reaches both.
+- [ ] **The lists:** the due date's list takes focus with "Fälligkeitsdatum" as a level-1 heading; "Heute", "Morgen" and "Nächste Woche" each read their date and time in words, the current day "ausgewählt"; after a pick TalkBack says the new due date once, and "Fälligkeitsdatum entfernt" after "Fälligkeitsdatum entfernen". The priority's list reads its six levels, the current one "ausgewählt", and a pick says "Priorität: Dringend". Record where focus lands when a list closes.
+- [ ] **The reminders sheet:** activate "Erinnerungen". The sheet takes focus with "Erinnerungen" as its heading; each reminder reads its wording, edit and remove; adding, changing and removing are each said once ("Erinnerung hinzugefügt", "Erinnerung geändert", "Erinnerung entfernt"); the same reminder again reads "Diese Erinnerung gibt es schon." under the title, and is said. "Fertig" closes it.
+- [ ] **Copy link and Share:** in the sheet's menu ("Mehr", in the pane "Mehr zu „*Titel*“") "Link kopieren" is confirmed by the system on Android 13 and later, else by "Link kopiert" in the sheet; "Teilen" opens the system's share sheet, and with the app lock on the app is not locked on return. In a project you may only read, the menu holds just these two.
+- [ ] **Move to column:** open a card from the board; Mehr › "In Spalte verschieben …" opens a list with "In Spalte verschieben" as its heading, the other columns only, the two of the same title numbered ("*Titel* (2)"), "Voll" under a full column and the done hint under the done column. A pick says "Nach *Spalte* verschoben" once and the sheet stays; a full column gives the limit text. On the board, a drop into one of the two same-titled columns says its numbered name.
+- [ ] **Keyboard and focus:** with the comment field focused, open an editor and close it; the keyboard stays down. Switch Access reaches every row, the add row's buttons, "Labels ändern" and the menu's items; the Scanner finds nothing new on the sheet, the lists and the reminders sheet.
+- [ ] **The pane:** on the tablet in landscape, open a card into the pane. The lists and the reminders sheet open over the shell with the pane under them; after a pick, focus returns to the row in the pane; "In Spalte verschieben …" is in the pane's menu.
+
+### 2.7 The flows
 
 Each flow lists what to do, what to expect and what to record, beyond section 2.2.
 
@@ -119,4 +133,5 @@ Once, on a device (the simulator for what it can show):
 [D70]: decisions.md#d70-task-detail-pane-beside-the-list-on-two-pane-windows-the-sheet-elsewhere
 [D77]: decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers
 [D82]: decisions.md#d82-projects-listdetail-the-project-tree-beside-the-project-on-wide-windows
+[D84]: decisions.md#d84-everyday-editing-in-the-task-detail-properties-in-place-task-links-move-to-column
 [Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass

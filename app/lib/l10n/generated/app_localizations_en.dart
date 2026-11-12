@@ -8560,4 +8560,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get taskDetailDueDateRow => 'Due date';
+
+  @override
+  String get taskDetailAddDueDate => 'Add due date';
+
+  @override
+  String get taskDetailAddPriority => 'Set priority';
+
+  @override
+  String get taskDetailAddLineReminder => 'Reminder';
+
+  @override
+  String get taskDetailAddLineLabel => 'Label';
+
+  @override
+  String get taskDetailChangeDueDate => 'Change due date';
+
+  @override
+  String get taskDetailChangePriority => 'Change priority';
+
+  @override
+  String get taskDetailEditReminders => 'Edit reminders';
+
+  @override
+  String get taskDetailChangeLabels => 'Change labels';
+
+  @override
+  String get taskDetailDueDateRemoved => 'Due date removed';
+
+  @override
+  String get taskDetailReminderAdded => 'Reminder added';
+
+  @override
+  String get taskDetailReminderChanged => 'Reminder changed';
+
+  @override
+  String get taskDetailReminderRemoved => 'Reminder removed';
+
+  @override
+  String get taskDetailLabelsChanged => 'Labels changed';
+
+  @override
+  String get taskDetailReminderSameMoment =>
+      'Another reminder is already set for that moment.';
+
+  @override
+  String get taskCopyLink => 'Copy link';
+
+  @override
+  String get taskShareLink => 'Share';
+
+  @override
+  String get taskLinkCopied => 'Link copied';
+
+  @override
+  String get taskMoveToColumn => 'Move to column…';
+
+  @override
+  String get taskMoveToColumnTitle => 'Move to column';
+
+  @override
+  String get searchLinkedTask => 'Task from the link';
+
+  @override
+  String get searchOpenLinkedTask => 'Open the linked task';
 }
