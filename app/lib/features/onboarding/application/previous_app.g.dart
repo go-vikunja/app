@@ -135,7 +135,7 @@ final class PreviousAppProvider
   PreviousApp create() => PreviousApp();
 }
 
-String _$previousAppHash() => r'16d31aea38474ee1f08670f1c15549e27056639a';
+String _$previousAppHash() => r'ea35faf7dee23c510887cc2b22fbf1a2309c0478';
 
 /// What this app took over from the previous Vikunja app it replaced on
 /// Android, for Connect and the first sync.

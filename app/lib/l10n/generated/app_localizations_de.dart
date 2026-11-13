@@ -759,9 +759,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get appearanceThemeDark => 'Dunkel';
 
   @override
-  String get appearanceSavedToAccount => 'In deinem Konto gespeichert';
-
-  @override
   String get appearanceOnThisDevice => 'Auf diesem Gerät';
 
   @override

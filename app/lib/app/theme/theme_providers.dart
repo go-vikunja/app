@@ -1,31 +1,48 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
-import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 
 part 'theme_providers.g.dart';
 
 final _log = Logger('Theme');
 
 const useSystemColorsKey = 'appearance.system_colors';
+const themeModeKey = 'appearance.theme';
 
 typedef ColorSchemes = ({ColorScheme light, ColorScheme dark});
 
-/// The colour scheme the user picked on the web for the active account;
-/// the system's while nobody is signed in.
+/// The device's theme, the same for every account and for guests; the
+/// system's until it is read.
 @riverpod
-ThemeMode themeMode(Ref ref) => switch (ref.watch(
-  userSettingsProvider.select((settings) => settings.value?.colorSchema),
-)) {
-  ColorSchema.light => ThemeMode.light,
-  ColorSchema.dark => ThemeMode.dark,
-  ColorSchema.auto || null => ThemeMode.system,
-};
+ThemeMode themeMode(Ref ref) =>
+    ref.watch(themeChoiceProvider).value ?? ThemeMode.system;
+
+/// The device-wide light, dark or system theme, the system's unless
+/// another was picked.
+@Riverpod(keepAlive: true)
+class ThemeChoice extends _$ThemeChoice {
+  @override
+  Future<ThemeMode> build() async {
+    final stored = await ref
+        .watch(preferencesStoreProvider)
+        .getString(themeModeKey);
+    return ThemeMode.values.asNameMap()[stored] ?? ThemeMode.system;
+  }
+
+  Future<void> set(ThemeMode mode) async {
+    state = AsyncData(mode);
+    try {
+      await ref
+          .read(preferencesStoreProvider)
+          .setString(themeModeKey, mode.name);
+    } on Object catch (error) {
+      _log.warning('Could not store the theme: ${error.runtimeType}');
+    }
+  }
+}
 
 /// The palette Android 12 and later derive from the wallpaper, as light
 /// and dark schemes; null on other platforms and older versions. Read

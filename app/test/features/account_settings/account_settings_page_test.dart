@@ -205,7 +205,7 @@ void main() {
 
     final position = tester.state<ScrollableState>(pageList()).position;
     for (var i = 0; i < 60; i++) {
-      expect(find.byType(SegmentedButton<ColorSchema>), findsNothing);
+      expect(find.byType(SegmentedButton<ThemeMode>), findsNothing);
       expect(find.text(en.appearanceTheme), findsNothing);
       if (position.extentAfter <= 0) break;
       await tester.drag(pageList(), const Offset(0, -300));

@@ -16,6 +16,10 @@ part 'previous_app.g.dart';
 
 final _log = Logger('PreviousApp');
 
+/// Connect is locked while the previous app's session is tried, and the
+/// steps' own timeouts add up to well over a minute.
+const previousAppSessionLimit = Duration(seconds: 30);
+
 @Riverpod(keepAlive: true)
 PreviousAppPlatform previousAppPlatform(Ref ref) =>
     ChannelPreviousAppPlatform();
@@ -99,9 +103,15 @@ final class PreviousAppState {
 class PreviousApp extends _$PreviousApp {
   var _sessionTried = false;
   var _hasAccounts = false;
+  PreviousAppSignInCancellation? _sessionTry;
+  Timer? _sessionLimit;
 
   @override
   Future<PreviousAppState> build() async {
+    ref.onDispose(() {
+      _sessionLimit?.cancel();
+      _sessionTry?.cancel();
+    });
     final preferences = ref.watch(preferencesStoreProvider);
     // This loads the registry, which on a first start wipes the secure
     // storage the import reads: bootstrap reads this provider only after
@@ -136,34 +146,66 @@ class PreviousApp extends _$PreviousApp {
   }
 
   /// Signs in with the previous app's refresh token, once per process and
-  /// only with a server to sign in to. Never throws.
+  /// only with a server to sign in to. [cancelKeepingSession] and
+  /// [previousAppSessionLimit] end it like a failure. Never throws.
   Future<void> keepSession(String refreshToken) async {
     final current = state.value;
     final server = current?.record?.server;
     if (_sessionTried || current == null || server == null) return;
     _sessionTried = true;
+    final cancellation = _sessionTry = PreviousAppSignInCancellation();
     // Before the first await, so that the first frame shows it.
     state = AsyncData(
       current.copyWith(session: PreviousAppSessionKeeping(server)),
     );
+    _sessionLimit = Timer(previousAppSessionLimit, () {
+      if (_endSessionTry()) {
+        _log.info('Keeping the previous app session took too long');
+      }
+    });
     final signIn = ref.read(previousAppSignInProvider);
     PreviousAppSession outcome;
     try {
       final entry = await signIn.signIn(
         serverAddress: '$server',
         refreshToken: refreshToken,
+        cancellation: cancellation,
       );
-      if (!ref.mounted) return;
+      // Null when ended early, which set the state already.
+      if (entry == null || !ref.mounted) return;
       ref.read(sessionCheckProvider).noteVerified(entry.id);
       outcome = PreviousAppSessionKept(entry.id);
     } on Object catch (error) {
+      if (cancellation.isCancelled) return;
       _log.info(
         'Could not keep the previous app session: ${error.runtimeType}',
       );
       outcome = const PreviousAppSessionLost();
+    } finally {
+      _sessionLimit?.cancel();
+      _sessionTry = null;
     }
     if (!ref.mounted) return;
     state = AsyncData((state.value ?? current).copyWith(session: outcome));
+  }
+
+  /// Ends the try at once, like a failure, unless the server has already
+  /// confirmed the account.
+  void cancelKeepingSession() {
+    if (_endSessionTry()) _log.info('Stopped keeping the previous app session');
+  }
+
+  bool _endSessionTry() {
+    final sessionTry = _sessionTry;
+    if (sessionTry == null || !sessionTry.cancel()) return false;
+    _sessionTry = null;
+    _sessionLimit?.cancel();
+    if (state.value case final current?) {
+      state = AsyncData(
+        current.copyWith(session: const PreviousAppSessionLost()),
+      );
+    }
+    return true;
   }
 
   Future<void> _forgetRecord() async {

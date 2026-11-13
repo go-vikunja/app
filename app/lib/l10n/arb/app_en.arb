@@ -661,11 +661,11 @@
   "favoritesEmptyBody": "Mark a task as a favorite with its star to find it here.",
   "appearanceHeading": "Appearance",
   "@appearanceHeading": {
-    "description": "Account tab section with the theme (saved to the account), Use system colors and App language (both on this device)."
+    "description": "Account tab section with the theme, Use system colors and App language, all on this device and the same for every account."
   },
   "appearanceTheme": "Theme",
   "@appearanceTheme": {
-    "description": "Title of the row in the Account tab's Appearance section that picks light, dark or the system's mode for the account (the web's color scheme), with appearanceThemeLight, appearanceThemeSystem and appearanceThemeDark side by side below it."
+    "description": "Title of the row in the Account tab's Appearance section that picks light, dark or the system's mode for this device, the same for every account, with appearanceThemeLight, appearanceThemeSystem and appearanceThemeDark side by side below it."
   },
   "appearanceThemeLight": "Light",
   "@appearanceThemeLight": {
@@ -679,13 +679,9 @@
   "@appearanceThemeDark": {
     "description": "Segment of the Theme row: always the dark mode."
   },
-  "appearanceSavedToAccount": "Saved to your account",
-  "@appearanceSavedToAccount": {
-    "description": "Small line under the Theme row's title in the Account tab's Appearance section: the choice is saved on the server and applies on all the account's devices. Pairs with appearanceOnThisDevice."
-  },
   "appearanceOnThisDevice": "On this device",
   "@appearanceOnThisDevice": {
-    "description": "Small line under the Use system colors and App language rows in the Account tab's Appearance section: the setting stays on this device. Pairs with appearanceSavedToAccount."
+    "description": "Small line under the Theme, Use system colors and App language rows in the Account tab's Appearance section: the setting stays on this device and is not saved to the account."
   },
   "appearanceSystemColors": "Use system colors",
   "appearanceSystemColorsSubtitle": "The colors of your wallpaper instead of the app's blue",
@@ -4381,7 +4377,7 @@
   },
   "accountSettingsSaving": "Saving",
   "@accountSettingsSaving": {
-    "description": "Screen readers' name for the progress bar of the Account settings page, and for the spinner of the Account tab's Theme row, while a change is sent to the server."
+    "description": "Screen readers' name for the progress bar of the Account settings page while a change is sent to the server."
   },
   "accountSettingsProfile": "Profile",
   "accountSettingsName": "Name",

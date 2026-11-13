@@ -22,7 +22,6 @@ enum AccountSettingsField {
   overdueTime,
   discoverableByName,
   discoverableByEmail,
-  colorScheme,
 }
 
 /// What to show at [field] when the server refused [changes]; null when

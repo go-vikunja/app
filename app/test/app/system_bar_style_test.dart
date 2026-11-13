@@ -191,8 +191,8 @@ void main() {
     _expectNavigationBarOf(tester, Brightness.light, SystemChrome.latestStyle);
   }, variant: _android);
 
-  testWidgets("the account's colour scheme decides Android's navigation bar, "
-      "not the system's", (tester) async {
+  testWidgets("the theme picked on this device decides Android's navigation "
+      "bar, not the system's", (tester) async {
     _usePlatformBrightness(tester, Brightness.light);
     await pumpVikunjaApp(
       tester,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -23,6 +24,29 @@ final class PreviousAppSessionNotKept implements Exception {
 
   @override
   String toString() => 'PreviousAppSessionNotKept(${reason.name})';
+}
+
+/// Ends a [PreviousAppSignIn.signIn] early. Once the server has confirmed
+/// the account, the sign-in only registers it on this device, and a cancel
+/// comes too late.
+final class PreviousAppSignInCancellation {
+  final _token = CancelToken();
+  var _registering = false;
+
+  bool get isCancelled => _token.isCancelled;
+
+  /// True when this call ended the sign-in.
+  bool cancel() {
+    if (_registering || isCancelled) return false;
+    _token.cancel();
+    return true;
+  }
+
+  bool _startRegistering() {
+    if (isCancelled) return false;
+    _registering = true;
+    return true;
+  }
 }
 
 /// Keeps the session of the previous Vikunja app, which this app replaced:
@@ -52,14 +76,28 @@ final class PreviousAppSignIn {
   final Duration _userTimeout;
   final Duration _logoutTimeout;
 
-  /// Throws [PreviousAppSessionNotKept], `ServerConnectionFailure`,
-  /// `VikunjaFailure` or a `TimeoutException` when `GET /user` does not
-  /// answer within its own bound, and stores nothing then.
-  Future<RegisteredAccount> signIn({
+  /// Null when [cancellation] ended it; a session the server issued anyway
+  /// is logged out then. Throws [PreviousAppSessionNotKept],
+  /// `ServerConnectionFailure`, `VikunjaFailure` or a `TimeoutException`
+  /// when `GET /user` does not answer within its own bound, also after a
+  /// cancel. Stores nothing in either case.
+  Future<RegisteredAccount?> signIn({
     required String serverAddress,
     required String refreshToken,
+    PreviousAppSignInCancellation? cancellation,
   }) async {
-    final connection = await _connector.connect(serverAddress);
+    final cancel = cancellation ?? PreviousAppSignInCancellation();
+    final ServerConnection connection;
+    try {
+      connection = await _connector.connect(
+        serverAddress,
+        cancelToken: cancel._token,
+      );
+    } on Object {
+      if (cancel.isCancelled) return null;
+      rethrow;
+    }
+    if (cancel.isCancelled) return null;
     if (connection.isInsecure) {
       throw const PreviousAppSessionNotKept(PreviousAppSessionSkip.insecure);
     }
@@ -68,11 +106,15 @@ final class PreviousAppSignIn {
     }
     final tokens = await _tokenGateway.refresh(connection, refreshToken);
     final receivedAt = _clock();
+    if (cancel.isCancelled) {
+      unawaited(_endSession(connection, tokens.accessToken));
+      return null;
+    }
 
     final User user;
     try {
-      // Connect is locked meanwhile, and its retries could keep it so for
-      // more than a minute; the old token is spent either way.
+      // Its retries could take more than a minute, and the old token is
+      // spent either way.
       user = await _accountGateway
           .currentUser(connection, _IssuedTokens(tokens.accessToken))
           .timeout(_userTimeout);
@@ -85,6 +127,10 @@ final class PreviousAppSignIn {
     } on Object {
       unawaited(_endSession(connection, tokens.accessToken));
       rethrow;
+    }
+    if (!cancel._startRegistering()) {
+      unawaited(_endSession(connection, tokens.accessToken));
+      return null;
     }
 
     final accountId = accountIdFor(connection.rootUri, user.id);

@@ -165,11 +165,6 @@ const _serverSearch = Gated(
   "a guest gets the people stored on this device; the server's user "
   'search refuses it',
 );
-const _themeRow = Gated(
-  'built only in the Appearance section, which leaves the theme row out for '
-  'a guest',
-  checkIn: ['features/home/presentation/appearance_section.dart'],
-);
 const _activityTap = Gated(
   'only for a tapped activity notification, and the activity sync skips '
   'guests in front, in the background and over the socket',
@@ -339,16 +334,6 @@ const guestActionInventory = <String, GuestActionEntry>{
     _sessions,
     uses: {'accountSecurityRepositoryProvider'},
   ),
-  'features/account_settings/presentation/theme_setting.dart '
-      '_ThemeSettingState._save': (
-    _themeRow,
-    uses: {'accountSettingsRepositoryProvider'},
-  ),
-  'features/account_settings/presentation/theme_setting.dart '
-      '_ThemeSettingState.build': (
-    _themeRow,
-    uses: {'accountSettingsProvider'},
-  ),
   'features/description_editor/presentation/description_editor_page.dart '
       '_DescriptionEditorPageState._knownPeople': (
     _knownPeople,
@@ -380,15 +365,6 @@ const guestActionInventory = <String, GuestActionEntry>{
       'date and no local-user flag',
     ),
     uses: {'accountSettingsProvider'},
-  ),
-  'features/home/presentation/home_shell.dart '
-      '_HomeShellState._carryOverPreviousAppTheme': (
-    Gated(
-      "the previous app's theme is saved only for a user account; a guest "
-      'leaves it pending',
-      checkIn: ['core/previous_app/previous_app_theme.dart'],
-    ),
-    uses: {'accountSettingsRepositoryProvider'},
   ),
   'features/inbox/presentation/inbox_button.dart InboxButton.build': (
     Gated(

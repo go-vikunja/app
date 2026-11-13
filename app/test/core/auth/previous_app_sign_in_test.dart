@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
+import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
@@ -47,9 +49,12 @@ void main() {
     );
   });
 
-  Future<RegisteredAccount> keep() => signIn.signIn(
+  Future<RegisteredAccount?> keep([
+    PreviousAppSignInCancellation? cancellation,
+  ]) => signIn.signIn(
     serverAddress: 'https://vikunja.example.com',
     refreshToken: _oldToken,
+    cancellation: cancellation,
   );
 
   Future<void> expectNothingStored() async {
@@ -63,7 +68,7 @@ void main() {
     fakes.tokenGateway.onRefresh = (_) async => tokens;
     fakes.accountGateway.onCurrentUser = (_) async => _alice;
 
-    final entry = await keep();
+    final entry = (await keep())!;
 
     expect(connector.inputs, ['https://vikunja.example.com']);
     expect(fakes.tokenGateway.refreshedTokens, [_oldToken]);
@@ -239,6 +244,108 @@ void main() {
     );
   });
 
+  group('a cancel', () {
+    late PreviousAppSignInCancellation cancellation;
+
+    setUp(() => cancellation = PreviousAppSignInCancellation());
+
+    test('while connecting stops the probe, and the token is never '
+        'sent', () async {
+      connector.handler = (_) => Completer<ServerConnection>().future;
+
+      final result = keep(cancellation);
+      await pumpEventQueue();
+      expect(cancellation.cancel(), isTrue);
+
+      expect(await result, isNull);
+      expect(connector.cancelTokens.single?.isCancelled, isTrue);
+      expect(fakes.tokenGateway.refreshedTokens, isEmpty);
+      await expectNothingStored();
+    });
+
+    test('that the connector ignores sends no token', () async {
+      signIn = PreviousAppSignIn(
+        connector: _DeafConnector(() async {
+          cancellation.cancel();
+          return connection;
+        }),
+        tokenGateway: fakes.tokenGateway,
+        accountGateway: fakes.accountGateway,
+        tokenStore: fakes.tokenStore,
+        registry: fakes.registry,
+        sessions: sessions,
+      );
+
+      expect(await keep(cancellation), isNull);
+      expect(fakes.tokenGateway.refreshedTokens, isEmpty);
+      await expectNothingStored();
+    });
+
+    test('while the token is refreshed logs out the session a late answer '
+        'brings, and stores nothing', () async {
+      final refresh = Completer<TokenSet>();
+      fakes.tokenGateway.onRefresh = (_) => refresh.future;
+      fakes.accountGateway.onCurrentUser = (_) async => _alice;
+      final tokens = issueTokens(issuedAt: now, userId: _alice.id);
+
+      final result = keep(cancellation);
+      await pumpEventQueue();
+      expect(fakes.tokenGateway.refreshedTokens, [_oldToken]);
+      expect(cancellation.cancel(), isTrue);
+      refresh.complete(tokens);
+
+      expect(await result, isNull);
+      await pumpEventQueue();
+      expect(fakes.accountGateway.currentUserTokens, isEmpty);
+      expect(fakes.accountGateway.logoutTokens, [tokens.accessToken]);
+      await expectNothingStored();
+    });
+
+    test('while GET /user is asked logs out the session once it answers, '
+        'and stores nothing', () async {
+      final tokens = issueTokens(issuedAt: now, userId: _alice.id);
+      final user = Completer<User>();
+      fakes.tokenGateway.onRefresh = (_) async => tokens;
+      fakes.accountGateway.onCurrentUser = (_) => user.future;
+
+      final result = keep(cancellation);
+      await pumpEventQueue();
+      expect(fakes.accountGateway.currentUserTokens, [tokens.accessToken]);
+      expect(cancellation.cancel(), isTrue);
+      user.complete(_alice);
+
+      expect(await result, isNull);
+      await pumpEventQueue();
+      expect(fakes.accountGateway.logoutTokens, [tokens.accessToken]);
+      await expectNothingStored();
+    });
+
+    test('once the server has confirmed the account comes too late: the '
+        'account is registered', () async {
+      final tokens = issueTokens(issuedAt: now, userId: _alice.id);
+      fakes.tokenGateway.onRefresh = (_) async => tokens;
+      fakes.accountGateway.onCurrentUser = (_) async => _alice;
+      final write = Completer<void>();
+      fakes.secureStore.beforeWrite = (_) => write.future;
+
+      final result = keep(cancellation);
+      await pumpEventQueue();
+      expect(cancellation.cancel(), isFalse);
+      write.complete();
+
+      expect((await result)?.id, accountId);
+      expect(cancellation.isCancelled, isFalse);
+      expect((await fakes.registry.load()).activeAccountId, accountId);
+      expect(fakes.accountGateway.logoutTokens, isEmpty);
+    });
+
+    test('ends the sign-in only once', () {
+      expect(cancellation.cancel(), isTrue);
+      expect(cancellation.cancel(), isFalse);
+      expect(cancellation.isCancelled, isTrue);
+    });
+  });
+
   test('the kept account becomes the active one', () async {
     final other = await fakes.seedAccount(
       oauthServer230(),
@@ -257,3 +364,14 @@ void main() {
 
 Future<Never> _unreachable(String _) async =>
     throw const NetworkFailure(NetworkProblem.unreachable);
+
+/// A connector that does not stop when cancelled.
+final class _DeafConnector implements ServerConnector {
+  const new(this._connect);
+
+  final Future<ServerConnection> Function() _connect;
+
+  @override
+  Future<ServerConnection> connect(String input, {CancelToken? cancelToken}) =>
+      _connect();
+}

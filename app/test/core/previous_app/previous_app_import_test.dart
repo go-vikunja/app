@@ -45,11 +45,6 @@ void main() {
 
   Future<PreviousAppFindings?> run() => import().run();
 
-  Object? pendingTheme() => switch (preferences.values[previousAppThemeKey]) {
-    final stored? => jsonDecode(stored),
-    null => null,
-  };
-
   group('runs only on the first Android start', () {
     setUp(() => secureStore.values.addAll(previousAppValues()));
 
@@ -246,58 +241,55 @@ void main() {
       expect(preferences.values.containsKey(useSystemColorsKey), isFalse);
     });
 
-    for (final (theme, pending) in [
+    for (final (theme, stored) in [
       ('dark', 'dark'),
       ('light', 'light'),
       ('system', null),
       ('purple', null),
     ]) {
-      test('the theme $theme leaves ${pending ?? 'nothing'} pending', () async {
-        secureStore.values.addAll(previousAppValues(theme: theme));
+      test(
+        'the theme $theme sets ${stored ?? 'nothing, the default being '
+                'the system'} on this device',
+        () async {
+          secureStore.values.addAll(previousAppValues(theme: theme));
 
-        await run();
+          await run();
 
-        expect(
-          pendingTheme(),
-          pending == null
-              ? isNull
-              : {'theme': pending, 'server': 'https://vikunja.example.com'},
-        );
-      });
-    }
-
-    test('the theme waits for the server the previous app used last when '
-        'it was signed out', () async {
-      secureStore.values.addAll(
-        previousAppValues(
-          server: null,
-          recentServers: jsonEncode(['old.example.com']),
-          theme: 'dark',
-        ),
+          expect(preferences.values[themeModeKey], stored);
+        },
       );
-
-      await run();
-
-      expect(pendingTheme(), {
-        'theme': 'dark',
-        'server': 'https://old.example.com',
-      });
-    });
+    }
 
     for (final (name, server) in [
       ('without a server', null),
-      ('for the public demo, whose account others share', 'try.vikunja.io'),
+      ('for the public demo', 'try.vikunja.io'),
     ]) {
-      test('no theme is kept $name', () async {
+      test('the theme is carried over $name too, as it stays on this '
+          'device', () async {
         secureStore.values.addAll(
           previousAppValues(server: server, theme: 'dark'),
         );
 
         await run();
 
-        expect(pendingTheme(), isNull);
+        expect(preferences.values[themeModeKey], 'dark');
       });
     }
+
+    test('nothing of the theme is kept for later', () async {
+      secureStore.values.addAll(previousAppValues(theme: 'dark'));
+
+      await run();
+
+      expect(
+        preferences.values.keys,
+        unorderedEquals([
+          useSystemColorsKey,
+          themeModeKey,
+          PreviousAppRecord.storageKey,
+        ]),
+      );
+    });
 
     for (final (locale, call) in [
       ('de', 'setAppLanguage de'),

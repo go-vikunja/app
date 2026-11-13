@@ -8,10 +8,8 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/previous_install.dart';
 import 'package:vikunja_mobile/core/previous_app/previous_app_platform.dart';
 import 'package:vikunja_mobile/core/previous_app/previous_app_record.dart';
-import 'package:vikunja_mobile/core/previous_app/previous_app_theme.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
-import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 
 final _log = Logger('PreviousApp');
 
@@ -32,7 +30,6 @@ const _oldKeys = <String>[
   _localeKey,
 ];
 const _maxRecentServers = 5;
-final Uri _publicDemo = normalizeServerAddress(publicDemoAddress).root;
 
 final class PreviousAppFindings {
   const new({required this.record, this.refreshToken});
@@ -103,7 +100,7 @@ final class PreviousAppImport {
 
     final recent = _newestFirst(values[_recentServersKey]);
     final server = _normalized(values[_serverKey]) ?? recent.firstOrNull;
-    await _applySettings(values, server);
+    await _applySettings(values);
     final record = PreviousAppRecord(
       server: server,
       recentServers: List.unmodifiable(
@@ -150,7 +147,7 @@ final class PreviousAppImport {
     }
   }
 
-  Future<void> _applySettings(Map<String, String> values, Uri? server) async {
+  Future<void> _applySettings(Map<String, String> values) async {
     // The previous app's default was off, so its users saw the brand
     // colors; only a readable store tells that default from no value.
     if (values.isNotEmpty) {
@@ -160,20 +157,12 @@ final class PreviousAppImport {
         () => _preferences.setString(useSystemColorsKey, '$systemColors'),
       );
     }
-    // The theme is saved to an account on the server: only to one on the
-    // previous app's server, and never to the demo, whose account others
-    // share.
+    // The previous app's names are those of the theme setting.
     if (values[_themeKey] case final theme?
-        when (theme == 'light' || theme == 'dark') &&
-            server != null &&
-            server != _publicDemo) {
+        when theme == 'light' || theme == 'dark') {
       await _guarded(
         'carry over the theme',
-        () => rememberPreviousAppTheme(
-          _preferences,
-          theme: theme,
-          server: server,
-        ),
+        () => _preferences.setString(themeModeKey, theme),
       );
     }
     if (values[_localeKey] case final language?

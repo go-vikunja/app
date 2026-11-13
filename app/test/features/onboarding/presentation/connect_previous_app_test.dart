@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,7 +22,9 @@ import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart
 
 import '../../../helpers/auth_fakes.dart';
 import '../../../helpers/fakes.dart';
+import '../../../helpers/large_screens.dart';
 import '../../../helpers/pump_app.dart';
+import '../../../helpers/real_fonts.dart';
 import '../../../helpers/server_connections.dart';
 import '../../../helpers/sync_fakes.dart';
 
@@ -219,18 +223,28 @@ void main() {
     });
   });
 
-  testWidgets('while the session is kept, the screen says so and nothing '
-      'else can start a sign-in', (tester) async {
-    final refresh = Completer<TokenSet>();
+  Future<ProviderContainer> pumpKeepingOnConnect(
+    WidgetTester tester,
+    Completer<TokenSet> refresh, {
+    PreviousAppRecord? record,
+  }) {
     auth.tokenGateway.onRefresh = (_) => refresh.future;
-    await pumpApp(
+    auth.accountGateway.onCurrentUser = (_) async => _alice;
+    return pumpApp(
       tester,
       prepare: (notifier) {
-        noteImported(notifier);
+        noteImported(notifier, record: record);
         unawaited(notifier.keepSession(_oldToken));
       },
       settle: false,
     );
+  }
+
+  final cancel = find.widgetWithText(TextButton, en.connectCancel);
+
+  testWidgets('while the session is kept, the screen says so and only its '
+      'Cancel can be used', (tester) async {
+    final container = await pumpKeepingOnConnect(tester, Completer<TokenSet>());
 
     expect(
       find.text(en.previousAppSigningIn('vikunja.example.com')),
@@ -276,8 +290,161 @@ void main() {
           .onPressed,
       isNull,
     );
-    expect(find.text(en.connectCancel), findsNothing);
+    expect(tester.widget<TextButton>(cancel).onPressed, isNotNull);
     expect(_note, findsNothing);
+    await unmount(tester, container);
+  });
+
+  testWidgets('the Cancel is labelled, 48 dp and reachable while everything '
+      'else is locked', (tester) async {
+    final semantics = tester.ensureSemantics();
+    useWindow(tester, androidPhone);
+    final container = await pumpKeepingOnConnect(tester, Completer<TokenSet>());
+
+    expect(
+      tester.getSemantics(cancel),
+      isSemantics(
+        label: en.connectCancel,
+        isButton: true,
+        hasEnabledState: true,
+        isEnabled: true,
+        isFocusable: true,
+        hasTapAction: true,
+      ),
+    );
+    expect(tester.getSize(cancel).height, greaterThanOrEqualTo(48));
+    await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+    await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+    // The keyboard reaches it, and nothing else.
+    FocusScope.of(tester.element(find.byType(ConnectServerScreen)))
+        .requestFocus();
+    await tester.pump();
+    for (var i = 0; i < 2; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      expect(
+        Focus.of(tester.element(find.text(en.connectCancel))).hasPrimaryFocus,
+        isTrue,
+      );
+    }
+    await unmount(tester, container);
+    semantics.dispose();
+  });
+
+  testWidgets('in German, at the largest text', (tester) async {
+    useLocale(tester, const Locale('de'));
+    useAccessibilityExtremes(tester);
+    useWindow(tester, androidPhone);
+    final container = await pumpKeepingOnConnect(tester, Completer<TokenSet>());
+
+    expect(
+      find.text(de.previousAppSigningIn('vikunja.example.com')),
+      findsOneWidget,
+    );
+    expect(find.widgetWithText(TextButton, de.connectCancel), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await unmount(tester, container);
+  });
+
+  group('the try ends early like a failed one', () {
+    void expectFallback(WidgetTester tester) {
+      expect(find.byType(ConnectServerScreen), findsOneWidget);
+      expect(find.text(en.previousAppNoteSignInAgain), findsOneWidget);
+      expect(
+        find.text(en.previousAppSigningIn('vikunja.example.com')),
+        findsNothing,
+      );
+      expect(cancel, findsNothing);
+      expect(fieldText(tester), 'https://vikunja.example.com');
+      expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+      expect(find.text(en.connectContinue), findsOneWidget);
+    }
+
+    Future<void> answerLate(
+      WidgetTester tester,
+      ProviderContainer container,
+      Completer<TokenSet> refresh,
+    ) async {
+      final tokens = issueTokens(
+        issuedAt: DateTime.now().toUtc(),
+        userId: _alice.id,
+      );
+      refresh.complete(tokens);
+      await pumpFrames(tester, 3);
+
+      expectFallback(tester);
+      expect(find.byType(FirstSyncScreen), findsNothing);
+      expect(container.read(accountsProvider).value?.accounts, isEmpty);
+      expect(auth.secureStore.values, isEmpty);
+      expect(auth.accountGateway.logoutTokens, [tokens.accessToken]);
+    }
+
+    testWidgets('on Cancel, at once, and a late answer registers nothing', (
+      tester,
+    ) async {
+      final refresh = Completer<TokenSet>();
+      final container = await pumpKeepingOnConnect(tester, refresh);
+
+      await tester.ensureVisible(cancel);
+      await tester.tap(cancel);
+      await tester.pump();
+
+      expectFallback(tester);
+      await answerLate(tester, container, refresh);
+    });
+
+    testWidgets('after 30 s, and a late answer registers nothing', (
+      tester,
+    ) async {
+      final refresh = Completer<TokenSet>();
+      final container = await pumpKeepingOnConnect(tester, refresh);
+
+      await tester.pump(const Duration(seconds: 29));
+      expect(
+        find.text(en.previousAppSigningIn('vikunja.example.com')),
+        findsOneWidget,
+      );
+      await tester.pump(const Duration(seconds: 1));
+
+      expectFallback(tester);
+      await answerLate(tester, container, refresh);
+    });
+
+    testWidgets('a double tap on the Cancel does not land on what the note '
+        'pushes under it', (tester) async {
+      useWindow(tester, androidPhone);
+      final container = await pumpKeepingOnConnect(
+        tester,
+        Completer<TokenSet>(),
+        record: PreviousAppRecord(
+          server: _record.server,
+          recentServers: [
+            Uri.parse('https://old0.example.com'),
+            Uri.parse('https://old1.example.com'),
+            Uri.parse('https://old2.example.com'),
+          ],
+        ),
+      );
+      final probes = connector.inputs.length;
+
+      final at = tester.getCenter(cancel);
+      await tester.tapAt(at);
+      await tester.pump(const Duration(milliseconds: 16));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.tapAt(at);
+      await tester.pump();
+
+      expect(connector.inputs.skip(probes), isEmpty);
+      expectFallback(tester);
+
+      await tester.pump(kDoubleTapTimeout);
+      await tester.ensureVisible(find.text(en.connectContinue));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.connectContinue));
+      await tester.pump();
+      expect(connector.inputs.skip(probes), ['https://vikunja.example.com']);
+      await unmount(tester, container);
+    });
   });
 
   // The completers are created in the test bodies: one from setUp would
@@ -412,6 +579,64 @@ void main() {
     );
     expect(fieldText(tester), 'https://vikunja.example.com');
     expect(tester.widget<TextField>(find.byType(TextField)).enabled, isTrue);
+  });
+
+  // Last, as the font stays loaded for the rest of the file.
+  group('at a larger text size, the Cancel shows without scrolling', () {
+    var robotoLoaded = false;
+    setUpAll(() async => robotoLoaded = await loadRoboto());
+
+    for (final (locale, scale, later) in const [
+      (Locale('en'), 1.15, false),
+      (Locale('de'), 2.0, false),
+      (Locale('en'), 1.15, true),
+    ]) {
+      testWidgets('in ${locale.languageCode} at ${(scale * 100).round()} %'
+          '${later ? ', when the try starts after the screen is shown' : ''}', (
+        tester,
+      ) async {
+        if (!robotoLoaded) {
+          markTestSkipped("the Flutter SDK's Roboto is needed to measure");
+          return;
+        }
+        useWindow(tester, androidPhone);
+        useLocale(tester, locale);
+        tester.view.padding = const FakeViewPadding(
+          top: 24 * 3,
+          bottom: 48 * 3,
+        );
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        final l10n = locale.languageCode == 'de' ? de : en;
+        final ProviderContainer container;
+        if (later) {
+          auth.tokenGateway.onRefresh = (_) => Completer<TokenSet>().future;
+          container = await pumpApp(
+            tester,
+            prepare: noteImported,
+            settle: false,
+          );
+          unawaited(
+            container.read(previousAppProvider.notifier).keepSession(_oldToken),
+          );
+          await pumpFrames(tester, 3);
+        } else {
+          container = await pumpKeepingOnConnect(tester, Completer<TokenSet>());
+        }
+
+        final line = find.text(
+          l10n.previousAppSigningIn('vikunja.example.com'),
+        );
+        expect(tester.getRect(line).top, greaterThanOrEqualTo(24));
+        expect(
+          tester
+              .getRect(find.widgetWithText(TextButton, l10n.connectCancel))
+              .bottom,
+          lessThanOrEqualTo(androidPhone.height - 48),
+        );
+        await unmount(tester, container);
+      });
+    }
   });
 }
 

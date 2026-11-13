@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -144,6 +147,172 @@ void main() {
     expect(current().session, isA<PreviousAppSessionLost>());
     expect(container.read(accountsProvider).value?.accounts, isEmpty);
     expect(current().record, record, reason: 'Connect still fills it in');
+  });
+
+  group('ending the try early', () {
+    late Completer<TokenSet> refresh;
+    late TokenSet lateTokens;
+
+    // In the body: a completer from setUp would complete outside the fake
+    // async zone of testWidgets.
+    void holdRefresh() {
+      refresh = Completer<TokenSet>();
+      lateTokens = issueTokens(
+        issuedAt: DateTime.now().toUtc(),
+        userId: _alice.id,
+      );
+      auth.tokenGateway.onRefresh = (_) => refresh.future;
+      auth.accountGateway.onCurrentUser = (_) async => _alice;
+    }
+
+    Future<void> expectNothingLeftBehind() async {
+      expect(container.read(accountsProvider).value?.accounts, isEmpty);
+      expect(auth.preferences.values[AccountRegistry.storageKey], isNull);
+      expect(auth.secureStore.values, isEmpty);
+      expect(auth.accountGateway.currentUserTokens, isEmpty);
+      expect(auth.accountGateway.logoutTokens, [lateTokens.accessToken]);
+      expect(await PreviousAppRecord.read(auth.preferences), record);
+    }
+
+    test('a cancel loses the session at once, like a failure, and a late '
+        'answer changes nothing', () async {
+      holdRefresh();
+      await load(stored: record);
+      notifier().noteImported(PreviousAppFindings(record: record));
+      final keeping = notifier().keepSession(_oldToken);
+      await pumpEventQueue();
+
+      notifier().cancelKeepingSession();
+
+      expect(current().session, isA<PreviousAppSessionLost>());
+      expect(current().record, record, reason: 'Connect still fills it in');
+      expect(current().note?.serverFilledIn, isTrue);
+      final changes = <PreviousAppState?>[];
+      container.listen(
+        previousAppProvider,
+        (_, next) => changes.add(next.value),
+      );
+      refresh.complete(lateTokens);
+      await keeping;
+      await pumpEventQueue();
+
+      expect(changes, isEmpty);
+      await expectNothingLeftBehind();
+    });
+
+    testWidgets('after the limit the session is lost the same way, and a '
+        'late answer changes nothing', (tester) async {
+      holdRefresh();
+      await load(stored: record);
+      final keeping = notifier().keepSession(_oldToken);
+
+      await tester.pump(previousAppSessionLimit - const Duration(seconds: 1));
+      expect(current().session, isA<PreviousAppSessionKeeping>());
+      await tester.pump(const Duration(seconds: 1));
+      expect(current().session, isA<PreviousAppSessionLost>());
+      expect(current().record, record);
+
+      refresh.complete(lateTokens);
+      await keeping;
+      await tester.pump();
+
+      expect(current().session, isA<PreviousAppSessionLost>());
+      await expectNothingLeftBehind();
+    });
+
+    testWidgets('a try that ends in time leaves no limit running', (
+      tester,
+    ) async {
+      serveAlice();
+      await load(stored: record);
+
+      await notifier().keepSession(_oldToken);
+
+      expect(current().session, isA<PreviousAppSessionKept>());
+    });
+
+    test('a cancel once the server has confirmed the account comes too '
+        'late, and the account is kept', () async {
+      serveAlice();
+      final write = Completer<void>();
+      auth.secureStore.beforeWrite = (_) => write.future;
+      await load(stored: record);
+      final keeping = notifier().keepSession(_oldToken);
+      await pumpEventQueue();
+
+      notifier().cancelKeepingSession();
+      expect(current().session, isA<PreviousAppSessionKeeping>());
+      write.complete();
+      await keeping;
+
+      expect(
+        current().session,
+        isA<PreviousAppSessionKept>().having(
+          (session) => session.accountId,
+          'accountId',
+          accountId,
+        ),
+      );
+      expect(auth.accountGateway.logoutTokens, isEmpty);
+    });
+
+    test('the session is not tried again after a cancel', () async {
+      holdRefresh();
+      await load(stored: record);
+      unawaited(notifier().keepSession(_oldToken));
+      await pumpEventQueue();
+      notifier().cancelKeepingSession();
+
+      await notifier().keepSession(_oldToken);
+      notifier().cancelKeepingSession();
+
+      expect(auth.tokenGateway.refreshedTokens, hasLength(1));
+      expect(current().session, isA<PreviousAppSessionLost>());
+    });
+
+    test('a cancel without a try changes nothing', () async {
+      await load(stored: record);
+
+      notifier().cancelKeepingSession();
+
+      expect(current().session, isA<PreviousAppSessionUntried>());
+    });
+
+    test('a late failure changes nothing either', () async {
+      holdRefresh();
+      await load(stored: record);
+      final keeping = notifier().keepSession(_oldToken);
+      await pumpEventQueue();
+      notifier().cancelKeepingSession();
+      final changes = <PreviousAppState?>[];
+      container.listen(
+        previousAppProvider,
+        (_, next) => changes.add(next.value),
+      );
+
+      refresh.completeError(const NetworkFailure(NetworkProblem.unreachable));
+      await keeping;
+      await pumpEventQueue();
+
+      expect(changes, isEmpty);
+      expect(current().session, isA<PreviousAppSessionLost>());
+    });
+
+    test('a try still running when the app ends registers nothing', () async {
+      holdRefresh();
+      await load(stored: record);
+      final keeping = notifier().keepSession(_oldToken);
+      await pumpEventQueue();
+
+      container.dispose();
+      refresh.complete(lateTokens);
+      await keeping;
+      await pumpEventQueue();
+
+      expect(auth.preferences.values[AccountRegistry.storageKey], isNull);
+      expect(auth.secureStore.values, isEmpty);
+      expect(auth.accountGateway.logoutTokens, [lateTokens.accessToken]);
+    });
   });
 
   test('without a server nothing is tried', () async {

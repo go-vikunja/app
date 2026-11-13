@@ -1220,13 +1220,13 @@ abstract class AppLocalizations {
   /// **'Mark a task as a favorite with its star to find it here.'**
   String get favoritesEmptyBody;
 
-  /// Account tab section with the theme (saved to the account), Use system colors and App language (both on this device).
+  /// Account tab section with the theme, Use system colors and App language, all on this device and the same for every account.
   ///
   /// In en, this message translates to:
   /// **'Appearance'**
   String get appearanceHeading;
 
-  /// Title of the row in the Account tab's Appearance section that picks light, dark or the system's mode for the account (the web's color scheme), with appearanceThemeLight, appearanceThemeSystem and appearanceThemeDark side by side below it.
+  /// Title of the row in the Account tab's Appearance section that picks light, dark or the system's mode for this device, the same for every account, with appearanceThemeLight, appearanceThemeSystem and appearanceThemeDark side by side below it.
   ///
   /// In en, this message translates to:
   /// **'Theme'**
@@ -1250,13 +1250,7 @@ abstract class AppLocalizations {
   /// **'Dark'**
   String get appearanceThemeDark;
 
-  /// Small line under the Theme row's title in the Account tab's Appearance section: the choice is saved on the server and applies on all the account's devices. Pairs with appearanceOnThisDevice.
-  ///
-  /// In en, this message translates to:
-  /// **'Saved to your account'**
-  String get appearanceSavedToAccount;
-
-  /// Small line under the Use system colors and App language rows in the Account tab's Appearance section: the setting stays on this device. Pairs with appearanceSavedToAccount.
+  /// Small line under the Theme, Use system colors and App language rows in the Account tab's Appearance section: the setting stays on this device and is not saved to the account.
   ///
   /// In en, this message translates to:
   /// **'On this device'**
@@ -7122,7 +7116,7 @@ abstract class AppLocalizations {
   /// **'Saved'**
   String get accountSettingsSaved;
 
-  /// Screen readers' name for the progress bar of the Account settings page, and for the spinner of the Account tab's Theme row, while a change is sent to the server.
+  /// Screen readers' name for the progress bar of the Account settings page while a change is sent to the server.
   ///
   /// In en, this message translates to:
   /// **'Saving'**

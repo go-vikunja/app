@@ -8,20 +8,20 @@ part of 'theme_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// The colour scheme the user picked on the web for the active account;
-/// the system's while nobody is signed in.
+/// The device's theme, the same for every account and for guests; the
+/// system's until it is read.
 
 @ProviderFor(themeMode)
 final themeModeProvider = ThemeModeProvider._();
 
-/// The colour scheme the user picked on the web for the active account;
-/// the system's while nobody is signed in.
+/// The device's theme, the same for every account and for guests; the
+/// system's until it is read.
 
 final class ThemeModeProvider
     extends $FunctionalProvider<ThemeMode, ThemeMode, ThemeMode>
     with $Provider<ThemeMode> {
-  /// The colour scheme the user picked on the web for the active account;
-  /// the system's while nobody is signed in.
+  /// The device's theme, the same for every account and for guests; the
+  /// system's until it is read.
   ThemeModeProvider._()
     : super(
         from: null,
@@ -55,7 +55,61 @@ final class ThemeModeProvider
   }
 }
 
-String _$themeModeHash() => r'54b43f434dc3c83bb7ede394cd4c128168f4ce05';
+String _$themeModeHash() => r'e130875307eec9381944c7c3f12ee8ce2f82ebf4';
+
+/// The device-wide light, dark or system theme, the system's unless
+/// another was picked.
+
+@ProviderFor(ThemeChoice)
+final themeChoiceProvider = ThemeChoiceProvider._();
+
+/// The device-wide light, dark or system theme, the system's unless
+/// another was picked.
+final class ThemeChoiceProvider
+    extends $AsyncNotifierProvider<ThemeChoice, ThemeMode> {
+  /// The device-wide light, dark or system theme, the system's unless
+  /// another was picked.
+  ThemeChoiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'themeChoiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$themeChoiceHash();
+
+  @$internal
+  @override
+  ThemeChoice create() => ThemeChoice();
+}
+
+String _$themeChoiceHash() => r'af9b6ca8bad8d5d838d847b45f44042eada61913';
+
+/// The device-wide light, dark or system theme, the system's unless
+/// another was picked.
+
+abstract class _$ThemeChoice extends $AsyncNotifier<ThemeMode> {
+  FutureOr<ThemeMode> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<AsyncValue<ThemeMode>, ThemeMode>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<AsyncValue<ThemeMode>, ThemeMode>,
+              AsyncValue<ThemeMode>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
 
 /// The palette Android 12 and later derive from the wallpaper, as light
 /// and dark schemes; null on other platforms and older versions. Read

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -52,8 +53,11 @@ class ConnectServerScreen extends ConsumerStatefulWidget {
 class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   final _formKey = GlobalKey<FormState>();
   final GlobalKey _errorKey = GlobalKey();
+  final GlobalKey _keepingKey = GlobalKey();
   final _address = TextEditingController();
   final _addressFocus = FocusNode();
+  Timer? _tapHold;
+  var _holdingTaps = false;
 
   /// The address the typed text names, for its connection settings.
   OriginKey? _typedOrigin;
@@ -75,9 +79,12 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
         if (mounted) ref.read(signInControllerProvider.notifier).reset();
       });
     } else {
-      // The previous app's session may have been kept before this screen
-      // was built.
-      WidgetsBinding.instance.addPostFrameCallback((_) => _goHomeIfKept());
+      // The previous app's session may have been kept, or be being kept,
+      // before this screen was built.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _goHomeIfKept();
+        _revealKeeping();
+      });
     }
   }
 
@@ -99,6 +106,42 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
         ref.read(previousAppProvider).value?.session is PreviousAppSessionKept;
     final signedIn = ref.read(accountsProvider).value?.activeAccount != null;
     if (kept && signedIn) context.go(AppRoutes.home);
+  }
+
+  void _onPreviousAppChanged(
+    AsyncValue<PreviousAppState>? previous,
+    AsyncValue<PreviousAppState> next,
+  ) {
+    final wasKeeping = previous?.value?.session is PreviousAppSessionKeeping;
+    final keeping = next.value?.session is PreviousAppSessionKeeping;
+    if (keeping && !wasKeeping) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _revealKeeping());
+    } else if (wasKeeping && !keeping) {
+      _holdTaps();
+    }
+    _goHomeIfKept();
+  }
+
+  // At a larger text size, the line with its Cancel may start below the
+  // screen, and nothing else there can be used.
+  void _revealKeeping() {
+    final keepingContext = _keepingKey.currentContext;
+    if (!mounted || keepingContext == null) return;
+    Scrollable.ensureVisible(
+      keepingContext,
+      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+    );
+  }
+
+  // The note shows above once the try ends and pushes everything down, so
+  // the second tap of a double tap on the Cancel would land on whatever
+  // moved under it, such as one of the servers.
+  void _holdTaps() {
+    _tapHold?.cancel();
+    setState(() => _holdingTaps = true);
+    _tapHold = Timer(kDoubleTapTimeout, () {
+      if (mounted) setState(() => _holdingTaps = false);
+    });
   }
 
   void _onAddressEdited() {
@@ -177,6 +220,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
 
   @override
   void dispose() {
+    _tapHold?.cancel();
     _address.removeListener(_onAddressEdited);
     _address.dispose();
     _addressFocus.dispose();
@@ -317,7 +361,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     if (!widget.adding) {
       // The session and the registry each may change last.
       ref
-        ..listen(previousAppProvider, (_, _) => _goHomeIfKept())
+        ..listen(previousAppProvider, _onPreviousAppChanged)
         ..listen(
           accountsProvider.select(
             (accounts) => accounts.value?.activeAccount != null,
@@ -371,193 +415,203 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
               constraints: const BoxConstraints(maxWidth: 480),
               child: Form(
                 key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ConnectHeader(
-                      title: widget.adding ? l10n.accountAdd : null,
-                      tagline: widget.adding ? l10n.addAccountTagline : null,
-                    ),
-                    if (note != null) ...[
-                      const SizedBox(height: 24),
-                      PreviousAppNoteCard(note: note, signedIn: false),
-                    ],
-                    const SizedBox(height: 32),
-                    ServerAddressField(
-                      controller: _address,
-                      focusNode: _addressFocus,
-                      enabled: !busy,
-                      onSubmitted: _submit,
-                      onChanged: _onAddressChanged,
-                    ),
-                    ConnectionOptionsButton(
-                      origin: _typedOrigin,
-                      hasSettings: _typedOriginHasSettings,
-                      onPressed: busy
-                          ? null
-                          : (origin) =>
-                                unawaited(_openConnectionOptions(origin)),
-                    ),
-                    if (knownServers.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      KnownServers(
-                        servers: knownServers,
+                child: IgnorePointer(
+                  ignoring: _holdingTaps,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ConnectHeader(
+                        title: widget.adding ? l10n.accountAdd : null,
+                        tagline: widget.adding ? l10n.addAccountTagline : null,
+                      ),
+                      if (note != null) ...[
+                        const SizedBox(height: 24),
+                        PreviousAppNoteCard(note: note, signedIn: false),
+                      ],
+                      const SizedBox(height: 32),
+                      ServerAddressField(
+                        controller: _address,
+                        focusNode: _addressFocus,
                         enabled: !busy,
-                        onSelected: _useKnownServer,
+                        onSubmitted: _submit,
+                        onChanged: _onAddressChanged,
                       ),
-                    ],
-                    AnimatedSize(
-                      duration: const Duration(milliseconds: 200),
-                      alignment: Alignment.topCenter,
-                      onEnd: _revealError,
-                      child: switch (state) {
-                        ConnectServerFailed(:final failure, :final input) =>
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: ConnectFailureCard(
-                              key: _errorKey,
-                              error: failure,
-                              origin: switch (failure?.uri) {
-                                final uri? => OriginKey.tryOf(uri),
-                                null => null,
-                              },
-                              onFix: _onFix,
-                              describe: (settings) => FailureMessage.describe(
-                                l10n,
-                                failure: failure,
-                                input: input,
-                                platform: theme.platform,
-                                hasClientCertificate: settings == null
-                                    ? null
-                                    : settings.profile?.clientCertificate !=
-                                          null,
-                                pinned: settings?.profile?.pin != null,
+                      ConnectionOptionsButton(
+                        origin: _typedOrigin,
+                        hasSettings: _typedOriginHasSettings,
+                        onPressed: busy
+                            ? null
+                            : (origin) =>
+                                  unawaited(_openConnectionOptions(origin)),
+                      ),
+                      if (knownServers.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        KnownServers(
+                          servers: knownServers,
+                          enabled: !busy,
+                          onSelected: _useKnownServer,
+                        ),
+                      ],
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        alignment: Alignment.topCenter,
+                        onEnd: _revealError,
+                        child: switch (state) {
+                          ConnectServerFailed(:final failure, :final input) =>
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: ConnectFailureCard(
+                                key: _errorKey,
+                                error: failure,
+                                origin: switch (failure?.uri) {
+                                  final uri? => OriginKey.tryOf(uri),
+                                  null => null,
+                                },
+                                onFix: _onFix,
+                                describe: (settings) => FailureMessage.describe(
+                                  l10n,
+                                  failure: failure,
+                                  input: input,
+                                  platform: theme.platform,
+                                  hasClientCertificate: settings == null
+                                      ? null
+                                      : settings.profile?.clientCertificate !=
+                                            null,
+                                  pinned: settings?.profile?.pin != null,
+                                ),
                               ),
                             ),
-                          ),
-                        ConnectServerLinkFailed(
-                          :final error,
-                          :final serverRoot,
-                        ) =>
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: ConnectFailureCard(
-                              key: _errorKey,
-                              error: error,
-                              origin: OriginKey.tryOf(serverRoot),
-                              onFix: _onFix,
-                              describe: (_) => describeLinkFailure(
-                                l10n,
-                                error,
-                                serverRoot: serverRoot,
-                                platform: theme.platform,
+                          ConnectServerLinkFailed(
+                            :final error,
+                            :final serverRoot,
+                          ) =>
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: ConnectFailureCard(
+                                key: _errorKey,
+                                error: error,
+                                origin: OriginKey.tryOf(serverRoot),
+                                onFix: _onFix,
+                                describe: (_) => describeLinkFailure(
+                                  l10n,
+                                  error,
+                                  serverRoot: serverRoot,
+                                  platform: theme.platform,
+                                ),
                               ),
                             ),
-                          ),
-                        ConnectServerShareNeedsServer(
-                          :final linkBase,
-                          :final failure,
-                        ) =>
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: StatusCard(
-                              key: _errorKey,
-                              icon: Icons.help_outline,
-                              title: l10n.guestServerNeededTitle,
-                              body: l10n.guestServerNeededExplanation(
-                                displayHost(linkBase),
-                              ),
-                              footnote: l10n.guestServerNeededSuggestion,
-                              background: theme.colorScheme.secondaryContainer,
-                              foreground:
-                                  theme.colorScheme.onSecondaryContainer,
-                              liveRegion: true,
-                              action: Wrap(
-                                alignment: WrapAlignment.end,
-                                spacing: 8,
-                                children: [
-                                  if (_headersFixOrigin(failure)
-                                      case final origin?)
-                                    TextButton(
-                                      onPressed: () => _onFix(
-                                        ConnectionFix.addHeaders,
-                                        origin,
+                          ConnectServerShareNeedsServer(
+                            :final linkBase,
+                            :final failure,
+                          ) =>
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: StatusCard(
+                                key: _errorKey,
+                                icon: Icons.help_outline,
+                                title: l10n.guestServerNeededTitle,
+                                body: l10n.guestServerNeededExplanation(
+                                  displayHost(linkBase),
+                                ),
+                                footnote: l10n.guestServerNeededSuggestion,
+                                background:
+                                    theme.colorScheme.secondaryContainer,
+                                foreground:
+                                    theme.colorScheme.onSecondaryContainer,
+                                liveRegion: true,
+                                action: Wrap(
+                                  alignment: WrapAlignment.end,
+                                  spacing: 8,
+                                  children: [
+                                    if (_headersFixOrigin(failure)
+                                        case final origin?)
+                                      TextButton(
+                                        onPressed: () => _onFix(
+                                          ConnectionFix.addHeaders,
+                                          origin,
+                                        ),
+                                        child: Text(l10n.connectionAddHeaders),
                                       ),
-                                      child: Text(l10n.connectionAddHeaders),
+                                    TextButton(
+                                      onPressed: _controller.reset,
+                                      child: Text(l10n.cancel),
                                     ),
-                                  TextButton(
-                                    onPressed: _controller.reset,
-                                    child: Text(l10n.cancel),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ConnectServerInviteFound(
-                          :final connection,
-                          :final invite,
-                          :final check,
-                          :final preview,
-                        ) =>
-                          Padding(
-                            padding: const EdgeInsets.only(top: 16),
-                            child: InviteCard(
-                              key: _errorKey,
-                              serverRoot: connection.rootUri,
-                              check: check,
-                              preview: preview,
-                              onCreateAccount: () =>
-                                  unawaited(_openInvite(invite)),
-                              onContinue: _controller.continueToSignIn,
+                          ConnectServerInviteFound(
+                            :final connection,
+                            :final invite,
+                            :final check,
+                            :final preview,
+                          ) =>
+                            Padding(
+                              padding: const EdgeInsets.only(top: 16),
+                              child: InviteCard(
+                                key: _errorKey,
+                                serverRoot: connection.rootUri,
+                                check: check,
+                                preview: preview,
+                                onCreateAccount: () =>
+                                    unawaited(_openInvite(invite)),
+                                onContinue: _controller.continueToSignIn,
+                              ),
                             ),
+                          _ => const SizedBox(width: double.infinity),
+                        },
+                      ),
+                      if (state is! ConnectServerInviteFound) ...[
+                        const SizedBox(height: 24),
+                        ConnectButton(isConnecting: busy, onContinue: _submit),
+                      ],
+                      if (state case final ConnectServerConnecting connecting)
+                        _ProgressLine(_connectingText(l10n, connecting))
+                      else if (keeping != null)
+                        _ProgressLine(
+                          l10n.previousAppSigningIn(
+                            displayHost(keeping.server),
                           ),
-                        _ => const SizedBox(width: double.infinity),
-                      },
-                    ),
-                    if (state is! ConnectServerInviteFound) ...[
-                      const SizedBox(height: 24),
-                      ConnectButton(isConnecting: busy, onContinue: _submit),
-                    ],
-                    if (state case final ConnectServerConnecting connecting)
-                      _ProgressLine(_connectingText(l10n, connecting))
-                    else if (keeping != null)
-                      _ProgressLine(
-                        l10n.previousAppSigningIn(displayHost(keeping.server)),
-                      ),
-                    const SizedBox(height: 8),
-                    TextButton(
-                      onPressed: busy ? null : _tryDemo,
-                      child: Text(l10n.connectTryDemo),
-                    ),
-                    TextButton.icon(
-                      onPressed: busy
-                          ? null
-                          : () => unawaited(_openSharedLink()),
-                      icon: const Icon(Icons.link),
-                      label: Text(
-                        l10n.guestOpenSharedLink,
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    // Below the other buttons, so a double tap on either of
-                    // them cannot land on it once connecting starts.
-                    if (isConnecting)
+                          key: _keepingKey,
+                          onCancel: ref
+                              .read(previousAppProvider.notifier)
+                              .cancelKeepingSession,
+                        ),
+                      const SizedBox(height: 8),
                       TextButton(
-                        onPressed: _controller.cancel,
-                        child: Text(l10n.connectCancel),
+                        onPressed: busy ? null : _tryDemo,
+                        child: Text(l10n.connectTryDemo),
                       ),
-                    // Signed in, the Account tab's version line opens it.
-                    if (!widget.adding) ...[
-                      const SizedBox(height: 16),
                       TextButton.icon(
                         onPressed: busy
                             ? null
-                            : () => unawaited(context.push(AppRoutes.about)),
-                        icon: const Icon(Icons.info_outline),
-                        label: Text(l10n.aboutTitle),
+                            : () => unawaited(_openSharedLink()),
+                        icon: const Icon(Icons.link),
+                        label: Text(
+                          l10n.guestOpenSharedLink,
+                          textAlign: TextAlign.center,
+                        ),
                       ),
+                      // Below the other buttons, so a double tap on either of
+                      // them cannot land on it once connecting starts.
+                      if (isConnecting)
+                        TextButton(
+                          onPressed: _controller.cancel,
+                          child: Text(l10n.connectCancel),
+                        ),
+                      // Signed in, the Account tab's version line opens it.
+                      if (!widget.adding) ...[
+                        const SizedBox(height: 16),
+                        TextButton.icon(
+                          onPressed: busy
+                              ? null
+                              : () => unawaited(context.push(AppRoutes.about)),
+                          icon: const Icon(Icons.info_outline),
+                          label: Text(l10n.aboutTitle),
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -569,24 +623,34 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
 }
 
 class _ProgressLine extends StatelessWidget {
-  const new(this.text);
+  const new(this.text, {this.onCancel, super.key});
 
   final String text;
+  final VoidCallback? onCancel;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.only(top: 12),
-      child: Semantics(
-        liveRegion: true,
-        child: Text(
-          text,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+      child: Column(
+        children: [
+          Semantics(
+            liveRegion: true,
+            child: Text(
+              text,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
-          textAlign: TextAlign.center,
-        ),
+          if (onCancel case final onCancel?)
+            TextButton(
+              onPressed: onCancel,
+              child: Text(context.l10n.connectCancel),
+            ),
+        ],
       ),
     );
   }

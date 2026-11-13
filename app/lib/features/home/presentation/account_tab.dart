@@ -204,7 +204,7 @@ class AccountTab extends ConsumerWidget {
               const WidgetsSection(),
               NotificationsSection(entry: entry),
               const PrivacySection(),
-              AppearanceSection(entry: entry, signingOut: signingOut),
+              const AppearanceSection(),
               SettingsSection(
                 title: l10n.accountServerHeading,
                 children: [

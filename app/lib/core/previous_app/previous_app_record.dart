@@ -6,10 +6,6 @@ import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 
 final _log = Logger('PreviousApp');
 
-/// The previous app's light or dark choice and its server, until the shell
-/// of a user account on that server saves it to that account.
-const previousAppThemeKey = 'previous_app.theme';
-
 /// What the import kept of the previous Vikunja app, which this app
 /// replaced as an update on Android: never a secret.
 @immutable

@@ -80,26 +80,43 @@ void main() {
     );
   }
 
-  group('colour scheme from the web', () {
-    testWidgets('auto follows the system, light and dark override it', (
-      tester,
-    ) async {
+  group('theme of this device', () {
+    Future<void> pick(WidgetTester tester, ThemeMode mode) async {
+      await containerOf(tester).read(themeChoiceProvider.notifier).set(mode);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('the system by default, light and dark override it, and '
+        'each pick is stored', (tester) async {
       usePlatformBrightness(tester, Brightness.dark);
-      await pumpSignedInApp(tester, sync: data, now: now);
+      final auth = await pumpSignedInApp(tester, sync: data, now: now);
       expect(themeOf(tester, OverviewScreen).brightness, Brightness.dark);
 
-      data.shared.settings = const UserSettings(colorSchema: ColorSchema.light);
-      await tester.pumpAndSettle();
+      await pick(tester, ThemeMode.light);
       expect(themeOf(tester, OverviewScreen).brightness, Brightness.light);
+      expect(auth.preferences.values[themeModeKey], 'light');
 
       usePlatformBrightness(tester, Brightness.light);
+      await pick(tester, ThemeMode.dark);
+      expect(themeOf(tester, OverviewScreen).brightness, Brightness.dark);
+      expect(auth.preferences.values[themeModeKey], 'dark');
+
+      await pick(tester, ThemeMode.system);
+      expect(themeOf(tester, OverviewScreen).brightness, Brightness.light);
+      expect(auth.preferences.values[themeModeKey], 'system');
+    });
+
+    testWidgets("the web's color scheme of the account leaves it alone", (
+      tester,
+    ) async {
       data.shared.settings = const UserSettings(colorSchema: ColorSchema.dark);
+      await pumpSignedInApp(tester, sync: data, now: now);
+      expect(themeOf(tester, OverviewScreen).brightness, Brightness.light);
+
+      await pick(tester, ThemeMode.dark);
+      data.shared.settings = const UserSettings(colorSchema: ColorSchema.light);
       await tester.pumpAndSettle();
       expect(themeOf(tester, OverviewScreen).brightness, Brightness.dark);
-
-      data.shared.settings = const UserSettings();
-      await tester.pumpAndSettle();
-      expect(themeOf(tester, OverviewScreen).brightness, Brightness.light);
     });
 
     testWidgets('signed out follows the system', (tester) async {
@@ -109,19 +126,26 @@ void main() {
       expect(themeOf(tester, ConnectServerScreen).brightness, Brightness.dark);
     });
 
-    testWidgets("an account switch takes the other account's choice", (
-      tester,
-    ) async {
+    testWidgets('signed out, the stored theme applies', (tester) async {
       final auth = AuthFakes();
+      auth.preferences.values[themeModeKey] = 'dark';
+      await pumpVikunjaApp(tester, auth: auth);
+
+      expect(themeOf(tester, ConnectServerScreen).brightness, Brightness.dark);
+    });
+
+    testWidgets("an account switch keeps the device's theme", (tester) async {
+      final auth = AuthFakes();
+      auth.preferences.values[themeModeKey] = 'dark';
       final bob = await auth.seedAccount(
         oauthServer230(),
         tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
         activate: false,
       );
       data.accounts[bob.id] = AccountDataFakes(now: now)
-        ..settings = const UserSettings(colorSchema: ColorSchema.dark);
+        ..settings = const UserSettings(colorSchema: ColorSchema.light);
       await pumpSignedInApp(tester, sync: data, auth: auth, now: now);
-      expect(themeOf(tester, OverviewScreen).brightness, Brightness.light);
+      expect(themeOf(tester, OverviewScreen).brightness, Brightness.dark);
 
       await containerOf(tester).read(accountRegistryProvider).setActive(bob.id);
       await tester.pumpAndSettle();
@@ -149,7 +173,9 @@ void main() {
         const Size(64, 52),
       );
 
-      data.shared.settings = const UserSettings(colorSchema: ColorSchema.dark);
+      await containerOf(tester)
+          .read(themeChoiceProvider.notifier)
+          .set(ThemeMode.dark);
       await tester.pumpAndSettle();
       expect(
         themeOf(tester, OverviewScreen).colorScheme.primary,
@@ -352,7 +378,9 @@ void main() {
       );
       expect(light.primary, isNot(const Color(0xFF00AA44)));
 
-      data.shared.settings = const UserSettings(colorSchema: ColorSchema.dark);
+      await containerOf(tester)
+          .read(themeChoiceProvider.notifier)
+          .set(ThemeMode.dark);
       await tester.pumpAndSettle();
       expect(
         themeOf(tester, OverviewScreen).colorScheme,
