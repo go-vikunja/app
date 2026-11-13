@@ -381,6 +381,15 @@ const guestActionInventory = <String, GuestActionEntry>{
     ),
     uses: {'accountSettingsProvider'},
   ),
+  'features/home/presentation/home_shell.dart '
+      '_HomeShellState._carryOverPreviousAppTheme': (
+    Gated(
+      "the previous app's theme is saved only for a user account; a guest "
+      'leaves it pending',
+      checkIn: ['core/previous_app/previous_app_theme.dart'],
+    ),
+    uses: {'accountSettingsRepositoryProvider'},
+  ),
   'features/inbox/presentation/inbox_button.dart InboxButton.build': (
     Gated(
       'built only in the Overview header, which leaves the bell out for a '

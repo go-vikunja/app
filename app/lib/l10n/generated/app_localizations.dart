@@ -13601,6 +13601,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A word starting with {prefix}. Labels that already exist are added; as a guest you can\'t create new ones, so any other word stays in the title. Use quotes for spaces.'**
   String quickAddHelpLabelsBodyGuest(String prefix);
+
+  /// Title of the note on the first start after this app was installed as an update over the previous Vikunja app (Android): on the connect screen when the user has to sign in, on the first-sync screen when the previous app's session was kept.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the new Vikunja app'**
+  String get previousAppNoteTitle;
+
+  /// Body of that note on the connect screen when the previous app's server address was filled in and its session could not be kept.
+  ///
+  /// In en, this message translates to:
+  /// **'It replaces the previous app on this device. Your server is already filled in — sign in again to continue.'**
+  String get previousAppNoteSignInAgain;
+
+  /// Body of that note on the connect screen when no server address of the previous app could be read.
+  ///
+  /// In en, this message translates to:
+  /// **'It replaces the previous app on this device. Sign in to continue.'**
+  String get previousAppNoteSignIn;
+
+  /// Body of that note on the first-sync screen when the previous app's session was kept.
+  ///
+  /// In en, this message translates to:
+  /// **'It replaces the previous app on this device, and you\'re still signed in.'**
+  String get previousAppNoteSignedIn;
+
+  /// Last line of that note when widgets of the previous app are on the home screen; they ask to be set up until the user chooses what they show.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a widget of the previous app to choose what it shows.'**
+  String get previousAppNoteWidgets;
+
+  /// Last line of that note on the connect screen when widgets of the previous app are on the home screen; a tap on one opens its setup only once an account is signed in.
+  ///
+  /// In en, this message translates to:
+  /// **'After you sign in, tap a widget of the previous app to choose what it shows.'**
+  String get previousAppNoteWidgetsAfterSignIn;
+
+  /// Title of a widget under 'On your home screen' that was placed with the previous Vikunja app, which this app replaced as an update (Android), and that was not set up here yet. Tapping opens its setup.
+  ///
+  /// In en, this message translates to:
+  /// **'Widget of the previous app'**
+  String get widgetsPlacedPreviousApp;
+
+  /// Subtitle of that widget: until it is set up, it asks to be set up instead of showing a list.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set up yet'**
+  String get widgetsPlacedPreviousAppNotSetUp;
+
+  /// Progress text on the connect screen while the app signs in with the previous app's session after the update; host is the server's host name.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeping you signed in to {host}…'**
+  String previousAppSigningIn(String host);
 }
 
 class _AppLocalizationsDelegate

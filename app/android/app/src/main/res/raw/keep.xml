@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- quick_actions and flutter_local_notifications look their icons up by
-     name at runtime, which resource shrinking cannot see. -->
+     name at runtime, which resource shrinking cannot see; so do the
+     previous app's reminders scheduled before the update. -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/shortcut_new_task,@drawable/ic_notification" />
+    tools:keep="@drawable/shortcut_new_task,@drawable/ic_notification,@drawable/vikunja_notification_logo" />

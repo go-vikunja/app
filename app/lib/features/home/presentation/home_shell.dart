@@ -12,6 +12,8 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
+import 'package:vikunja_mobile/core/previous_app/previous_app_theme.dart';
+import 'package:vikunja_mobile/core/repositories/account_settings_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
@@ -112,6 +114,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkSession();
       _syncQuietly();
+      _carryOverPreviousAppTheme();
     });
   }
 
@@ -420,6 +423,19 @@ class _HomeShellState extends ConsumerState<HomeShell>
     );
   }
 
+  /// Once, for the first user account whose shell opens after this app
+  /// replaced the previous app.
+  void _carryOverPreviousAppTheme() {
+    if (!mounted || ref.read(signOutControllerProvider)) return;
+    unawaited(
+      carryOverPreviousAppTheme(
+        preferences: ref.read(preferencesStoreProvider),
+        entry: ref.read(accountsProvider).value?.activeAccount,
+        repository: ref.read(accountSettingsRepositoryProvider),
+      ),
+    );
+  }
+
   void _onSignInChanged(SignInState? previous, SignInState next) {
     if (next is SignInFailed) unawaited(HapticFeedback.heavyImpact());
   }
@@ -434,6 +450,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
     }
     _checkSession();
     _syncQuietly();
+    _carryOverPreviousAppTheme();
   }
 
   /// Runs before the next frame, so no screen of the previous account is

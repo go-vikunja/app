@@ -11,16 +11,17 @@ internal data class ListWidgetState(
     val linkKey: String? = null,
 ) {
     companion object {
-        fun load(files: WidgetFiles, appWidgetId: Int): ListWidgetState {
+        fun load(files: WidgetFiles, appWidgetId: Int, followsActiveAccount: Boolean = true): ListWidgetState {
             val config = files.readConfig(appWidgetId)
             val host = files.readHost()
-            val key = if (config != null) config.key else files.defaultListKey(host)
+            val followed = host.takeIf { config != null || followsActiveAccount }
+            val key = if (config != null) config.key else files.defaultListKey(followed)
             val snapshot = key?.let(files::readSnapshot)
             return ListWidgetState(
                 appWidgetId = appWidgetId,
                 configured = config != null,
                 key = key,
-                accountId = snapshot?.accountId ?: config?.accountId ?: host?.activeAccountId,
+                accountId = snapshot?.accountId ?: config?.accountId ?: followed?.activeAccountId,
                 snapshot = snapshot,
                 hiddenTaskIds = snapshot
                     ?.let { WidgetActionQueue(files).hiddenTaskIds(it.accountId, it.generatedAt) }

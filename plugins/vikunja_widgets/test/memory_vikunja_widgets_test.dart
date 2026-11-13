@@ -64,4 +64,21 @@ void main() {
     expect(widgets.pinRequests.single.provider, WidgetProviderKind.list);
     expect(widgets.pinRequests.single.snapshotKey, 'a.overdue');
   });
+
+  test("a saved config keeps a widget of the previous app's provider apart, "
+      'as the provider stays', () async {
+    final widgets = MemoryVikunjaWidgets(
+      instances: const [
+        WidgetInstance(
+          appWidgetId: 1,
+          provider: WidgetProviderKind.list,
+          followsActiveAccount: false,
+        ),
+      ],
+    );
+
+    await widgets.saveConfig(1, snapshotKey: 'b.today', config: const {});
+
+    expect((await widgets.configs()).single.followsActiveAccount, isFalse);
+  });
 }

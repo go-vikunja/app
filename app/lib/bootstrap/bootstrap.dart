@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/app/vikunja_app.dart';
 import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
+import 'package:vikunja_mobile/bootstrap/previous_app_start.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/background/background_entry_point.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
@@ -47,6 +48,7 @@ Future<void> bootstrap() async {
   // locked while the app lock is on.
   final privacy = container.read(privacySettingsControllerProvider.future);
   await _prepareWidgetLinkKey(container);
+  final previousApp = await importPreviousApp(container);
   try {
     // Behind the native launch screen, so the router starts on its first
     // real screen instead of animating it in over the empty splash route,
@@ -54,6 +56,7 @@ Future<void> bootstrap() async {
     final accounts = await container.read(accountsProvider.future);
     await Future.wait([
       _loadAppearance(container),
+      startPreviousApp(container, previousApp),
       if (accounts.activeAccount case final entry?) ...[
         // The shell, the first-sync screen or the notification setup:
         // decided by the stored sync state and the onboarding flag.

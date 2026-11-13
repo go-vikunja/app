@@ -32,6 +32,30 @@ void main() {
     expect(await host.configs(), {1: config});
   });
 
+  test("tells the previous app's list widgets apart", () async {
+    plugin.instances.addAll(const [
+      WidgetInstance(
+        appWidgetId: 3,
+        provider: WidgetProviderKind.list,
+        followsActiveAccount: false,
+      ),
+      WidgetInstance(
+        appWidgetId: 4,
+        provider: WidgetProviderKind.list,
+        snapshotKey: '$alice.today',
+        config: {'account': alice, 'kind': 'today'},
+        followsActiveAccount: false,
+      ),
+    ]);
+
+    expect(await host.previousAppWidgets(), {3, 4});
+    expect(await host.configs(), {
+      1: null,
+      3: null,
+      4: const WidgetConfig(accountId: alice, kind: TodayKind()),
+    });
+  });
+
   test('lists a list widget without a readable config as not set up, and '
       'leaves out a Quick add widget without one', () async {
     plugin.instances.addAll(const [

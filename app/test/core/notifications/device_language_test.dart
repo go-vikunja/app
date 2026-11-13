@@ -258,7 +258,25 @@ void main() {
     expect(authenticator.promptTexts.single.cancel, de.cancel);
   });
 
+  test('a language set before the app listens is followed once it '
+      'listens', () async {
+    binding.platformDispatcher.localesTestValue = const [Locale('de', 'DE')];
+
+    final account = await started(en);
+
+    expect(container.read(deviceAppLocalizationsProvider).localeName, 'de');
+    expect(auth.preferences.values[notificationLocaleKey], 'de');
+    final reminders = callsOf('createNotificationChannel')
+        .map(argumentsOf)
+        .lastWhere(
+          (channel) => channel['id'] == LocalNotificationGateway.channelId,
+        );
+    expect(reminders['name'], de.notificationChannelReminders);
+    expect(todayTitle(account), de.sectionToday);
+  });
+
   test('a language the app has no strings for falls back to English', () async {
+    binding.platformDispatcher.localesTestValue = const [Locale('de', 'DE')];
     final account = await started(de);
     calls.clear();
 

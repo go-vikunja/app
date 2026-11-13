@@ -207,6 +207,51 @@ void main() {
       expect(instances[1].isConfigured, isFalse);
     });
 
+    test("reads which widgets, the previous app's, do not follow the active "
+        'account', () async {
+      replies['configs'] = (_) => [
+        {
+          'appWidgetId': 5,
+          'provider': 'list',
+          'followsActiveAccount': true,
+          'config': null,
+        },
+        {
+          'appWidgetId': 8,
+          'provider': 'list',
+          'followsActiveAccount': false,
+          'config': null,
+        },
+        {
+          'appWidgetId': 9,
+          'provider': 'list',
+          'followsActiveAccount': false,
+          'config': jsonEncode({
+            'version': 1,
+            'key': '$_account.today',
+            'account': _account,
+            'kind': 'today',
+          }),
+        },
+      ];
+
+      final instances = await VikunjaWidgets().configs();
+
+      expect(
+        [for (final instance in instances) instance.followsActiveAccount],
+        [true, false, false],
+      );
+      expect(
+        instances[1],
+        isNot(
+          const WidgetInstance(
+            appWidgetId: 8,
+            provider: WidgetProviderKind.list,
+          ),
+        ),
+      );
+    });
+
     test('saves a config in the shared file format', () async {
       final widgets = VikunjaWidgets();
 

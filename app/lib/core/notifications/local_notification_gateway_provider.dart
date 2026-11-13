@@ -132,8 +132,8 @@ class DeviceAppLocalizations extends _$DeviceAppLocalizations {
 
 /// In the app: [deviceAppLocalizationsProvider] follows a change of the
 /// device or per-app language while the app runs, which Android reports
-/// without restarting the activity, and looks again on every resume. iOS
-/// restarts the app instead. Bootstrap listens.
+/// without restarting the activity, and looks again once it is listened to
+/// and on every resume. iOS restarts the app instead. Bootstrap listens.
 @Riverpod(keepAlive: true)
 void deviceLanguageFollower(Ref ref) {
   void follow([List<Locale>? locales]) => unawaited(
@@ -152,6 +152,12 @@ void deviceLanguageFollower(Ref ref) {
   ref.onDispose(() {
     lifecycle.dispose();
     WidgetsBinding.instance.removeObserver(observer);
+  });
+  // A language set before this listens, as the update over the previous
+  // app does during bootstrap, would otherwise wait for the next resume.
+  // A microtask, because a build must not change another provider.
+  scheduleMicrotask(() {
+    if (ref.mounted) follow();
   });
 }
 

@@ -15,8 +15,10 @@ import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint
 import 'package:vikunja_mobile/features/connection/presentation/connection_settings_action.dart';
 import 'package:vikunja_mobile/features/home/presentation/guest_reauth_banner.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
+import 'package:vikunja_mobile/features/onboarding/application/previous_app.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/previous_app_note.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
@@ -77,6 +79,15 @@ class _FirstSyncScreenState extends ConsumerState<FirstSyncScreen> {
     final sessionEnded =
         entry.account.needsReauth ||
         status is SyncFailed && _isSessionFailure(status.failure);
+    final previousAppNote = switch (ref.watch(previousAppProvider).value) {
+      PreviousAppState(
+        :final note?,
+        session: PreviousAppSessionKept(:final accountId),
+      )
+          when accountId == entry.id =>
+        note,
+      _ => null,
+    };
 
     // Like the shell: back must not end the isolate in the middle of a
     // sign-out.
@@ -117,6 +128,13 @@ class _FirstSyncScreenState extends ConsumerState<FirstSyncScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
+                    if (previousAppNote != null) ...[
+                      const SizedBox(height: 24),
+                      PreviousAppNoteCard(
+                        note: previousAppNote,
+                        signedIn: true,
+                      ),
+                    ],
                     const SizedBox(height: 32),
                     // The Account tab's flow, because there is no Account
                     // tab before the first sync.

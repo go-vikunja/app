@@ -8787,4 +8787,38 @@ class AppLocalizationsDe extends AppLocalizations {
   String quickAddHelpLabelsBodyGuest(String prefix) {
     return 'Ein Wort, das mit $prefix beginnt. Labels, die es schon gibt, werden hinzugefügt; als Gast kannst du keine neuen erstellen, deshalb bleiben andere Wörter im Titel. Für Leerzeichen nimm Anführungszeichen.';
   }
+
+  @override
+  String get previousAppNoteTitle => 'Das ist die neue Vikunja-App';
+
+  @override
+  String get previousAppNoteSignInAgain =>
+      'Sie ersetzt die bisherige App auf diesem Gerät. Dein Server ist schon eingetragen – melde dich noch einmal an, um weiterzumachen.';
+
+  @override
+  String get previousAppNoteSignIn =>
+      'Sie ersetzt die bisherige App auf diesem Gerät. Melde dich an, um weiterzumachen.';
+
+  @override
+  String get previousAppNoteSignedIn =>
+      'Sie ersetzt die bisherige App auf diesem Gerät, und du bist weiterhin angemeldet.';
+
+  @override
+  String get previousAppNoteWidgets =>
+      'Tippe auf ein Widget der bisherigen App, um auszuwählen, was es zeigt.';
+
+  @override
+  String get previousAppNoteWidgetsAfterSignIn =>
+      'Tippe nach der Anmeldung auf ein Widget der bisherigen App, um auszuwählen, was es zeigt.';
+
+  @override
+  String get widgetsPlacedPreviousApp => 'Widget der bisherigen App';
+
+  @override
+  String get widgetsPlacedPreviousAppNotSetUp => 'Noch nicht eingerichtet';
+
+  @override
+  String previousAppSigningIn(String host) {
+    return 'Deine Anmeldung bei $host wird übernommen …';
+  }
 }

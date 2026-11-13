@@ -88,9 +88,12 @@ class _WidgetsPageState extends ConsumerState<WidgetsPage> {
   }
 
   Future<List<_PlacedWidget>> _readPlaced() async {
+    final host = ref.read(widgetHostProvider);
     final Map<int, WidgetConfig?> configs;
+    final Set<int> previousApp;
     try {
-      configs = await ref.read(widgetHostProvider).configs();
+      configs = await host.configs();
+      previousApp = await host.previousAppWidgets();
     } on Object catch (error) {
       _log.warning('Could not read the placed widgets: ${error.runtimeType}');
       return const [];
@@ -106,6 +109,7 @@ class _WidgetsPageState extends ConsumerState<WidgetsPage> {
             final config? => (await refresher.preview(config))?.title,
             null => null,
           },
+          ofPreviousApp: previousApp.contains(id),
         ),
     ];
   }
@@ -267,16 +271,22 @@ class _AddTile extends StatelessWidget {
 }
 
 final class _PlacedWidget {
-  const new({required this.appWidgetId, this.config, this.title});
+  const new({
+    required this.appWidgetId,
+    this.config,
+    this.title,
+    this.ofPreviousApp = false,
+  });
 
   final int appWidgetId;
 
   /// Null for a list widget not set up, which shows the active account's
-  /// Today.
+  /// Today unless it is [ofPreviousApp]: then it asks to be set up.
   final WidgetConfig? config;
 
   /// What its header says; null for an account that is gone.
   final String? title;
+  final bool ofPreviousApp;
 }
 
 class _PlacedSection extends ConsumerWidget {
@@ -307,6 +317,10 @@ class _PlacedSection extends ConsumerWidget {
                   widget.title,
                   registry?.find(config.accountId)?.account,
                   several: several,
+                ),
+                null when widget.ofPreviousApp => _previousAppTile(
+                  context,
+                  widget.appWidgetId,
                 ),
                 null => _notSetUpTile(context, widget.appWidgetId),
               },
@@ -340,6 +354,18 @@ class _PlacedSection extends ConsumerWidget {
       leading: Icon(widgetKindIcon(config.kind)),
       title: Text(title),
       subtitle: subtitle == null ? null : Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => onConfigure(appWidgetId),
+    );
+  }
+
+  Widget _previousAppTile(BuildContext context, int appWidgetId) {
+    final l10n = context.l10n;
+    return ListTile(
+      key: ValueKey(appWidgetId),
+      leading: const Icon(Icons.widgets_outlined),
+      title: Text(l10n.widgetsPlacedPreviousApp),
+      subtitle: Text(l10n.widgetsPlacedPreviousAppNotSetUp),
       trailing: const Icon(Icons.chevron_right),
       onTap: () => onConfigure(appWidgetId),
     );

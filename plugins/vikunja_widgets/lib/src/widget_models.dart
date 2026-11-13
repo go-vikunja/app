@@ -30,10 +30,15 @@ final class WidgetInstance {
     required this.provider,
     this.snapshotKey,
     this.config,
+    this.followsActiveAccount = true,
   });
 
   final int appWidgetId;
   final WidgetProviderKind provider;
+
+  /// False for a list widget placed with the previous Vikunja app, which
+  /// asks to be set up instead of showing the active account's Today.
+  final bool followsActiveAccount;
 
   /// The config file's `key`: the snapshot the widget shows (for Quick add
   /// its account's), null for an instance that has no config yet.
@@ -48,14 +53,17 @@ final class WidgetInstance {
       other.appWidgetId == appWidgetId &&
       other.provider == provider &&
       other.snapshotKey == snapshotKey &&
+      other.followsActiveAccount == followsActiveAccount &&
       _sameJson(other.config, config);
 
   @override
-  int get hashCode => Object.hash(appWidgetId, provider, snapshotKey);
+  int get hashCode =>
+      Object.hash(appWidgetId, provider, snapshotKey, followsActiveAccount);
 
   @override
   String toString() =>
-      'WidgetInstance($appWidgetId, ${provider.name}, $snapshotKey)';
+      'WidgetInstance($appWidgetId, ${provider.name}, $snapshotKey, '
+      'followsActiveAccount: $followsActiveAccount)';
 }
 
 @immutable

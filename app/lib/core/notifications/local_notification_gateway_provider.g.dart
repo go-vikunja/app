@@ -304,24 +304,24 @@ abstract class _$DeviceAppLocalizations extends $Notifier<AppLocalizations> {
 
 /// In the app: [deviceAppLocalizationsProvider] follows a change of the
 /// device or per-app language while the app runs, which Android reports
-/// without restarting the activity, and looks again on every resume. iOS
-/// restarts the app instead. Bootstrap listens.
+/// without restarting the activity, and looks again once it is listened to
+/// and on every resume. iOS restarts the app instead. Bootstrap listens.
 
 @ProviderFor(deviceLanguageFollower)
 final deviceLanguageFollowerProvider = DeviceLanguageFollowerProvider._();
 
 /// In the app: [deviceAppLocalizationsProvider] follows a change of the
 /// device or per-app language while the app runs, which Android reports
-/// without restarting the activity, and looks again on every resume. iOS
-/// restarts the app instead. Bootstrap listens.
+/// without restarting the activity, and looks again once it is listened to
+/// and on every resume. iOS restarts the app instead. Bootstrap listens.
 
 final class DeviceLanguageFollowerProvider
     extends $FunctionalProvider<void, void, void>
     with $Provider<void> {
   /// In the app: [deviceAppLocalizationsProvider] follows a change of the
   /// device or per-app language while the app runs, which Android reports
-  /// without restarting the activity, and looks again on every resume. iOS
-  /// restarts the app instead. Bootstrap listens.
+  /// without restarting the activity, and looks again once it is listened to
+  /// and on every resume. iOS restarts the app instead. Bootstrap listens.
   DeviceLanguageFollowerProvider._()
     : super(
         from: null,
@@ -356,4 +356,4 @@ final class DeviceLanguageFollowerProvider
 }
 
 String _$deviceLanguageFollowerHash() =>
-    r'd5884a23e67440d90cd1333dd969b76d39a90be2';
+    r'd597f25966c4fdc1efee39ad0ba2b0778aeb09c9';

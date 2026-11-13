@@ -32,6 +32,9 @@ final class NoWidgetHost implements WidgetHost {
   Future<Map<int, WidgetConfig?>> configs() async => const {};
 
   @override
+  Future<Set<int>> previousAppWidgets() async => const {};
+
+  @override
   Future<void> saveConfig(int widgetId, WidgetConfig config) async {}
 
   @override

@@ -2249,5 +2249,14 @@
   "signInFinishingSignOut": "Abmeldung wird abgeschlossen …",
   "guestRemoveStillFinishingTitle": "Der Gastzugang wird noch entfernt",
   "guestRemoveStillFinishingExplanation": "Ein Teil der App schließt noch die Daten eines Gastzugangs, den du entfernt hast.",
-  "quickAddHelpLabelsBodyGuest": "Ein Wort, das mit {prefix} beginnt. Labels, die es schon gibt, werden hinzugefügt; als Gast kannst du keine neuen erstellen, deshalb bleiben andere Wörter im Titel. Für Leerzeichen nimm Anführungszeichen."
+  "quickAddHelpLabelsBodyGuest": "Ein Wort, das mit {prefix} beginnt. Labels, die es schon gibt, werden hinzugefügt; als Gast kannst du keine neuen erstellen, deshalb bleiben andere Wörter im Titel. Für Leerzeichen nimm Anführungszeichen.",
+  "previousAppNoteTitle": "Das ist die neue Vikunja-App",
+  "previousAppNoteSignInAgain": "Sie ersetzt die bisherige App auf diesem Gerät. Dein Server ist schon eingetragen – melde dich noch einmal an, um weiterzumachen.",
+  "previousAppNoteSignIn": "Sie ersetzt die bisherige App auf diesem Gerät. Melde dich an, um weiterzumachen.",
+  "previousAppNoteSignedIn": "Sie ersetzt die bisherige App auf diesem Gerät, und du bist weiterhin angemeldet.",
+  "previousAppNoteWidgets": "Tippe auf ein Widget der bisherigen App, um auszuwählen, was es zeigt.",
+  "previousAppNoteWidgetsAfterSignIn": "Tippe nach der Anmeldung auf ein Widget der bisherigen App, um auszuwählen, was es zeigt.",
+  "widgetsPlacedPreviousApp": "Widget der bisherigen App",
+  "widgetsPlacedPreviousAppNotSetUp": "Noch nicht eingerichtet",
+  "previousAppSigningIn": "Deine Anmeldung bei {host} wird übernommen …"
 }

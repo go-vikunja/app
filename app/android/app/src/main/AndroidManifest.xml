@@ -147,6 +147,20 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_tasks_info" />
         </receiver>
+        <!-- The previous app's widget provider, under its class name: the
+             widgets placed with it survive the update and draw the Tasks
+             widget. Hidden from the widget picker. -->
+        <receiver
+            android:name=".widget.AppWidgetReciever"
+            android:exported="true"
+            android:label="@string/widget_tasks_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_tasks_legacy_info" />
+        </receiver>
         <receiver
             android:name=".widgets.QuickAddWidgetReceiver"
             android:exported="true"

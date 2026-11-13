@@ -30,9 +30,14 @@ abstract interface class WidgetHost {
 
   /// The placed widgets by widget id with their configs (Android): null for
   /// a list widget not set up, or whose config cannot be read, which shows
-  /// the active account's Today; a Quick add widget without one, which
-  /// needs none, is left out. Empty on iOS.
+  /// the active account's Today, or asks to be set up when it is one of
+  /// [previousAppWidgets]; a Quick add widget without one, which needs
+  /// none, is left out. Empty on iOS.
   Future<Map<int, WidgetConfig?>> configs();
+
+  /// The placed list widgets that the previous Vikunja app placed (Android),
+  /// which this app replaced as an update.
+  Future<Set<int>> previousAppWidgets();
 
   Future<void> saveConfig(int widgetId, WidgetConfig config);
 

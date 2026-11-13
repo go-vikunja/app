@@ -185,4 +185,28 @@ void main() {
     );
     expect(find.text(en.widgetConfigureSave), findsOneWidget);
   });
+
+  testWidgets('a widget of the previous app that is not set up says so, not '
+      'that it shows the active account, and opens its setup', (tester) async {
+    await harness.pump(tester);
+    harness.host
+      ..placed[16] = null
+      ..placed[18] = null
+      ..previousApp.add(18);
+    unawaited(harness.routerOf(tester).push(AppRoutes.widgets));
+    await tester.pumpAndSettle();
+
+    await scrollTo(tester, find.text(en.widgetsPlacedPreviousApp));
+    expect(find.text(en.widgetsPlacedPreviousApp), findsOneWidget);
+    expect(find.text(en.widgetsPlacedPreviousAppNotSetUp), findsOneWidget);
+    expect(find.text(en.widgetsPlacedNotSetUp), findsOneWidget);
+
+    await tester.tap(find.text(en.widgetsPlacedPreviousApp));
+    await tester.pumpAndSettle();
+    expect(
+      harness.routerOf(tester).state.uri.toString(),
+      AppRoutes.widgetConfigure(18),
+    );
+    expect(find.text(en.widgetConfigureSave), findsOneWidget);
+  });
 }

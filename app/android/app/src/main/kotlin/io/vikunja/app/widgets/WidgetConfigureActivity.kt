@@ -2,6 +2,7 @@ package io.vikunja.app.widgets
 
 import android.app.Activity
 import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Intent
 import android.os.Bundle
 
@@ -21,10 +22,13 @@ class WidgetConfigureActivity : Activity() {
         }
         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId))
         if (savedInstanceState == null) {
-            // Below Android 12 the host sends no update after this step.
+            // Below Android 12 the host sends no update after this step. A
+            // widget of the previous app is drawn by its own provider.
+            val provider = AppWidgetManager.getInstance(this).getAppWidgetInfo(appWidgetId)?.provider
+                ?: ComponentName(this, TasksWidgetReceiver::class.java)
             sendBroadcast(
-                Intent(this, TasksWidgetReceiver::class.java)
-                    .setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
+                Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE)
+                    .setComponent(provider)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId)),
             )
             val key = WidgetFiles.of(this).readHost()?.linkKey

@@ -51,12 +51,19 @@ import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import io.vikunja.app.R
+import io.vikunja.app.widget.LegacyWidgets
 
 class TasksWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(compact, narrow, medium, wide))
 
     override val stateDefinition: GlanceStateDefinition<*> = FileWidgetStateDefinition { context, appWidgetId ->
-        ListWidgetState.load(WidgetFiles.of(context), appWidgetId).also { state ->
+        ListWidgetState.load(
+            WidgetFiles.of(context),
+            appWidgetId,
+            // A widget of the previous app may have shown Upcoming or a
+            // project; it asks instead of silently showing Today.
+            followsActiveAccount = !LegacyWidgets.isLegacy(context, appWidgetId),
+        ).also { state ->
             val snapshot = state.snapshot
             if (snapshot != null) {
                 WidgetSchedule.onShown(context, snapshot)

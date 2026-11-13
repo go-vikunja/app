@@ -158,6 +158,9 @@ final class _DecliningPins implements WidgetHost {
   Future<Map<int, WidgetConfig?>> configs() => _host.configs();
 
   @override
+  Future<Set<int>> previousAppWidgets() => _host.previousAppWidgets();
+
+  @override
   Future<void> saveConfig(int widgetId, WidgetConfig config) =>
       _host.saveConfig(widgetId, config);
 

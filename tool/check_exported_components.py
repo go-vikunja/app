@@ -72,6 +72,8 @@ ALLOWED = {
     # The system sends APPWIDGET_UPDATE; any app can too, which only redraws.
     ('receiver', f'{APP}.widgets.TasksWidgetReceiver'): entry(filters=[intent_filter([APPWIDGET_UPDATE])]),
     ('receiver', f'{APP}.widgets.QuickAddWidgetReceiver'): entry(filters=[intent_filter([APPWIDGET_UPDATE])]),
+    # The previous app's provider, kept for the widgets placed with it.
+    ('receiver', f'{APP}.widget.AppWidgetReciever'): entry(filters=[intent_filter([APPWIDGET_UPDATE])]),
     # Bound by the system only.
     ('service', 'androidx.glance.appwidget.GlanceRemoteViewsService'): entry(
         permission='android.permission.BIND_REMOTEVIEWS'),

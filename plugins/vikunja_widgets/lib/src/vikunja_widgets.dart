@@ -106,8 +106,8 @@ class VikunjaWidgets {
     await _removeActions((action) => action.accountId == accountId);
   }
 
-  /// Android: every placed widget of the app's two receivers with its
-  /// config, null when it has none yet. Elsewhere empty.
+  /// Android: every placed widget of the app's receivers with its config,
+  /// null when it has none yet. Elsewhere empty.
   Future<List<WidgetInstance>> configs() async {
     final rows = await _invoke<List<Object?>>('configs') ?? const [];
     return [
@@ -123,6 +123,7 @@ class VikunjaWidgets {
               {'config': final String raw} => raw,
               _ => null,
             },
+            followsActiveAccount: row['followsActiveAccount'] != false,
           ),
     ];
   }
@@ -311,8 +312,9 @@ class VikunjaWidgets {
   WidgetInstance _instance(
     int appWidgetId,
     WidgetProviderKind provider,
-    String? raw,
-  ) {
+    String? raw, {
+    required bool followsActiveAccount,
+  }) {
     Map<String, Object?>? file;
     if (raw != null) {
       try {
@@ -322,11 +324,16 @@ class VikunjaWidgets {
       }
     }
     if (file == null) {
-      return WidgetInstance(appWidgetId: appWidgetId, provider: provider);
+      return WidgetInstance(
+        appWidgetId: appWidgetId,
+        provider: provider,
+        followsActiveAccount: followsActiveAccount,
+      );
     }
     return WidgetInstance(
       appWidgetId: appWidgetId,
       provider: provider,
+      followsActiveAccount: followsActiveAccount,
       snapshotKey: switch (file['key']) {
         final String key when snapshotKeyPattern.hasMatch(key) => key,
         _ => null,

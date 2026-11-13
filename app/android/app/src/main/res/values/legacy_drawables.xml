@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Reminders the previous app scheduled before the update look their
+         status bar icon up by this name; without it, showing one crashes. -->
+    <item name="vikunja_notification_logo" type="drawable">@drawable/ic_notification</item>
+</resources>

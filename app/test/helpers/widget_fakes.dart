@@ -41,6 +41,9 @@ final class FakeWidgetHost implements WidgetHost {
   /// Null for a list widget not set up yet.
   final placed = <int, WidgetConfig?>{};
 
+  /// The ids of [placed] that the previous app placed.
+  final previousApp = <int>{};
+
   /// Shown besides [placed], as an unconfigured Android widget's default or
   /// an iOS extension's request does.
   final requested = <WidgetConfig>{};
@@ -121,6 +124,10 @@ final class FakeWidgetHost implements WidgetHost {
     if (configsFailure case final failure?) throw failure;
     return Map.of(placed);
   }
+
+  @override
+  Future<Set<int>> previousAppWidgets() async =>
+      previousApp.where(placed.containsKey).toSet();
 
   @override
   Future<void> saveConfig(int widgetId, WidgetConfig config) async {

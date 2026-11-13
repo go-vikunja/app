@@ -19,6 +19,7 @@ import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/connection/application/connection_fix.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_navigation.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
+import 'package:vikunja_mobile/features/onboarding/application/previous_app.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_button.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_failure_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
@@ -31,6 +32,7 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/link_fai
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/server_address_field.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/guest/share_password_sheet.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/guest/shared_link_sheet.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/previous_app_note.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 
@@ -63,6 +65,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   @override
   void initState() {
     super.initState();
+    if (!widget.adding) _fillInPreviousServer();
     _address.addListener(_onAddressEdited);
     // The shell keeps the sign-in state, so a failure of the active
     // account's "Sign in again" would otherwise show on the new server's
@@ -71,7 +74,31 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) ref.read(signInControllerProvider.notifier).reset();
       });
+    } else {
+      // The previous app's session may have been kept before this screen
+      // was built.
+      WidgetsBinding.instance.addPostFrameCallback((_) => _goHomeIfKept());
     }
+  }
+
+  /// Before the address listener is added, as initState allows no
+  /// setState.
+  void _fillInPreviousServer() {
+    final server = ref.read(previousAppProvider).value?.record?.server;
+    if (server == null || _address.text.isNotEmpty) return;
+    _address.text = '$server';
+    _typedOrigin = originOfTypedAddress(_address.text);
+    if (_typedOrigin case final origin?) unawaited(_lookUpSettings(origin));
+  }
+
+  /// The router leaves this screen alone for a signed-in user; home sends
+  /// the account on to its first sync.
+  void _goHomeIfKept() {
+    if (!mounted) return;
+    final kept =
+        ref.read(previousAppProvider).value?.session is PreviousAppSessionKept;
+    final signedIn = ref.read(accountsProvider).value?.activeAccount != null;
+    if (kept && signedIn) context.go(AppRoutes.home);
   }
 
   void _onAddressEdited() {
@@ -287,17 +314,51 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen(connectServerControllerProvider, _onStateChanged);
+    if (!widget.adding) {
+      // The session and the registry each may change last.
+      ref
+        ..listen(previousAppProvider, (_, _) => _goHomeIfKept())
+        ..listen(
+          accountsProvider.select(
+            (accounts) => accounts.value?.activeAccount != null,
+          ),
+          (_, _) => _goHomeIfKept(),
+        );
+    }
     final state = ref.watch(connectServerControllerProvider);
     final isConnecting = state is ConnectServerConnecting;
+    final previous = widget.adding
+        ? null
+        : ref.watch(previousAppProvider).value;
+    final keeping = switch (previous?.session) {
+      final PreviousAppSessionKeeping keeping => keeping,
+      _ => null,
+    };
+    // The previous app's session is being kept: its refresh token is spent
+    // once sent, so nothing here may start another sign-in meanwhile.
+    final busy = isConnecting || keeping != null;
+    // The record goes once an account was registered, and with it the
+    // filled-in address the note speaks of.
+    final note = switch (previous) {
+      PreviousAppState(
+        :final note?,
+        record: _?,
+        session: PreviousAppSessionUntried() || PreviousAppSessionLost(),
+      ) =>
+        note,
+      _ => null,
+    };
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final accounts = widget.adding
         ? ref.watch(accountsProvider).value?.accountsByRecency
         : null;
-    final knownServers = {
-      for (final entry in accounts ?? const <RegisteredAccount>[])
-        entry.connection.rootUri,
-    }.toList();
+    final knownServers = widget.adding
+        ? {
+            for (final entry in accounts ?? const <RegisteredAccount>[])
+              entry.connection.rootUri,
+          }.toList()
+        : previous?.record?.recentServers ?? const <Uri>[];
 
     return Scaffold(
       appBar: widget.adding ? AppBar(leading: const CloseButton()) : null,
@@ -317,18 +378,22 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                       title: widget.adding ? l10n.accountAdd : null,
                       tagline: widget.adding ? l10n.addAccountTagline : null,
                     ),
+                    if (note != null) ...[
+                      const SizedBox(height: 24),
+                      PreviousAppNoteCard(note: note, signedIn: false),
+                    ],
                     const SizedBox(height: 32),
                     ServerAddressField(
                       controller: _address,
                       focusNode: _addressFocus,
-                      enabled: !isConnecting,
+                      enabled: !busy,
                       onSubmitted: _submit,
                       onChanged: _onAddressChanged,
                     ),
                     ConnectionOptionsButton(
                       origin: _typedOrigin,
                       hasSettings: _typedOriginHasSettings,
-                      onPressed: isConnecting
+                      onPressed: busy
                           ? null
                           : (origin) =>
                                 unawaited(_openConnectionOptions(origin)),
@@ -337,7 +402,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                       const SizedBox(height: 16),
                       KnownServers(
                         servers: knownServers,
-                        enabled: !isConnecting,
+                        enabled: !busy,
                         onSelected: _useKnownServer,
                       ),
                     ],
@@ -451,32 +516,21 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                     ),
                     if (state is! ConnectServerInviteFound) ...[
                       const SizedBox(height: 24),
-                      ConnectButton(
-                        isConnecting: isConnecting,
-                        onContinue: _submit,
-                      ),
+                      ConnectButton(isConnecting: busy, onContinue: _submit),
                     ],
                     if (state case final ConnectServerConnecting connecting)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Semantics(
-                          liveRegion: true,
-                          child: Text(
-                            _connectingText(l10n, connecting),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
+                      _ProgressLine(_connectingText(l10n, connecting))
+                    else if (keeping != null)
+                      _ProgressLine(
+                        l10n.previousAppSigningIn(displayHost(keeping.server)),
                       ),
                     const SizedBox(height: 8),
                     TextButton(
-                      onPressed: isConnecting ? null : _tryDemo,
+                      onPressed: busy ? null : _tryDemo,
                       child: Text(l10n.connectTryDemo),
                     ),
                     TextButton.icon(
-                      onPressed: isConnecting
+                      onPressed: busy
                           ? null
                           : () => unawaited(_openSharedLink()),
                       icon: const Icon(Icons.link),
@@ -496,7 +550,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                     if (!widget.adding) ...[
                       const SizedBox(height: 16),
                       TextButton.icon(
-                        onPressed: isConnecting
+                        onPressed: busy
                             ? null
                             : () => unawaited(context.push(AppRoutes.about)),
                         icon: const Icon(Icons.info_outline),
@@ -508,6 +562,30 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProgressLine extends StatelessWidget {
+  const new(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Semantics(
+        liveRegion: true,
+        child: Text(
+          text,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          textAlign: TextAlign.center,
         ),
       ),
     );

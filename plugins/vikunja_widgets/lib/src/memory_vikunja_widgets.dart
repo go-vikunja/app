@@ -117,6 +117,7 @@ final class MemoryVikunjaWidgets implements VikunjaWidgets {
           : instances[index].provider,
       snapshotKey: snapshotKey,
       config: Map.unmodifiable(config),
+      followsActiveAccount: index < 0 || instances[index].followsActiveAccount,
     );
     if (index < 0) {
       instances.add(saved);

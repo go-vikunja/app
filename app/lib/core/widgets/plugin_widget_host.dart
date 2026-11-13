@@ -53,6 +53,14 @@ final class PluginWidgetHost implements WidgetHost {
   };
 
   @override
+  Future<Set<int>> previousAppWidgets() async => {
+    for (final instance in await _plugin.configs())
+      if (instance.provider == WidgetProviderKind.list &&
+          !instance.followsActiveAccount)
+        instance.appWidgetId,
+  };
+
+  @override
   Future<void> saveConfig(int widgetId, WidgetConfig config) => _plugin
       .saveConfig(widgetId, snapshotKey: config.key, config: config.toJson());
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The previous app's provider (widget/AppWidgetReciever): it keeps the
+     widgets placed with that app, which show the setup prompt until they
+     are configured here. Never offered in the picker; the receiver is
+     disabled once no widget uses it. Otherwise as widget_tasks_info. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="io.vikunja.app.widgets.WidgetConfigureActivity"
+    android:description="@string/widget_tasks_description"
+    android:initialLayout="@layout/glance_default_loading_layout"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="40dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="3"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable|configuration_optional|hide_from_picker" />

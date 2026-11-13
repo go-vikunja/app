@@ -52,6 +52,12 @@ internal class DeviceChannel(
             "openAppLocaleSettings" -> result.success(openAppLocaleSettings())
             "removeLocation" -> removeLocation(call.argument<String>("path"), result)
             "backgroundState" -> result.success(backgroundState())
+            "previousAppTraces" -> offMain(result) { PreviousApp.traces(context) }
+            "clearPreviousApp" -> offMain(result) {
+                PreviousApp.clear(context)
+                null
+            }
+            "setAppLanguage" -> setAppLanguage(call.argument<String>("language"), result)
             else -> result.notImplemented()
         }
     }
@@ -121,6 +127,22 @@ internal class DeviceChannel(
         }
     }
 
+    // Each read and step guards itself, so Dart always gets a result.
+    private fun offMain(result: MethodChannel.Result, work: () -> Any?) {
+        previousAppWork.execute {
+            val value = work()
+            main.post { result.success(value) }
+        }
+    }
+
+    private fun setAppLanguage(language: String?, result: MethodChannel.Result) {
+        if (language == null) {
+            result.error("invalid_arguments", "language is missing", null)
+            return
+        }
+        result.success(PreviousApp.setAppLanguage(context, language))
+    }
+
     private fun canOpenAppLocaleSettings(): Boolean =
         AppLocaleSettings.canOpen(Build.VERSION.SDK_INT) {
             AppLocaleSettings.intent(context.packageName)
@@ -161,6 +183,7 @@ internal class DeviceChannel(
         const val TAG = "Vikunja"
 
         val removals = Executors.newSingleThreadExecutor()
+        val previousAppWork = Executors.newSingleThreadExecutor()
 
         // ClipDescription.EXTRA_IS_SENSITIVE from API 33; Android 13 hides the
         // clipboard preview of a clip marked with it, older versions ignore it.

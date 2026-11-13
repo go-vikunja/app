@@ -55,13 +55,15 @@ void main() {
 
       expect(instances, hasLength(1));
       final receivers = [
+        // Also the previous app's provider, with its spelling.
         for (final match in RegExp(
-          r'"((?:[a-z]\w*\.)+[A-Z]\w*Receiver)"',
+          r'"((?:[a-z]\w*\.)+[A-Z]\w*Re(?:ceiv|ciev)er)"',
         ).allMatches(File(instances.single).readAsStringSync()))
           match[1]!,
       ];
       expect(receivers, [
         '$_appId.widgets.TasksWidgetReceiver',
+        '$_appId.widget.AppWidgetReciever',
         '$_appId.widgets.QuickAddWidgetReceiver',
       ]);
       expect(declared, containsAll(receivers));
