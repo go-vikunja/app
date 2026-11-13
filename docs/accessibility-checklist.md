@@ -99,7 +99,7 @@ On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to
 
 ### 2.7 Checks of step 37l
 
-On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to a user account and a guest ([D20], [D38]); in review:
+On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to a user account and a guest ([D20], [D38]):
 
 - [ ] **The row:** Konto › the version › "Über Rurana". After "Hilfe und Fehler melden" comes "Support-Details" with "Was du beilegen kannst, wenn du einen Fehler meldest; du siehst es, bevor du es teilst", one button. Signed out, the row is there too (the button under the Connect screen's form).
 - [ ] **The page:** it opens full screen with "Support-Details" as its level-1 heading and a close button; while the details are collected the spinner says "Support-Details", and "Teilen" is not available until the text is there. The note, the switch "Serveradressen anzeigen" with "Sonst erscheinen sie als <server-1>, <server-2> und so weiter" (TalkBack reads it as a switch with its state), then the text. Turning the switch on changes the text in place; leaving and opening the page again finds it off. Record how TalkBack reads the monospaced text block (by line, or as one long text) and whether swiping through it is usable.
