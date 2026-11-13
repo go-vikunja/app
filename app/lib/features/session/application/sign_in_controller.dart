@@ -141,7 +141,11 @@ class SignInController extends _$SignInController {
     final registry = ref.read(accountRegistryProvider);
     final browserSignIn = ref.read(browserSignInProvider);
     final hosts = ConfirmedSignInHosts(ref.read(preferencesStoreProvider));
+    final files = ref.read(accountDatabaseFilesProvider);
     return _run(entry.connection.rootUri, () async {
+      // A stale entry of an account signed out meanwhile would otherwise
+      // be registered again onto a database that is still closing.
+      await settleSignedOutDatabases(files, accountId: entry.id);
       final known = await registry.load();
       final connection = await _renegotiate(entry.connection);
       final otherHost = otherSignInHost(connection);

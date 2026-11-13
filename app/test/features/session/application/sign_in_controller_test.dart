@@ -145,6 +145,40 @@ void main() {
     },
   );
 
+  test("signing in again waits, in progress, for its own account's "
+      'database a sign-out left behind', () async {
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      needsReauth: true,
+    );
+    final portName = accountDatabasePortName(alice.id);
+    final heldElsewhere = ReceivePort();
+    IsolateNameServer.registerPortWithName(heldElsewhere.sendPort, portName);
+    addTearDown(() {
+      IsolateNameServer.removePortNameMapping(portName);
+      heldElsewhere.close();
+      forgetSignOutLeftovers();
+    });
+    expect(
+      await awaitAccountDatabaseClosed(alice.id, timeout: Duration.zero),
+      isFalse,
+    );
+    auth.serveUser(_alice, now: DateTime.now().toUtc());
+
+    final signingIn = controller().signInAgain(alice, confirm: _yes);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    expect(signIn.read(), isA<SignInInProgress>());
+    expect(auth.webAuthenticator.urls, isEmpty);
+
+    IsolateNameServer.removePortNameMapping(portName);
+    await signingIn;
+
+    expect(signIn.read(), isA<SignInSucceeded>());
+    expect(deletions.deleted, [alice.id]);
+  });
+
   group('after a sign-out that gave up waiting for its database', () {
     const signedOut = 'fedcba9876543210fedcba9876543210';
     final portName = accountDatabasePortName(signedOut);
@@ -180,6 +214,22 @@ void main() {
       expect(auth.webAuthenticator.urls, hasLength(1));
       expect(deletions.deleted, [signedOut]);
     });
+
+    test(
+      "signing in again does not wait for another account's database",
+      () async {
+        final alice = await auth.seedAccount(
+          fullServer270(),
+          tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+          needsReauth: true,
+        );
+
+        await controller().signInAgain(alice, confirm: _yes);
+
+        expect(signIn.read(), isA<SignInSucceeded>());
+        expect(deletions.deleted, isEmpty);
+      },
+    );
 
     test('leaving while it waits drops the sign-in', () async {
       final signingIn = controller().signIn(fullServer270(), confirm: _yes);
