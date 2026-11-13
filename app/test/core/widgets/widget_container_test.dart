@@ -380,7 +380,7 @@ void main() {
       expect(hidden.rows, isEmpty);
       expect(hidden.total, 2);
       expect(hidden.empty?.title, '2 tasks');
-      expect(hidden.empty?.body, 'Open Rurana to see them');
+      expect(hidden.empty?.body, 'Open Vikunja to see them');
       expect(host.updatedKeys.last, {'${entry.id}.today'});
       expect(host.snapshots, isNot(contains(stale)));
 

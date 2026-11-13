@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// Name of the app, shown in the task switcher and on the connect screen. A brand name: do not translate.
   ///
   /// In en, this message translates to:
-  /// **'Rurana'**
+  /// **'Vikunja'**
   String get appTitle;
 
   /// No description provided for @connectTagline.
@@ -413,7 +413,7 @@ abstract class AppLocalizations {
   /// No description provided for @unsupportedBody.
   ///
   /// In en, this message translates to:
-  /// **'Rurana needs Vikunja {minimum} or newer. This server runs {found}.'**
+  /// **'This app needs Vikunja {minimum} or newer. This server runs {found}.'**
   String unsupportedBody(String minimum, String found);
 
   /// No description provided for @unsupportedSuggestion.
@@ -425,13 +425,13 @@ abstract class AppLocalizations {
   /// Title of the card on the server overview screen when the server reports a version the app cannot read.
   ///
   /// In en, this message translates to:
-  /// **'Server version not recognised'**
+  /// **'Server version not recognized'**
   String get unsupportedUnknownVersionTitle;
 
   /// Body of the card on the server overview screen when the server reports a version the app cannot read; minimum is the oldest Vikunja version the app supports.
   ///
   /// In en, this message translates to:
-  /// **'Rurana needs Vikunja {minimum} or newer. This server reports a version the app does not recognise.'**
+  /// **'This app needs Vikunja {minimum} or newer. This server reports a version the app does not recognize.'**
   String unsupportedUnknownVersionBody(String minimum);
 
   /// No description provided for @unsupportedUnknownVersionSuggestion.
@@ -554,13 +554,13 @@ abstract class AppLocalizations {
   /// **'Message from the server'**
   String get motdHeading;
 
-  /// A server's legal link that the server names exactly "Imprint" (its legal notice), on the server overview and in the Account tab's Server section; the server's other legal links show with the text its admin wrote, untranslated. Rurana's own legal notice is aboutLegalNotice.
+  /// A server's legal link that the server names exactly "Imprint" (its legal notice), on the server overview and in the Account tab's Server section; the server's other legal links show with the text its admin wrote, untranslated. The app's own legal notice is aboutLegalNotice.
   ///
   /// In en, this message translates to:
   /// **'Imprint'**
   String get legalImprint;
 
-  /// A server's legal link that the server names exactly "Privacy Policy", beside legalImprint. Rurana's own is aboutPrivacyPolicy.
+  /// A server's legal link that the server names exactly "Privacy Policy", beside legalImprint. The app's own is aboutPrivacyPolicy.
   ///
   /// In en, this message translates to:
   /// **'Privacy policy'**
@@ -833,7 +833,7 @@ abstract class AppLocalizations {
   /// Body of the sign-out confirmation for an account; account is its username, or its name with the username as in signOutDialogAccount, and host is the server's address.
   ///
   /// In en, this message translates to:
-  /// **'Rurana will sign {account} out of {host} and delete this account\'s tasks saved on this device. You can sign in again at any time.'**
+  /// **'The app will sign {account} out of {host} and delete this account\'s tasks saved on this device. You can sign in again at any time.'**
   String signOutDialogBody(String account, String host);
 
   /// How the sign-out dialog names an account whose display name differs from its username.
@@ -845,7 +845,7 @@ abstract class AppLocalizations {
   /// No description provided for @signOutDialogSwitchesTo.
   ///
   /// In en, this message translates to:
-  /// **'Rurana then switches to {name}.'**
+  /// **'The app then switches to {name}.'**
   String signOutDialogSwitchesTo(String name);
 
   /// No description provided for @signOutDialogPendingChanges.
@@ -1091,13 +1091,13 @@ abstract class AppLocalizations {
   /// No description provided for @projectsFavouritesHeading.
   ///
   /// In en, this message translates to:
-  /// **'Favourites'**
+  /// **'Favorites'**
   String get projectsFavouritesHeading;
 
-  /// The row of the Favourites list in the Favourites section of the Projects tab; the list's own title is projectFavouritesTitle.
+  /// The row of the Favorites list in the Favorites section of the Projects tab; the list's own title is projectFavouritesTitle.
   ///
   /// In en, this message translates to:
-  /// **'Favourite tasks'**
+  /// **'Favorite tasks'**
   String get projectsFavouriteTasks;
 
   /// No description provided for @projectsAllHeading.
@@ -1106,7 +1106,7 @@ abstract class AppLocalizations {
   /// **'All projects'**
   String get projectsAllHeading;
 
-  /// Title beside the Projects tab's list on wide windows while no project, saved filter or Favourites list is open.
+  /// Title beside the Projects tab's list on wide windows while no project, saved filter or Favorites list is open.
   ///
   /// In en, this message translates to:
   /// **'No project open'**
@@ -1118,7 +1118,7 @@ abstract class AppLocalizations {
   /// **'Open a project from the list to see its tasks here.'**
   String get projectsNoneOpenBody;
 
-  /// Checked item in the Projects tab's menu: whether the Saved filters section and favourite saved filters show.
+  /// Checked item in the Projects tab's menu: whether the Saved filters section and favorite saved filters show.
   ///
   /// In en, this message translates to:
   /// **'Show saved filters'**
@@ -1154,7 +1154,7 @@ abstract class AppLocalizations {
   /// **'Saved filter'**
   String get savedFilterUnknownTitle;
 
-  /// Under the Favourites list in the Projects tab.
+  /// Under the Favorites list in the Projects tab.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{1 open task} other{{count} open tasks}}'**
@@ -1211,22 +1211,22 @@ abstract class AppLocalizations {
   /// No description provided for @favoritesEmptyTitle.
   ///
   /// In en, this message translates to:
-  /// **'No favourite tasks'**
+  /// **'No favorite tasks'**
   String get favoritesEmptyTitle;
 
   /// No description provided for @favoritesEmptyBody.
   ///
   /// In en, this message translates to:
-  /// **'Mark a task as a favourite with its star to find it here.'**
+  /// **'Mark a task as a favorite with its star to find it here.'**
   String get favoritesEmptyBody;
 
-  /// Account tab section with the theme (saved to the account), Use system colours and App language (both on this device).
+  /// Account tab section with the theme (saved to the account), Use system colors and App language (both on this device).
   ///
   /// In en, this message translates to:
   /// **'Appearance'**
   String get appearanceHeading;
 
-  /// Title of the row in the Account tab's Appearance section that picks light, dark or the system's mode for the account (the web's colour scheme), with appearanceThemeLight, appearanceThemeSystem and appearanceThemeDark side by side below it.
+  /// Title of the row in the Account tab's Appearance section that picks light, dark or the system's mode for the account (the web's color scheme), with appearanceThemeLight, appearanceThemeSystem and appearanceThemeDark side by side below it.
   ///
   /// In en, this message translates to:
   /// **'Theme'**
@@ -1256,7 +1256,7 @@ abstract class AppLocalizations {
   /// **'Saved to your account'**
   String get appearanceSavedToAccount;
 
-  /// Small line under the Use system colours and App language rows in the Account tab's Appearance section: the setting stays on this device. Pairs with appearanceSavedToAccount.
+  /// Small line under the Use system colors and App language rows in the Account tab's Appearance section: the setting stays on this device. Pairs with appearanceSavedToAccount.
   ///
   /// In en, this message translates to:
   /// **'On this device'**
@@ -1265,13 +1265,13 @@ abstract class AppLocalizations {
   /// No description provided for @appearanceSystemColors.
   ///
   /// In en, this message translates to:
-  /// **'Use system colours'**
+  /// **'Use system colors'**
   String get appearanceSystemColors;
 
-  /// Under the switch for Android's dynamic colours; the switch applies to the whole device.
+  /// Under the switch for Android's dynamic colors; the switch applies to the whole device.
   ///
   /// In en, this message translates to:
-  /// **'The colours of your wallpaper instead of the app\'s blue'**
+  /// **'The colors of your wallpaper instead of the app\'s blue'**
   String get appearanceSystemColorsSubtitle;
 
   /// No description provided for @projectChildCount.
@@ -1412,10 +1412,10 @@ abstract class AppLocalizations {
   /// **'Project'**
   String get projectUnknownTitle;
 
-  /// Semantic label of the star shown on favourite projects and tasks.
+  /// Semantic label of the star shown on favorite projects and tasks.
   ///
   /// In en, this message translates to:
-  /// **'Favourite'**
+  /// **'Favorite'**
   String get favouriteLabel;
 
   /// No description provided for @projectTasksLoading.
@@ -1853,7 +1853,7 @@ abstract class AppLocalizations {
   /// No description provided for @firstSyncBody.
   ///
   /// In en, this message translates to:
-  /// **'Rurana is saving everything from {host} on this device, so it works offline too.'**
+  /// **'The app is saving everything from {host} on this device, so it works offline too.'**
   String firstSyncBody(String host);
 
   /// Progress text on the first-sync screen before the download of the account's data starts.
@@ -2030,16 +2030,16 @@ abstract class AppLocalizations {
   /// **'Undo'**
   String get undo;
 
-  /// Tooltip and screen reader label of the star button of a task that is not among the favourites.
+  /// Tooltip and screen reader label of the star button of a task that is not among the favorites.
   ///
   /// In en, this message translates to:
-  /// **'Add to favourites'**
+  /// **'Add to favorites'**
   String get taskAddFavourite;
 
-  /// Tooltip and screen reader label of the star button of a task that is among the favourites.
+  /// Tooltip and screen reader label of the star button of a task that is among the favorites.
   ///
   /// In en, this message translates to:
-  /// **'Remove from favourites'**
+  /// **'Remove from favorites'**
   String get taskRemoveFavourite;
 
   /// No description provided for @taskNotYetSynced.
@@ -2066,22 +2066,22 @@ abstract class AppLocalizations {
   /// **'“{title}” will be deleted on the server too. This cannot be undone.'**
   String taskDeleteDialogBody(String title);
 
-  /// Body of the delete-task confirmation on servers with a bin (Vikunja 2.8.0 and later), for a signed-in user. The bin is the server's trash; its page is on the Account tab.
+  /// Body of the delete-task confirmation on servers that support the trash (Vikunja 2.8.0 and later), for a signed-in user. The trash page is on the Account tab.
   ///
   /// In en, this message translates to:
-  /// **'“{title}” moves to the bin, for everyone. It can be restored from the bin on the Account tab for 30 days.'**
+  /// **'“{title}” moves to the trash, for everyone. It can be restored from the trash on the Account tab for 30 days.'**
   String taskDeleteDialogBodyTrash(String title);
 
-  /// Body of the delete-task confirmation on servers with a bin, for a link-share guest, who has no bin page.
+  /// Body of the delete-task confirmation on servers that support the trash, for a link-share guest, who has no trash page.
   ///
   /// In en, this message translates to:
-  /// **'“{title}” moves to the bin, for everyone. It can be restored from there for 30 days.'**
+  /// **'“{title}” moves to the trash, for everyone. It can be restored from there for 30 days.'**
   String taskDeleteDialogBodyTrashGuest(String title);
 
-  /// Body of the delete-task confirmation on servers with a bin, for signed-in users and guests, when the task was created on this device and may not have reached the server yet. Such a task does not go to the bin.
+  /// Body of the delete-task confirmation on servers that support the trash, for signed-in users and guests, when the task was created on this device and may not have reached the server yet. Such a task does not go to the trash.
   ///
   /// In en, this message translates to:
-  /// **'“{title}” hasn\'t reached the server yet. It is deleted and won\'t be in the bin.'**
+  /// **'“{title}” hasn\'t reached the server yet. It is deleted and won\'t be in the trash.'**
   String taskDeleteDialogBodyUnsent(String title);
 
   /// No description provided for @taskDeleteDialogCancel.
@@ -2096,19 +2096,19 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get taskDeleteDialogConfirm;
 
-  /// Snackbar after a task was deleted: on servers without a bin, and on servers with one for a task whose create never reached the server or was refused. There it comes with Undo while the delete is still queued.
+  /// Snackbar after a task was deleted: on servers that don't support the trash, and on servers that support it for a task whose create never reached the server or was refused. There it comes with Undo while the delete is still queued.
   ///
   /// In en, this message translates to:
   /// **'Task deleted'**
   String get taskDeleted;
 
-  /// Snackbar after a task was deleted on a server with a bin, with an Undo action.
+  /// Snackbar after a task was deleted on a server that supports the trash, with an Undo action.
   ///
   /// In en, this message translates to:
-  /// **'Task moved to the bin'**
+  /// **'Task moved to the trash'**
   String get taskMovedToTrash;
 
-  /// Snackbar after Undo brought a deleted task back; also announced on the bin page after Restore.
+  /// Snackbar after Undo brought a deleted task back; also announced on the trash page after Restore.
   ///
   /// In en, this message translates to:
   /// **'Task restored'**
@@ -2168,10 +2168,10 @@ abstract class AppLocalizations {
   /// **'Its project no longer exists on the server.'**
   String get syncProblemProjectMissing;
 
-  /// Entry in the Sync problems section of the Account tab: the task's project is in the server's bin.
+  /// Entry in the Sync problems section of the Account tab: the task's project is in the server's trash.
   ///
   /// In en, this message translates to:
-  /// **'Its project is in the bin on the server.'**
+  /// **'Its project is in the trash on the server.'**
   String get syncProblemProjectInTrash;
 
   /// No description provided for @syncProblemTaskMissing.
@@ -2180,10 +2180,10 @@ abstract class AppLocalizations {
   /// **'The task no longer exists on the server.'**
   String get syncProblemTaskMissing;
 
-  /// Entry in the Sync problems section of the Account tab: the task is in the server's bin.
+  /// Entry in the Sync problems section of the Account tab: the task is in the server's trash.
   ///
   /// In en, this message translates to:
-  /// **'The task is in the bin on the server.'**
+  /// **'The task is in the trash on the server.'**
   String get syncProblemTaskInTrash;
 
   /// No description provided for @syncProblemLabelMissing.
@@ -2447,19 +2447,19 @@ abstract class AppLocalizations {
   /// No description provided for @taskEditColour.
   ///
   /// In en, this message translates to:
-  /// **'Colour'**
+  /// **'Color'**
   String get taskEditColour;
 
   /// No description provided for @taskEditNoColour.
   ///
   /// In en, this message translates to:
-  /// **'No colour'**
+  /// **'No color'**
   String get taskEditNoColour;
 
   /// No description provided for @taskEditColourSemantics.
   ///
   /// In en, this message translates to:
-  /// **'Colour {hex}'**
+  /// **'Color {hex}'**
   String taskEditColourSemantics(String hex);
 
   /// No description provided for @taskEditRepeat.
@@ -2687,7 +2687,7 @@ abstract class AppLocalizations {
   /// No description provided for @quickAddMagicOnly.
   ///
   /// In en, this message translates to:
-  /// **'Only magic words, so nothing is recognised: the task will be called “{title}”.'**
+  /// **'Only magic words, so nothing is recognized: the task will be called “{title}”.'**
   String quickAddMagicOnly(String title);
 
   /// No description provided for @quickAddDueLabel.
@@ -2783,7 +2783,7 @@ abstract class AppLocalizations {
   /// No description provided for @quickAddHelpIntro.
   ///
   /// In en, this message translates to:
-  /// **'Write the whole task in one line. These parts are recognised, marked in colour and taken out of the title:'**
+  /// **'Write the whole task in one line. These parts are recognized, marked in color and taken out of the title:'**
   String get quickAddHelpIntro;
 
   /// No description provided for @quickAddHelpLabelsTitle.
@@ -2897,7 +2897,7 @@ abstract class AppLocalizations {
   /// The title part of the example line in the quick-add help.
   ///
   /// In en, this message translates to:
-  /// **'Change tyres'**
+  /// **'Change tires'**
   String get quickAddHelpExampleTask;
 
   /// A label title in the example line; one word.
@@ -3401,7 +3401,7 @@ abstract class AppLocalizations {
   /// Body of the notification setup screen, followed by a list of what the app notifies about (reminders, due dates, and for which tasks), hence the colon. The app schedules these notifications on the device itself.
   ///
   /// In en, this message translates to:
-  /// **'Rurana can notify you on this device, without the server having to send anything:'**
+  /// **'The app can notify you on this device, without the server having to send anything:'**
   String get notificationSetupBody;
 
   /// No description provided for @notificationSetupReminders.
@@ -3569,7 +3569,7 @@ abstract class AppLocalizations {
   /// Body of the test notification sent by Send a test notification in the Notifications section of the Account tab.
   ///
   /// In en, this message translates to:
-  /// **'Notifications from Rurana work on this device.'**
+  /// **'The app\'s notifications work on this device.'**
   String get notificationTestBody;
 
   /// No description provided for @notificationTaskGone.
@@ -3717,7 +3717,7 @@ abstract class AppLocalizations {
   /// Body of the OS notification when the server ended an account's session; username is the account's username.
   ///
   /// In en, this message translates to:
-  /// **'Your session as {username} has ended. Rurana cannot sync this account until you sign in again.'**
+  /// **'Your session as {username} has ended. The app cannot sync this account until you sign in again.'**
   String sessionEndedNotificationBody(String username);
 
   /// Notification action that marks the task done.
@@ -4524,10 +4524,10 @@ abstract class AppLocalizations {
   /// **'Inbox'**
   String get projectInboxTitle;
 
-  /// The list of the user's favourite tasks, which the server offers as a project of its own while any task is a favourite.
+  /// The list of the user's favorite tasks, which the server offers as a project of its own while any task is a favorite.
   ///
   /// In en, this message translates to:
-  /// **'Favourites'**
+  /// **'Favorites'**
   String get projectFavouritesTitle;
 
   /// Above the Overview when it shows the last download of the saved filter picked for it on the web.
@@ -5349,7 +5349,7 @@ abstract class AppLocalizations {
   /// No description provided for @shareSignedOut.
   ///
   /// In en, this message translates to:
-  /// **'Sign in to Rurana first, then share again.'**
+  /// **'Sign in to Vikunja first, then share again.'**
   String get shareSignedOut;
 
   /// No description provided for @sharePickAccountTitle.
@@ -5367,7 +5367,7 @@ abstract class AppLocalizations {
   /// No description provided for @shareSheetTitle.
   ///
   /// In en, this message translates to:
-  /// **'Share to Rurana'**
+  /// **'Share to Vikunja'**
   String get shareSheetTitle;
 
   /// No description provided for @shareAddToTask.
@@ -5610,19 +5610,19 @@ abstract class AppLocalizations {
   /// **'This task wasn\'t found'**
   String get taskOpenNotFound;
 
-  /// Snackbar when a task opened from a link, a notification or the inbox's deleted entry is in the server's bin.
+  /// Snackbar when a task opened from a link, a notification or the inbox's deleted entry is in the server's trash.
   ///
   /// In en, this message translates to:
-  /// **'This task is in the bin'**
+  /// **'This task is in the trash'**
   String get taskOpenInTrash;
 
-  /// Snackbar when the project of a task opened from a link or notification is in the server's bin.
+  /// Snackbar when the project of a task opened from a link or notification is in the server's trash.
   ///
   /// In en, this message translates to:
-  /// **'This task\'s project is in the bin'**
+  /// **'This task\'s project is in the trash'**
   String get taskOpenProjectInTrash;
 
-  /// Action of the snackbar saying a task opened from a link or notification is in the bin.
+  /// Action of the snackbar saying a task opened from a link or notification is in the trash.
   ///
   /// In en, this message translates to:
   /// **'Restore'**
@@ -5796,10 +5796,10 @@ abstract class AppLocalizations {
   /// **'This identifier is already in use. Identifiers are unique on the whole server.'**
   String get projectIdentifierTaken;
 
-  /// Error of the identifier field of the project edit page on servers with a bin; also announced.
+  /// Error of the identifier field of the project edit page on servers that support the trash; also announced.
   ///
   /// In en, this message translates to:
-  /// **'This identifier is already in use. Identifiers are unique on the whole server, and a project in the bin keeps its identifier for 30 days.'**
+  /// **'This identifier is already in use. Identifiers are unique on the whole server, and a project in the trash keeps its identifier for 30 days.'**
   String get projectIdentifierTakenTrash;
 
   /// No description provided for @projectGoneTitle.
@@ -5925,25 +5925,25 @@ abstract class AppLocalizations {
   /// No description provided for @projectAddToFavourites.
   ///
   /// In en, this message translates to:
-  /// **'Add to favourites'**
+  /// **'Add to favorites'**
   String get projectAddToFavourites;
 
   /// No description provided for @projectRemoveFromFavourites.
   ///
   /// In en, this message translates to:
-  /// **'Remove from favourites'**
+  /// **'Remove from favorites'**
   String get projectRemoveFromFavourites;
 
   /// No description provided for @projectFavourited.
   ///
   /// In en, this message translates to:
-  /// **'Added to favourites'**
+  /// **'Added to favorites'**
   String get projectFavourited;
 
   /// No description provided for @projectUnfavourited.
   ///
   /// In en, this message translates to:
-  /// **'Removed from favourites'**
+  /// **'Removed from favorites'**
   String get projectUnfavourited;
 
   /// No description provided for @projectDelete.
@@ -5982,34 +5982,34 @@ abstract class AppLocalizations {
   /// **'This includes your default project “{project}”.'**
   String projectIncludesDefault(String project);
 
-  /// Confirmation for deleting a project on servers with a bin: what deleting a project without subprojects moves to the bin; counts done tasks too.
+  /// Confirmation for deleting a project on servers that support the trash: what deleting a project without subprojects moves to the trash; counts done tasks too.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =0{It has no tasks. It moves to the bin, for everyone.} =1{It moves to the bin with {count} task, for everyone.} other{It moves to the bin with {count} tasks, for everyone.}}'**
+  /// **'{count, plural, =0{It has no tasks. It moves to the trash, for everyone.} =1{It moves to the trash with {count} task, for everyone.} other{It moves to the trash with {count} tasks, for everyone.}}'**
   String projectTrashTasks(int count);
 
-  /// Confirmation for deleting a project on servers with a bin: the subprojects at every level and the tasks of the project and all its subprojects move to the bin with it.
+  /// Confirmation for deleting a project on servers that support the trash: the subprojects at every level and the tasks of the project and all its subprojects move to the trash with it.
   ///
   /// In en, this message translates to:
-  /// **'It moves to the bin with {subprojects, plural, =1{{subprojects} subproject} other{{subprojects} subprojects}} and {tasks, plural, =0{no tasks} =1{{tasks} task} other{{tasks} tasks}}, for everyone.'**
+  /// **'It moves to the trash with {subprojects, plural, =1{{subprojects} subproject} other{{subprojects} subprojects}} and {tasks, plural, =0{no tasks} =1{{tasks} task} other{{tasks} tasks}}, for everyone.'**
   String projectTrashTasksAndSubprojects(int tasks, int subprojects);
 
-  /// Confirmation for deleting a project on servers with a bin, when its tasks could not be counted.
+  /// Confirmation for deleting a project on servers that support the trash, when its tasks could not be counted.
   ///
   /// In en, this message translates to:
-  /// **'It moves to the bin with its tasks and subprojects, for everyone.'**
+  /// **'It moves to the trash with its tasks and subprojects, for everyone.'**
   String get projectTrashEverything;
 
-  /// Added to the delete confirmation on servers with a bin when the user's default project is in the project's subtree. The server unsets the default project, and a restore does not set it again.
+  /// Added to the delete confirmation on servers that support the trash when the user's default project is in the project's subtree. The server unsets the default project, and a restore does not set it again.
   ///
   /// In en, this message translates to:
   /// **'This includes your default project “{project}”. It stops being your default project, even if it is restored.'**
   String projectTrashIncludesDefault(String project);
 
-  /// Last paragraph of the confirmation for deleting a project on servers with a bin.
+  /// Last paragraph of the confirmation for deleting a project on servers that support the trash.
   ///
   /// In en, this message translates to:
-  /// **'The project can be restored from the bin on the Account tab for 30 days.'**
+  /// **'The project can be restored from the trash on the Account tab for 30 days.'**
   String get projectTrashRestorable;
 
   /// No description provided for @projectDeleted.
@@ -6018,13 +6018,13 @@ abstract class AppLocalizations {
   /// **'Project deleted'**
   String get projectDeleted;
 
-  /// Snackbar after a project was deleted on a server with a bin, with an Undo action.
+  /// Snackbar after a project was deleted on a server that supports the trash, with an Undo action.
   ///
   /// In en, this message translates to:
-  /// **'Project moved to the bin'**
+  /// **'Project moved to the trash'**
   String get projectMovedToTrash;
 
-  /// Snackbar after Undo brought a deleted project back; also announced on the bin page after Restore.
+  /// Snackbar after Undo brought a deleted project back; also announced on the trash page after Restore.
   ///
   /// In en, this message translates to:
   /// **'Project restored'**
@@ -6453,13 +6453,13 @@ abstract class AppLocalizations {
   /// No description provided for @savedFilterFavourite.
   ///
   /// In en, this message translates to:
-  /// **'Favourite'**
+  /// **'Favorite'**
   String get savedFilterFavourite;
 
-  /// Subtitle of the Favourite switch on the saved filter form.
+  /// Subtitle of the Favorite switch on the saved filter form.
   ///
   /// In en, this message translates to:
-  /// **'Shows it among the favourites on the Projects tab.'**
+  /// **'Shows it among the favorites on the Projects tab.'**
   String get savedFilterFavouriteHint;
 
   /// No description provided for @savedFilterFilterRequired.
@@ -6978,7 +6978,7 @@ abstract class AppLocalizations {
   /// **'Add description'**
   String get taskDetailAddDescription;
 
-  /// Announced after a checkbox in a description was ticked.
+  /// Announced after a checkbox in a description was checked.
   ///
   /// In en, this message translates to:
   /// **'Checked'**
@@ -7665,7 +7665,7 @@ abstract class AppLocalizations {
   /// No description provided for @avatarProviderMarbleSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'A colourful pattern made from your username'**
+  /// **'A colorful pattern made from your username'**
   String get avatarProviderMarbleSubtitle;
 
   /// No description provided for @avatarProviderUpload.
@@ -7707,7 +7707,7 @@ abstract class AppLocalizations {
   /// No description provided for @avatarManagedLdap.
   ///
   /// In en, this message translates to:
-  /// **'Your avatar comes from your organisation\'s directory (LDAP). Ask your IT team how to change it.'**
+  /// **'Your avatar comes from your organization\'s directory (LDAP). Ask your IT team how to change it.'**
   String get avatarManagedLdap;
 
   /// No description provided for @avatarManagedOpenId.
@@ -8178,6 +8178,12 @@ abstract class AppLocalizations {
   /// **'An app without a name'**
   String get sessionsDartClient;
 
+  /// Name of a session that this app signed in, on the sessions page. The app version the session reported follows after a space, then the system after “ · ” (for example “Vikunja app 1.0.0 · Android 15”). “Vikunja” is the app's name: do not translate.
+  ///
+  /// In en, this message translates to:
+  /// **'Vikunja app'**
+  String get sessionsVikunjaApp;
+
   /// No description provided for @sessionsEnd.
   ///
   /// In en, this message translates to:
@@ -8373,7 +8379,7 @@ abstract class AppLocalizations {
   /// No description provided for @apiTokenFormNameHint.
   ///
   /// In en, this message translates to:
-  /// **'A title you will recognise later'**
+  /// **'A title you will recognize later'**
   String get apiTokenFormNameHint;
 
   /// No description provided for @apiTokenFormNameRequired.
@@ -8898,16 +8904,16 @@ abstract class AppLocalizations {
   /// **'Server'**
   String get accountServerHeading;
 
-  /// The app's version line at the end of the Account tab.
+  /// The app's version line at the end of the Account tab. “Vikunja app” rather than “Vikunja”, so that the number does not read as the server's version.
   ///
   /// In en, this message translates to:
-  /// **'Rurana {version} ({build})'**
+  /// **'Vikunja app {version} ({build})'**
   String accountAppVersion(String version, String build);
 
   /// The app's version line when the build number is unknown.
   ///
   /// In en, this message translates to:
-  /// **'Rurana {version}'**
+  /// **'Vikunja app {version}'**
   String accountAppVersionWithoutBuild(String version);
 
   /// Heading of a task's comments while it has none.
@@ -9720,10 +9726,10 @@ abstract class AppLocalizations {
   /// **'Read only'**
   String get shareTaskReadOnly;
 
-  /// Account tab section with the labels and teams pages, and the bin on servers with one.
+  /// Account tab section with the labels and teams pages, and the trash on servers that support it.
   ///
   /// In en, this message translates to:
-  /// **'Organise'**
+  /// **'Organize'**
   String get accountOrganiseHeading;
 
   /// No description provided for @accountLabelsEntry.
@@ -9738,10 +9744,10 @@ abstract class AppLocalizations {
   /// **'Teams'**
   String get accountTeamsEntry;
 
-  /// Account tab row that opens the bin page, on servers with a bin.
+  /// Account tab row that opens the trash page, on servers that support the trash.
   ///
   /// In en, this message translates to:
-  /// **'Bin'**
+  /// **'Trash'**
   String get accountTrashEntry;
 
   /// How many labels are on this device, read out for the count next to the Labels entry.
@@ -9885,13 +9891,13 @@ abstract class AppLocalizations {
   /// No description provided for @labelsColour.
   ///
   /// In en, this message translates to:
-  /// **'Colour'**
+  /// **'Color'**
   String get labelsColour;
 
   /// No description provided for @labelsCustomColour.
   ///
   /// In en, this message translates to:
-  /// **'Custom colour'**
+  /// **'Custom color'**
   String get labelsCustomColour;
 
   /// No description provided for @labelsCustomColourHelper.
@@ -10017,7 +10023,7 @@ abstract class AppLocalizations {
   /// No description provided for @labelsInvalid.
   ///
   /// In en, this message translates to:
-  /// **'The server did not accept this label. Check its title and colour.'**
+  /// **'The server did not accept this label. Check its title and color.'**
   String get labelsInvalid;
 
   /// No description provided for @labelsRefused.
@@ -10209,7 +10215,7 @@ abstract class AppLocalizations {
   /// Note on the page of a team that comes from the server's single sign-on when the provider's name is unknown.
   ///
   /// In en, this message translates to:
-  /// **'This team is managed by your organisation\'s sign-in. Its membership is managed there.'**
+  /// **'This team is managed by your organization\'s sign-in. Its membership is managed there.'**
   String get teamExternalNoteGeneric;
 
   /// No description provided for @teamMembersSection.
@@ -10425,7 +10431,7 @@ abstract class AppLocalizations {
   /// No description provided for @teamExternalRefused.
   ///
   /// In en, this message translates to:
-  /// **'Members can\'t be removed from a team managed by your organisation\'s sign-in.'**
+  /// **'Members can\'t be removed from a team managed by your organization\'s sign-in.'**
   String get teamExternalRefused;
 
   /// No description provided for @teamUnknownUser.
@@ -10470,238 +10476,238 @@ abstract class AppLocalizations {
   /// **'OK'**
   String get teamOk;
 
-  /// Title of the bin page, which lists the tasks and projects in the server's trash.
+  /// Title of the trash page, which lists the tasks and projects in the server's trash.
   ///
   /// In en, this message translates to:
-  /// **'Bin'**
+  /// **'Trash'**
   String get trashTitle;
 
-  /// Tab of the bin page with the tasks in the bin.
+  /// Tab of the trash page with the tasks in the trash.
   ///
   /// In en, this message translates to:
   /// **'Tasks'**
   String get trashTasksTab;
 
-  /// Tab of the bin page with the projects in the bin.
+  /// Tab of the trash page with the projects in the trash.
   ///
   /// In en, this message translates to:
   /// **'Projects'**
   String get trashProjectsTab;
 
-  /// Screen reader: the tab bar of the bin page.
+  /// Screen reader: the tab bar of the trash page.
   ///
   /// In en, this message translates to:
-  /// **'Tasks or projects in the bin'**
+  /// **'Tasks or projects in the trash'**
   String get trashTabsLabel;
 
-  /// While the bin page reads the bin from the server.
+  /// While the trash page reads the trash from the server.
   ///
   /// In en, this message translates to:
-  /// **'Loading the bin…'**
+  /// **'Loading the trash…'**
   String get trashLoading;
 
-  /// Note on each tab of the bin page.
+  /// Note on each tab of the trash page.
   ///
   /// In en, this message translates to:
-  /// **'After 30 days in the bin, the server deletes items forever.'**
+  /// **'After 30 days in the trash, the server deletes items forever.'**
   String get trashRetentionNote;
 
-  /// Title of the empty Tasks tab of the bin page.
+  /// Title of the empty Tasks tab of the trash page.
   ///
   /// In en, this message translates to:
-  /// **'No tasks in the bin'**
+  /// **'No tasks in the trash'**
   String get trashTasksEmptyTitle;
 
-  /// Body of the empty Tasks tab of the bin page.
+  /// Body of the empty Tasks tab of the trash page.
   ///
   /// In en, this message translates to:
   /// **'Deleted tasks stay here for 30 days. Then the server deletes them forever.'**
   String get trashTasksEmptyBody;
 
-  /// Title of the empty Projects tab of the bin page.
+  /// Title of the empty Projects tab of the trash page.
   ///
   /// In en, this message translates to:
-  /// **'No projects in the bin'**
+  /// **'No projects in the trash'**
   String get trashProjectsEmptyTitle;
 
-  /// Body of the empty Projects tab of the bin page. The server lists a project in the bin only to its admins.
+  /// Body of the empty Projects tab of the trash page. The server lists a project in the trash only to its admins.
   ///
   /// In en, this message translates to:
   /// **'Deleted projects stay here for 30 days, for their admins only. Then the server deletes them forever.'**
   String get trashProjectsEmptyBody;
 
-  /// Line of a task or project on the bin page: when it was deleted, and by whom.
+  /// Line of a task or project on the trash page: when it was deleted, and by whom.
   ///
   /// In en, this message translates to:
   /// **'Deleted {when} by {name}'**
   String trashDeletedBy(String when, String name);
 
-  /// Line of a task or project on the bin page that the user deleted.
+  /// Line of a task or project on the trash page that the user deleted.
   ///
   /// In en, this message translates to:
   /// **'Deleted {when} by you'**
   String trashDeletedByYou(String when);
 
-  /// Line of a task or project on the bin page that a guest deleted through a link share.
+  /// Line of a task or project on the trash page that a guest deleted through a link share.
   ///
   /// In en, this message translates to:
   /// **'Deleted {when} through a link share'**
   String trashDeletedByLinkShare(String when);
 
-  /// Line of a task or project on the bin page when nobody is known as the one who deleted it.
+  /// Line of a task or project on the trash page when nobody is known as the one who deleted it.
   ///
   /// In en, this message translates to:
   /// **'Deleted {when}'**
   String trashDeletedWhen(String when);
 
-  /// Line of a task or project on the bin page: the whole days left until the server deletes it forever.
+  /// Line of a task or project on the trash page: the whole days left until the server deletes it forever.
   ///
   /// In en, this message translates to:
   /// **'{days, plural, =0{Deleted forever today} =1{Deleted forever in {days} day} other{Deleted forever in {days} days}}'**
   String trashDeletedForGoodIn(int days);
 
-  /// Line of a project on the bin page: the subprojects in the bin with it. The titles are the subprojects' titles joined with a comma and a space.
+  /// Line of a project on the trash page: the subprojects in the trash with it. The titles are the subprojects' titles joined with a comma and a space.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{With {count} subproject: {titles}} other{With {count} subprojects: {titles}}}'**
   String trashSubprojects(int count, String titles);
 
-  /// Tooltip and label of a row's restore button on the bin page.
+  /// Tooltip and label of a row's restore button on the trash page.
   ///
   /// In en, this message translates to:
   /// **'Restore “{title}”'**
   String trashRestoreItem(String title);
 
-  /// Tooltip and label of a row's delete forever button on the bin page.
+  /// Tooltip and label of a row's delete forever button on the trash page.
   ///
   /// In en, this message translates to:
   /// **'Delete “{title}” forever'**
   String trashDeleteForeverItem(String title);
 
-  /// Title of the confirmation for deleting a task or project in the bin forever.
+  /// Title of the confirmation for deleting a task or project in the trash forever.
   ///
   /// In en, this message translates to:
   /// **'Delete “{title}” forever?'**
   String trashDeleteForeverTitle(String title);
 
-  /// Body of the confirmation for deleting a task in the bin forever.
+  /// Body of the confirmation for deleting a task in the trash forever.
   ///
   /// In en, this message translates to:
   /// **'It is deleted forever, with its comments, attachments, reminders and relations. This can\'t be undone.'**
   String get trashDeleteTaskForeverBody;
 
-  /// Body of the confirmation for deleting a project in the bin forever.
+  /// Body of the confirmation for deleting a project in the trash forever.
   ///
   /// In en, this message translates to:
   /// **'It is deleted forever, with its subprojects, tasks, views and shares. This can\'t be undone.'**
   String get trashDeleteProjectForeverBody;
 
-  /// Confirm button of the confirmation for deleting a task or project in the bin forever, and of the confirmation for emptying a tab of the bin.
+  /// Confirm button of the confirmation for deleting a task or project in the trash forever, and of the confirmation for emptying a tab of the trash page.
   ///
   /// In en, this message translates to:
   /// **'Delete forever'**
   String get trashDeleteForever;
 
-  /// Screen reader: announced after a task in the bin was deleted forever.
+  /// Screen reader: announced after a task in the trash was deleted forever.
   ///
   /// In en, this message translates to:
   /// **'Task deleted forever'**
   String get trashTaskDeletedForever;
 
-  /// Screen reader: announced after a project in the bin was deleted forever.
+  /// Screen reader: announced after a project in the trash was deleted forever.
   ///
   /// In en, this message translates to:
   /// **'Project deleted forever'**
   String get trashProjectDeletedForever;
 
-  /// Button on each tab of the bin page that deletes forever, after a confirmation, the tab's items in projects the user is an admin of.
+  /// Button on each tab of the trash page that deletes forever, after a confirmation, the tab's items in projects the user is an admin of.
   ///
   /// In en, this message translates to:
-  /// **'Empty bin'**
+  /// **'Empty trash'**
   String get trashEmpty;
 
-  /// Title of the confirmation for emptying the Tasks tab of the bin page.
+  /// Title of the confirmation for emptying the Tasks tab of the trash page.
   ///
   /// In en, this message translates to:
-  /// **'Delete the tasks in the bin forever?'**
+  /// **'Delete the tasks in the trash forever?'**
   String get trashEmptyTasksTitle;
 
-  /// Title of the confirmation for emptying the Projects tab of the bin page.
+  /// Title of the confirmation for emptying the Projects tab of the trash page.
   ///
   /// In en, this message translates to:
-  /// **'Delete the projects in the bin forever?'**
+  /// **'Delete the projects in the trash forever?'**
   String get trashEmptyProjectsTitle;
 
-  /// Confirmation for emptying the Tasks tab of the bin page: how many tasks the server deletes.
+  /// Confirmation for emptying the Tasks tab of the trash page: how many tasks the server deletes.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{{count} task is deleted forever.} other{{count} tasks are deleted forever.}}'**
   String trashEmptyTasks(int count);
 
-  /// Confirmation for emptying the Projects tab of the bin page: how many projects the server deletes, with their subprojects and tasks.
+  /// Confirmation for emptying the Projects tab of the trash page: how many projects the server deletes, with their subprojects and tasks.
   ///
   /// In en, this message translates to:
   /// **'{count, plural, =1{{count} project is deleted forever, with everything in it.} other{{count} projects are deleted forever, with everything in them.}}'**
   String trashEmptyProjects(int count);
 
-  /// Confirmation for emptying a tab of the bin page: how many of the items other people moved to the bin. Emptying deletes them too.
+  /// Confirmation for emptying a tab of the trash page: how many of the items other people moved to the trash. Emptying deletes them too.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{{count} of them was moved to the bin by someone else.} other{{count} of them were moved to the bin by other people.}}'**
+  /// **'{count, plural, =1{{count} of them was moved to the trash by someone else.} other{{count} of them were moved to the trash by other people.}}'**
   String trashEmptyByOthers(int count);
 
-  /// Confirmation for emptying the Tasks tab of the bin page: the server deletes only tasks in projects the user is an admin of.
+  /// Confirmation for emptying the Tasks tab of the trash page: the server deletes only tasks in projects the user is an admin of.
   ///
   /// In en, this message translates to:
-  /// **'Tasks in projects where you aren\'t an admin stay in the bin.'**
+  /// **'Tasks in projects where you aren\'t an admin stay in the trash.'**
   String get trashEmptyKeepsOthers;
 
-  /// Shown on the bin page's Tasks tab instead of the confirmation for emptying it, when the server would delete nothing and a listed task is in a project the user is not an admin of: the server deletes only what is in projects the user is an admin of.
+  /// Shown on the trash page's Tasks tab instead of the confirmation for emptying it, when the server would delete nothing and a listed task is in a project the user is not an admin of: the server deletes only what is in projects the user is an admin of.
   ///
   /// In en, this message translates to:
   /// **'Only project admins can delete these forever, so there is nothing here you can delete.'**
   String get trashEmptyNothing;
 
-  /// Last paragraph of the confirmation for emptying a tab of the bin page.
+  /// Last paragraph of the confirmation for emptying a tab of the trash page.
   ///
   /// In en, this message translates to:
   /// **'This can\'t be undone.'**
   String get trashCannotBeUndone;
 
-  /// Screen reader: announced after a tab of the bin page was emptied.
+  /// Screen reader: announced after a tab of the trash page was emptied.
   ///
   /// In en, this message translates to:
-  /// **'Bin emptied'**
+  /// **'Trash emptied'**
   String get trashEmptied;
 
-  /// Screen reader: the spinner of a row on the bin page, or of the Empty bin button, while its action runs.
+  /// Screen reader: the spinner of a row on the trash page, or of the Empty trash button, while its action runs.
   ///
   /// In en, this message translates to:
   /// **'Working'**
   String get trashWorking;
 
-  /// Error when restoring a task or project, from the bin page, a link or Undo, fails without a connection.
+  /// Error when restoring a task or project, from the trash page, a link or Undo, fails without a connection.
   ///
   /// In en, this message translates to:
   /// **'Restoring needs a connection to the server.'**
   String get trashRestoreNeedsConnection;
 
-  /// Error when deleting forever or emptying the bin fails without a connection.
+  /// Error when deleting forever or emptying the trash fails without a connection.
   ///
   /// In en, this message translates to:
-  /// **'The bin needs a connection to the server.'**
+  /// **'The trash needs a connection to the server.'**
   String get trashNeedsConnection;
 
-  /// Error when a task to restore or delete forever is no longer in the bin, for example because someone restored it.
+  /// Error when a task to restore or delete forever is no longer in the trash, for example because someone restored it.
   ///
   /// In en, this message translates to:
-  /// **'This task is no longer in the bin.'**
+  /// **'This task is no longer in the trash.'**
   String get trashTaskGone;
 
-  /// Error when a project to restore or delete forever is no longer in the bin, for example because someone restored it.
+  /// Error when a project to restore or delete forever is no longer in the trash, for example because someone restored it.
   ///
   /// In en, this message translates to:
-  /// **'This project is no longer in the bin.'**
+  /// **'This project is no longer in the trash.'**
   String get trashProjectGone;
 
   /// Error when a task cannot be restored because its project is archived.
@@ -10710,22 +10716,22 @@ abstract class AppLocalizations {
   /// **'Its project is archived. Unarchive the project to restore the task.'**
   String get trashRestoreArchived;
 
-  /// Error when a task in the bin cannot be deleted forever because its project is archived.
+  /// Error when a task in the trash cannot be deleted forever because its project is archived.
   ///
   /// In en, this message translates to:
   /// **'Its project is archived. Unarchive the project to delete the task forever.'**
   String get trashDeleteArchived;
 
-  /// Error when a task cannot be restored or deleted forever because its project is in the bin too.
+  /// Error when a task cannot be restored or deleted forever because its project is in the trash too.
   ///
   /// In en, this message translates to:
-  /// **'Its project is in the bin. Restore the project first.'**
+  /// **'Its project is in the trash. Restore the project first.'**
   String get trashTaskProjectInTrash;
 
-  /// Error when a project cannot be restored because its parent project is in the bin.
+  /// Error when a project cannot be restored because its parent project is in the trash.
   ///
   /// In en, this message translates to:
-  /// **'Its parent project is in the bin. Restore that one first.'**
+  /// **'Its parent project is in the trash. Restore that one first.'**
   String get trashRestoreParentInTrash;
 
   /// Error when restoring a task is refused: it needs write permission on its project.
@@ -10740,7 +10746,7 @@ abstract class AppLocalizations {
   /// **'Only project admins can restore a project.'**
   String get trashRestoreProjectAdminOnly;
 
-  /// Error when deleting a task forever or emptying the bin is refused because the user is not an admin of the project.
+  /// Error when deleting a task forever or emptying the trash is refused because the user is not an admin of the project.
   ///
   /// In en, this message translates to:
   /// **'Only project admins can delete tasks forever.'**
@@ -10758,19 +10764,19 @@ abstract class AppLocalizations {
   /// **'The delete is still on its way to the server. Try again in a moment.'**
   String get trashDeleteStillSending;
 
-  /// Error of a bin action, and the body of the bin page's failure card, on a server without a bin (older than Vikunja 2.8.0).
+  /// Error of a trash action, and the body of the trash page's failure card, on a server that doesn't support the trash (older than Vikunja 2.8.0).
   ///
   /// In en, this message translates to:
-  /// **'This server has no bin.'**
+  /// **'This server doesn\'t support the trash.'**
   String get trashUnavailable;
 
-  /// Error of a bin action that the server refused. The server's own explanation follows, in English.
+  /// Error of a trash action that the server refused. The server's own explanation follows, in English.
   ///
   /// In en, this message translates to:
   /// **'The server refused this: {message}'**
   String trashActionRefused(String message);
 
-  /// Error of a bin action that failed for a reason the app cannot name.
+  /// Error of a trash action that failed for a reason the app cannot name.
   ///
   /// In en, this message translates to:
   /// **'That didn\'t work. Try again.'**
@@ -11169,7 +11175,7 @@ abstract class AppLocalizations {
   /// No description provided for @guestNoteNeedsAccount.
   ///
   /// In en, this message translates to:
-  /// **'Account settings, labels, teams, favourites, reactions and the server\'s notifications need an account of your own.'**
+  /// **'Account settings, labels, teams, favorites, reactions and the server\'s notifications need an account of your own.'**
   String get guestNoteNeedsAccount;
 
   /// The Account tab's sign-out button while a link-share guest is active.
@@ -11187,7 +11193,7 @@ abstract class AppLocalizations {
   /// No description provided for @guestRemoveDialogBody.
   ///
   /// In en, this message translates to:
-  /// **'Rurana will remove the guest access to {name} on {host} and delete its tasks saved on this device. You can open the shared link again at any time.'**
+  /// **'The app will remove the guest access to {name} on {host} and delete its tasks saved on this device. You can open the shared link again at any time.'**
   String guestRemoveDialogBody(String name, String host);
 
   /// No description provided for @guestRemoveDialogPendingChangesOpenLinkFirst.
@@ -11283,10 +11289,10 @@ abstract class AppLocalizations {
   /// Password sheet: helper under the field
   ///
   /// In en, this message translates to:
-  /// **'Rurana doesn\'t save this password. If the link has to be opened again later, it asks for it again.'**
+  /// **'The app doesn\'t save this password. If the link has to be opened again later, it asks for it again.'**
   String get guestPasswordNotStored;
 
-  /// Sheet when another app shares a link to a shared project into Rurana
+  /// Sheet when another app shares a link to a shared project into this app
   ///
   /// In en, this message translates to:
   /// **'Open the shared project?'**
@@ -11451,7 +11457,7 @@ abstract class AppLocalizations {
   /// No description provided for @guestAccessEndedNotificationBody.
   ///
   /// In en, this message translates to:
-  /// **'{host} ended this guest access. Rurana can\'t sync the project until you open the shared link again.'**
+  /// **'{host} ended this guest access. The app can\'t sync the project until you open the shared link again.'**
   String guestAccessEndedNotificationBody(String host);
 
   /// A load or refresh of a link-share guest failed because the server ended its access.
@@ -11547,13 +11553,13 @@ abstract class AppLocalizations {
   /// Subtitle of the Account tab entry to the widgets page.
   ///
   /// In en, this message translates to:
-  /// **'Your tasks on the home screen, ticked off right there'**
+  /// **'Your tasks on the home screen, checked off right there'**
   String get widgetsEntrySubtitle;
 
   /// The widgets page's introduction.
   ///
   /// In en, this message translates to:
-  /// **'A widget shows one list of an account: today\'s tasks, the coming days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.'**
+  /// **'A widget shows one list of an account: today\'s tasks, the coming days, the overdue ones, your favorites, a project, a label or a saved filter. Check a task off right there, or tap it to open it here.'**
   String get widgetsIntro;
 
   /// Heading above the platform's steps to place a widget.
@@ -11565,7 +11571,7 @@ abstract class AppLocalizations {
   /// iOS steps to place and set up a widget.
   ///
   /// In en, this message translates to:
-  /// **'Touch and hold an empty spot on your Home Screen, tap Edit, then Add Widget, and look for Rurana. To choose the account and the list, touch and hold the widget and tap Edit Widget.'**
+  /// **'Touch and hold an empty spot on your Home Screen, tap Edit, then Add Widget, and look for Vikunja. To choose the account and the list, touch and hold the widget and tap Edit Widget.'**
   String get widgetsHowToIos;
 
   /// Heading of the Android widget kinds that can be placed from the app.
@@ -11646,16 +11652,16 @@ abstract class AppLocalizations {
   /// **'Past their due date'**
   String get widgetKindOverdueHint;
 
-  /// Widget kind: the favourite tasks.
+  /// Widget kind: the favorite tasks.
   ///
   /// In en, this message translates to:
-  /// **'Favourites'**
+  /// **'Favorites'**
   String get widgetKindFavorites;
 
-  /// What the Favourites widget shows.
+  /// What the Favorites widget shows.
   ///
   /// In en, this message translates to:
-  /// **'Your favourite tasks'**
+  /// **'Your favorite tasks'**
   String get widgetKindFavoritesHint;
 
   /// Widget kind: a project's open tasks.
@@ -11793,7 +11799,7 @@ abstract class AppLocalizations {
   /// Android steps to place and set up a widget. Below Android 12 and on some launchers the widgets page is the only way to set one up.
   ///
   /// In en, this message translates to:
-  /// **'Touch and hold an empty spot on your home screen, tap Widgets and look for Rurana. To choose the account and the list, tap the widget under “On your home screen” below. Some home screens also offer this in the widget\'s settings when you touch and hold it.'**
+  /// **'Touch and hold an empty spot on your home screen, tap Widgets and look for Vikunja. To choose the account and the list, tap the widget under “On your home screen” below. Some home screens also offer this in the widget\'s settings when you touch and hold it.'**
   String get widgetsHowToAndroid;
 
   /// A placed list widget that was never set up; it shows Today of the active account. Tapping opens its setup.
@@ -11817,7 +11823,7 @@ abstract class AppLocalizations {
   /// Body of a reminder, due-date or activity notification while the privacy setting hides task titles from notifications; no project, name or comment is shown.
   ///
   /// In en, this message translates to:
-  /// **'Open Rurana to see it'**
+  /// **'Open Vikunja to see it'**
   String get notificationContentBody;
 
   /// Title of an activity notification (comment, assignment, mention) while the privacy setting hides task titles from notifications.
@@ -11883,7 +11889,7 @@ abstract class AppLocalizations {
   /// Switch that turns the app lock on or off.
   ///
   /// In en, this message translates to:
-  /// **'Lock Rurana'**
+  /// **'Lock Vikunja'**
   String get privacyAppLockSwitch;
 
   /// Under the app lock switch: what unlocks the app.
@@ -11919,19 +11925,19 @@ abstract class AppLocalizations {
   /// Under the Lock after setting.
   ///
   /// In en, this message translates to:
-  /// **'Rurana always locks after a restart.'**
+  /// **'Vikunja always locks after a restart.'**
   String get privacyLockAfterRestart;
 
   /// Info line on the privacy page: the app lock also hides the app's content in the app switcher.
   ///
   /// In en, this message translates to:
-  /// **'While the lock is on, the app switcher hides Rurana\'s content.'**
+  /// **'While the lock is on, the app switcher hides Vikunja\'s content.'**
   String get privacyAppSwitcherHidden;
 
   /// Info line on the privacy page on Android 12 and older, where hiding the app switcher's thumbnail is best effort.
   ///
   /// In en, this message translates to:
-  /// **'While the lock is on, the app switcher hides Rurana\'s content as far as this Android version allows. To be sure, turn on Block screenshots.'**
+  /// **'While the lock is on, the app switcher hides Vikunja\'s content as far as this Android version allows. To be sure, turn on Block screenshots.'**
   String get privacyAppSwitcherBestEffort;
 
   /// Heading of the Block screenshots setting (Android only).
@@ -11949,7 +11955,7 @@ abstract class AppLocalizations {
   /// Under the Block screenshots switch.
   ///
   /// In en, this message translates to:
-  /// **'Also hides Rurana from screen recordings and the app switcher.'**
+  /// **'Also hides Vikunja from screen recordings and the app switcher.'**
   String get privacyBlockScreenshotsSubtitle;
 
   /// Heading of the choice how much reminders and activity notifications show.
@@ -11997,7 +12003,7 @@ abstract class AppLocalizations {
   /// iOS only, under the Hide on the lock screen choice: the app cannot hide the content itself; the system setting does. Use the names of the iOS Settings app.
   ///
   /// In en, this message translates to:
-  /// **'iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.'**
+  /// **'iOS decides this for each app: in Settings › Notifications › Vikunja, set Show Previews to When Unlocked.'**
   String get privacyNotificationContentIosHint;
 
   /// Heading of the widget titles setting on the privacy page.
@@ -12021,13 +12027,13 @@ abstract class AppLocalizations {
   /// Note on the privacy page when the stored settings could not be read; the app was locked for safety and shows the defaults.
   ///
   /// In en, this message translates to:
-  /// **'Your privacy settings couldn\'t be read, so Rurana locked itself. Choose them again here.'**
+  /// **'Your privacy settings couldn\'t be read, so Vikunja locked itself. Choose them again here.'**
   String get privacySettingsUnreadable;
 
   /// Reason shown in the system's biometric or screen lock prompt when the app lock asks to unlock the app.
   ///
   /// In en, this message translates to:
-  /// **'Unlock Rurana'**
+  /// **'Unlock Vikunja'**
   String get appLockPromptReason;
 
   /// Reason shown in the system's biometric or screen lock prompt when turning the app lock on.
@@ -12051,7 +12057,7 @@ abstract class AppLocalizations {
   /// Heading of the lock screen shown while the app lock is on and the app is locked.
   ///
   /// In en, this message translates to:
-  /// **'Rurana is locked'**
+  /// **'Vikunja is locked'**
   String get appLockTitle;
 
   /// Under the lock screen's heading: what unlocks the app.
@@ -12075,7 +12081,7 @@ abstract class AppLocalizations {
   /// On the lock screen when the system's authentication failed for a reason other than a cancel or a lockout.
   ///
   /// In en, this message translates to:
-  /// **'Rurana couldn\'t check your screen lock. Try again.'**
+  /// **'Vikunja couldn\'t check your screen lock. Try again.'**
   String get appLockUnavailable;
 
   /// Shown once after unlocking when the device's screen lock had been removed, so the app lock turned itself off.
@@ -12084,7 +12090,7 @@ abstract class AppLocalizations {
   /// **'App lock was turned off because this device has no screen lock.'**
   String get appLockTurnedOff;
 
-  /// Subtitle of the Android system prompt for the app lock (under the title Rurana, above the reason). At most 60 characters.
+  /// Subtitle of the Android system prompt for the app lock (under the app's name, above the reason). At most 60 characters.
   ///
   /// In en, this message translates to:
   /// **'Use your fingerprint, face or screen lock'**
@@ -12093,13 +12099,13 @@ abstract class AppLocalizations {
   /// On the lock screen and under the app lock switch when the system's prompt is still held by an earlier one that never answered; only restarting the app releases it.
   ///
   /// In en, this message translates to:
-  /// **'The unlock prompt doesn\'t respond. Close Rurana completely and open it again.'**
+  /// **'The unlock prompt doesn\'t respond. Close Vikunja completely and open it again.'**
   String get appLockPromptStuck;
 
   /// Shown in a home-screen list widget below the task count, instead of the task rows, while the privacy setting hides task titles in widgets.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{Open Rurana to see it} other{Open Rurana to see them}}'**
+  /// **'{count, plural, =1{Open Vikunja to see it} other{Open Vikunja to see them}}'**
   String widgetTitlesHiddenHint(int count);
 
   /// Android only, under the Hide on the lock screen choice: Android leaves such notifications off the secure lock screen entirely, without a placeholder.
@@ -13113,13 +13119,13 @@ abstract class AppLocalizations {
   /// Body below widgetConfigureUnknownTitle.
   ///
   /// In en, this message translates to:
-  /// **'Only Rurana widgets on this device\'s home screen can be set up. Open the widget\'s settings on the home screen instead.'**
+  /// **'Only Vikunja widgets on this device\'s home screen can be set up. Open the widget\'s settings on the home screen instead.'**
   String get widgetConfigureUnknownBody;
 
   /// Title of the About page, and the label of its entries on the Account tab's version line and the connect screen.
   ///
   /// In en, this message translates to:
-  /// **'About Rurana'**
+  /// **'About the app'**
   String get aboutTitle;
 
   /// The app's version under its name on the About page.
@@ -13134,40 +13140,34 @@ abstract class AppLocalizations {
   /// **'Version {version}'**
   String aboutVersionWithoutBuild(String version);
 
-  /// Under the copyright line at the top of the About page; the same wording as the store descriptions and the website.
-  ///
-  /// In en, this message translates to:
-  /// **'Rurana is an unofficial app for Vikunja servers. It is not affiliated with or endorsed by the Vikunja project.'**
-  String get aboutUnofficial;
-
   /// Section header on the About page.
   ///
   /// In en, this message translates to:
-  /// **'Licence'**
+  /// **'License'**
   String get aboutLicenceHeading;
 
-  /// The licence notice on the About page (AGPL-3.0-or-later with the section 7 permission for app stores).
+  /// The license notice on the About page (AGPL-3.0-or-later with the section 7 permission for app stores).
   ///
   /// In en, this message translates to:
-  /// **'Rurana is free software: you may share and change it under the GNU Affero General Public License, version 3 or any later version, with an additional permission for app stores.'**
+  /// **'This app is free software: you may share and change it under the GNU Affero General Public License, version 3 or any later version, with an additional permission for app stores.'**
   String get aboutLicence;
 
   /// The AGPL's no-warranty notice on the About page.
   ///
   /// In en, this message translates to:
-  /// **'Rurana comes with no warranty, as far as the law allows.'**
+  /// **'This app comes with no warranty, as far as the law allows.'**
   String get aboutNoWarranty;
 
-  /// Opens the licence page (Flutter's LicensePage).
+  /// Opens the license page (Flutter's LicensePage).
   ///
   /// In en, this message translates to:
-  /// **'Licences'**
+  /// **'Licenses'**
   String get aboutLicences;
 
-  /// Under Licences on the About page; “rurana” is the entry's name on the licence page (the workspace root package that carries the repository's LICENSE), kept in lower case.
+  /// Under Licenses on the About page; “vikunja_app” is the entry's name on the license page (the workspace root package that carries the repository's LICENSE), kept exactly as written.
   ///
   /// In en, this message translates to:
-  /// **'The full licence text and the additional permission under “rurana”, and the licences of the software Rurana contains'**
+  /// **'The full license text and the additional permission under “vikunja_app”, and the licenses of the software the app contains'**
   String get aboutLicencesSubtitle;
 
   /// Section header on the About page.
@@ -13179,7 +13179,7 @@ abstract class AppLocalizations {
   /// On the About page of a build without a source link (local and test builds); release builds show the link instead.
   ///
   /// In en, this message translates to:
-  /// **'This build has no link to its source code. Every release of Rurana links the source code it was built from.'**
+  /// **'This build has no link to its source code. Every release of the app links the source code it was built from.'**
   String get aboutSourceCodeLater;
 
   /// Opens the repository in the browser; the address is shown below it.
@@ -13188,13 +13188,13 @@ abstract class AppLocalizations {
   /// **'View the source code'**
   String get aboutSourceCodeOpen;
 
-  /// Section header on the About page over the links to Rurana's support page, privacy policy and legal notice on the developer's website, coderoftime.dev, and over the row that opens the support details (supportDetailsTitle).
+  /// Section header on the About page over the links to the app's support page, privacy policy and legal notice on the developer's website, coderoftime.dev, and over the row that opens the support details (supportDetailsTitle).
   ///
   /// In en, this message translates to:
   /// **'Help, privacy and legal notice'**
   String get aboutWebsiteHeading;
 
-  /// Opens Rurana's support page on coderoftime.dev in the browser: answers to common questions, and how to report a bug or a security problem. A noun phrase like its neighbours aboutPrivacyPolicy and aboutLegalNotice.
+  /// Opens the app's support page on coderoftime.dev in the browser: answers to common questions, and how to report a bug or a security problem. A noun phrase like its neighbors aboutPrivacyPolicy and aboutLegalNotice.
   ///
   /// In en, this message translates to:
   /// **'Help and bug reports'**
@@ -13206,7 +13206,7 @@ abstract class AppLocalizations {
   /// **'Answers to common questions and how to report a bug'**
   String get aboutSupportSubtitle;
 
-  /// Opens Rurana's privacy policy on coderoftime.dev in the browser; the server's own legal links are elsewhere (legalPrivacy).
+  /// Opens the app's privacy policy on coderoftime.dev in the browser; the server's own legal links are elsewhere (legalPrivacy).
   ///
   /// In en, this message translates to:
   /// **'Privacy policy'**
@@ -13215,7 +13215,7 @@ abstract class AppLocalizations {
   /// Under aboutPrivacyPolicy on the About page.
   ///
   /// In en, this message translates to:
-  /// **'How Rurana handles your data'**
+  /// **'How the app handles your data'**
   String get aboutPrivacyPolicySubtitle;
 
   /// Opens the legal notice (the German Impressum) on coderoftime.dev in the browser; the server's own is legalImprint.
@@ -13227,7 +13227,7 @@ abstract class AppLocalizations {
   /// Under aboutLegalNotice on the About page.
   ///
   /// In en, this message translates to:
-  /// **'Who publishes Rurana'**
+  /// **'Who publishes the app'**
   String get aboutLegalNoticeSubtitle;
 
   /// Section header on the About page.
@@ -13344,7 +13344,7 @@ abstract class AppLocalizations {
   /// **'Couldn\'t duplicate the project: a file in it is missing from the server.'**
   String get projectDuplicateFileMissing;
 
-  /// Fragment without a full stop, inserted as the reason into assigneePickerFallback when the people of the task's project can't be searched (no access, or the project is gone).
+  /// Fragment without a period, inserted as the reason into assigneePickerFallback when the people of the task's project can't be searched (no access, or the project is gone).
   ///
   /// In en, this message translates to:
   /// **'No access to this project'**

@@ -29,7 +29,7 @@ void main() {
   );
 
   setUp(() {
-    support = Directory.systemTemp.createTempSync('rurana-open-db');
+    support = Directory.systemTemp.createTempSync('vikunja-open-db');
     addTearDown(() => support.delete(recursive: true));
     files = PathProviderAccountDatabaseFiles(
       supportDirectory: _constant(support),

@@ -90,11 +90,11 @@ void main() {
 
       expect(describe(prefixed, ScheduledNotificationKind.reminder, work), (
         title: 'Task reminder',
-        body: 'Open Rurana to see it',
+        body: 'Open Vikunja to see it',
       ));
       expect(describe(prefixed, ScheduledNotificationKind.dueDate, null), (
         title: 'Task due',
-        body: 'Open Rurana to see it',
+        body: 'Open Vikunja to see it',
       ));
     });
 
@@ -106,7 +106,7 @@ void main() {
 
       expect(describe(task, ScheduledNotificationKind.reminder, work), (
         title: 'Erinnerung an eine Aufgabe',
-        body: 'Öffne Rurana, um sie zu sehen',
+        body: 'Öffne Vikunja, um sie zu sehen',
       ));
       expect(
         describe(task, ScheduledNotificationKind.dueDate, work).title,

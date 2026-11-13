@@ -15,7 +15,6 @@ check_store_metadata = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(check_store_metadata)
 Checker = check_store_metadata.Checker
 
-UNOFFICIAL = check_store_metadata.UNOFFICIAL
 URLS = {
     'en-GB': {'support_url.txt': 'https://coderoftime.dev/rurana/support/',
               'privacy_url.txt': 'https://coderoftime.dev/rurana/privacy/',
@@ -47,16 +46,16 @@ class Tree:
 
     def __init__(self):
         self.root = tempfile.mkdtemp()
-        for locale, lang in check_store_metadata.LOCALES.items():
+        for locale in check_store_metadata.LOCALES:
             android = f'fastlane/metadata/android/{locale}'
-            self.write(f'{android}/title.txt', 'Rurana\n')
+            self.write(f'{android}/title.txt', 'Vikunja\n')
             self.write(f'{android}/short_description.txt', 'Tasks offline, with reminders\n')
-            self.write(f'{android}/full_description.txt', f'Rurana is an app.\n\n{UNOFFICIAL[lang]}\n')
+            self.write(f'{android}/full_description.txt', 'Vikunja is a task manager.\n\nThis is its app.\n')
             self.write(f'{android}/changelogs/.gitkeep', '')
             ios = f'fastlane/metadata/{locale}'
-            self.write(f'{ios}/name.txt', 'Rurana\n')
+            self.write(f'{ios}/name.txt', 'Vikunja\n')
             self.write(f'{ios}/subtitle.txt', 'Tasks on your own server\n')
-            self.write(f'{ios}/description.txt', f'{UNOFFICIAL[lang]}\n')
+            self.write(f'{ios}/description.txt', 'The app for your Vikunja server.\n')
             self.write(f'{ios}/keywords.txt', 'kanban,offline,reminders\n')
             self.write(f'{ios}/promotional_text.txt', 'Your tasks, offline.\n')
             self.write(f'{ios}/release_notes.txt', '')
@@ -119,19 +118,19 @@ class CheckerTest(unittest.TestCase):
 
     def test_limits(self):
         cases = {
-            'fastlane/metadata/android/en-GB/title.txt': 'R' * 31,
+            'fastlane/metadata/android/en-GB/title.txt': 'V' * 31,
             'fastlane/metadata/android/en-GB/short_description.txt': 'a' * 81,
-            'fastlane/metadata/android/de-DE/full_description.txt': UNOFFICIAL['de'] + 'a' * 4000,
+            'fastlane/metadata/android/de-DE/full_description.txt': 'a' * 4001,
             'fastlane/metadata/de-DE/subtitle.txt': 'a' * 31,
             'fastlane/metadata/en-GB/promotional_text.txt': 'a' * 171,
-            'fastlane/metadata/en-GB/description.txt': UNOFFICIAL['en'] + 'a' * 4000,
+            'fastlane/metadata/en-GB/description.txt': 'a' * 4001,
         }
         for name, value in cases.items():
             with self.subTest(name=name):
                 tree = Tree()
                 self.addCleanup(tree.remove)
                 tree.write(name, value + '\n')
-                errors = tree.check()
+                errors = [error for error in tree.check() if not error.endswith('must be "Vikunja"')]
                 self.assertEqual(len(errors), 1, errors)
                 self.assertIn(', the limit is ', errors[0])
 
@@ -141,31 +140,64 @@ class CheckerTest(unittest.TestCase):
         self.tree.write('fastlane/metadata/review_information/notes.txt', 'é' * 2001 + '\n')
         self.assertError('notes.txt: 4002 bytes, the limit is 4000')
 
-    def test_no_vikunja_in_the_name_fields(self):
+    def test_no_other_brand_in_the_name_fields(self):
         for name in ('android/en-GB/title.txt', 'en-GB/name.txt', 'de-DE/subtitle.txt', 'en-GB/keywords.txt'):
             with self.subTest(name=name):
                 tree = Tree()
                 self.addCleanup(tree.remove)
-                tree.write(f'fastlane/metadata/{name}', 'Rurana for Vikunja\n' if 'keywords' not in name
-                           else 'tasks,vikunja\n')
+                tree.write(f'fastlane/metadata/{name}', 'Tasks like Todoist\n' if 'keywords' not in name
+                           else 'tasks,todoist\n')
                 self.assertIn('names another product or company: ', ' '.join(tree.check()))
+
+    def test_the_title_and_the_name_are_vikunja(self):
+        for name in ('android/en-GB/title.txt', 'android/de-DE/title.txt', 'en-GB/name.txt', 'de-DE/name.txt'):
+            for value in ('Tasks', 'vikunja', 'Vikunja Tasks'):
+                with self.subTest(name=name, value=value):
+                    tree = Tree()
+                    self.addCleanup(tree.remove)
+                    tree.write(f'fastlane/metadata/{name}', value + '\n')
+                    self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: must be "Vikunja"'])
+
+    def test_vikunja_is_indexed_as_the_name_and_fine_in_the_subtitle(self):
+        self.tree.write('fastlane/metadata/en-GB/keywords.txt', 'tasks,Vikunja tasks\n')
+        self.assertEqual(self.errors(), ['fastlane/metadata/en-GB/keywords.txt: the app name is indexed already'])
+        self.tree.write('fastlane/metadata/en-GB/keywords.txt', 'kanban,offline,reminders\n')
+        self.tree.write('fastlane/metadata/de-DE/subtitle.txt', 'Für deinen Vikunja-Server\n')
+        self.assertEqual(self.errors(), [])
 
     def test_vikunja_is_fine_in_descriptions(self):
         self.tree.write('fastlane/metadata/android/en-GB/short_description.txt',
-                        'Unofficial app for Vikunja servers\n')
+                        'The app for your Vikunja server\n')
         self.assertEqual(self.errors(), [])
 
-    def test_the_unofficial_line_is_required(self):
-        self.tree.write('fastlane/metadata/de-DE/description.txt', 'Rurana ist eine App.\n')
-        self.assertError('de-DE/description.txt: lacks the line')
+    def test_no_text_calls_the_app_unofficial(self):
+        cases = {
+            'android/en-GB/full_description.txt': 'An unofficial app for Vikunja.',
+            'android/en-GB/short_description.txt': 'Unofficial app for Vikunja servers',
+            'android/de-DE/full_description.txt': 'Eine inoffizielle App für Vikunja.',
+            'android/de-DE/short_description.txt': 'Inoffizielle App für Vikunja-Server',
+            'en-GB/description.txt': 'It is not affiliated with or endorsed by the Vikunja project.',
+            'de-DE/description.txt': 'Sie gehört nicht zum Vikunja-Projekt.',
+            'en-GB/subtitle.txt': 'The unofficial task app',
+            'de-DE/subtitle.txt': 'Inoffiziell, offline',
+            'en-GB/promotional_text.txt': 'Your tasks, offline. Unofficial.',
+            'de-DE/promotional_text.txt': 'Die inoffizielle App.',
+            'review_information/notes.txt': 'An unofficial client for Vikunja.',
+        }
+        for name, value in cases.items():
+            with self.subTest(name=name):
+                tree = Tree()
+                self.addCleanup(tree.remove)
+                tree.write(f'fastlane/metadata/{name}', value + '\n')
+                self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: calls the app unofficial (D83)'])
 
     def test_claims_emoji_and_the_other_platform(self):
         cases = {
             'fastlane/metadata/android/en-GB/short_description.txt': ('The best task app', 'ranking, price'),
             'fastlane/metadata/de-DE/promotional_text.txt': ('Kostenlos und offline', 'ranking, price'),
             'fastlane/metadata/en-GB/subtitle.txt': ('Tasks \u2705', 'emoji'),
-            'fastlane/metadata/en-GB/description.txt': (UNOFFICIAL['en'] + ' Also on Android.', 'other platform'),
-            'fastlane/metadata/android/de-DE/full_description.txt': (UNOFFICIAL['de'] + ' Auch fürs iPhone.',
+            'fastlane/metadata/en-GB/description.txt': ('The app for your server. Also on Android.', 'other platform'),
+            'fastlane/metadata/android/de-DE/full_description.txt': ('Die App für deinen Server. Auch fürs iPhone.',
                                                                      'other platform'),
         }
         for name, (value, message) in cases.items():
@@ -186,8 +218,8 @@ class CheckerTest(unittest.TestCase):
                       'default.txt', errors)
 
     def test_values(self):
-        self.tree.write('fastlane/metadata/android/en-GB/title.txt', 'Rurana\nTasks\n')
-        self.tree.write('fastlane/metadata/de-DE/name.txt', ' Rurana\n')
+        self.tree.write('fastlane/metadata/android/en-GB/title.txt', 'Vikunja\nTasks\n')
+        self.tree.write('fastlane/metadata/de-DE/name.txt', ' Vikunja\n')
         self.tree.write('fastlane/metadata/en-GB/promotional_text.txt', '')
         self.tree.write('fastlane/metadata/primary_category.txt', 'Productivity\n')
         self.tree.write('fastlane/metadata/android/de-DE/changelogs/1000001.txt', 'x' * 501 + '\n')
@@ -200,7 +232,7 @@ class CheckerTest(unittest.TestCase):
                       errors)
 
     def test_keywords(self):
-        self.tree.write('fastlane/metadata/en-GB/keywords.txt', 'kanban, offline,to,rurana tasks,Kanban\n')
+        self.tree.write('fastlane/metadata/en-GB/keywords.txt', 'kanban, offline,to,vikunja tasks,Kanban\n')
         errors = ' '.join(self.errors())
         for message in ('spaces around commas', 'keyword too short: "to"', 'the app name is indexed',
                         'repeated keyword'):

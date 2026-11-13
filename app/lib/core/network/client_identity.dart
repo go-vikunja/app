@@ -48,7 +48,7 @@ final class ClientIdentity {
       _token(platform),
       _token(osVersion),
     ].where((part) => part.isNotEmpty).join(' ');
-    return 'Rurana/${_token(appVersion)}$build ($system)';
+    return 'Vikunja-App/${_token(appVersion)}$build ($system)';
   }
 
   static String _token(String value) =>

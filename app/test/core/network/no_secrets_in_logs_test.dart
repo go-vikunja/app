@@ -72,7 +72,7 @@ void main() {
     validateClientCertificate(tlsFixture('client.p12'), '$password-wrong');
 
     // Debug mode, so the request log is on.
-    final dio = createDio(userAgent: 'Rurana/test', profiles: profiles);
+    final dio = createDio(userAgent: 'Vikunja-App/test', profiles: profiles);
     addTearDown(dio.close);
     await dio.get<String>('https://localhost:${pinnedServer.port}/api/v1/info');
     await expectLater(
@@ -98,7 +98,7 @@ void main() {
     await expectLater(
       ProfileRealtimeConnector(
         profiles: profiles,
-        userAgent: 'Rurana/test',
+        userAgent: 'Vikunja-App/test',
       ).connect(Uri.parse('wss://localhost:${pinnedServer.port}/api/v2/ws')),
       throwsA(anything),
     );

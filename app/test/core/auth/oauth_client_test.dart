@@ -5,10 +5,10 @@ import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 
 void main() {
   test('the redirect uses the fixed client id and a vikunja- scheme', () {
-    expect(appOAuthClient.clientId, 'dev.coderoftime.rurana');
+    expect(appOAuthClient.clientId, 'vikunja-io.vikunja.app');
     expect(
       appOAuthClient.redirectUri.toString(),
-      'vikunja-dev.coderoftime.rurana://oauth/callback',
+      'vikunja-io.vikunja.app://oauth/callback',
     );
     expect(appOAuthClient.redirectUri.scheme, startsWith('vikunja-'));
   });
@@ -55,7 +55,7 @@ void main() {
     );
 
     final source = File(
-      'android/app/src/main/kotlin/dev/coderoftime/rurana/TaskLinkActivity.kt',
+      'android/app/src/main/kotlin/io/vikunja/app/TaskLinkActivity.kt',
     ).readAsStringSync();
     expect(source, contains('"$oauthCallbackScheme"'));
     for (final flag in [

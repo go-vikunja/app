@@ -1,0 +1,26 @@
+name: vikunja_widgets
+description: Home-screen widget bridge of the app (D63) - snapshot files, Android instance configs and refreshes, the iOS App Group container.
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: io.vikunja.vikunja_widgets
+        pluginClass: VikunjaWidgetsPlugin
+      ios:
+        pluginClass: VikunjaWidgetsPlugin

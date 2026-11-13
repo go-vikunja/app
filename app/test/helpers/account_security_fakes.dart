@@ -14,7 +14,7 @@ const fakeScriptSessionId = '6f1c2a3b-0000-4000-8000-000000000003';
 List<UserSession> fakeSessions(DateTime now) => [
   UserSession(
     id: fakeCurrentSessionId,
-    deviceInfo: 'Rurana/0.31.0+31 (android 15)',
+    deviceInfo: 'Vikunja-App/0.31.0+31 (android 15)',
     ipAddress: '192.0.2.10',
     created: now.subtract(const Duration(days: 2)),
     lastActive: now.subtract(const Duration(minutes: 3)),

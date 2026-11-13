@@ -1,5 +1,5 @@
 {
-  "name": "rurana-editor",
+  "name": "vikunja-editor",
   "version": "0.0.0",
   "private": true,
   "description": "The description editor page the app loads in a WebView: TipTap with the Vikunja web editor's schema.",

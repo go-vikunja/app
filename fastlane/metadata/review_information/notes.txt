@@ -1,4 +1,4 @@
-Rurana is an unofficial, open-source (AGPL-3.0) client for Vikunja, a task manager that people run on their own servers. The developer runs no backend, and the app has no analytics, ads, tracking or crash reporting: it talks only to the Vikunja server the user enters. For the review, please use Vikunja's public demo server, which the Vikunja project runs.
+Vikunja is a task manager that people run on their own servers; this is its open-source (AGPL-3.0) app for iPhone and iPad. The developer runs no backend, and the app has no analytics, ads, tracking or crash reporting: it talks only to the Vikunja server the user enters. For the review, please use Vikunja's public demo server, which the Vikunja project runs.
 
 HOW TO SIGN IN
 1. Open the app and tap "Try the public demo". The app connects to https://try.vikunja.io and shows the server with its message, which names the demo account.
@@ -13,7 +13,7 @@ WHAT TO TRY
 - Tap a task for its details; Edit changes its dates, priority, labels and reminders.
 - Offline first: every screen reads from a copy of the account on the device. Turn on Airplane Mode, tick off or edit a task, turn Airplane Mode off; the change is sent by itself.
 - Reminders: give a task a reminder a few minutes ahead. The notification is scheduled on the device; there is no push service.
-- Widgets: add a Rurana widget to the Home Screen.
+- Widgets: add a Vikunja widget to the Home Screen.
 - App lock with Face ID: Account tab, App lock and privacy.
 
 ACCOUNTS (5.1.1(v))

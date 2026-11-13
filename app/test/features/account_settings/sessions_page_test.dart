@@ -18,7 +18,7 @@ void main() {
   Future<void> pumpPage(WidgetTester tester) =>
       harness.pump(tester, location: AppRoutes.accountSessions);
 
-  const android = 'Rurana 0.31.0 · Android 15';
+  const android = 'Vikunja app 0.31.0 · Android 15';
   const firefox = 'Firefox on Linux';
 
   Finder rowOf(String device) => find.widgetWithText(ListTile, device);
@@ -215,14 +215,16 @@ void main() {
     await pumpPage(tester);
 
     expect(find.text(de.sessionsTitle), findsOneWidget);
+    expect(find.text('Vikunja-App 0.31.0 · Android 15'), findsOneWidget);
     expect(find.text('Firefox unter Linux'), findsOneWidget);
     expect(find.text(de.sessionsThisDevice), findsOneWidget);
   });
 
   group('device lines', () {
     for (final (agent, line) in [
-      ('Rurana/0.31.0+31 (android 15)', android),
-      ('Rurana/1.0.0+100 (ios 18.1)', 'Rurana 1.0.0 · iOS 18.1'),
+      ('Vikunja-App/0.31.0+31 (android 15)', android),
+      ('Vikunja-App/1.0.0+100 (ios 18.1)', 'Vikunja app 1.0.0 · iOS 18.1'),
+      ('Vikunja Mobile App', 'Vikunja Mobile App'),
       (
         'Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 '
             'Firefox/140.0',
@@ -236,5 +238,34 @@ void main() {
         expect(sessionDeviceLine(en, describeUserAgent(agent)), line);
       });
     }
+
+    test('name this app in German', () {
+      expect(
+        sessionDeviceLine(
+          de,
+          describeUserAgent('Vikunja-App/1.0.0+100 (ios 18.1)'),
+        ),
+        'Vikunja-App 1.0.0 · iOS 18.1',
+      );
+    });
+
+    test('name this app alone without a version or system', () {
+      const device = DeviceDescription(
+        kind: DeviceKind.vikunjaApp,
+        raw: 'Vikunja-App',
+      );
+
+      expect(sessionDeviceLine(en, device), 'Vikunja app');
+      expect(sessionDeviceLine(de, device), 'Vikunja-App');
+    });
+
+    test('show a phone for this app', () {
+      for (final (agent, icon) in [
+        ('Vikunja-App/0.31.0+31 (android 15)', Icons.phone_android),
+        ('Vikunja-App/1.0.0+100 (ios 18.1)', Icons.phone_iphone),
+      ]) {
+        expect(sessionDeviceIcon(describeUserAgent(agent)), icon);
+      }
+    });
   });
 }

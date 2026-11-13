@@ -281,7 +281,7 @@ void main() {
 
       for (final activity in gateway.activities) {
         expect(activity.title, 'New activity');
-        expect(activity.body, 'Open Rurana to see it');
+        expect(activity.body, 'Open Vikunja to see it');
         expect(activity.subtitle, isNull);
         expect(activity.privacy, const NotificationPrivacy());
       }
@@ -583,11 +583,11 @@ void main() {
 
       expect(generic(comment, en), (
         title: 'New activity',
-        body: 'Open Rurana to see it',
+        body: 'Open Vikunja to see it',
       ));
       expect(generic(sampleNotification(id: 2, name: 'task.mentioned'), de), (
         title: 'Neue Aktivität',
-        body: 'Öffne Rurana, um sie zu sehen',
+        body: 'Öffne Vikunja, um sie zu sehen',
       ));
       expect(
         generic(sampleNotification(id: 3, name: 'task.reminder'), en),

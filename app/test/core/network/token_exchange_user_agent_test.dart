@@ -29,10 +29,10 @@ final class _RecordingAdapter implements HttpClientAdapter {
 
 void main() {
   // The server names a session after the User-Agent of the request that
-  // created it, so the sessions list shows "Rurana" only if the exchange
-  // sends it.
+  // created it, so the sessions list shows "Vikunja app" only if the
+  // exchange sends it.
   test('the code exchange and the refresh send the app User-Agent', () async {
-    const userAgent = 'Rurana/0.31.0+31 (android 15)';
+    const userAgent = 'Vikunja-App/0.31.0+31 (android 15)';
     final adapter = _RecordingAdapter();
     final gateway = ApiTokenGateway(
       createDio(

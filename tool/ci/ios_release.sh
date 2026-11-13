@@ -196,7 +196,7 @@ else
 fi
 
 app_bundle="${archive}/Products/Applications/Runner.app"
-extension="${app_bundle}/PlugIns/RuranaWidgets.appex"
+extension="${app_bundle}/PlugIns/VikunjaWidgets.appex"
 plist_value() {
   plutil -extract "$2" raw -o - "$1/Info.plist" 2>/dev/null || echo "<missing>"
 }
@@ -216,7 +216,7 @@ if [[ "$(plist_value "$app_bundle" ITSAppUsesNonExemptEncryption)" != false ]]; 
   echo "error: Runner.app does not declare ITSAppUsesNonExemptEncryption false" >&2
   exit 1
 fi
-for pair in "${app_bundle}:app/ios/Runner" "${extension}:app/ios/RuranaWidgets"; do
+for pair in "${app_bundle}:app/ios/Runner" "${extension}:app/ios/VikunjaWidgets"; do
   built="${pair%%:*}/PrivacyInfo.xcprivacy"
   source="${pair#*:}/PrivacyInfo.xcprivacy"
   if [[ ! -f "$built" ]] ||
@@ -233,7 +233,7 @@ else
     "undeclared required-reason API"
 fi
 python3 -I tool/ci/ios_notices.py "$app_bundle"
-echo "Verified: Runner.app and RuranaWidgets.appex ${build_name} (${build_number}), their privacy manifests${apis_declared}," \
+echo "Verified: Runner.app and VikunjaWidgets.appex ${build_name} (${build_number}), their privacy manifests${apis_declared}," \
   "ITSAppUsesNonExemptEncryption false, the 1024 icon, the licence notices."
 
 if ((dry_run)); then

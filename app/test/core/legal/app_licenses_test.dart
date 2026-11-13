@@ -161,7 +161,7 @@ Text
       );
     });
 
-    test("Rurana's notice, beside the AGPL that Flutter's build adds", () {
+    test("the app's notice, beside the AGPL that Flutter's build adds", () {
       final own = _text(android[ownLicensePackage]!.single);
       expect(own, contains(copyrightNotice));
       expect(
@@ -330,14 +330,14 @@ Text
 
       expect(
         inWorkspace.map((package) => package.name),
-        containsAll(['vikunja_mobile', 'vikunja_logic', 'rurana_widgets']),
+        containsAll(['vikunja_mobile', 'vikunja_logic', 'vikunja_widgets']),
       );
       expect(licensed, [ownLicensePackage]);
       expect(File('$_repoRoot/NOTICES').existsSync(), isFalse);
       expect(File('$_repoRoot/LICENSE').existsSync(), isTrue);
     });
 
-    test("Rurana's notice says what NOTICE.md says", () {
+    test("the app's notice says what NOTICE.md says", () {
       final notice = _normalized(repoFile('NOTICE.md'));
       final own = parseNotices(appFile(LegalAssets.ownNotice)).single;
 

@@ -1,5 +1,5 @@
-"NSCameraUsageDescription" = "Rurana nutzt die Kamera für Fotos, die du an Aufgaben anhängst oder als Avatar verwendest.";
-"NSFaceIDUsageDescription" = "Rurana nutzt Face ID, um die App zu entsperren, wenn die App-Sperre an ist.";
-"NSLocalNetworkUsageDescription" = "Rurana verbindet sich mit dem Vikunja-Server, den du eingibst. Er kann in deinem lokalen Netzwerk laufen.";
-"NSPhotoLibraryAddUsageDescription" = "Rurana speichert Anhänge, die du auswählst, in deinen Fotos.";
-"NSPhotoLibraryUsageDescription" = "Rurana lässt dich Fotos auswählen, die du an Aufgaben anhängst oder als Avatar verwendest.";
+"NSCameraUsageDescription" = "Vikunja nutzt die Kamera für Fotos, die du an Aufgaben anhängst oder als Avatar verwendest.";
+"NSFaceIDUsageDescription" = "Vikunja nutzt Face ID, um die App zu entsperren, wenn die App-Sperre an ist.";
+"NSLocalNetworkUsageDescription" = "Die App verbindet sich mit dem Vikunja-Server, den du eingibst. Er kann in deinem lokalen Netzwerk laufen.";
+"NSPhotoLibraryAddUsageDescription" = "Vikunja speichert Anhänge, die du auswählst, in deinen Fotos.";
+"NSPhotoLibraryUsageDescription" = "Vikunja lässt dich Fotos auswählen, die du an Aufgaben anhängst oder als Avatar verwendest.";

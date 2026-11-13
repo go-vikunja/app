@@ -1,6 +1,6 @@
-Rurana is an unofficial app for Vikunja, the open-source task manager you can run on your own server. It is not affiliated with or endorsed by the Vikunja project.
+Vikunja is the open-source task manager you can run on your own server. This is its app for Android.
 
-Sign in to your Vikunja server (version 2.3 or newer) — your own, your organisation's or a hosted one — or try the public demo. Rurana keeps a copy of your account on the device, so your projects and tasks are there even without a connection.
+Sign in to your Vikunja server (version 2.3 or newer) — your own, your organisation's or a hosted one — or try the public demo. The app keeps a copy of your account on the device, so your projects and tasks are there even without a connection.
 
 Works offline
 • Every screen reads from the copy on your device.
@@ -32,12 +32,12 @@ Also
 • Your account settings, the two-factor status and the sessions signed in to your account.
 • On a tablet or an unfolded foldable, a task opens beside the list.
 • Share text, links or files from other apps into a new or an existing task.
-• Light and dark mode, colours from your wallpaper on Android 12 and later, British English and German.
+• Light and dark mode, colours from your wallpaper on Android 12 and later, English and German.
 • For self-hosted setups: trust your server's own certificate or CA certificate, use a client certificate or access headers, and allow plain http only after you confirm it.
 
 Privacy
 • An optional app lock with your fingerprint, face or screen lock; task titles can be hidden in notifications and widgets, and screenshots blocked.
-• No ads, no analytics, no tracking, no crash reporting. Rurana talks only to the servers you add. The developer runs no server and receives none of your data.
+• No ads, no analytics, no tracking, no crash reporting. The app talks only to the servers you add. The developer runs no server and receives none of your data.
 
 Open source
-Rurana is free software under the GNU Affero General Public License, version 3 or later.
+The app is free software under the GNU Affero General Public License, version 3 or later.

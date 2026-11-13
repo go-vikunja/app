@@ -79,7 +79,7 @@ void main() {
     final headers = requests.single;
     expect(
       headers.value(HttpHeaders.userAgentHeader),
-      'Rurana/1.2.0+7 (android 15)',
+      'Vikunja-App/1.2.0+7 (android 15)',
     );
     expect(headers.value('origin'), isNull);
   });

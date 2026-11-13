@@ -58,7 +58,7 @@ final class InfoTransportError(final DioException exception)
 /// `RequestOptions.extra` key marking the `/info` probes, the only requests
 /// the app's transport lets through to an `http://` origin before the user
 /// allowed unencrypted connections to it. They carry no credentials.
-const preConsentProbeKey = 'rurana.preConsentProbe';
+const preConsentProbeKey = 'vikunja.preConsentProbe';
 
 Options _probeOptions(Duration timeout) => Options(
   headers: {'Accept': 'application/json'},

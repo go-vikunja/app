@@ -1,10 +1,10 @@
-# Contributing to Rurana
+# Contributing to the Vikunja app
 
-Thank you for helping. Rurana is free software under the AGPL-3.0-or-later with an additional permission for app stores ([NOTICE.md](NOTICE.md)). Your contribution is licensed under the same terms, the additional permission included, and you keep your copyright in it.
+Thank you for helping. The app is free software under the AGPL-3.0-or-later with an additional permission for app stores ([NOTICE.md](NOTICE.md)) until step 38d moves it to the MIT licence and Vikunja's contribution rules ([D83](docs/decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)). Your contribution is licensed under the same terms, the additional permission included, and you keep your copyright in it.
 
 ## Issues
 
-Open an issue for a bug, with the app version, the platform, the Vikunja server version and the steps that show it, or for an idea before you build it. Without a GitLab account, write to the address on [Rurana's support page](https://coderoftime.dev/rurana/support/). Larger changes are recorded in [docs/decisions.md](docs/decisions.md), so it helps to agree on the approach first. Never put a password, a token or another secret into an issue.
+Open an issue for a bug, with the app version, the platform, the Vikunja server version and the steps that show it, or for an idea before you build it. Without a GitLab account, write to the address on [the app's support page](https://coderoftime.dev/rurana/support/). Larger changes are recorded in [docs/decisions.md](docs/decisions.md), so it helps to agree on the approach first. Never put a password, a token or another secret into an issue.
 
 Report a security problem privately: by email to coderoftime@gmail.com first, so that it can be fixed before it is public. Describe what you found and how to reproduce it, without passwords or tokens. A confidential issue on GitLab works too, but never a public one. The website's [security.txt](https://coderoftime.dev/.well-known/security.txt) has the same contact. Don't test with other people's accounts or data. The [threat model](docs/threat-model.md) explains what the app protects.
 
@@ -23,7 +23,7 @@ The repository is on GitLab: open a merge request against `main`, from a branch 
   (cd packages/vikunja_domain && flutter test)
   (cd packages/vikunja_logic && flutter test)
   (cd packages/vikunja_api && flutter test --exclude-tags contract)
-  (cd plugins/rurana_widgets && flutter test)
+  (cd plugins/vikunja_widgets && flutter test)
   ```
 
   After a change to ARB files, annotated providers or Drift tables, regenerate and commit the generated code (`cd app && flutter gen-l10n && dart run build_runner build`). After a change to the description editor (`app/editor/`), run `tool/build_editor.sh` and commit the page it builds and its notices. After a change to the Android dependencies, write the Gradle lockfile and the Android libraries' notices again (`python3 -I tool/build_android_notices.py`, see the [README](README.md#common-commands)). After a change to the store texts (`fastlane/metadata/`), run `python3 -I tool/check_store_metadata.py`; the `checks` job runs it through its tests.
@@ -37,19 +37,19 @@ The repository is on GitLab: open a merge request against `main`, from a branch 
 
 ## Translations
 
-English and German are complete on every commit ([D71](docs/decisions.md#d71-english-and-german-british-base-glossary-error-texts-live-language-changes)):
+English and German are complete on every commit ([D71](docs/decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)):
 
 - A new or changed string goes into both `app/lib/l10n/arb/app_en.arb` and `app_de.arb` in the same commit. The parity test (`app/test/l10n/arb_parity_test.dart`) fails when one file has a message the other lacks, or when a translation drops or renames a placeholder.
-- English is British and the base: `app_en.arb` is the template. Both languages follow the [glossary](docs/glossary.md) for their terms, spelling, quotes, ellipses and dashes; German uses "du".
+- English is US English, like the Vikunja web, and the base: `app_en.arb` is the template, its descriptions included; ARB keys keep the spelling they have. Both languages follow the [glossary](docs/glossary.md) for their terms, spelling, quotes, ellipses and dashes and for how a text names the app; German uses "du". `app/test/l10n/us_english_test.dart` fails on a British spelling.
 - Every new or changed message gets a `description` in `app_en.arb` that says where it appears; a string that is only spoken, never shown, starts its description with "Screen reader: ". The German file holds only the texts.
 - Placeholders: declare each one under the message's `placeholders` in `app_en.arb`, and keep its name and the ICU braces of a plural or select exactly the same in both files. A new plural puts the number in the singular branch too (`=1{{count} task}`). Add a key in both files at once, and leave the other entries and their order as they are.
-- A text of the Android widgets (`app/android/app/src/main/res/values*/strings.xml`) or of iOS changes in English and German too. On iOS the permission texts are in `app/ios/Runner/Info.plist` (English) and `app/ios/Runner/de.lproj/InfoPlist.strings`; the widget extension's English text is the key in its Swift sources (`app/ios/RuranaWidgets/*.swift`) and in `en.lproj` and `de.lproj` `Localizable.strings`, or, for a count, `Localizable.stringsdict` with its plural forms, so changing it means changing all three.
+- A text of the Android widgets (`app/android/app/src/main/res/values*/strings.xml`) or of iOS changes in English and German too. On iOS the permission texts are in `app/ios/Runner/Info.plist` (English) and `app/ios/Runner/de.lproj/InfoPlist.strings`; the widget extension's English text is the key in its Swift sources (`app/ios/VikunjaWidgets/*.swift`) and in `en.lproj` and `de.lproj` `Localizable.strings`, or, for a count, `Localizable.stringsdict` with its plural forms, so changing it means changing all three.
 
-Other languages come later through a translation platform (roadmap step 36f).
+Other languages come later through Vikunja's Crowdin project (roadmap step 38e).
 
 ## Name and logo
 
-The name "Rurana" and the llama logo are not under the AGPL ([NOTICE.md](NOTICE.md#name-and-logo)). Their files may be passed on unmodified only as part of a copy of this repository or its history, or of an unmodified build published by Benedikt Lesch. Merge requests that change the logo files are not accepted. A fork that distributes an app built from modified source must use its own name and logo.
+The app is called Vikunja and its icons come from Vikunja's logo ([branding/README.md](branding/README.md)); step 38d sets down the terms for them. Until then the former name "Rurana" and its llama logo are not under the AGPL ([NOTICE.md](NOTICE.md#name-and-logo)). Their files may be passed on unmodified only as part of a copy of this repository or its history, or of an unmodified build published by Benedikt Lesch. Merge requests that change the logo files are not accepted. A fork that distributes an app built from modified source must use its own name and logo.
 
 ## Style
 

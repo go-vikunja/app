@@ -18,7 +18,7 @@ void main() {
     test('translates the Favorites list by its id', () {
       expect(
         projectDisplayTitle(en, 'Favorites', projectId: Project.favoritesId),
-        'Favourites',
+        'Favorites',
       );
       expect(
         projectDisplayTitle(de, 'Favorites', projectId: Project.favoritesId),

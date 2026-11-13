@@ -10,7 +10,7 @@ class AppLocalizationsDe extends AppLocalizations {
   AppLocalizationsDe([String locale = 'de']) : super(locale);
 
   @override
-  String get appTitle => 'Rurana';
+  String get appTitle => 'Vikunja';
 
   @override
   String get connectTagline =>
@@ -206,7 +206,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String unsupportedBody(String minimum, String found) {
-    return 'Rurana braucht Vikunja $minimum oder neuer. Auf diesem Server läuft $found.';
+    return 'Diese App braucht Vikunja $minimum oder neuer. Auf diesem Server läuft $found.';
   }
 
   @override
@@ -218,7 +218,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String unsupportedUnknownVersionBody(String minimum) {
-    return 'Rurana braucht Vikunja $minimum oder neuer. Dieser Server meldet eine Version, die die App nicht erkennt.';
+    return 'Diese App braucht Vikunja $minimum oder neuer. Dieser Server meldet eine Version, die die App nicht erkennt.';
   }
 
   @override
@@ -476,7 +476,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String signOutDialogBody(String account, String host) {
-    return 'Rurana meldet $account von $host ab und löscht die auf diesem Gerät gespeicherten Aufgaben dieses Kontos. Du kannst dich jederzeit wieder anmelden.';
+    return 'Die App meldet $account von $host ab und löscht die auf diesem Gerät gespeicherten Aufgaben dieses Kontos. Du kannst dich jederzeit wieder anmelden.';
   }
 
   @override
@@ -486,7 +486,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String signOutDialogSwitchesTo(String name) {
-    return 'Danach wechselt Rurana zu $name.';
+    return 'Danach wechselt die App zu $name.';
   }
 
   @override
@@ -614,7 +614,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get addAccountAlreadyAdded =>
-      'Bei diesem Konto bist du schon angemeldet – Rurana ist zu ihm gewechselt';
+      'Bei diesem Konto bist du schon angemeldet – die App ist zu ihm gewechselt';
 
   @override
   String get addAccountAlreadyActive =>
@@ -1283,7 +1283,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String firstSyncBody(String host) {
-    return 'Rurana speichert alles von $host auf diesem Gerät, damit es auch offline funktioniert.';
+    return 'Die App speichert alles von $host auf diesem Gerät, damit sie auch offline funktioniert.';
   }
 
   @override
@@ -2276,7 +2276,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get notificationSetupBody =>
-      'Rurana kann dich auf diesem Gerät benachrichtigen, ohne dass der Server etwas senden muss:';
+      'Die App kann dich auf diesem Gerät benachrichtigen, ohne dass der Server etwas senden muss:';
 
   @override
   String get notificationSetupReminders => 'Erinnerungen zu ihrer Zeit';
@@ -2376,7 +2376,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get notificationTestBody =>
-      'Benachrichtigungen von Rurana funktionieren auf diesem Gerät.';
+      'Die Benachrichtigungen der App funktionieren auf diesem Gerät.';
 
   @override
   String get notificationTaskGone => 'Diese Aufgabe gibt es nicht mehr';
@@ -2491,7 +2491,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String sessionEndedNotificationBody(String username) {
-    return 'Deine Sitzung als $username ist beendet. Rurana kann dieses Konto erst wieder synchronisieren, wenn du dich neu anmeldest.';
+    return 'Deine Sitzung als $username ist beendet. Die App kann dieses Konto erst wieder synchronisieren, wenn du dich neu anmeldest.';
   }
 
   @override
@@ -3522,7 +3522,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get shareSignedOut =>
-      'Melde dich zuerst bei Rurana an und teile dann erneut.';
+      'Melde dich zuerst bei Vikunja an und teile dann erneut.';
 
   @override
   String get sharePickAccountTitle => 'In welches Konto teilen?';
@@ -3532,7 +3532,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Was du teilst, landet auf dem Server dieses Kontos.';
 
   @override
-  String get shareSheetTitle => 'Mit Rurana teilen';
+  String get shareSheetTitle => 'Mit Vikunja teilen';
 
   @override
   String get shareAddToTask => 'Zu Aufgabe hinzufügen';
@@ -5287,6 +5287,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get sessionsDartClient => 'Eine App ohne Namen';
 
   @override
+  String get sessionsVikunjaApp => 'Vikunja-App';
+
+  @override
   String get sessionsEnd => 'Sitzung beenden';
 
   @override
@@ -5789,12 +5792,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String accountAppVersion(String version, String build) {
-    return 'Rurana $version ($build)';
+    return 'Vikunja-App $version ($build)';
   }
 
   @override
   String accountAppVersionWithoutBuild(String version) {
-    return 'Rurana $version';
+    return 'Vikunja-App $version';
   }
 
   @override
@@ -7246,7 +7249,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String guestRemoveDialogBody(String name, String host) {
-    return 'Rurana entfernt den Gastzugang zu $name auf $host und löscht die auf diesem Gerät gespeicherten Aufgaben. Du kannst den geteilten Link jederzeit wieder öffnen.';
+    return 'Die App entfernt den Gastzugang zu $name auf $host und löscht die auf diesem Gerät gespeicherten Aufgaben. Du kannst den geteilten Link jederzeit wieder öffnen.';
   }
 
   @override
@@ -7313,7 +7316,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get guestPasswordNotStored =>
-      'Rurana speichert dieses Passwort nicht. Muss der Link später erneut geöffnet werden, fragt Rurana wieder danach.';
+      'Die App speichert dieses Passwort nicht. Muss der Link später erneut geöffnet werden, fragt sie wieder danach.';
 
   @override
   String get guestShareTitle => 'Geteiltes Projekt öffnen?';
@@ -7426,7 +7429,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String guestAccessEndedNotificationBody(String host) {
-    return '$host hat diesen Gastzugang beendet. Rurana kann das Projekt erst wieder synchronisieren, wenn du den geteilten Link erneut öffnest.';
+    return '$host hat diesen Gastzugang beendet. Die App kann das Projekt erst wieder synchronisieren, wenn du den geteilten Link erneut öffnest.';
   }
 
   @override
@@ -7521,7 +7524,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get widgetsHowToIos =>
-      'Halte eine freie Stelle auf dem Home-Bildschirm gedrückt, tippe auf „Bearbeiten“ und dann auf „Widget hinzufügen“ und suche nach Rurana. Um Konto und Liste zu wählen, halte das Widget gedrückt und tippe auf „Widget bearbeiten“.';
+      'Halte eine freie Stelle auf dem Home-Bildschirm gedrückt, tippe auf „Bearbeiten“ und dann auf „Widget hinzufügen“ und suche nach Vikunja. Um Konto und Liste zu wählen, halte das Widget gedrückt und tippe auf „Widget bearbeiten“.';
 
   @override
   String get widgetsAddHeading => 'Widget hinzufügen';
@@ -7651,7 +7654,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get widgetsHowToAndroid =>
-      'Halte eine freie Stelle auf dem Startbildschirm gedrückt, tippe auf „Widgets“ und suche nach Rurana. Um Konto und Liste zu wählen, tippe unten unter „Auf deinem Startbildschirm“ auf das Widget. Manche Startbildschirme bieten das auch in den Einstellungen des Widgets an, wenn du es gedrückt hältst.';
+      'Halte eine freie Stelle auf dem Startbildschirm gedrückt, tippe auf „Widgets“ und suche nach Vikunja. Um Konto und Liste zu wählen, tippe unten unter „Auf deinem Startbildschirm“ auf das Widget. Manche Startbildschirme bieten das auch in den Einstellungen des Widgets an, wenn du es gedrückt hältst.';
 
   @override
   String get widgetsPlacedNotSetUp =>
@@ -7664,7 +7667,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get notificationContentDueTitle => 'Aufgabe fällig';
 
   @override
-  String get notificationContentBody => 'Öffne Rurana, um sie zu sehen';
+  String get notificationContentBody => 'Öffne Vikunja, um sie zu sehen';
 
   @override
   String get notificationContentActivityTitle => 'Neue Aktivität';
@@ -7715,7 +7718,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get privacyAppLockHeading => 'App-Sperre';
 
   @override
-  String get privacyAppLockSwitch => 'Rurana sperren';
+  String get privacyAppLockSwitch => 'Vikunja sperren';
 
   @override
   String get privacyAppLockSubtitle =>
@@ -7738,15 +7741,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyLockAfterRestart =>
-      'Nach einem Neustart sperrt sich Rurana immer.';
+      'Nach einem Neustart sperrt sich Vikunja immer.';
 
   @override
   String get privacyAppSwitcherHidden =>
-      'Solange die Sperre an ist, verbirgt die App-Übersicht den Inhalt von Rurana.';
+      'Solange die Sperre an ist, verbirgt die App-Übersicht den Inhalt von Vikunja.';
 
   @override
   String get privacyAppSwitcherBestEffort =>
-      'Solange die Sperre an ist, verbirgt die App-Übersicht den Inhalt von Rurana, soweit diese Android-Version es zulässt. Schalte „Screenshots blockieren“ ein, um sicherzugehen.';
+      'Solange die Sperre an ist, verbirgt die App-Übersicht den Inhalt von Vikunja, soweit diese Android-Version es zulässt. Schalte „Screenshots blockieren“ ein, um sicherzugehen.';
 
   @override
   String get privacyScreenshotsHeading => 'Screenshots';
@@ -7756,7 +7759,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyBlockScreenshotsSubtitle =>
-      'Verbirgt Rurana auch vor Bildschirmaufnahmen und der App-Übersicht.';
+      'Verbirgt Vikunja auch vor Bildschirmaufnahmen und der App-Übersicht.';
 
   @override
   String get privacyNotificationContentHeading =>
@@ -7786,7 +7789,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacyNotificationContentIosHint =>
-      'iOS legt das für jede App fest: Stelle unter Einstellungen › Mitteilungen › Rurana „Vorschauen zeigen“ auf „Wenn entsperrt“.';
+      'iOS legt das für jede App fest: Stelle unter Einstellungen › Mitteilungen › Vikunja „Vorschauen zeigen“ auf „Wenn entsperrt“.';
 
   @override
   String get privacyWidgetsHeading => 'Widgets';
@@ -7800,10 +7803,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get privacySettingsUnreadable =>
-      'Deine Privatsphäre-Einstellungen ließen sich nicht lesen, deshalb hat sich Rurana gesperrt. Wähle sie hier neu.';
+      'Deine Privatsphäre-Einstellungen ließen sich nicht lesen, deshalb hat sich Vikunja gesperrt. Wähle sie hier neu.';
 
   @override
-  String get appLockPromptReason => 'Rurana entsperren';
+  String get appLockPromptReason => 'Vikunja entsperren';
 
   @override
   String get privacyAppLockReasonOn =>
@@ -7818,7 +7821,7 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Einstellung ließ sich nicht speichern. Versuch es noch einmal.';
 
   @override
-  String get appLockTitle => 'Rurana ist gesperrt';
+  String get appLockTitle => 'Vikunja ist gesperrt';
 
   @override
   String get appLockBody =>
@@ -7833,7 +7836,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get appLockUnavailable =>
-      'Rurana konnte deine Displaysperre nicht prüfen. Versuch es noch einmal.';
+      'Vikunja konnte deine Displaysperre nicht prüfen. Versuch es noch einmal.';
 
   @override
   String get appLockTurnedOff =>
@@ -7845,14 +7848,14 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get appLockPromptStuck =>
-      'Die Entsperrabfrage reagiert nicht. Schließe Rurana ganz und öffne es neu.';
+      'Die Entsperrabfrage reagiert nicht. Schließe Vikunja ganz und öffne es neu.';
 
   @override
   String widgetTitlesHiddenHint(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Öffne Rurana, um sie zu sehen',
+      other: 'Öffne Vikunja, um sie zu sehen',
     );
     return '$_temp0';
   }
@@ -8489,10 +8492,10 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get widgetConfigureUnknownBody =>
-      'Nur Rurana-Widgets auf dem Startbildschirm dieses Geräts lassen sich einrichten. Öffne stattdessen die Einstellungen des Widgets auf dem Startbildschirm.';
+      'Nur Vikunja-Widgets auf dem Startbildschirm dieses Geräts lassen sich einrichten. Öffne stattdessen die Einstellungen des Widgets auf dem Startbildschirm.';
 
   @override
-  String get aboutTitle => 'Über Rurana';
+  String get aboutTitle => 'Über die App';
 
   @override
   String aboutVersion(String version, String build) {
@@ -8505,33 +8508,29 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get aboutUnofficial =>
-      'Rurana ist eine inoffizielle App für Vikunja-Server. Sie gehört nicht zum Vikunja-Projekt und wird von ihm weder unterstützt noch empfohlen.';
-
-  @override
   String get aboutLicenceHeading => 'Lizenz';
 
   @override
   String get aboutLicence =>
-      'Rurana ist freie Software: Du darfst sie unter der GNU Affero General Public License, Version 3 oder jeder späteren Version, weitergeben und verändern, mit einer zusätzlichen Erlaubnis für App-Stores.';
+      'Diese App ist freie Software: Du darfst sie unter der GNU Affero General Public License, Version 3 oder jeder späteren Version, weitergeben und verändern, mit einer zusätzlichen Erlaubnis für App-Stores.';
 
   @override
   String get aboutNoWarranty =>
-      'Für Rurana gibt es keine Gewährleistung, soweit das Gesetz dies zulässt.';
+      'Für diese App gibt es keine Gewährleistung, soweit das Gesetz dies zulässt.';
 
   @override
   String get aboutLicences => 'Lizenzen';
 
   @override
   String get aboutLicencesSubtitle =>
-      'Der vollständige Lizenztext und die zusätzliche Erlaubnis unter „rurana“ sowie die Lizenzen der Software, die Rurana enthält';
+      'Der vollständige Lizenztext und die zusätzliche Erlaubnis unter „vikunja_app“ sowie die Lizenzen der Software, die die App enthält';
 
   @override
   String get aboutSourceCodeHeading => 'Quellcode';
 
   @override
   String get aboutSourceCodeLater =>
-      'Dieser Build hat keinen Link zu seinem Quellcode. Jede Veröffentlichung von Rurana verlinkt den Quellcode, aus dem sie gebaut wurde.';
+      'Dieser Build hat keinen Link zu seinem Quellcode. Jede Veröffentlichung der App verlinkt den Quellcode, aus dem sie gebaut wurde.';
 
   @override
   String get aboutSourceCodeOpen => 'Quellcode ansehen';
@@ -8550,13 +8549,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get aboutPrivacyPolicy => 'Datenschutzerklärung';
 
   @override
-  String get aboutPrivacyPolicySubtitle => 'Wie Rurana mit deinen Daten umgeht';
+  String get aboutPrivacyPolicySubtitle =>
+      'Wie die App mit deinen Daten umgeht';
 
   @override
   String get aboutLegalNotice => 'Impressum';
 
   @override
-  String get aboutLegalNoticeSubtitle => 'Wer Rurana veröffentlicht';
+  String get aboutLegalNoticeSubtitle => 'Wer die App veröffentlicht';
 
   @override
   String get aboutNameAndLogoHeading => 'Name und Logo';

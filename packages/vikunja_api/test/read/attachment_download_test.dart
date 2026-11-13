@@ -67,7 +67,7 @@ void main() {
   File part() => File('${target.path}.part');
 
   setUp(() {
-    temp = Directory.systemTemp.createTempSync('rurana_download');
+    temp = Directory.systemTemp.createTempSync('vikunja_download');
     target = File('${temp.path}/attachments/12828/218/notes.txt');
   });
 

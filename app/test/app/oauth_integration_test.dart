@@ -38,7 +38,7 @@ import '../helpers/sync_fakes.dart';
 final Uri _root = Uri.parse('https://vikunja.example.com');
 const _userId = 5;
 const _username = 'taskuna-e2e';
-const _name = 'Rurana Tester';
+const _name = 'Vikunja Tester';
 
 Map<String, Object?> _fixture(String path) => jsonDecode(
   File('../packages/vikunja_api/test/fixtures/$path').readAsStringSync(),
@@ -353,7 +353,7 @@ void main() {
 
       Future<void> launch() async {
         final dio = createDio(
-          userAgent: 'Rurana/0.1.0 test',
+          userAgent: 'Vikunja-App/0.1.0 test',
           httpClientAdapter: server,
           logRequests: false,
         );
@@ -410,8 +410,8 @@ void main() {
       );
       expect(authorizeUrl.queryParameters, {
         'response_type': 'code',
-        'client_id': 'dev.coderoftime.rurana',
-        'redirect_uri': 'vikunja-dev.coderoftime.rurana://oauth/callback',
+        'client_id': 'vikunja-io.vikunja.app',
+        'redirect_uri': 'vikunja-io.vikunja.app://oauth/callback',
         'state': hasLength(22),
         'code_challenge': hasLength(43),
         'code_challenge_method': 'S256',

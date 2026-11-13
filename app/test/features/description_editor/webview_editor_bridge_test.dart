@@ -43,9 +43,10 @@ void main() {
 
   FakeWebViewController controller() => platform.controllers.single;
 
+  const prefix = 'window.vikunja.receive(';
+
   Map<String, Object?> lastPayload() {
     final script = controller().scripts.last;
-    const prefix = 'window.rurana.receive(';
     return jsonDecode(script.substring(prefix.length, script.length - 1))
         as Map<String, Object?>;
   }
@@ -74,7 +75,7 @@ void main() {
     expect(view.javaScriptMode, JavaScriptMode.unrestricted);
     expect(view.zoomEnabled, isFalse);
     expect(view.backgroundColor, const Color(0xff101010));
-    expect(view.channels.keys, ['RuranaEditor']);
+    expect(view.channels.keys, ['VikunjaEditor']);
     expect(view.navigationDelegate, isNotNull);
     expect(view.consoleHandled, isTrue);
     expect(view.scripts, isEmpty);
@@ -231,7 +232,7 @@ void main() {
 
     final script = platform.controllers.last.scripts.single;
     final payload = jsonDecode(
-      script.substring(22, script.length - 1),
+      script.substring(prefix.length, script.length - 1),
     ) as Map<String, Object?>;
     expect(payload['token'], isA<String>());
     expect((payload['token']! as String).length, greaterThanOrEqualTo(32));

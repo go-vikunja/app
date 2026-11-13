@@ -33,10 +33,10 @@ void main() {
     final localAuth = _FakeLocalAuth(answer: () async => true);
 
     final result = await LocalAuthDeviceAuthenticator(localAuth)
-        .authenticate(promptFor('Unlock Rurana'));
+        .authenticate(promptFor('Unlock Vikunja'));
 
     expect(result, DeviceAuthResult.success);
-    expect(localAuth.reason, 'Unlock Rurana');
+    expect(localAuth.reason, 'Unlock Vikunja');
     expect(localAuth.biometricOnly, isFalse);
     expect(localAuth.sensitiveTransaction, isFalse);
     expect(localAuth.persistAcrossBackgrounding, isFalse);
@@ -48,29 +48,29 @@ void main() {
 
     await LocalAuthDeviceAuthenticator(localAuth).authenticate(
       const DeviceAuthPrompt(
-        title: 'Rurana',
+        title: 'Vikunja',
         hint: 'Nutze Fingerabdruck, Gesicht oder Displaysperre',
         cancel: 'Abbrechen',
-        reason: 'Rurana entsperren',
+        reason: 'Vikunja entsperren',
       ),
     );
 
     final android = localAuth.authMessages!
         .whereType<AndroidAuthMessages>()
         .single;
-    expect(android.signInTitle, 'Rurana');
+    expect(android.signInTitle, 'Vikunja');
     expect(
       android.signInHint,
       'Nutze Fingerabdruck, Gesicht oder Displaysperre',
     );
     expect(android.cancelButton, 'Abbrechen');
-    expect(localAuth.reason, 'Rurana entsperren');
+    expect(localAuth.reason, 'Vikunja entsperren');
   });
 
   test('a failed attempt reported as false counts as cancelled', () async {
     final result = await LocalAuthDeviceAuthenticator(
       _FakeLocalAuth(answer: () async => false),
-    ).authenticate(promptFor('Unlock Rurana'));
+    ).authenticate(promptFor('Unlock Vikunja'));
 
     expect(result, DeviceAuthResult.cancelled);
   });
@@ -97,7 +97,7 @@ void main() {
         _FakeLocalAuth(
           answer: () async => throw LocalAuthException(code: code),
         ),
-      ).authenticate(promptFor('Unlock Rurana'));
+      ).authenticate(promptFor('Unlock Vikunja'));
 
       expect(result, expected);
     });
@@ -106,7 +106,7 @@ void main() {
   test('any other error is unavailable', () async {
     final result = await LocalAuthDeviceAuthenticator(
       _FakeLocalAuth(answer: () async => throw MissingPluginException()),
-    ).authenticate(promptFor('Unlock Rurana'));
+    ).authenticate(promptFor('Unlock Vikunja'));
 
     expect(result, DeviceAuthResult.unavailable);
   });

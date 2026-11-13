@@ -87,7 +87,7 @@ void main() {
 
   test("the owner's words on the logo files and where they are listed, in "
       "the notice file and the app's notice", () {
-    for (final path in ['NOTICE.md', 'app/assets/legal/rurana.md']) {
+    for (final path in ['NOTICE.md', 'app/assets/legal/vikunja_app.md']) {
       expect(
         _read(path).replaceAll(RegExp(r'\s+'), ' '),
         contains('$_logoCopies $_logoFilesPointer'),

@@ -57,7 +57,7 @@ final class RecentsScreenshotsProvider
 String _$recentsScreenshotsHash() =>
     r'9e49410cff2de1a1d1f2fbab31c752cbe8bf1179';
 
-/// Whether the system itself keeps Rurana out of the Recents screen while
+/// Whether the system itself keeps the app out of the Recents screen while
 /// the app lock is on (Android 13+), as [RecentsScreenshots.setEnabled]
 /// last answered; the lock then needs no cover of its own. False until it
 /// answered, so the cover stands in.
@@ -65,13 +65,13 @@ String _$recentsScreenshotsHash() =>
 @ProviderFor(RecentsHiddenNatively)
 final recentsHiddenNativelyProvider = RecentsHiddenNativelyProvider._();
 
-/// Whether the system itself keeps Rurana out of the Recents screen while
+/// Whether the system itself keeps the app out of the Recents screen while
 /// the app lock is on (Android 13+), as [RecentsScreenshots.setEnabled]
 /// last answered; the lock then needs no cover of its own. False until it
 /// answered, so the cover stands in.
 final class RecentsHiddenNativelyProvider
     extends $NotifierProvider<RecentsHiddenNatively, bool> {
-  /// Whether the system itself keeps Rurana out of the Recents screen while
+  /// Whether the system itself keeps the app out of the Recents screen while
   /// the app lock is on (Android 13+), as [RecentsScreenshots.setEnabled]
   /// last answered; the lock then needs no cover of its own. False until it
   /// answered, so the cover stands in.
@@ -105,7 +105,7 @@ final class RecentsHiddenNativelyProvider
 String _$recentsHiddenNativelyHash() =>
     r'808c1f37d536e15e43af0e1e2bf7b7d43dfd93c3';
 
-/// Whether the system itself keeps Rurana out of the Recents screen while
+/// Whether the system itself keeps the app out of the Recents screen while
 /// the app lock is on (Android 13+), as [RecentsScreenshots.setEnabled]
 /// last answered; the lock then needs no cover of its own. False until it
 /// answered, so the cover stands in.

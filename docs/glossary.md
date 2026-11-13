@@ -1,21 +1,26 @@
 # Glossary and style
 
-The terms and the style of the app's texts in English and German ([D71](decisions.md#d71-english-and-german-british-base-glossary-error-texts-live-language-changes)). They apply to `app/lib/l10n/arb/app_*.arb` and to the native strings (Android `res/values*/strings.xml`; on iOS the permission texts in `ios/Runner/Info.plist` and `ios/Runner/de.lproj/InfoPlist.strings`, and the widget extension's texts, whose English is the key in its Swift sources and in `en.lproj` and `de.lproj` `Localizable.strings`, or `Localizable.stringsdict` for the plurals), and every new string follows them. Translators of a future language read the English part for the app's terms. How to add a string is in [CONTRIBUTING.md](../CONTRIBUTING.md#translations).
+The terms and the style of the app's texts in English and German ([D71](decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)). They apply to `app/lib/l10n/arb/app_*.arb` and to the native strings (Android `res/values*/strings.xml`; on iOS the permission texts in `ios/Runner/Info.plist` and `ios/Runner/de.lproj/InfoPlist.strings`, and the widget extension's texts, whose English is the key in its Swift sources and in `en.lproj` and `de.lproj` `Localizable.strings`, or `Localizable.stringsdict` for the plurals), and every new string follows them. Translators of a future language read the English part for the app's terms. How to add a string is in [CONTRIBUTING.md](../CONTRIBUTING.md#translations).
 
 ## Both languages
 
 - **Kept as they are:**
-  - brand and server names: Rurana, Vikunja, CalDAV, TOTP, Cloudflare Access, Gravatar, Todoist, the feature name Quick Add Magic;
+  - brand and server names: Vikunja, CalDAV, TOTP, Cloudflare Access, Gravatar, Todoist, the feature name Quick Add Magic;
   - the Quick Add syntax words and prefixes;
   - filter syntax and operators (`done = false && labels in Work`, `&&`, `||`, `not in`);
   - date-format patterns (DD/MM/YYYY);
   - the server's untranslated permission names and error details.
 - The server's default names (Inbox, Favorites, My Open Tasks, List, Gantt, Table, Kanban) are translated for display only ([D45](decisions.md#d45-app-shell-colour-scheme-display-settings-projects-tab-smart-lists-offline-banner)).
 - Placeholders keep their names. Sentences are not assembled from fragments unless the description says so (for example `assigneePickerFallback`).
+- **The app's name** ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja)) [in review, step 38a]:
+  - "Vikunja" where the app names itself on the device: the launcher and the widgets, the lock screen and its prompt, the privacy switches, notifications ("Open Vikunja to see it", „Öffne Vikunja, um sie zu sehen“), "Share to Vikunja" („Mit Vikunja teilen“), iOS Settings paths (Settings › Notifications › Vikunja) and the permission texts;
+  - "the app" or "this app" („die App“, „diese App“) where the same sentence names a server, a host, syncing an account, the licence, the publisher or the handling of data, or where "Vikunja" could read as the server or the project: "This app needs Vikunja {minimum} or newer", "The app will sign {account} out of {host}", "How the app handles your data", "Who publishes the app"; the About page is "About the app" („Über die App“);
+  - "Vikunja app {version}" („Vikunja-App {version}“) where a version number follows, because "Vikunja 1.0.0" reads as a server version.
+  - Never "unofficial" („inoffiziell“) or a former name; `app/test/l10n/us_english_test.dart` checks both in the ARB files and the former name in the native strings.
 
-## English (British; `app_en.arb` is the base)
+## English (US; `app_en.arb` is the base)
 
-- **Spelling:** British throughout (colour, favourite, organise/organisation, recognise, licence as a noun, -ise). ARB keys keep their spelling (`favorites*`, `*Color*`), and proper names keep theirs (GNU Affero General Public License).
+- **Spelling** [in review, step 38a]: US throughout, like the Vikunja web: color, favorite, organize/organization, recognize, license (noun and verb), -ize; "afterwards" and "toward(s)" are fine. The descriptions in `app_en.arb` follow it too, as they are the translators' source. ARB keys, identifiers, comments, log strings and test names keep their spelling (`taskEditColour`, `projectsFavouritesHeading`, `favorites*`), and proper names keep theirs. `app/test/l10n/us_english_test.dart` fails on a British spelling in an English value, a description or a native English text.
 - **Case:** sentence case for titles, labels, buttons, chips, menu items and headings, including text in parentheses: "Priority (highest first)", "Next week".
 - **Apostrophe and quotes:** the ASCII apostrophe `'` (don't, server's). Curly double quotes “…” around quoted titles and syntax words. No ASCII `"`, and no single quotes used as quotation marks.
 - **Ellipsis:** one character, with no space before it, also after a placeholder ("Loading…", "Looking for Vikunja at {address}…"). It marks work in progress, an entry that opens a further choice ("Custom…") and typing hints ("Write a comment…"). Never three dots.
@@ -31,13 +36,13 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - tasks and projects: task, subtask, parent task; project, subproject, parent project;
   - other objects: label; team; saved filter; view (List, Gantt, Table, Kanban);
   - boards: column (a kanban bucket, never "bucket"); board (a kanban view); card (a task on a board);
-  - on a task: favourites; assignee; reminder; due date, start date, end date; done (the state; "Mark as done"); open (the state); identifier; comment; attachment;
+  - on a task: favorites; assignee; reminder; due date, start date, end date; done (the state; "Mark as done"; checked off in a list or widget, never "ticked off"); open (the state); identifier; comment; attachment;
   - sharing: link share (what an admin creates) vs shared link (what a guest opens); guest access;
   - device settings: connection settings; access headers; app lock;
-  - Rurana's pages on the website: help (the support page, "Help and bug reports"), privacy policy, legal notice (the Impressum); a server's own are its privacy policy and imprint;
-  - bug for a fault in Rurana that someone reports ("report a bug").
+  - the app's pages on the website: help (the support page, "Help and bug reports"), privacy policy, legal notice (the Impressum); a server's own are its privacy policy and imprint;
+  - bug for a fault in the app that someone reports ("report a bug").
   - support details for what the About page's row of that name shows and shares for a bug report ("Support details"); the details' own text stays English in every language.
-  - the bin for the server's trash (Vikunja 2.8.0 and later; the web says Trash): a task or project is moved to the bin, restored, deleted forever (also for the server's purge after 30 days; never "for good"); the bin is emptied ("Empty bin"). Code, ARB keys and the API keep "trash".
+  - the trash for the server's trash (Vikunja 2.8.0 and later), as on the web ([D79](decisions.md#d79-the-trash-of-vikunja-280-undo-queued-deletes-a-trash-page)) [in review, step 38a]: a task or project is moved to the trash, is in the trash, is restored from the trash, is deleted forever (also for the server's purge after 30 days; never "for good"); the trash is emptied ("Empty trash", "Trash emptied"); a server without it "doesn't support the trash". Never "bin".
   - following for the server's subscriptions: a user follows a task or project and unfollows it ("Follow task", "Unfollow task", "Following the project …"); never subscribe or watch. On Vikunja 2.8.0 and later the tasks a user follows are the ones whose reminders reach them. Only the share cleanup notice keeps "subscriptions", for what the server deletes.
 - **Sign in:** "sign in" (verb), "sign-in" (noun or adjective: sign-in page), "sign out". Never log in, login or log out.
 - **Device:** "device" for the phone or tablet the app runs on. "phone" only for another phone (`linkShareQrHint`) and in the connect tagline.
@@ -79,7 +84,7 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - the spoken due texts leave out "am": "Fällig {when}" and "Überfällig, war fällig {when}", whose {when} may be relative ("heute", "vor 2 Tagen") or a date, and the Quick Add preview's "Fällig {date}, {relative}" (`taskDueSemantics`, `taskOverdueSemantics`, `quickAddDueSemantics`);
   - Fälligkeit(en) is the generic noun ("Ohne Fälligkeit");
   - Startdatum, Enddatum.
-- **Favourites:** Favoriten (the list or section), Favorit (one item), "Zu Favoriten hinzufügen", "Aus Favoriten entfernen".
+- **Favorites:** Favoriten (the list or section), Favorit (one item), "Zu Favoriten hinzufügen", "Aus Favoriten entfernen".
 - **Terms:**
   - objects: Aufgabe, Unteraufgabe, Projekt, Unterprojekt, Label/Labels (never Etikett), Team, gespeicherter Filter, Ansicht;
   - boards: Spalte (bucket), Board (kanban view), Karte;
@@ -92,7 +97,7 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - Startbildschirm (Home-Bildschirm only in iOS steps);
   - 12-/24-Stunden-Format;
   - "die Person, die den Server betreut" for whoever runs the server;
-  - Rurana's pages on the website: Hilfe (the support page, „Hilfe und Fehler melden“), Datenschutzerklärung, Impressum; Fehler also for a bug („einen Fehler melden“, „wenn du einen Fehler meldest“), never „Fehlermeldung“, which reads as a message the app shows (`app/test/l10n/german_texts_test.dart`);
+  - the app's pages on the website: Hilfe (the support page, „Hilfe und Fehler melden“), Datenschutzerklärung, Impressum; Fehler also for a bug („einen Fehler melden“, „wenn du einen Fehler meldest“), never „Fehlermeldung“, which reads as a message the app shows (`app/test/l10n/german_texts_test.dart`);
   - Support-Details, plural, for the support details („die Support-Details“; the row and the page „Support-Details“).
   - Papierkorb for the server's trash: in den Papierkorb verschieben, wiederherstellen, endgültig löschen, „Papierkorb leeren“; Rückgängig for Undo.
   - folgen for the server's subscriptions, with the dative (einer Aufgabe, einem Projekt folgen), and „nicht mehr folgen“; never abonnieren or beobachten. Only the share cleanup notice keeps „Abonnements“.

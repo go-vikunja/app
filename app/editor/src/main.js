@@ -4,10 +4,10 @@ import {createBridge} from './bridge.js'
 const bridge = createBridge({
   mount: document.getElementById('editor'),
   root: document.documentElement,
-  post: text => window.RuranaEditor?.postMessage(text),
+  post: text => window.VikunjaEditor?.postMessage(text),
 })
 
-Object.defineProperty(window, 'rurana', {
+Object.defineProperty(window, 'vikunja', {
   value: Object.freeze({receive: bridge.receive}),
   enumerable: false,
   configurable: false,
@@ -27,7 +27,7 @@ document.addEventListener(
 // The app's channel object is injected by the WebView before the page
 // loads; waiting a little covers a platform that injects it later.
 function announce(attempt) {
-  if (window.RuranaEditor) bridge.ready()
+  if (window.VikunjaEditor) bridge.ready()
   else if (attempt < 100) setTimeout(() => announce(attempt + 1), 50)
 }
 announce(0)

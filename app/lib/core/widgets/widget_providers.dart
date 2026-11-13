@@ -5,7 +5,6 @@ import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:rurana_widgets/rurana_widgets.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -24,6 +23,7 @@ import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot_builder.dart';
 import 'package:vikunja_mobile/core/widgets/widget_taps.dart';
 import 'package:vikunja_mobile/core/widgets/widget_texts.dart';
+import 'package:vikunja_widgets/vikunja_widgets.dart';
 
 part 'widget_providers.g.dart';
 
@@ -32,7 +32,7 @@ final _log = Logger('Widgets');
 @Riverpod(keepAlive: true)
 WidgetHost widgetHost(Ref ref) => switch (defaultTargetPlatform) {
   TargetPlatform.android ||
-  TargetPlatform.iOS => PluginWidgetHost(RuranaWidgets()),
+  TargetPlatform.iOS => PluginWidgetHost(VikunjaWidgets()),
   _ => const NoWidgetHost(),
 };
 

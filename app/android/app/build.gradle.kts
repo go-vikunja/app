@@ -43,7 +43,7 @@ val releaseSigning: Map<String, String>? = run {
 }
 
 android {
-    namespace = "dev.coderoftime.rurana"
+    namespace = "io.vikunja.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -55,7 +55,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "dev.coderoftime.rurana"
+        applicationId = "io.vikunja.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

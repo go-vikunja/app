@@ -1,13 +1,13 @@
-import 'package:rurana_widgets/rurana_widgets.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_host.dart';
+import 'package:vikunja_widgets/vikunja_widgets.dart';
 
 /// [WidgetHost] over the in-repo plugin, which keeps the files in the
 /// layout the native widgets read.
 final class PluginWidgetHost implements WidgetHost {
   new(this._plugin);
 
-  final RuranaWidgets _plugin;
+  final VikunjaWidgets _plugin;
 
   @override
   Future<void> writeSnapshot(String key, String json) async {

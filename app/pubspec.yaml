@@ -49,8 +49,6 @@ dependencies:
   qr: ^4.0.0
   quick_actions: ^1.1.1
   riverpod_annotation: ^4.0.7
-  rurana_widgets:
-    path: ../plugins/rurana_widgets
   share_plus: ^13.3.1
   shared_preferences: ^2.5.6
   sqlite3: ^3.7.0
@@ -62,6 +60,8 @@ dependencies:
     path: ../packages/vikunja_domain
   vikunja_logic:
     path: ../packages/vikunja_logic
+  vikunja_widgets:
+    path: ../plugins/vikunja_widgets
   webview_flutter: ^4.14.1
   webview_flutter_android: ^4.14.1
   # 3.27.1 appeared a day before step 25; held until it has been reviewed.

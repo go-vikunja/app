@@ -23,9 +23,7 @@ final _log = Logger('WidgetActions');
 Future<void> widgetActionsMain() => runWidgetActions();
 
 /// The worker's own channel on that engine: `finished` ends its wait.
-const widgetWorkerChannel = MethodChannel(
-  'dev.coderoftime.rurana/widget_worker',
-);
+const widgetWorkerChannel = MethodChannel('io.vikunja.app/widget_worker');
 
 /// The queued Done taps applied through the shared Done, every account's
 /// widgets published again, then the worker told, which ends it. Never

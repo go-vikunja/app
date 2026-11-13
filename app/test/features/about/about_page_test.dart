@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/app/l10n/licence_page_localizations.dart';
 import 'package:vikunja_mobile/app/legal.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
@@ -32,12 +31,20 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  final unofficial = find.textContaining(
+    RegExp(
+      'unofficial|affiliated|inoffiziell|Vikunja-Projekt',
+      caseSensitive: false,
+    ),
+  );
+
   Future<void> expectNotices(WidgetTester tester) async {
     expect(find.byType(AboutPage), findsOneWidget);
-    expect(find.text(en.aboutTitle), findsOneWidget);
+    expect(find.text('About the app'), findsOneWidget);
+    expect(find.text('Vikunja'), findsOneWidget);
     expect(find.text(en.aboutVersion('1.0.0', '42')), findsOneWidget);
     expect(find.text(copyrightNotice), findsOneWidget);
-    expect(find.text(en.aboutUnofficial), findsOneWidget);
+    expect(unofficial, findsNothing);
     for (final text in [
       en.aboutSupport,
       en.supportDetailsTitle,
@@ -54,6 +61,7 @@ void main() {
     ]) {
       await scrollTo(tester, find.text(text));
       expect(find.text(text), findsOneWidget);
+      expect(unofficial, findsNothing);
     }
   }
 
@@ -200,8 +208,9 @@ void main() {
     expect(find.text(en.aboutTitle), findsNothing);
   });
 
-  testWidgets('Licences opens the licence page with the app named', (
-    tester,
+  Future<MaterialLocalizations> openLicences(
+    WidgetTester tester,
+    AppLocalizations l10n,
   ) async {
     usePhoneSurface(tester);
     await pumpVikunjaApp(tester);
@@ -210,32 +219,33 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await scrollTo(tester, find.text(en.aboutLicences));
-    await tester.tap(find.text(en.aboutLicences));
+    await scrollTo(tester, find.text(l10n.aboutLicences));
+    await tester.tap(find.text(l10n.aboutLicences));
     // The licences load in the background, behind a progress indicator.
     await pumpFrames(tester, 5);
+    return MaterialLocalizations.of(tester.element(find.byType(LicensePage)));
+  }
+
+  testWidgets('Licenses opens the licence page with the app named, in '
+      "Flutter's own English", (tester) async {
+    final pageLocalizations = await openLicences(tester, en);
 
     final page = tester.widget<LicensePage>(find.byType(LicensePage));
-    expect(page.applicationName, en.appTitle);
+    expect(page.applicationName, 'Vikunja');
     expect(page.applicationVersion, en.aboutVersion('1.0.0', '42'));
     expect(page.applicationLegalese, copyrightNotice);
-    final pageLocalizations = MaterialLocalizations.of(
-      tester.element(find.byType(LicensePage)),
-    );
-    expect(pageLocalizations.licensesPageTitle, 'Licences');
-    expect(pageLocalizations.licensesPackageDetailText(2), '2 licences.');
-    expect(find.text('Licenses'), findsNothing);
+    expect(pageLocalizations.licensesPageTitle, 'Licenses');
+    expect(pageLocalizations.licensesPackageDetailText(2), '2 licenses');
   });
 
-  test("the licence page keeps Flutter's texts in German", () async {
-    expect(licencePageLocalizations.isSupported(const Locale('de')), isFalse);
-    expect(
-      licencePageLocalizations.isSupported(const Locale('en', 'US')),
-      isTrue,
-    );
-    final english = await licencePageLocalizations.load(const Locale('en'));
-    expect(english.licensesPackageDetailText(1), '1 licence.');
-    expect(english.backButtonTooltip, 'Back');
+  testWidgets("the licence page keeps Flutter's texts in German", (
+    tester,
+  ) async {
+    useLocale(tester, const Locale('de'));
+
+    final pageLocalizations = await openLicences(tester, de);
+
+    expect(pageLocalizations.licensesPageTitle, 'Lizenzen');
   });
 
   group('the support page, the privacy policy and the legal notice', () {
@@ -307,6 +317,23 @@ void main() {
       ]);
     });
 
+    testWidgets('in German, the page is about the app and no line calls it '
+        'unofficial', (tester) async {
+      useLocale(tester, const Locale('de'));
+      await pumpAbout(tester);
+
+      expect(find.text('Über die App'), findsOneWidget);
+      expect(unofficial, findsNothing);
+      for (final text in [
+        de.aboutLicence,
+        de.aboutLicences,
+        de.aboutNameAndLogo,
+      ]) {
+        await scrollTo(tester, find.text(text));
+        expect(unofficial, findsNothing);
+      }
+    });
+
     testWidgets('a link that does not open says so', (tester) async {
       await pumpAbout(tester, opens: false);
 
@@ -334,7 +361,7 @@ void main() {
   });
 
   group('with the source code published', () {
-    const address = 'https://code.example.org/rurana';
+    const address = 'https://code.example.org/vikunja-app';
 
     Future<FakeExternalLinkOpener> pumpAbout(
       WidgetTester tester, {

@@ -1,6 +1,6 @@
-Rurana ist eine inoffizielle App für Vikunja, die quelloffene Aufgabenverwaltung, die du auf deinem eigenen Server betreiben kannst. Sie gehört nicht zum Vikunja-Projekt und wird von ihm weder unterstützt noch empfohlen.
+Vikunja ist die quelloffene Aufgabenverwaltung, die du auf deinem eigenen Server betreiben kannst. Das ist ihre App für iPhone und iPad.
 
-Melde dich bei deinem Vikunja-Server an (Version 2.3 oder neuer) – deinem eigenen, dem deiner Organisation oder einem gehosteten – oder probiere die öffentliche Demo aus. Rurana hält eine Kopie deines Kontos auf deinem iPhone oder iPad, damit deine Projekte und Aufgaben auch ohne Verbindung da sind.
+Melde dich bei deinem Vikunja-Server an (Version 2.3 oder neuer) – deinem eigenen, dem deiner Organisation oder einem gehosteten – oder probiere die öffentliche Demo aus. Die App hält eine Kopie deines Kontos auf deinem iPhone oder iPad, damit deine Projekte und Aufgaben auch ohne Verbindung da sind.
 
 Funktioniert offline
 • Jeder Bildschirm liest aus der Kopie auf deinem Gerät.
@@ -30,12 +30,12 @@ Außerdem
 • Labels, Teams und Projekte, die du mit Personen und Teams teilst.
 • Deine Kontoeinstellungen, der Status der Zwei-Faktor-Authentifizierung und die Sitzungen, die bei deinem Konto angemeldet sind.
 • Auf einem iPad im Querformat, auf einem 13-Zoll-iPad auch im Hochformat, öffnet sich eine Aufgabe neben der Liste.
-• Heller und dunkler Modus, Deutsch und britisches Englisch.
+• Heller und dunkler Modus, Deutsch und Englisch.
 • Für selbst gehostete Server: Vertraue dem eigenen Zertifikat oder CA-Zertifikat deines Servers, nutze ein Client-Zertifikat oder Zugangs-Header und erlaube unverschlüsseltes http erst nach deiner Bestätigung.
 
 Privatsphäre
 • Eine optionale App-Sperre mit Face ID, Touch ID oder deinem Code; Aufgabentitel lassen sich in Benachrichtigungen und Widgets ausblenden.
-• Keine Werbung, keine Analyse, kein Tracking, keine Absturzberichte. Rurana spricht nur mit den Servern, die du hinzufügst. Der Entwickler betreibt keinen Server und erhält keine deiner Daten.
+• Keine Werbung, keine Analyse, kein Tracking, keine Absturzberichte. Die App spricht nur mit den Servern, die du hinzufügst. Der Entwickler betreibt keinen Server und erhält keine deiner Daten.
 
 Open Source
-Rurana ist freie Software unter der GNU Affero General Public License, Version 3 oder neuer.
+Die App ist freie Software unter der GNU Affero General Public License, Version 3 oder neuer.

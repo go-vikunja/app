@@ -84,7 +84,7 @@ void main() {
             localizationsDelegates: appLocalizationsDelegates,
             supportedLocales: appSupportedLocales,
             home: const AboutPage(
-              sourceCode: 'https://code.example.org/rurana',
+              sourceCode: 'https://code.example.org/vikunja-app',
             ),
           ),
         ),

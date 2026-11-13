@@ -1,5 +1,0 @@
-# Created when the plugin is opened on its own in Android Studio or Xcode.
-android/.gradle/
-android/local.properties
-ios/rurana_widgets/.build/
-ios/rurana_widgets/.swiftpm/

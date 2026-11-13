@@ -8,22 +8,22 @@ part of 'app_switcher_protection.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// Whether the app switcher hides Rurana only as far as the app's own
-/// cover is drawn in time: Android 12 and older, where the system cannot
+/// Whether the app switcher hides the app only as far as its own cover
+/// is drawn in time: Android 12 and older, where the system cannot
 /// leave the Recents thumbnail out. An unknown version counts as older.
 
 @ProviderFor(appSwitcherBestEffort)
 final appSwitcherBestEffortProvider = AppSwitcherBestEffortProvider._();
 
-/// Whether the app switcher hides Rurana only as far as the app's own
-/// cover is drawn in time: Android 12 and older, where the system cannot
+/// Whether the app switcher hides the app only as far as its own cover
+/// is drawn in time: Android 12 and older, where the system cannot
 /// leave the Recents thumbnail out. An unknown version counts as older.
 
 final class AppSwitcherBestEffortProvider
     extends $FunctionalProvider<AsyncValue<bool>, bool, FutureOr<bool>>
     with $FutureModifier<bool>, $FutureProvider<bool> {
-  /// Whether the app switcher hides Rurana only as far as the app's own
-  /// cover is drawn in time: Android 12 and older, where the system cannot
+  /// Whether the app switcher hides the app only as far as its own cover
+  /// is drawn in time: Android 12 and older, where the system cannot
   /// leave the Recents thumbnail out. An unknown version counts as older.
   AppSwitcherBestEffortProvider._()
     : super(

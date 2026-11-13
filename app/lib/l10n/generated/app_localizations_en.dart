@@ -10,7 +10,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appTitle => 'Rurana';
+  String get appTitle => 'Vikunja';
 
   @override
   String get connectTagline =>
@@ -204,7 +204,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String unsupportedBody(String minimum, String found) {
-    return 'Rurana needs Vikunja $minimum or newer. This server runs $found.';
+    return 'This app needs Vikunja $minimum or newer. This server runs $found.';
   }
 
   @override
@@ -212,11 +212,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Ask whoever runs the server to update Vikunja.';
 
   @override
-  String get unsupportedUnknownVersionTitle => 'Server version not recognised';
+  String get unsupportedUnknownVersionTitle => 'Server version not recognized';
 
   @override
   String unsupportedUnknownVersionBody(String minimum) {
-    return 'Rurana needs Vikunja $minimum or newer. This server reports a version the app does not recognise.';
+    return 'This app needs Vikunja $minimum or newer. This server reports a version the app does not recognize.';
   }
 
   @override
@@ -471,7 +471,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String signOutDialogBody(String account, String host) {
-    return 'Rurana will sign $account out of $host and delete this account\'s tasks saved on this device. You can sign in again at any time.';
+    return 'The app will sign $account out of $host and delete this account\'s tasks saved on this device. You can sign in again at any time.';
   }
 
   @override
@@ -481,7 +481,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String signOutDialogSwitchesTo(String name) {
-    return 'Rurana then switches to $name.';
+    return 'The app then switches to $name.';
   }
 
   @override
@@ -651,10 +651,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Create your first project to start adding tasks.';
 
   @override
-  String get projectsFavouritesHeading => 'Favourites';
+  String get projectsFavouritesHeading => 'Favorites';
 
   @override
-  String get projectsFavouriteTasks => 'Favourite tasks';
+  String get projectsFavouriteTasks => 'Favorite tasks';
 
   @override
   String get projectsAllHeading => 'All projects';
@@ -731,11 +731,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get favoritesEmptyTitle => 'No favourite tasks';
+  String get favoritesEmptyTitle => 'No favorite tasks';
 
   @override
   String get favoritesEmptyBody =>
-      'Mark a task as a favourite with its star to find it here.';
+      'Mark a task as a favorite with its star to find it here.';
 
   @override
   String get appearanceHeading => 'Appearance';
@@ -759,11 +759,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appearanceOnThisDevice => 'On this device';
 
   @override
-  String get appearanceSystemColors => 'Use system colours';
+  String get appearanceSystemColors => 'Use system colors';
 
   @override
   String get appearanceSystemColorsSubtitle =>
-      'The colours of your wallpaper instead of the app\'s blue';
+      'The colors of your wallpaper instead of the app\'s blue';
 
   @override
   String projectChildCount(int count) {
@@ -863,7 +863,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectUnknownTitle => 'Project';
 
   @override
-  String get favouriteLabel => 'Favourite';
+  String get favouriteLabel => 'Favorite';
 
   @override
   String get projectTasksLoading => 'Loading tasks…';
@@ -1274,7 +1274,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String firstSyncBody(String host) {
-    return 'Rurana is saving everything from $host on this device, so it works offline too.';
+    return 'The app is saving everything from $host on this device, so it works offline too.';
   }
 
   @override
@@ -1386,10 +1386,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get undo => 'Undo';
 
   @override
-  String get taskAddFavourite => 'Add to favourites';
+  String get taskAddFavourite => 'Add to favorites';
 
   @override
-  String get taskRemoveFavourite => 'Remove from favourites';
+  String get taskRemoveFavourite => 'Remove from favorites';
 
   @override
   String get taskNotYetSynced => 'Not yet synced';
@@ -1407,17 +1407,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String taskDeleteDialogBodyTrash(String title) {
-    return '“$title” moves to the bin, for everyone. It can be restored from the bin on the Account tab for 30 days.';
+    return '“$title” moves to the trash, for everyone. It can be restored from the trash on the Account tab for 30 days.';
   }
 
   @override
   String taskDeleteDialogBodyTrashGuest(String title) {
-    return '“$title” moves to the bin, for everyone. It can be restored from there for 30 days.';
+    return '“$title” moves to the trash, for everyone. It can be restored from there for 30 days.';
   }
 
   @override
   String taskDeleteDialogBodyUnsent(String title) {
-    return '“$title” hasn\'t reached the server yet. It is deleted and won\'t be in the bin.';
+    return '“$title” hasn\'t reached the server yet. It is deleted and won\'t be in the trash.';
   }
 
   @override
@@ -1430,7 +1430,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskDeleted => 'Task deleted';
 
   @override
-  String get taskMovedToTrash => 'Task moved to the bin';
+  String get taskMovedToTrash => 'Task moved to the trash';
 
   @override
   String get taskRestored => 'Task restored';
@@ -1474,14 +1474,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncProblemProjectInTrash =>
-      'Its project is in the bin on the server.';
+      'Its project is in the trash on the server.';
 
   @override
   String get syncProblemTaskMissing =>
       'The task no longer exists on the server.';
 
   @override
-  String get syncProblemTaskInTrash => 'The task is in the bin on the server.';
+  String get syncProblemTaskInTrash =>
+      'The task is in the trash on the server.';
 
   @override
   String get syncProblemLabelMissing =>
@@ -1627,14 +1628,14 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get taskEditColour => 'Colour';
+  String get taskEditColour => 'Color';
 
   @override
-  String get taskEditNoColour => 'No colour';
+  String get taskEditNoColour => 'No color';
 
   @override
   String taskEditColourSemantics(String hex) {
-    return 'Colour $hex';
+    return 'Color $hex';
   }
 
   @override
@@ -1793,7 +1794,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String quickAddMagicOnly(String title) {
-    return 'Only magic words, so nothing is recognised: the task will be called “$title”.';
+    return 'Only magic words, so nothing is recognized: the task will be called “$title”.';
   }
 
   @override
@@ -1867,7 +1868,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get quickAddHelpIntro =>
-      'Write the whole task in one line. These parts are recognised, marked in colour and taken out of the title:';
+      'Write the whole task in one line. These parts are recognized, marked in color and taken out of the title:';
 
   @override
   String get quickAddHelpLabelsTitle => 'Labels';
@@ -1936,7 +1937,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quickAddHelpExampleTitle => 'Example';
 
   @override
-  String get quickAddHelpExampleTask => 'Change tyres';
+  String get quickAddHelpExampleTask => 'Change tires';
 
   @override
   String get quickAddHelpExampleLabel => 'car';
@@ -2253,7 +2254,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationSetupBody =>
-      'Rurana can notify you on this device, without the server having to send anything:';
+      'The app can notify you on this device, without the server having to send anything:';
 
   @override
   String get notificationSetupReminders => 'Reminders at their time';
@@ -2353,7 +2354,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get notificationTestBody =>
-      'Notifications from Rurana work on this device.';
+      'The app\'s notifications work on this device.';
 
   @override
   String get notificationTaskGone => 'This task is gone';
@@ -2468,7 +2469,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sessionEndedNotificationBody(String username) {
-    return 'Your session as $username has ended. Rurana cannot sync this account until you sign in again.';
+    return 'Your session as $username has ended. The app cannot sync this account until you sign in again.';
   }
 
   @override
@@ -2956,7 +2957,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectInboxTitle => 'Inbox';
 
   @override
-  String get projectFavouritesTitle => 'Favourites';
+  String get projectFavouritesTitle => 'Favorites';
 
   @override
   String overviewFilterNotice(String title, String when) {
@@ -3480,7 +3481,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get editorImageInserted => 'Image inserted';
 
   @override
-  String get shareSignedOut => 'Sign in to Rurana first, then share again.';
+  String get shareSignedOut => 'Sign in to Vikunja first, then share again.';
 
   @override
   String get sharePickAccountTitle => 'Share to which account?';
@@ -3490,7 +3491,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'What you share goes to that account\'s server.';
 
   @override
-  String get shareSheetTitle => 'Share to Rurana';
+  String get shareSheetTitle => 'Share to Vikunja';
 
   @override
   String get shareAddToTask => 'Add to task';
@@ -3663,10 +3664,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get taskOpenNotFound => 'This task wasn\'t found';
 
   @override
-  String get taskOpenInTrash => 'This task is in the bin';
+  String get taskOpenInTrash => 'This task is in the trash';
 
   @override
-  String get taskOpenProjectInTrash => 'This task\'s project is in the bin';
+  String get taskOpenProjectInTrash => 'This task\'s project is in the trash';
 
   @override
   String get trashRestore => 'Restore';
@@ -3772,7 +3773,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectIdentifierTakenTrash =>
-      'This identifier is already in use. Identifiers are unique on the whole server, and a project in the bin keeps its identifier for 30 days.';
+      'This identifier is already in use. Identifiers are unique on the whole server, and a project in the trash keeps its identifier for 30 days.';
 
   @override
   String get projectGoneTitle => 'This project no longer exists';
@@ -3840,16 +3841,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectNewSubproject => 'New subproject';
 
   @override
-  String get projectAddToFavourites => 'Add to favourites';
+  String get projectAddToFavourites => 'Add to favorites';
 
   @override
-  String get projectRemoveFromFavourites => 'Remove from favourites';
+  String get projectRemoveFromFavourites => 'Remove from favorites';
 
   @override
-  String get projectFavourited => 'Added to favourites';
+  String get projectFavourited => 'Added to favorites';
 
   @override
-  String get projectUnfavourited => 'Removed from favourites';
+  String get projectUnfavourited => 'Removed from favorites';
 
   @override
   String get projectDelete => 'Delete';
@@ -3902,9 +3903,9 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'It moves to the bin with $count tasks, for everyone.',
-      one: 'It moves to the bin with $count task, for everyone.',
-      zero: 'It has no tasks. It moves to the bin, for everyone.',
+      other: 'It moves to the trash with $count tasks, for everyone.',
+      one: 'It moves to the trash with $count task, for everyone.',
+      zero: 'It has no tasks. It moves to the trash, for everyone.',
     );
     return '$_temp0';
   }
@@ -3924,12 +3925,12 @@ class AppLocalizationsEn extends AppLocalizations {
       one: '$tasks task',
       zero: 'no tasks',
     );
-    return 'It moves to the bin with $_temp0 and $_temp1, for everyone.';
+    return 'It moves to the trash with $_temp0 and $_temp1, for everyone.';
   }
 
   @override
   String get projectTrashEverything =>
-      'It moves to the bin with its tasks and subprojects, for everyone.';
+      'It moves to the trash with its tasks and subprojects, for everyone.';
 
   @override
   String projectTrashIncludesDefault(String project) {
@@ -3938,13 +3939,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get projectTrashRestorable =>
-      'The project can be restored from the bin on the Account tab for 30 days.';
+      'The project can be restored from the trash on the Account tab for 30 days.';
 
   @override
   String get projectDeleted => 'Project deleted';
 
   @override
-  String get projectMovedToTrash => 'Project moved to the bin';
+  String get projectMovedToTrash => 'Project moved to the trash';
 
   @override
   String get projectRestored => 'Project restored';
@@ -4211,11 +4212,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Also lists tasks that have no value where the filter compares one, such as tasks without a due date.';
 
   @override
-  String get savedFilterFavourite => 'Favourite';
+  String get savedFilterFavourite => 'Favorite';
 
   @override
   String get savedFilterFavouriteHint =>
-      'Shows it among the favourites on the Projects tab.';
+      'Shows it among the favorites on the Projects tab.';
 
   @override
   String get savedFilterFilterRequired => 'A saved filter needs a filter.';
@@ -4907,7 +4908,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get avatarProviderMarbleSubtitle =>
-      'A colourful pattern made from your username';
+      'A colorful pattern made from your username';
 
   @override
   String get avatarProviderUpload => 'Your photo';
@@ -4930,7 +4931,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get avatarManagedLdap =>
-      'Your avatar comes from your organisation\'s directory (LDAP). Ask your IT team how to change it.';
+      'Your avatar comes from your organization\'s directory (LDAP). Ask your IT team how to change it.';
 
   @override
   String avatarManagedOpenId(String provider) {
@@ -5223,6 +5224,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionsDartClient => 'An app without a name';
 
   @override
+  String get sessionsVikunjaApp => 'Vikunja app';
+
+  @override
   String get sessionsEnd => 'End session';
 
   @override
@@ -5361,7 +5365,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiTokenFormName => 'Title';
 
   @override
-  String get apiTokenFormNameHint => 'A title you will recognise later';
+  String get apiTokenFormNameHint => 'A title you will recognize later';
 
   @override
   String get apiTokenFormNameRequired => 'Enter a title.';
@@ -5721,12 +5725,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String accountAppVersion(String version, String build) {
-    return 'Rurana $version ($build)';
+    return 'Vikunja app $version ($build)';
   }
 
   @override
   String accountAppVersionWithoutBuild(String version) {
-    return 'Rurana $version';
+    return 'Vikunja app $version';
   }
 
   @override
@@ -6220,7 +6224,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareTaskReadOnly => 'Read only';
 
   @override
-  String get accountOrganiseHeading => 'Organise';
+  String get accountOrganiseHeading => 'Organize';
 
   @override
   String get accountLabelsEntry => 'Labels';
@@ -6229,7 +6233,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountTeamsEntry => 'Teams';
 
   @override
-  String get accountTrashEntry => 'Bin';
+  String get accountTrashEntry => 'Trash';
 
   @override
   String labelsCount(int count) {
@@ -6330,10 +6334,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get labelsColour => 'Colour';
+  String get labelsColour => 'Color';
 
   @override
-  String get labelsCustomColour => 'Custom colour';
+  String get labelsCustomColour => 'Custom color';
 
   @override
   String get labelsCustomColourHelper => 'Six hex digits, like 1973ff';
@@ -6402,7 +6406,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get labelsInvalid =>
-      'The server did not accept this label. Check its title and colour.';
+      'The server did not accept this label. Check its title and color.';
 
   @override
   String labelsRefused(String message) {
@@ -6517,7 +6521,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamExternalNoteGeneric =>
-      'This team is managed by your organisation\'s sign-in. Its membership is managed there.';
+      'This team is managed by your organization\'s sign-in. Its membership is managed there.';
 
   @override
   String get teamMembersSection => 'Members';
@@ -6655,7 +6659,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get teamExternalRefused =>
-      'Members can\'t be removed from a team managed by your organisation\'s sign-in.';
+      'Members can\'t be removed from a team managed by your organization\'s sign-in.';
 
   @override
   String get teamUnknownUser => 'There is no such user on this server.';
@@ -6683,7 +6687,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamOk => 'OK';
 
   @override
-  String get trashTitle => 'Bin';
+  String get trashTitle => 'Trash';
 
   @override
   String get trashTasksTab => 'Tasks';
@@ -6692,24 +6696,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get trashProjectsTab => 'Projects';
 
   @override
-  String get trashTabsLabel => 'Tasks or projects in the bin';
+  String get trashTabsLabel => 'Tasks or projects in the trash';
 
   @override
-  String get trashLoading => 'Loading the bin…';
+  String get trashLoading => 'Loading the trash…';
 
   @override
   String get trashRetentionNote =>
-      'After 30 days in the bin, the server deletes items forever.';
+      'After 30 days in the trash, the server deletes items forever.';
 
   @override
-  String get trashTasksEmptyTitle => 'No tasks in the bin';
+  String get trashTasksEmptyTitle => 'No tasks in the trash';
 
   @override
   String get trashTasksEmptyBody =>
       'Deleted tasks stay here for 30 days. Then the server deletes them forever.';
 
   @override
-  String get trashProjectsEmptyTitle => 'No projects in the bin';
+  String get trashProjectsEmptyTitle => 'No projects in the trash';
 
   @override
   String get trashProjectsEmptyBody =>
@@ -6791,14 +6795,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get trashProjectDeletedForever => 'Project deleted forever';
 
   @override
-  String get trashEmpty => 'Empty bin';
+  String get trashEmpty => 'Empty trash';
 
   @override
-  String get trashEmptyTasksTitle => 'Delete the tasks in the bin forever?';
+  String get trashEmptyTasksTitle => 'Delete the tasks in the trash forever?';
 
   @override
   String get trashEmptyProjectsTitle =>
-      'Delete the projects in the bin forever?';
+      'Delete the projects in the trash forever?';
 
   @override
   String trashEmptyTasks(int count) {
@@ -6827,15 +6831,15 @@ class AppLocalizationsEn extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count of them were moved to the bin by other people.',
-      one: '$count of them was moved to the bin by someone else.',
+      other: '$count of them were moved to the trash by other people.',
+      one: '$count of them was moved to the trash by someone else.',
     );
     return '$_temp0';
   }
 
   @override
   String get trashEmptyKeepsOthers =>
-      'Tasks in projects where you aren\'t an admin stay in the bin.';
+      'Tasks in projects where you aren\'t an admin stay in the trash.';
 
   @override
   String get trashEmptyNothing =>
@@ -6845,7 +6849,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get trashCannotBeUndone => 'This can\'t be undone.';
 
   @override
-  String get trashEmptied => 'Bin emptied';
+  String get trashEmptied => 'Trash emptied';
 
   @override
   String get trashWorking => 'Working';
@@ -6856,13 +6860,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trashNeedsConnection =>
-      'The bin needs a connection to the server.';
+      'The trash needs a connection to the server.';
 
   @override
-  String get trashTaskGone => 'This task is no longer in the bin.';
+  String get trashTaskGone => 'This task is no longer in the trash.';
 
   @override
-  String get trashProjectGone => 'This project is no longer in the bin.';
+  String get trashProjectGone => 'This project is no longer in the trash.';
 
   @override
   String get trashRestoreArchived =>
@@ -6874,11 +6878,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trashTaskProjectInTrash =>
-      'Its project is in the bin. Restore the project first.';
+      'Its project is in the trash. Restore the project first.';
 
   @override
   String get trashRestoreParentInTrash =>
-      'Its parent project is in the bin. Restore that one first.';
+      'Its parent project is in the trash. Restore that one first.';
 
   @override
   String get trashRestoreTaskForbidden =>
@@ -6901,7 +6905,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The delete is still on its way to the server. Try again in a moment.';
 
   @override
-  String get trashUnavailable => 'This server has no bin.';
+  String get trashUnavailable => 'This server doesn\'t support the trash.';
 
   @override
   String trashActionRefused(String message) {
@@ -7157,7 +7161,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guestNoteNeedsAccount =>
-      'Account settings, labels, teams, favourites, reactions and the server\'s notifications need an account of your own.';
+      'Account settings, labels, teams, favorites, reactions and the server\'s notifications need an account of your own.';
 
   @override
   String get guestRemove => 'Remove guest access';
@@ -7167,7 +7171,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String guestRemoveDialogBody(String name, String host) {
-    return 'Rurana will remove the guest access to $name on $host and delete its tasks saved on this device. You can open the shared link again at any time.';
+    return 'The app will remove the guest access to $name on $host and delete its tasks saved on this device. You can open the shared link again at any time.';
   }
 
   @override
@@ -7233,7 +7237,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get guestPasswordNotStored =>
-      'Rurana doesn\'t save this password. If the link has to be opened again later, it asks for it again.';
+      'The app doesn\'t save this password. If the link has to be opened again later, it asks for it again.';
 
   @override
   String get guestShareTitle => 'Open the shared project?';
@@ -7346,7 +7350,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String guestAccessEndedNotificationBody(String host) {
-    return '$host ended this guest access. Rurana can\'t sync the project until you open the shared link again.';
+    return '$host ended this guest access. The app can\'t sync the project until you open the shared link again.';
   }
 
   @override
@@ -7429,18 +7433,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get widgetsEntrySubtitle =>
-      'Your tasks on the home screen, ticked off right there';
+      'Your tasks on the home screen, checked off right there';
 
   @override
   String get widgetsIntro =>
-      'A widget shows one list of an account: today\'s tasks, the coming days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.';
+      'A widget shows one list of an account: today\'s tasks, the coming days, the overdue ones, your favorites, a project, a label or a saved filter. Check a task off right there, or tap it to open it here.';
 
   @override
   String get widgetsHowToHeading => 'How to add one';
 
   @override
   String get widgetsHowToIos =>
-      'Touch and hold an empty spot on your Home Screen, tap Edit, then Add Widget, and look for Rurana. To choose the account and the list, touch and hold the widget and tap Edit Widget.';
+      'Touch and hold an empty spot on your Home Screen, tap Edit, then Add Widget, and look for Vikunja. To choose the account and the list, touch and hold the widget and tap Edit Widget.';
 
   @override
   String get widgetsAddHeading => 'Add a widget';
@@ -7485,10 +7489,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get widgetKindOverdueHint => 'Past their due date';
 
   @override
-  String get widgetKindFavorites => 'Favourites';
+  String get widgetKindFavorites => 'Favorites';
 
   @override
-  String get widgetKindFavoritesHint => 'Your favourite tasks';
+  String get widgetKindFavoritesHint => 'Your favorite tasks';
 
   @override
   String get widgetKindProject => 'Project';
@@ -7569,7 +7573,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get widgetsHowToAndroid =>
-      'Touch and hold an empty spot on your home screen, tap Widgets and look for Rurana. To choose the account and the list, tap the widget under “On your home screen” below. Some home screens also offer this in the widget\'s settings when you touch and hold it.';
+      'Touch and hold an empty spot on your home screen, tap Widgets and look for Vikunja. To choose the account and the list, tap the widget under “On your home screen” below. Some home screens also offer this in the widget\'s settings when you touch and hold it.';
 
   @override
   String get widgetsPlacedNotSetUp =>
@@ -7582,7 +7586,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationContentDueTitle => 'Task due';
 
   @override
-  String get notificationContentBody => 'Open Rurana to see it';
+  String get notificationContentBody => 'Open Vikunja to see it';
 
   @override
   String get notificationContentActivityTitle => 'New activity';
@@ -7633,7 +7637,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privacyAppLockHeading => 'App lock';
 
   @override
-  String get privacyAppLockSwitch => 'Lock Rurana';
+  String get privacyAppLockSwitch => 'Lock Vikunja';
 
   @override
   String get privacyAppLockSubtitle =>
@@ -7654,15 +7658,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privacyLockAfter => 'Lock after';
 
   @override
-  String get privacyLockAfterRestart => 'Rurana always locks after a restart.';
+  String get privacyLockAfterRestart => 'Vikunja always locks after a restart.';
 
   @override
   String get privacyAppSwitcherHidden =>
-      'While the lock is on, the app switcher hides Rurana\'s content.';
+      'While the lock is on, the app switcher hides Vikunja\'s content.';
 
   @override
   String get privacyAppSwitcherBestEffort =>
-      'While the lock is on, the app switcher hides Rurana\'s content as far as this Android version allows. To be sure, turn on Block screenshots.';
+      'While the lock is on, the app switcher hides Vikunja\'s content as far as this Android version allows. To be sure, turn on Block screenshots.';
 
   @override
   String get privacyScreenshotsHeading => 'Screenshots';
@@ -7672,7 +7676,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyBlockScreenshotsSubtitle =>
-      'Also hides Rurana from screen recordings and the app switcher.';
+      'Also hides Vikunja from screen recordings and the app switcher.';
 
   @override
   String get privacyNotificationContentHeading => 'Notification content';
@@ -7700,7 +7704,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacyNotificationContentIosHint =>
-      'iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.';
+      'iOS decides this for each app: in Settings › Notifications › Vikunja, set Show Previews to When Unlocked.';
 
   @override
   String get privacyWidgetsHeading => 'Widgets';
@@ -7714,10 +7718,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacySettingsUnreadable =>
-      'Your privacy settings couldn\'t be read, so Rurana locked itself. Choose them again here.';
+      'Your privacy settings couldn\'t be read, so Vikunja locked itself. Choose them again here.';
 
   @override
-  String get appLockPromptReason => 'Unlock Rurana';
+  String get appLockPromptReason => 'Unlock Vikunja';
 
   @override
   String get privacyAppLockReasonOn =>
@@ -7731,7 +7735,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privacySaveFailed => 'The setting couldn\'t be saved. Try again.';
 
   @override
-  String get appLockTitle => 'Rurana is locked';
+  String get appLockTitle => 'Vikunja is locked';
 
   @override
   String get appLockBody =>
@@ -7745,7 +7749,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appLockUnavailable =>
-      'Rurana couldn\'t check your screen lock. Try again.';
+      'Vikunja couldn\'t check your screen lock. Try again.';
 
   @override
   String get appLockTurnedOff =>
@@ -7756,15 +7760,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appLockPromptStuck =>
-      'The unlock prompt doesn\'t respond. Close Rurana completely and open it again.';
+      'The unlock prompt doesn\'t respond. Close Vikunja completely and open it again.';
 
   @override
   String widgetTitlesHiddenHint(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Open Rurana to see them',
-      one: 'Open Rurana to see it',
+      other: 'Open Vikunja to see them',
+      one: 'Open Vikunja to see it',
     );
     return '$_temp0';
   }
@@ -8392,10 +8396,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get widgetConfigureUnknownBody =>
-      'Only Rurana widgets on this device\'s home screen can be set up. Open the widget\'s settings on the home screen instead.';
+      'Only Vikunja widgets on this device\'s home screen can be set up. Open the widget\'s settings on the home screen instead.';
 
   @override
-  String get aboutTitle => 'About Rurana';
+  String get aboutTitle => 'About the app';
 
   @override
   String aboutVersion(String version, String build) {
@@ -8408,33 +8412,29 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get aboutUnofficial =>
-      'Rurana is an unofficial app for Vikunja servers. It is not affiliated with or endorsed by the Vikunja project.';
-
-  @override
-  String get aboutLicenceHeading => 'Licence';
+  String get aboutLicenceHeading => 'License';
 
   @override
   String get aboutLicence =>
-      'Rurana is free software: you may share and change it under the GNU Affero General Public License, version 3 or any later version, with an additional permission for app stores.';
+      'This app is free software: you may share and change it under the GNU Affero General Public License, version 3 or any later version, with an additional permission for app stores.';
 
   @override
   String get aboutNoWarranty =>
-      'Rurana comes with no warranty, as far as the law allows.';
+      'This app comes with no warranty, as far as the law allows.';
 
   @override
-  String get aboutLicences => 'Licences';
+  String get aboutLicences => 'Licenses';
 
   @override
   String get aboutLicencesSubtitle =>
-      'The full licence text and the additional permission under “rurana”, and the licences of the software Rurana contains';
+      'The full license text and the additional permission under “vikunja_app”, and the licenses of the software the app contains';
 
   @override
   String get aboutSourceCodeHeading => 'Source code';
 
   @override
   String get aboutSourceCodeLater =>
-      'This build has no link to its source code. Every release of Rurana links the source code it was built from.';
+      'This build has no link to its source code. Every release of the app links the source code it was built from.';
 
   @override
   String get aboutSourceCodeOpen => 'View the source code';
@@ -8453,13 +8453,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutPrivacyPolicy => 'Privacy policy';
 
   @override
-  String get aboutPrivacyPolicySubtitle => 'How Rurana handles your data';
+  String get aboutPrivacyPolicySubtitle => 'How the app handles your data';
 
   @override
   String get aboutLegalNotice => 'Legal notice';
 
   @override
-  String get aboutLegalNoticeSubtitle => 'Who publishes Rurana';
+  String get aboutLegalNoticeSubtitle => 'Who publishes the app';
 
   @override
   String get aboutNameAndLogoHeading => 'Name and logo';

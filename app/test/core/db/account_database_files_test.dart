@@ -12,7 +12,7 @@ void main() {
   const accountId = '0123456789abcdef0123456789abcdef';
 
   setUp(() {
-    support = Directory.systemTemp.createTempSync('rurana-db-files');
+    support = Directory.systemTemp.createTempSync('vikunja-db-files');
     addTearDown(() => support.delete(recursive: true));
     files = PathProviderAccountDatabaseFiles(
       supportDirectory: () async => support,

@@ -1,19 +1,19 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:rurana_widgets/rurana_widgets.dart';
-import 'package:rurana_widgets/testing.dart';
 import 'package:vikunja_mobile/core/widgets/plugin_widget_host.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_host.dart';
+import 'package:vikunja_widgets/testing.dart';
+import 'package:vikunja_widgets/vikunja_widgets.dart';
 
 // The adapter over the plugin's in-memory double: the app's configs and
 // keys in the plugin's file layout.
 void main() {
   const alice = '0123456789abcdef0123456789abcdef';
-  late MemoryRuranaWidgets plugin;
+  late MemoryVikunjaWidgets plugin;
   late PluginWidgetHost host;
 
   setUp(() {
-    plugin = MemoryRuranaWidgets(
+    plugin = MemoryVikunjaWidgets(
       instances: const [
         WidgetInstance(appWidgetId: 1, provider: WidgetProviderKind.list),
         WidgetInstance(appWidgetId: 2, provider: WidgetProviderKind.quickAdd),

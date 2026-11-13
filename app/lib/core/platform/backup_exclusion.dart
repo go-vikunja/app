@@ -4,9 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:rurana_widgets/rurana_widgets.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/platform/device_channel.dart';
+import 'package:vikunja_widgets/vikunja_widgets.dart';
 
 final _log = Logger('BackupExclusion');
 
@@ -44,7 +44,7 @@ Future<void> excludeAppDataFromBackup({
     final support =
         await (supportDirectory ?? getApplicationSupportDirectory)();
     final widgets =
-        await (widgetsDirectory ?? RuranaWidgets().widgetsDirectory)();
+        await (widgetsDirectory ?? VikunjaWidgets().widgetsDirectory)();
     await (exclusion ?? PlatformBackupExclusion()).exclude([
       p.join(support.path, PathProviderAccountDatabaseFiles.accountsFolder),
       ?widgets?.path,

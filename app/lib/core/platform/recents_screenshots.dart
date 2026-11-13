@@ -36,7 +36,7 @@ final class PlatformRecentsScreenshots implements RecentsScreenshots {
 @Riverpod(keepAlive: true)
 RecentsScreenshots recentsScreenshots(Ref ref) => PlatformRecentsScreenshots();
 
-/// Whether the system itself keeps Rurana out of the Recents screen while
+/// Whether the system itself keeps the app out of the Recents screen while
 /// the app lock is on (Android 13+), as [RecentsScreenshots.setEnabled]
 /// last answered; the lock then needs no cover of its own. False until it
 /// answered, so the cover stands in.

@@ -8,8 +8,8 @@ SDK ships with the font (`bin/cache/artifacts/material_fonts/MaterialIcons_LICEN
 ```text
 Material Icons, by Google: https://fonts.google.com/icons
 
-Rurana bundles a subset of the icon font, and uses the shapes of the "add",
-"check_box_outline_blank" and "error_outline" icons, resized and recoloured,
+This app bundles a subset of the icon font, and uses the shapes of the "add",
+"check_box_outline_blank" and "error_outline" icons, resized and recolored,
 in its Android widget and shortcut icons and its iOS shortcut icon.
 
 Attribution 4.0 International

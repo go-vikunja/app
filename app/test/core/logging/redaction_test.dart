@@ -147,10 +147,10 @@ void main() {
     test('redacts the OAuth callback URL', () {
       expect(
         redactSecrets(
-          'vikunja-dev.coderoftime.rurana://oauth/callback'
+          'vikunja-io.vikunja.app://oauth/callback'
           '?code=Zm9vYmFy&state=c3RhdGU',
         ),
-        'vikunja-dev.coderoftime.rurana://oauth/callback'
+        'vikunja-io.vikunja.app://oauth/callback'
         '?code=[redacted]&state=[redacted]',
       );
     });
@@ -302,8 +302,10 @@ void main() {
 
     test('redacts the widget-link key and a payload key', () {
       expect(
-        redactSecrets('rurana://widget/open?account=a1&k=c2hvcnQ'),
-        'rurana://widget/open?account=a1&k=[redacted]',
+        redactSecrets(
+          'vikunja-io.vikunja.app://widget/open?account=a1&k=c2hvcnQ',
+        ),
+        'vikunja-io.vikunja.app://widget/open?account=a1&k=[redacted]',
       );
       expect(
         redactSecrets('{"account":"a1","task":3,"k":"c2hvcnQ"}'),

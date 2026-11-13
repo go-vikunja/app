@@ -15,7 +15,7 @@ final class BackgroundRunnerChannel {
 
   static const _slots = 3;
 
-  static String _slot(int index) => 'rurana.background-runner.$index';
+  static String _slot(int index) => 'vikunja.background-runner.$index';
 
   final ReceivePort _port;
   final String _name;

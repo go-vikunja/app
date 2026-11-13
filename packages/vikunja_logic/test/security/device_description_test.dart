@@ -31,68 +31,73 @@ _Vector _v(
   osVersion: osVersion,
 );
 
-final List<_Vector> _rurana = [
+final List<_Vector> _vikunjaApp = [
   // What ClientIdentity.userAgent sends: Platform.operatingSystem in lower
   // case.
   _v(
-    'Rurana/0.31.0+42 (android 15)',
-    DeviceKind.rurana,
+    'Vikunja-App/0.31.0+42 (android 15)',
+    DeviceKind.vikunjaApp,
     app: '0.31.0',
     build: '42',
     os: 'Android',
     osVersion: '15',
   ),
   _v(
-    'Rurana/1.0.0+7 (ios 17.4)',
-    DeviceKind.rurana,
+    'Vikunja-App/1.0.0+7 (ios 17.4)',
+    DeviceKind.vikunjaApp,
     app: '1.0.0',
     build: '7',
     os: 'iOS',
     osVersion: '17.4',
   ),
   _v(
-    'Rurana/0.31.0+1 (Android 15)',
-    DeviceKind.rurana,
+    'Vikunja-App/0.31.0+1 (Android 15)',
+    DeviceKind.vikunjaApp,
     app: '0.31.0',
     build: '1',
     os: 'Android',
     osVersion: '15',
   ),
   _v(
-    'Rurana/0.31.0 (android 14)',
-    DeviceKind.rurana,
+    'Vikunja-App/0.31.0 (android 14)',
+    DeviceKind.vikunjaApp,
     app: '0.31.0',
     os: 'Android',
     osVersion: '14',
   ),
   _v(
-    'Rurana/0.31.0+3 (android)',
-    DeviceKind.rurana,
+    'Vikunja-App/0.31.0+3 (android)',
+    DeviceKind.vikunjaApp,
     app: '0.31.0',
     build: '3',
     os: 'Android',
   ),
-  _v('Rurana/0.31.0+3 ()', DeviceKind.rurana, app: '0.31.0', build: '3'),
-  _v('Rurana/0.31.0+3', DeviceKind.rurana, app: '0.31.0', build: '3'),
   _v(
-    'Rurana/0.31.0-beta.2+5 (macos 15.1)',
-    DeviceKind.rurana,
+    'Vikunja-App/0.31.0+3 ()',
+    DeviceKind.vikunjaApp,
+    app: '0.31.0',
+    build: '3',
+  ),
+  _v('Vikunja-App/0.31.0+3', DeviceKind.vikunjaApp, app: '0.31.0', build: '3'),
+  _v(
+    'Vikunja-App/0.31.0-beta.2+5 (macos 15.1)',
+    DeviceKind.vikunjaApp,
     app: '0.31.0-beta.2',
     build: '5',
     os: 'macOS',
     osVersion: '15.1',
   ),
   _v(
-    'Rurana/0.31.0+5 (haiku r1)',
-    DeviceKind.rurana,
+    'Vikunja-App/0.31.0+5 (haiku r1)',
+    DeviceKind.vikunjaApp,
     app: '0.31.0',
     build: '5',
     os: 'haiku',
     osVersion: 'r1',
   ),
   _v(
-    '  Rurana/2.0.0+9 (ios 18.0)\n',
-    DeviceKind.rurana,
+    '  Vikunja-App/2.0.0+9 (ios 18.0)\n',
+    DeviceKind.vikunjaApp,
     app: '2.0.0',
     build: '9',
     os: 'iOS',
@@ -283,9 +288,14 @@ final List<_Vector> _others = [
   _v('rurana-step31-probe', DeviceKind.other),
   _v('curl/8.7.1', DeviceKind.other),
   _v('python-requests/2.32.3', DeviceKind.other),
-  _v('Rurana/', DeviceKind.other),
-  _v('Rurana/(android 15)', DeviceKind.other),
-  _v('Rurana/1.0 (a (b) c)', DeviceKind.other),
+  _v('Vikunja-App/', DeviceKind.other),
+  _v('Vikunja-App/(android 15)', DeviceKind.other),
+  _v('Vikunja-App/1.0 (a (b) c)', DeviceKind.other),
+  // Not this app: its unreleased earlier name, the previous official app and
+  // a form that reads as the server's own requests.
+  _v('Rurana/0.31.0+42 (android 15)', DeviceKind.other),
+  _v('Vikunja Mobile App', DeviceKind.other),
+  _v('Vikunja/1.0.0', DeviceKind.other),
   _v('Dart/', DeviceKind.other),
   _v('Dart/abc', DeviceKind.other),
   _v('\u0000\u202e\uffff 日本 😀', DeviceKind.other),
@@ -317,8 +327,8 @@ void _expectVector(_Vector vector) {
 
 void main() {
   group('describeUserAgent', () {
-    test("reads Rurana's own User-Agent", () {
-      _rurana.forEach(_expectVector);
+    test("reads the app's own User-Agent", () {
+      _vikunjaApp.forEach(_expectVector);
     });
 
     test('reads the browsers of the web logins', () {
@@ -337,7 +347,7 @@ void main() {
         'iPhone',
         ' OS ',
         'Android ',
-        'Rurana/',
+        'Vikunja-App/',
         'Dart/',
         '+',
         '(',

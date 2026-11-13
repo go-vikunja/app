@@ -19,7 +19,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart
 
 final _log = Logger('ShareIntent');
 
-/// Takes what other apps share into Rurana, the share that started the app
+/// Takes what other apps share into this app, the share that started the app
 /// and the ones that arrive while it runs: once the app is past the splash
 /// and the first sync and the app lock is open (the platform keeps the
 /// share meanwhile), with several accounts the user picks one first (a

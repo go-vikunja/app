@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
-const _scheme = 'vikunja-dev.coderoftime.rurana';
+const _scheme = 'vikunja-io.vikunja.app';
 
 void main() {
   group('parseTaskReference', () {
@@ -63,9 +63,7 @@ void main() {
       ),
       '$_scheme://task/12?account=': const TaskDeepLink(TaskById(12)),
       '$_scheme://task/12?other=x#frag': const TaskDeepLink(TaskById(12)),
-      'VIKUNJA-DEV.CODEROFTIME.RURANA://TASK/12': const TaskDeepLink(
-        TaskById(12),
-      ),
+      'VIKUNJA-IO.VIKUNJA.APP://TASK/12': const TaskDeepLink(TaskById(12)),
       '$_scheme://oauth/callback?code=x': null,
       '$_scheme://task/': null,
       '$_scheme://task': null,

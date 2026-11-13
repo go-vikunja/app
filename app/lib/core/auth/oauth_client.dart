@@ -6,10 +6,10 @@ import 'package:vikunja_api/vikunja_api.dart';
 /// Vikunja only accepts custom redirect schemes that start with `vikunja-`.
 /// Android registers it for flutter_web_auth_2's CallbackActivity in
 /// AndroidManifest.xml.
-const oauthCallbackScheme = 'vikunja-dev.coderoftime.rurana';
+const oauthCallbackScheme = 'vikunja-io.vikunja.app';
 
 final OAuthClientConfig appOAuthClient = OAuthClientConfig(
-  clientId: 'dev.coderoftime.rurana',
+  clientId: 'vikunja-io.vikunja.app',
   redirectUri: Uri.parse('$oauthCallbackScheme://oauth/callback'),
 );
 

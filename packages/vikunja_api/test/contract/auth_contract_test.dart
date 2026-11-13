@@ -11,8 +11,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'helpers.dart';
 
 final _client = OAuthClientConfig(
-  clientId: 'dev.coderoftime.rurana',
-  redirectUri: Uri.parse('vikunja-dev.coderoftime.rurana://oauth/callback'),
+  clientId: 'vikunja-io.vikunja.app',
+  redirectUri: Uri.parse('vikunja-io.vikunja.app://oauth/callback'),
 );
 
 /// What the web app's /oauth/authorize page does once the user is signed in:
@@ -245,9 +245,7 @@ void main() {
             (
               OAuthClientConfig(
                 clientId: _client.clientId,
-                redirectUri: Uri.parse(
-                  'vikunja-dev.coderoftime.rurana://oauth/other',
-                ),
+                redirectUri: Uri.parse('vikunja-io.vikunja.app://oauth/other'),
               ),
               OAuthProblem.invalidRedirectUri,
               17002,

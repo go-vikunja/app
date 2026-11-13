@@ -6,7 +6,7 @@ import 'package:vikunja_mobile/features/description_editor/application/editor_pr
 import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
 
 Map<String, Object?> payloadOf(String script) {
-  const prefix = 'window.rurana.receive(';
+  const prefix = 'window.vikunja.receive(';
   expect(script, startsWith(prefix));
   expect(script, endsWith(')'));
   return jsonDecode(script.substring(prefix.length, script.length - 1))

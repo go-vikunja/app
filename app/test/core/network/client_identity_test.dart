@@ -13,7 +13,7 @@ void main() {
       osVersion: '15',
     );
 
-    expect(identity.userAgent, 'Rurana/0.1.0+7 (android 15)');
+    expect(identity.userAgent, 'Vikunja-App/0.1.0+7 (android 15)');
   });
 
   test('omits missing parts and strips characters unsafe in headers', () {
@@ -24,7 +24,7 @@ void main() {
       osVersion: '',
     );
 
-    expect(identity.userAgent, 'Rurana/0.1.0beta (ios)');
+    expect(identity.userAgent, 'Vikunja-App/0.1.0beta (ios)');
   });
 
   test('extracts the iOS version from the dart:io description', () {

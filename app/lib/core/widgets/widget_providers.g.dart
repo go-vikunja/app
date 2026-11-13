@@ -48,7 +48,7 @@ final class WidgetHostProvider
   }
 }
 
-String _$widgetHostHash() => r'b9bfd13bcee5e0812a0e25fbe0d5eebdf00baa86';
+String _$widgetHostHash() => r'b067fdb315ec825b556b126906b0a50a3f3ff70c';
 
 /// The device's 24-hour switch: read and noted by the app, the noted value
 /// in a headless isolate (false before the app ever noted one).

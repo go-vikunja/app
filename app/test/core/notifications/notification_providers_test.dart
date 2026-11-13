@@ -375,7 +375,7 @@ void main() {
 
       final due = gateway.pending[aliceDue]!;
       expect(due.title, 'Task due');
-      expect(due.body, 'Open Rurana to see it');
+      expect(due.body, 'Open Vikunja to see it');
       expect(due.payload, payload);
     });
 

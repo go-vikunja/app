@@ -31,8 +31,8 @@ ANDROID = '{http://schemas.android.com/apk/res/android}'
 COMPONENTS = ('activity', 'activity-alias', 'receiver', 'service', 'provider')
 RULES = '@xml/data_extraction_rules'
 
-APP = 'dev.coderoftime.rurana'
-SCHEME = 'vikunja-dev.coderoftime.rurana'
+APP = 'io.vikunja.app'
+SCHEME = 'vikunja-io.vikunja.app'
 VIEW = 'android.intent.action.VIEW'
 DEFAULT = 'android.intent.category.DEFAULT'
 BROWSABLE = 'android.intent.category.BROWSABLE'

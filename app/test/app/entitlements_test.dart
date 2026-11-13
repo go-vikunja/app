@@ -7,7 +7,7 @@ void main() {
   // tokens stay with the app (D24, D63).
   for (final path in [
     'ios/Runner/Runner.entitlements',
-    'ios/RuranaWidgets/RuranaWidgets.entitlements',
+    'ios/VikunjaWidgets/VikunjaWidgets.entitlements',
   ]) {
     test('$path grants the App Group and nothing else', () {
       final plist = File(path).readAsStringSync();
@@ -17,7 +17,7 @@ void main() {
       ];
 
       expect(keys, ['com.apple.security.application-groups']);
-      expect(plist, contains('<string>group.dev.coderoftime.rurana</string>'));
+      expect(plist, contains('<string>group.io.vikunja.app</string>'));
       expect(plist, isNot(contains('keychain-access-groups')));
     });
   }

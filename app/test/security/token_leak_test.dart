@@ -277,7 +277,7 @@ void main() {
         return _json(200, {'ok': true, 'email': _email});
       });
       final base = createDio(
-        userAgent: 'Rurana/test',
+        userAgent: 'Vikunja-App/test',
         httpClientAdapter: server,
       );
       addTearDown(base.close);
@@ -381,7 +381,7 @@ void main() {
         };
       });
       final authDio = createDio(
-        userAgent: 'Rurana/test',
+        userAgent: 'Vikunja-App/test',
         httpClientAdapter: server,
       );
       addTearDown(authDio.close);

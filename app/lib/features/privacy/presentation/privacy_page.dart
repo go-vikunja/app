@@ -21,7 +21,7 @@ import 'package:vikunja_mobile/features/privacy/presentation/lock_after_texts.da
 
 final _log = Logger('PrivacyPage');
 
-/// The device's app lock and how long Rurana may be out of sight before it
+/// The device's app lock and how long the app may be out of sight before it
 /// locks, screenshots (Android), what notifications show and whether
 /// widgets list task titles. Turning the lock on or off takes the device's
 /// screen lock or biometrics first.

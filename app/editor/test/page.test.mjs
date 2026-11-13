@@ -48,19 +48,19 @@ describe('the built page', () => {
     assert.deepEqual(reply, {type: 'html', requestId: 1, html: '<p>Hello</p>', dirty: false, token: 'abc'})
   })
 
-  test('window.rurana cannot be replaced by page script', async () => {
+  test('window.vikunja cannot be replaced by page script', async () => {
     const page = loadPage(built.html)
     await waitFor(page.posted, message => message.type === 'ready')
-    const receive = page.window.rurana.receive
-    page.window.eval('try { window.rurana = {receive() {}} } catch {}; try { window.rurana.receive = null } catch {}')
-    assert.equal(page.window.rurana.receive, receive)
+    const receive = page.window.vikunja.receive
+    page.window.eval('try { window.vikunja = {receive() {}} } catch {}; try { window.vikunja.receive = null } catch {}')
+    assert.equal(page.window.vikunja.receive, receive)
   })
 
   test('waits for a channel the WebView injects late', async () => {
     const posted = []
     const dom = new JSDOM(built.html, {runScripts: 'dangerously', pretendToBeVisual: true})
     await new Promise(resolve => setTimeout(resolve, 20))
-    dom.window.RuranaEditor = {postMessage: text => posted.push(JSON.parse(text))}
+    dom.window.VikunjaEditor = {postMessage: text => posted.push(JSON.parse(text))}
     await waitFor(posted, message => message.type === 'ready')
   })
 
@@ -74,11 +74,11 @@ describe('the built page', () => {
         delete window.Array.prototype.findLast
         window.Range.prototype.getClientRects = () => []
         window.Range.prototype.getBoundingClientRect = () => new window.DOMRect(0, 0, 0, 0)
-        window.RuranaEditor = {postMessage: text => posted.push(JSON.parse(text))}
+        window.VikunjaEditor = {postMessage: text => posted.push(JSON.parse(text))}
       },
     })
     await waitFor(posted, message => message.type === 'ready')
-    const receive = message => dom.window.rurana.receive(message)
+    const receive = message => dom.window.vikunja.receive(message)
     receive({type: 'init', token: 'old', html: '<ul><li><p>a</p></li></ul>', links: {}})
     receive({type: 'command', token: 'old', name: 'horizontalRule'})
     receive({type: 'getHtml', token: 'old', requestId: 1})

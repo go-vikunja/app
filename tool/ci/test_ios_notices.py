@@ -17,12 +17,12 @@ BSD = 'Copyright 2013 The Flutter Authors\n\nRedistribution and use in source an
 APP_LICENSES = """\
 abstract final class LegalAssets {
   /// The app's own notice.
-  static const ownNotice = 'assets/legal/rurana.md';
+  static const ownNotice = 'assets/legal/vikunja_app.md';
 
   static const portedCode = 'packages/vikunja_logic/THIRD_PARTY_NOTICES.md';
 }
 
-const ownLicensePackage = 'rurana';
+const ownLicensePackage = 'vikunja_app';
 """
 
 
@@ -56,7 +56,7 @@ class CheckTest(unittest.TestCase):
         self.app = os.path.join(directory.name, 'Runner.app')
         self.assets = os.path.join(self.app, 'Frameworks/App.framework/flutter_assets')
         self.packages = {
-            'rurana': '../',
+            'vikunja_app': '../',
             'vikunja_logic': '../packages/vikunja_logic',
             'flutter': f'file://{self.sdk}/packages/flutter',
             'flutter_test': f'file://{self.sdk}/packages/flutter_test',
@@ -70,12 +70,12 @@ class CheckTest(unittest.TestCase):
               'image_picker\n\n' + BSD + SEPARATOR + 'aFileChooser\n\nMIT')
         write(os.path.join(self.cache, 'objective_c-9.0.0/LICENSE'), BSD)
         write(os.path.join(self.root, 'app/lib/core/legal/app_licenses.dart'), APP_LICENSES)
-        for key, source in [('assets/legal/rurana.md', 'app/assets/legal/rurana.md'),
+        for key, source in [('assets/legal/vikunja_app.md', 'app/assets/legal/vikunja_app.md'),
                             ('packages/vikunja_logic/THIRD_PARTY_NOTICES.md',
                              'packages/vikunja_logic/THIRD_PARTY_NOTICES.md')]:
             write(os.path.join(self.root, source), f'# {key}\n')
             write(os.path.join(self.assets, key), f'# {key}\n')
-        self.notices = {'rurana': AGPL, 'flutter': FLUTTER, 'image_picker': BSD, 'aFileChooser': 'MIT',
+        self.notices = {'vikunja_app': AGPL, 'flutter': FLUTTER, 'image_picker': BSD, 'aFileChooser': 'MIT',
                         'objective_c': BSD}
         os.makedirs(os.path.join(self.app, 'Frameworks/Flutter.framework'))
         os.makedirs(os.path.join(self.app, 'Frameworks/objective_c.framework'))
@@ -132,9 +132,9 @@ class CheckTest(unittest.TestCase):
             f'NOTICES.Z lacks the licence of objective_c from {self.cache}/objective_c-9.0.0/NOTICES'])
 
     def test_the_repository_s_licence_under_another_name(self):
-        self.notices['vikunja_mobile'] = self.notices.pop('rurana')
+        self.notices['vikunja_mobile'] = self.notices.pop('vikunja_app')
         self.assertEqual(self.errors(), [
-            "NOTICES.Z does not list the repository's LICENSE under rurana (ownLicensePackage in "
+            "NOTICES.Z does not list the repository's LICENSE under vikunja_app (ownLicensePackage in "
             "app/lib/core/legal/app_licenses.dart) but under vikunja_mobile"])
 
     def test_a_framework_from_no_package(self):
@@ -152,10 +152,10 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(self.errors(), ['the native asset package objective_c is not in the pub workspace'])
 
     def test_a_legal_asset_missing_or_stale(self):
-        os.remove(os.path.join(self.assets, 'assets/legal/rurana.md'))
+        os.remove(os.path.join(self.assets, 'assets/legal/vikunja_app.md'))
         write(os.path.join(self.assets, 'packages/vikunja_logic/THIRD_PARTY_NOTICES.md'), 'old\n')
         self.assertEqual(self.errors(), [
-            'the legal asset assets/legal/rurana.md is not bundled, so the licence page leaves it out',
+            'the legal asset assets/legal/vikunja_app.md is not bundled, so the licence page leaves it out',
             f'the bundled packages/vikunja_logic/THIRD_PARTY_NOTICES.md differs from '
             f'{self.root}/packages/vikunja_logic/THIRD_PARTY_NOTICES.md',
         ])

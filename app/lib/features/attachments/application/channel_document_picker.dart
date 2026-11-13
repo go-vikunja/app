@@ -16,7 +16,7 @@ final _log = Logger('DocumentPicker');
 final class ChannelDocumentPicker {
   new({this._channel = const MethodChannel(channelName), this._excursions});
 
-  static const channelName = 'dev.coderoftime.rurana/documents';
+  static const channelName = 'io.vikunja.app/documents';
 
   final MethodChannel _channel;
   final AppExcursions? _excursions;

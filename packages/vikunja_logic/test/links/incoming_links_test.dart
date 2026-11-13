@@ -107,7 +107,7 @@ void main() {
         '   ',
         'tasks.example.com/share/$_hash/auth',
         'ftp://e.com/share/$_hash/auth',
-        'vikunja-dev.coderoftime.rurana://share/$_hash/auth',
+        'vikunja-io.vikunja.app://share/$_hash/auth',
         'https://e.com/share/${_hash.substring(1)}/auth',
         'https://e.com/share/${_hash}a/auth',
         'https://e.com/share/${_hash.substring(1)}-/auth',

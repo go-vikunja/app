@@ -1,6 +1,6 @@
-Rurana is an unofficial app for Vikunja, the open-source task manager you can run on your own server. It is not affiliated with or endorsed by the Vikunja project.
+Vikunja is the open-source task manager you can run on your own server. This is its app for iPhone and iPad.
 
-Sign in to your Vikunja server (version 2.3 or newer) — your own, your organisation's or a hosted one — or try the public demo. Rurana keeps a copy of your account on your iPhone or iPad, so your projects and tasks are there even without a connection.
+Sign in to your Vikunja server (version 2.3 or newer) — your own, your organisation's or a hosted one — or try the public demo. The app keeps a copy of your account on your iPhone or iPad, so your projects and tasks are there even without a connection.
 
 Works offline
 • Every screen reads from the copy on your device.
@@ -30,12 +30,12 @@ Also
 • Labels, teams, and projects shared with people and teams.
 • Your account settings, the two-factor status and the sessions signed in to your account.
 • On an iPad in landscape, and on a 13-inch iPad in portrait too, a task opens beside the list.
-• Light and dark mode, British English and German.
+• Light and dark mode, English and German.
 • For self-hosted setups: trust your server's own certificate or CA certificate, use a client certificate or access headers, and allow plain http only after you confirm it.
 
 Privacy
 • An optional app lock with Face ID, Touch ID or your passcode; task titles can be hidden in notifications and widgets.
-• No ads, no analytics, no tracking, no crash reporting. Rurana talks only to the servers you add. The developer runs no server and receives none of your data.
+• No ads, no analytics, no tracking, no crash reporting. The app talks only to the servers you add. The developer runs no server and receives none of your data.
 
 Open source
-Rurana is free software under the GNU Affero General Public License, version 3 or later.
+The app is free software under the GNU Affero General Public License, version 3 or later.

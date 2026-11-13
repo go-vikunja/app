@@ -1,71 +1,67 @@
 # Branding
 
-Name and logo of **Rurana**, an unofficial Vikunja mobile client. Its `applicationId` and bundle id are `dev.coderoftime.rurana`, renamed from `dev.coderoftime.vikunja` on 2026-11-02 ([D77](../docs/decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)).
+The app is called **Vikunja** and uses Vikunja's logo, the llama on the blue disc ([D83](../docs/decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)). Every icon is derived from the logo's SVG by script, with the icons of the previous official Vikunja app as the look to follow.
 
-The name and the logo, with every image derived from it, are not under the AGPL: all rights are reserved. The files may be passed on unmodified only as part of a copy of this repository or its history, or of an unmodified build published by Benedikt Lesch; an app built from modified source uses its own name and logo. [NOTICE.md](../NOTICE.md#name-and-logo) lists the files; the scripts and the Markdown files here are under the AGPL like the rest of the repository.
+![Preview: iOS light, dark and tinted; Android circle, squircle and teardrop masks; the themed icon in light and dark; 96 and 48 px; the status bar icon at 48 and 24 px; the in-app logo on dark and light](png/preview-sheet.png)
 
-The name was chosen by the owner on 2026-10-09 from the shortlist in [`explorations-v2/names.md`](explorations-v2/names.md). The logo is the illustrated llama with a check badge the owner chose on 2026-10-13 ([D42](../docs/decisions.md#d42-app-icon-the-illustrated-llama-every-variant-derived-by-script)); it replaced the "checkbox ears" icon of 2026-10-09, whose sources stay in [`explorations-v2/checkbox-ears/final/`](explorations-v2/checkbox-ears/final/).
+## Source
 
-![Preview: iOS light, dark and tinted; Android circle, squircle and teardrop masks; the themed icon in light and dark; 96 and 48 px; the status bar icon at 48 and 24 px; the in-app logo](png/preview-sheet.png)
+[`source/logo.svg`](source/logo.svg) is the only source:
 
-## Name: Rurana
+- **Origin:** [go-vikunja/vikunja](https://github.com/go-vikunja/vikunja), `frontend/originalMedia/images/logo.svg`, branch `main`
+- **Downloaded:** 2026-11-13, with the owner's OK; copied byte for byte
+- **Size:** 12,004 bytes
+- **SHA-256:** `c98852b27657462d26317d2c1318a68d4666020e1758a46d523c363446a6e80b`
 
-- **Home screen:** `Rurana` (6 characters)
-- **Store listing:** `Rurana` in both stores and languages; never "Vikunja" in the name, subtitle or keywords (owner decision of 2026-11-02, [docs/store-listing.md](../docs/store-listing.md))
-- **Store description:** must say that the app is unofficial and that the Vikunja project does not make or endorse it, and can explain the name: *"Rurana" is Quechua for "what is to be done".* No store text explains it yet; have a Quechua speaker confirm the wording before any does.
+`app/test/app/app_icons_test.dart` fails when the file no longer has this hash. To take a newer logo, replace the file, update the list and run the scripts below.
 
-Why Rurana:
-- **It leans towards Vikunja.** Quechua is the language "vicuña" (German *Vikunja*) comes from. *Rurana* is the *-na* form of *ruray* "to do": "that which is to be done" — literally a to-do.
-- **No overlap with other Vikunja clients.** No *Viku-*, no *-kuna* (the earlier working name Taskuna shared that ending with the iOS client Kuna).
-- **Easy to say.** EN "roo-RAH-nuh", DE "Ru-ra-na". ASCII only.
-- **No conflicts found** (2026-10-09): no app in the App Store (US, DE) or on Google Play, no brand or trademark in web results, no bad meaning in EN, DE, ES or PT (ES/PT ears may hear *rana* "frog", which is harmless).
+The SVG is 256 × 256 user units: 16 paths with solid fills, no gradients, no external references. One path is the blue disc; the others draw the llama.
 
-Rejected names and the reasons are in [`explorations-v2/names.md`](explorations-v2/names.md) (round 2) and in the git history of this file (round 1: Taskuna, Vicudo, Puna, Chaku, Kunja; never usable: Viku/Vicu, Kuna, Cria, anything containing "Vikunja", Llama/Vicuna/Alpaca/Guanaco).
+## Derivation
 
-**No formal trademark search was done** (EUIPO, DPMA, USPTO). Do one before the first store release.
+[`build-icons.sh`](build-icons.sh) never edits the source. It writes two copies of the SVG into a temporary folder (python3's `xml.etree`), renders them with ImageMagick's own SVG renderer (`MSVG:`) at 4096 px and scales every result down with Lanczos:
 
-## Logo: llama with a check badge
-
-A white, front-facing llama bust with tall ears on a blue-to-teal gradient, and an orange check badge on the lower right: a camelid for Vikunja and a done task for a to-do app.
-
-- **Source:** [`source/logo-llama.jpg`](source/logo-llama.jpg), a 2000 × 2000 px raster illustration supplied by the owner. There is no vector source; every other asset is derived from it by [`build-icons.sh`](build-icons.sh).
-- **Derived layers:** the background is modelled as a four-corner gradient, so the llama comes off it with soft edges and without a blue fringe (the edge colours are un-mixed against the model); the badge is cut out as an anti-aliased disk.
-- **Monochrome glyph** (Android themed icon, status bar icon): the llama silhouette with the eyes, the muzzle (keeping nose and mouth) and the inner ears cut out, and the badge as a disk with the check cut out. The system tints it: dark on light in light mode, light on dark in dark mode.
-- **Risk to weigh before the store release:** an illustrated front-facing llama head is closer to Vikunja's own artwork and to other llama logos (Ollama) than the previous checkbox-ears icon was; D15's check with the Vikunja maintainers covers it.
+- **The llama:** the logo without its blue disc.
+- **The glyph** (Android themed icon, status bar icon): the llama's silhouette with the eyes, the nose and mouth and the inner ears cut out; the muzzle and the wool curls stay filled. The system tints it: dark on light in light mode, light on dark in dark mode.
+- **The neck:** in the logo it ends in the disc's curve. In the icons it runs off the bottom edge: its sides are continued as straight lines with the slope they have above the curve.
+- **Adaptive layout** (108 dp canvas, 1024 px), as in the old app's adaptive icon: the head 252 px wide, the tips of the ears at y = 214, the head and the ears inside the 66 dp safe zone (a circle of radius 313 px around the centre), so no launcher mask clips them.
+- **iOS:** the llama where the logo has it, on full-bleed blue, as in the old app's iOS icon.
+- **Status bar icon:** the glyph's head down to the top of the neck.
 
 ### Colours
 
 | Token | Hex | Use |
 |---|---|---|
-| Gradient top left | `#3266DE` | Background, from the source (`rgb(50,102,222)`) |
-| Gradient top right / bottom left | `#2092C4` / `#1E90C2` | Background corners |
-| Gradient bottom right | `#0AAFAB` | Background, teal end |
-| Wool | `#F7F3ED` | The llama |
-| Muzzle | `#C8C9CD` | Muzzle grey |
-| Badge | `#FF8130` | Check badge |
-| Theme seed | `#1973FF` | `AppTheme.seedColor` in `app/lib/app/theme/app_theme.dart` (unchanged; blue fits the gradient) |
+| Vikunja blue | `#196AFF` | The logo's disc; the adaptive background, the iOS icon and the Play graphics |
+| Wool | `#FFFFFF` | The llama |
+| Curls | `#FAEEE0` | The wool curls |
+| Muzzle | `#F1E6D3` | The muzzle |
+| Inner ears | `#F1D7D4` | The inner ears |
+| Eyes | `#2C3844` | The closed eyes |
+| Nose and mouth | `#494949` | The nose and the mouth |
+| Theme seed | `#1973FF` | `AppTheme.seedColor` in `app/lib/app/theme/app_theme.dart`, unchanged: the Vikunja web's primary blue ([D56](../docs/decisions.md#d56-design-after-the-owners-mockups-blue-scheme-cards-one-task-row)) |
 
 ## Files
 
 | File | What it is |
 |---|---|
-| `source/logo-llama.jpg` | The logo as supplied, 2000 × 2000 px; the only source |
-| `build-icons.sh` | Regenerates every PNG in `png/` from the source (ImageMagick 7 and python3) |
+| `source/logo.svg` | Vikunja's logo as downloaded; the only source |
+| `build-icons.sh` | Regenerates every icon PNG in `png/` from the source (ImageMagick 7 and python3) |
 | `preview.sh` | Renders `png/preview-sheet.png` from the PNGs (ImageMagick 7 and a TrueType font) |
 | `build-store-graphics.sh` | Builds the two Google Play graphics below from `png/icon-ios-1024.png` and `png/icon-ios-dark-1024.png` (ImageMagick 7) |
-| `png/icon-foreground-1024.png` | Android adaptive icon foreground, RGBA: 108 dp canvas, the head inside the 66 dp safe zone, the neck running past the bottom, the badge on the lower right |
-| `png/icon-background-1024.png` | Android adaptive icon background, RGB: the gradient |
+| `png/icon-foreground-1024.png` | Android adaptive icon foreground, RGBA: 108 dp canvas, the head inside the 66 dp safe zone, the neck running off the bottom |
+| `png/icon-background-1024.png` | Android adaptive icon background, RGB: solid `#196AFF` |
 | `png/icon-monochrome-1024.png` | Android 13+ themed icon layer, white with alpha (only alpha counts), same layout as the foreground |
 | `png/icon-android-legacy-1024.png` | RGBA: the visible 72 dp of the adaptive layers as a rounded square, for Android 7 launchers without adaptive icons |
-| `png/icon-ios-1024.png` | iOS icon, RGB, **no alpha channel** (App Store requirement): the illustration itself |
-| `png/icon-ios-dark-1024.png` | iOS 18 dark icon, RGBA: llama and badge on transparency (the system adds the dark background); also the source of the tinted icon |
-| `png/logo-1024.png` | In-app logo: the illustration as a rounded square |
-| `png/notification-960.png` | Status bar icon source: the monochrome head, white on transparent, inside the 22 dp live area |
+| `png/icon-ios-1024.png` | iOS icon, RGB, **no alpha channel** (App Store requirement): the llama on full-bleed blue |
+| `png/icon-ios-dark-1024.png` | iOS 18 dark icon, RGBA: the same llama at the same place on transparency (the system adds the dark background); also the source of the tinted icon |
+| `png/logo-1024.png` | In-app logo, RGBA: the round logo itself, with transparent corners |
+| `png/notification-960.png` | Status bar icon source: the glyph's head, white on transparent, inside the 22 dp live area |
 | `png/preview-sheet.png` | Preview of every variant |
 | `png/play-icon-512.png` | Google Play icon, 512 × 512, 32-bit PNG with an opaque alpha channel: the iOS icon scaled down, full bleed, because Play rounds the corners and adds the shadow itself |
-| `png/feature-graphic-1024x500.png` | Google Play feature graphic, 1024 × 500, RGB without alpha: the llama and the badge of the iOS dark icon, centred and flush with the bottom, on the icon's gradient; no text, so it serves every language |
-| `explorations-v2/` | Round 2 of the first branding: six concepts, blind tests, the four finalists, the checkbox-ears sources, `names.md` |
-| `explorations-v1/` | Round 1 (rejected) |
+| `png/feature-graphic-1024x500.png` | Google Play feature graphic, 1024 × 500, RGB without alpha: the llama of the iOS dark icon, centred and flush with the bottom, on `#196AFF`; no text, so it serves every language |
+
+The llama of Rurana, the app's former name (`source/logo-llama.jpg`, `explorations-v1/`, `explorations-v2/`), and the "Name and logo" terms in [NOTICE.md](../NOTICE.md#name-and-logo) stay until step 38d, which settles the terms for Vikunja's name and logo; until then NOTICE.md's file table still calls the files above derivatives of that llama.
 
 ## Regenerating
 
@@ -74,6 +70,8 @@ A white, front-facing llama bust with tall ears on a blue-to-teal gradient, and 
 ./branding/preview.sh
 ./branding/build-store-graphics.sh
 ```
+
+ImageMagick 7 renders the SVG itself; rsvg, Inkscape or cairosvg are not needed.
 
 ## Using the assets in the app
 
@@ -94,6 +92,8 @@ flutter_launcher_icons 0.14.4 rewrites `ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASS
 | iOS 18 dark | `icon-ios-dark-1024.png` (`image_path_ios_dark_transparent`) |
 | iOS 18 tinted | `icon-ios-dark-1024.png`, desaturated by the tool (`image_path_ios_tinted_grayscale`, `desaturate_tinted_to_grayscale_ios: true`) |
 
+The tool's scaling rounds: at hdpi a regular grid of background pixels comes out one step off `#196AFF`, which no one can see.
+
 The connect, first-sync and notification setup screens show the logo at 72 × 72 pt from `app/assets/branding/logo.png`, and the notifications use the status bar icon from `app/android/app/src/main/res/drawable-*dpi/ic_notification.png`:
 
 ```sh
@@ -104,8 +104,9 @@ for d in mdpi:24 hdpi:36 xhdpi:48 xxhdpi:72 xxxhdpi:96; do n=${d%%:*}; px=${d##*
   magick ../branding/png/notification-960.png -filter Lanczos -resize ${px}x${px} -strip -define png:color-type=6 android/app/src/main/res/drawable-$n/ic_notification.png; done
 ```
 
+`app/test/app/app_icons_test.dart` checks the sizes of these files, the white status bar icon, the blue background, the opaque iOS icon and the in-app logo's transparent corners.
+
 ## Open points
 
-- **Vikunja maintainers:** [D15](../docs/decisions.md#d15-app-id-devcoderoftimerurana-and-the-name-rurana) says to check the use of the name and logo with them before the store release (step 37). The store name no longer uses "Vikunja", and since 2026-11-02 neither does the app id; the icon still leans on Vikunja's artwork, which Apple's guideline 4.1(c) ties to the other developer's approval. The check is planned in step 37d before 1.0.0: [docs/beta.md](../docs/beta.md) carries the draft message, which the owner sends; the answer is kept, as Apple accepts such an email as evidence.
-- **A vector source** would keep the small sizes and the glyph crisper than a raster derivation; worth commissioning before the store release.
-- **Licence:** decided with [Q3](../docs/open-questions.md#q3-licence-and-distribution) on 2026-10-27 ([D67](../docs/decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)): the name and the logo are not under the AGPL, and all rights are reserved, as above and in [NOTICE.md](../NOTICE.md#name-and-logo). Still open: the owner confirms the rights to the illustration (`source/logo-llama.jpg`, supplied by the owner).
+- **Step 38d:** the terms for Vikunja's name and logo in `NOTICE.md`, the About page and this file, and the removal of the llama files above.
+- **Step 38b:** the previous app's status bar icon was called `vikunja_notification_logo`; 38b adds that name as an alias for the update from the old app. The icon here keeps the name `ic_notification`.

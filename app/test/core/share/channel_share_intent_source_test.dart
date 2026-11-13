@@ -61,7 +61,7 @@ void main() {
         'files': [
           {'uri': 'content://x/1', 'name': '../../databases/vikunja.db'},
           {'uri': 'content://x/2', 'name': 'a\u202egnp.exe'},
-          {'uri': 'file:///data/data/dev.coderoftime.rurana/x', 'name': 'x'},
+          {'uri': 'file:///data/data/io.vikunja.app/x', 'name': 'x'},
         ],
       });
 

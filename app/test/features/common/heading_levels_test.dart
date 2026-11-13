@@ -117,7 +117,7 @@ void main() {
       ListView(
         children: const [
           ListSectionHeader(title: 'Overdue', count: 3),
-          FormSectionTitle('Colour'),
+          FormSectionTitle('Color'),
           DetailSectionHeader(title: 'Attachments'),
           EmptyState(icon: Icons.inbox, title: 'Nothing here', body: 'Yet.'),
         ],
@@ -125,7 +125,7 @@ void main() {
     );
 
     expectHeading(tester, find.text('Overdue'), 2);
-    expectHeading(tester, find.text('Colour'), 2);
+    expectHeading(tester, find.text('Color'), 2);
     expectHeading(tester, find.text('Attachments'), 2);
     expectHeading(tester, find.text('Nothing here'), 2);
   });

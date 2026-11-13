@@ -6,7 +6,7 @@ import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
 import 'package:vikunja_mobile/core/links/deep_link_relay.dart';
 
 void main() {
-  const scheme = 'vikunja-dev.coderoftime.rurana';
+  const scheme = 'vikunja-io.vikunja.app';
   final taskLink = Uri.parse('$scheme://task/12');
   final identifierLink = Uri.parse('$scheme://task/PROJ-12?account=abc');
   final oauthCallback = Uri.parse('$scheme://oauth/callback?code=x&state=y');
@@ -86,7 +86,7 @@ void main() {
       expect(relay.accept(taskLink), isTrue);
       expect(relay.accept(identifierLink), isTrue);
       expect(
-        relay.accept(Uri.parse('VIKUNJA-dev.CoderOfTime.rurana://Task/7')),
+        relay.accept(Uri.parse('VIKUNJA-IO.Vikunja.APP://Task/7')),
         isTrue,
       );
       await pumpEventQueue();

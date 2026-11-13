@@ -197,7 +197,7 @@ void main() {
           isNot(anyOf(contains('authorization'), contains('cookie'))),
         );
       }
-      expect(preConsentProbeKey, 'rurana.preConsentProbe');
+      expect(preConsentProbeKey, 'vikunja.preConsentProbe');
     });
 
     test('probes both versions at the same time', () async {

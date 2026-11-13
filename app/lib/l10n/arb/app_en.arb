@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appTitle": "Rurana",
+  "appTitle": "Vikunja",
   "@appTitle": {
     "description": "Name of the app, shown in the task switcher and on the connect screen. A brand name: do not translate."
   },
@@ -162,7 +162,7 @@
   "tierOauthBody": "The app works with this server. A few newer features need Vikunja 2.4 or newer.",
   "tierOauthV2UnreachableBody": "The app works with this server, but its newer API (/api/v2) could not be reached, so a few features are unavailable. A reverse proxy may be blocking it.",
   "unsupportedTitle": "This server is too old",
-  "unsupportedBody": "Rurana needs Vikunja {minimum} or newer. This server runs {found}.",
+  "unsupportedBody": "This app needs Vikunja {minimum} or newer. This server runs {found}.",
   "@unsupportedBody": {
     "placeholders": {
       "minimum": {
@@ -176,11 +176,11 @@
     }
   },
   "unsupportedSuggestion": "Ask whoever runs the server to update Vikunja.",
-  "unsupportedUnknownVersionTitle": "Server version not recognised",
+  "unsupportedUnknownVersionTitle": "Server version not recognized",
   "@unsupportedUnknownVersionTitle": {
     "description": "Title of the card on the server overview screen when the server reports a version the app cannot read."
   },
-  "unsupportedUnknownVersionBody": "Rurana needs Vikunja {minimum} or newer. This server reports a version the app does not recognise.",
+  "unsupportedUnknownVersionBody": "This app needs Vikunja {minimum} or newer. This server reports a version the app does not recognize.",
   "@unsupportedUnknownVersionBody": {
     "description": "Body of the card on the server overview screen when the server reports a version the app cannot read; minimum is the oldest Vikunja version the app supports.",
     "placeholders": {
@@ -235,11 +235,11 @@
   "motdHeading": "Message from the server",
   "legalImprint": "Imprint",
   "@legalImprint": {
-    "description": "A server's legal link that the server names exactly \"Imprint\" (its legal notice), on the server overview and in the Account tab's Server section; the server's other legal links show with the text its admin wrote, untranslated. Rurana's own legal notice is aboutLegalNotice."
+    "description": "A server's legal link that the server names exactly \"Imprint\" (its legal notice), on the server overview and in the Account tab's Server section; the server's other legal links show with the text its admin wrote, untranslated. The app's own legal notice is aboutLegalNotice."
   },
   "legalPrivacy": "Privacy policy",
   "@legalPrivacy": {
-    "description": "A server's legal link that the server names exactly \"Privacy Policy\", beside legalImprint. Rurana's own is aboutPrivacyPolicy."
+    "description": "A server's legal link that the server names exactly \"Privacy Policy\", beside legalImprint. The app's own is aboutPrivacyPolicy."
   },
   "legalOpenFailed": "The link could not be opened.",
   "continueToSignIn": "Continue to sign-in",
@@ -401,7 +401,7 @@
   "homeSignOutOfThisAccount": "Sign out of this account",
   "homeSigningOut": "Signing out…",
   "signOutDialogTitle": "Sign out?",
-  "signOutDialogBody": "Rurana will sign {account} out of {host} and delete this account's tasks saved on this device. You can sign in again at any time.",
+  "signOutDialogBody": "The app will sign {account} out of {host} and delete this account's tasks saved on this device. You can sign in again at any time.",
   "@signOutDialogBody": {
     "description": "Body of the sign-out confirmation for an account; account is its username, or its name with the username as in signOutDialogAccount, and host is the server's address.",
     "placeholders": {
@@ -429,7 +429,7 @@
       }
     }
   },
-  "signOutDialogSwitchesTo": "Rurana then switches to {name}.",
+  "signOutDialogSwitchesTo": "The app then switches to {name}.",
   "@signOutDialogSwitchesTo": {
     "placeholders": {
       "name": {
@@ -576,15 +576,15 @@
   "@projectsEmptyBody": {
     "description": "Body of the Projects tab's empty state when the account has no projects."
   },
-  "projectsFavouritesHeading": "Favourites",
-  "projectsFavouriteTasks": "Favourite tasks",
+  "projectsFavouritesHeading": "Favorites",
+  "projectsFavouriteTasks": "Favorite tasks",
   "@projectsFavouriteTasks": {
-    "description": "The row of the Favourites list in the Favourites section of the Projects tab; the list's own title is projectFavouritesTitle."
+    "description": "The row of the Favorites list in the Favorites section of the Projects tab; the list's own title is projectFavouritesTitle."
   },
   "projectsAllHeading": "All projects",
   "projectsNoneOpenTitle": "No project open",
   "@projectsNoneOpenTitle": {
-    "description": "Title beside the Projects tab's list on wide windows while no project, saved filter or Favourites list is open."
+    "description": "Title beside the Projects tab's list on wide windows while no project, saved filter or Favorites list is open."
   },
   "projectsNoneOpenBody": "Open a project from the list to see its tasks here.",
   "@projectsNoneOpenBody": {
@@ -592,7 +592,7 @@
   },
   "projectsShowSavedFilters": "Show saved filters",
   "@projectsShowSavedFilters": {
-    "description": "Checked item in the Projects tab's menu: whether the Saved filters section and favourite saved filters show."
+    "description": "Checked item in the Projects tab's menu: whether the Saved filters section and favorite saved filters show."
   },
   "projectsShowArchived": "Show archived projects",
   "projectArchived": "Archived",
@@ -607,7 +607,7 @@
   },
   "smartListOpenTaskCount": "{count, plural, =1{1 open task} other{{count} open tasks}}",
   "@smartListOpenTaskCount": {
-    "description": "Under the Favourites list in the Projects tab.",
+    "description": "Under the Favorites list in the Projects tab.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -657,15 +657,15 @@
       }
     }
   },
-  "favoritesEmptyTitle": "No favourite tasks",
-  "favoritesEmptyBody": "Mark a task as a favourite with its star to find it here.",
+  "favoritesEmptyTitle": "No favorite tasks",
+  "favoritesEmptyBody": "Mark a task as a favorite with its star to find it here.",
   "appearanceHeading": "Appearance",
   "@appearanceHeading": {
-    "description": "Account tab section with the theme (saved to the account), Use system colours and App language (both on this device)."
+    "description": "Account tab section with the theme (saved to the account), Use system colors and App language (both on this device)."
   },
   "appearanceTheme": "Theme",
   "@appearanceTheme": {
-    "description": "Title of the row in the Account tab's Appearance section that picks light, dark or the system's mode for the account (the web's colour scheme), with appearanceThemeLight, appearanceThemeSystem and appearanceThemeDark side by side below it."
+    "description": "Title of the row in the Account tab's Appearance section that picks light, dark or the system's mode for the account (the web's color scheme), with appearanceThemeLight, appearanceThemeSystem and appearanceThemeDark side by side below it."
   },
   "appearanceThemeLight": "Light",
   "@appearanceThemeLight": {
@@ -685,12 +685,12 @@
   },
   "appearanceOnThisDevice": "On this device",
   "@appearanceOnThisDevice": {
-    "description": "Small line under the Use system colours and App language rows in the Account tab's Appearance section: the setting stays on this device. Pairs with appearanceSavedToAccount."
+    "description": "Small line under the Use system colors and App language rows in the Account tab's Appearance section: the setting stays on this device. Pairs with appearanceSavedToAccount."
   },
-  "appearanceSystemColors": "Use system colours",
-  "appearanceSystemColorsSubtitle": "The colours of your wallpaper instead of the app's blue",
+  "appearanceSystemColors": "Use system colors",
+  "appearanceSystemColorsSubtitle": "The colors of your wallpaper instead of the app's blue",
   "@appearanceSystemColorsSubtitle": {
-    "description": "Under the switch for Android's dynamic colours; the switch applies to the whole device."
+    "description": "Under the switch for Android's dynamic colors; the switch applies to the whole device."
   },
   "projectChildCount": "{count, plural, =1{1 subproject} other{{count} subprojects}}",
   "@projectChildCount": {
@@ -805,9 +805,9 @@
   "@projectUnknownTitle": {
     "description": "App bar title while the project of a task list is not in the local project list."
   },
-  "favouriteLabel": "Favourite",
+  "favouriteLabel": "Favorite",
   "@favouriteLabel": {
-    "description": "Semantic label of the star shown on favourite projects and tasks."
+    "description": "Semantic label of the star shown on favorite projects and tasks."
   },
   "projectTasksLoading": "Loading tasks…",
   "projectTasksEmptyTitle": "No open tasks",
@@ -1198,7 +1198,7 @@
   },
   "retry": "Try again",
   "firstSyncTitle": "Getting your tasks",
-  "firstSyncBody": "Rurana is saving everything from {host} on this device, so it works offline too.",
+  "firstSyncBody": "The app is saving everything from {host} on this device, so it works offline too.",
   "@firstSyncBody": {
     "placeholders": {
       "host": {
@@ -1294,13 +1294,13 @@
     "description": "Snackbar after a task was marked as done, with an Undo action."
   },
   "undo": "Undo",
-  "taskAddFavourite": "Add to favourites",
+  "taskAddFavourite": "Add to favorites",
   "@taskAddFavourite": {
-    "description": "Tooltip and screen reader label of the star button of a task that is not among the favourites."
+    "description": "Tooltip and screen reader label of the star button of a task that is not among the favorites."
   },
-  "taskRemoveFavourite": "Remove from favourites",
+  "taskRemoveFavourite": "Remove from favorites",
   "@taskRemoveFavourite": {
-    "description": "Tooltip and screen reader label of the star button of a task that is among the favourites."
+    "description": "Tooltip and screen reader label of the star button of a task that is among the favorites."
   },
   "taskNotYetSynced": "Not yet synced",
   "taskDelete": "Delete task",
@@ -1314,9 +1314,9 @@
       }
     }
   },
-  "taskDeleteDialogBodyTrash": "“{title}” moves to the bin, for everyone. It can be restored from the bin on the Account tab for 30 days.",
+  "taskDeleteDialogBodyTrash": "“{title}” moves to the trash, for everyone. It can be restored from the trash on the Account tab for 30 days.",
   "@taskDeleteDialogBodyTrash": {
-    "description": "Body of the delete-task confirmation on servers with a bin (Vikunja 2.8.0 and later), for a signed-in user. The bin is the server's trash; its page is on the Account tab.",
+    "description": "Body of the delete-task confirmation on servers that support the trash (Vikunja 2.8.0 and later), for a signed-in user. The trash page is on the Account tab.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -1324,9 +1324,9 @@
       }
     }
   },
-  "taskDeleteDialogBodyTrashGuest": "“{title}” moves to the bin, for everyone. It can be restored from there for 30 days.",
+  "taskDeleteDialogBodyTrashGuest": "“{title}” moves to the trash, for everyone. It can be restored from there for 30 days.",
   "@taskDeleteDialogBodyTrashGuest": {
-    "description": "Body of the delete-task confirmation on servers with a bin, for a link-share guest, who has no bin page.",
+    "description": "Body of the delete-task confirmation on servers that support the trash, for a link-share guest, who has no trash page.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -1334,9 +1334,9 @@
       }
     }
   },
-  "taskDeleteDialogBodyUnsent": "“{title}” hasn't reached the server yet. It is deleted and won't be in the bin.",
+  "taskDeleteDialogBodyUnsent": "“{title}” hasn't reached the server yet. It is deleted and won't be in the trash.",
   "@taskDeleteDialogBodyUnsent": {
-    "description": "Body of the delete-task confirmation on servers with a bin, for signed-in users and guests, when the task was created on this device and may not have reached the server yet. Such a task does not go to the bin.",
+    "description": "Body of the delete-task confirmation on servers that support the trash, for signed-in users and guests, when the task was created on this device and may not have reached the server yet. Such a task does not go to the trash.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -1348,15 +1348,15 @@
   "taskDeleteDialogConfirm": "Delete",
   "taskDeleted": "Task deleted",
   "@taskDeleted": {
-    "description": "Snackbar after a task was deleted: on servers without a bin, and on servers with one for a task whose create never reached the server or was refused. There it comes with Undo while the delete is still queued."
+    "description": "Snackbar after a task was deleted: on servers that don't support the trash, and on servers that support it for a task whose create never reached the server or was refused. There it comes with Undo while the delete is still queued."
   },
-  "taskMovedToTrash": "Task moved to the bin",
+  "taskMovedToTrash": "Task moved to the trash",
   "@taskMovedToTrash": {
-    "description": "Snackbar after a task was deleted on a server with a bin, with an Undo action."
+    "description": "Snackbar after a task was deleted on a server that supports the trash, with an Undo action."
   },
   "taskRestored": "Task restored",
   "@taskRestored": {
-    "description": "Snackbar after Undo brought a deleted task back; also announced on the bin page after Restore."
+    "description": "Snackbar after Undo brought a deleted task back; also announced on the trash page after Restore."
   },
   "accountPendingChanges": "Pending changes: {count}",
   "@accountPendingChanges": {
@@ -1384,14 +1384,14 @@
   "syncProblemDeleteFailed": "The task could not be deleted.",
   "syncProblemForbidden": "You no longer have access to its project.",
   "syncProblemProjectMissing": "Its project no longer exists on the server.",
-  "syncProblemProjectInTrash": "Its project is in the bin on the server.",
+  "syncProblemProjectInTrash": "Its project is in the trash on the server.",
   "@syncProblemProjectInTrash": {
-    "description": "Entry in the Sync problems section of the Account tab: the task's project is in the server's bin."
+    "description": "Entry in the Sync problems section of the Account tab: the task's project is in the server's trash."
   },
   "syncProblemTaskMissing": "The task no longer exists on the server.",
-  "syncProblemTaskInTrash": "The task is in the bin on the server.",
+  "syncProblemTaskInTrash": "The task is in the trash on the server.",
   "@syncProblemTaskInTrash": {
-    "description": "Entry in the Sync problems section of the Account tab: the task is in the server's bin."
+    "description": "Entry in the Sync problems section of the Account tab: the task is in the server's trash."
   },
   "syncProblemLabelMissing": "One of its labels no longer exists on the server.",
   "syncProblemUserMissing": "One of its assignees no longer exists on the server.",
@@ -1484,9 +1484,9 @@
       }
     }
   },
-  "taskEditColour": "Colour",
-  "taskEditNoColour": "No colour",
-  "taskEditColourSemantics": "Colour {hex}",
+  "taskEditColour": "Color",
+  "taskEditNoColour": "No color",
+  "taskEditColourSemantics": "Color {hex}",
   "@taskEditColourSemantics": {
     "placeholders": {
       "hex": {
@@ -1622,7 +1622,7 @@
       }
     }
   },
-  "quickAddMagicOnly": "Only magic words, so nothing is recognised: the task will be called “{title}”.",
+  "quickAddMagicOnly": "Only magic words, so nothing is recognized: the task will be called “{title}”.",
   "@quickAddMagicOnly": {
     "placeholders": {
       "title": {
@@ -1755,7 +1755,7 @@
   "quickAddSuggestions": "Suggestions",
   "quickAddHelp": "How Quick Add Magic works",
   "quickAddHelpTitle": "Quick Add Magic",
-  "quickAddHelpIntro": "Write the whole task in one line. These parts are recognised, marked in colour and taken out of the title:",
+  "quickAddHelpIntro": "Write the whole task in one line. These parts are recognized, marked in color and taken out of the title:",
   "quickAddHelpLabelsTitle": "Labels",
   "quickAddHelpLabelsBody": "A word starting with {prefix}. Labels that don't exist yet are created when you add the task; without a connection the word stays in the title. Use quotes for spaces.",
   "@quickAddHelpLabelsBody": {
@@ -1811,7 +1811,7 @@
     "description": "Tip in the Good to know section of the Quick Add help sheet: pasting text with several lines adds one task for each line."
   },
   "quickAddHelpExampleTitle": "Example",
-  "quickAddHelpExampleTask": "Change tyres",
+  "quickAddHelpExampleTask": "Change tires",
   "@quickAddHelpExampleTask": {
     "description": "The title part of the example line in the quick-add help."
   },
@@ -2213,7 +2213,7 @@
     }
   },
   "notificationSetupTitle": "Stay on top of your tasks",
-  "notificationSetupBody": "Rurana can notify you on this device, without the server having to send anything:",
+  "notificationSetupBody": "The app can notify you on this device, without the server having to send anything:",
   "@notificationSetupBody": {
     "description": "Body of the notification setup screen, followed by a list of what the app notifies about (reminders, due dates, and for which tasks), hence the colon. The app schedules these notifications on the device itself."
   },
@@ -2268,7 +2268,7 @@
   },
   "notificationsSendTest": "Send a test notification",
   "notificationTestTitle": "Test notification",
-  "notificationTestBody": "Notifications from Rurana work on this device.",
+  "notificationTestBody": "The app's notifications work on this device.",
   "@notificationTestBody": {
     "description": "Body of the test notification sent by Send a test notification in the Notifications section of the Account tab."
   },
@@ -2469,7 +2469,7 @@
       }
     }
   },
-  "sessionEndedNotificationBody": "Your session as {username} has ended. Rurana cannot sync this account until you sign in again.",
+  "sessionEndedNotificationBody": "Your session as {username} has ended. The app cannot sync this account until you sign in again.",
   "@sessionEndedNotificationBody": {
     "description": "Body of the OS notification when the server ended an account's session; username is the account's username.",
     "placeholders": {
@@ -2984,9 +2984,9 @@
   "@projectInboxTitle": {
     "description": "A project whose title is exactly \"Inbox\", the name the server gives every user's first project."
   },
-  "projectFavouritesTitle": "Favourites",
+  "projectFavouritesTitle": "Favorites",
   "@projectFavouritesTitle": {
-    "description": "The list of the user's favourite tasks, which the server offers as a project of its own while any task is a favourite."
+    "description": "The list of the user's favorite tasks, which the server offers as a project of its own while any task is a favorite."
   },
   "overviewFilterNotice": "Filter: {title}, as of {when}. Tasks created here show after the next sync.",
   "@overviewFilterNotice": {
@@ -3530,10 +3530,10 @@
   "@editorImageInserted": {
     "description": "Announced to screen readers once an uploaded image is in the description."
   },
-  "shareSignedOut": "Sign in to Rurana first, then share again.",
+  "shareSignedOut": "Sign in to Vikunja first, then share again.",
   "sharePickAccountTitle": "Share to which account?",
   "sharePickAccountBody": "What you share goes to that account's server.",
-  "shareSheetTitle": "Share to Rurana",
+  "shareSheetTitle": "Share to Vikunja",
   "shareAddToTask": "Add to task",
   "shareFiles": "Files",
   "shareRemoveFile": "Remove {name}",
@@ -3723,17 +3723,17 @@
     "description": "Screen reader hint on a project in the task's project path."
   },
   "taskOpenNotFound": "This task wasn't found",
-  "taskOpenInTrash": "This task is in the bin",
+  "taskOpenInTrash": "This task is in the trash",
   "@taskOpenInTrash": {
-    "description": "Snackbar when a task opened from a link, a notification or the inbox's deleted entry is in the server's bin."
+    "description": "Snackbar when a task opened from a link, a notification or the inbox's deleted entry is in the server's trash."
   },
-  "taskOpenProjectInTrash": "This task's project is in the bin",
+  "taskOpenProjectInTrash": "This task's project is in the trash",
   "@taskOpenProjectInTrash": {
-    "description": "Snackbar when the project of a task opened from a link or notification is in the server's bin."
+    "description": "Snackbar when the project of a task opened from a link or notification is in the server's trash."
   },
   "trashRestore": "Restore",
   "@trashRestore": {
-    "description": "Action of the snackbar saying a task opened from a link or notification is in the bin."
+    "description": "Action of the snackbar saying a task opened from a link or notification is in the trash."
   },
   "taskOpenForbidden": "You don't have access to this task",
   "taskOpenOffline": "This task isn't on this device. Connect to open it.",
@@ -3808,9 +3808,9 @@
     "description": "Helper text under the identifier field of the project edit page. The web's task links name a task by the project's identifier followed by the task's number; the app does not show them."
   },
   "projectIdentifierTaken": "This identifier is already in use. Identifiers are unique on the whole server.",
-  "projectIdentifierTakenTrash": "This identifier is already in use. Identifiers are unique on the whole server, and a project in the bin keeps its identifier for 30 days.",
+  "projectIdentifierTakenTrash": "This identifier is already in use. Identifiers are unique on the whole server, and a project in the trash keeps its identifier for 30 days.",
   "@projectIdentifierTakenTrash": {
-    "description": "Error of the identifier field of the project edit page on servers with a bin; also announced."
+    "description": "Error of the identifier field of the project edit page on servers that support the trash; also announced."
   },
   "projectGoneTitle": "This project no longer exists",
   "projectGoneBody": "It may have been deleted, here or on the web.",
@@ -3841,10 +3841,10 @@
   "projectUnarchivedDone": "Project unarchived",
   "projectArchiveDefaultHint": "Your default project can't be archived.",
   "projectNewSubproject": "New subproject",
-  "projectAddToFavourites": "Add to favourites",
-  "projectRemoveFromFavourites": "Remove from favourites",
-  "projectFavourited": "Added to favourites",
-  "projectUnfavourited": "Removed from favourites",
+  "projectAddToFavourites": "Add to favorites",
+  "projectRemoveFromFavourites": "Remove from favorites",
+  "projectFavourited": "Added to favorites",
+  "projectUnfavourited": "Removed from favorites",
   "projectDelete": "Delete",
   "projectDeleteTitle": "Delete “{project}”?",
   "@projectDeleteTitle": {
@@ -3893,9 +3893,9 @@
       }
     }
   },
-  "projectTrashTasks": "{count, plural, =0{It has no tasks. It moves to the bin, for everyone.} =1{It moves to the bin with {count} task, for everyone.} other{It moves to the bin with {count} tasks, for everyone.}}",
+  "projectTrashTasks": "{count, plural, =0{It has no tasks. It moves to the trash, for everyone.} =1{It moves to the trash with {count} task, for everyone.} other{It moves to the trash with {count} tasks, for everyone.}}",
   "@projectTrashTasks": {
-    "description": "Confirmation for deleting a project on servers with a bin: what deleting a project without subprojects moves to the bin; counts done tasks too.",
+    "description": "Confirmation for deleting a project on servers that support the trash: what deleting a project without subprojects moves to the trash; counts done tasks too.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -3903,9 +3903,9 @@
       }
     }
   },
-  "projectTrashTasksAndSubprojects": "It moves to the bin with {subprojects, plural, =1{{subprojects} subproject} other{{subprojects} subprojects}} and {tasks, plural, =0{no tasks} =1{{tasks} task} other{{tasks} tasks}}, for everyone.",
+  "projectTrashTasksAndSubprojects": "It moves to the trash with {subprojects, plural, =1{{subprojects} subproject} other{{subprojects} subprojects}} and {tasks, plural, =0{no tasks} =1{{tasks} task} other{{tasks} tasks}}, for everyone.",
   "@projectTrashTasksAndSubprojects": {
-    "description": "Confirmation for deleting a project on servers with a bin: the subprojects at every level and the tasks of the project and all its subprojects move to the bin with it.",
+    "description": "Confirmation for deleting a project on servers that support the trash: the subprojects at every level and the tasks of the project and all its subprojects move to the trash with it.",
     "placeholders": {
       "tasks": {
         "type": "int",
@@ -3917,13 +3917,13 @@
       }
     }
   },
-  "projectTrashEverything": "It moves to the bin with its tasks and subprojects, for everyone.",
+  "projectTrashEverything": "It moves to the trash with its tasks and subprojects, for everyone.",
   "@projectTrashEverything": {
-    "description": "Confirmation for deleting a project on servers with a bin, when its tasks could not be counted."
+    "description": "Confirmation for deleting a project on servers that support the trash, when its tasks could not be counted."
   },
   "projectTrashIncludesDefault": "This includes your default project “{project}”. It stops being your default project, even if it is restored.",
   "@projectTrashIncludesDefault": {
-    "description": "Added to the delete confirmation on servers with a bin when the user's default project is in the project's subtree. The server unsets the default project, and a restore does not set it again.",
+    "description": "Added to the delete confirmation on servers that support the trash when the user's default project is in the project's subtree. The server unsets the default project, and a restore does not set it again.",
     "placeholders": {
       "project": {
         "type": "String",
@@ -3931,18 +3931,18 @@
       }
     }
   },
-  "projectTrashRestorable": "The project can be restored from the bin on the Account tab for 30 days.",
+  "projectTrashRestorable": "The project can be restored from the trash on the Account tab for 30 days.",
   "@projectTrashRestorable": {
-    "description": "Last paragraph of the confirmation for deleting a project on servers with a bin."
+    "description": "Last paragraph of the confirmation for deleting a project on servers that support the trash."
   },
   "projectDeleted": "Project deleted",
-  "projectMovedToTrash": "Project moved to the bin",
+  "projectMovedToTrash": "Project moved to the trash",
   "@projectMovedToTrash": {
-    "description": "Snackbar after a project was deleted on a server with a bin, with an Undo action."
+    "description": "Snackbar after a project was deleted on a server that supports the trash, with an Undo action."
   },
   "projectRestored": "Project restored",
   "@projectRestored": {
-    "description": "Snackbar after Undo brought a deleted project back; also announced on the bin page after Restore."
+    "description": "Snackbar after Undo brought a deleted project back; also announced on the trash page after Restore."
   },
   "projectChangeNeedsConnection": "Managing projects needs a connection to the server.",
   "projectChangeUnconfirmed": "Couldn't confirm the change. Check your connection and pull down to refresh.",
@@ -4149,10 +4149,10 @@
   "savedFilterDescriptionLabel": "Description",
   "savedFilterIncludeNulls": "Include tasks without a value",
   "savedFilterIncludeNullsHint": "Also lists tasks that have no value where the filter compares one, such as tasks without a due date.",
-  "savedFilterFavourite": "Favourite",
-  "savedFilterFavouriteHint": "Shows it among the favourites on the Projects tab.",
+  "savedFilterFavourite": "Favorite",
+  "savedFilterFavouriteHint": "Shows it among the favorites on the Projects tab.",
   "@savedFilterFavouriteHint": {
-    "description": "Subtitle of the Favourite switch on the saved filter form."
+    "description": "Subtitle of the Favorite switch on the saved filter form."
   },
   "savedFilterFilterRequired": "A saved filter needs a filter.",
   "savedFilterCreated": "Saved filter created",
@@ -4317,7 +4317,7 @@
   "taskDetailAddDescription": "Add description",
   "checklistItemChecked": "Checked",
   "@checklistItemChecked": {
-    "description": "Announced after a checkbox in a description was ticked."
+    "description": "Announced after a checkbox in a description was checked."
   },
   "checklistItemUnchecked": "Unchecked",
   "@checklistItemUnchecked": {
@@ -4550,14 +4550,14 @@
   "avatarProviderGravatar": "Gravatar",
   "avatarProviderGravatarSubtitle": "The picture for your email address at gravatar.com",
   "avatarProviderMarble": "Marble",
-  "avatarProviderMarbleSubtitle": "A colourful pattern made from your username",
+  "avatarProviderMarbleSubtitle": "A colorful pattern made from your username",
   "avatarProviderUpload": "Your photo",
   "avatarProviderUploadSubtitle": "A photo from this device",
   "avatarProviderUploadReplace": "Choose another photo",
   "avatarProviderLdap": "From your directory",
   "avatarProviderOpenId": "From your sign-in provider",
   "avatarAppShowsInitials": "This app shows your initials for the default, initials and marble avatars; the web draws them.",
-  "avatarManagedLdap": "Your avatar comes from your organisation's directory (LDAP). Ask your IT team how to change it.",
+  "avatarManagedLdap": "Your avatar comes from your organization's directory (LDAP). Ask your IT team how to change it.",
   "avatarManagedOpenId": "Your avatar comes from your sign-in provider ({provider}). Change it there.",
   "@avatarManagedOpenId": {
     "placeholders": {
@@ -4775,6 +4775,10 @@
   "@sessionsDartClient": {
     "description": "A session whose User-Agent is only the Dart runtime, e.g. a script."
   },
+  "sessionsVikunjaApp": "Vikunja app",
+  "@sessionsVikunjaApp": {
+    "description": "Name of a session that this app signed in, on the sessions page. The app version the session reported follows after a space, then the system after “ · ” (for example “Vikunja app 1.0.0 · Android 15”). “Vikunja” is the app's name: do not translate."
+  },
   "sessionsEnd": "End session",
   "sessionsEndTitle": "End this session?",
   "sessionsEndBody": "{device} will be signed out. It can take up to 10 minutes.",
@@ -4884,7 +4888,7 @@
   "apiTokenFormCreating": "Creating…",
   "apiTokenFormLoading": "Loading permissions…",
   "apiTokenFormName": "Title",
-  "apiTokenFormNameHint": "A title you will recognise later",
+  "apiTokenFormNameHint": "A title you will recognize later",
   "apiTokenFormNameRequired": "Enter a title.",
   "apiTokenFormExpiry": "Expires",
   "apiTokenFormExpiryDays": "{days, plural, =1{In 1 day} other{In {days} days}}",
@@ -5203,9 +5207,9 @@
   "@accountServerHeading": {
     "description": "Account tab section near the end with the server's Vikunja version, its connection settings and the server's notices."
   },
-  "accountAppVersion": "Rurana {version} ({build})",
+  "accountAppVersion": "Vikunja app {version} ({build})",
   "@accountAppVersion": {
-    "description": "The app's version line at the end of the Account tab.",
+    "description": "The app's version line at the end of the Account tab. “Vikunja app” rather than “Vikunja”, so that the number does not read as the server's version.",
     "placeholders": {
       "version": {
         "type": "String",
@@ -5217,7 +5221,7 @@
       }
     }
   },
-  "accountAppVersionWithoutBuild": "Rurana {version}",
+  "accountAppVersionWithoutBuild": "Vikunja app {version}",
   "@accountAppVersionWithoutBuild": {
     "description": "The app's version line when the build number is unknown.",
     "placeholders": {
@@ -5582,15 +5586,15 @@
   "@shareTaskReadOnly": {
     "description": "Spoken for a task's done checkbox in a project the user may only read."
   },
-  "accountOrganiseHeading": "Organise",
+  "accountOrganiseHeading": "Organize",
   "@accountOrganiseHeading": {
-    "description": "Account tab section with the labels and teams pages, and the bin on servers with one."
+    "description": "Account tab section with the labels and teams pages, and the trash on servers that support it."
   },
   "accountLabelsEntry": "Labels",
   "accountTeamsEntry": "Teams",
-  "accountTrashEntry": "Bin",
+  "accountTrashEntry": "Trash",
   "@accountTrashEntry": {
-    "description": "Account tab row that opens the bin page, on servers with a bin."
+    "description": "Account tab row that opens the trash page, on servers that support the trash."
   },
   "labelsCount": "{count, plural, =1{1 label} other{{count} labels}}",
   "@labelsCount": {
@@ -5693,8 +5697,8 @@
       }
     }
   },
-  "labelsColour": "Colour",
-  "labelsCustomColour": "Custom colour",
+  "labelsColour": "Color",
+  "labelsCustomColour": "Custom color",
   "labelsCustomColourHelper": "Six hex digits, like 1973ff",
   "labelsCustomColourInvalid": "Enter three or six hex digits.",
   "labelsDescription": "Description",
@@ -5730,7 +5734,7 @@
     "description": "Error when the server refused a change to a label because only the person who created it may change it."
   },
   "labelsGone": "This label no longer exists.",
-  "labelsInvalid": "The server did not accept this label. Check its title and colour.",
+  "labelsInvalid": "The server did not accept this label. Check its title and color.",
   "labelsRefused": "The server refused: {message}",
   "@labelsRefused": {
     "placeholders": {
@@ -5823,7 +5827,7 @@
       }
     }
   },
-  "teamExternalNoteGeneric": "This team is managed by your organisation's sign-in. Its membership is managed there.",
+  "teamExternalNoteGeneric": "This team is managed by your organization's sign-in. Its membership is managed there.",
   "@teamExternalNoteGeneric": {
     "description": "Note on the page of a team that comes from the server's single sign-on when the provider's name is unknown."
   },
@@ -5949,7 +5953,7 @@
   "teamForbidden": "Only team admins can do this.",
   "teamAlreadyMember": "This person is already a member of the team.",
   "teamLastMemberRefused": "The last member can't leave a team. Delete the team instead.",
-  "teamExternalRefused": "Members can't be removed from a team managed by your organisation's sign-in.",
+  "teamExternalRefused": "Members can't be removed from a team managed by your organization's sign-in.",
   "teamUnknownUser": "There is no such user on this server.",
   "teamNotMember": "This person is no longer in the team.",
   "teamInvalid": "The server did not accept this. A name needs 1 to 250 characters.",
@@ -5968,49 +5972,49 @@
     "description": "Error when a change to a team failed for a reason the app cannot name."
   },
   "teamOk": "OK",
-  "trashTitle": "Bin",
+  "trashTitle": "Trash",
   "@trashTitle": {
-    "description": "Title of the bin page, which lists the tasks and projects in the server's trash."
+    "description": "Title of the trash page, which lists the tasks and projects in the server's trash."
   },
   "trashTasksTab": "Tasks",
   "@trashTasksTab": {
-    "description": "Tab of the bin page with the tasks in the bin."
+    "description": "Tab of the trash page with the tasks in the trash."
   },
   "trashProjectsTab": "Projects",
   "@trashProjectsTab": {
-    "description": "Tab of the bin page with the projects in the bin."
+    "description": "Tab of the trash page with the projects in the trash."
   },
-  "trashTabsLabel": "Tasks or projects in the bin",
+  "trashTabsLabel": "Tasks or projects in the trash",
   "@trashTabsLabel": {
-    "description": "Screen reader: the tab bar of the bin page."
+    "description": "Screen reader: the tab bar of the trash page."
   },
-  "trashLoading": "Loading the bin…",
+  "trashLoading": "Loading the trash…",
   "@trashLoading": {
-    "description": "While the bin page reads the bin from the server."
+    "description": "While the trash page reads the trash from the server."
   },
-  "trashRetentionNote": "After 30 days in the bin, the server deletes items forever.",
+  "trashRetentionNote": "After 30 days in the trash, the server deletes items forever.",
   "@trashRetentionNote": {
-    "description": "Note on each tab of the bin page."
+    "description": "Note on each tab of the trash page."
   },
-  "trashTasksEmptyTitle": "No tasks in the bin",
+  "trashTasksEmptyTitle": "No tasks in the trash",
   "@trashTasksEmptyTitle": {
-    "description": "Title of the empty Tasks tab of the bin page."
+    "description": "Title of the empty Tasks tab of the trash page."
   },
   "trashTasksEmptyBody": "Deleted tasks stay here for 30 days. Then the server deletes them forever.",
   "@trashTasksEmptyBody": {
-    "description": "Body of the empty Tasks tab of the bin page."
+    "description": "Body of the empty Tasks tab of the trash page."
   },
-  "trashProjectsEmptyTitle": "No projects in the bin",
+  "trashProjectsEmptyTitle": "No projects in the trash",
   "@trashProjectsEmptyTitle": {
-    "description": "Title of the empty Projects tab of the bin page."
+    "description": "Title of the empty Projects tab of the trash page."
   },
   "trashProjectsEmptyBody": "Deleted projects stay here for 30 days, for their admins only. Then the server deletes them forever.",
   "@trashProjectsEmptyBody": {
-    "description": "Body of the empty Projects tab of the bin page. The server lists a project in the bin only to its admins."
+    "description": "Body of the empty Projects tab of the trash page. The server lists a project in the trash only to its admins."
   },
   "trashDeletedBy": "Deleted {when} by {name}",
   "@trashDeletedBy": {
-    "description": "Line of a task or project on the bin page: when it was deleted, and by whom.",
+    "description": "Line of a task or project on the trash page: when it was deleted, and by whom.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -6024,7 +6028,7 @@
   },
   "trashDeletedByYou": "Deleted {when} by you",
   "@trashDeletedByYou": {
-    "description": "Line of a task or project on the bin page that the user deleted.",
+    "description": "Line of a task or project on the trash page that the user deleted.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -6034,7 +6038,7 @@
   },
   "trashDeletedByLinkShare": "Deleted {when} through a link share",
   "@trashDeletedByLinkShare": {
-    "description": "Line of a task or project on the bin page that a guest deleted through a link share.",
+    "description": "Line of a task or project on the trash page that a guest deleted through a link share.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -6044,7 +6048,7 @@
   },
   "trashDeletedWhen": "Deleted {when}",
   "@trashDeletedWhen": {
-    "description": "Line of a task or project on the bin page when nobody is known as the one who deleted it.",
+    "description": "Line of a task or project on the trash page when nobody is known as the one who deleted it.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -6054,7 +6058,7 @@
   },
   "trashDeletedForGoodIn": "{days, plural, =0{Deleted forever today} =1{Deleted forever in {days} day} other{Deleted forever in {days} days}}",
   "@trashDeletedForGoodIn": {
-    "description": "Line of a task or project on the bin page: the whole days left until the server deletes it forever.",
+    "description": "Line of a task or project on the trash page: the whole days left until the server deletes it forever.",
     "placeholders": {
       "days": {
         "type": "int",
@@ -6064,7 +6068,7 @@
   },
   "trashSubprojects": "{count, plural, =1{With {count} subproject: {titles}} other{With {count} subprojects: {titles}}}",
   "@trashSubprojects": {
-    "description": "Line of a project on the bin page: the subprojects in the bin with it. The titles are the subprojects' titles joined with a comma and a space.",
+    "description": "Line of a project on the trash page: the subprojects in the trash with it. The titles are the subprojects' titles joined with a comma and a space.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -6078,7 +6082,7 @@
   },
   "trashRestoreItem": "Restore “{title}”",
   "@trashRestoreItem": {
-    "description": "Tooltip and label of a row's restore button on the bin page.",
+    "description": "Tooltip and label of a row's restore button on the trash page.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -6088,7 +6092,7 @@
   },
   "trashDeleteForeverItem": "Delete “{title}” forever",
   "@trashDeleteForeverItem": {
-    "description": "Tooltip and label of a row's delete forever button on the bin page.",
+    "description": "Tooltip and label of a row's delete forever button on the trash page.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -6098,7 +6102,7 @@
   },
   "trashDeleteForeverTitle": "Delete “{title}” forever?",
   "@trashDeleteForeverTitle": {
-    "description": "Title of the confirmation for deleting a task or project in the bin forever.",
+    "description": "Title of the confirmation for deleting a task or project in the trash forever.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -6108,39 +6112,39 @@
   },
   "trashDeleteTaskForeverBody": "It is deleted forever, with its comments, attachments, reminders and relations. This can't be undone.",
   "@trashDeleteTaskForeverBody": {
-    "description": "Body of the confirmation for deleting a task in the bin forever."
+    "description": "Body of the confirmation for deleting a task in the trash forever."
   },
   "trashDeleteProjectForeverBody": "It is deleted forever, with its subprojects, tasks, views and shares. This can't be undone.",
   "@trashDeleteProjectForeverBody": {
-    "description": "Body of the confirmation for deleting a project in the bin forever."
+    "description": "Body of the confirmation for deleting a project in the trash forever."
   },
   "trashDeleteForever": "Delete forever",
   "@trashDeleteForever": {
-    "description": "Confirm button of the confirmation for deleting a task or project in the bin forever, and of the confirmation for emptying a tab of the bin."
+    "description": "Confirm button of the confirmation for deleting a task or project in the trash forever, and of the confirmation for emptying a tab of the trash page."
   },
   "trashTaskDeletedForever": "Task deleted forever",
   "@trashTaskDeletedForever": {
-    "description": "Screen reader: announced after a task in the bin was deleted forever."
+    "description": "Screen reader: announced after a task in the trash was deleted forever."
   },
   "trashProjectDeletedForever": "Project deleted forever",
   "@trashProjectDeletedForever": {
-    "description": "Screen reader: announced after a project in the bin was deleted forever."
+    "description": "Screen reader: announced after a project in the trash was deleted forever."
   },
-  "trashEmpty": "Empty bin",
+  "trashEmpty": "Empty trash",
   "@trashEmpty": {
-    "description": "Button on each tab of the bin page that deletes forever, after a confirmation, the tab's items in projects the user is an admin of."
+    "description": "Button on each tab of the trash page that deletes forever, after a confirmation, the tab's items in projects the user is an admin of."
   },
-  "trashEmptyTasksTitle": "Delete the tasks in the bin forever?",
+  "trashEmptyTasksTitle": "Delete the tasks in the trash forever?",
   "@trashEmptyTasksTitle": {
-    "description": "Title of the confirmation for emptying the Tasks tab of the bin page."
+    "description": "Title of the confirmation for emptying the Tasks tab of the trash page."
   },
-  "trashEmptyProjectsTitle": "Delete the projects in the bin forever?",
+  "trashEmptyProjectsTitle": "Delete the projects in the trash forever?",
   "@trashEmptyProjectsTitle": {
-    "description": "Title of the confirmation for emptying the Projects tab of the bin page."
+    "description": "Title of the confirmation for emptying the Projects tab of the trash page."
   },
   "trashEmptyTasks": "{count, plural, =1{{count} task is deleted forever.} other{{count} tasks are deleted forever.}}",
   "@trashEmptyTasks": {
-    "description": "Confirmation for emptying the Tasks tab of the bin page: how many tasks the server deletes.",
+    "description": "Confirmation for emptying the Tasks tab of the trash page: how many tasks the server deletes.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -6150,7 +6154,7 @@
   },
   "trashEmptyProjects": "{count, plural, =1{{count} project is deleted forever, with everything in it.} other{{count} projects are deleted forever, with everything in them.}}",
   "@trashEmptyProjects": {
-    "description": "Confirmation for emptying the Projects tab of the bin page: how many projects the server deletes, with their subprojects and tasks.",
+    "description": "Confirmation for emptying the Projects tab of the trash page: how many projects the server deletes, with their subprojects and tasks.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -6158,9 +6162,9 @@
       }
     }
   },
-  "trashEmptyByOthers": "{count, plural, =1{{count} of them was moved to the bin by someone else.} other{{count} of them were moved to the bin by other people.}}",
+  "trashEmptyByOthers": "{count, plural, =1{{count} of them was moved to the trash by someone else.} other{{count} of them were moved to the trash by other people.}}",
   "@trashEmptyByOthers": {
-    "description": "Confirmation for emptying a tab of the bin page: how many of the items other people moved to the bin. Emptying deletes them too.",
+    "description": "Confirmation for emptying a tab of the trash page: how many of the items other people moved to the trash. Emptying deletes them too.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -6168,41 +6172,41 @@
       }
     }
   },
-  "trashEmptyKeepsOthers": "Tasks in projects where you aren't an admin stay in the bin.",
+  "trashEmptyKeepsOthers": "Tasks in projects where you aren't an admin stay in the trash.",
   "@trashEmptyKeepsOthers": {
-    "description": "Confirmation for emptying the Tasks tab of the bin page: the server deletes only tasks in projects the user is an admin of."
+    "description": "Confirmation for emptying the Tasks tab of the trash page: the server deletes only tasks in projects the user is an admin of."
   },
   "trashEmptyNothing": "Only project admins can delete these forever, so there is nothing here you can delete.",
   "@trashEmptyNothing": {
-    "description": "Shown on the bin page's Tasks tab instead of the confirmation for emptying it, when the server would delete nothing and a listed task is in a project the user is not an admin of: the server deletes only what is in projects the user is an admin of."
+    "description": "Shown on the trash page's Tasks tab instead of the confirmation for emptying it, when the server would delete nothing and a listed task is in a project the user is not an admin of: the server deletes only what is in projects the user is an admin of."
   },
   "trashCannotBeUndone": "This can't be undone.",
   "@trashCannotBeUndone": {
-    "description": "Last paragraph of the confirmation for emptying a tab of the bin page."
+    "description": "Last paragraph of the confirmation for emptying a tab of the trash page."
   },
-  "trashEmptied": "Bin emptied",
+  "trashEmptied": "Trash emptied",
   "@trashEmptied": {
-    "description": "Screen reader: announced after a tab of the bin page was emptied."
+    "description": "Screen reader: announced after a tab of the trash page was emptied."
   },
   "trashWorking": "Working",
   "@trashWorking": {
-    "description": "Screen reader: the spinner of a row on the bin page, or of the Empty bin button, while its action runs."
+    "description": "Screen reader: the spinner of a row on the trash page, or of the Empty trash button, while its action runs."
   },
   "trashRestoreNeedsConnection": "Restoring needs a connection to the server.",
   "@trashRestoreNeedsConnection": {
-    "description": "Error when restoring a task or project, from the bin page, a link or Undo, fails without a connection."
+    "description": "Error when restoring a task or project, from the trash page, a link or Undo, fails without a connection."
   },
-  "trashNeedsConnection": "The bin needs a connection to the server.",
+  "trashNeedsConnection": "The trash needs a connection to the server.",
   "@trashNeedsConnection": {
-    "description": "Error when deleting forever or emptying the bin fails without a connection."
+    "description": "Error when deleting forever or emptying the trash fails without a connection."
   },
-  "trashTaskGone": "This task is no longer in the bin.",
+  "trashTaskGone": "This task is no longer in the trash.",
   "@trashTaskGone": {
-    "description": "Error when a task to restore or delete forever is no longer in the bin, for example because someone restored it."
+    "description": "Error when a task to restore or delete forever is no longer in the trash, for example because someone restored it."
   },
-  "trashProjectGone": "This project is no longer in the bin.",
+  "trashProjectGone": "This project is no longer in the trash.",
   "@trashProjectGone": {
-    "description": "Error when a project to restore or delete forever is no longer in the bin, for example because someone restored it."
+    "description": "Error when a project to restore or delete forever is no longer in the trash, for example because someone restored it."
   },
   "trashRestoreArchived": "Its project is archived. Unarchive the project to restore the task.",
   "@trashRestoreArchived": {
@@ -6210,15 +6214,15 @@
   },
   "trashDeleteArchived": "Its project is archived. Unarchive the project to delete the task forever.",
   "@trashDeleteArchived": {
-    "description": "Error when a task in the bin cannot be deleted forever because its project is archived."
+    "description": "Error when a task in the trash cannot be deleted forever because its project is archived."
   },
-  "trashTaskProjectInTrash": "Its project is in the bin. Restore the project first.",
+  "trashTaskProjectInTrash": "Its project is in the trash. Restore the project first.",
   "@trashTaskProjectInTrash": {
-    "description": "Error when a task cannot be restored or deleted forever because its project is in the bin too."
+    "description": "Error when a task cannot be restored or deleted forever because its project is in the trash too."
   },
-  "trashRestoreParentInTrash": "Its parent project is in the bin. Restore that one first.",
+  "trashRestoreParentInTrash": "Its parent project is in the trash. Restore that one first.",
   "@trashRestoreParentInTrash": {
-    "description": "Error when a project cannot be restored because its parent project is in the bin."
+    "description": "Error when a project cannot be restored because its parent project is in the trash."
   },
   "trashRestoreTaskForbidden": "You don't have permission to restore tasks in this project.",
   "@trashRestoreTaskForbidden": {
@@ -6230,7 +6234,7 @@
   },
   "trashDeleteTaskAdminOnly": "Only project admins can delete tasks forever.",
   "@trashDeleteTaskAdminOnly": {
-    "description": "Error when deleting a task forever or emptying the bin is refused because the user is not an admin of the project."
+    "description": "Error when deleting a task forever or emptying the trash is refused because the user is not an admin of the project."
   },
   "trashDeleteProjectAdminOnly": "Only project admins can delete a project forever.",
   "@trashDeleteProjectAdminOnly": {
@@ -6240,13 +6244,13 @@
   "@trashDeleteStillSending": {
     "description": "Error of Undo or Restore when the task's delete is still being sent to the server, after the app waited for it."
   },
-  "trashUnavailable": "This server has no bin.",
+  "trashUnavailable": "This server doesn't support the trash.",
   "@trashUnavailable": {
-    "description": "Error of a bin action, and the body of the bin page's failure card, on a server without a bin (older than Vikunja 2.8.0)."
+    "description": "Error of a trash action, and the body of the trash page's failure card, on a server that doesn't support the trash (older than Vikunja 2.8.0)."
   },
   "trashActionRefused": "The server refused this: {message}",
   "@trashActionRefused": {
-    "description": "Error of a bin action that the server refused. The server's own explanation follows, in English.",
+    "description": "Error of a trash action that the server refused. The server's own explanation follows, in English.",
     "placeholders": {
       "message": {
         "type": "String",
@@ -6256,7 +6260,7 @@
   },
   "trashActionFailed": "That didn't work. Try again.",
   "@trashActionFailed": {
-    "description": "Error of a bin action that failed for a reason the app cannot name."
+    "description": "Error of a trash action that failed for a reason the app cannot name."
   },
   "shareLowerOwnAccessTitle": "Lower your own access?",
   "@shareLowerOwnAccessTitle": {
@@ -6604,13 +6608,13 @@
   },
   "guestNoteCanView": "You can view this project's tasks, comments and attachments.",
   "guestNoteCanChange": "You can view and change this project's tasks, comment and add attachments.",
-  "guestNoteNeedsAccount": "Account settings, labels, teams, favourites, reactions and the server's notifications need an account of your own.",
+  "guestNoteNeedsAccount": "Account settings, labels, teams, favorites, reactions and the server's notifications need an account of your own.",
   "guestRemove": "Remove guest access",
   "@guestRemove": {
     "description": "The Account tab's sign-out button while a link-share guest is active."
   },
   "guestRemoveDialogTitle": "Remove guest access?",
-  "guestRemoveDialogBody": "Rurana will remove the guest access to {name} on {host} and delete its tasks saved on this device. You can open the shared link again at any time.",
+  "guestRemoveDialogBody": "The app will remove the guest access to {name} on {host} and delete its tasks saved on this device. You can open the shared link again at any time.",
   "@guestRemoveDialogBody": {
     "placeholders": {
       "name": {
@@ -6698,13 +6702,13 @@
   "@guestPasswordWrong": {
     "description": "Password sheet: the server refused the password"
   },
-  "guestPasswordNotStored": "Rurana doesn't save this password. If the link has to be opened again later, it asks for it again.",
+  "guestPasswordNotStored": "The app doesn't save this password. If the link has to be opened again later, it asks for it again.",
   "@guestPasswordNotStored": {
     "description": "Password sheet: helper under the field"
   },
   "guestShareTitle": "Open the shared project?",
   "@guestShareTitle": {
-    "description": "Sheet when another app shares a link to a shared project into Rurana"
+    "description": "Sheet when another app shares a link to a shared project into this app"
   },
   "guestShareBody": "This is a link to a project on {host}. Open it as a guest, without an account of your own.",
   "@guestShareBody": {
@@ -6858,7 +6862,7 @@
       }
     }
   },
-  "guestAccessEndedNotificationBody": "{host} ended this guest access. Rurana can't sync the project until you open the shared link again.",
+  "guestAccessEndedNotificationBody": "{host} ended this guest access. The app can't sync the project until you open the shared link again.",
   "@guestAccessEndedNotificationBody": {
     "placeholders": {
       "host": {
@@ -6974,11 +6978,11 @@
   "@widgetsTitle": {
     "description": "The Account tab entry and the title of the page that explains the home-screen widgets."
   },
-  "widgetsEntrySubtitle": "Your tasks on the home screen, ticked off right there",
+  "widgetsEntrySubtitle": "Your tasks on the home screen, checked off right there",
   "@widgetsEntrySubtitle": {
     "description": "Subtitle of the Account tab entry to the widgets page."
   },
-  "widgetsIntro": "A widget shows one list of an account: today's tasks, the coming days, the overdue ones, your favourites, a project, a label or a saved filter. Tick a task off right there, or tap it to open it here.",
+  "widgetsIntro": "A widget shows one list of an account: today's tasks, the coming days, the overdue ones, your favorites, a project, a label or a saved filter. Check a task off right there, or tap it to open it here.",
   "@widgetsIntro": {
     "description": "The widgets page's introduction."
   },
@@ -6986,7 +6990,7 @@
   "@widgetsHowToHeading": {
     "description": "Heading above the platform's steps to place a widget."
   },
-  "widgetsHowToIos": "Touch and hold an empty spot on your Home Screen, tap Edit, then Add Widget, and look for Rurana. To choose the account and the list, touch and hold the widget and tap Edit Widget.",
+  "widgetsHowToIos": "Touch and hold an empty spot on your Home Screen, tap Edit, then Add Widget, and look for Vikunja. To choose the account and the list, touch and hold the widget and tap Edit Widget.",
   "@widgetsHowToIos": {
     "description": "iOS steps to place and set up a widget."
   },
@@ -7042,13 +7046,13 @@
   "@widgetKindOverdueHint": {
     "description": "What the Overdue widget shows."
   },
-  "widgetKindFavorites": "Favourites",
+  "widgetKindFavorites": "Favorites",
   "@widgetKindFavorites": {
-    "description": "Widget kind: the favourite tasks."
+    "description": "Widget kind: the favorite tasks."
   },
-  "widgetKindFavoritesHint": "Your favourite tasks",
+  "widgetKindFavoritesHint": "Your favorite tasks",
   "@widgetKindFavoritesHint": {
-    "description": "What the Favourites widget shows."
+    "description": "What the Favorites widget shows."
   },
   "widgetKindProject": "Project",
   "@widgetKindProject": {
@@ -7143,7 +7147,7 @@
   "@widgetsEntryTitle": {
     "description": "Account tab entry to the home-screen widgets page."
   },
-  "widgetsHowToAndroid": "Touch and hold an empty spot on your home screen, tap Widgets and look for Rurana. To choose the account and the list, tap the widget under “On your home screen” below. Some home screens also offer this in the widget's settings when you touch and hold it.",
+  "widgetsHowToAndroid": "Touch and hold an empty spot on your home screen, tap Widgets and look for Vikunja. To choose the account and the list, tap the widget under “On your home screen” below. Some home screens also offer this in the widget's settings when you touch and hold it.",
   "@widgetsHowToAndroid": {
     "description": "Android steps to place and set up a widget. Below Android 12 and on some launchers the widgets page is the only way to set one up."
   },
@@ -7159,7 +7163,7 @@
   "@notificationContentDueTitle": {
     "description": "Title of a due-date notification while the privacy setting hides task titles from notifications."
   },
-  "notificationContentBody": "Open Rurana to see it",
+  "notificationContentBody": "Open Vikunja to see it",
   "@notificationContentBody": {
     "description": "Body of a reminder, due-date or activity notification while the privacy setting hides task titles from notifications; no project, name or comment is shown."
   },
@@ -7221,7 +7225,7 @@
   "@privacyAppLockHeading": {
     "description": "Heading of the app lock settings on the privacy page."
   },
-  "privacyAppLockSwitch": "Lock Rurana",
+  "privacyAppLockSwitch": "Lock Vikunja",
   "@privacyAppLockSwitch": {
     "description": "Switch that turns the app lock on or off."
   },
@@ -7245,15 +7249,15 @@
   "@privacyLockAfter": {
     "description": "Setting: how long the app may be away before it locks; its value is one of the Lock after choices."
   },
-  "privacyLockAfterRestart": "Rurana always locks after a restart.",
+  "privacyLockAfterRestart": "Vikunja always locks after a restart.",
   "@privacyLockAfterRestart": {
     "description": "Under the Lock after setting."
   },
-  "privacyAppSwitcherHidden": "While the lock is on, the app switcher hides Rurana's content.",
+  "privacyAppSwitcherHidden": "While the lock is on, the app switcher hides Vikunja's content.",
   "@privacyAppSwitcherHidden": {
     "description": "Info line on the privacy page: the app lock also hides the app's content in the app switcher."
   },
-  "privacyAppSwitcherBestEffort": "While the lock is on, the app switcher hides Rurana's content as far as this Android version allows. To be sure, turn on Block screenshots.",
+  "privacyAppSwitcherBestEffort": "While the lock is on, the app switcher hides Vikunja's content as far as this Android version allows. To be sure, turn on Block screenshots.",
   "@privacyAppSwitcherBestEffort": {
     "description": "Info line on the privacy page on Android 12 and older, where hiding the app switcher's thumbnail is best effort."
   },
@@ -7265,7 +7269,7 @@
   "@privacyBlockScreenshots": {
     "description": "Switch (Android only) that keeps the app out of screenshots, screen recordings and the app overview."
   },
-  "privacyBlockScreenshotsSubtitle": "Also hides Rurana from screen recordings and the app switcher.",
+  "privacyBlockScreenshotsSubtitle": "Also hides Vikunja from screen recordings and the app switcher.",
   "@privacyBlockScreenshotsSubtitle": {
     "description": "Under the Block screenshots switch."
   },
@@ -7297,7 +7301,7 @@
   "@privacyNotificationContentNoTitlesSubtitle": {
     "description": "Under the Never show task titles choice."
   },
-  "privacyNotificationContentIosHint": "iOS decides this for each app: in Settings › Notifications › Rurana, set Show Previews to When Unlocked.",
+  "privacyNotificationContentIosHint": "iOS decides this for each app: in Settings › Notifications › Vikunja, set Show Previews to When Unlocked.",
   "@privacyNotificationContentIosHint": {
     "description": "iOS only, under the Hide on the lock screen choice: the app cannot hide the content itself; the system setting does. Use the names of the iOS Settings app."
   },
@@ -7313,11 +7317,11 @@
   "@privacyWidgetTitlesSubtitle": {
     "description": "Under the Show task titles in widgets switch."
   },
-  "privacySettingsUnreadable": "Your privacy settings couldn't be read, so Rurana locked itself. Choose them again here.",
+  "privacySettingsUnreadable": "Your privacy settings couldn't be read, so Vikunja locked itself. Choose them again here.",
   "@privacySettingsUnreadable": {
     "description": "Note on the privacy page when the stored settings could not be read; the app was locked for safety and shows the defaults."
   },
-  "appLockPromptReason": "Unlock Rurana",
+  "appLockPromptReason": "Unlock Vikunja",
   "@appLockPromptReason": {
     "description": "Reason shown in the system's biometric or screen lock prompt when the app lock asks to unlock the app."
   },
@@ -7333,7 +7337,7 @@
   "@privacySaveFailed": {
     "description": "Note on the privacy page when a changed setting could not be stored on the device."
   },
-  "appLockTitle": "Rurana is locked",
+  "appLockTitle": "Vikunja is locked",
   "@appLockTitle": {
     "description": "Heading of the lock screen shown while the app lock is on and the app is locked."
   },
@@ -7349,7 +7353,7 @@
   "@appLockLockedOut": {
     "description": "On the lock screen when the system locked out biometrics or the screen lock after too many failed attempts."
   },
-  "appLockUnavailable": "Rurana couldn't check your screen lock. Try again.",
+  "appLockUnavailable": "Vikunja couldn't check your screen lock. Try again.",
   "@appLockUnavailable": {
     "description": "On the lock screen when the system's authentication failed for a reason other than a cancel or a lockout."
   },
@@ -7359,13 +7363,13 @@
   },
   "appLockPromptHint": "Use your fingerprint, face or screen lock",
   "@appLockPromptHint": {
-    "description": "Subtitle of the Android system prompt for the app lock (under the title Rurana, above the reason). At most 60 characters."
+    "description": "Subtitle of the Android system prompt for the app lock (under the app's name, above the reason). At most 60 characters."
   },
-  "appLockPromptStuck": "The unlock prompt doesn't respond. Close Rurana completely and open it again.",
+  "appLockPromptStuck": "The unlock prompt doesn't respond. Close Vikunja completely and open it again.",
   "@appLockPromptStuck": {
     "description": "On the lock screen and under the app lock switch when the system's prompt is still held by an earlier one that never answered; only restarting the app releases it."
   },
-  "widgetTitlesHiddenHint": "{count, plural, =1{Open Rurana to see it} other{Open Rurana to see them}}",
+  "widgetTitlesHiddenHint": "{count, plural, =1{Open Vikunja to see it} other{Open Vikunja to see them}}",
   "@widgetTitlesHiddenHint": {
     "description": "Shown in a home-screen list widget below the task count, instead of the task rows, while the privacy setting hides task titles in widgets.",
     "placeholders": {
@@ -8239,11 +8243,11 @@
   "@widgetConfigureUnknownTitle": {
     "description": "Shown instead of the widget setup when a link names a widget that is not one of the app's widgets placed on this device's home screen."
   },
-  "widgetConfigureUnknownBody": "Only Rurana widgets on this device's home screen can be set up. Open the widget's settings on the home screen instead.",
+  "widgetConfigureUnknownBody": "Only Vikunja widgets on this device's home screen can be set up. Open the widget's settings on the home screen instead.",
   "@widgetConfigureUnknownBody": {
     "description": "Body below widgetConfigureUnknownTitle."
   },
-  "aboutTitle": "About Rurana",
+  "aboutTitle": "About the app",
   "@aboutTitle": {
     "description": "Title of the About page, and the label of its entries on the Account tab's version line and the connect screen."
   },
@@ -8271,35 +8275,31 @@
       }
     }
   },
-  "aboutUnofficial": "Rurana is an unofficial app for Vikunja servers. It is not affiliated with or endorsed by the Vikunja project.",
-  "@aboutUnofficial": {
-    "description": "Under the copyright line at the top of the About page; the same wording as the store descriptions and the website."
-  },
-  "aboutLicenceHeading": "Licence",
+  "aboutLicenceHeading": "License",
   "@aboutLicenceHeading": {
     "description": "Section header on the About page."
   },
-  "aboutLicence": "Rurana is free software: you may share and change it under the GNU Affero General Public License, version 3 or any later version, with an additional permission for app stores.",
+  "aboutLicence": "This app is free software: you may share and change it under the GNU Affero General Public License, version 3 or any later version, with an additional permission for app stores.",
   "@aboutLicence": {
-    "description": "The licence notice on the About page (AGPL-3.0-or-later with the section 7 permission for app stores)."
+    "description": "The license notice on the About page (AGPL-3.0-or-later with the section 7 permission for app stores)."
   },
-  "aboutNoWarranty": "Rurana comes with no warranty, as far as the law allows.",
+  "aboutNoWarranty": "This app comes with no warranty, as far as the law allows.",
   "@aboutNoWarranty": {
     "description": "The AGPL's no-warranty notice on the About page."
   },
-  "aboutLicences": "Licences",
+  "aboutLicences": "Licenses",
   "@aboutLicences": {
-    "description": "Opens the licence page (Flutter's LicensePage)."
+    "description": "Opens the license page (Flutter's LicensePage)."
   },
-  "aboutLicencesSubtitle": "The full licence text and the additional permission under “rurana”, and the licences of the software Rurana contains",
+  "aboutLicencesSubtitle": "The full license text and the additional permission under “vikunja_app”, and the licenses of the software the app contains",
   "@aboutLicencesSubtitle": {
-    "description": "Under Licences on the About page; “rurana” is the entry's name on the licence page (the workspace root package that carries the repository's LICENSE), kept in lower case."
+    "description": "Under Licenses on the About page; “vikunja_app” is the entry's name on the license page (the workspace root package that carries the repository's LICENSE), kept exactly as written."
   },
   "aboutSourceCodeHeading": "Source code",
   "@aboutSourceCodeHeading": {
     "description": "Section header on the About page."
   },
-  "aboutSourceCodeLater": "This build has no link to its source code. Every release of Rurana links the source code it was built from.",
+  "aboutSourceCodeLater": "This build has no link to its source code. Every release of the app links the source code it was built from.",
   "@aboutSourceCodeLater": {
     "description": "On the About page of a build without a source link (local and test builds); release builds show the link instead."
   },
@@ -8309,11 +8309,11 @@
   },
   "aboutWebsiteHeading": "Help, privacy and legal notice",
   "@aboutWebsiteHeading": {
-    "description": "Section header on the About page over the links to Rurana's support page, privacy policy and legal notice on the developer's website, coderoftime.dev, and over the row that opens the support details (supportDetailsTitle)."
+    "description": "Section header on the About page over the links to the app's support page, privacy policy and legal notice on the developer's website, coderoftime.dev, and over the row that opens the support details (supportDetailsTitle)."
   },
   "aboutSupport": "Help and bug reports",
   "@aboutSupport": {
-    "description": "Opens Rurana's support page on coderoftime.dev in the browser: answers to common questions, and how to report a bug or a security problem. A noun phrase like its neighbours aboutPrivacyPolicy and aboutLegalNotice."
+    "description": "Opens the app's support page on coderoftime.dev in the browser: answers to common questions, and how to report a bug or a security problem. A noun phrase like its neighbors aboutPrivacyPolicy and aboutLegalNotice."
   },
   "aboutSupportSubtitle": "Answers to common questions and how to report a bug",
   "@aboutSupportSubtitle": {
@@ -8321,9 +8321,9 @@
   },
   "aboutPrivacyPolicy": "Privacy policy",
   "@aboutPrivacyPolicy": {
-    "description": "Opens Rurana's privacy policy on coderoftime.dev in the browser; the server's own legal links are elsewhere (legalPrivacy)."
+    "description": "Opens the app's privacy policy on coderoftime.dev in the browser; the server's own legal links are elsewhere (legalPrivacy)."
   },
-  "aboutPrivacyPolicySubtitle": "How Rurana handles your data",
+  "aboutPrivacyPolicySubtitle": "How the app handles your data",
   "@aboutPrivacyPolicySubtitle": {
     "description": "Under aboutPrivacyPolicy on the About page."
   },
@@ -8331,7 +8331,7 @@
   "@aboutLegalNotice": {
     "description": "Opens the legal notice (the German Impressum) on coderoftime.dev in the browser; the server's own is legalImprint."
   },
-  "aboutLegalNoticeSubtitle": "Who publishes Rurana",
+  "aboutLegalNoticeSubtitle": "Who publishes the app",
   "@aboutLegalNoticeSubtitle": {
     "description": "Under aboutLegalNotice on the About page."
   },
@@ -8459,7 +8459,7 @@
   },
   "assigneePickerNoAccess": "No access to this project",
   "@assigneePickerNoAccess": {
-    "description": "Fragment without a full stop, inserted as the reason into assigneePickerFallback when the people of the task's project can't be searched (no access, or the project is gone)."
+    "description": "Fragment without a period, inserted as the reason into assigneePickerFallback when the people of the task's project can't be searched (no access, or the project is gone)."
   },
   "appLanguageTitle": "App language",
   "@appLanguageTitle": {

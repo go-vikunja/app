@@ -40,7 +40,7 @@ final class FakeWebViewController extends PlatformWebViewController {
   final List<String> scripts = [];
 
   /// A message the page posts to the channel [channel].
-  void post(String message, {String channel = 'RuranaEditor'}) =>
+  void post(String message, {String channel = 'VikunjaEditor'}) =>
       channels[channel]!(JavaScriptMessage(message: message));
 
   @override

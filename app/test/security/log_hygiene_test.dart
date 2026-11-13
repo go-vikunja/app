@@ -14,7 +14,7 @@ List<String> _kotlinRoots() => [
 ];
 List<String> _swiftRoots() => [
   'ios/Runner',
-  'ios/RuranaWidgets',
+  'ios/VikunjaWidgets',
   ..._inEach('plugins', 'ios'),
 ];
 
@@ -398,15 +398,15 @@ void main() {
       kotlin.map((s) => s.path),
       containsAll([
         endsWith('widgets/MarkDoneAction.kt'),
-        endsWith('rurana_widgets/RuranaWidgetsPlugin.kt'),
+        endsWith('vikunja_widgets/VikunjaWidgetsPlugin.kt'),
       ]),
     );
     expect(
       swift.map((s) => s.path),
       containsAll([
         'ios/Runner/AppDelegate.swift',
-        endsWith('RuranaWidgets/WidgetData.swift'),
-        endsWith('rurana_widgets/RuranaWidgetsPlugin.swift'),
+        endsWith('VikunjaWidgets/WidgetData.swift'),
+        endsWith('vikunja_widgets/VikunjaWidgetsPlugin.swift'),
       ]),
     );
   });

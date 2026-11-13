@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show immutable;
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 
-/// The platform side of the home-screen widgets (`plugins/rurana_widgets`):
+/// The platform side of the home-screen widgets (`plugins/vikunja_widgets`):
 /// where snapshots and catalogs are stored for the native widgets, which
 /// widgets are placed (Android), what they show, and the Done taps they
 /// keep for the app. Works in every isolate.

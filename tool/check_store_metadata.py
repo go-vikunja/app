@@ -30,8 +30,8 @@ REVIEW_NOTES_BYTES = 4000
 CHANGELOG_LIMIT = 500
 MULTILINE = {'full_description.txt', 'description.txt', 'promotional_text.txt', 'release_notes.txt', 'notes.txt'}
 OPTIONAL = {'release_notes.txt'}
-# Rurana's pages on the owner's website per listing language, the contact and
-# the App Store copyright (D76).
+# The app's pages on the owner's website until step 38f, per listing
+# language, the contact and the App Store copyright (D76).
 WEBSITE_HOST = 'coderoftime.dev'
 URLS = {
     'support_url.txt': {'en': 'https://coderoftime.dev/rurana/support/',
@@ -49,14 +49,12 @@ CATEGORIES = {
     'SPORTS', 'TRAVEL', 'UTILITIES', 'WEATHER',
 }
 
-UNOFFICIAL = {
-    'en': 'It is not affiliated with or endorsed by the Vikunja project.',
-    'de': 'Sie gehört nicht zum Vikunja-Projekt und wird von ihm weder unterstützt noch empfohlen.',
-}
-# Owner decision D76: "Vikunja" only in descriptions. Keywords must not name
-# other apps or companies either (App Store Connect, keywords).
+APP_NAME = 'Vikunja'
+UNOFFICIAL = re.compile(r'(?i)\bunofficial\b|not affiliated with|inoffiziell|gehört nicht zum Vikunja-Projekt')
+# The name fields and the keywords must not name other apps or companies
+# (D76; App Store Connect, keywords).
 NAME_FIELDS = {'title.txt', 'name.txt', 'subtitle.txt', 'keywords.txt'}
-FOREIGN_NAMES = re.compile(r'(?i)vikunja|todoist|ticktick|trello|asana|notion|nextcloud|google|microsoft|apple')
+FOREIGN_NAMES = re.compile(r'(?i)todoist|ticktick|trello|asana|notion|nextcloud|google|microsoft|apple')
 SHORT_FIELDS = {'title.txt', 'short_description.txt', 'name.txt', 'subtitle.txt', 'keywords.txt',
                 'promotional_text.txt'}
 CLAIM_WORDS = ('best', '#1', 'number one', 'top', 'free', 'new', 'sale', 'download now', 'install now',
@@ -189,8 +187,10 @@ class Checker:
             self.error(path, 'emoji')
         if lang and OTHER_PLATFORM[platform].search(value):
             self.error(path, f'names the other platform: {OTHER_PLATFORM[platform].search(value).group(0)}')
-        if name in ('full_description.txt', 'description.txt') and UNOFFICIAL[lang] not in value:
-            self.error(path, f'lacks the line "{UNOFFICIAL[lang]}"')
+        if UNOFFICIAL.search(value):
+            self.error(path, 'calls the app unofficial (D83)')
+        if name in ('title.txt', 'name.txt') and value != APP_NAME:
+            self.error(path, f'must be "{APP_NAME}"')
         if name == 'keywords.txt':
             self.check_keywords(path, value)
         if name in URLS:
@@ -212,7 +212,7 @@ class Checker:
         for keyword in keywords:
             if len(keyword.strip()) <= 2:
                 self.error(path, f'keyword too short: "{keyword}"')
-            if 'rurana' in keyword.lower():
+            if APP_NAME.lower() in keyword.lower():
                 self.error(path, 'the app name is indexed already')
         lowered = [keyword.strip().lower() for keyword in keywords]
         if len(set(lowered)) != len(lowered):

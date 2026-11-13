@@ -6,7 +6,7 @@
     <string name="widget_quick_add_description">Erstelle mit einem Tipp eine Aufgabe</string>
     <string name="widget_new_task">Neue Aufgabe</string>
     <string name="widget_set_up">Tippe, um auszuwählen, was dieses Widget zeigt</string>
-    <string name="widget_not_loaded">Öffne Rurana, um diese Liste zu laden</string>
+    <string name="widget_not_loaded">Öffne Vikunja, um diese Liste zu laden</string>
     <string name="widget_empty">Alles erledigt</string>
     <plurals name="widget_more">
         <item quantity="one">+%d weitere</item>

@@ -10,7 +10,7 @@ import '../helpers/loopback_server.dart';
 
 const _connector = IoRealtimeConnector();
 
-const _userAgent = 'Rurana/1.4.0+7 (android 15)';
+const _userAgent = 'Vikunja-App/1.4.0+7 (android 15)';
 
 final String _commentFrame = jsonEncode(
   (fixtureJson('realtime/frames_2.7.0.json')['notifications']! as List<Object?>)
@@ -137,7 +137,7 @@ void main() {
       final created = <HttpClient>[];
       final connector = IoRealtimeConnector(
         createHttpClient: () {
-          final client = HttpClient()..userAgent = 'Rurana test client';
+          final client = HttpClient()..userAgent = 'Vikunja-App test client';
           created.add(client);
           return client;
         },
@@ -150,8 +150,8 @@ void main() {
       expect(created, hasLength(2));
       expect(created.first, isNot(same(created.last)));
       expect(server.requests.map((r) => r.headers.value('user-agent')), [
-        'Rurana test client',
-        'Rurana test client',
+        'Vikunja-App test client',
+        'Vikunja-App test client',
       ]);
       for (final client in created) {
         expect(

@@ -85,7 +85,7 @@ void main() {
     profiles = NetworkProfiles(preferences: preferences, secureStore: secure);
     connector = ProfileRealtimeConnector(
       profiles: profiles,
-      userAgent: 'Rurana/test',
+      userAgent: 'Vikunja-App/test',
     );
   });
 
@@ -130,7 +130,7 @@ void main() {
       final headers = server.requests.single;
       expect(headers.value('CF-Access-Client-Secret'), 'dummy-secret');
       expect(headers['cf-access-client-id'], ['from-caller']);
-      expect(headers.value(HttpHeaders.userAgentHeader), 'Rurana/test');
+      expect(headers.value(HttpHeaders.userAgentHeader), 'Vikunja-App/test');
     });
 
     test('a stored value the transport refuses needs re-entry, never '

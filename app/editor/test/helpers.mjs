@@ -39,11 +39,11 @@ export function loadPage(html) {
     pretendToBeVisual: true,
     url: 'file:///android_asset/flutter_assets/assets/editor/editor.html',
     beforeParse(window) {
-      window.RuranaEditor = {postMessage: text => posted.push(JSON.parse(text))}
+      window.VikunjaEditor = {postMessage: text => posted.push(JSON.parse(text))}
       withoutLayout(window)
     },
   })
-  return {window: dom.window, posted, receive: message => dom.window.rurana.receive(message)}
+  return {window: dom.window, posted, receive: message => dom.window.vikunja.receive(message)}
 }
 
 // The bridge from the sources against a jsdom document, for tests that

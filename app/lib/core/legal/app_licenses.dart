@@ -10,7 +10,7 @@ final _log = Logger('AppLicenses');
 /// packages, the engine and the repository's `LICENSE`) does not see.
 abstract final class LegalAssets {
   /// The app's own notice; its package name is [ownLicensePackage].
-  static const ownNotice = 'assets/legal/rurana.md';
+  static const ownNotice = 'assets/legal/vikunja_app.md';
 
   /// The npm packages in the editor page, from `tool/build_editor.sh`.
   static const editor = 'assets/editor/NOTICES.md';
@@ -26,7 +26,7 @@ abstract final class LegalAssets {
 
 /// The workspace root's package name, under which Flutter's build lists the
 /// repository's `LICENSE`, the AGPL; the app's own notice joins it there.
-const ownLicensePackage = 'rurana';
+const ownLicensePackage = 'vikunja_app';
 
 var _registered = false;
 

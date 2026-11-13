@@ -1,4 +1,4 @@
-name: rurana
+name: vikunja_app
 publish_to: none
 
 environment:
@@ -9,7 +9,7 @@ workspace:
   - packages/vikunja_domain
   - packages/vikunja_api
   - packages/vikunja_logic
-  - plugins/rurana_widgets
+  - plugins/vikunja_widgets
 
 dev_dependencies:
   very_good_analysis: ^11.0.0

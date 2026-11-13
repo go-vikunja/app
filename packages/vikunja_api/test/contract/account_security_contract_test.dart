@@ -32,8 +32,8 @@ final _apiTokenShape = RegExp(r'^tk_[0-9a-f]{40}$');
 final _caldavTokenShape = RegExp(r'^[A-Za-z0-9]{64}$');
 
 final _client = OAuthClientConfig(
-  clientId: 'dev.coderoftime.rurana',
-  redirectUri: Uri.parse('vikunja-dev.coderoftime.rurana://oauth/callback'),
+  clientId: 'vikunja-io.vikunja.app',
+  redirectUri: Uri.parse('vikunja-io.vikunja.app://oauth/callback'),
 );
 
 typedef _User = ({String username, String password, String jwt});

@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-# Adds the RuranaWidgets WidgetKit extension to the Flutter iOS project and keeps
-# the project's file list in sync with app/ios/RuranaWidgets (Swift files, the asset
+# Adds the VikunjaWidgets WidgetKit extension to the Flutter iOS project and keeps
+# the project's file list in sync with app/ios/VikunjaWidgets (Swift files, the asset
 # catalog, Localizable.strings and Localizable.stringsdict per language, the privacy
 # manifest). It also gives the Runner its entitlements and its privacy manifest.
 # Re-running it changes nothing unless files were added or removed. Needs only the
@@ -13,8 +13,8 @@ require 'fileutils'
 require 'tmpdir'
 require 'xcodeproj'
 
-NAME = 'RuranaWidgets'
-BUNDLE_ID = 'dev.coderoftime.rurana.RuranaWidgets'
+NAME = 'VikunjaWidgets'
+BUNDLE_ID = 'io.vikunja.app.widgets'
 DEPLOYMENT_TARGET = '17.0'
 EMBED_PHASE = 'Embed Foundation Extensions'
 PRIVACY_MANIFEST = 'PrivacyInfo.xcprivacy'
@@ -25,7 +25,7 @@ EXTENSION_SETTINGS = {
   'PRODUCT_NAME' => '$(TARGET_NAME)',
   'INFOPLIST_FILE' => "#{NAME}/Info.plist",
   'GENERATE_INFOPLIST_FILE' => 'YES',
-  'INFOPLIST_KEY_CFBundleDisplayName' => 'Rurana',
+  'INFOPLIST_KEY_CFBundleDisplayName' => 'Vikunja',
   'CODE_SIGN_ENTITLEMENTS' => "#{NAME}/#{NAME}.entitlements",
   'CODE_SIGN_STYLE' => 'Automatic',
   'IPHONEOS_DEPLOYMENT_TARGET' => DEPLOYMENT_TARGET,
@@ -168,7 +168,7 @@ end
 project_path = File.expand_path(ARGV[0] || File.join(__dir__, '..', 'app', 'ios', 'Runner.xcodeproj'))
 ios_dir = File.dirname(project_path)
 ext_dir = File.join(ios_dir, NAME)
-['Info.plist', 'RuranaWidgets.entitlements', PRIVACY_MANIFEST].each do |name|
+['Info.plist', "#{NAME}.entitlements", PRIVACY_MANIFEST].each do |name|
   abort "#{File.join(ext_dir, name)} missing" unless File.exist?(File.join(ext_dir, name))
 end
 ['Runner.entitlements', PRIVACY_MANIFEST].each do |name|

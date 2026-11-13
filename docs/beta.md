@@ -2,13 +2,15 @@
 
 The owner's runbook for step 37d ([D77]): from the first push to GitLab through the closed test on Google Play and the TestFlight beta to 1.0.0 in both stores. Each part comes in the order it is done. [releasing.md](releasing.md) has how a release is cut and every one-time setting, and [store-listing.md](store-listing.md) every console form with its answer; this page links them and adds what neither covers. The tester-facing texts are in English and German. None of this is legal advice.
 
-The owner's decisions of 2026-11-02 behind it ([D77]): every project of the GitLab group `coderoftime` public, so that the group can join GitLab for Open Source; [Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)'s option A for the keys; the app id `dev.coderoftime.rurana`; a "Help and bug reports" row on the About page; the closed test's testers through a Google Group and TestFlight's external testers through a public link; testers on their own Vikunja server (2.3.0 or newer) or the public demo, `try.vikunja.io`. iOS builds stay on the owner's Mac.
+Since [D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp) the beta runs in the official Vikunja listing, after the switch of steps 38a to 38f: the app is called Vikunja, its id is the official app's `io.vikunja.app` ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja)), the Play app is the one in Vikunja's Play account, and its bundles are signed with Vikunja's upload key. Since step 38a (in review) the names, ids and texts on this page are the official app's; parts 1 to 5, the closed test and the tester texts are still written for a beta under the owner's own accounts and are rewritten with steps 38c and 38f, before 37d goes on.
+
+The owner's decisions of 2026-11-02 behind it ([D77]): every project of the GitLab group `coderoftime` public, so that the group can join GitLab for Open Source; [Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)'s option A for the keys; a new app id, since step 38a the official app's `io.vikunja.app` ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja)); a "Help and bug reports" row on the About page; the closed test's testers through a Google Group and TestFlight's external testers through a public link; testers on their own Vikunja server (2.3.0 or newer) or the public demo, `try.vikunja.io`. iOS builds stay on the owner's Mac.
 
 ## Before beta.1
 
 ### 1. GitLab
 
-1. **Every project of the group `coderoftime` public**, each with an OSI-approved licence: GitLab for Open Source takes a group only when all its projects are public and OSI-licensed (one private project is allowed for security work, with GitLab's written permission). Before Rurana goes public, confirm that the tracked test-server users, `test_servers/seed/e2e-user.env` and `e2e-user-2.env`, hold nothing used anywhere else; they go public with the repository, and its history goes public as it is.
+1. **Every project of the group `coderoftime` public**, each with an OSI-approved licence: GitLab for Open Source takes a group only when all its projects are public and OSI-licensed (one private project is allowed for security work, with GitLab's written permission). Before the project goes public, confirm that the tracked test-server users, `test_servers/seed/e2e-user.env` and `e2e-user-2.env`, hold nothing used anywhere else; they go public with the repository, and its history goes public as it is.
 2. **Push `main`** to `https://gitlab.com/coderoftime/rurana` (private since 2026-10-29, `origin/main` then at 80b19c9; local `main` is ahead).
 3. **The project's settings,** [releasing.md](releasing.md#once-before-the-first-release) steps 3 to 8: visibility, protected `v*` tags, the signing variables once the keys exist (part [2](#2-the-keys)), duplicate packages, artifacts, the weekly scan.
 4. **GitLab for Open Source** for the group, once every project is public ([releasing.md](releasing.md#once-before-the-first-release) step 11): the form at [about.gitlab.com/solutions/open-source/join][gitlab-oss], a coupon by email, renewed every year. Until it is granted, the free 400 compute minutes a month cover the whole group, and each beta costs two pipelines, about 200–300 minutes.
@@ -29,7 +31,7 @@ The owner's decisions of 2026-11-02 behind it ([D77]): every project of the GitL
 
 ### 4. The Play app
 
-- **Create the app** `Rurana`, with Play App Signing on the owner's key (part [2](#2-the-keys)); its id is `dev.coderoftime.rurana`, which creating the app registers for developer verification.
+- **The app** is the one in Vikunja's Play account, `io.vikunja.app` ([D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)); whether the owner gets release rights there is open. (The plan before the switch: create the app with Play App Signing on the owner's key, part [2](#2-the-keys).)
 - **Every form** as [store-listing.md](store-listing.md#google-play-console) answers it: store settings and contact details, the listing in both languages with the graphics of `branding/png/`, the privacy policy, App access with the public demo, Ads, Content rating, Target audience, News, Data safety, Government, Financial features, Health, Advertising ID. After the first upload, check that App content asks for no exact-alarm or foreground-service declaration.
 - **The screenshots:** the closed test needs the whole listing, screenshots included. The phone and tablet sets in both languages are in `fastlane/metadata/android/*/images/` (taken on 2026-11-03, [store-listing.md](store-listing.md#screenshots)). Since 36g is in the beta, the tablet shots 02 (Kanban) and 04 (a project) show the Projects tab without the project tree's column; retake them on the tablet emulator in landscape with the demo data before the listing goes live (the owner signs in). The App Store's sets wait for a session on the simulators before the 1.0.0 submission ([before 1.0.0](#before-100)); TestFlight needs none.
 
@@ -38,8 +40,8 @@ The owner's decisions of 2026-11-02 behind it ([D77]): every project of the GitL
 [releasing.md](releasing.md#once-before-the-first-upload) has each step:
 
 - the Apple Developer Program (the enrolled name shows as the seller; renewed every year), the team id, Xcode signed in with an iPhone registered;
-- the App IDs `dev.coderoftime.rurana` and `dev.coderoftime.rurana.RuranaWidgets`, both with only the App Group `group.dev.coderoftime.rurana` (Xcode creates them on the first signed build, or by hand under Identifiers);
-- the app record `Rurana` with the bundle id `dev.coderoftime.rurana`, which reserves the name, so create it early;
+- the App IDs `io.vikunja.app` and `io.vikunja.app.widgets`, both with only the App Group `group.io.vikunja.app` (Xcode creates them on the first signed build, or by hand under Identifiers). Which Apple account publishes the app is open, and `io.vikunja.app` may already be taken at Apple; until both are settled, no build for a device with automatic signing ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja));
+- the app record `Vikunja` with the bundle id `io.vikunja.app`, which reserves the name, so create it early (if the name is taken, step 38f picks the fallback);
 - the App Store Connect API key, outside the repository;
 - `RURANA_SOURCE_CODE_URL=https://gitlab.com/coderoftime/rurana`, which opens signed out only once the project is public;
 - the App Store Connect forms and TestFlight's test information ([store-listing.md](store-listing.md#app-store-connect)).
@@ -71,7 +73,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 1. **The testers:** a Google Group the owner creates, added as the track's tester list; a tester joins the group first and then opts in ([testing tracks][play-tracks]). Aim for 15 to 20: one opt-out drops the count below 12, and a tester who opts in again starts their 14 days from zero. Every tester needs a Google account, the one in Play on their phone.
 2. **Internal testing first (optional):** an internal test can start before the listing is complete, for the owner's own devices. Its testers are not eligible for the closed test until they opt out, so none of them counts among the 12.
 3. **The track:** feedback channel `coderoftime@gmail.com`, which the opt-in page shows; countries as for production; the bundle of `v1.0.0-beta.1`. Allow some days before it is available: Google may review the release first.
-4. **The opt-in link,** `https://play.google.com/apps/testing/dev.coderoftime.rurana`, works only once the app's status is Published, and can take some hours after the first publication. Then send [the invitation](#the-invitation).
+4. **The opt-in link,** `https://play.google.com/apps/testing/io.vikunja.app`, works only once the app's status is Published, and can take some hours after the first publication. Then send [the invitation](#the-invitation).
 5. **The 14 days:** once a week, check that at least 12 testers are still opted in, and ask testers to keep the app installed and use it: the application asks how they used it, and Google may ask for more testing when engagement was low.
 6. **Apply for production** from the Dashboard ("Apply for production") after the 14 days. The application has three parts ([testing requirements][play-testing-14]; the questions' wording here is from the help page, not the form):
 
@@ -79,10 +81,10 @@ A personal developer account created after 13 November 2023 can apply for produc
 |---|---|---|
 | The closed test | How easy was it to recruit testers? | Testers joined a Google Group announced to [where it was announced]; [N] opted in, [M] stayed for 14 days. |
 | | Did testers use all of the app's features? | They signed in to their own Vikunja servers (2.3.0 or newer) or the public demo and used [the Overview, Upcoming, search, the List, Kanban, Table and Gantt views, Quick Add Magic, task details with reminders, comments and attachments, offline changes, notifications, widgets, the app lock, several accounts]; [features little used]. |
-| | Did usage match what you expect in production? How did it differ? | Yes: Rurana is for people who already use Vikunja, and testers were such people; [differences, for example more demo use than in production]. |
+| | Did usage match what you expect in production? How did it differ? | Yes: the app is for people who already use Vikunja, and testers were such people; [differences, for example more demo use than in production]. |
 | | Summary of the feedback, and how it was collected | Through email to coderoftime@gmail.com, Play's private feedback, [GitLab issues] and the app's "Help and bug reports" row; [N] reports, [the main themes]; Play vitals for crashes. |
 | The app | Target audience | Adults who run Vikunja, the open-source task manager, on their own server or use one at work, and want it on Android. |
-| | Value | An offline-first, unofficial client for Vikunja servers: tasks and projects without a connection, reminders as notifications, widgets, Kanban and Gantt, several accounts; no account with the developer, no analytics or ads, open source. |
+| | Value | An offline-first app for Vikunja servers: tasks and projects without a connection, reminders as notifications, widgets, Kanban and Gantt, several accounts; no account with the developer, no analytics or ads, open source. |
 | | Installs in the first year (not shown publicly) | [the owner's estimate] |
 | Production readiness | What changed because of the test? | [the fixes of beta.2 to beta.N, from the beta log] |
 | | How did you decide the app is ready? | Every reported problem fixed or recorded with a reason, no open crash in Play vitals, the threat model signed off ([section 8.4](threat-model.md#84-sign-off)), the accessibility passes run. |
@@ -104,9 +106,9 @@ A personal developer account created after 13 November 2023 can apply for produc
 
 ### The invitation
 
-> **Test Rurana before its release**
+> **Test the new Vikunja app before its release**
 >
-> Rurana is a new app for Android, iPhone and iPad for Vikunja, the open-source task manager that people run on their own servers. It is unofficial: the Vikunja project does not make or endorse it. Rurana is open source (AGPL-3.0-or-later): https://gitlab.com/coderoftime/rurana
+> The new Vikunja app is coming to Android, iPhone and iPad: the app for Vikunja, the open-source task manager that people run on their own servers. It is open source (AGPL-3.0-or-later): https://gitlab.com/coderoftime/rurana
 >
 > Before version 1.0.0 I am looking for testers. You need:
 >
@@ -116,8 +118,8 @@ A personal developer account created after 13 November 2023 can apply for produc
 > **Android (Google Play):**
 >
 > 1. Join the Google Group [the group's address] with the Google account you use in Play.
-> 2. Open https://play.google.com/apps/testing/dev.coderoftime.rurana with the same account, join the test, then install Rurana from Google Play.
-> 3. Please stay in the test and keep Rurana installed for at least 14 days. Google lets a new developer publish an app only after at least 12 testers have taken part for 14 days in a row; leaving the test early stops your count, and joining again starts it from zero.
+> 2. Open https://play.google.com/apps/testing/io.vikunja.app with the same account, join the test, then install Vikunja from Google Play.
+> 3. Please stay in the test and keep the app installed for at least 14 days. Google lets a new developer publish an app only after at least 12 testers have taken part for 14 days in a row; leaving the test early stops your count, and joining again starts it from zero.
 >
 > **iPhone and iPad (TestFlight):** install TestFlight from the App Store, then open [the public TestFlight link] on your device and accept.
 >
@@ -125,7 +127,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 >
 > - in the app: Account tab, the version at the very bottom, then "Help and bug reports";
 > - by email to coderoftime@gmail.com, with the app's version, your device and system version, your Vikunja server's version and the steps that show the problem; the row "Support details" after "Help and bug reports" shows these and more and shares them when you tap Share, without your tasks, names or passwords;
-> - on Android as private feedback on Rurana's page in Google Play; on iPhone and iPad through TestFlight: take a screenshot in Rurana and share it as beta feedback, or send feedback from Rurana's page in the TestFlight app.
+> - on Android as private feedback on the app's page in Google Play; on iPhone and iPad through TestFlight: take a screenshot in the app and share it as beta feedback, or send feedback from the app's page in the TestFlight app.
 >
 > Please leave passwords and tokens out of every report, and report a security problem by email, not in a public issue.
 >
@@ -133,9 +135,9 @@ A personal developer account created after 13 November 2023 can apply for produc
 
 ### Die Einladung
 
-> **Teste Rurana vor der Veröffentlichung**
+> **Teste die neue Vikunja-App vor der Veröffentlichung**
 >
-> Rurana ist eine neue App für Android, iPhone und iPad für Vikunja, die Open-Source-Aufgabenverwaltung, die man auf dem eigenen Server betreibt. Rurana ist inoffiziell: Das Vikunja-Projekt entwickelt die App nicht und empfiehlt sie nicht. Rurana ist Open Source (AGPL-3.0-or-later): https://gitlab.com/coderoftime/rurana
+> Die neue Vikunja-App kommt für Android, iPhone und iPad: die App für Vikunja, die Open-Source-Aufgabenverwaltung, die man auf dem eigenen Server betreibt. Sie ist Open Source (AGPL-3.0-or-later): https://gitlab.com/coderoftime/rurana
 >
 > Vor Version 1.0.0 suche ich Testerinnen und Tester. Du brauchst:
 >
@@ -145,8 +147,8 @@ A personal developer account created after 13 November 2023 can apply for produc
 > **Android (Google Play):**
 >
 > 1. Tritt der Google Group [Adresse der Gruppe] mit dem Google-Konto bei, das du in Play nutzt.
-> 2. Öffne mit demselben Konto https://play.google.com/apps/testing/dev.coderoftime.rurana, nimm am Test teil und installiere Rurana dann aus Google Play.
-> 3. Bleib bitte mindestens 14 Tage im Test und lass Rurana so lange installiert. Google lässt neue Entwicklerinnen und Entwickler eine App erst veröffentlichen, wenn mindestens 12 Personen 14 Tage am Stück mitgetestet haben; wer früher austritt, zählt nicht mehr, und wer wieder beitritt, fängt bei null an.
+> 2. Öffne mit demselben Konto https://play.google.com/apps/testing/io.vikunja.app, nimm am Test teil und installiere Vikunja dann aus Google Play.
+> 3. Bleib bitte mindestens 14 Tage im Test und lass die App so lange installiert. Google lässt neue Entwicklerinnen und Entwickler eine App erst veröffentlichen, wenn mindestens 12 Personen 14 Tage am Stück mitgetestet haben; wer früher austritt, zählt nicht mehr, und wer wieder beitritt, fängt bei null an.
 >
 > **iPhone und iPad (TestFlight):** Installiere TestFlight aus dem App Store, öffne dann [den öffentlichen TestFlight-Link] auf deinem Gerät und nimm die Einladung an.
 >
@@ -154,7 +156,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 >
 > - in der App: Tippe im Tab „Konto“ ganz unten auf die Version, dann auf „Hilfe und Fehler melden“;
 > - per E-Mail an coderoftime@gmail.com, mit der Version der App, deinem Gerät und seiner Systemversion, der Version deines Vikunja-Servers und den Schritten, die den Fehler zeigen; die Zeile „Support-Details“ nach „Hilfe und Fehler melden“ zeigt das und mehr und teilt es, wenn du auf „Teilen“ tippst, ohne deine Aufgaben, Namen oder Passwörter;
-> - unter Android als privates Feedback auf der Seite von Rurana in Google Play; auf iPhone und iPad über TestFlight: Mach in Rurana einen Screenshot und teile ihn als Beta-Feedback, oder sende Feedback von der Seite von Rurana in der TestFlight-App.
+> - unter Android als privates Feedback auf der Seite der App in Google Play; auf iPhone und iPad über TestFlight: Mach in der App einen Screenshot und teile ihn als Beta-Feedback, oder sende Feedback von der Seite der App in der TestFlight-App.
 >
 > Lass Passwörter und Tokens bitte aus jeder Meldung heraus, und melde ein Sicherheitsproblem per E-Mail, nicht öffentlich.
 >
@@ -164,37 +166,37 @@ A personal developer account created after 13 November 2023 can apply for produc
 
 TestFlight's What to Test for the first build, with Apple's names (Home Screen, Home-Bildschirm, Mitteilungen). The Google Group can get the same text with Android's: home screen, Startbildschirm, Benachrichtigungen.
 
-> Rurana 1.0.0-beta.1 is the first beta. Please use it for your tasks as you would every day, and try in particular:
+> Vikunja app 1.0.0-beta.1 is the first beta. Please use it for your tasks as you would every day, and try in particular:
 >
 > - signing in to your Vikunja server, or "Try the public demo", and the first sync; a second account if you have one;
 > - the Overview, Upcoming and search;
 > - your projects in the List, Kanban, Table and Gantt views: creating, ticking off, moving and reordering tasks;
 > - "New task" with Quick Add Magic: dates, labels and the project typed into the title ("How Quick Add Magic works" explains it);
 > - a task's details: dates, reminders, repeating, labels, assignees, the description with a checklist, comments and attachments;
-> - offline: change something without a connection; Rurana sends it when you are back online;
-> - reminders as notifications, also with Rurana closed, and the notification's Done and Snooze buttons;
+> - offline: change something without a connection; the app sends it when you are back online;
+> - reminders as notifications, also with the app closed, and the notification's Done and Snooze buttons;
 > - the widgets on your Home Screen;
 > - the app lock: Account tab, App lock and privacy;
-> - Rurana in English and in German.
+> - the app in English and in German.
 >
 > Tell me about anything that crashes, looks wrong, is slow, is hard to use or is missing: in the app with Help and bug reports on the About page (Account tab, the version at the bottom), through TestFlight's feedback, or by email to coderoftime@gmail.com. The row Support details on the same page gives you what to add to a report.
 
 ### Was du in beta.1 testen kannst
 
-> Rurana 1.0.0-beta.1 ist die erste Beta. Nutze sie bitte für deine Aufgaben wie sonst auch, und probier vor allem aus:
+> Vikunja-App 1.0.0-beta.1 ist die erste Beta. Nutze sie bitte für deine Aufgaben wie sonst auch, und probier vor allem aus:
 >
 > - die Anmeldung auf deinem Vikunja-Server oder „Öffentliche Demo ausprobieren“ und die erste Synchronisierung; ein zweites Konto, wenn du eins hast;
 > - „Überblick“, „Anstehend“ und die Suche;
 > - deine Projekte in den Ansichten Liste, Kanban, Tabelle und Gantt: Aufgaben erstellen, abhaken, verschieben und umsortieren;
 > - „Neue Aufgabe“ mit Quick Add Magic: Datum, Labels und Projekt direkt im Titel („So funktioniert Quick Add Magic“ erklärt es);
 > - die Details einer Aufgabe: Termine, Erinnerungen, Wiederholung, Labels, zugewiesene Personen, die Beschreibung mit einer Checkliste, Kommentare und Anhänge;
-> - offline: Ändere etwas ohne Verbindung; Rurana sendet es, sobald du wieder online bist;
-> - Erinnerungen als Mitteilungen, auch wenn Rurana geschlossen ist, und die Tasten „Erledigt“ und „… später“ in der Mitteilung;
+> - offline: Ändere etwas ohne Verbindung; die App sendet es, sobald du wieder online bist;
+> - Erinnerungen als Mitteilungen, auch wenn die App geschlossen ist, und die Tasten „Erledigt“ und „… später“ in der Mitteilung;
 > - die Widgets auf deinem Home-Bildschirm;
 > - die App-Sperre: im Tab „Konto“ unter „App-Sperre und Privatsphäre“;
-> - Rurana auf Deutsch und auf Englisch.
+> - die App auf Deutsch und auf Englisch.
 >
-> Schreib mir zu allem, was abstürzt, falsch aussieht, langsam ist, schwer zu bedienen ist oder fehlt: in der App mit „Hilfe und Fehler melden“ auf der Seite „Über Rurana“ (im Tab „Konto“ ganz unten auf die Version tippen), über das Feedback von TestFlight oder per E-Mail an coderoftime@gmail.com. Die Zeile „Support-Details“ auf derselben Seite gibt dir, was du einer Meldung beilegen kannst.
+> Schreib mir zu allem, was abstürzt, falsch aussieht, langsam ist, schwer zu bedienen ist oder fehlt: in der App mit „Hilfe und Fehler melden“ auf der Seite „Über die App“ (im Tab „Konto“ ganz unten auf die Version tippen), über das Feedback von TestFlight oder per E-Mail an coderoftime@gmail.com. Die Zeile „Support-Details“ auf derselben Seite gibt dir, was du einer Meldung beilegen kannst.
 
 ## During the beta
 
@@ -220,7 +222,7 @@ The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-
 - [ ] A restore (8.3 #9): an encrypted backup restored to another device brings back no tokens, connection secrets, databases or widget files.
 - [ ] The capture cover (8.3 #11) in a real screen recording, AirPlay or mirrored display.
 - [ ] Photo locations (8.3 #12): a photo from Photos, a photo and a video taken with the camera, each without its location on the server.
-- [ ] Background refresh through BGTaskScheduler (`dev.coderoftime.rurana.sync`).
+- [ ] Background refresh through BGTaskScheduler (`io.vikunja.app.sync`).
 - [ ] An account's online flows (the simulator checks had only an expired session).
 - [ ] Increase Contrast, Bold Text, Reduce Motion and VoiceOver: [accessibility-checklist.md](accessibility-checklist.md#3-final-ios-phase) section 3.
 - [ ] iPad: the wheel popups as cards, an iPad mini and an 11-inch iPad, Split View and Slide Over.
@@ -234,8 +236,7 @@ The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-
 
 - [ ] **TalkBack and VoiceOver:** the manual passes of [accessibility-checklist.md](accessibility-checklist.md#2-manual-on-android) ([Q19](open-questions.md#q19-device-setup-for-the-manual-talkback-pass)); TalkBack and Switch Access need the owner at the controls.
 - [ ] **The threat model again** for 1.0.0 ([section 9](threat-model.md#9-review-cadence)): 8.1 on the tree to be released, 8.2 again for what changed since the beta's sign-off, 8.3 from the device test above, and a new row in [section 8.4](threat-model.md#84-sign-off).
-- [ ] **The Vikunja maintainers:** the name, the icon and the scheme checked with them ([the message](#the-message-to-the-vikunja-maintainers)); their written answer kept as the evidence Apple's Guideline 4.1(c) asks for, attached in App Review Information if Apple asks ([complete review][apple-complete-review]). Ideally the answer comes before the closed test's listing: a new icon means new graphics and screenshots.
-- [ ] **A trademark search** for "Rurana" in the EUIPO's, the DPMA's and the USPTO's registers, at least in classes 9 and 42 ([branding/README.md](../branding/README.md#name-rurana)).
+- [ ] **The public demo:** ask the Vikunja maintainers whether the testers and the stores' reviewers may use try.vikunja.io with the demo account (the review notes ask the reviewers not to delete it) and whether there are times it should not be used ([D76]).
 - [ ] **The written offer's wording** for desugar_jdk_libs, which the owner confirms ([D67] decision 6; the text is in `app/assets/legal/android.md`).
 - [ ] **The privacy policy's open points** ([D76]'s known gaps): the supervisory authority, which depends on the owner's Bundesland; how long support emails and the testers' lists are kept; the statements about the stores' statistics and the testers' addresses, read again once the beta has started.
 - [ ] **US export:** no annual self-classification report is due. Since BIS's rule of 29 March 2021 ([86 FR 16482][bis-rule]) the report covers only mass-market components and executable software ([15 CFR 740.17(e)(3)][cfr-740-17]), not an end-user app with standard encryption only ([releasing.md](releasing.md#export-compliance)).
@@ -243,37 +244,6 @@ The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-
 - [ ] **Steps 18 and 19,** the widgets, still in review: the owner accepts them after the device test.
 - [ ] **Accessibility Nutrition Labels** stay blank in App Store Connect unless the passes above confirm a feature ([store-listing.md](store-listing.md#app-store-connect)).
 - [ ] **The App Store's screenshots** and `python3 -I tool/check_store_metadata.py --strict` before the submission ([store-listing.md](store-listing.md#screenshots)).
-
-## The message to the Vikunja maintainers
-
-[D15](decisions.md#d15-app-id-devcoderoftimerurana-and-the-name-rurana) asks for the check of the name and the logo with the Vikunja maintainers before the store release ([branding/README.md](../branding/README.md#open-points)). Vikunja publishes no brand or trademark policy, and Apple names no procedure, only the evidence it accepts: email correspondence that shows the permission ([complete review][apple-complete-review]).
-
-**The channel:** `maintainers@vikunja.io`, which [vikunja.io/contact][vikunja-contact] lists for the maintainers; its answer is private and in writing, so it can be shown to App Review. `hello@vikunja.io` takes general requests; the forum (community.vikunja.io) and Matrix (#vikunja:matrix.org) are public, and issues do not fit a permission request. The owner sends it once the project is public, so that its link opens, with `branding/png/icon-ios-1024.png`, `preview-sheet.png` and `feature-graphic-1024x500.png` attached. Without an answer after two weeks, ask once more through `hello@vikunja.io`; if they refuse the icon, the "checkbox ears" icon (`branding/explorations-v2/checkbox-ears/final/`) or a new one replaces it before 1.0.0.
-
-> **Subject:** Rurana, an unofficial app for Vikunja: may I use this name and icon?
->
-> Hello,
->
-> I'm Benedikt Lesch. I have built Rurana, a mobile app for Vikunja servers on Android, iPhone and iPad, and I am about to start a beta on Google Play and TestFlight, with version 1.0.0 to follow. Since the app leans on Vikunja's name and look, I'd like to ask for your OK first.
->
-> About the app:
->
-> - It is unofficial. The store descriptions and the app's About page say: "Rurana is an unofficial app for Vikunja servers. It is not affiliated with or endorsed by the Vikunja project."
-> - It is open source under the AGPL-3.0-or-later, with an additional permission for app stores: https://gitlab.com/coderoftime/rurana
-> - It has no backend, no analytics and no ads; it talks only to the Vikunja server the user enters. It supports Vikunja 2.3.0 and newer.
->
-> My questions:
->
-> 1. **The name "Rurana"**, meant as Quechua for "what is to be done", the language the vicuña's name comes from. The store name never contains "Vikunja"; the descriptions use it only to say which servers the app works with. Is that fine with you?
-> 2. **The icon,** an illustrated llama with a check badge (attached, with a preview of its variants and the Play Store graphic). It leans on Vikunja's artwork, and Apple's App Review Guideline 4.1(c) asks for the other developer's approval in that case. Do you approve of it, or would you rather I change it?
-> 3. **The URL scheme** `vikunja-dev.coderoftime.rurana`, which the app uses for the sign-in callback and its own links. It starts with "vikunja-" because Vikunja accepts only such redirect schemes; the app id itself is `dev.coderoftime.rurana`. Is that all right?
-> 4. **Your public demo:** testers without a server of their own, and Apple's and Google's reviewers, would use try.vikunja.io with the demo account, through the app's "Try the public demo". The review notes ask the reviewers not to delete the account. Is that OK, and are there times when the demo should not be used?
-> 5. May I show your reply to Apple's App Review as the approval it asks for?
->
-> Thank you for Vikunja, and for your time.
->
-> Benedikt Lesch
-> https://coderoftime.dev/rurana/
 
 ## Cutting 1.0.0
 
@@ -311,8 +281,8 @@ Read on 2026-11-02.
 - Vikunja: [contact][vikunja-contact]
 
 [D67]: decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet
-[D71]: decisions.md#d71-english-and-german-british-base-glossary-error-texts-live-language-changes
+[D71]: decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes
 [D74]: decisions.md#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover
 [D75]: decisions.md#d75-owners-ui-review-no-task-identifier-coloured-folders-new-task-sheet-account-tab
-[D76]: decisions.md#d76-store-listings-and-policies-ruranas-pages-photo-locations-removed-on-android
+[D76]: decisions.md#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android
 [D77]: decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers

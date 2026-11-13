@@ -4,7 +4,7 @@
 const String? sourceCodeUrl = _sourceCodeUrl == '' ? null : _sourceCodeUrl;
 const _sourceCodeUrl = String.fromEnvironment('SOURCE_CODE_URL');
 
-/// Rurana's pages on the owner's website (D76, D77), each in English and
+/// The app's pages on the owner's website (D76, D77), each in English and
 /// German; an app in German opens the German one, every other language the
 /// English one.
 enum WebsitePage {

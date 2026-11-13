@@ -213,7 +213,7 @@ void main() {
 
   Dio dio({NetworkProfileAdapter? adapter, HttpClientAdapter? transport}) {
     final dio = createDio(
-      userAgent: 'Rurana/test',
+      userAgent: 'Vikunja-App/test',
       httpClientAdapter: transport ?? platform,
       profiles: profiles,
     );

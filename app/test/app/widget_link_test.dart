@@ -205,7 +205,7 @@ void main() {
       expect(find.byType(AccountTab), findsOneWidget);
     });
 
-    testWidgets('"Open Rurana" only opens the app', (tester) async {
+    testWidgets('"Open Vikunja" only opens the app', (tester) async {
       await pumpApp(tester);
       await openTab(tester, en.tabUpcoming);
 
@@ -556,7 +556,7 @@ void main() {
   });
 }
 
-const String _scheme = 'vikunja-dev.coderoftime.rurana';
+const String _scheme = 'vikunja-io.vikunja.app';
 
 /// The install's widget-link key in these tests (32 bytes 0…31).
 const String _linkKey = 'AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8';

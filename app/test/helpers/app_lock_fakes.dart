@@ -117,7 +117,7 @@ Future<void> pumpPastPromptSettle(WidgetTester tester) async {
 
 /// A prompt as the app words it, with [reason].
 DeviceAuthPrompt promptFor(String reason) => DeviceAuthPrompt(
-  title: 'Rurana',
+  title: 'Vikunja',
   hint: 'Use your fingerprint, face or screen lock',
   cancel: 'Cancel',
   reason: reason,

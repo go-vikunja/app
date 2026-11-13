@@ -34,7 +34,7 @@ final class SharedFile {
   String toString() => 'SharedFile(${size ?? '?'} bytes)';
 }
 
-/// What another app shared into Rurana: text, a subject (a page title from
+/// What another app shared into this app: text, a subject (a page title from
 /// a browser, an email subject), files, or a mix.
 @immutable
 final class IncomingShare {
@@ -84,7 +84,7 @@ final class SharedFileTooLarge implements Exception {
 }
 
 /// The shared file cannot be read: the other app revoked the grant, the
-/// file is gone, or the URI is not one Rurana accepts.
+/// file is gone, or the URI is not one the app accepts.
 final class SharedFileUnreadable implements Exception {
   const new();
 

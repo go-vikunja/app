@@ -6,7 +6,8 @@ import 'package:flutter_test/flutter_test.dart';
 import '../helpers/pump_app.dart';
 
 void main() {
-  test('English says "forever" for what the bin deletes, never "for good"', () {
+  test('English says "forever" for what the trash deletes, never '
+      '"for good"', () {
     final english = jsonDecode(
       File('lib/l10n/arb/app_en.arb').readAsStringSync(),
     ) as Map<String, Object?>;

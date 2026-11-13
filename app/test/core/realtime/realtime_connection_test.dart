@@ -79,7 +79,7 @@ void main() {
       tokens: tokens,
       engine: engine,
       activity: activity,
-      headers: const {'User-Agent': 'Rurana/test'},
+      headers: const {'User-Agent': 'Vikunja-App/test'},
       clock: () => now,
       createTimer: timers.create,
       random: random ?? ZeroRandom(),
@@ -120,7 +120,7 @@ void main() {
       await pumpEventQueue();
 
       expect(connector.urls, [url]);
-      expect(connector.headers.single, {'User-Agent': 'Rurana/test'});
+      expect(connector.headers.single, {'User-Agent': 'Vikunja-App/test'});
       final socket = connector.lastSocket;
       expect(socket.tokens, ['token-1']);
       expect(socket.sent, ['auth', 'subscribe notification.created']);

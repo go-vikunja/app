@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 /// The JavaScript channel the editor page posts its messages to.
-const editorChannelName = 'RuranaEditor';
+const editorChannelName = 'VikunjaEditor';
 
 /// The editor page's commands; [heading], [setLink], [insertTable] and
 /// [insertImage] take arguments, see [EditorCommand].
@@ -366,7 +366,7 @@ abstract final class EditorMessages {
   // JSON is a valid JavaScript literal, U+2028 and U+2029 included since
   // ES2019, so the payload needs no further escaping.
   static String _script(Map<String, Object?> message) =>
-      'window.rurana.receive(${jsonEncode(message)})';
+      'window.vikunja.receive(${jsonEncode(message)})';
 }
 
 /// [message] from the page as an event, or null when it is not one: not

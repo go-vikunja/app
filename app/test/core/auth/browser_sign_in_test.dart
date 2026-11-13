@@ -51,13 +51,13 @@ void main() {
     expect(url.path, '/vikunja/oauth/authorize');
     expect(url.queryParameters, {
       'response_type': 'code',
-      'client_id': 'dev.coderoftime.rurana',
-      'redirect_uri': 'vikunja-dev.coderoftime.rurana://oauth/callback',
+      'client_id': 'vikunja-io.vikunja.app',
+      'redirect_uri': 'vikunja-io.vikunja.app://oauth/callback',
       'state': isNotEmpty,
       'code_challenge': isNotEmpty,
       'code_challenge_method': 'S256',
     });
-    expect(fakes.webAuthenticator.schemes, ['vikunja-dev.coderoftime.rurana']);
+    expect(fakes.webAuthenticator.schemes, ['vikunja-io.vikunja.app']);
     expect(fakes.tokenGateway.exchangedCodes, ['auth-code']);
     expect(
       fakes.tokenGateway.exchangeRequests.single.state,
@@ -128,7 +128,7 @@ void main() {
     (
       'another redirect target',
       (Uri url) => Uri.parse(
-        'vikunja-dev.coderoftime.rurana://elsewhere?code=c&'
+        'vikunja-io.vikunja.app://elsewhere?code=c&'
         'state=${url.queryParameters['state']}',
       ),
       AuthorizationCallbackProblem.wrongRedirect,

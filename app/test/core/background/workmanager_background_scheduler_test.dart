@@ -69,8 +69,8 @@ void main() {
 
     final registration = workmanager.registrations.single;
     expect(registration.kind, 'periodic');
-    expect(registration.uniqueName, 'dev.coderoftime.rurana.sync');
-    expect(registration.taskName, 'dev.coderoftime.rurana.sync');
+    expect(registration.uniqueName, 'io.vikunja.app.sync');
+    expect(registration.taskName, 'io.vikunja.app.sync');
     expect(registration.arguments, {
       'frequency': const Duration(minutes: 30),
       'initialDelay': null,
@@ -102,7 +102,7 @@ void main() {
 
     final registration = workmanager.registrations.single;
     expect(registration.kind, 'oneOff');
-    expect(registration.uniqueName, 'dev.coderoftime.rurana.drain');
+    expect(registration.uniqueName, 'io.vikunja.app.drain');
     expect(registration.taskName, BackgroundTasks.drain);
     expect(registration.arguments, {
       'network': NetworkType.connected,

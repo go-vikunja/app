@@ -1,6 +1,6 @@
 import 'package:meta/meta.dart';
 
-enum DeviceKind { rurana, browser, dartClient, other }
+enum DeviceKind { vikunjaApp, browser, dartClient, other }
 
 /// What a session's User-Agent says about the device that signed in.
 @immutable
@@ -20,7 +20,7 @@ final class DeviceDescription {
   /// The User-Agent as the server stored it, trimmed.
   final String raw;
 
-  /// Rurana's version and build; the Dart version of a
+  /// The app's version and build; the Dart version of a
   /// [DeviceKind.dartClient].
   final String? appVersion;
   final String? appBuild;
@@ -62,11 +62,11 @@ final class DeviceDescription {
 /// Chrome's Android 10), so those are dropped.
 DeviceDescription describeUserAgent(String raw) {
   final text = raw.trim();
-  if (_rurana.firstMatch(text) case final match?) {
+  if (_vikunjaApp.firstMatch(text) case final match?) {
     final system = (match.namedGroup('system') ?? '').trim().split(' ');
     final platform = system.first;
     return DeviceDescription(
-      kind: DeviceKind.rurana,
+      kind: DeviceKind.vikunjaApp,
       raw: text,
       appVersion: match.namedGroup('version'),
       appBuild: match.namedGroup('build'),
@@ -96,8 +96,8 @@ DeviceDescription describeUserAgent(String raw) {
   );
 }
 
-final _rurana = RegExp(
-  r'^Rurana/(?<version>[^\s+()]+)(?:\+(?<build>[^\s()]+))?'
+final _vikunjaApp = RegExp(
+  r'^Vikunja-App/(?<version>[^\s+()]+)(?:\+(?<build>[^\s()]+))?'
   r'(?:\s+\((?<system>[^()]*)\))?$',
 );
 final _dart = RegExp(r'^Dart/([0-9][^\s()]*)(?:\s|$)');

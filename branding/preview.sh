@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Renders png/preview-sheet.png from the icons in png/: the iOS variants,
-# the Android masks, the themed icon in light and dark, small sizes and the
-# status bar icon. Needs ImageMagick 7 and a TrueType font (FONT=...).
+# the Android masks, the themed icon in light and dark, small sizes, the
+# status bar icon and the in-app logo on dark and light. Needs ImageMagick 7
+# and a TrueType font (FONT=...).
 set -euo pipefail
 cd "$(dirname "$0")"
 FONT="${FONT:-/System/Library/Fonts/Helvetica.ttc}"
@@ -69,6 +70,8 @@ magick png/notification-960.png -resize 24x24 "$t/n24.png"
 magick png/logo-1024.png -resize 96x96 "$t/logo96.png"
 magick -size 1200x136 xc:'#2b2d31' -compose over "${args[@]}" \
   "$t/n48.png" -geometry +$((x + 10))+44 -composite "$t/n24.png" -geometry +$((x + 78))+56 -composite \
-  "$t/logo96.png" -geometry +$((x + 130))+20 -composite "$t/r3.png"
+  "$t/logo96.png" -geometry +$((x + 130))+20 -composite \
+  -fill '#f2f3f5' -draw "rectangle $((x + 236)),14 $((x + 343)),121" \
+  "$t/logo96.png" -geometry +$((x + 242))+20 -composite "$t/r3.png"
 magick "$t/r1.png" "$t/r2.png" "$t/r3.png" -append -depth 8 -strip png/preview-sheet.png
 echo "Wrote png/preview-sheet.png"
