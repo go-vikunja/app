@@ -6,7 +6,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 cd "$repo_root"
 
-if ! use_flutter --no-install; then
+if ! use_installed_flutter; then
   echo "No Flutter SDK; outdated dependencies not listed."
   exit 0
 fi

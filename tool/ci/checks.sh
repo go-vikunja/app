@@ -13,7 +13,7 @@ app_lib_state() {
   git diff --no-ext-diff -- app/lib | cksum
 }
 before="$(app_lib_state)"
-setup_flutter --codegen
+setup_flutter_with_codegen
 if [[ "$(app_lib_state)" != "$before" ]]; then
   git status --short -- app/lib
   echo "error: generated code is stale. Run: cd app && flutter gen-l10n && dart run build_runner build" >&2

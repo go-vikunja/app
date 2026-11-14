@@ -73,12 +73,20 @@ install_flutter() {
 }
 
 # Puts Flutter on PATH: the pinned SDK on a CI runner, else the one already
-# on PATH. Never downloads when --no-install is given.
+# on PATH. use_installed_flutter never downloads.
 use_flutter() {
+  put_flutter_on_path install
+}
+
+use_installed_flutter() {
+  put_flutter_on_path no-install
+}
+
+put_flutter_on_path() {
   local sdk version
   if on_ci_runner; then
     sdk="$(flutter_sdk_dir)"
-    if [[ "${1:-}" != --no-install ]]; then
+    if [[ "$1" == install ]]; then
       install_flutter
     elif [[ ! -x "${sdk}/bin/flutter" ]]; then
       return 1
@@ -101,22 +109,24 @@ use_flutter() {
   fi
 }
 
-# setup_flutter [--codegen]: Flutter on PATH, the pub workspace resolved from
-# the lockfile and, with --codegen, the app's generated code written again.
+# Flutter on PATH and the pub workspace resolved from the lockfile.
 setup_flutter() {
   use_flutter
   (cd "$repo_root" && flutter pub get --enforce-lockfile)
-  if [[ "${1:-}" == --codegen ]]; then
-    (
-      cd "${repo_root}/app"
-      if [[ -f l10n.yaml ]]; then
-        flutter gen-l10n
-      fi
-      if grep -rqE "^part '[^']+\.g\.dart';" lib; then
-        dart run build_runner build
-      fi
-    )
-  fi
+}
+
+# setup_flutter, then the app's generated code written again.
+setup_flutter_with_codegen() {
+  setup_flutter
+  (
+    cd "${repo_root}/app" || exit
+    if [[ -f l10n.yaml ]]; then
+      flutter gen-l10n
+    fi
+    if grep -rqE "^part '[^']+\.g\.dart';" lib; then
+      dart run build_runner build
+    fi
+  )
 }
 
 # flutter test runs half the CPUs by default, which is a single test process
