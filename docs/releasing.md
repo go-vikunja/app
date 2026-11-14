@@ -9,7 +9,7 @@ How a release of the app is cut ([D86](decisions.md#d86-ci-and-releases-on-githu
 Vikunja's maintainers set these up after the move (step 38d) and before the first tag. The workflows need nothing else; they use no personal token, only the workflow's own `github.token`.
 
 1. **The environment `release`** (Settings > Environments > New environment):
-   - **Required reviewers:** at least one maintainer besides the owner, with "Prevent self-review" on, so whoever pushed a tag cannot approve its release; one approval is enough. "Allow administrators to bypass configured protection rules" is off. Whether the owner alone may approve instead is open ([D86](decisions.md#d86-ci-and-releases-on-github-actions)).
+   - **Required reviewers:** the owner and kolaente; one approval is enough, and either may approve a release of their own tag, so "Prevent self-review" stays off ([D86](decisions.md#d86-ci-and-releases-on-github-actions), owner, 2026-11-14). "Allow administrators to bypass configured protection rules" is off.
    - **Deployment branches and tags:** "Selected branches and tags", with one tag rule, `v*`, and no branch.
    - **Environment secrets,** under the old app's names. A secret's value can be neither read back nor moved, so each is entered again here:
 
