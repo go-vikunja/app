@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# The GitLab job `contract` (D73): the contract tests against the Vikunja test
-# servers of test_servers/docker-compose.yaml. On GitLab the servers run in
-# the job's docker-in-docker service (DOCKER_HOST=tcp://docker:2376), which
-# publishes them on 0.0.0.0 there; a forwarder brings them to localhost, where
-# the tests, the servers' public URL and tool/wait_for_test_servers.sh expect
-# them. Locally the servers run in the developer's Docker and stay up, like
+# The CI job `contract` (D73 on GitLab, D86 on GitHub Actions): the contract
+# tests against the Vikunja test servers of test_servers/docker-compose.yaml.
+# On GitLab the servers run in the job's docker-in-docker service
+# (DOCKER_HOST=tcp://docker:2376), which publishes them on 0.0.0.0 there; a
+# forwarder brings them to localhost, where the tests, the servers' public URL
+# and tool/wait_for_test_servers.sh expect them. On GitHub Actions the
+# runner's own Docker publishes them on 127.0.0.1, so neither is needed.
+# Locally the servers run in the developer's Docker and stay up, like
 # tool/contract_tests.sh leaves them.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh

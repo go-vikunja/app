@@ -7,38 +7,24 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Release signing (D73): all four RURANA_SIGNING_* variables (the release
-// job sets them for each build), else all four keys of android/key.properties
-// (a local release build), else the debug key. Never committed.
+// Release signing (D86): CI builds unsigned with VIKUNJA_APP_UNSIGNED=true,
+// and tool/ci/release_sign.sh signs the files afterwards. A local release
+// build uses all four keys of android/key.properties (never committed);
+// otherwise the debug key signs.
+val unsigned = providers.environmentVariable("VIKUNJA_APP_UNSIGNED").orNull == "true"
 val releaseSigning: Map<String, String>? = run {
-    val variables = linkedMapOf(
-        "storeFile" to "RURANA_SIGNING_STORE_FILE",
-        "storePassword" to "RURANA_SIGNING_STORE_PASSWORD",
-        "keyAlias" to "RURANA_SIGNING_KEY_ALIAS",
-        "keyPassword" to "RURANA_SIGNING_KEY_PASSWORD",
-    )
-    val fromEnvironment = variables.mapValues { (_, name) ->
-        providers.environmentVariable(name).orNull?.takeIf(String::isNotEmpty)
-    }
     val keyProperties = rootProject.file("key.properties")
-    when {
-        fromEnvironment.values.any { it != null } -> {
-            val missing = variables.filterKeys { fromEnvironment[it] == null }.values
-            if (missing.isNotEmpty()) {
-                throw GradleException("Release signing needs all four RURANA_SIGNING_* variables; missing: ${missing.joinToString()}")
-            }
-            fromEnvironment.mapValues { it.value!! }
+    if (unsigned || !keyProperties.isFile) {
+        null
+    } else {
+        val keys = listOf("storeFile", "storePassword", "keyAlias", "keyPassword")
+        val properties = Properties().apply { keyProperties.inputStream().use { load(it) } }
+        val values = keys.associateWith { properties.getProperty(it)?.takeIf(String::isNotEmpty) }
+        val missing = values.filterValues { it == null }.keys
+        if (missing.isNotEmpty()) {
+            throw GradleException("$keyProperties needs storeFile, storePassword, keyAlias and keyPassword; missing: ${missing.joinToString()}")
         }
-        keyProperties.isFile -> {
-            val properties = Properties().apply { keyProperties.inputStream().use { load(it) } }
-            val values = variables.keys.associateWith { properties.getProperty(it)?.takeIf(String::isNotEmpty) }
-            val missing = values.filterValues { it == null }.keys
-            if (missing.isNotEmpty()) {
-                throw GradleException("$keyProperties needs storeFile, storePassword, keyAlias and keyPassword; missing: ${missing.joinToString()}")
-            }
-            values.mapValues { it.value!! }
-        }
-        else -> null
+        values.mapValues { it.value!! }
     }
 }
 
@@ -86,19 +72,19 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+            signingConfig = if (unsigned) null else signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             proguardFiles("proguard-rules.pro")
         }
     }
 }
 
 // Flutter runs Gradle with -q, which shows quiet messages only.
-if (releaseSigning == null) {
+if (!unsigned && releaseSigning == null) {
     tasks.matching { it.name == "packageRelease" || it.name == "signReleaseBundle" }.configureEach {
         doFirst {
             logger.quiet(
-                "warning: this release build is signed with the debug key: no RURANA_SIGNING_* " +
-                    "variables and no android/key.properties (docs/releasing.md)",
+                "warning: this release build is signed with the debug key: no android/key.properties " +
+                    "and no VIKUNJA_APP_UNSIGNED=true (docs/releasing.md)",
             )
         }
     }

@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # The schedule runs osv only: advisories appear after a lockfile last changed.
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+  workflow_call:
+
+permissions: {}
+
+# Not github.workflow: a call from release.yaml sees the caller's name there,
+# and the same group in caller and callee cancels the run.
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PUB_CACHE: ${{ github.workspace }}/.cache/pub
+  GRADLE_USER_HOME: ${{ github.workspace }}/.cache/gradle
+
+jobs:
+  checks:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Cache Flutter
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/flutter
+          key: flutter-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tool/ci/pins.sh') }}
+      - name: Cache pub
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/pub
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+      - run: tool/ci/checks.sh
+      - run: tool/ci/test.sh
+      # For information only: upgrades are a decision of their own.
+      - if: ${{ !cancelled() }}
+        continue-on-error: true
+        run: tool/ci/outdated.sh
+
+  editor:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The Node of GitLab's editor image (.gitlab-ci.yml).
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.10.0
+          cache: npm
+          cache-dependency-path: app/editor/package-lock.json
+      - run: tool/ci/editor.sh
+
+  contract:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Cache Flutter
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/flutter
+          key: flutter-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tool/ci/pins.sh') }}
+      - name: Cache pub
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/pub
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+      - run: tool/ci/contract.sh
+
+  android:
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Cache Flutter
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/flutter
+          key: flutter-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tool/ci/pins.sh') }}
+      - name: Cache pub
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/pub
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+      - name: Cache Gradle
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/gradle/caches
+            .cache/gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('app/android/app/gradle.lockfile', 'app/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+      - run: tool/ci/android.sh
+
+  osv:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: tool/ci/osv.sh
+
+  # macOS minutes are free only in public repositories: elsewhere the job is opt-in.
+  ios:
+    if: github.event_name != 'schedule' && (github.repository == 'go-vikunja/app' || vars.VIKUNJA_APP_IOS_JOB == 'true')
+    runs-on: macos-26
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Cache Flutter
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/flutter
+          key: flutter-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tool/ci/pins.sh') }}
+      - name: Cache pub
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/pub
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+      - run: tool/ci/ios.sh

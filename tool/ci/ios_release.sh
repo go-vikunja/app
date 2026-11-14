@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # The iOS release for TestFlight (docs/releasing.md), run by hand on the
-# owner's Mac; no GitLab job calls it yet. Builds the IPA with the version
+# owner's Mac (D74); no CI job calls it yet. Builds the IPA with the version
 # from the tag, signed automatically for the team in DEVELOPMENT_TEAM, checks
 # it and uploads it to App Store Connect with an API key.
 #
 # Usage: tool/ci/ios_release.sh [--tag TAG] [--dry-run]
 #
-# --dry-run builds the archive unsigned (--no-codesign) with a placeholder
-# source URL unless one is set, runs the same checks, and stops before the
-# export and the upload; the tag defaults to v<the pubspec's version name>.
+# --dry-run builds the archive unsigned (--no-codesign), runs the same checks,
+# and stops before the export and the upload; the tag defaults to v<the
+# pubspec's version name>.
 #
 # Environment (docs/releasing.md): DEVELOPMENT_TEAM, the Apple team id;
-# RURANA_ASC_KEY_ID, RURANA_ASC_ISSUER_ID and RURANA_ASC_KEY_FILE, the App
-# Store Connect API key's id, its issuer id and the path of its .p8 file;
-# RURANA_SOURCE_CODE_URL, the source link, else CI_PROJECT_URL.
+# VIKUNJA_APP_ASC_KEY_ID, VIKUNJA_APP_ASC_ISSUER_ID and
+# VIKUNJA_APP_ASC_KEY_FILE, the App Store Connect API key's id, its issuer id
+# and the path of its .p8 file; VIKUNJA_APP_SOURCE_CODE_URL, the repository's
+# URL (default https://github.com/go-vikunja/app), whose tree at the tag the
+# build links as its source.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -43,19 +45,16 @@ done
 
 # Out of the environment into unexported copies before Flutter or Xcode runs:
 # only altool gets the key, never the build's hooks and script phases.
-asc_key_id="${RURANA_ASC_KEY_ID:-}"
-asc_issuer_id="${RURANA_ASC_ISSUER_ID:-}"
-key_file="${RURANA_ASC_KEY_FILE:-}"
-unset RURANA_ASC_KEY_ID RURANA_ASC_ISSUER_ID RURANA_ASC_KEY_FILE
+asc_key_id="${VIKUNJA_APP_ASC_KEY_ID:-}"
+asc_issuer_id="${VIKUNJA_APP_ASC_ISSUER_ID:-}"
+key_file="${VIKUNJA_APP_ASC_KEY_FILE:-}"
+unset VIKUNJA_APP_ASC_KEY_ID VIKUNJA_APP_ASC_ISSUER_ID VIKUNJA_APP_ASC_KEY_FILE
 
 if [[ "$(uname -s)" != Darwin ]]; then
   echo "error: the iOS release needs a Mac with Xcode" >&2
   exit 1
 fi
 
-if [[ -z "$tag" ]]; then
-  tag="${CI_COMMIT_TAG:-}"
-fi
 if [[ -z "$tag" ]]; then
   if ((dry_run)); then
     tag="v$(sed -n 's/^version:[[:space:]]*\([^+[:space:]]*\).*/\1/p' app/pubspec.yaml)"
@@ -102,21 +101,25 @@ if [[ -n "$(git status --porcelain)" ]]; then
   refuse "the working tree has changes or untracked files (git status)" "uncommitted changes"
 fi
 
-source_url="${RURANA_SOURCE_CODE_URL:-${CI_PROJECT_URL:-}}"
-if [[ -z "$source_url" ]] && ((dry_run)); then
-  source_url=https://gitlab.example/rurana
-  not_releasable+=("placeholder source URL")
+source_repository="${VIKUNJA_APP_SOURCE_CODE_URL:-https://github.com/go-vikunja/app}"
+source_repository="${source_repository%/}"
+if [[ "$source_repository" != https://?* ]]; then
+  refuse "the source repository (${source_repository:-empty}) is not an https URL: set VIKUNJA_APP_SOURCE_CODE_URL" \
+    "source URL"
 fi
-if [[ "$source_url" != https://?* ]]; then
-  refuse "the source URL (${source_url:-unset}) is not an https URL: set RURANA_SOURCE_CODE_URL" "source URL"
-fi
-source_url="${source_url%/}"
-if ((dry_run)); then
-  echo "Would check that ${source_url}/-/tree/${tag} opens signed out."
+source_host="${source_repository#https://}"
+source_host="${source_host%%/*}"
+if [[ "$source_host" == github.com ]]; then
+  source_url="${source_repository}/tree/${tag}"
 else
-  status="$(curl --silent --output /dev/null --write-out '%{http_code}' --retry 3 "${source_url}/-/tree/${tag}" || true)"
+  source_url="${source_repository}/-/tree/${tag}"
+fi
+if ((dry_run)); then
+  echo "Would check that ${source_url} opens signed out."
+else
+  status="$(curl --silent --output /dev/null --write-out '%{http_code}' --retry 3 "$source_url" || true)"
   if [[ "$status" != 200 ]]; then
-    refuse "${source_url}/-/tree/${tag} answered ${status} signed out: the source link must open for everyone (AGPL section 6)" \
+    refuse "${source_url} answered ${status} signed out: the source link must open for everyone (AGPL section 6)" \
       "source not public"
   fi
 fi
@@ -126,17 +129,17 @@ if [[ ! "$team" =~ ^[A-Z0-9]{10}$ ]]; then
   refuse "DEVELOPMENT_TEAM is not a team id (ten capital letters and digits)" "no team id"
   team=TEAMID0000
 fi
-for pair in "RURANA_ASC_KEY_ID=${asc_key_id}" "RURANA_ASC_ISSUER_ID=${asc_issuer_id}" \
-  "RURANA_ASC_KEY_FILE=${key_file}"; do
+for pair in "VIKUNJA_APP_ASC_KEY_ID=${asc_key_id}" "VIKUNJA_APP_ASC_ISSUER_ID=${asc_issuer_id}" \
+  "VIKUNJA_APP_ASC_KEY_FILE=${key_file}"; do
   if [[ -z "${pair#*=}" ]]; then
     refuse "${pair%%=*} is not set" "no ${pair%%=*}"
   fi
 done
 if [[ -n "$key_file" ]]; then
   if [[ ! -f "$key_file" || ! -r "$key_file" ]]; then
-    refuse "RURANA_ASC_KEY_FILE does not name a readable file" "API key unreadable"
+    refuse "VIKUNJA_APP_ASC_KEY_FILE does not name a readable file" "API key unreadable"
   elif ((0$(stat -L -f %Lp "$key_file") & 077)); then
-    refuse "RURANA_ASC_KEY_FILE can be read by other users: chmod 600 it" "API key readable by others"
+    refuse "VIKUNJA_APP_ASC_KEY_FILE can be read by other users: chmod 600 it" "API key readable by others"
   fi
 fi
 
@@ -154,7 +157,7 @@ if [[ "$(icon_value pixelWidth)x$(icon_value pixelHeight)" != 1024x1024 || "$(ic
   exit 1
 fi
 
-work="$(mktemp -d "${TMPDIR:-/tmp}/rurana-ios-release.XXXXXX")"
+work="$(mktemp -d "${TMPDIR:-/tmp}/vikunja-app-ios-release.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 trap 'exit 130' INT TERM
 
@@ -240,7 +243,7 @@ if ((dry_run)); then
   echo
   echo "Would export the archive with these options (teamID from DEVELOPMENT_TEAM):"
   cat "${work}/ExportOptions.plist"
-  echo "and upload the IPA from ${ipa_dir} with xcrun altool --upload-package and the RURANA_ASC_* key."
+  echo "and upload the IPA from ${ipa_dir} with xcrun altool --upload-package and the VIKUNJA_APP_ASC_* key."
   reasons="$(printf '%s, ' "unsigned build" ${not_releasable[@]+"${not_releasable[@]}"})"
   echo "DRY RUN: NOT RELEASABLE (${reasons%, })"
   exit 0

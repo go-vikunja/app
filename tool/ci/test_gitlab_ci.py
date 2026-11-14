@@ -1,6 +1,7 @@
 """Checks .gitlab-ci.yml (D73): the job sets per pipeline, pins, scripts and
-the release job's protections. Parsed with Ruby's YAML, because Python has
-no YAML parser without third-party packages."""
+the release job's dry run; test_github_workflows.py checks the GitHub
+counterparts. Parsed with Ruby's YAML, because Python has no YAML parser
+without third-party packages."""
 import json
 import os
 import re
@@ -12,8 +13,6 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 CONFIG = os.path.join(ROOT, '.gitlab-ci.yml')
 RESERVED = {'workflow', 'stages', 'default', 'variables', 'include', 'image', 'services', 'cache', 'before_script',
             'after_script'}
-GITHUB_COUNTERPARTS = {'analyze-test': 'checks', 'editor': 'editor', 'contract': 'contract',
-                       'build-android': 'android', 'build-ios': 'ios', 'sign-off': 'dco', 'osv-scan': 'osv'}
 FIVE = {'checks', 'editor', 'contract', 'android', 'osv'}
 
 
@@ -169,7 +168,7 @@ class GitLabCiTest(unittest.TestCase):
             ('feature branch without a merge request', dict(CI_PIPELINE_SOURCE='push', CI_COMMIT_BRANCH='feature'),
              None),
             ('feature branch with an open merge request',
-             dict(CI_PIPELINE_SOURCE='push', CI_COMMIT_BRANCH='feature', CI_OPEN_MERGE_REQUESTS='owner/rurana!1'),
+             dict(CI_PIPELINE_SOURCE='push', CI_COMMIT_BRANCH='feature', CI_OPEN_MERGE_REQUESTS='owner/app!1'),
              None),
             ('tag v1.0.0', dict(CI_PIPELINE_SOURCE='push', CI_COMMIT_TAG='v1.0.0', CI_COMMIT_REF_PROTECTED='true'),
              FIVE | {'release'}),
@@ -184,7 +183,7 @@ class GitLabCiTest(unittest.TestCase):
             with self.subTest(description):
                 self.assertEqual(pipeline(self.config, **variables), expected)
             with self.subTest(f'{description}, with a Mac runner'):
-                with_mac = pipeline(self.config, RURANA_MACOS_RUNNER='true', **variables)
+                with_mac = pipeline(self.config, VIKUNJA_APP_MACOS_RUNNER='true', **variables)
                 if expected is None:
                     self.assertIsNone(with_mac)
                 elif variables['CI_PIPELINE_SOURCE'] == 'schedule' or 'CI_COMMIT_REF_PROTECTED' not in variables:
@@ -200,11 +199,6 @@ class GitLabCiTest(unittest.TestCase):
                                      ('$MISSING == null', True), ('$A !~ /^x/', True)]:
             with self.subTest(expression):
                 self.assertEqual(evaluate(expression, context), expected)
-
-    def test_every_github_job_has_a_counterpart(self):
-        for github, gitlab in GITHUB_COUNTERPARTS.items():
-            with self.subTest(github):
-                self.assertIn(gitlab, self.jobs)
 
     def test_scripts_exist_and_are_executable(self):
         named = set()
@@ -291,14 +285,12 @@ class GitLabCiTest(unittest.TestCase):
     def test_the_release_job(self):
         release = self.jobs['release']
         self.assertEqual(release['stage'], 'release')
-        self.assertEqual(release['environment'], {'name': 'release'})
-        self.assertEqual(release['resource_group'], 'release')
         self.assertIs(release['interruptible'], False)
         self.assertEqual(set(release['needs']), FIVE)
-        self.assertEqual(release['script'], ['tool/ci/release.sh --tag "$CI_COMMIT_TAG"'])
-        self.assertEqual(release['artifacts']['access'], 'developer')
-        self.assertIn('build/release/app-release.aab', release['artifacts']['paths'])
         self.assertEqual(release['cache'], [])
+        self.assertEqual(release['script'], ['tool/ci/release.sh --tag "$CI_COMMIT_TAG" --dry-run'])
+        for key in ('environment', 'resource_group', 'artifacts'):
+            self.assertNotIn(key, release)
 
     def test_interruptible(self):
         self.assertIs(self.config['default']['interruptible'], True)

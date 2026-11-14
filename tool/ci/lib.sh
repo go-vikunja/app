@@ -1,13 +1,17 @@
 # shellcheck shell=bash
-# Shared by the tool/ci scripts (D73), which source it after `set -euo pipefail`.
-# Runs on GitLab's Linux runners and on macOS's bash 3.2 alike.
+# Shared by the tool/ci scripts (D73, D86), which source it after `set -euo pipefail`.
+# Runs on GitLab's Linux runners, GitHub-hosted runners and macOS's bash 3.2 alike.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=tool/ci/pins.sh
 source "${repo_root}/tool/ci/pins.sh"
 
-on_gitlab_linux() {
-  [[ "${GITLAB_CI:-}" == true && "$(uname -s)" == Linux ]]
+# A disposable CI machine: GitLab's Linux runners or a GitHub-hosted runner,
+# never a developer's machine or a self-hosted runner, whose SDKs and
+# ~/.gradle stay untouched.
+on_ci_runner() {
+  [[ ("${GITLAB_CI:-}" == true && "$(uname -s)" == Linux) ||
+    ("${GITHUB_ACTIONS:-}" == true && "${RUNNER_ENVIRONMENT:-}" == github-hosted) ]]
 }
 
 sha256_of() {
@@ -33,27 +37,46 @@ flutter_sdk_dir() {
 }
 
 install_flutter() {
-  local sdk tmp
+  local sdk url expected archive tmp
   sdk="$(flutter_sdk_dir)"
   if [[ -x "${sdk}/bin/flutter" ]]; then
     return
   fi
+  case "$(uname -s)/$(uname -m)" in
+    Linux/x86_64)
+      url="https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
+      expected="$FLUTTER_LINUX_SHA256"
+      archive=flutter.tar.xz
+      ;;
+    Darwin/arm64)
+      url="https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_${FLUTTER_VERSION}-stable.zip"
+      expected="$FLUTTER_MACOS_ARM64_SHA256"
+      archive=flutter.zip
+      ;;
+    *)
+      echo "error: no pinned Flutter archive for $(uname -s)/$(uname -m)" >&2
+      return 1
+      ;;
+  esac
   tmp="$(mktemp -d)"
   echo "Downloading Flutter ${FLUTTER_VERSION}"
-  curl --fail --silent --show-error --location --retry 3 --output "${tmp}/flutter.tar.xz" \
-    "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
-  verify_sha256 "${tmp}/flutter.tar.xz" "$FLUTTER_LINUX_SHA256"
+  curl --fail --silent --show-error --location --retry 3 --output "${tmp}/${archive}" "$url"
+  verify_sha256 "${tmp}/${archive}" "$expected"
   rm -rf "$(dirname "$sdk")"
   mkdir -p "$(dirname "$sdk")"
-  tar -xJf "${tmp}/flutter.tar.xz" --no-same-owner -C "$(dirname "$sdk")"
+  if [[ "$archive" == flutter.zip ]]; then
+    unzip -q -d "$(dirname "$sdk")" "${tmp}/${archive}"
+  else
+    tar -xJf "${tmp}/${archive}" --no-same-owner -C "$(dirname "$sdk")"
+  fi
   rm -rf "$tmp"
 }
 
-# Puts Flutter on PATH: the pinned SDK on GitLab's Linux runners, else the
-# one already on PATH. Never downloads when --no-install is given.
+# Puts Flutter on PATH: the pinned SDK on a CI runner, else the one already
+# on PATH. Never downloads when --no-install is given.
 use_flutter() {
   local sdk version
-  if on_gitlab_linux; then
+  if on_ci_runner; then
     sdk="$(flutter_sdk_dir)"
     if [[ "${1:-}" != --no-install ]]; then
       install_flutter
@@ -101,18 +124,24 @@ setup_flutter() {
 flutter_test_concurrency() {
   local cpus
   cpus="$(getconf _NPROCESSORS_ONLN)"
-  if on_gitlab_linux; then
+  if on_ci_runner; then
     echo "$cpus"
   else
     echo $((cpus > 1 ? cpus / 2 : 1))
   fi
 }
 
-# The project's gradle.properties asks for 8 GB, more than a small runner has.
-# Only on GitLab: never touches ~/.gradle on a developer's machine.
-ci_gradle_memory() {
-  if ! on_gitlab_linux; then
+# The project's gradle.properties asks for 8 GB, more than a small runner has,
+# and GitHub's Ubuntu image defaults to JDK 17 where GitLab's image and the
+# owner's machine use 21. Only on a CI runner: never touches a developer's
+# ~/.gradle or JDK.
+ci_gradle_setup() {
+  if ! on_ci_runner; then
     return
+  fi
+  if [[ -n "${JAVA_HOME_21_X64:-}" ]]; then
+    export JAVA_HOME="$JAVA_HOME_21_X64"
+    export PATH="${JAVA_HOME}/bin:${PATH}"
   fi
   local home="${GRADLE_USER_HOME:-${HOME}/.gradle}"
   mkdir -p "$home"
@@ -148,7 +177,7 @@ android_sdk_dir() {
   fi
 }
 
-# build_tool apksigner|aapt2: the newest build-tools' copy.
+# build_tool apksigner|aapt2|zipalign: the newest build-tools' copy.
 build_tool() {
   local sdk found
   sdk="$(android_sdk_dir)"

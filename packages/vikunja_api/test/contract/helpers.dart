@@ -17,14 +17,14 @@ final String? contractSkip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
     : null;
 
 /// The image of test_servers/docker-compose.yaml when
-/// RURANA_TEST_VIKUNJA_IMAGE is unset or empty.
+/// VIKUNJA_APP_TEST_VIKUNJA_IMAGE is unset or empty.
 const defaultTestServerImage = 'vikunja/vikunja:2.8.0';
 
-/// The release the test server runs: the tag of RURANA_TEST_VIKUNJA_IMAGE,
-/// which test_servers/docker-compose.yaml starts instead of
-/// [defaultTestServerImage].
+/// The release the test server runs: the tag of
+/// VIKUNJA_APP_TEST_VIKUNJA_IMAGE, which test_servers/docker-compose.yaml
+/// starts instead of [defaultTestServerImage].
 final ServerVersion contractServerVersion = testServerVersion(
-  Platform.environment['RURANA_TEST_VIKUNJA_IMAGE'],
+  Platform.environment['VIKUNJA_APP_TEST_VIKUNJA_IMAGE'],
 );
 
 ServerVersion testServerVersion(String? image) {
@@ -39,7 +39,7 @@ ServerVersion testServerVersion(String? image) {
   if (version == null || version.isDevelopmentBuild) {
     throw ArgumentError.value(
       image,
-      'RURANA_TEST_VIKUNJA_IMAGE',
+      'VIKUNJA_APP_TEST_VIKUNJA_IMAGE',
       'needs a release tag, for example vikunja/vikunja:2.7.1',
     );
   }

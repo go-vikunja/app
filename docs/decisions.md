@@ -6,7 +6,7 @@ Each entry has a number, a status and the step that took it, and states the deci
 
 *Accepted 2026-10-09 (step 1).*
 
-- Flutter 3.47.9 / Dart 3.13.7, pinned in CI (`tool/ci/pins.sh`) and used locally, so that what the release job builds is what was tested ([D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing), [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)).
+- Flutter 3.47.9 / Dart 3.13.7, pinned in CI (`tool/ci/pins.sh`) and used locally, so that what the release job builds is what was tested ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move), [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)).
   - 3.47.9 carries the fix of the Dart security advisory GHSA-frr6-h895-5pxp, which concerns the servers the app reaches through `dart:io` ([D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport)).
 - The repository is one pub workspace with a single `pubspec.lock`: `app`, `packages/vikunja_domain`, `packages/vikunja_api`, `packages/vikunja_logic` and `plugins/vikunja_widgets` ([D63](#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios)).
   - `flutter pub get` runs only at the root.
@@ -378,13 +378,14 @@ Limits:
 *Accepted 2026-10-09, the owner's decision.*
 
 - `test_servers/docker-compose.yaml` runs one `vikunja/vikunja` image of the latest release, now 2.8.0, pinned by its tag:
-  - the service `vikunja` on port 34527, published on `127.0.0.1` only, because it allows open registration with a public JWT secret (CI publishes on `0.0.0.0` inside its own docker-in-docker daemon, `RURANA_TEST_PUBLISH_ADDRESS`); its state lives in a tmpfs;
+  - the service `vikunja` on port 34527, published on `127.0.0.1` only, because it allows open registration with a public JWT secret (GitLab's job publishes on `0.0.0.0` inside its own docker-in-docker daemon, `VIKUNJA_APP_TEST_PUBLISH_ADDRESS`; GitHub's job uses the runner's own Docker on `127.0.0.1`, in review, [D86](#d86-ci-and-releases-on-github-actions)); its state lives in a tmpfs;
   - the opt-in `tls` profile (`vikunja-tls`, ports 34528–34531) runs the same release ([D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport));
   - the tag is bumped when a release comes out, in the compose file and in `defaultTestServerImage` of `packages/vikunja_api/test/contract/helpers.dart`, which `test_server_image_test.dart` beside it checks (it is not tagged `contract`, so CI's ordinary test run includes it); the service names carry no version;
-  - `RURANA_TEST_VIKUNJA_IMAGE` runs another release in both services instead (`${RURANA_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0}`). `vikunja_api`'s contract tests expect the version of its tag (`contractServerVersion`) and refuse an image without a release tag; the app's gate only on the version the server reports. A switch recreates the server, empty.
+  - `VIKUNJA_APP_TEST_VIKUNJA_IMAGE` (the name since step 38c, in review) runs another release in both services instead (`${VIKUNJA_APP_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0}`). `vikunja_api`'s contract tests expect the version of its tag (`contractServerVersion`) and refuse an image without a release tag; the app's gate only on the version the server reports. A switch recreates the server, empty.
 - The servers raise Vikunja's sign-in limit, which cannot be turned off, from 10 to 1000 a minute per IP (`VIKUNJA_RATELIMIT_NOAUTHLIMIT`), and open SQLite with immediate transactions through the database path (`/tmp/vikunja.db?_txlock=immediate&_busy_timeout=30000&_x=`), so that parallel writes wait instead of failing with "database is locked".
   - The path relies on the server appending its own options after a `?`: after a bump, the startup line "Using SQLite database at:" must show it, and a contract run must log no "database is locked".
-- Contract tests are tagged `contract`, need `VIKUNJA_CONTRACT=1` and run only against this server (`flutter test --tags contract` in `packages/vikunja_api` and in `app/`), in a CI job of their own ([D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)). The app's also take `VIKUNJA_CONTRACT_PORT` (34527 when unset), so they can run against a throwaway server on another port.
+- Contract tests are tagged `contract`, need `VIKUNJA_CONTRACT=1` and run only against this server (`flutter test --tags contract` in `packages/vikunja_api` and in `app/`), in a CI job of their own ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)). The app's also take `VIKUNJA_CONTRACT_PORT` (34527 when unset), so they can run against a throwaway server on another port.
+  - The job is [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)'s `contract` on GitLab and [D86](#d86-ci-and-releases-on-github-actions)'s on GitHub Actions (in review), the same script on both.
 - The Android emulator reaches the server as `localhost` through `adb reverse tcp:34527 tcp:34527`.
 - Before each release is tagged, the contract tests run once locally against the newest release of the previous minor version, today 2.7.1, through `tool/ci/contract.sh` ([releasing.md](releasing.md#cutting-a-release)); what fails is fixed or recorded here. CI stays on the latest release. Both suites pass on 2.7.1, which takes the compose environment unchanged and ignores the test server's terms link (`/info` lists legal links from 2.8.0); the tests of what 2.8.0 brought skip there by the server's version: the trash, the 2.8.0 title and reminder limits, reminders that follow subscriptions and the legal links.
 - Support for older servers down to the 2.3.0 floor stays in the code, covered by unit tests against `/info` and error fixtures recorded from older images.
@@ -1566,9 +1567,9 @@ Limits:
   - Carried as `k`: `WidgetLink.linkKey`, every link of the Dart snapshot builder, and for the links Kotlin and Swift build without a snapshot (setup, Open, New task; on iOS also task and list links) the `linkKey` in `widgets/host.json`, which only the UI writes. Links built before the app has written `host.json` carry none.
   - Without the right key (`WidgetLinkListener`): a task link goes through the task-link flow of [D44](#d44-task-detail-own-rich-text-parser-online-details-app-scheme-links), which asks before it switches; list, Account tab, Open and New task links act only when they name no account or the active one; `widget/configure` needs no key.
 - **The key in notification taps:** `NotificationPayload.linkKey`, written as `k`, optional when read; the scheduler, the activity notifier and the test notification add it when there is one (why: on Android any app can send `MainActivity` a made-up `SELECT_NOTIFICATION` tap). Without the right key a tap never switches accounts and marks nothing read: a payload naming a task (an id other than 0) goes through the task-link flow; session, inbox and test taps and task-less activities open only in the active account. Notification actions need no key (their receivers are not exported).
-- **Exported components:** `tool/check_exported_components.py` (run with `python3 -I`) compares the exported activities, aliases, receivers, services and providers of the merged release manifest (`exported="true"`, or an intent filter without `exported="false"`; any other value fails), each with its permission and intent filters, with its allowlist; an addition, removal or change fails, and so do an `allowBackup` other than `false` and a missing rules attribute. The allowlist has 12 components: 8 open (`MainActivity`, `TaskLinkActivity`, `ShareTargetActivity`, flutter_web_auth_2's `CallbackActivity`, `WidgetConfigureActivity`, the two widget receivers and, since step 38b, the old app's widget provider `widget.AppWidgetReciever` ([D63](#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios))) and 4 behind a permission (Glance's `GlanceRemoteViewsService` behind `BIND_REMOTEVIEWS`, WorkManager's `SystemJobService` behind `BIND_JOB_SERVICE`, its `DiagnosticsReceiver` and the `ProfileInstallReceiver` behind `DUMP`). CI runs it after the release build ([D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)).
+- **Exported components:** `tool/check_exported_components.py` (run with `python3 -I`) compares the exported activities, aliases, receivers, services and providers of the merged release manifest (`exported="true"`, or an intent filter without `exported="false"`; any other value fails), each with its permission and intent filters, with its allowlist; an addition, removal or change fails, and so do an `allowBackup` other than `false` and a missing rules attribute. The allowlist has 12 components: 8 open (`MainActivity`, `TaskLinkActivity`, `ShareTargetActivity`, flutter_web_auth_2's `CallbackActivity`, `WidgetConfigureActivity`, the two widget receivers and, since step 38b, the old app's widget provider `widget.AppWidgetReciever` ([D63](#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios))) and 4 behind a permission (Glance's `GlanceRemoteViewsService` behind `BIND_REMOTEVIEWS`, WorkManager's `SystemJobService` behind `BIND_JOB_SERVICE`, its `DiagnosticsReceiver` and the `ProfileInstallReceiver` behind `DUMP`). CI runs it after the release build ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)).
 - **The editor WebView** ([D52](#d52-descriptions-edited-in-a-locked-down-tiptap-webview-never-silently-overwritten)) keeps its per-load channel token instead of an origin check; tests pin that a `window.open` main-frame navigation is prevented and the page's CSP (its `script-src` hash, no network load).
-- **Dependencies** (the CI jobs are [D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)'s): an OSV scan of `pubspec.lock`, `app/editor/package-lock.json` and `app/android/app/gradle.lockfile`, also weekly, with accepted advisories in `osv-scanner.toml`, each with a reason and an `ignoreUntil` (none now); `npm audit --package-lock-only --audit-level=high` for the editor; `flutter pub outdated` for information only.
+- **Dependencies** (the CI jobs are [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)'s on GitLab and [D86](#d86-ci-and-releases-on-github-actions)'s on GitHub Actions, in review): an OSV scan of `pubspec.lock`, `app/editor/package-lock.json` and `app/android/app/gradle.lockfile`, also weekly, with accepted advisories in `osv-scanner.toml`, each with a reason and an `ignoreUntil` (none now); `npm audit --package-lock-only --audit-level=high` for the editor; `flutter pub outdated` for information only.
   - The Gradle wrapper pins `distributionSha256Sum` of `gradle-9.3.1-all.zip`, which it checks only when it downloads the distribution. Gradle locks the `*RuntimeClasspath` configurations of `:app` without `io.flutter:*` (why: the tooling classpaths change with every Android Gradle plugin update and never ship, the engine's artifacts with every Flutter version); after a change, `./gradlew :app:dependencies --write-locks` in `app/android`.
 - Extensions, widgets and the notification-action isolate never refresh user tokens; a guest token may be renewed there, and a guest is signed in again at most once per container ([D62](#d62-onboarding-through-the-browser-link-share-guests-as-an-account-kind); principle 5 of the [architecture](architecture.md#1-principles)).
 
@@ -1588,7 +1589,7 @@ Limits:
 **Licence and contributions:**
 - AGPL-3.0-or-later for the whole repository: the app, the packages, the plugin, the tools and the documentation (owner). `LICENSE` is the unchanged text from gnu.org (a test checks its SHA-256 `0d96a4ff…abcb0`).
 - An additional permission under AGPL section 7, in the owner's words in `NOTICE.md` ("App stores"): distribution through an app store whose terms conflict with the AGPL, such as Apple's App Store, provided that the Corresponding Source is also available under the AGPL through a channel without such restrictions (owner).
-- Contributions under the Developer Certificate of Origin 1.1: every commit, merges included, carries a `Signed-off-by:` with its author's name and email; contributors keep their copyright, and their contributions carry the same terms, the permission included (owner). The GitLab job `dco` checks merge requests ([D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)).
+- Contributions under the Developer Certificate of Origin 1.1: every commit, merges included, carries a `Signed-off-by:` with its author's name and email; contributors keep their copyright, and their contributions carry the same terms, the permission included (owner). The GitLab job `dco` checks merge requests ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)); GitHub Actions have no such job, as step 38d adopts Vikunja's contribution rules ([D86](#d86-ci-and-releases-on-github-actions), in review).
 - Copyright line: "Copyright (C) 2026 Benedikt Lesch and the Rurana contributors".
 - The name "Rurana" and the llama logo are not under the AGPL: all rights reserved by Benedikt Lesch; a fork that distributes an app uses its own name and logo (owner). Since step 38a the app is called Vikunja and its icons come from Vikunja's logo ([D15](#d15-app-id-iovikunjaapp-and-the-name-vikunja), [D42](#d42-app-icon-vikunjas-logo-every-variant-derived-by-script)); the terms, the llama files and `NOTICE.md`'s file table, which still lists the regenerated icon files, stay until step 38d settles the terms for Vikunja's name and logo ([D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)).
   - The logo files may be copied unmodified only as part of a copy of the repository or of its history, or of an unmodified build of the app published by Benedikt Lesch; an app built from modified source may not be distributed with them (owner). `NOTICE.md` and the app's notice carry the owner's sentence verbatim and add that the files are listed in `NOTICE.md`; the README, `branding/README.md`, `CONTRIBUTING.md` and the About page say it in short.
@@ -1602,12 +1603,12 @@ Limits:
 
 **What the app shows** (AGPL section 5(d)):
 - The About page (`/about`, outside the shell, so for users, guests and signed out), from the Account tab's version line and, signed out, from a button on the Connect screen: the name, version and copyright line, the licence with the app store permission ("This app is free software…"), no warranty ("This app comes with no warranty…"), Licenses, the source code, the name and the logo; en and de; the title "About the app". Its website rows are [D76](#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android)'s and [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)'s.
-- The source link is `sourceCodeUrl` in `app/lib/app/legal.dart`, `String.fromEnvironment('SOURCE_CODE_URL')`, null when empty. Only the release builds set it: the GitLab release job (`$CI_PROJECT_URL`, [D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)) and `tool/ci/ios_release.sh` ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)); their release-only test `app/test/app/release_source_code_test.dart` (tag `release`) fails without it. Every other build says "This build has no link to its source code. Every release of the app links the source code it was built from." („Dieser Build hat keinen Link zu seinem Quellcode. Jede Veröffentlichung der App verlinkt den Quellcode, aus dem sie gebaut wurde.“).
-- The repository is public before the first store release (AGPL section 6 and the permission's condition; the release job checks it, [D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)).
+- The source link is `sourceCodeUrl` in `app/lib/app/legal.dart`, `String.fromEnvironment('SOURCE_CODE_URL')`, null when empty. Only the release builds set it, to the tree at the tag of the repository the release is built from (in review): `tool/ci/release_build.sh` in GitHub's release workflow (`https://github.com/<owner>/<repo>/tree/<tag>`, [D86](#d86-ci-and-releases-on-github-actions)) and `tool/ci/ios_release.sh` ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)); their release-only test `app/test/app/release_source_code_test.dart` (tag `release`) fails without it. Every other build says "This build has no link to its source code. Every release of the app links the source code it was built from." („Dieser Build hat keinen Link zu seinem Quellcode. Jede Veröffentlichung der App verlinkt den Quellcode, aus dem sie gebaut wurde.“).
+- The repository is public before the first store release (AGPL section 6 and the permission's condition; the release build checks it and that the link opens signed out, [D86](#d86-ci-and-releases-on-github-actions), in review).
 - The licence page is Flutter's `LicensePage` in Flutter's own words, "Licenses" and „Lizenzen“ (the British override of its English is gone, [D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)). `registerAppLicenses` (`core/legal/app_licenses.dart`) calls `LicenseRegistry.addLicense` once and reads committed assets only when the page asks:
   - under `vikunja_app` the app's notice (`assets/legal/vikunja_app.md`, worded as `NOTICE.md` below its own heading, compared by a test) beside the AGPL from Flutter's build; the editor's npm packages (`app/assets/editor/NOTICES.md`); the code `vikunja_logic` translates (`packages/vikunja_logic/THIRD_PARTY_NOTICES.md`: fexpr, go-datemath, prosemirror-model); the Material Icons font and three copied icon shapes (CC BY 4.0); on Android only, `assets/legal/android.md` with the Android libraries and the code of other projects in embedded Cronet.
   - The workspace root package is named `vikunja_app` (why: `vikunja` alone would read as the server), so Flutter lists the root `LICENSE` under it; no workspace member may carry a `LICENSE` or `NOTICES` file, which would appear under an internal name (a test checks it).
-  - The written offer for desugar_jdk_libs (GPL-2.0 with the Classpath exception; core library desugaring, which flutter_local_notifications needs) runs for three years from Benedikt Lesch and ends "Ask Benedikt Lesch at coderoftime@gmail.com." (`WRITTEN_OFFER_CONTACT` in `tool/build_android_notices.py`); every release carries that library's source at its recorded commit ([D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)).
+  - The written offer for desugar_jdk_libs (GPL-2.0 with the Classpath exception; core library desugaring, which flutter_local_notifications needs) runs for three years from Benedikt Lesch and ends "Ask Benedikt Lesch at coderoftime@gmail.com." (`WRITTEN_OFFER_CONTACT` in `tool/build_android_notices.py`); every release carries that library's source at its recorded commit ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)).
 
 **Notice generators** (both with `--check`, run in CI):
 - `tool/build_editor.sh` writes `NOTICES.md` from what esbuild bundled and refuses a licence text with a line starting with three backticks, which would cut the text short on the licence page.
@@ -1821,27 +1822,30 @@ Limits:
 - Unmapped codes still show the server's English detail inside a localized sentence.
 - The accent fold treats every language the same. It is not a collation per language, which Swedish, for example, would need.
 
-## D72: First release: Android and iOS together, Play and a GitLab APK, beta first
+## D72: First release: Android and iOS together, Play and an APK, beta first
 
-*Accepted 2026-10-29 (step 37), the owner's decision.*
+*Accepted 2026-10-29 (step 37), the owner's decision; the channels of step 38c in review.*
 
 - Android and iOS reach 1.0.0 separately (owner, 2026-11-12): Android once its own checks pass; iOS stays in TestFlight until its device test passes, and both may still come out together if iOS is ready in time.
-- Google Play, plus a signed APK in every GitLab release for devices without Play. No F-Droid ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)).
-- The repository is on GitLab, https://gitlab.com/coderoftime/rurana, and CI runs on GitLab CI ([D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)); it goes public before the first beta, with every project of its group ([D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)).
-- 1.0.0 comes after a beta: test builds are `1.0.0-beta.N` (Play's closed test, TestFlight, and GitLab releases marked " (beta)", [D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)), then `1.0.0` for everyone.
-  - A new personal Play developer account has to run a closed test with at least 12 testers for 14 days before it can publish to production. The beta covers this.
+- Google Play, plus a signed APK for devices without Play in every GitHub release and on dl.vikunja.io, published from go-vikunja/app by GitHub Actions (owner, 2026-11-14; [D86](#d86-ci-and-releases-on-github-actions), in review). No F-Droid ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)).
+- The repository moves into go-vikunja/app in step 38d ([D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)). Until then it is on GitLab, https://gitlab.com/coderoftime/rurana, where the CI of [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move) runs and publishes nothing (in review).
+- 1.0.0 comes after a beta: test builds are `1.0.0-beta.N` (Play's `beta` track, TestFlight, and GitHub releases marked as prereleases, [D86](#d86-ci-and-releases-on-github-actions), in review), then `1.0.0` for everyone, on Play as a staged rollout.
+  - Under the owner's own developer account the beta was also the closed test of at least 12 testers for 14 days that a new personal account needs before production; Vikunja's listing is in production already ([D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)), and [beta.md](beta.md) is rewritten for it with steps 38c and 38f.
 - iOS is tested only at the end of the project, not with each step (owner): in the simulator in the iOS phase ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)), then on a device before 1.0.0 ([beta.md](beta.md)).
 - The release is step 37 on the [roadmap](roadmap.md) (owner): 37a release builds and GitLab CI, 37b the iOS phase, 37c store listings and policies, 37d beta and 1.0.0; 37e to 37h, for Vikunja 2.8.0, come before the first beta tag ([D78](#d78-vikunja-280-trash-codes-as-gone-its-limits-no-nul-info-re-read)).
 - 36g comes before the first release and goes into the beta build (owner, [D82](#d82-projects-listdetail-the-project-tree-beside-the-project-on-wide-windows)). 36d, 36f and step 33 come after the first release.
 - The repository prepares everything up to the work only the owner can do: accounts, keys, store records, testers, publication and the sign-offs. [beta.md](beta.md) lists that work in order.
 
-## D73: GitLab CI from local scripts, versions from the tag, release signing
+## D73: CI from local scripts, versions from the tag, GitLab until the move
 
-*Accepted 2026-10-29 (step 37a), the owner's decision where marked; the release channels are [D72](#d72-first-release-android-and-ios-together-play-and-a-gitlab-apk-beta-first)'s.*
+*Accepted 2026-10-29 (step 37a), the owner's decision where marked; the release channels are [D72](#d72-first-release-android-and-ios-together-play-and-an-apk-beta-first)'s. Since step 38c (in review) GitHub Actions run the same scripts and publish the releases ([D86](#d86-ci-and-releases-on-github-actions)), and the GitLab pipeline stays until the move into go-vikunja/app in step 38d (owner, 2026-11-14).*
 
-**The pipeline:**
+**The scripts:**
+- The logic lives in scripts under `tool/ci/` that run the same way on the owner's Mac, on GitLab and on GitHub Actions (in review). They are bash that runs on bash 3.2, with `set -euo pipefail`, and read only the hosts' own variables (GitLab's `GITLAB_CI` and `CI_*`, GitHub's `GITHUB_*` and `RUNNER_*`, the image's `JAVA_HOME_21_X64`) and the variables named here and in [D86](#d86-ci-and-releases-on-github-actions).
+- `lib.sh` treats a machine as a CI runner (`on_ci_runner`) on GitLab's Linux runners and on GitHub-hosted runners (`RUNNER_ENVIRONMENT=github-hosted`), never on a developer's machine or a self-hosted runner (in review). Only there does it install the pinned Flutter, run the tests on every CPU (half of them elsewhere) and set Gradle up (`ci_gradle_setup`, below).
+
+**The GitLab pipeline** (until step 38d):
 - `.gitlab-ci.yml` is thin. It uses plain YAML with anchors and `extends` only, because `tool/ci/test_gitlab_ci.py` parses it with Ruby's YAML.
-- The logic lives in scripts under `tool/ci/` that run the same way on the owner's Mac. They are bash that runs on bash 3.2, with `set -euo pipefail`, and read only GitLab's `CI_*` variables and the variables named here.
 - Pipelines run for a merge request, the default branch, a `^v` tag (`release_version.py` fails loudly on a malformed one), a schedule and a run by hand (`web`); any other branch without a merge request, and any other tag, runs none.
 - A branch push never runs while the branch has an open merge request. A newer commit cancels interruptible jobs (`auto_cancel: on_new_commit: interruptible`), and every job is interruptible except `osv` and `release`.
 - What runs: a merge request runs `checks`, `editor`, `contract`, `android`, `osv` and `dco`. Main and a run by hand run the first five, and a `v*` tag runs those five and then `release`. The weekly schedule runs `osv` only. Every job but `release` starts at once (`needs: []`).
@@ -1851,88 +1855,63 @@ Limits:
     - `test.sh` runs the tests of the app, every package and `vikunja_widgets`, except the contract tests, with `vikunja_logic`'s `test/time` run again in Europe/Berlin, on every CPU of the runner (half of them locally).
     - `outdated.sh` runs afterwards, for information only.
   - `editor` (`node:26.10.0-trixie-slim`, the owner's Node; `.nvmrc` stays `26`) runs `npm audit --package-lock-only --audit-level=high` and `tool/build_editor.sh --check`.
-  - `android` builds the release APK with the debug key, since no signing variable reaches it. It then runs the exported-components check and the widgets' Kotlin JVM tests.
+  - `android` builds the release APK with the debug key, since no key reaches it. It then runs the exported-components check and the widgets' Kotlin JVM tests.
   - `osv` runs in every pipeline, the schedule included, with `osv-scanner scan source --config=osv-scanner.toml` over `pubspec.lock`, the editor's `package-lock.json` and the Gradle lockfile. The scanner comes from PATH, else the pinned download for Linux amd64 or macOS arm64.
-  - `ios` builds with `flutter build ios --release --no-codesign` and runs `ios_notices.py` on a runner tagged `macos`.
-    - It runs only while `RURANA_MACOS_RUNNER` is `true`, only on protected refs (main and `v*` tags), and never on the schedule. A merge request's code never runs on the owner's Mac (threat model R35).
+  - `ios` builds with `flutter build ios --release --no-codesign`, then runs `ios_notices.py` and, since step 38c, `required_reason_apis.py` (in review), on a runner tagged `macos`.
+    - It runs only while the project variable `VIKUNJA_APP_MACOS_RUNNER` (the name since step 38c, in review) is `true`, only on protected refs (main and `v*` tags), and never on the schedule. A merge request's code never runs on the owner's Mac (threat model R35).
     - It counts when it runs (`allow_failure: false`). Unset the variable while the Mac is away, because GitLab cannot tell an absent runner from a busy one and fails the pipeline after up to a day.
-  - `release` runs on tags only, after the five test jobs. It uses `environment: release` and `resource_group: release`.
+  - `release` runs on tags only, after the five test jobs, and is a dry run (in review): `tool/ci/release.sh --tag "$CI_COMMIT_TAG" --dry-run` builds unsigned, signs with throwaway keys, runs the release's checks and prints what would be published, and publishes nothing ([D86](#d86-ci-and-releases-on-github-actions)).
+    - Why: only GitHub Actions in go-vikunja/app publish (owner, 2026-11-14), and Vikunja's keys never go into the GitLab project. So the job has no environment, resource group or artifacts any more, and GitLab's release and package publishing is removed.
     - It uses no cache, so Flutter and the packages never come from a cache another pipeline wrote.
-    - Its artifacts are the bundle and `SHA256SUMS`, for the Developer role, kept for 30 days; the project setting "Keep artifacts from most recent successful jobs" keeps the latest bundle beyond that.
 - Timeouts, estimates for a 2-vCPU runner: `checks` and `release` 90 minutes, `contract` 30, `android` and `ios` 45, `editor` and `osv` 10, `dco` 5.
 - Caches live under `.cache/` (`PUB_CACHE`, `GRADLE_USER_HOME`, `npm_config_cache`), which is gitignored and excluded from the analyzer, because GitLab caches nothing outside the project. Flutter's cache is keyed by `pins.sh`, pub's by `pubspec.lock`, Gradle's by its lockfile and the wrapper's properties, npm's by the editor's lockfile.
-- On GitLab's Linux runners, `lib.sh` caps Gradle at a 3 GB heap, a 1 GB Kotlin daemon and two workers. The project's `gradle.properties` asks for 8 GB, more than a small shared runner has. The cap never touches `~/.gradle` on a developer's machine.
+- On a CI runner, `lib.sh`'s `ci_gradle_setup` caps Gradle at a 3 GB heap, a 1 GB Kotlin daemon and two workers, because the project's `gradle.properties` asks for 8 GB, more than a small shared runner has. Where the image names a JDK 21 (`JAVA_HOME_21_X64`, GitHub's images) it also selects it (in review). It never touches `~/.gradle` or the JDK on a developer's machine.
 
 **Images and pins:**
-- Every Linux job but `editor` runs on `ghcr.io/cirruslabs/android-sdk:36` (Ubuntu 24.04, OpenJDK 21, no NDK). Flutter comes from its tarball, because no Flutter image exists for 3.47.
-- Images and services are pinned by digest in `.gitlab-ci.yml`: `android-sdk:36`, `node:26.10.0-trixie-slim` and the service `docker:29.9.2-dind`.
+- Every GitLab Linux job but `editor` runs on `ghcr.io/cirruslabs/android-sdk:36` (Ubuntu 24.04, OpenJDK 21, no NDK). Flutter comes from its tarball, because no Flutter image exists for 3.47.
+- Images and services are pinned by digest in `.gitlab-ci.yml`: `android-sdk:36`, `node:26.10.0-trixie-slim` and the service `docker:29.9.2-dind`. GitHub's hosted images cannot be pinned ([D86](#d86-ci-and-releases-on-github-actions)).
 - Downloads are pinned by version and SHA-256 in `tool/ci/pins.sh` (sourced, values only):
-  - Flutter 3.47.9 ([D1](#d1-flutter-pub-workspace-with-pure-dart-packages));
+  - Flutter 3.47.9 ([D1](#d1-flutter-pub-workspace-with-pure-dart-packages)): the Linux x86_64 tarball and, for GitHub's macOS runners, the macOS arm64 zip (`FLUTTER_MACOS_ARM64_SHA256`, in review); raising the version means updating both checksums;
   - osv-scanner 2.7.0, for Linux amd64 and macOS arm64;
   - the Docker CLI 29.9.2 (hash computed from the download, because Docker publishes none);
   - Compose 5.6.1.
-- `setup_flutter` uses the checked tarball on GitLab's Linux runners. Elsewhere it uses the `flutter` on PATH, warning about another version, or failing when `CI=true`. It then runs `flutter pub get --enforce-lockfile`.
+- `setup_flutter` uses the checked archive on a CI runner, and fails on a platform without a pinned archive (in review). Elsewhere it uses the `flutter` on PATH, warning about another version, or failing when `CI=true`. It then runs `flutter pub get --enforce-lockfile`.
 
 **The contract job:**
-- It runs `test_servers/docker-compose.yaml` on docker-in-docker (TLS on port 2376, pulls through `mirror.gcr.io`), publishing the server on `0.0.0.0` inside its own daemon ([D28](#d28-contract-tests-against-the-latest-vikunja-release-only)).
+- On GitLab it runs `test_servers/docker-compose.yaml` on docker-in-docker (TLS on port 2376, pulls through `mirror.gcr.io`), publishing the server on `0.0.0.0` inside its own daemon (`VIKUNJA_APP_TEST_PUBLISH_ADDRESS`, in review; [D28](#d28-contract-tests-against-the-latest-vikunja-release-only)).
 - Only there, `contract.sh` installs the pinned Docker CLI, Compose and `socat`, waits up to 60 s for the daemon, then forwards `127.0.0.1:34527` and `[::1]:34527` to the service, so the tests, the server's public URL and `tool/wait_for_test_servers.sh` keep `localhost`.
+- On GitHub Actions it uses the runner's own Docker, which publishes on `127.0.0.1`, so it needs neither (in review, [D86](#d86-ci-and-releases-on-github-actions)).
 - Locally (colima) it uses `docker compose` or `docker-compose`, installs nothing and leaves the servers running.
 - A failure prints `compose ps --all` and the servers' logs.
 - It runs the `vikunja_api` contract tests, then the app's in Europe/Berlin, one file at a time (`--concurrency=1`), both naming `test/contract`.
 
-**The DCO job** (merge requests, full history):
+**The DCO job** (GitLab merge requests, full history; no counterpart on GitHub, [D86](#d86-ci-and-releases-on-github-actions)):
 - `dco.sh` runs the merge request's own `tool/check_dco.py --self-test`.
 - It then runs the target branch's current copy of the script (`CI_MERGE_REQUEST_TARGET_BRANCH_SHA` in a merged results pipeline, else the branch's tip, fetched with its history) over the commits from the merge base (`CI_MERGE_REQUEST_DIFF_BASE_SHA`) to the source branch's head (why: a merge request can neither change the check that judges it nor pick an older one by branching from an old commit).
 - Changes to `dco.sh` or `.gitlab-ci.yml` show in the diff for the reviewer.
 - Locally, BASE's copy judges.
 
-**Versions and signing:**
+**Versions:**
 - `tool/ci/release_version.py` turns `v1.2.3` or `v1.2.3-beta.4` into the build name (`1.2.3`, `1.2.3-beta.4`) and a build number:
   - The build number is major·1,000,000 + minor·10,000 + patch·100 + n. Here n is the beta number (1–98), or 99 for the final release, so every beta orders below its release and Play's limit of 2,100,000,000 holds.
   - It also prints `CHANNEL` and the iOS pair ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)).
   - Any other tag fails, and so does a pubspec whose version name differs from the build name: the release commit bumps the pubspec.
-- There are no product flavours: one application id serves Play and the GitLab APK.
-- `app/android/app/build.gradle.kts` has one `release` signing config and takes its key from the first source that is set:
-  - the four `RURANA_SIGNING_*` variables;
-  - else the four keys of the gitignored `app/android/key.properties` (`storeFile`, relative to `app/android/`, `storePassword`, `keyAlias`, `keyPassword`);
-  - else the debug key, with a warning when a release APK or bundle is packaged.
-  - A partial set fails and names the missing keys, never a value.
-  - Nothing sniffs task names: the release script chooses each build's key.
-- In CI, the upload set (`RURANA_UPLOAD_KEYSTORE_BASE64`, `_STORE_PASSWORD`, `_KEY_ALIAS`, `_KEY_PASSWORD`) signs the bundle and is required. The optional `RURANA_APK_*` set signs the APK, all four or none.
-  - The APK set is the owner's app signing key, which is also uploaded to Play App Signing with PEPK, so Play's builds and the GitLab APK share one signature (Q20 option A, owner, [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)).
-  - Without the APK set, the upload key signs the APK too, and sideloaded installs stay bound to it. The job log then shows a boxed warning, and the release note says so.
-- Every signing variable is protected, scoped to the environment `release`, and "Masked and hidden", and `v*` tags are protected. A PKCS12 key's password equals its store password ([releasing.md](releasing.md)).
-- `release.sh` copies the variables into unexported shell variables and unsets them, so only the build a set signs sees them.
-  - It decodes a keystore into a `mktemp -d` folder (umask 077) for that build only, and traps remove it afterwards.
-  - Passwords go only through the environment, never the command line or the log.
-  - Before the long builds, it checks that each set opens its keystore and reads its certificate's SHA-256.
-- `.gitignore` also ignores `*.p12`, `*.pfx`, `*.pepk`, `*.keystore.b64` and `.cache/`.
-- Every Android build that is distributed comes from the release job of a protected tag. The iOS build is signed and uploaded from the owner's Mac ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)).
+- There are no product flavours: one application id serves Play and the APK.
 
-**The release job** (`tool/ci/release.sh [--tag TAG] [--dry-run]`):
-- Guards, before anything is built:
-  - `CI_PROJECT_URL` must be https.
-  - The project must be public, and anonymous reads of the repository at the tag, of the releases and of the package registry must answer 200, so the source link and the files open for everyone (AGPL section 6).
-  - The written offer needs a contact (`build_android_notices.py --require-offer-contact`, [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)).
-  - The upload set must be complete, and the APK set complete or absent.
-  - Neither the release nor the package `rurana/<name>` may exist yet.
-- It runs the release-only source-link test and the notices' checks.
-- It builds the bundle with the upload set and one universal APK with the APK set, else the upload set, both with `--build-name`, `--build-number` and `--dart-define=SOURCE_CODE_URL=$CI_PROJECT_URL` ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)). It never uses `--split-per-abi`, which would change the version codes.
-- It runs the exported-components check and verifies the artifacts:
-  - The APK has a v2 signature by exactly one signer, the APK set's (`apksigner`).
-  - The bundle passes `jarsigner -verify` and is signed by the upload set's key.
-  - Neither is signed by `CN=Android Debug`.
-  - The APK's `versionCode` and `versionName` are the tag's.
-- It publishes `rurana-<name>.apk`, `desugar_jdk_libs-2.1.4-src.tar.gz` and `SHA256SUMS` (for those two; the bundle's hash goes into the log) into the generic package `rurana/<name>`, then creates the release through the Releases API with `CI_JOB_TOKEN`.
-  - The release is named `Rurana <name>`, with " (beta)" for a beta.
-  - Its description gives the APK's SHA-256, the APK signing certificate's SHA-256, the source link to the tree at the tag and the note on the desugar_jdk_libs source, and it links the three files.
-  - A failure after the first upload leaves a package that has to be deleted before a retry.
-- The bundle reaches Play by hand from the job's artifacts. There is no Play API upload.
-- `--dry-run` does everything but the publication, with two throwaway one-day PKCS12 keys, the source URL `https://gitlab.example/rurana` and, by default, the tag `v<the pubspec's version name>`. The visibility and contact guards become warnings; it prints the uploads and the release's JSON instead of sending them and ends with `DRY RUN: NOT RELEASABLE (<reasons>)`.
-- The desugar_jdk_libs source is attached to every release, because a copy beside each release stays available whatever happens upstream.
+**Signing in the Gradle build:**
+- `app/android/app/build.gradle.kts` has one `release` signing config (in review):
+  - with `VIKUNJA_APP_UNSIGNED=true` the release build is unsigned and `key.properties` is not read; the release workflow builds so and signs afterwards ([D86](#d86-ci-and-releases-on-github-actions));
+  - else the four keys of the gitignored `app/android/key.properties` (`storeFile`, relative to `app/android/`, `storePassword`, `keyAlias`, `keyPassword`), for a local release build;
+  - else the debug key, with a warning when a release APK or bundle is packaged.
+  - A partial `key.properties` fails and names the missing keys, never a value.
+- The keys of distributed builds are [D86](#d86-ci-and-releases-on-github-actions)'s; no distributed Android build is signed by Gradle or on a laptop. The iOS build is signed and uploaded from the owner's Mac ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)).
+- `.gitignore` also ignores `*.p12`, `*.pfx`, `*.pepk`, `*.keystore.b64` and `.cache/`.
+
+**The desugar_jdk_libs source:**
+- It is attached to every release ([D86](#d86-ci-and-releases-on-github-actions)), because a copy beside each release stays available whatever happens upstream.
   - `tool/android_notices/desugar_jdk_libs.source` names its commit (`50d9c1fb…`, as upstream has no 2.1.4 tag) and tree.
   - `desugar_source.py --check-manifest` (in `checks`, offline) checks the version against `build.gradle.kts`.
-  - `--fetch` (in the release) fetches that commit with depth 1, checks its commit and tree ids and its `VERSION_JDK11.txt`, and writes its `git archive`, about 18 MB. The archive's hash depends on the git version, so it is an output only.
+  - `--fetch` (in the release build) fetches that commit with depth 1, checks its commit and tree ids and its `VERSION_JDK11.txt`, and writes its `git archive`, about 18 MB. The archive's hash depends on the git version, so it is an output only.
   - The notice says that the source is at that commit, that upstream has no tag for 2.1.4, and that a copy is attached to every release.
 
 [releasing.md](releasing.md) is the release checklist; the threat model's R26, R28, R34 and R35 cover CI, signing, Cronet and the Mac runner.
@@ -1940,20 +1919,19 @@ Limits:
 **Runners:** GitLab's small shared runners. A full pipeline takes an estimated 100–150 compute minutes, and the free 400 a month are shared by every project of `coderoftime`, so the group, made public, applies for GitLab for Open Source (owner, [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)). iOS builds stay on the owner's Mac.
 
 Limits:
-- Until the first pipeline on GitLab ([beta.md](beta.md)), the Linux-only paths are untested: the Flutter tarball, docker-in-docker with the forwarder, the osv-scanner Linux binary, the NDK install and the Gradle caps.
+- Until the first pipeline on GitLab ([beta.md](beta.md)), the Linux-only paths are untested: the Flutter tarball, docker-in-docker with the forwarder, the osv-scanner Linux binary, the NDK install and the Gradle caps. ShellCheck has not run over `tool/ci/` either, as it is not installed locally.
 - Some downloads are not pinned by the project:
-  - the `android` and `release` jobs install NDK 28.2.13676358 from Google's SDK repository on every run;
+  - the `android` job and the release build install NDK 28.2.13676358 from Google's SDK repository on every run;
   - `socat` comes unpinned from Ubuntu;
   - the test server's image is pinned by its tag only ([D28](#d28-contract-tests-against-the-latest-vikunja-release-only));
   - the Docker CLI's hash was taken on first use.
 - Anonymous Docker Hub pulls may hit its limits. A read-only token with a `docker login` in `contract.sh` is not built.
-- GitLab has no pre-release flag, so a beta becomes the latest release. Links therefore name a specific release, never `permalink/latest`.
-- Each beta costs two full pipelines, one for the push to `main` and one for the tag.
-- Not built: a Play API upload, a Mac runner for the heavy jobs, Dependabot or Renovate, and Gradle's dependency verification metadata.
+- Each tag costs two full pipelines on GitLab, one for the push to `main` and one for the tag.
+- Not built: a Mac runner for the heavy jobs, Dependabot or Renovate, and Gradle's dependency verification metadata.
 
 ## D74: iOS phase: App Store prerequisites, TestFlight from the Mac, photo locations, capture cover
 
-*Accepted 2026-11-02 (step 37b), the owner's decision where marked.*
+*Accepted 2026-11-02 (step 37b), the owner's decision where marked; the names, the source link and the CI check of step 38c in review.*
 
 - The iOS share extension ("Share to Vikunja") comes after 1.0 (owner). Until then, iOS takes files only through the in-app pickers.
 - On iOS, one-time secrets are covered while the screen is captured (recording, AirPlay or a mirrored display) (owner). Screenshots stay possible, and no undocumented secure-field trick is used.
@@ -1964,16 +1942,17 @@ Limits:
 - Both targets have a privacy manifest: `Runner/PrivacyInfo.xcprivacy` and `VikunjaWidgets/PrivacyInfo.xcprivacy`, added by `tool/add_widget_extension.rb`.
   - They declare no tracking, no tracking domains and no collected data, since data leaves the device only for the server the user chose. The plugins' own manifests are listed in [releasing.md](releasing.md#privacy-manifests).
   - The required-reason APIs are file timestamp `C617.1` for both and user defaults `CA92.1` for the app.
-  - `tool/ci/required_reason_apis.py` checks every binary of the archive (`nm -u` and the listed selectors) against its bundle's manifests, because App Store Connect refuses an undeclared API and a refused build uses up its build number.
+  - `tool/ci/required_reason_apis.py` checks every binary of the archive (`nm -u` and the listed selectors) against its bundle's manifests, because App Store Connect refuses an undeclared API and a refused build uses up its build number. It runs in the iOS release and, since step 38c, in the CI job `ios` on both hosts (in review).
 - `ITSAppUsesNonExemptEncryption` is false: only standard, exempt encryption is used (HTTPS, TLS with pinning, PKCE).
 - iOS uses the system SQLite (`hooks.user_defines.sqlite3` in the workspace's `pubspec.yaml`, `/usr/lib/libsqlite3.dylib` by its full path), and Android keeps the bundled build.
   - Why: the bundled build imports `statfs` and `fstatfs`, which no Apple reason fits, and Flutter cannot yet give a hook's framework a manifest.
   - The app's SQL needs SQLite 3.30 (`NULLS LAST`; upserts 3.24); iOS 15, the oldest supported, ships 3.36. The app uses no `RETURNING`, FTS or JSON functions.
 
 **The iOS release:**
-- The version comes from the tag ([D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)): `IOS_BUILD_NAME` is the tag's `MAJOR.MINOR.PATCH`, since `CFBundleShortVersionString` takes nothing else, and `IOS_BUILD_NUMBER` is the Android build number. So the betas of 1.0.0 are 1.0.0 with growing build numbers.
-- The owner runs TestFlight uploads by hand from the Mac with `tool/ci/ios_release.sh`. There is no GitLab job, because signing and the API key would have to live in the runner's macOS account (threat model R35).
-  - It refuses to run unless all of these hold: Xcode is selected, Flutter is the pinned one, HEAD is the tag with a clean tree, the source link (`RURANA_SOURCE_CODE_URL`, else `CI_PROJECT_URL`) is https and its tree at the tag opens signed out, `DEVELOPMENT_TEAM` and the key variables `RURANA_ASC_KEY_ID`, `RURANA_ASC_ISSUER_ID` and `RURANA_ASC_KEY_FILE` are set (the key file readable by its owner only), and the 1024 icon is sRGB without alpha.
+- The version comes from the tag ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)): `IOS_BUILD_NAME` is the tag's `MAJOR.MINOR.PATCH`, since `CFBundleShortVersionString` takes nothing else, and `IOS_BUILD_NUMBER` is the Android build number. So the betas of 1.0.0 are 1.0.0 with growing build numbers.
+- The owner runs TestFlight uploads by hand from the Mac with `tool/ci/ios_release.sh`. There is no CI job, because signing and the API key would have to live in a runner's macOS account (threat model R35) or in CI secrets; GitHub's job `ios` builds unsigned only ([D86](#d86-ci-and-releases-on-github-actions), in review).
+  - It refuses to run unless all of these hold: Xcode is selected, Flutter is the pinned one, HEAD is the tag with a clean tree, the source link is https and opens signed out, `DEVELOPMENT_TEAM` and the key variables `VIKUNJA_APP_ASC_KEY_ID`, `VIKUNJA_APP_ASC_ISSUER_ID` and `VIKUNJA_APP_ASC_KEY_FILE` (the names since step 38c, in review) are set (the key file readable by its owner only), and the 1024 icon is sRGB without alpha.
+  - The source link is the tree at the tag of `VIKUNJA_APP_SOURCE_CODE_URL`, the repository's https URL, by default https://github.com/go-vikunja/app: `<repository>/tree/<tag>` on github.com, `<repository>/-/tree/<tag>` on another host, as the Android release links it ([D86](#d86-ci-and-releases-on-github-actions); in review, in place of `RURANA_SOURCE_CODE_URL` with `CI_PROJECT_URL` as the fallback).
   - It runs the release-only source-link test.
   - It builds with `flutter build ipa --release`, using the tag's version, `SOURCE_CODE_URL` and export options for automatic signing with the team in `DEVELOPMENT_TEAM`.
   - It checks the archive: both bundles at the tag's version, the plist key, the committed manifests, the required-reason APIs and the licence notices.
@@ -2013,6 +1992,8 @@ Limits:
 
 Limits:
 - Not yet checked on a device or with the Apple account (the device test in [beta.md](beta.md)): signing, and App Store Connect processing a build (the real test of the manifests); the capture cover in a real recording; the camera; BGTaskScheduler; iOS 15 to 17; signed-in online flows; Increase Contrast, Bold Text and Reduce Motion; Universal Clipboard; a restored backup. What else waits for the device test is in the entries concerned ([D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session), [D63](#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios) to [D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links), [D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep), [D69](#d69-large-screens-a-window-layout-helper-readable-widths-capped-dialogs-and-sheets)).
+- Until the move into go-vikunja/app (step 38d) that repository has no such tag, so a real iOS release before it needs `VIKUNJA_APP_SOURCE_CODE_URL` set to a public repository that has the tag (in review).
+- GitHub's job `ios` builds with the image's default Xcode (26.6 on `macos-26`), the owner's releases with the Mac's (27.2).
 - Not built: iOS 27's extra-large portrait widget; drafts out of the backed-up preferences (open with the owner, [D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links)); the app's own TLS through `connectionFactory` stays a reserve of [D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport).
 
 ## D75: Owner's UI review: no task identifier, coloured folders, new-task sheet, Account tab
@@ -2176,24 +2157,24 @@ Limits:
 
 - The beta's runbook is [beta.md](beta.md).
 - **Every project of the GitLab group `coderoftime` becomes public** (owner), so that the group can join GitLab for Open Source, which takes only groups whose projects are all public under an OSI-approved licence. This answers [Q22](open-questions.md#q22-ci-runners-on-gitlab).
-  - The project stays https://gitlab.com/coderoftime/rurana, because its address is every release's source link (`RURANA_SOURCE_CODE_URL` for the iOS release); its history is kept as it is, without a rewrite. Once public, its issues and merge requests are open to everyone.
+  - The project stays https://gitlab.com/coderoftime/rurana until the move into go-vikunja/app in step 38d ([D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)); its history is kept as it is, without a rewrite. Once public, its issues and merge requests are open to everyone. A release's source link is the tree at the tag of the repository that builds it, go-vikunja/app by default ([D86](#d86-ci-and-releases-on-github-actions), in review).
   - iOS builds stay on the owner's Mac, by hand (`tool/ci/ios_release.sh`, [D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)).
-- **Signing follows [Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)'s option A** (owner): an app signing key that only the owner holds, uploaded to Play App Signing with PEPK when the app is created ("Provide a copy of your app signing key"), in place of Play's default hybrid signing with keys Google generates; a separate upload key signs the bundles (`RURANA_UPLOAD_*`); the release job signs the GitLab APK with the app signing key (`RURANA_APK_*`, [D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)).
+- **Signing follows [Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)'s option A** (owner): an app signing key that only the owner holds, uploaded to Play App Signing with PEPK when the app is created ("Provide a copy of your app signing key"), in place of Play's default hybrid signing with keys Google generates; a separate upload key signs the bundles; the release signs the APK with the app signing key.
   - Why: Play's builds and the APK share one signature and update each other, and Android's developer verification already knows the APK's key.
-  - The app signing key stays with the owner and, for the APK, in protected variables of the `release` environment.
+  - Since [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp) the app ships in Vikunja's listing, so option A no longer applies: Vikunja's upload key signs the bundles, and the APK too unless a separate APK key is added (`APK_KEYSTORE_BASE64`), from the environment `release` of go-vikunja/app ([D86](#d86-ci-and-releases-on-github-actions), in review).
 - **The application id** is the official app's `io.vikunja.app` since step 38a, with every id derived from it ([D15](#d15-app-id-iovikunjaapp-and-the-name-vikunja)). Nothing changes on the server, which has no client registry.
 - **The About page's row "Help and bug reports"** („Hilfe und Fehler melden“, the owner's words), subtitle "Answers to common questions and how to report a bug" („Antworten auf häufige Fragen und wie du einen Fehler meldest“), first in the section "Help, privacy and legal notice" ([D76](#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android)), opens the app's support page in the app's language (`WebsitePage.support`), so that testers and users find how to report a bug (owner).
 - **The beta's testers** (owner): Play's closed test takes them through a Google Group that the owner creates, TestFlight through a public link; they use their own Vikunja server (2.3.0 or newer, [D13](#d13-support-floor-230)) or the public demo `try.vikunja.io`, with a Google account for Play or the TestFlight app on iOS.
-- **The threat model is signed off before the first beta tag and again before 1.0.0,** because the beta is public: each `v*` tag publishes a GitLab release with a signed APK, shown as the latest release, and the TestFlight link and the Google Group are open to anyone. Before `v1.0.0-beta.1` sections 8.1 and 8.2 of the [threat model](threat-model.md) run, with the emulator check of R33's fix, and the owner signs section 8.4; section 8.3 waits for the device test. Before 1.0.0 the owner signs again, with 8.1, 8.2 for what changed and 8.3.
+- **The threat model is signed off before the first beta tag and again before 1.0.0,** because the beta is public: each `v*` tag publishes a GitHub release with a signed APK (a beta as a prerelease) and the APK on dl.vikunja.io ([D86](#d86-ci-and-releases-on-github-actions), in review), and the TestFlight link and the Google Group are open to anyone. Before `v1.0.0-beta.1` sections 8.1 and 8.2 of the [threat model](threat-model.md) run, with the emulator check of R33's fix, and the owner signs section 8.4; section 8.3 waits for the device test. Before 1.0.0 the owner signs again, with 8.1, 8.2 for what changed and 8.3.
 - **Security reports go by email first,** to `coderoftime@gmail.com`, with a confidential GitLab issue as the alternative and never a public one, as [CONTRIBUTING.md](../CONTRIBUTING.md#issues), the support page and the website's `security.txt` say.
 - **The French encryption declaration** is [Q23](open-questions.md#q23-french-encryption-declaration-for-the-app-store), to be settled before the App Store release in France.
 - **App Store Connect's Accessibility Nutrition Labels stay blank** until the device and screen-reader passes ([Q19](open-questions.md#q19-device-setup-for-the-manual-talkback-pass)) confirm what can be claimed.
-- **Versions:** Flutter as [D1](#d1-flutter-pub-workspace-with-pure-dart-packages) pins it; `app/pubspec.yaml` at `1.0.0-beta.1+1`, the build number coming from the tag ([D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)).
+- **Versions:** Flutter as [D1](#d1-flutter-pub-workspace-with-pure-dart-packages) pins it; `app/pubspec.yaml` at `1.0.0-beta.1+1`, the build number coming from the tag ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)).
 - **Vikunja 2.7.1's changes** are in the entries they concern: attachment previews ([D53](#d53-attachments-uploaded-through-the-outbox-opened-through-the-platform-android-share-target)), the token presets, a gone token and the two-factor note ([D55](#d55-security-settings-two-factor-status-sessions-and-tokens-a-new-token-shown-once)), and the column limit ([D48](#d48-kanban-columns-managed-online-from-a-column-menu)).
 - **The task detail's attribute card** gives its names one column as wide as the widest name on one line (measured bold when the platform's bold text is on), at least 96 grown with the names' text size; when the longest name leaves its value too little room, every row stacks.
 
 Limits:
-- Until GitLab for Open Source is granted, a fix can ship about once a month, as the group shares the free runner minutes ([D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)); the iOS build costs none.
+- Until GitLab for Open Source is granted, the GitLab pipeline can run about once a month, as the group shares the free runner minutes ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)); releases come from GitHub Actions in go-vikunja/app, a public repository, whose standard runners are free ([D86](#d86-ci-and-releases-on-github-actions), in review).
 - A leaked app signing key cannot be replaced for existing installs.
 - Not known: whether an uploaded app signing key gets hybrid signing (the owner checks it when creating the app), whether Play's builds and an RSA-only APK update each other on Android 17 and later, whether Play asks a new personal account to verify a real Android phone, and how GitLab for Open Source judges the AGPL with the additional permission in `NOTICE.md`.
 
@@ -2380,7 +2361,7 @@ Limits:
 
 *In review since 2026-11-10 (step 36g), the owner's decision where marked.*
 
-- Part of the first release's beta build (owner, [D72](#d72-first-release-android-and-ios-together-play-and-a-gitlab-apk-beta-first)).
+- Part of the first release's beta build (owner, [D72](#d72-first-release-android-and-ios-together-play-and-an-apk-beta-first)).
 - On wide windows the project tree, the open project and the task pane always stand side by side, and the pane keeps [D70](#d70-task-detail-pane-beside-the-list-on-two-pane-windows-the-sheet-elsewhere)'s width (owner). Below the gate and on every phone nothing changes.
 - **Gate** (`WindowLayout.threePane(besideRail:)`, `app/lib/app/layout/window_layout.dart`; checked in `HomeShell`): the tree's column shows where [D70](#d70-task-detail-pane-beside-the-list-on-two-pane-windows-the-sheet-elsewhere)'s pane can (`twoPane`, not in tabletop posture), where no vertical fold or hinge divides the window (`hasVerticalFold` in `pane_split.dart`, shared with `paneSplitFor`), for an account that is no link-share guest, and where the window, less a rail of 80 dp where the rail shows (`railWidth`), is at least 1,120 dp wide (`threePaneContentFrom`).
   - 1,120 is Material 3's large class (1,200 dp) less its rail: Android windows from 1,200 dp and iPad windows from 1,120 pt, at least 480 high, so every iPad in landscape and none in portrait. It fits the tree, a project of about 350 dp and the pane at 448 dp.
@@ -2417,7 +2398,7 @@ Limits:
 
 ## D83: Successor of the official Vikunja app in go-vikunja/app
 
-*Accepted 2026-11-12, the owner's decision, agreed with the Vikunja maintainers; the decisions of 2026-11-13 for the switch (owner); steps 38a and 38b accepted 2026-11-14.*
+*Accepted 2026-11-12, the owner's decision, agreed with the Vikunja maintainers; the decisions of 2026-11-13 for the switch (owner); steps 38a and 38b accepted 2026-11-14; the decisions of 2026-11-14 for step 38c (owner), which is in review.*
 
 - The app becomes the official Vikunja mobile app and moves into https://github.com/go-vikunja/app; the owner is its main maintainer.
 - **Android:** the Play listing `io.vikunja.app` stays in Vikunja's Play account, and the app ships there as an update of the old app: the same application id, signed with Vikunja's upload key, with a higher version code (why: the old app's installs keep updating).
@@ -2431,11 +2412,11 @@ Limits:
 - **Step 38b, the update from the old app**: on Android the first start after the update takes over the old app's server, session, theme and language, clears its leftovers and keeps its placed widgets ([D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)).
 - **Left by step 38a for the later steps**:
   - 38b, the update from the old app: done by step 38b ([D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)). Unchanged: the old app's User-Agent "Vikunja Mobile App", which the sessions page still shows as it is stored.
-  - 38c, CI and releases: the `RURANA_*` variables, `.gitlab-ci.yml` and the GitLab release names (`rurana-<version>.apk`, the generic package `rurana`, the release title "Rurana …"), and a contract run: the two Docker-only contract tests carry the new client id and redirect but have not run against a server yet.
+  - 38c, CI and releases: done by step 38c (in review, [D86](#d86-ci-and-releases-on-github-actions)). The `RURANA_*` variables are `VIKUNJA_APP_*`, or the old app's secret names for the release keys; GitLab's release names went with its release publishing, and `.gitlab-ci.yml` stays until the move, its release job a dry run. The contract tests that carry the new client id and redirect pass against the 2.8.0 test server.
   - 38d, the licence and the move: `NOTICE.md` and the app's notice (the copyright "Benedikt Lesch and the Rurana contributors", "Rurana, an unofficial mobile client…", the name-and-logo terms and their file table, which until then call the regenerated icon files derivatives of the llama), the About page's "Name and logo" row and licence lines, `copyrightNotice`, the llama source and the explorations in `branding/`, and `CONTRIBUTING.md`.
   - 38f, the store listing and the website: the app's pages on `coderoftime.dev/rurana/…` (the About page's rows, the store URLs and their checker), the contact `coderoftime@gmail.com`, the listing's languages (the `en-GB` texts stay British until then), the screenshots, which still show the llama and Rurana, and the App Store name if "Vikunja" is taken there.
   - Test data that needs Docker or a new capture keeps the old name: the TLS test certificates, the seeded E2E user, the captured fixtures and their capture tools, and the contract tests' user agents and titles.
-- With the later steps [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet) (38d), [D72](#d72-first-release-android-and-ios-together-play-and-a-gitlab-apk-beta-first), [D73](#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing) and [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers) (38c) and [D76](#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android) (38f) change.
+- Step 38c changed [D72](#d72-first-release-android-and-ios-together-play-and-an-apk-beta-first), [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move), [D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover), [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers) and the source link of [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet) and added [D86](#d86-ci-and-releases-on-github-actions) (in review); with the later steps [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet) (38d) and [D76](#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android) (38f) change.
 
 Open:
 - Whether the owner gets release rights in Vikunja's Play Console.
@@ -2582,3 +2563,81 @@ Open:
 - Older Android versions than 16 were not updated in the test, so whether the old reminders fire there before the first start, and the alias with them, is open.
 
 The update test ([threat model 8.2](threat-model.md#82-manual-on-the-android-emulator), item 13) ran on 2026-11-14 on an Android 16 emulator of its own, with the old app built from GitHub and both apps signed with one throwaway key: every check passed, the old refresh token kept the session on the public demo without a browser, the tile disappeared, and Android removed the old reminders at the install because the update revokes the old app's exact-alarm permission, which the notification setup then asks for again.
+
+## D86: CI and releases on GitHub Actions
+
+*In review since 2026-11-14 (step 38c), the owner's decisions of 2026-11-14 where marked.*
+
+- GitHub Actions run the CI and the Android releases in go-vikunja/app, where the repository moves in step 38d ([D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)), with the same `tool/ci/` scripts as GitLab. The GitLab pipeline stays until the move and keeps working, but its release job only rehearses ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)) (owner).
+- Google Play and dl.vikunja.io get builds only from tags: a beta tag `vX.Y.Z-beta.N` goes to Play's `beta` track, a final tag `vX.Y.Z` to production as a staged rollout, and every release puts the APK on GitHub Releases and on dl.vikunja.io. Pushes and pull requests run the checks only (owner; why: the old app uploaded every push to `main` to Play).
+- Releases are published from no repository but go-vikunja/app, and the release jobs have a dry run without secrets, so the workflows can be tried first in a private test repository of the owner's (owner).
+- The build jobs make unsigned files and never see a key; a short job in the protected environment `release` signs, checks and publishes them.
+
+**The workflows** (`.github/workflows/`):
+- `ci.yaml` ("CI") runs on pushes to `main`, pull requests, runs by hand, calls from `release.yaml`, and a weekly schedule (Monday 05:23 UTC) that runs `osv` only. There is no `pull_request_target` and no `workflow_run`.
+  - Its jobs have GitLab's job names and each runs the same script: `checks` (`checks.sh`, `test.sh`, then `outdated.sh` for information), `editor` (Node 26.10.0 through `actions/setup-node`, the Node of GitLab's image), `contract`, `android`, `osv` and `ios`. The job ids are the check names a ruleset on `main` requires.
+  - `contract` runs `test_servers/` on the runner's own Docker, published on `127.0.0.1`: no docker-in-docker and no forwarder ([D28](#d28-contract-tests-against-the-latest-vikunja-release-only)).
+  - `ios` runs on `macos-26` with its default Xcode (26.6): the unsigned release build, the licence notices and the required-reason API check ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)). It replaces the owner's Mac runner here (threat model R35). It runs in go-vikunja/app on every push and pull request, where macOS runners are free, and in another repository only with the repository variable `VIKUNJA_APP_IOS_JOB=true` (why: a private repository pays about ten times the Linux price for macOS).
+  - Runs of the same pull request or ref cancel each other, on `main` too. The group is `ci-<event>-<pull request or ref>`, not the workflow's name, which a called workflow shares with its caller.
+  - Caches (actions/cache) live under `.cache/` as on GitLab: Flutter keyed by `pins.sh` and the runner's system and architecture, pub by `pubspec.lock`, Gradle by its lockfile and the wrapper's properties; npm's through setup-node. The timeouts are GitLab's.
+- `release.yaml` ("Release") runs on `v*` tags only; a malformed one fails in `release_version.py`. Its jobs:
+  - `ci` calls `ci.yaml` without secrets, so a release waits for the whole CI, `ios` included (why: a tag that does not build for iOS cannot be released from the Mac either).
+  - `build` runs in go-vikunja/app, or in another repository with the repository variable `VIKUNJA_APP_RELEASE_DRY_RUN=true`, beside `ci`, with no secret and no cache. It runs `tool/ci/release_build.sh` and uploads `build/release/unsigned/` as the artifact `release-unsigned`, kept 14 days.
+  - `secret-scope` (go-vikunja/app only) runs outside any environment, where a job sees only repository and organisation secrets. `release_publish.sh scope` fails it when any of `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `APK_KEYSTORE_BASE64`, `APK_KEY_PROPERTIES`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `S3_ACCESS_KEY` or `S3_SECRET_KEY` is one (why: such a copy can be read by any workflow on any branch, without the environment's reviewers).
+  - `publish` (go-vikunja/app only) needs `ci`, `build` and `secret-scope` and runs in the environment `release`, so a reviewer approves it. It is the only job with `contents: write`, and one tag publishes at a time (group `release-publish`, never cancelled). Its steps get only their own secrets: check (`release_publish.sh check`, which sees only whether each secret is set, as `HAS_<name>`), sign (`release_sign.sh`), Google Play, dl.vikunja.io, the GitHub release.
+  - `dry-run` (another repository with `VIKUNJA_APP_RELEASE_DRY_RUN=true`) runs the same steps with `--dry-run`, with throwaway keys, no environment and no secret, and publishes nothing.
+- Hardening, checked by `tool/ci/test_github_workflows.py`, which parses both files with Ruby's YAML as `test_gitlab_ci.py` does:
+  - `permissions: {}` at the top and `contents: read` per job, `contents: write` on `publish` only; `persist-credentials: false` on every checkout;
+  - only GitHub's own actions, each pinned by its full commit SHA with the version beside it (checkout v7.0.1, cache v6.1.0, setup-node v7.1.0, upload-artifact v7.0.2, download-artifact v8.0.2), and no Flutter setup action, as none verifies the SDK's checksum;
+  - no `${{ … }}` inside `run:` (values reach the scripts through `env:`), each `run` one `tool/ci/` script;
+  - secrets only in `release.yaml`'s `secret-scope` (the one expression) and `publish` (per step), never `secrets: inherit`; no cache in the release jobs;
+  - runner labels by name, `ubuntu-24.04` and `macos-26`, never `-latest`, so an image switch shows in a diff;
+  - exactly these two workflow files, no filters or inputs on pull requests, runs by hand and calls, and the exact `if:` conditions.
+- No DCO job: Vikunja has none, and step 38d adopts Vikunja's contribution rules; `dco` stays on GitLab until then ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)).
+
+**Runners and tools:**
+- The bare hosted images, not the cirruslabs container (why: hosted images cannot be pinned anyway, `contract` needs the host's Docker and `ios` macOS, and the images bring the tools: JDK 21, the Android SDK with build-tools 37 (`apksigner`, `zipalign`, `aapt2`), Ruby, Python, ShellCheck, `gh`, the AWS CLI, `openssl`, Docker with Compose).
+- A GitHub-hosted runner counts as a CI runner for `lib.sh` ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)): the pinned Flutter, every CPU for the tests, and `ci_gradle_setup` with JDK 21 (`JAVA_HOME_21_X64`; the Ubuntu image defaults to 17).
+- Flutter comes from the same checksum-verified download as on GitLab: the Linux x86_64 tarball, and on macOS arm64 the zip whose SHA-256 (`FLUTTER_MACOS_ARM64_SHA256` in `pins.sh`) was taken from Homebrew's cask, as Flutter's `releases_macos.json` could not be read. Any other platform fails, so the runners stay `ubuntu-24.04` (x86_64) and `macos-26` (arm64).
+- AGP downloads the NDK on each Android build, as on GitLab.
+
+**The build** (`tool/ci/release_build.sh`, job `build`):
+- Only a tag run of go-vikunja/app on GitHub Actions is real (`official_release_run` in `tool/ci/release_lib.sh`): `GITHUB_ACTIONS`, `GITHUB_REPOSITORY=go-vikunja/app`, its numeric id `GITHUB_REPOSITORY_ID=395095540` and a tag ref (why the id: another repository renamed to that name does not pass). Anything else is a dry run, whose failed checks become reasons in `NOT_RELEASABLE`; outside GitHub Actions and GitLab CI the script runs only with `--dry-run`.
+- The source link, the `SOURCE_CODE_URL` define ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)), is the tree at the tag of the repository the workflow runs in: `https://github.com/<owner>/<repo>/tree/<tag>` (on GitLab `…/-/tree/<tag>`; locally a placeholder). The repository must be public (the event's `repository.private`; GitLab's visibility) and the link must answer 200 signed out; the written offer needs its contact.
+- It runs the release-only source-link test and the notices' checks, builds the bundle and one universal APK with `VIKUNJA_APP_UNSIGNED=true`, runs the exported-components check, and checks that neither file is signed (so a stray `key.properties` cannot sign a CI build) and the APK's version with `aapt2`. It fetches the desugar_jdk_libs source ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)) and writes `build/release/unsigned/` with `release.env`, which records the version, the source link, each file's SHA-256 and the reasons.
+
+**Signing** (`tool/ci/release_sign.sh`, in `publish`):
+- The secrets of the environment `release` keep the old app's names, so Vikunja's maintainers need no new ones: `KEYSTORE_BASE64` (the upload keystore, JKS or PKCS12) and `KEY_PROPERTIES` (`storePassword`, `keyAlias` and `keyPassword`; `storeFile` is ignored), parsed by `tool/ci/key_properties.py` with the rules of Java's `Properties.load`, which the old app's Gradle used. A separate APK key is optional: `APK_KEYSTORE_BASE64` with `APK_KEY_PROPERTIES`, both or neither. Without it Vikunja's upload key signs the APK too, as in the old app (why: installs of the old app's APKs keep updating).
+- The script copies the secrets and unsets them before anything else runs, masks every value in the log (GitHub masks a multi-line secret only line by line), decodes the keystore with umask 077 into the runner's temporary folder and removes it on every exit. JKS or PKCS12 is told from the first bytes and passed explicitly; passwords reach `keytool`, `jarsigner` and `apksigner` only through the environment of one command.
+- Each certificate's SHA-256 must equal the one committed in `tool/ci/release_certificates.txt`: `upload=`, and `apk=` only with a separate APK key. Both are empty until Vikunja's maintainers commit them in a reviewed commit, and until then a real release fails (why: a swapped secret would otherwise sign the public APK with a stranger's key).
+- `jarsigner` signs the bundle, `apksigner` the APK (v2 and v3, without a v4 file). The APK is signed twice and must come out identical, so its key must be RSA (why: a re-run must reproduce the APK already published; an EC or DSA signature differs every time).
+- Then [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)'s checks of step 37a: the APK has one signer, equal to the certificate; the bundle passes `jarsigner -verify` and carries the upload certificate; neither is signed by `CN=Android Debug`; the APK has the tag's version. New: `zipalign -c -P 16 4`. The script writes `build/release/signed/` with the APK `vikunja-app-<name>.apk` and `SHA256SUMS`.
+- With `--dry-run`, after a dry-run build, or without `KEYSTORE_BASE64` (then with a loud warning), throwaway keys sign: a one-day JKS whose key password differs from its store password, the likely shape of Vikunja's keystore.
+
+**Publishing** (`tool/ci/release_publish.sh`, in `publish`):
+- A step publishes only when the run is official, `GITHUB_REF_NAME` is the built tag, the signing was real and `NOT_RELEASABLE` is empty. Otherwise it prints what it would do and why it does not, and exits 0 with `--dry-run`, else 1.
+- `check` judges the secrets: the signing pair both or neither, the APK pair both or neither, and with the signing pair also `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_ENDPOINT` and `S3_BUCKET`. Without the signing pair it warns that this run signs with throwaway keys, publishes nothing and fails at the first publish step (why: a tag that released nothing must not look green).
+- `play` uploads with `tool/ci/play_upload.py`, standard library only (why: no third-party code sees Vikunja's service account key, and no fastlane, which would need Ruby and a lockfile). The service account's JSON goes into a 0600 file; the script gets a token through a JWT that `openssl` signs with the key from stdin, then in one edit reads the track (a version code already there is skipped), uploads the bundle, updates the track and commits. A beta goes to `beta` with status `completed`, a final release to `production` as `inProgress` with the user fraction of the repository variable `VIKUNJA_APP_PLAY_ROLLOUT` (0.1 when unset). Raising or halting a rollout is done in the Play Console. No release notes go to Play.
+- `dl` puts the APK at `app/<name>/vikunja-app-<name>.apk` on dl.vikunja.io with the runner's AWS CLI: its content type and its SHA-256 as metadata, path-style addressing, https only, the keys on that one command. `S3_ENDPOINT` contributes only its host and port, as in the old app's `kolaente/s3-action`; `S3_REGION` is optional, `us-east-1` when unset, which Cloudflare R2 takes as `auto`. The old `/app/unstable/` is no longer updated.
+- `github` creates the release "Vikunja app <name>" with `gh` and the workflow's own token: `--verify-tag`, a beta as a prerelease not marked latest, a final release as the latest, with the APK, `SHA256SUMS` and the desugar_jdk_libs source. The notes give the APK's SHA-256, its signing certificate's SHA-256, the source link and the note on the desugar_jdk_libs source.
+- `check` and `github` require that the tag still points at the built commit (`GITHUB_SHA`, read signed out with `git ls-remote`).
+- The order is Play (the strictest check of the bundle and the key), dl.vikunja.io, then the GitHub release, the announcement. The retry is GitHub's "Re-run failed jobs", which keeps the build and needs the approval again: each step skips what is already there with the same SHA-256 (the GitHub step downloads and compares the files) and fails on other content, and a leftover draft release is deleted. "Re-run all jobs" builds again, and a new build need not give the same files.
+- `tool/ci/release.sh --dry-run` runs `release_build.sh`, `release_sign.sh` and every publish step with `--dry-run`, locally and in GitLab's job `release`, and ends with `DRY RUN: NOT RELEASABLE (<reasons>)`. Without `--dry-run` it refuses.
+- iOS releases stay manual on the owner's Mac ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)).
+
+**Names:** every `RURANA_*` variable is now `VIKUNJA_APP_*` (for example `VIKUNJA_APP_TEST_VIKUNJA_IMAGE`, `VIKUNJA_APP_TLS_DOCKER`, `VIKUNJA_APP_MACOS_RUNNER`, `VIKUNJA_APP_ASC_*`), except the signing sets: Gradle's `RURANA_SIGNING_*` are gone, and the release secrets take the old app's names. GitLab's release names (`rurana-<name>.apk`, the package `rurana`, the title "Rurana …") went with its release publishing. No name stays for GitLab, as no GitLab variable was set yet. Test data that needs Docker or a new capture keeps the old name ([D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)).
+
+**What Vikunja's maintainers set up in go-vikunja/app**, listed in [releasing.md](releasing.md#once-in-go-vikunjaapp): the environment `release` with required reviewers, "Prevent self-review" and no administrator bypass, deploying from `v*` tags only; its secrets entered again at environment level, and no repository or organisation copy of the seven credentials; the certificates in `release_certificates.txt`; optionally `VIKUNJA_APP_PLAY_ROLLOUT`; rulesets for `v*` tags and for `main` with the six checks; read-only workflow permissions and approval for workflows of outside contributors' pull requests.
+
+Limits:
+- Nothing has run on GitHub yet. The trial in the owner's private test repository comes after the review (owner); it cannot show the environment, the rulesets, real signing, Play, dl.vikunja.io or a real GitHub release, which only go-vikunja/app's first tag after the move shows. ShellCheck has never run over `tool/ci/`; `checks` runs it on GitHub's image.
+- The hosted images cannot be pinned, so the JDK, the build-tools, the AWS CLI, `gh` and Docker change with GitHub's image updates.
+- The Play path is tested against a fake server only: how Play's API treats a production release while another rollout is in progress, managed publishing, a version code used elsewhere and the upload of a large bundle show with the first real tag. `jarsigner` picks the bundle's signature algorithm from the JDK's defaults for the key.
+- That `secrets.X != ''` and the `secret-scope` expression give the strings `true` or `false` is documented, not yet seen.
+- GitHub keeps one waiting run per concurrency group, so a third tag's `publish` replaces a second one that still waits, for example for its approval.
+- The unsigned files stay an artifact for 14 days, readable by everyone in a public repository; the signed ones are not kept.
+- Not built: an iOS release job ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)), provenance attestations, Play release notes, an R8 mapping upload, a stable "latest APK" link, Renovate or Dependabot (38d can adopt Vikunja's), and the cleanup of the old app's workflows (38d).
+
+Open:
+- The reviewers of `release`: at least one maintainer besides the owner with "Prevent self-review" on, so a tag the owner pushes needs another maintainer's approval (as built and documented), or the owner alone, which is faster and has no second pair of eyes; for the owner to decide.
+- The upload certificate's SHA-256 (Play Console > Test and release > App integrity > Upload key certificate) for `release_certificates.txt`, from Vikunja's maintainers.

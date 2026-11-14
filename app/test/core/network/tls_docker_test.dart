@@ -22,12 +22,13 @@ import '../../helpers/auth_fakes.dart';
 
 // The opt-in `tls` compose profile (test_servers/tls/README.md): start it,
 // seed it with tool/seed_e2e_user.sh and tool/tls_e2e.py, then
-// RURANA_TLS_DOCKER=1 flutter test --tags tls-docker
+// VIKUNJA_APP_TLS_DOCKER=1 flutter test --tags tls-docker
 // Everything goes through the app's own NetworkProfileAdapter (dart:io
 // stands in for the platform adapter) and ProfileRealtimeConnector. No
 // secret, share hash or token is ever printed.
-final String? _dockerSkip = Platform.environment['RURANA_TLS_DOCKER'] != '1'
-    ? 'Set RURANA_TLS_DOCKER=1 and start the tls compose profile'
+final String? _dockerSkip =
+    Platform.environment['VIKUNJA_APP_TLS_DOCKER'] != '1'
+    ? 'Set VIKUNJA_APP_TLS_DOCKER=1 and start the tls compose profile'
     : null;
 
 const _generated = '../test_servers/tls/generated';
@@ -343,8 +344,9 @@ void main() {
         ? _env('$_generated/access.env')
         : const <String, String>{};
     Map<String, String> headers({String? secret}) => {
-      'CF-Access-Client-Id': access['RURANA_TEST_ACCESS_ID']!,
-      'CF-Access-Client-Secret': secret ?? access['RURANA_TEST_ACCESS_SECRET']!,
+      'CF-Access-Client-Id': access['VIKUNJA_APP_TEST_ACCESS_ID']!,
+      'CF-Access-Client-Secret':
+          secret ?? access['VIKUNJA_APP_TEST_ACCESS_SECRET']!,
     };
 
     test('without headers the server is behind a login proxy', () async {

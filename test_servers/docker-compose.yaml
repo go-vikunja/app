@@ -4,14 +4,14 @@
 #   34528-34531  the same release behind TLS, opt-in profile `tls` (below)
 # Bump the image tag when a new Vikunja release comes out, here and in
 # defaultTestServerImage of packages/vikunja_api/test/contract/helpers.dart.
-# RURANA_TEST_VIKUNJA_IMAGE runs another release instead, for example
+# VIKUNJA_APP_TEST_VIKUNJA_IMAGE runs another release instead, for example
 # vikunja/vikunja:2.7.1 before a tag (docs/releasing.md); the contract tests
 # then expect the version of its tag.
 # The host port is referenced by the contract tests, tool/*.sh and the docs;
 # do not change it. It is published on 127.0.0.1 only, because the server
-# allows open registration with a public JWT secret; CI sets 0.0.0.0 inside
-# its own docker-in-docker daemon (RURANA_TEST_PUBLISH_ADDRESS, tool/ci/
-# contract.sh). An Android emulator reaches it as localhost after
+# allows open registration with a public JWT secret; GitLab CI sets 0.0.0.0
+# inside its own docker-in-docker daemon (VIKUNJA_APP_TEST_PUBLISH_ADDRESS,
+# tool/ci/contract.sh). An Android emulator reaches it as localhost after
 # `adb reverse tcp:34527 tcp:34527`.
 #
 # Start: docker compose -f test_servers/docker-compose.yaml up -d
@@ -68,12 +68,12 @@ x-vikunja-env: &vikunja-env
 # host's network) and the Android emulator with `adb reverse`.
 services:
   vikunja:
-    image: ${RURANA_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0}
+    image: ${VIKUNJA_APP_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0}
     environment:
       <<: *vikunja-env
       VIKUNJA_SERVICE_PUBLICURL: http://localhost:34527/
     tmpfs: ["/tmp:mode=1777"]
-    ports: ["${RURANA_TEST_PUBLISH_ADDRESS:-127.0.0.1}:34527:3456"]
+    ports: ["${VIKUNJA_APP_TEST_PUBLISH_ADDRESS:-127.0.0.1}:34527:3456"]
 
   # Opt-in TLS servers for the connection-profile checks (test_servers/tls/
   # README.md). They start only with `--profile tls`, so CI, a plain `up -d`
@@ -84,7 +84,7 @@ services:
   #   34530  access-header gate like Cloudflare Access, test CA
   #   34531  plain HTTP straight to Vikunja, for seeding from the host only
   vikunja-tls:
-    image: ${RURANA_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0}
+    image: ${VIKUNJA_APP_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0}
     profiles: ["tls"]
     environment:
       <<: *vikunja-env

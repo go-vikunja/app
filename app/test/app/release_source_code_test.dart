@@ -13,7 +13,8 @@ void main() {
       isNotNull,
       reason:
           'Pass --dart-define=SOURCE_CODE_URL=<the https URL of the '
-          'repository>, as tool/ci/release.sh does (D73)',
+          "repository's tree at the tag>, as tool/ci/release_build.sh does "
+          '(D86)',
     );
     final address = Uri.parse(sourceCodeUrl!);
     expect(

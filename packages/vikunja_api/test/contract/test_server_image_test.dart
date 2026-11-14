@@ -46,7 +46,7 @@ void main() {
   });
 
   test('both Vikunja services of the compose file run the default image '
-      'unless RURANA_TEST_VIKUNJA_IMAGE is set', () {
+      'unless VIKUNJA_APP_TEST_VIKUNJA_IMAGE is set', () {
     final compose = File('../../test_servers/docker-compose.yaml')
         .readAsStringSync();
     final vikunjaImages = [
@@ -58,7 +58,7 @@ void main() {
     ];
 
     const overridable =
-        r'${RURANA_TEST_VIKUNJA_IMAGE:-'
+        r'${VIKUNJA_APP_TEST_VIKUNJA_IMAGE:-'
         '$defaultTestServerImage}';
     expect(vikunjaImages, [overridable, overridable]);
   });

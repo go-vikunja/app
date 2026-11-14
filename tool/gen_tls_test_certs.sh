@@ -157,10 +157,10 @@ ca_signed() {
 pkcs12() {
   local name="$1" ca="$2" source="$3"
   shift 3
-  RURANA_P12_PASSWORD="$p12_password" ossl pkcs12 -export "$@" \
+  VIKUNJA_APP_P12_PASSWORD="$p12_password" ossl pkcs12 -export "$@" \
     -inkey "${work}/${source}.key" -in "${work}/${source}.pem" \
     -certfile "${work}/${ca}.pem" -name "Rurana test client (dummy)" \
-    -passout env:RURANA_P12_PASSWORD -out "${work}/${name}.p12"
+    -passout env:VIKUNJA_APP_P12_PASSWORD -out "${work}/${name}.p12"
 }
 
 fingerprint() {
@@ -270,8 +270,8 @@ pkcs12 wrong-client wrong-client-ca wrong-client
 printf '%s' "$p12_password" >"${work}/client-p12-password.txt"
 {
   echo "# Dummy Cloudflare Access service token for the local test proxy only."
-  echo "RURANA_TEST_ACCESS_ID=${access_id}"
-  echo "RURANA_TEST_ACCESS_SECRET=${access_secret}"
+  echo "VIKUNJA_APP_TEST_ACCESS_ID=${access_id}"
+  echo "VIKUNJA_APP_TEST_ACCESS_SECRET=${access_secret}"
 } >"${work}/access.env"
 
 write_manifest "$work"
@@ -324,7 +324,7 @@ PKCS#12 password (a dummy, also in \`client-p12-password.txt\`): \`${fixture_p12
 | \`client-legacy.p12\` | The same in the legacy format (3DES/RC2, SHA-1 MAC) | $(expiry client.pem) |
 | \`wrong-client.p12\` | A client leaf from another CA, same password: an mTLS server trusting \`client-ca.pem\` refuses it | $(expiry wrong-client.pem) |
 | \`client-p12-password.txt\` | The dummy PKCS#12 password, no trailing newline | |
-| \`access.env\` | Dummy Cloudflare Access id and secret (\`RURANA_TEST_ACCESS_ID\`, \`RURANA_TEST_ACCESS_SECRET\`) | |
+| \`access.env\` | Dummy Cloudflare Access id and secret (\`VIKUNJA_APP_TEST_ACCESS_ID\`, \`VIKUNJA_APP_TEST_ACCESS_SECRET\`) | |
 | \`manifest.json\` | Subject and issuer (as dart:io's \`X509Certificate\` prints them), SHA-256 of the DER (upper-case hex) and validity of each certificate | |
 EOF
   files+=(README.md)

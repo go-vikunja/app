@@ -1,38 +1,49 @@
 # Releasing
 
-How a release of the app is cut ([D73](decisions.md#d73-gitlab-ci-from-local-scripts-versions-from-the-tag-release-signing)). Every Android build that is distributed comes from the GitLab job `release` of a `v*` tag pipeline; no Android build is signed on a laptop. The job builds the Play bundle and one APK, signs them with keys from protected CI variables, checks them, and publishes a GitLab release with the APK, `SHA256SUMS` and the desugar_jdk_libs source. The bundle goes to Google Play by hand. The iOS build of the same tag is signed on the owner's Mac and uploaded to App Store Connect for TestFlight ([iOS](#ios-testflight-from-the-mac)). The app's privacy policy, legal notice and support pages are part of the owner's website, coderoftime.dev, which its own repository publishes; the website and both stores' consoles need the owner's work ([below](#the-website-and-the-store-listings)). The beta itself, from the first push to 1.0.0, follows the owner's runbook in [beta.md](beta.md) ([D77](decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)), which links the steps here.
+How a release of the app is cut ([D86](decisions.md#d86-ci-and-releases-on-github-actions)). Every Android build that is distributed comes from the workflow "Release" (`.github/workflows/release.yaml`) of a `v*` tag in go-vikunja/app on GitHub Actions; no Android build is signed on a laptop. Its job `build` makes the Play bundle and one APK unsigned, without any secret. Once a reviewer approves, its job `publish` in the protected environment `release` signs both with Vikunja's keys, checks them, and publishes the bundle to Google Play (a beta to the `beta` track, a final release to production as a staged rollout), the APK on dl.vikunja.io, and a GitHub release with the APK, `SHA256SUMS` and the desugar_jdk_libs source. Everywhere else a release is only rehearsed with throwaway keys: on a Mac with `tool/ci/release.sh --dry-run`, in a test repository on GitHub, and in GitLab's job `release`, which stays until the move into go-vikunja/app in step 38d ([D73](decisions.md#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)). The iOS build of the same tag is signed on the owner's Mac and uploaded to App Store Connect for TestFlight ([iOS](#ios-testflight-from-the-mac)). The app's privacy policy, legal notice and support pages are part of the owner's website, coderoftime.dev, which its own repository publishes; the website and both stores' consoles need the owner's work ([below](#the-website-and-the-store-listings)). The beta itself, from the first push to 1.0.0, follows the owner's runbook in [beta.md](beta.md) ([D77](decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)), which links the steps here.
 
-## Once, before the first release
+*Step 38c, in review: the GitHub workflows have not run on GitHub yet. The owner tries them first in a private test repository ([the dry run](#the-dry-run)); the environment, the real signing and the publishing first run on go-vikunja/app's first tag after the move.*
 
-1. **The keys ([Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build), option A, decided 2026-11-02, [D77](decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)):** the owner creates an app signing key that only the owner holds and, when creating the Play app, uploads it to Play App Signing with PEPK ("Provide a copy of your app signing key"); a separate upload key signs the bundles; the release job signs the APK with the app signing key (the `RURANA_APK_*` set of step 5), so Play's builds and the GitLab APK share one signature and update each other. Use PKCS12 keystores with an RSA key of 4096 bits and alphanumeric passwords of 20 characters or more; a PKCS12 keystore has one password, so the key password is the store password. Keep the keystores and their passwords out of the repository (`*.p12`, `*.jks`, `*.keystore`, `*.pepk` and `*.keystore.b64` are gitignored), and a copy of the app signing key offline: a lost or leaked one cannot be replaced for APK installs ([threat model](threat-model.md) R28).
+## Once, in go-vikunja/app
 
-   ```sh
-   keytool -genkeypair -storetype PKCS12 -keystore app-signing.p12 -alias rurana -keyalg RSA -keysize 4096 -validity 10000
-   keytool -genkeypair -storetype PKCS12 -keystore upload.p12 -alias upload -keyalg RSA -keysize 4096 -validity 10000
-   ```
+Vikunja's maintainers set these up after the move (step 38d) and before the first tag. The workflows need nothing else; they use no personal token, only the workflow's own `github.token`.
 
-   - **Hybrid signing:** Play now enrols new apps in "quantum-ready hybrid signing" with keys Google generates ([Play App Signing](https://support.google.com/googleplay/android-developer/answer/9842756)), and an app can change to a key of its own only until a release reaches open testing or production. Whether an uploaded key also gets hybrid signing is not documented: the owner checks it in the Console while creating the app, before the first upload, and records what it shows in a dated note on D77. If Play adds hybrid keys to the uploaded one, check before tagging that a Play install and the GitLab APK still update each other.
-   - **Developer verification:** an APK installed outside Play must be signed by a key registered to a verified developer ([Android developer verification](https://developer.android.com/developer-verification/guides); certified devices in a few countries since 2026-09-30, everywhere from 2027). Creating the app in the Play Console registers its id; under option A the APK's key is the app signing key that Play already knows, so no further key needs registering. Without the `RURANA_APK_*` set the upload key would sign the APK, and that key would have to be registered too.
-2. **The GitLab project** `https://gitlab.com/coderoftime/rurana` exists, private, in the group `coderoftime` (`main` pushed on 2026-10-29): push `main`.
-3. **Make every project of the group `coderoftime` public** ([D77](decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)), each with an OSI-approved licence, as GitLab for Open Source requires of the whole group (step 11). For this project, under Settings > General > Visibility set the repository, the releases and the package registry to "Everyone With Access". The release job refuses a project that is not public and checks that anonymous users can read the repository at the tag, the releases and the package registry: the app's source link and the release's files must open for everyone (AGPL section 6). The history goes public as it is.
-4. **Protect the tags `v*`** (Settings > Repository > Protected tags), with "Allowed to create" set to Maintainers.
-5. **Add the signing variables** (Settings > CI/CD > Variables). Each one is Protected and has the environment scope `release`, so it reaches only the release job of a protected tag. The keystores and the passwords are also "Masked and hidden", with "Expand variable reference" off; the aliases are not secret and may be shorter than the 8 characters masking needs, so they are only Protected and scoped.
+1. **The environment `release`** (Settings > Environments > New environment):
+   - **Required reviewers:** at least one maintainer besides the owner, with "Prevent self-review" on, so whoever pushed a tag cannot approve its release; one approval is enough. "Allow administrators to bypass configured protection rules" is off. Whether the owner alone may approve instead is open ([D86](decisions.md#d86-ci-and-releases-on-github-actions)).
+   - **Deployment branches and tags:** "Selected branches and tags", with one tag rule, `v*`, and no branch.
+   - **Environment secrets,** under the old app's names. A secret's value can be neither read back nor moved, so each is entered again here:
 
-   | Variable | Value | Needed |
-   |---|---|---|
-   | `RURANA_UPLOAD_KEYSTORE_BASE64` | the upload keystore, `base64 < upload.p12 \| tr -d '\n'` | yes |
-   | `RURANA_UPLOAD_STORE_PASSWORD` | its password | yes |
-   | `RURANA_UPLOAD_KEY_ALIAS` | the key's alias | yes |
-   | `RURANA_UPLOAD_KEY_PASSWORD` | the same password | yes |
-   | `RURANA_APK_KEYSTORE_BASE64`, `RURANA_APK_STORE_PASSWORD`, `RURANA_APK_KEY_ALIAS`, `RURANA_APK_KEY_PASSWORD` | the APK's keystore, the same way | all four or none |
+     | Secret | Value | Needed |
+     |---|---|---|
+     | `KEYSTORE_BASE64` | the upload keystore (the old app's `keystore.jks`; JKS or PKCS12): `base64 < keystore.jks \| tr -d '\n'`, a wrapped value works too | yes |
+     | `KEY_PROPERTIES` | its properties, as in the old app's `key.properties`: `storePassword=…`, `keyAlias=…` and `keyPassword=…`, one per line; a `storeFile` line is ignored | yes |
+     | `APK_KEYSTORE_BASE64`, `APK_KEY_PROPERTIES` | a separate key for the APK, the same way | both or neither |
+     | `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | the Play service account's JSON key | yes |
+     | `S3_ACCESS_KEY`, `S3_SECRET_KEY` | the access key of the storage behind dl.vikunja.io | yes |
+     | `S3_ENDPOINT` | the storage's https URL or host name; only its host and port are used | yes |
+     | `S3_BUCKET` | the bucket that dl.vikunja.io serves | yes |
+     | `S3_REGION` | the bucket's region; `us-east-1` when unset, which Cloudflare R2 takes as `auto` | no |
 
-   The upload set signs the bundle. The APK set signs the APK; under option A it is the app signing key. Without it the upload key signs the APK too, and the job warns in a box in its log and says so in the release's description. Sideloaded installs stay bound to the key of their first APK for good, so set it before the first release. A missing upload set, or a partial set of either kind, stops the job before it builds.
-6. **Duplicate packages (optional):** `release.sh` already refuses to upload when the package `rurana/<name>` exists. GitLab's switch that turns off duplicates for generic packages is a group setting (the group's Settings > Packages and registries > Duplicate packages, from GitLab's documentation, not yet seen on a live project), which the project gets from the group `coderoftime`; it needs the group's Owner role.
-7. **Artifacts:** the bundle stays a job artifact for 30 days. "Keep artifacts from most recent successful jobs" (Settings > CI/CD > Artifacts) keeps the latest one longer; download each bundle for Play within 30 days either way.
-8. **The weekly scan:** a pipeline schedule (Build > Pipeline schedules) on `main`, `23 5 * * 1` in UTC. Scheduled pipelines run the job `osv` only.
-9. **The written offer's contact:** `WRITTEN_OFFER_CONTACT` in `tool/build_android_notices.py` is `coderoftime@gmail.com` since 2026-11-02 ([D76](decisions.md#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android)), and `app/assets/legal/android.md` names it. After a change, run `python3 -I tool/build_android_notices.py` and commit `app/assets/legal/android.md`. The release job fails while the contact is empty.
-10. **Cronet:** done on 2026-10-29: `cronet-bundled` 500.1.0, Chromium 155.0.8059.16 (D73). Keep it current as [Raising Cronet](#raising-cronet) says.
-11. **Runners ([Q22](open-questions.md#q22-ci-runners-on-gitlab)):** a full pipeline is estimated at about 100–150 compute minutes on GitLab's small shared runners. GitLab.com's free 400 minutes a month count for the whole top-level group `coderoftime`, the other projects' pipelines and the website's included, so they cover at most 3 or 4 of the app's pipelines, and each release costs two: the push of `main`, whose pipeline must be green, and the tag's (about 200–300 minutes). Apply for [GitLab for Open Source](https://about.gitlab.com/solutions/open-source/join/) for the group once every project in it is public ([D77](decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)): it takes only a group whose projects are all public with an OSI-approved licence, never a personal namespace, gives 50,000 compute minutes a month at a cost factor of 0.5 ([compute minutes](https://docs.gitlab.com/ci/pipelines/compute_minutes/)), and is renewed every year with the same form by whoever applied, from three months to one month before it ends ([community programs](https://docs.gitlab.com/subscriptions/community_programs/)); that is the only remedy 37a supports. The Mac runner described below takes only the job `ios` and saves no shared-runner minutes: moving the heavy Linux jobs to the Mac would need a setup of its own that 37a does not include (tags on those jobs or a runner that takes untagged jobs, plus Docker and the Android SDK on the Mac).
+     Without an APK key the upload key signs the APK too, as in the old app, so installs of the old app's APKs from dl.vikunja.io and GitHub keep updating. The key that signs the APK must be RSA: the job signs the APK twice and fails when the two files differ, as they do with an EC or DSA key, because a re-run must reproduce an APK already published. Without `KEYSTORE_BASE64` and `KEY_PROPERTIES` a tag signs with throwaway keys, publishes nothing and fails; a partial set fails before signing, naming what is missing.
+2. **No copies outside the environment:** delete any repository secret of these names (Settings > Secrets and variables > Actions), and remove go-vikunja/app from the access list of every organisation secret named `KEYSTORE_BASE64`, `KEY_PROPERTIES`, `APK_KEYSTORE_BASE64`, `APK_KEY_PROPERTIES`, `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`, `S3_ACCESS_KEY` or `S3_SECRET_KEY`. A job outside the environment, which any workflow on any branch can start, reads such a copy without the reviewers; the job `secret-scope` fails every tag while one exists. `S3_ENDPOINT`, `S3_BUCKET` and `S3_REGION` may stay organisation secrets.
+3. **The certificates,** in a reviewed pull request: `tool/ci/release_certificates.txt` gets `upload=` with the SHA-256 of the upload certificate, as the Play Console shows it under Test and release > App integrity > Upload key certificate, in lowercase hex without colons, and `apk=` only with a separate APK key, with that key's certificate. A real release fails while `upload=` is empty or names another key than `KEYSTORE_BASE64` holds (why: a swapped secret would otherwise sign the public APK with a stranger's key). The jobs read the file from the tag, so it is committed before the tag.
+4. **The rollout (optional):** the repository variable `VIKUNJA_APP_PLAY_ROLLOUT` (Settings > Secrets and variables > Actions > Variables), the share of users a final release reaches first, a fraction such as `0.2`; 0.1 when unset.
+5. **Rulesets** (Settings > Rules > Rulesets): one for the tags `v*` that restricts creations, updates and deletions to the maintainers in its bypass list, so a release tag is never moved; one for `main` that requires the status checks `checks`, `editor`, `contract`, `android`, `osv` and `ios`.
+6. **Actions** (Settings > Actions > General): workflow permissions "Read repository contents and packages permissions", with "Allow GitHub Actions to create and approve pull requests" off; fork pull request workflows "Require approval for all external contributors". Once the old app's workflows are gone (step 38d): "Allow actions created by GitHub" only, and "Require actions to be pinned to a full-length commit SHA"; the workflows use only GitHub's own actions, pinned that way. The tag rule of the environment also keeps the Copilot coding agent away from it.
+7. **Optional:** release immutability (Settings > General > Releases). The workflow creates each release with its files at once, which works with it.
+8. **Google Play:** the service account keeps its release rights for `io.vikunja.app`, to production and to the testing tracks. The old pipeline's upload of every push to `main` is switched off before the first tag (step 38d). With managed publishing on, Play holds a committed release until a maintainer publishes it. **Developer verification:** an APK installed outside Play must be signed by a key registered to a verified developer ([Android developer verification](https://developer.android.com/developer-verification/guides); certified devices in a few countries since 2026-09-30, everywhere from 2027). Play knows its app signing key; the key that signs the APK, the upload key unless an APK key is added, has to be registered in Vikunja's Play Console too.
+9. **dl.vikunja.io:** the bucket serves `app/<name>/vikunja-app-<name>.apk` with the content type the job sets. The old `/app/unstable/` is no longer updated (owner, 2026-11-14).
+10. **The written offer's contact:** `WRITTEN_OFFER_CONTACT` in `tool/build_android_notices.py` is `coderoftime@gmail.com` since 2026-11-02 ([D76](decisions.md#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android)), and `app/assets/legal/android.md` names it. After a change, run `python3 -I tool/build_android_notices.py` and commit `app/assets/legal/android.md`. The release build fails while the contact is empty.
+11. **Cronet:** done on 2026-10-29: `cronet-bundled` 500.1.0, Chromium 155.0.8059.16 (D73). Keep it current as [Raising Cronet](#raising-cronet) says.
+
+## GitLab until the move
+
+Until step 38d the repository is also on GitLab, `https://gitlab.com/coderoftime/rurana` ([D73](decisions.md#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)). Its pipeline runs the same scripts and publishes nothing: on a `v*` tag its job `release` runs `tool/ci/release.sh --tag "$CI_COMMIT_TAG" --dry-run` ([the dry run](#the-dry-run)), with no environment, no keys and no artifacts.
+
+1. **The project** exists, private, in the group `coderoftime` (`main` pushed on 2026-10-29): push `main`. Every project of the group is to become public for GitLab for Open Source ([D77](decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)).
+2. **CI/CD variables:** none is needed but `VIKUNJA_APP_MACOS_RUNNER` for [the Mac as a runner](#the-mac-as-a-runner). A `RURANA_*` variable or a variable of the former signing sets (Settings > CI/CD > Variables) is read by nothing any more: delete it.
+3. **The weekly scan:** a pipeline schedule (Build > Pipeline schedules) on `main`, `23 5 * * 1` in UTC. Scheduled pipelines run the job `osv` only.
+4. **Runners ([Q22](open-questions.md#q22-ci-runners-on-gitlab)):** a full pipeline is estimated at about 100–150 compute minutes on GitLab's small shared runners. GitLab.com's free 400 minutes a month count for the whole top-level group `coderoftime`, the other projects' pipelines and the website's included, so they cover at most 3 or 4 of the app's pipelines. [GitLab for Open Source](https://about.gitlab.com/solutions/open-source/join/) takes only a group whose projects are all public with an OSI-approved licence, gives 50,000 compute minutes a month at a cost factor of 0.5 ([compute minutes](https://docs.gitlab.com/ci/pipelines/compute_minutes/)), and is renewed every year ([community programs](https://docs.gitlab.com/subscriptions/community_programs/)). Releases do not depend on it: they come from GitHub, whose standard runners are free for go-vikunja/app, a public repository.
 
 ## The website and the store listings
 
@@ -48,11 +59,11 @@ Nothing in this repository waits for the website: the About page links its addre
 
 ## Cutting a release
 
-1. **Bump the version** (after [raising Cronet](#raising-cronet) if Google has a newer one) in `app/pubspec.yaml` to the release's name, for example `version: 1.0.0-beta.1+1`. Only the part before `+` counts; the build number comes from the tag. Run the [dry run](#the-dry-run) for the tag, `tool/ci/release.sh --dry-run --tag v1.0.0-beta.1`: it must end with only the expected reasons, `placeholder source URL`, `throwaway keys` and `project not public` (a local run has no project); `no written-offer contact` means that the contact of step 9 above is empty, and the release job would fail. Run the contract tests once locally against the newest release of the previous minor version, today 2.7.1: `RURANA_TEST_VIKUNJA_IMAGE=vikunja/vikunja:2.7.1 tool/ci/contract.sh` starts the local test server again, empty, with that image, and the tests expect its version. The script stops at the first suite that fails: when the vikunja_api suite fails, run the app's suite alone against the same server, `(cd app && VIKUNJA_CONTRACT=1 TZ=Europe/Berlin flutter test --tags contract --concurrency=1 test/contract)`, before you record anything. Fix what fails or record it in [D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only). Then `docker compose -f test_servers/docker-compose.yaml up -d` brings back the latest release, and `tool/seed_e2e_user.sh` and `E2E_USER_ENV=test_servers/seed/e2e-user-2.env tool/seed_e2e_user.sh` the two sign-in test users. Commit on `main`, push, and wait for a green pipeline before you tag.
-2. **Tag and push the tag:**
+1. **Bump the version** (after [raising Cronet](#raising-cronet) if Google has a newer one) in `app/pubspec.yaml` to the release's name, for example `version: 1.0.0-beta.1+1`. Only the part before `+` counts; the build number comes from the tag. Run the [dry run](#the-dry-run) for the tag, `tool/ci/release.sh --dry-run --tag v1.0.0-beta.1`: it must end with only the expected reasons, `not a tag run of go-vikunja/app on GitHub Actions`, `placeholder source URL` and `throwaway keys`, and `no committed certificate fingerprints (tool/ci/release_certificates.txt)` while the certificates of [step 3 above](#once-in-go-vikunjaapp) are not committed; `no written-offer contact` means that the contact of step 10 above is empty, and the release would fail. Run the contract tests once locally against the newest release of the previous minor version, today 2.7.1: `VIKUNJA_APP_TEST_VIKUNJA_IMAGE=vikunja/vikunja:2.7.1 tool/ci/contract.sh` starts the local test server again, empty, with that image, and the tests expect its version. The script stops at the first suite that fails: when the vikunja_api suite fails, run the app's suite alone against the same server, `(cd app && VIKUNJA_CONTRACT=1 TZ=Europe/Berlin flutter test --tags contract --concurrency=1 test/contract)`, before you record anything. Fix what fails or record it in [D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only). Then `docker compose -f test_servers/docker-compose.yaml up -d` brings back the latest release, and `tool/seed_e2e_user.sh` and `E2E_USER_ENV=test_servers/seed/e2e-user-2.env tool/seed_e2e_user.sh` the two sign-in test users. Merge the bump into `main` and wait for its green CI run before you tag.
+2. **Tag and push the tag,** as a maintainer whom the tag ruleset allows:
 
    ```sh
-   git tag -a v1.0.0-beta.1 -m "Rurana 1.0.0-beta.1"
+   git tag -a v1.0.0-beta.1 -m "Vikunja app 1.0.0-beta.1"
    git push origin v1.0.0-beta.1
    ```
 
@@ -66,17 +77,15 @@ Nothing in this repository waits for the website: the About page links its addre
    | `v1.0.1-beta.1` | 1.0.1-beta.1 | 1000101 |
    | `v1.2.3` | 1.2.3 | 1020399 |
 
-   `python3 -I tool/ci/release_version.py v1.0.0-beta.1` prints the name and the code, and fails for another tag or when the pubspec's version name differs. A tag that starts with `v` but is malformed fails the release job; a tag that does not start with `v` runs no pipeline.
-3. **The tag pipeline** runs `checks`, `editor`, `contract`, `android` and `osv`, then `release`, which:
-   - computes the version from the tag and stops on the guards: an https project URL, a public project whose repository, releases and package registry anonymous users can read, the written offer's contact, the signing variables, and no release or package of that version yet;
-   - runs the release-only source-link test, then the notices' self-test and check;
-   - builds the Play bundle with the upload key and one universal APK with the APK key, both with the tag's build name and version code and `SOURCE_CODE_URL` set to the project's URL, which the About page links;
-   - checks the exported components, both signatures against the keys' certificates (never the debug key) and the APK's version;
-   - fetches the desugar_jdk_libs source of the recorded upstream commit and checks its commit and tree;
-   - uploads `rurana-<name>.apk`, `SHA256SUMS` and `desugar_jdk_libs-<version>-src.tar.gz` to the generic package `rurana/<name>` and creates the release `Rurana <name>`, with " (beta)" for a beta; its description gives the APK's SHA-256, the SHA-256 of its signing certificate and the link to the source at the tag;
-   - keeps `app-release.aab` and `SHA256SUMS` as job artifacts for members with the Developer role.
-4. **Check the release** on the project's Releases page: the three files open signed out, `SHA256SUMS` matches the APK, and the certificate's SHA-256 is the expected one. GitLab has no pre-release flag, so a beta becomes the project's latest release: link a specific release from the README and elsewhere, never `/-/releases/permalink/latest`.
-5. **Upload the bundle to Google Play** by hand (step 37d): download `build/release/app-release.aab` from the release job's artifacts, compare its SHA-256 with the line "Bundle for Play" in the job's log, and upload it in the Play Console to the closed test for a beta or to production for a final release ([beta.md](beta.md#the-closed-test-on-google-play)).
+   `python3 -I tool/ci/release_version.py v1.0.0-beta.1` prints the name and the code, and fails for another tag or when the pubspec's version name differs. A tag that starts with `v` but is malformed fails the job `build`; any other tag runs no release. Never move or delete a release tag: the job publishes nothing once the tag no longer points at the commit it built, and a fix is the next tag.
+3. **The release workflow** runs `ci` (every CI job, `ios` included), `build` and `secret-scope`. Then `publish` waits: a reviewer of the environment `release` other than the person who pushed the tag opens the run and approves it under "Review deployments". `publish` then:
+   - checks that the tag still points at the built commit and that the environment holds every secret the release needs;
+   - signs the bundle and the APK, compares both certificates with `tool/ci/release_certificates.txt`, and checks the signatures (never the debug key), the APK's alignment and the version;
+   - uploads the bundle to Google Play: a beta to the `beta` track, to all its testers at once; a final release to production as a staged rollout to the share `VIKUNJA_APP_PLAY_ROLLOUT` (0.1 when unset);
+   - puts the APK on dl.vikunja.io at `app/<name>/vikunja-app-<name>.apk`;
+   - creates the GitHub release "Vikunja app <name>" with `vikunja-app-<name>.apk`, `SHA256SUMS` and `desugar_jdk_libs-<version>-src.tar.gz`, a beta as a prerelease, a final release as the latest; its notes give the APK's SHA-256, the SHA-256 of its signing certificate and the link to the source at the tag, which the About page of this build links too.
+4. **Check the release:** on the GitHub release, the three files open signed out, `SHA256SUMS` matches the APK, and the certificate's SHA-256 is the committed one; the APK on dl.vikunja.io has the same SHA-256; the Play Console shows the release on its track.
+5. **A final release's rollout:** watch the Play Console's vitals, then raise the share or complete the rollout in the Play Console (Test and release > Production), or halt it there. The workflow never changes a rollout after its upload.
 6. **Upload the iOS build** from the Mac: [each TestFlight build](#each-testflight-build).
 
 ## Raising Cronet
@@ -99,26 +108,28 @@ The app embeds Cronet, Chromium's network stack, which only an app update brings
 
 The Flutter engine and the Dart runtime, with its BoringSSL and HTTP stack, ship in the app, and no scan sees their advisories ([threat model](threat-model.md) R26 and section 9): read [Flutter's changelog](https://raw.githubusercontent.com/flutter/flutter/stable/CHANGELOG.md) at each stable release and before each release of the app. On 2026-11-02 that found GHSA-frr6-h895-5pxp in 3.47.8 (BoringSSL in `dart:io` blocks compromised eMudhra intermediates, and on Android 14 and later `dart:io` uses the updatable Conscrypt root store), and the pin moved from 3.47.7 to 3.47.9, which also fixes a native-assets crash of `flutter test` in pub workspaces ([D77](decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)). For a newer version:
 
-1. **The pin:** in `tool/ci/pins.sh`, `FLUTTER_VERSION` and `FLUTTER_LINUX_SHA256`, the `sha256` of that version's stable Linux archive in `https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json`; the comment above them keeps the earlier pin. The README's [prerequisites](../README.md#prerequisites) name the version with its Dart, and so does [the Mac runner's line](#the-mac-as-a-runner) below.
+1. **The pin:** in `tool/ci/pins.sh`, `FLUTTER_VERSION`, `FLUTTER_LINUX_SHA256`, the `sha256` of that version's stable Linux archive in `https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json`, and `FLUTTER_MACOS_ARM64_SHA256`, the `sha256` of its macOS arm64 zip in `releases_macos.json` beside it, which GitHub's macOS runner downloads (step 38c, in review); the comment above them keeps the earlier pin. The README's [prerequisites](../README.md#prerequisites) name the version with its Dart, and so does [the Mac runner's line](#the-mac-as-a-runner) below.
 2. **The Mac's SDK:** run `flutter upgrade` from a folder outside the repository, for example `(cd ~ && flutter upgrade)`, until `flutter --version` prints the pinned version. Run inside the repository on 2026-11-02, the command also upgraded 29 packages in the workspace's `pubspec.lock`, which had to be restored. Afterwards `git status` must show no change, and `flutter pub get --enforce-lockfile` must resolve the committed lockfile.
-3. **The checks:** `tool/ci/checks.sh`, `tool/ci/test.sh`, `tool/ci/android.sh` and, on the Mac, `tool/ci/ios.sh`, then both [dry runs](#the-dry-run); commit `pins.sh` and the README together. A Mac runner needs the same version on its PATH.
+3. **The checks:** `tool/ci/checks.sh`, `tool/ci/test.sh`, `tool/ci/android.sh` and, on the Mac, `tool/ci/ios.sh`, then both [dry runs](#the-dry-run); commit `pins.sh` and the README together. GitHub's runners and GitLab's Linux runners download the pinned archives; a Mac runner on GitLab needs the same version on its PATH.
 
-## When the release job fails
+## When the publish job fails
 
-- **Before the upload** (a guard, a test, the build or a check): fix the cause, for example a variable, and retry the job.
-- **During or after the upload:** the package `rurana/<name>` exists without a release. Delete it (Deploy > Package registry), then retry the job.
-- **To publish a release again:** delete the release in the UI and its package, then retry the job.
-- A fix in the code needs a new commit and a new tag, the next beta or the next patch.
+- **Before Google Play** (the check, the signing, a certificate): nothing is published yet. Fix the cause, for example a secret of the environment, and use "Re-run failed jobs", which keeps the build and asks for the approval again.
+- **During or after publishing:** "Re-run failed jobs" too. Each step skips what is already published with the same content and fails on other content: Play by the version code already on its track, dl.vikunja.io by the object's `sha256` metadata, the GitHub release by downloading its three files and comparing their SHA-256; a leftover draft release is deleted and created again.
+- **Not "Re-run all jobs":** it builds and signs again, and the new APK need not equal the one already published, which dl.vikunja.io and the GitHub release then refuse.
+- **To publish other files under a tag** that dl.vikunja.io or GitHub already has, delete the object from the bucket or the release on GitHub first. Play takes a version code only once.
+- **`secret-scope` fails:** a release secret is also a repository or organisation secret ([step 2 above](#once-in-go-vikunjaapp)).
+- **A fix in the repository,** `release_certificates.txt` included, needs a new commit and a new tag, the next beta or the next patch: the jobs check out the tag.
 
 ## The Mac as a runner
 
-The job `ios` builds the iOS app unsigned on a Mac and checks the notices of its licence page ([below](#licence-notices)). It is the only job such a runner takes; the Linux jobs stay on the shared runners. To run it:
+On GitHub the job `ios` runs on GitHub's macOS runner ([D86](decisions.md#d86-ci-and-releases-on-github-actions)). On GitLab, until the move, it needs a Mac of the owner's as a runner: it builds the iOS app unsigned on the Mac and checks the notices of its licence page ([below](#licence-notices)) and its required-reason APIs ([below](#privacy-manifests)). It is the only job such a runner takes; the Linux jobs stay on the shared runners. To run it:
 
 - Register the Mac as a project runner with the tag `macos`, "Run untagged jobs" off and the shell executor, so the job runs directly on the Mac.
 - Run the runner under a macOS user of its own that cannot read the keystores, the owner's other files or the owner's Keychain. The job runs whatever `tool/ci/ios.sh`, `tool/ci/lib.sh`, `.gitlab-ci.yml` and the build itself (build hooks, CocoaPods, Xcode's build phases) say on the protected main branch or the tag: the job never runs in a merge request pipeline, so only reviewed and merged code runs on this Mac ([threat model](threat-model.md) R35).
 - Point `xcode-select` at Xcode: `sudo xcode-select --switch /Applications/Xcode.app/Contents/Developer`. `ios.sh` refuses to run otherwise, as the native-asset build hooks ignore `DEVELOPER_DIR` ([README](../README.md#prerequisites)).
 - Put exactly the Flutter that `tool/ci/pins.sh` pins (3.47.9) on the runner's PATH: the runner sets `CI=true`, and there another version is an error.
-- Set the project variable `RURANA_MACOS_RUNNER` to `true`.
+- Set the project variable `VIKUNJA_APP_MACOS_RUNNER` to `true`.
 
 Pipelines on main and on `v*` tags then have the job, and it must pass; merge requests and the schedule never do. Unset the variable while the Mac is away or asleep: GitLab cannot tell an absent runner from a busy one, so the pending job holds each pipeline open for up to a day and then fails it.
 
@@ -129,13 +140,18 @@ tool/ci/release.sh --dry-run                       # the tag defaults to v<the p
 tool/ci/release.sh --dry-run --tag v1.0.0-beta.1   # the pubspec must have that version
 ```
 
-It runs the whole release locally except the upload: two throwaway keystores, valid for one day, stand in for the keys, and `https://gitlab.example/rurana` for the project's URL. The visibility and contact guards only warn. It prints the files it would upload and the release it would create, and ends with `DRY RUN: NOT RELEASABLE (…)`. It needs Flutter, the Android SDK's build-tools, a JDK and access to GitHub for the desugar_jdk_libs source; the files land in `build/release/`.
+It runs the whole Android release locally except the publication. `release_build.sh` builds the bundle and the APK unsigned with the release's checks, with `https://source.example/vikunja-app/tree/<tag>` standing in for the source link. `release_sign.sh` signs them with a throwaway JKS key, valid for one day, whose key password differs from its store password, and runs every check but the comparison with the committed certificates. Each publish step prints what it would publish and where, and why it does not. The script ends with `DRY RUN: NOT RELEASABLE (…)`; without `--dry-run` it refuses, as releases come only from go-vikunja/app. It needs Flutter, the Android SDK's build-tools (`apksigner`, `zipalign`, `aapt2`), a JDK and access to GitHub for the desugar_jdk_libs source; the files land in `build/release/unsigned/` and `build/release/signed/`.
 
-A local `flutter build apk --release` is signed with the debug key and prints a warning, unless `app/android/key.properties` (gitignored) names a keystore with `storeFile`, `storePassword`, `keyAlias` and `keyPassword`. Such builds are for testing only.
+The same rehearsal runs in two more places, and publishes nothing there either:
+
+- **GitLab:** the job `release` of each `v*` tag, until the move ([D73](decisions.md#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)). With the project private it also gives the reason `repository not public`.
+- **A test repository on GitHub,** any repository but go-vikunja/app: with the repository variable `VIKUNJA_APP_RELEASE_DRY_RUN=true`, a `v*` tag runs the jobs `build` and `dry-run`, the release's steps with `--dry-run`, without an environment or a secret; the source link is that repository's tree at the tag, and a private repository gives the reason `repository not public`. `VIKUNJA_APP_IOS_JOB=true` adds the job `ios` to its CI, which costs macOS minutes in a private repository. Without the variable a tag there runs only the CI. Such a repository holds no secret and no key.
+
+A local `flutter build apk --release` is signed with the debug key and prints a warning, unless `app/android/key.properties` (gitignored) names a keystore with `storeFile`, `storePassword`, `keyAlias` and `keyPassword`; with `VIKUNJA_APP_UNSIGNED=true` it stays unsigned. Such builds are for testing only.
 
 ## iOS: TestFlight from the Mac
 
-`tool/ci/ios_release.sh` builds the iOS app of a release tag on the owner's Mac, signs it with Xcode's automatic signing for the owner's team, checks it and uploads it to App Store Connect, which hands it to TestFlight and later to App Review. No GitLab job runs it yet: `.gitlab-ci.yml` keeps only the unsigned build `ios`, and the owner runs the release by hand once the tag pipeline is green. Running it from the Mac runner on a tag would need the team's signing and the API key in the runner's macOS account, which [the runner's separate user](#the-mac-as-a-runner) is meant not to have.
+`tool/ci/ios_release.sh` builds the iOS app of a release tag on the owner's Mac, signs it with Xcode's automatic signing for the owner's team, checks it and uploads it to App Store Connect, which hands it to TestFlight and later to App Review. No CI job runs it: the job `ios` on GitHub and on GitLab builds unsigned only, and the owner runs the release by hand once the tag's CI is green. Running it in CI would need the team's signing and the API key in CI secrets or in a runner's macOS account, which [the GitLab runner's separate user](#the-mac-as-a-runner) is meant not to have ([D74](decisions.md#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)).
 
 ### Once, before the first upload
 
@@ -147,20 +163,22 @@ A local `flutter build apk --release` is signed with the debug key and prints a 
 
    | Variable | Value |
    |---|---|
-   | `RURANA_ASC_KEY_ID` | the key's id |
-   | `RURANA_ASC_ISSUER_ID` | the issuer id shown above the team keys |
-   | `RURANA_ASC_KEY_FILE` | the path of `AuthKey_<id>.p8` |
+   | `VIKUNJA_APP_ASC_KEY_ID` | the key's id |
+   | `VIKUNJA_APP_ASC_ISSUER_ID` | the issuer id shown above the team keys |
+   | `VIKUNJA_APP_ASC_KEY_FILE` | the path of `AuthKey_<id>.p8` |
 
-6. **The source link:** `RURANA_SOURCE_CODE_URL`, the project's https URL on GitLab exactly as `CI_PROJECT_URL` gives it to the Android release, `https://gitlab.com/coderoftime/rurana` without `.git`; the About page links it ([D67](decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)). The script checks that `<URL>/-/tree/<tag>` opens signed out.
+   The names are `VIKUNJA_APP_ASC_*` since step 38c (in review); a shell profile that still exports `RURANA_ASC_*` gets the refusal "VIKUNJA_APP_ASC_KEY_ID is not set".
+
+6. **The source link** (step 38c, in review): `VIKUNJA_APP_SOURCE_CODE_URL`, the repository's https URL without `.git`, by default `https://github.com/go-vikunja/app`. The build links the repository's tree at the tag, `<URL>/tree/<tag>` on github.com and `<URL>/-/tree/<tag>` on another host, as the Android release does; the About page shows it ([D67](decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)), and the script checks that it opens signed out. Until the move (step 38d) go-vikunja/app has no such tag: set the variable to a public repository that has it.
 
 ### Each TestFlight build
 
-After the tag pipeline is green ([cutting a release](#cutting-a-release), step 3), on the Mac:
+After the tag's CI is green ([cutting a release](#cutting-a-release), step 3), on the Mac:
 
 ```sh
 git fetch --tags && git checkout v1.0.0-beta.1
-export DEVELOPMENT_TEAM=… RURANA_ASC_KEY_ID=… RURANA_ASC_ISSUER_ID=… RURANA_ASC_KEY_FILE=…/AuthKey_….p8
-export RURANA_SOURCE_CODE_URL=https://gitlab.com/…
+export DEVELOPMENT_TEAM=… VIKUNJA_APP_ASC_KEY_ID=… VIKUNJA_APP_ASC_ISSUER_ID=… VIKUNJA_APP_ASC_KEY_FILE=…/AuthKey_….p8
+export VIKUNJA_APP_SOURCE_CODE_URL=https://github.com/go-vikunja/app   # the default; another public repository before the move
 tool/ci/ios_release.sh --tag v1.0.0-beta.1
 ```
 
@@ -192,7 +210,7 @@ tool/ci/ios_release.sh --dry-run                       # the tag defaults to v<t
 tool/ci/ios_release.sh --dry-run --tag v1.0.0-beta.1   # the pubspec must have that version
 ```
 
-It builds the archive unsigned (`--no-codesign`) with the same checks, the licence notices included, and stops before the export and the upload. Without `RURANA_SOURCE_CODE_URL` it uses `https://gitlab.example/rurana`. The tag, the clean tree, the team id, the key variables, Flutter's version and an undeclared required-reason API only warn; it needs neither the Apple account nor the key, and checks them when they are set. It prints the export options it would use and ends with `DRY RUN: NOT RELEASABLE (unsigned build, …)`.
+It builds the archive unsigned (`--no-codesign`) with the same checks, the licence notices included, and stops before the export and the upload. It prints the source link it would check, the tree at the tag of `VIKUNJA_APP_SOURCE_CODE_URL` or its default, without opening it. The tag, the clean tree, the team id, the key variables, Flutter's version and an undeclared required-reason API only warn; it needs neither the Apple account nor the key, and checks them when they are set. It prints the export options it would use and ends with `DRY RUN: NOT RELEASABLE (unsigned build, …)`.
 
 ### Export compliance
 

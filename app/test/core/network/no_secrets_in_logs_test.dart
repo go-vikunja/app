@@ -19,8 +19,8 @@ import '../../helpers/tls_fixtures.dart';
 void main() {
   test('header values and the PKCS#12 password never reach a log', () async {
     final access = tlsAccessValues();
-    final id = access['RURANA_TEST_ACCESS_ID']!;
-    final secret = access['RURANA_TEST_ACCESS_SECRET']!;
+    final id = access['VIKUNJA_APP_TEST_ACCESS_ID']!;
+    final secret = access['VIKUNJA_APP_TEST_ACCESS_SECRET']!;
     final password = tlsFixturePassword;
     expect([id, secret, password], everyElement(isNotEmpty));
 

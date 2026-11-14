@@ -38,7 +38,7 @@ Inspect the compose file with `config --services` only. A plain `config` prints 
 - `client-ca.pem/.key`, `client.pem/.key`, `client.p12` (AES-256, PBKDF2), `client-legacy.p12` (3DES/RC2): what 34529 accepts.
 - `wrong-client.p12` (and its PEM files): a client certificate from another CA, which 34529 refuses.
 - `client-p12-password.txt`: the PKCS#12 password (no trailing newline). Caddy never loads it.
-- `access.env`: only the two access-header values, loaded into the proxy's environment.
+- `access.env`: only the two access-header values, loaded into the proxy's environment. One generated before the rename to `VIKUNJA_APP_TEST_ACCESS_ID` and `VIKUNJA_APP_TEST_ACCESS_SECRET` (step 38c) does not work: run `tool/gen_tls_test_certs.sh` again.
 - `manifest.json`: subject, issuer, SHA-256 and validity of each certificate.
 
 After a full regeneration while the proxy runs, run the `up -d tls-proxy` line again: it recreates the proxy, which reads `access.env` only when its container is created (a `restart` keeps the old header values).
@@ -64,8 +64,8 @@ The emulator shares the host clipboard. To paste a secret without printing it:
 
 ```sh
 tr -d '\n' <test_servers/tls/generated/client-p12-password.txt | pbcopy
-sed -n 's/^RURANA_TEST_ACCESS_ID=//p' test_servers/tls/generated/access.env | tr -d '\n' | pbcopy
-sed -n 's/^RURANA_TEST_ACCESS_SECRET=//p' test_servers/tls/generated/access.env | tr -d '\n' | pbcopy
+sed -n 's/^VIKUNJA_APP_TEST_ACCESS_ID=//p' test_servers/tls/generated/access.env | tr -d '\n' | pbcopy
+sed -n 's/^VIKUNJA_APP_TEST_ACCESS_SECRET=//p' test_servers/tls/generated/access.env | tr -d '\n' | pbcopy
 ```
 
 The app connects to `https://localhost:3452x`, so SNI is `localhost`. dart:io (pinned, CA-trusted and client-certificate profiles) ignores Android's user CAs. For the header-only path through the platform adapter, install `ca.pem` as a user CA (Settings › Security › Encryption & credentials › Install a certificate › CA certificate; Android asks for a screen lock, check how that interacts with the app lock). Do not install it for 34528: the self-signed leaf is not signed by it.
@@ -81,6 +81,6 @@ The app connects to `https://localhost:3452x`, so SNI is `localhost`. dart:io (p
 
 Browser sign-in for user accounts (on 34528, the `frontend_url`) needs the password typed, so only the owner runs it.
 
-With the profile up, the opt-in Docker tests run with `cd app && RURANA_TLS_DOCKER=1 flutter test --tags tls-docker`.
+With the profile up, the opt-in Docker tests run with `cd app && VIKUNJA_APP_TLS_DOCKER=1 flutter test --tags tls-docker`.
 
 What the gates send, seen with curl against Caddy 2.11.7: a client without a certificate gets the TLS 1.3 alert `certificate_required`, one with a certificate from another CA gets `unknown_ca`. Both arrive after the client's side of the handshake has finished, on the first read.

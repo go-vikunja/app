@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# The tests of the GitLab job `checks` (D73), without the contract tests.
+# The tests of the CI job `checks` (D73 on GitLab, D86 on GitHub Actions),
+# without the contract tests.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

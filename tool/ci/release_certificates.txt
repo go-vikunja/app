@@ -1,0 +1,7 @@
+# SHA-256 of the signing certificates tool/ci/release_sign.sh accepts in a
+# real release (D86), lowercase hex without colons. upload: Play Console >
+# Test and release > App integrity > Upload key certificate. apk: only with a
+# separate APK key (APK_KEYSTORE_BASE64); empty, the upload key signs the APK.
+# Change only in a reviewed commit.
+upload=
+apk=

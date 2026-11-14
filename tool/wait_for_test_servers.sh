@@ -61,8 +61,12 @@ if ((tls)); then
   # curl's --pinnedpubkey takes the SHA-256 of the SubjectPublicKeyInfo.
   selfsigned_pin="sha256//$(openssl x509 -in "${certs}/selfsigned.pem" -pubkey -noout |
     openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | openssl base64)"
-  access_id="$(sed -n 's/^RURANA_TEST_ACCESS_ID=//p' "${certs}/access.env")"
-  access_secret="$(sed -n 's/^RURANA_TEST_ACCESS_SECRET=//p' "${certs}/access.env")"
+  if ! grep -q '^VIKUNJA_APP_TEST_ACCESS_ID=' "${certs}/access.env"; then
+    echo "error: ${certs}/access.env has no VIKUNJA_APP_TEST_ACCESS_ID (generated before the rename): run tool/gen_tls_test_certs.sh again" >&2
+    exit 2
+  fi
+  access_id="$(sed -n 's/^VIKUNJA_APP_TEST_ACCESS_ID=//p' "${certs}/access.env")"
+  access_secret="$(sed -n 's/^VIKUNJA_APP_TEST_ACCESS_SECRET=//p' "${certs}/access.env")"
   (
     umask 077
     printf 'CF-Access-Client-Id: %s\nCF-Access-Client-Secret: %s\n' "$access_id" "$access_secret" >"${tmp}/access-headers"
