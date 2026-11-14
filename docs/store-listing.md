@@ -4,7 +4,7 @@ What the app's listings on Google Play and the App Store say, every form both co
 
 The owner's decisions behind it (2026-11-02):
 
-- The name in both stores is **Vikunja**, the official app's, since step 38a ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja), [D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp); in review). No text calls the app unofficial; the keywords leave out "Vikunja", which the stores index with the name.
+- The name in both stores is **Vikunja**, the official app's, since step 38a ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja), [D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)). No text calls the app unofficial; the keywords leave out "Vikunja", which the stores index with the name.
 - The reviewers use **Vikunja's public demo** (`try.vikunja.io`, account `demo`, password `demo`) through the app's "Try the public demo" ([Q21](open-questions.md#q21-a-server-for-the-store-reviewers)).
 - Play's Data safety form is answered **cautiously**: what the app sends to the user's server counts as collected for app functionality, not shared; encryption in transit is "No", because plain `http` can be allowed ([D65](decisions.md#d65-connection-settings-per-server-address-applied-in-the-apps-transport)). Apple's label is "Data Not Collected".
 - The app's pages are part of the owner's website, **coderoftime.dev**, until step 38f: the privacy policy, the support page, which also says how to delete an account, and the site's Impressum as the legal notice ([The website](#the-website)). The owner is a **non-trader** in both stores; the Impressum gives a c/o address; `coderoftime@gmail.com` serves Play, support, privacy, TestFlight and the written source offer.
@@ -41,7 +41,7 @@ python3 -I tool/check_store_metadata.py            # the texts, the URLs, the em
 python3 -I tool/check_store_metadata.py --strict   # before submitting: the screenshots too
 ```
 
-It checks that both languages have every file and nothing else, the limits (the keywords and the review notes in bytes, as Apple counts them), that the name, subtitle and keywords name no other product or company, that `title.txt` and `name.txt` are exactly "Vikunja" and no keyword names it, that no text calls the app unofficial (step 38a, in review), that the short fields make no ranking, price or call-to-action claim and contain no emoji, that neither store's texts name the other platform ([App Review Guideline 2.3.10][apple-guidelines]), the keyword format, the category, that the URLs, the email and the copyright are those under [The website](#the-website), and every screenshot's size and alpha channel. `--strict` also fails while a store's minimum set of screenshots is missing. The checks job runs its tests (`tool/ci/test_check_store_metadata.py`), and one of them checks the committed listing.
+It checks that both languages have every file and nothing else, the limits (the keywords and the review notes in bytes, as Apple counts them), that the name, subtitle and keywords name no other product or company, that `title.txt` and `name.txt` are exactly "Vikunja" and no keyword names it, that no text calls the app unofficial (step 38a), that the short fields make no ranking, price or call-to-action claim and contain no emoji, that neither store's texts name the other platform ([App Review Guideline 2.3.10][apple-guidelines]), the keyword format, the category, that the URLs, the email and the copyright are those under [The website](#the-website), and every screenshot's size and alpha channel. `--strict` also fails while a store's minimum set of screenshots is missing. The checks job runs its tests (`tool/ci/test_check_store_metadata.py`), and one of them checks the committed listing.
 
 ### The website
 
@@ -63,7 +63,7 @@ The About page's links are in `app/lib/app/legal.dart`, and `tool/check_store_me
 ### Texts
 
 - **Honest:** every feature named is in the app on that platform (README "What you can do now"); nothing is "best", "new" or "free" in the short fields. The Play texts mention Android's share target, wallpaper colours and screenshot blocking; the App Store texts leave them out and name Face ID, the Home Screen and the Lock Screen instead.
-- **Vikunja:** the name (`title.txt`, `name.txt`), and in the descriptions; not in the keywords, which the stores index with the name. The first paragraph of each description says that Vikunja is the open-source task manager you can run on your own server and that this is its app for the platform; `tool/check_store_metadata.py` fails on a text that calls the app unofficial and on a name other than "Vikunja" (step 38a, in review).
+- **Vikunja:** the name (`title.txt`, `name.txt`), and in the descriptions; not in the keywords, which the stores index with the name. The first paragraph of each description says that Vikunja is the open-source task manager you can run on your own server and that this is its app for the platform; `tool/check_store_metadata.py` fails on a text that calls the app unofficial and on a name other than "Vikunja" (step 38a).
 - **Language:** British English, unlike the app's US English since step 38a, until step 38f decides the listing's languages, and German (du), as in the [glossary](glossary.md), with the app's own names for screens and features (Overview/Überblick, Upcoming/Anstehend, Quick Add Magic, App lock/App-Sperre). The German Play text calls the exact-alarm permission by the app's own words, "genaue Alarme", because Android's German name for the system page was not checked.
 - **Promotional text** (App Store only) can change at any time without a review; use it for news.
 
@@ -72,7 +72,7 @@ The About page's links are in `app/lib/app/legal.dart`, and `tool/check_store_me
 | Asset | File | How |
 |---|---|---|
 | Play icon | `branding/png/play-icon-512.png`, 512 × 512, 32-bit PNG (an opaque alpha channel), sRGB | the full-bleed iOS icon scaled down; Play rounds the corners and adds the shadow itself ([icon specification][play-icon-spec]) |
-| Play feature graphic | `branding/png/feature-graphic-1024x500.png`, 1024 × 500, 24-bit PNG without alpha | the llama of the iOS dark icon, centred and flush with the bottom, on `#196AFF` ([D42](decisions.md#d42-app-icon-vikunjas-logo-every-variant-derived-by-script); in review); no text, so one graphic serves both languages ([assets][play-assets]) |
+| Play feature graphic | `branding/png/feature-graphic-1024x500.png`, 1024 × 500, 24-bit PNG without alpha | the llama of the iOS dark icon, centred and flush with the bottom, on `#196AFF` ([D42](decisions.md#d42-app-icon-vikunjas-logo-every-variant-derived-by-script)); no text, so one graphic serves both languages ([assets][play-assets]) |
 | App Store icon | none to upload | App Store Connect takes the 1024 × 1024 icon from the build's asset catalogue |
 
 `branding/build-store-graphics.sh` makes both Play graphics from the icons in `branding/png/` (see [branding/README.md](../branding/README.md)).

@@ -106,7 +106,7 @@ for d in mdpi:24 hdpi:36 xhdpi:48 xxhdpi:72 xxxhdpi:96; do n=${d%%:*}; px=${d##*
 
 `app/test/app/app_icons_test.dart` checks the sizes of these files, the white status bar icon, the blue background, the opaque iOS icon and the in-app logo's transparent corners.
 
-The old app's status bar icon was called `vikunja_notification_logo`. Since step 38b that name is an alias of `ic_notification` (`app/android/app/src/main/res/values/legacy_drawables.xml`, kept from resource shrinking by `res/raw/keep.xml`), because the old app's reminders set before the update look their icon up by it ([D85](../docs/decisions.md#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept); in review). The icon here keeps the name `ic_notification`, and nothing is copied.
+The old app's status bar icon was called `vikunja_notification_logo`. Since step 38b that name is an alias of `ic_notification` (`app/android/app/src/main/res/values/legacy_drawables.xml`, kept from resource shrinking by `res/raw/keep.xml`), because the old app's reminders set before the update look their icon up by it ([D85](../docs/decisions.md#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)). The icon here keeps the name `ic_notification`, and nothing is copied.
 
 ## Open points
 
