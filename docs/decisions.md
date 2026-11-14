@@ -2569,7 +2569,7 @@ Limits:
 
 Limits:
 - Builds from before February 2026 stored their entries with flutter_secure_storage 9, which version 11 cannot decrypt: their users get the note without a prefill ([D24](#d24-tokens-in-secure-storage-readable-after-the-first-unlock)). Builds of March 2026 stored a `refresh-cookie` instead of a refresh token: their users get the prefill and the note, but no try.
-- That version 11 reads the later builds' version 10 entries is inferred from code (the same file, key prefix, ciphers and Keystore alias); the update test is to confirm it.
+- That version 11 reads the later builds' version 10 entries is inferred from code (the same file, key prefix, ciphers and Keystore alias); the update test confirmed it (the prefill came from them).
 - Nothing runs at the moment of the update (why: a receiver of the app's own would race the notification plugin's, which re-arms the old reminders). Until the first start an old reminder can fire, with the app's icon and a Done that does nothing ([D39](#d39-local-notifications-a-scheduler-per-account-with-a-rolling-window)).
 - The old app declared `USE_EXACT_ALARM`; on Android 14 and later the update may leave exact alarms off, as for a fresh install, and nothing is done beyond the usual setup step ([D17](#d17-notification-policy)).
 - The kept account records no confirmed sign-in host, as there was no browser step ([D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)).
@@ -2579,4 +2579,6 @@ Limits:
 
 Open:
 - Whether a Cancel or the limit that comes after the server has confirmed the account may end the try as kept, as built, is for the owner to confirm.
-- The manual update test ([threat model 8.2](threat-model.md#82-manual-on-the-android-emulator), item 13) has not run. It answers whether the old refresh token keeps the session and whether an old reminder that fires before the first start crashes nothing, and records whether the tile disappears and whether exact alarms stay allowed. It is a real update on an emulator (owner): one created for it and deleted afterwards, because installing the old app means uninstalling this one. Its https path needs a server the emulator trusts, either a throwaway server whose test CA the owner installs or the public demo with a throwaway account; the owner chooses.
+- Older Android versions than 16 were not updated in the test, so whether the old reminders fire there before the first start, and the alias with them, is open.
+
+The update test ([threat model 8.2](threat-model.md#82-manual-on-the-android-emulator), item 13) ran on 2026-11-14 on an Android 16 emulator of its own, with the old app built from GitHub and both apps signed with one throwaway key: every check passed, the old refresh token kept the session on the public demo without a browser, the tile disappeared, and Android removed the old reminders at the install because the update revokes the old app's exact-alarm permission, which the notification setup then asks for again.
