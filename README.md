@@ -2,7 +2,7 @@
 
 The official mobile app for self-hosted [Vikunja](https://vikunja.io) servers, for Android and iOS, built with Flutter. It succeeds the earlier Vikunja app in [go-vikunja/app](https://github.com/go-vikunja/app) ([D83](docs/decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)): since step 38a it carries the official app's name, icon and application id, since step 38c CI and releases run on GitHub Actions ([D86](docs/decisions.md#d86-ci-and-releases-on-github-actions)), and since step 38d it is under the MIT License and follows Vikunja's contribution rules ([D87](docs/decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)). Until the switch is complete some parts still carry its former name Rurana: the website, support and privacy links on coderoftime.dev and the store screenshots (step 38f). The GitLab project and test data that needs Docker or a new capture keep the old name.
 
-In these docs, "the owner" is Benedikt Lesch, the app's main maintainer. To contribute, read [CONTRIBUTING.md](CONTRIBUTING.md); to report a security problem, [SECURITY.md](SECURITY.md).
+In these docs, "the owner" is the app's main maintainer, a role rather than a person: the one who took the decisions the docs record. To contribute, read [CONTRIBUTING.md](CONTRIBUTING.md); to report a security problem, [SECURITY.md](SECURITY.md).
 
 ## Status
 
@@ -346,7 +346,7 @@ Every sign-in starts with an empty browser session and shows the login form ([D2
 The app is open source under the [MIT License](LICENSE), Copyright (c) Vikunja and contributors (step 38d). [NOTICE.md](NOTICE.md) says what the licence covers and what it does not:
 
 - **Name and logo:** the name "Vikunja" and the Vikunja logo belong to the Vikunja project and are not under the MIT License. The app's icons derive from Vikunja's logo and are used with the project's permission. A fork that distributes its own build uses its own name and logo.
-- **Earlier history:** Benedikt Lesch, the author of every commit of this app before the move, licenses that earlier work under the MIT License too; the previous app's history up to `legacy-final` keeps its own licence and copyright. The former name Rurana and its llama logo, with every image derived from it, which stay in the history, remain reserved and are not under the MIT License.
+- **Earlier history:** the author of every commit of this app before the move, named in the commits, licenses that earlier work under the MIT License too; the previous app's history up to `legacy-final` keeps its own licence and copyright. The former name Rurana and its llama logo, with every image derived from it, which stay in the history, remain reserved and are not under the MIT License.
 - **Test vectors from Vikunja:** the test files that hold vectors from Vikunja's own tests stay under the AGPL-3.0-or-later, Vikunja's licence. They never ship with the app.
 - **Third-party material** keeps its own licence; the app shows the notices on its licence page.
 

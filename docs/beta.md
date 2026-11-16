@@ -25,8 +25,8 @@ Step 38d ([D87]): the repository joins go-vikunja/app with its whole history, so
 WORK=~/path/to/the/working/repository
 git clone https://github.com/go-vikunja/app.git vikunja-import
 cd vikunja-import
-git config user.name "Benedikt Lesch"
-git config user.email "coderoftime@gmail.com"
+git config user.name "<your name>"
+git config user.email "<the address of the imported commits>"
 
 # 2. Our main from the working repository: no tags, no stash
 git remote add ours "$WORK"

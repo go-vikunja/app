@@ -10,9 +10,9 @@ Contributors keep the copyright in their contributions and license them under th
 
 ## Earlier history
 
-Benedikt Lesch is the author of every commit of this app's own history before the move, the history the import merged into go-vikunja/app (the app was called Rurana then). He licenses that earlier work under the MIT License as well. The previous app's history, up to the tag `legacy-final`, keeps its own licence and its contributors' copyright. Third-party material in old commits keeps its own licence. Examples are the editor code before commit f44e04f and the texts that followed Vikunja's web frontend (AGPL-3.0-or-later) closely.
+Every commit of this app's own history before the move, the history the import merged into go-vikunja/app (the app was called Rurana then), has the same author, named in the commits. That author licenses this earlier work under the MIT License as well. The previous app's history, up to the tag `legacy-final`, keeps its own licence and its contributors' copyright. Third-party material in old commits keeps its own licence. Examples are the editor code before commit f44e04f and the texts that followed Vikunja's web frontend (AGPL-3.0-or-later) closely.
 
-The former name Rurana and its llama logo, with every image derived from it, remain reserved by Benedikt Lesch and are not licensed under the MIT License. Both stay in the earlier history. The images include logo-llama.jpg, the logo explorations and the icon sources and exports in branding, the in-app logo, the Android and iOS app icons and the store graphics as they were in the commits before 471014a (step 38a).
+The former name Rurana and its llama logo, with every image derived from it, remain reserved by that author and are not licensed under the MIT License. Both stay in the earlier history. The images include logo-llama.jpg, the logo explorations and the icon sources and exports in branding, the in-app logo, the Android and iOS app icons and the store graphics as they were in the commits before 471014a (step 38a).
 
 ## Name and logo
 

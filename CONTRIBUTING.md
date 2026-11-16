@@ -1,6 +1,6 @@
 # Contributing to the Vikunja app
 
-This repository holds Vikunja's official app for Android and iOS. Benedikt Lesch is its main maintainer, and the maintainers of the Vikunja project look after the repository with him. The app follows [Vikunja's contribution rules](https://github.com/go-vikunja/vikunja/blob/main/CONTRIBUTING.md); this file says how they apply here and adds the app's own rules.
+This repository holds Vikunja's official app for Android and iOS, maintained within the Vikunja project. The app follows [Vikunja's contribution rules](https://github.com/go-vikunja/vikunja/blob/main/CONTRIBUTING.md); this file says how they apply here and adds the app's own rules.
 
 ## Questions, bugs and features
 
