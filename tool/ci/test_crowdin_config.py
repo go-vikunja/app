@@ -10,8 +10,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 CONFIG = os.path.join(ROOT, 'crowdin.yml')
 # Crowdin's language codes and the ARB names gen-l10n reads; every other
 # language keeps its two-letter code.
-MAPPING = {'pt-PT': 'pt', 'pt-BR': 'pt_BR', 'zh-CN': 'zh', 'zh-TW': 'zh_Hant', 'no': 'nb', 'sr-CS': 'sr_Latn',
-           'de-swiss': 'gsw'}
+MAPPING = {'pt-PT': 'pt', 'pt-BR': 'pt_BR', 'zh-CN': 'zh', 'zh-TW': 'zh_Hant', 'no': 'nb', 'sr-CS': 'sr_Latn'}
 # GitHub skips the push and pull_request runs of a commit that says one of
 # these, and the pull request's required checks never report.
 SKIP_CI = re.compile(r'(?i)\[(?:skip ci|ci skip|no ci|skip actions|actions skip)\]|skip-checks:\s*true')

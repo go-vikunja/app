@@ -2781,7 +2781,7 @@ Step 38e of [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp). 
 **Not shipped yet**, though they may be translated on Crowdin, and the integration exports their files, which compile but are never shown:
 - right-to-left languages (Arabic, Persian, Hebrew), until a pass over the layouts in right-to-left;
 - Esperanto (`app_eo.arb`), which Material does not support, so the app would break in it if it shipped;
-- Vikunja's custom Swiss German (`de-swiss`), exported as `app_gsw.arb` (why: under its own code gen-l10n would read the file as German in a script `swiss`, which no device reports; `gsw` is Swiss German's language code, which Material supports). Shipping it at 50 % is a later decision.
+- Vikunja's custom Swiss German (`de-swiss`), exported as `app_gsw.arb` through a language mapping in the project's settings, which kolaente sets, not in `crowdin.yml`: the CLI accepts only Crowdin's standard codes there and refuses the whole file for a custom one, as the rehearsal showed (why `gsw`: the custom language's own two-letter code may be `de`, which would overwrite the German, and `gsw` is Swiss German's language code, which Material supports). Shipping it at 50 % is a later decision.
 
 **Crowdin's languages as Flutter's locales:**
 - `pt-PT` → `pt`, `pt-BR` → `pt_BR`, `zh-CN` → `zh` (Simplified as the base), `zh-TW` → `zh_Hant`, Norwegian `no` → `nb` (the code Norwegian devices report), `sr-CS` → `sr_Latn` with an empty base file `app_sr.arb`, Vikunja's custom `de-swiss` → `gsw`; the rest by their two-letter code.

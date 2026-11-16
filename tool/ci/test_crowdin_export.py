@@ -69,7 +69,7 @@ class CrowdinExportTest(unittest.TestCase):
         cls.sample = cls.sample_keys()
         # fr stands for the languages Crowdin names by their two-letter code,
         # eo for those exported but not shipped, as Material lacks them.
-        cls.export = {name: cls.translation(name) for name in [*MAPPING.values(), 'fr', 'eo']}
+        cls.export = {name: cls.translation(name) for name in [*MAPPING.values(), 'gsw', 'fr', 'eo']}
         cls.temp = tempfile.mkdtemp(prefix='crowdin-export-')
         cls.addClassCleanup(shutil.rmtree, cls.temp, ignore_errors=True)
         cls.project = cls.make_project('export')

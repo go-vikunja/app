@@ -19,8 +19,8 @@ files:
     skip_untranslated_strings: true
     # Every regional or script file needs its base language's file
     # (app_sr.arb is committed). "no" is quoted: YAML 1.1 reads it as false.
-    # de-swiss, Vikunja's custom Swiss German, is written as gsw: its own
-    # code is no locale a device reports, and may be de's.
+    # The CLI accepts only Crowdin's standard codes here, so Vikunja's custom
+    # Swiss German is mapped in the project's settings (D88).
     languages_mapping:
       two_letters_code:
         pt-PT: pt
@@ -29,4 +29,3 @@ files:
         zh-TW: zh_Hant
         "no": nb
         sr-CS: sr_Latn
-        de-swiss: gsw
