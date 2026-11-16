@@ -6,6 +6,8 @@
 OFFICIAL_REPOSITORY=go-vikunja/app
 # The numeric id as well: another repository renamed to this name does not pass.
 OFFICIAL_REPOSITORY_ID=395095540
+# release_publish.sh finds it in the build's NOT_RELEASABLE by this text.
+NOT_OFFICIAL_REASON="not a tag run of ${OFFICIAL_REPOSITORY} on GitHub Actions"
 
 release_root="${VIKUNJA_APP_RELEASE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/build/release}"
 release_unsigned_dir="${release_root}/unsigned"

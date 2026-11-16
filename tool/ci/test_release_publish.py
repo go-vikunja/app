@@ -282,6 +282,27 @@ class GuardTest(Fixture):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.not_published(result), 'placeholder source URL; throwaway keys; --dry-run')
 
+    def test_not_a_tag_run_named_once(self):
+        built = 'not a tag run of go-vikunja/app on GitHub Actions'
+        signed = f'{built}; throwaway keys; no committed certificate fingerprints (tool/ci/release_certificates.txt)'
+        edit_env(os.path.join(self.root, 'unsigned', 'release.env'), NOT_RELEASABLE=built)
+        edit_env(os.path.join(self.signed, 'release.env'), SIGNING='throwaway', NOT_RELEASABLE=signed)
+        env = self.official(GITHUB_REPOSITORY='someone/app')
+        for step, expected in (('check', built), ('play', signed), ('dl', signed), ('github', signed)):
+            with self.subTest(step=step):
+                result = self.publish('--dry-run', step, env=env)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.not_published(result), f'{expected}; --dry-run')
+
+    def test_the_cause_comes_first(self):
+        edit_env(os.path.join(self.signed, 'release.env'),
+                 NOT_RELEASABLE='not a tag run of go-vikunja/app on GitHub Actions; placeholder source URL')
+        result = self.publish('--dry-run', 'dl')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.not_published(result),
+                         'not a tag run of go-vikunja/app on GitHub Actions; placeholder source URL; '
+                         'GITHUB_REF_NAME (unset) is not v1.0.0-beta.1; --dry-run')
+
     def test_not_releasable_build(self):
         edit_env(os.path.join(self.signed, 'release.env'), NOT_RELEASABLE='placeholder source URL; throwaway keys')
         result = self.publish('github', env=self.official(GH_TOKEN=GH_TOKEN))

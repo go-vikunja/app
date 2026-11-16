@@ -169,17 +169,17 @@ else
 fi
 
 reasons=()
-if ! official_release_run; then
-  reasons+=("not a tag run of ${OFFICIAL_REPOSITORY} on GitHub Actions")
+if ! official_release_run && [[ "; ${not_releasable}; " != *"; ${NOT_OFFICIAL_REASON}; "* ]]; then
+  reasons+=("$NOT_OFFICIAL_REASON")
+fi
+if [[ -n "$not_releasable" ]]; then
+  reasons+=("$not_releasable")
 fi
 if [[ "${GITHUB_REF_NAME:-}" != "$tag" ]]; then
   reasons+=("GITHUB_REF_NAME (${GITHUB_REF_NAME:-unset}) is not ${tag}")
 fi
 if [[ "$step" != check && "$signing" != release && "; ${not_releasable}; " != *"; throwaway keys; "* ]]; then
   reasons+=("signed with throwaway keys")
-fi
-if [[ -n "$not_releasable" ]]; then
-  reasons+=("$not_releasable")
 fi
 if ((dry_run)); then
   reasons+=(--dry-run)

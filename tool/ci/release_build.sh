@@ -66,8 +66,7 @@ refuse() {
 
 if ! official_release_run; then
   dry_run=1
-  refuse "not a tag run of ${OFFICIAL_REPOSITORY} on GitHub Actions: this build is a dry run" \
-    "not a tag run of go-vikunja/app on GitHub Actions"
+  refuse "${NOT_OFFICIAL_REASON}: this build is a dry run" "$NOT_OFFICIAL_REASON"
 fi
 
 if [[ -z "$tag" && "$host" == github && "${GITHUB_REF_TYPE:-}" == tag ]]; then
@@ -135,6 +134,8 @@ if ((public)); then
   if [[ "$status" != 200 ]]; then
     refuse "${source_url} answered ${status} signed out: the source link of a release must open for everyone" \
       "source URL not public"
+  else
+    echo "OK: ${source_url} opens signed out."
   fi
 else
   echo "Would check that ${source_url} opens signed out."
