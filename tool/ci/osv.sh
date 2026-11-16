@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# The CI job `osv` (D73 on GitLab, D86 on GitHub Actions): OSV advisories for
-# the three lockfiles, with the accepted ones in osv-scanner.toml. Uses
-# osv-scanner from PATH, else downloads the pinned release and checks its
-# sha256.
+# The CI job `osv` (D86): OSV advisories for the three lockfiles, with the
+# accepted ones in osv-scanner.toml. Uses osv-scanner from PATH, else
+# downloads the pinned release and checks its sha256.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

@@ -107,19 +107,13 @@ if [[ "$source_repository" != https://?* ]]; then
   refuse "the source repository (${source_repository:-empty}) is not an https URL: set VIKUNJA_APP_SOURCE_CODE_URL" \
     "source URL"
 fi
-source_host="${source_repository#https://}"
-source_host="${source_host%%/*}"
-if [[ "$source_host" == github.com ]]; then
-  source_url="${source_repository}/tree/${tag}"
-else
-  source_url="${source_repository}/-/tree/${tag}"
-fi
+source_url="${source_repository}/tree/${tag}"
 if ((dry_run)); then
   echo "Would check that ${source_url} opens signed out."
 else
   status="$(curl --silent --output /dev/null --write-out '%{http_code}' --retry 3 "$source_url" || true)"
   if [[ "$status" != 200 ]]; then
-    refuse "${source_url} answered ${status} signed out: the source link must open for everyone (AGPL section 6)" \
+    refuse "${source_url} answered ${status} signed out: the source link must open for everyone" \
       "source not public"
   fi
 fi

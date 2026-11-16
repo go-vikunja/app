@@ -115,8 +115,9 @@ dependencyLocking {
     ignoredDependencies.add("io.flutter:*")
 }
 
-// Embedded Cronet instead of Google Play services Cronet, so that the app
-// ships no Play services library (D67). cronet_http picks Play services
+// Embedded Cronet instead of Google Play services Cronet, so that Cronet
+// works on every device without Play services, the app holds no proprietary
+// code and F-Droid stays possible (D5). cronet_http picks Play services
 // unless built with --dart-define=cronetHttpNoPlay=true; excluding it here
 // makes every build, test and CI run embedded without that define.
 // cronet-bundled's POMs also pull Google's empty transitional Cronet

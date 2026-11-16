@@ -13,11 +13,11 @@ import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
 
-/// The app's legal notices (AGPL section 5(d)): its version and copyright,
-/// the licence with the app store permission and no warranty, the licence
-/// page, where the source code is, and the name and logo, which the licence
-/// does not cover; the app's support page, privacy policy and legal notice,
-/// and the support details for a bug report. Open signed out and to guests.
+/// The app's legal notices: its version and copyright, the licence and no
+/// warranty, the licence page, where the source code is, and the name and
+/// logo, which the licence does not cover; the app's support page, privacy
+/// policy and legal notice, and the support details for a bug report. Open
+/// signed out and to guests.
 class AboutPage extends ConsumerWidget {
   const new({this.sourceCode = sourceCodeUrl, super.key});
 

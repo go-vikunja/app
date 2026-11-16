@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# The CI job `ios` (D73 on GitLab's Mac runner, D86 on GitHub's macOS runner):
-# an unsigned release build for iOS devices, with the licence page's notices
-# and the required-reason APIs checked.
+# The CI job `ios` (D86, on GitHub's macOS runner): an unsigned release build
+# for iOS devices, with the licence page's notices and the required-reason
+# APIs checked.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

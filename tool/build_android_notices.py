@@ -16,7 +16,8 @@ its licence from ARTIFACTS, else from its Maven group; an unknown group fails,
 and so does an AndroidX artifact that bundles another project's code
 ("external" in its name) unless ARTIFACTS names it, so that every new library
 is looked at before it ships. Google Play services libraries are refused: the
-app ships none (D67). The texts are in tool/android_notices/.
+app holds no proprietary code, so that it runs without Play services and
+F-Droid stays possible (D5). The texts are in tool/android_notices/.
 
 Embedded Cronet (cronet-bundled, with the classes in cronet) bundles other
 projects' code. Its AARs carry its licences in third_party_licenses.txt with
@@ -113,7 +114,7 @@ GROUPS = {
 }
 
 REFUSED_GROUPS = {
-    'com.google.android.gms': 'Google Play services libraries are not free software and the app ships none (D67); '
+    'com.google.android.gms': 'Google Play services libraries are proprietary and the app ships none (D5); '
                               'find what brings it (./gradlew :app:dependencyInsight in app/android) and leave it '
                               'out in app/android/app/build.gradle.kts like play-services-cronet',
 }
@@ -762,9 +763,9 @@ def self_test():
            'tag for 2.1.4), and a copy is attached to every release of this app.' in output, output
     assert 'Written offer: for at least three years' in output, output
     assert "distribution.\nAsk through the contact given where the app's source code is published.\n```" in output
-    with_contact = render(libraries + desugaring, texts, cronet, sources=sources, contact='rurana@example.org')
-    assert 'distribution.\nAsk Benedikt Lesch at rurana@example.org.\n```' in with_contact, with_contact
-    assert with_contact.replace('Ask Benedikt Lesch at rurana@example.org.',
+    with_contact = render(libraries + desugaring, texts, cronet, sources=sources, contact='offer@example.org')
+    assert 'distribution.\nAsk Benedikt Lesch at offer@example.org.\n```' in with_contact, with_contact
+    assert with_contact.replace('Ask Benedikt Lesch at offer@example.org.',
                                 "Ask through the contact given where the app's source code is published.") == output
     assert sources['com.android.tools:desugar_jdk_libs']['note'] == 'a=b'
     other_version = {key: dict(value, version='2.1.3') for key, value in sources.items()}

@@ -1,30 +1,36 @@
 import 'dart:io';
 
-import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_mobile/app/legal.dart';
 
 const _repository = '..';
 
-const _appStorePermission =
-    '**Additional permission under GNU AGPL version 3 section 7**\n'
-    '\n'
-    'As an additional permission under section 7 of the GNU Affero General '
-    'Public License, you may distribute the Program, or a work based on it, '
-    'through an app store whose terms and conditions are incompatible with '
-    "this License, such as Apple's App Store, provided that the Corresponding "
-    'Source is also available under this License, with or without this '
-    'permission, through a channel without such restrictions.\n';
+const _mitPermission = '''
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-const _logoCopies =
-    'You may copy and distribute the files listed below unmodified, but only '
-    'as part of a copy of this repository or of its history, or of an '
-    'unmodified build of the app published by Benedikt Lesch. No other right '
-    'to them is granted. An app built from modified source may not be '
-    'distributed with them.';
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-const _logoFilesPointer =
-    "The files are listed in NOTICE.md at the root of the app's source code "
-    'repository.';
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+''';
+
+const _nameAndLogo =
+    'The name "Vikunja" and the Vikunja logo belong to the Vikunja project '
+    "and are not licensed under the MIT License. The app's icons derive from "
+    "logo.svg of go-vikunja/vikunja and are used with the project's "
+    'permission. A fork that distributes its own build uses its own name and '
+    'logo.';
 
 String _read(String path) => File('$_repository/$path').readAsStringSync();
 
@@ -62,35 +68,26 @@ bool _matchesAFile(String glob) {
 }
 
 void main() {
-  test('LICENSE is the GNU AGPL version 3 as published on gnu.org', () {
-    final license = File('$_repository/LICENSE');
-
-    expect(license.readAsLinesSync().take(2).map((line) => line.trim()), [
-      'GNU AFFERO GENERAL PUBLIC LICENSE',
-      'Version 3, 19 November 2007',
-    ]);
+  test('LICENSE is the MIT License with the copyright line of the app', () {
     expect(
-      sha256.convert(license.readAsBytesSync()).toString(),
-      '0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0',
+      _read('LICENSE'),
+      'MIT License\n\n$copyrightNotice\n\n$_mitPermission',
     );
   });
 
-  test('the notice file has the copyright and the app store permission', () {
+  test('the notice file has the copyright line and names the MIT License', () {
     final notice = _read('NOTICE.md');
 
-    expect(
-      notice,
-      contains('Copyright (C) 2026 Benedikt Lesch and the Rurana contributors'),
-    );
-    expect(notice, contains('\n\n$_appStorePermission\n'));
+    expect(notice, contains('\n$copyrightNotice\n'));
+    expect(notice, contains('licensed under the MIT License'));
   });
 
-  test("the owner's words on the logo files and where they are listed, in "
-      "the notice file and the app's notice", () {
+  test("the terms for the name and the logo, in the notice file and the app's "
+      'notice', () {
     for (final path in ['NOTICE.md', 'app/assets/legal/vikunja_app.md']) {
       expect(
-        _read(path).replaceAll(RegExp(r'\s+'), ' '),
-        contains('$_logoCopies $_logoFilesPointer'),
+        _read(path).replaceAll(RegExp(r'\s+'), ' ').replaceAll('`', ''),
+        contains(_nameAndLogo),
         reason: path,
       );
     }
@@ -111,14 +108,10 @@ void main() {
     final readme = _read('README.md');
     final section = readme.substring(readme.indexOf('\n## License\n'));
 
-    expect(section, contains('AGPL-3.0-or-later'));
+    expect(section, contains('MIT'));
     for (final file in ['LICENSE', 'NOTICE.md', 'CONTRIBUTING.md']) {
       expect(section, contains('($file)'));
       expect(File('$_repository/$file').existsSync(), isTrue, reason: file);
     }
-    expect(
-      _read('CONTRIBUTING.md'),
-      contains("Developer's Certificate of Origin 1.1"),
-    );
   });
 }

@@ -8509,7 +8509,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get aboutLicence =>
-      'Diese App ist freie Software: Du darfst sie unter der GNU Affero General Public License, Version 3 oder jeder späteren Version, weitergeben und verändern, mit einer zusätzlichen Erlaubnis für App-Stores.';
+      'Diese App ist Open Source unter der MIT-Lizenz: Du darfst sie nutzen, verändern und weitergeben, solange ihr Copyright- und Lizenzhinweis dabei bleibt.';
 
   @override
   String get aboutNoWarranty =>
@@ -8520,7 +8520,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get aboutLicencesSubtitle =>
-      'Der vollständige Lizenztext und die zusätzliche Erlaubnis unter „vikunja_app“ sowie die Lizenzen der Software, die die App enthält';
+      'Die Lizenz der App unter „vikunja_app“ sowie die Lizenzen der Software, die die App enthält';
 
   @override
   String get aboutSourceCodeHeading => 'Quellcode';
@@ -8560,7 +8560,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get aboutNameAndLogo =>
-      'Der Name Rurana und das Lama-Logo fallen nicht unter die AGPL; alle Rechte daran sind vorbehalten. Die Logo-Dateien darfst du nur unverändert weitergeben, als Teil einer Kopie des Rurana-Repositorys oder der App, wie Benedikt Lesch sie veröffentlicht. Wenn du eine App aus verändertem Quellcode verbreitest, gib ihr einen eigenen Namen und ein eigenes Logo.';
+      'Der Name Vikunja und das Vikunja-Logo gehören dem Vikunja-Projekt und stehen nicht unter der MIT-Lizenz. Die Icons der App sind vom Logo abgeleitet und werden mit Erlaubnis des Projekts verwendet. Ein Fork, der einen eigenen Build verbreitet, verwendet einen eigenen Namen und ein eigenes Logo.';
 
   @override
   String projectTimelineBlocksSemantics(String titles) {

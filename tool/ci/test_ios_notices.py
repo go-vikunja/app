@@ -11,7 +11,7 @@ import ios_notices
 from ios_notices import NoticeError, check, licence_sections, main
 
 SEPARATOR = '\n' + '-' * 80 + '\n'
-AGPL = 'GNU AFFERO GENERAL PUBLIC LICENSE\nVersion 3, 19 November 2007\n'
+OWN = 'MIT License\n\nCopyright (c) Vikunja and contributors\n'
 FLUTTER = 'Copyright 2014 The Flutter Authors. All rights reserved.\n'
 BSD = 'Copyright 2013 The Flutter Authors\n\nRedistribution and use in source and binary forms.\n'
 APP_LICENSES = """\
@@ -63,7 +63,7 @@ class CheckTest(unittest.TestCase):
             'image_picker_ios': f'file://{self.cache}/image_picker_ios-1.0.0',
             'objective_c': f'file://{self.cache}/objective_c-9.0.0',
         }
-        write(os.path.join(self.root, 'LICENSE'), AGPL)
+        write(os.path.join(self.root, 'LICENSE'), OWN)
         write(os.path.join(self.sdk, 'LICENSE'), FLUTTER)
         write(os.path.join(self.sdk, 'packages/flutter/LICENSE'), FLUTTER)
         write(os.path.join(self.cache, 'image_picker_ios-1.0.0/LICENSE'),
@@ -75,7 +75,7 @@ class CheckTest(unittest.TestCase):
                              'packages/vikunja_logic/THIRD_PARTY_NOTICES.md')]:
             write(os.path.join(self.root, source), f'# {key}\n')
             write(os.path.join(self.assets, key), f'# {key}\n')
-        self.notices = {'vikunja_app': AGPL, 'flutter': FLUTTER, 'image_picker': BSD, 'aFileChooser': 'MIT',
+        self.notices = {'vikunja_app': OWN, 'flutter': FLUTTER, 'image_picker': BSD, 'aFileChooser': 'MIT',
                         'objective_c': BSD}
         os.makedirs(os.path.join(self.app, 'Frameworks/Flutter.framework'))
         os.makedirs(os.path.join(self.app, 'Frameworks/objective_c.framework'))

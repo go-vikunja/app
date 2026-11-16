@@ -1,0 +1,21 @@
+name: Feature request
+description: Propose a new feature or a change to how the app works.
+type: Feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A feature needs a maintainer's agreement in this issue before anyone opens a pull request for it. A pull request without that agreement may be closed. A feature of the server or the web interface goes to the [forum](https://community.vikunja.io).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What do you want to do?
+      description: The problem, not the solution yet. What does the app make hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: How could the app help?
+    validations:
+      required: true

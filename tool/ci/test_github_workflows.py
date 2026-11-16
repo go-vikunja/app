@@ -1,6 +1,6 @@
 """Checks .github/workflows (D86): triggers, permissions, pins, secrets and the
-jobs' counterparts in .gitlab-ci.yml. Parsed with Ruby's YAML, because Python
-has no YAML parser without third-party packages."""
+scripts each job runs. Parsed with Ruby's YAML, because Python has no YAML
+parser without third-party packages."""
 import json
 import os
 import re
@@ -10,13 +10,20 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WORKFLOWS = os.path.join(ROOT, '.github', 'workflows')
-GITLAB_CI = os.path.join(ROOT, '.gitlab-ci.yml')
+EDITOR_NODE = os.path.join(ROOT, 'app', 'editor', '.nvmrc')
 
 WORKFLOW_FILES = {'ci.yaml', 'release.yaml'}
 ALLOWED_ACTIONS = {'actions/checkout', 'actions/cache', 'actions/setup-node', 'actions/upload-artifact',
                    'actions/download-artifact'}
 RUNNERS = {'ubuntu-24.04', 'macos-26'}
-COUNTERPARTS = {'checks', 'editor', 'contract', 'android', 'osv', 'ios'}
+CI_JOB_SCRIPTS = {
+    'checks': {'tool/ci/checks.sh', 'tool/ci/test.sh', 'tool/ci/outdated.sh'},
+    'editor': {'tool/ci/editor.sh'},
+    'contract': {'tool/ci/contract.sh'},
+    'android': {'tool/ci/android.sh'},
+    'osv': {'tool/ci/osv.sh'},
+    'ios': {'tool/ci/ios.sh'},
+}
 RELEASE_JOBS = ('build', 'secret-scope', 'publish', 'dry-run')
 SIGNING_SECRETS = ('KEYSTORE_BASE64', 'KEY_PROPERTIES', 'APK_KEYSTORE_BASE64', 'APK_KEY_PROPERTIES')
 PLAY_SECRET = 'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON'
@@ -45,18 +52,15 @@ SCRIPT = re.compile(r'tool/ci/[\w.-]+\.sh')
 SECRETS_REFERENCE = r'secrets\s*[.\[:]'
 # One script with plain arguments: no pipes, lists or substitutions in a run.
 ONE_SCRIPT = r'^tool/ci/[\w.-]+\.sh(?: (?:--?[\w-]+|[\w.-]+|"\$[A-Z_]+"))*$'
-GITLAB_RESERVED = {'workflow', 'stages', 'default', 'variables', 'include', 'image', 'services', 'cache',
-                   'before_script', 'after_script'}
 
 
-def load(path, aliases=False):
+def load(path):
     if not shutil.which('ruby'):
         if os.environ.get('CI') == 'true':
             raise AssertionError('ruby is needed to parse the workflows')
         raise unittest.SkipTest('ruby is not installed')
-    options = ', aliases: true' if aliases else ''
     output = subprocess.run(
-        ['ruby', '-ryaml', '-rjson', '-e', f'puts JSON.dump(YAML.safe_load(File.read(ARGV[0]){options}))', path],
+        ['ruby', '-ryaml', '-rjson', '-e', 'puts JSON.dump(YAML.safe_load(File.read(ARGV[0])))', path],
         check=True, capture_output=True, text=True).stdout
     return json.loads(output)
 
@@ -93,24 +97,6 @@ def kinds(job):
     return [action(step) if 'uses' in step else 'run' for step in steps(job)]
 
 
-def gitlab_scripts(config, name):
-    """The tool/ci scripts a GitLab job names, following extends."""
-    keys = ('before_script', 'script', 'after_script')
-
-    def collect(job_name):
-        job = config[job_name]
-        parents = job.get('extends', [])
-        result = {}
-        for parent in [parents] if isinstance(parents, str) else parents:
-            result.update(collect(parent))
-        result.update({key: job[key] for key in keys if key in job})
-        return result
-
-    found = {key: value for key, value in config.get('default', {}).items() if key in keys}
-    found.update(collect(name))
-    return {script for lines in found.values() for line in lines for script in SCRIPT.findall(line)}
-
-
 class GitHubWorkflowsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -122,7 +108,6 @@ class GitHubWorkflowsTest(unittest.TestCase):
                 cls.texts[name] = f.read()
         cls.ci = cls.workflows['ci.yaml']
         cls.release = cls.workflows['release.yaml']
-        cls.gitlab = load(GITLAB_CI, aliases=True)
 
     def all_jobs(self):
         for file, workflow in self.workflows.items():
@@ -239,21 +224,13 @@ class GitHubWorkflowsTest(unittest.TestCase):
                 else:
                     self.assertEqual(job['if'], NOT_SCHEDULED)
 
-    def test_counterparts_in_gitlab(self):
-        gitlab_jobs = {name for name in self.gitlab if name not in GITLAB_RESERVED and not name.startswith('.')}
-        self.assertEqual(set(self.ci['jobs']), COUNTERPARTS)
-        for name in sorted(COUNTERPARTS):
+    def test_the_ci_jobs_and_their_scripts(self):
+        self.assertEqual(set(self.ci['jobs']), set(CI_JOB_SCRIPTS))
+        for name, expected in sorted(CI_JOB_SCRIPTS.items()):
             with self.subTest(name):
-                self.assertIn(name, gitlab_jobs)
                 self.assertNotIn('name', self.ci['jobs'][name])
-                github = {script for line in runs(self.ci['jobs'][name]) for script in SCRIPT.findall(line)}
-                self.assertTrue(github)
-                self.assertEqual(github, gitlab_scripts(self.gitlab, name))
-        self.assertIn('dco', gitlab_jobs)
-        for file, workflow in self.workflows.items():
-            with self.subTest(f'no dco in {file}'):
-                self.assertNotIn('dco', workflow['jobs'])
-        self.assertIn('release', gitlab_jobs)
+                scripts = {script for line in runs(self.ci['jobs'][name]) for script in SCRIPT.findall(line)}
+                self.assertEqual(scripts, expected)
         self.assertLessEqual(set(RELEASE_JOBS), set(self.release['jobs']))
 
     def test_the_scripts_exist_and_are_executable(self):
@@ -293,12 +270,15 @@ class GitHubWorkflowsTest(unittest.TestCase):
                         self.assertNotIn('cache', step.get('with', {}))
                 self.assertNotIn('restore-keys', json.dumps(job))
 
-    def test_node_matches_gitlab(self):
-        image = self.gitlab['editor']['image']
-        version = re.match(r'node:(\d+\.\d+\.\d+)-', image).group(1)
+    def test_node_matches_the_editor(self):
+        with open(EDITOR_NODE, encoding='utf-8') as f:
+            pinned = f.read().strip()
+        self.assertRegex(pinned, r'^\d+(?:\.\d+){0,2}$')
         setup = steps_using(self.ci['jobs']['editor'], 'actions/setup-node')
         self.assertEqual(len(setup), 1)
-        self.assertEqual(setup[0]['with']['node-version'], version)
+        version = setup[0]['with']['node-version']
+        self.assertRegex(version, r'^\d+\.\d+\.\d+$')
+        self.assertTrue(f'{version}.'.startswith(f'{pinned}.'), f'{version} is not Node {pinned}')
 
     def test_caches_stay_in_the_workspace(self):
         expected = {'PUB_CACHE': '${{ github.workspace }}/.cache/pub',

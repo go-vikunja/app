@@ -1,17 +1,15 @@
 # shellcheck shell=bash
 # Shared by the tool/ci scripts (D73, D86), which source it after `set -euo pipefail`.
-# Runs on GitLab's Linux runners, GitHub-hosted runners and macOS's bash 3.2 alike.
+# Runs on GitHub-hosted runners and macOS's bash 3.2 alike.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=tool/ci/pins.sh
 source "${repo_root}/tool/ci/pins.sh"
 
-# A disposable CI machine: GitLab's Linux runners or a GitHub-hosted runner,
-# never a developer's machine or a self-hosted runner, whose SDKs and
-# ~/.gradle stay untouched.
+# A disposable CI machine: a GitHub-hosted runner, never a developer's machine
+# or a self-hosted runner, whose SDKs and ~/.gradle stay untouched.
 on_ci_runner() {
-  [[ ("${GITLAB_CI:-}" == true && "$(uname -s)" == Linux) ||
-    ("${GITHUB_ACTIONS:-}" == true && "${RUNNER_ENVIRONMENT:-}" == github-hosted) ]]
+  [[ "${GITHUB_ACTIONS:-}" == true && "${RUNNER_ENVIRONMENT:-}" == github-hosted ]]
 }
 
 sha256_of() {
@@ -142,9 +140,8 @@ flutter_test_concurrency() {
 }
 
 # The project's gradle.properties asks for 8 GB, more than a small runner has,
-# and GitHub's Ubuntu image defaults to JDK 17 where GitLab's image and the
-# owner's machine use 21. Only on a CI runner: never touches a developer's
-# ~/.gradle or JDK.
+# and GitHub's Ubuntu image defaults to JDK 17 where the owner's machine uses
+# 21. Only on a CI runner: never touches a developer's ~/.gradle or JDK.
 ci_gradle_setup() {
   if ! on_ci_runner; then
     return

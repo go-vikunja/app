@@ -170,30 +170,16 @@ void main() {
     expect(hits, isEmpty);
   });
 
+  test('the shipped sources are found', () {
+    for (final root in _fixedRoots) {
+      expect(_files(root), isNotEmpty, reason: root);
+    }
+    expect(_widgetExtensions(), hasLength(1));
+  });
+
   test('no shipped source names Rurana, apart from the named exceptions', () {
-    const fixedRoots = [
-      'lib',
-      'android/app/src/main',
-      'ios/Runner',
-      'assets',
-      'editor/src',
-    ];
-    final extensions = [
-      for (final folder in _directories('ios'))
-        if (folder.endsWith('Widgets')) folder,
-    ];
-    final roots = [
-      ...fixedRoots,
-      ...extensions,
-      for (final plugin in _directories('../plugins')) ...[
-        '$plugin/lib',
-        '$plugin/android/src',
-        '$plugin/ios',
-      ],
-      for (final package in _directories('../packages')) '$package/lib',
-    ];
     final hits = [
-      for (final root in roots)
+      for (final root in _shippedRoots())
         for (final path in _files(root))
           if (_oldName.hasMatch(path))
             path
@@ -204,10 +190,21 @@ void main() {
               if (_oldName.hasMatch(line)) '$path:${index + 1}',
     ];
 
-    for (final root in fixedRoots) {
-      expect(_files(root), isNotEmpty, reason: root);
-    }
-    expect(extensions, hasLength(1));
+    expect(hits, isEmpty);
+  });
+
+  test('no shipped source puts the app under the AGPL', () {
+    final agpl = RegExp(
+      r'\bagpl\b|affero|app store permission',
+      caseSensitive: false,
+    );
+    final hits = [
+      for (final root in _shippedRoots())
+        for (final path in _files(root))
+          for (final (index, line) in LineSplitter.split(_read(path)).indexed)
+            if (agpl.hasMatch(line)) '$path:${index + 1}',
+    ];
+
     expect(hits, isEmpty);
   });
 
@@ -225,33 +222,38 @@ void main() {
   });
 }
 
+const _fixedRoots = [
+  'lib',
+  'android/app/src/main',
+  'ios/Runner',
+  'assets',
+  'editor/src',
+];
+
+List<String> _widgetExtensions() => [
+  for (final folder in _directories('ios'))
+    if (folder.endsWith('Widgets')) folder,
+];
+
+List<String> _shippedRoots() => [
+  ..._fixedRoots,
+  ..._widgetExtensions(),
+  for (final plugin in _directories('../plugins')) ...[
+    '$plugin/lib',
+    '$plugin/android/src',
+    '$plugin/ios',
+  ],
+  for (final package in _directories('../packages')) '$package/lib',
+];
+
 final _oldName = RegExp('rurana', caseSensitive: false);
 
 final _nameExceptions = <String, List<RegExp>>{
   'lib/app/legal.dart': [
-    // Until step 38d: the copyright line.
-    RegExp('^const copyrightNotice =[^;]*;', multiLine: true),
     // Until step 38f: the app's pages on the owner's website.
     RegExp(r"'https://coderoftime\.dev/[^']*'"),
   ],
-  // Until step 38d: the licence block, which equals NOTICE.md's.
-  'assets/legal/vikunja_app.md': [
-    RegExp(r'^```text$.*?^```$', multiLine: true, dotAll: true),
-  ],
-  // Until step 38d: the About page's terms for the name and the logo.
-  'lib/l10n/arb/app_en.arb': [_arbValue('aboutNameAndLogo')],
-  'lib/l10n/arb/app_de.arb': [_arbValue('aboutNameAndLogo')],
-  'lib/l10n/generated/app_localizations.dart': [
-    RegExp(r'(?:^ *///.*\n)+ *String get aboutNameAndLogo;', multiLine: true),
-  ],
-  'lib/l10n/generated/app_localizations_en.dart': [_getter('aboutNameAndLogo')],
-  'lib/l10n/generated/app_localizations_de.dart': [_getter('aboutNameAndLogo')],
 };
-
-RegExp _arbValue(String key) => RegExp('"$key": "(?:[^"\\\\]|\\\\.)*"');
-
-RegExp _getter(String key) =>
-    RegExp("String get $key =>\\s*'(?:[^'\\\\]|\\\\.)*';");
 
 String _read(String path) =>
     utf8.decode(File(path).readAsBytesSync(), allowMalformed: true);

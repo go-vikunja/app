@@ -7,7 +7,7 @@ import 'package:vikunja_mobile/app/legal.dart';
 // Skipped in ordinary runs (dart_test.yaml); the release job runs it with
 // `flutter test --run-skipped --tags release` and the build's define.
 void main() {
-  test('a release says where its source code is (AGPL section 6)', () {
+  test('a release says where its source code is', () {
     expect(
       sourceCodeUrl,
       isNotNull,

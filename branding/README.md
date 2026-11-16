@@ -17,6 +17,10 @@ The app is called **Vikunja** and uses Vikunja's logo, the llama on the blue dis
 
 The SVG is 256 × 256 user units: 16 paths with solid fills, no gradients, no external references. One path is the blue disc; the others draw the llama.
 
+## Name and logo
+
+The name "Vikunja" and the Vikunja logo belong to the Vikunja project and are not licensed under the MIT licence. The icons derive from the logo and are used with the project's permission. A fork that distributes its own build uses its own name and logo. [NOTICE.md](../NOTICE.md#name-and-logo) has the terms; the scripts and this file are under the MIT licence like the rest of the repository.
+
 ## Derivation
 
 [`build-icons.sh`](build-icons.sh) never edits the source. It writes two copies of the SVG into a temporary folder (python3's `xml.etree`), renders them with ImageMagick's own SVG renderer (`MSVG:`) at 4096 px and scales every result down with Lanczos:
@@ -60,8 +64,6 @@ The SVG is 256 × 256 user units: 16 paths with solid fills, no gradients, no ex
 | `png/preview-sheet.png` | Preview of every variant |
 | `png/play-icon-512.png` | Google Play icon, 512 × 512, 32-bit PNG with an opaque alpha channel: the iOS icon scaled down, full bleed, because Play rounds the corners and adds the shadow itself |
 | `png/feature-graphic-1024x500.png` | Google Play feature graphic, 1024 × 500, RGB without alpha: the llama of the iOS dark icon, centred and flush with the bottom, on `#196AFF`; no text, so it serves every language |
-
-The llama of Rurana, the app's former name (`source/logo-llama.jpg`, `explorations-v1/`, `explorations-v2/`), and the "Name and logo" terms in [NOTICE.md](../NOTICE.md#name-and-logo) stay until step 38d, which settles the terms for Vikunja's name and logo; until then NOTICE.md's file table still calls the files above derivatives of that llama.
 
 ## Regenerating
 
@@ -110,4 +112,4 @@ The old app's status bar icon was called `vikunja_notification_logo`. Since step
 
 ## Open points
 
-- **Step 38d:** the terms for Vikunja's name and logo in `NOTICE.md`, the About page and this file, and the removal of the llama files above.
+- The Vikunja maintainers confirm the wording of the name-and-logo terms and say who holds the logo's copyright ([D87](../docs/decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)).

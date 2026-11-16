@@ -13,7 +13,7 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 (cd app && flutter test)              # everything, the sweep included, as CI runs it
 ```
 
-- Every route, page pushed with the Navigator and dialog, sheet, picker or menu call has a scenario or an exemption with a written reason; a new one without either fails ([CONTRIBUTING.md](../CONTRIBUTING.md#merge-requests)).
+- Every route, page pushed with the Navigator and dialog, sheet, picker or menu call has a scenario or an exemption with a written reason; a new one without either fails ([CONTRIBUTING.md](../CONTRIBUTING.md#rules-for-the-code)).
 - Each scenario runs on Android and iOS, light and dark, English and German, with Flutter's tap-target, labelled-target and contrast guidelines and the project's checks for heading levels, headings that are no buttons, image labels and control names, on every scroll stop.
 - The six core screens have no overflow at 3.12× on iOS, at 375 × 667 and 320 × 568 points.
 - Since step 36b ([D69]) each scenario also runs on its platform's tablet in both orientations (Android 1280 × 800 and 800 × 1280, iPad 1194 × 834 and 834 × 1194), in dark mode, English and German: with the guidelines above and the readable-width checks, and once more at 200 % text, where it has to show without an exception at every scroll stop.

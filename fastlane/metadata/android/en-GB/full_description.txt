@@ -40,4 +40,4 @@ Privacy
 • No ads, no analytics, no tracking, no crash reporting. The app talks only to the servers you add. The developer runs no server and receives none of your data.
 
 Open source
-The app is free software under the GNU Affero General Public License, version 3 or later.
+The app is open source under the MIT License.

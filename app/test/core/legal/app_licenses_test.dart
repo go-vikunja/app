@@ -161,14 +161,12 @@ Text
       );
     });
 
-    test("the app's notice, beside the AGPL that Flutter's build adds", () {
+    test("the app's notice, beside the MIT License that Flutter's build "
+        'adds', () {
       final own = _text(android[ownLicensePackage]!.single);
-      expect(own, contains(copyrightNotice));
-      expect(
-        own,
-        contains('Additional permission under GNU AGPL version 3 section 7'),
-      );
-      expect(own, isNot(contains('TERMS AND CONDITIONS')));
+      expect(own, startsWith(copyrightNotice));
+      expect(own, contains('not licensed under the MIT License'));
+      expect(own, isNot(contains('Permission is hereby granted')));
     });
 
     test('the editor, the ported code and the Material Icons on both '
@@ -302,8 +300,8 @@ Text
     // Flutter's build reads a NOTICES or LICENSE file beside every package
     // of package_config.json, the workspace's own included, and lists it
     // under the package's name.
-    test('of the workspace, only the root package brings a licence, the AGPL '
-        'under the name of the own notice', () {
+    test('of the workspace, only the root package brings a licence, the MIT '
+        'License under the name of the own notice', () {
       final config = File('$_repoRoot/.dart_tool/package_config.json').absolute;
       final packages =
           (jsonDecode(config.readAsStringSync()) as Map)['packages'] as List;

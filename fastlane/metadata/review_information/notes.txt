@@ -1,4 +1,4 @@
-Vikunja is a task manager that people run on their own servers; this is its open-source (AGPL-3.0) app for iPhone and iPad. The developer runs no backend, and the app has no analytics, ads, tracking or crash reporting: it talks only to the Vikunja server the user enters. For the review, please use Vikunja's public demo server, which the Vikunja project runs.
+Vikunja is a task manager that people run on their own servers; this is its open-source (MIT) app for iPhone and iPad. The developer runs no backend, and the app has no analytics, ads, tracking or crash reporting: it talks only to the Vikunja server the user enters. For the review, please use Vikunja's public demo server, which the Vikunja project runs.
 
 HOW TO SIGN IN
 1. Open the app and tap "Try the public demo". The app connects to https://try.vikunja.io and shows the server with its message, which names the demo account.

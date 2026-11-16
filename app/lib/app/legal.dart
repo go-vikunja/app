@@ -30,5 +30,4 @@ enum WebsitePage {
       Uri.parse(languageCode == 'de' ? german : english);
 }
 
-const copyrightNotice =
-    'Copyright (C) 2026 Benedikt Lesch and the Rurana contributors';
+const copyrightNotice = 'Copyright (c) Vikunja and contributors';

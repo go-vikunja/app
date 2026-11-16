@@ -13140,13 +13140,13 @@ abstract class AppLocalizations {
   /// **'License'**
   String get aboutLicenceHeading;
 
-  /// The license notice on the About page (AGPL-3.0-or-later with the section 7 permission for app stores).
+  /// The license notice on the About page (the MIT License).
   ///
   /// In en, this message translates to:
-  /// **'This app is free software: you may share and change it under the GNU Affero General Public License, version 3 or any later version, with an additional permission for app stores.'**
+  /// **'This app is open source under the MIT License: you may use, change and pass it on, as long as its copyright and license notice go with it.'**
   String get aboutLicence;
 
-  /// The AGPL's no-warranty notice on the About page.
+  /// The no-warranty clause of the MIT License on the About page.
   ///
   /// In en, this message translates to:
   /// **'This app comes with no warranty, as far as the law allows.'**
@@ -13161,7 +13161,7 @@ abstract class AppLocalizations {
   /// Under Licenses on the About page; “vikunja_app” is the entry's name on the license page (the workspace root package that carries the repository's LICENSE), kept exactly as written.
   ///
   /// In en, this message translates to:
-  /// **'The full license text and the additional permission under “vikunja_app”, and the licenses of the software the app contains'**
+  /// **'The app\'s license under “vikunja_app”, and the licenses of the software the app contains'**
   String get aboutLicencesSubtitle;
 
   /// Section header on the About page.
@@ -13230,10 +13230,10 @@ abstract class AppLocalizations {
   /// **'Name and logo'**
   String get aboutNameAndLogoHeading;
 
-  /// The brand exclusion on the About page.
+  /// The name and logo notice on the About page: they are not under the MIT License.
   ///
   /// In en, this message translates to:
-  /// **'The name Rurana and the llama logo are not covered by the AGPL; all rights to them are reserved. You may pass on the logo files only unchanged, as part of a copy of Rurana\'s repository or of the app as Benedikt Lesch publishes it. If you distribute an app built from changed source code, give it a name and logo of its own.'**
+  /// **'The name Vikunja and the Vikunja logo belong to the Vikunja project and are not licensed under the MIT License. The app\'s icons derive from the logo and are used with the project\'s permission. A fork that distributes its own build uses its own name and logo.'**
   String get aboutNameAndLogo;
 
   /// Screen reader: a line of a Gantt row's label for the solid arrows drawn from this task to the tasks it blocks; titles is a comma-separated list of task titles.

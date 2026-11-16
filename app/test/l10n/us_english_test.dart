@@ -76,13 +76,11 @@ void main() {
     expect(british, isEmpty);
   });
 
-  test('no message or description names Rurana, except the notice on its '
-      'name and logo', () {
+  test('no message or description names Rurana', () {
     final named = [
       for (final locale in ['en', 'de'])
         for (final MapEntry(:key, :value) in _arbTexts(locale).entries)
-          if (key != 'aboutNameAndLogo' && value.contains('Rurana'))
-            '$locale $key',
+          if (value.contains('Rurana')) '$locale $key',
     ];
 
     expect(named, isEmpty);
@@ -121,6 +119,17 @@ void main() {
     expect(licence, greaterThan(0));
 
     expect(paragraphs.take(licence).where(_isBritish), isEmpty);
+  });
+
+  test("the app's own notice uses US spelling", () {
+    final [entry] = parseNotices(
+      File(LegalAssets.ownNotice).readAsStringSync(),
+    );
+
+    expect(
+      entry.paragraphs.map((paragraph) => paragraph.text).where(_isBritish),
+      isEmpty,
+    );
   });
 
   test('the native German texts use the name', () {

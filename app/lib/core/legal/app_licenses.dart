@@ -25,7 +25,8 @@ abstract final class LegalAssets {
 }
 
 /// The workspace root's package name, under which Flutter's build lists the
-/// repository's `LICENSE`, the AGPL; the app's own notice joins it there.
+/// repository's `LICENSE`, the MIT License; the app's own notice joins it
+/// there.
 const ownLicensePackage = 'vikunja_app';
 
 var _registered = false;

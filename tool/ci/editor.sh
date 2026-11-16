@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# The CI job `editor` (D73 on GitLab, D86 on GitHub Actions): audits the
-# editor's npm packages, runs its tests and checks that the committed page is
-# what its sources build.
+# The CI job `editor` (D86): audits the editor's npm packages, runs its tests
+# and checks that the committed page is what its sources build.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

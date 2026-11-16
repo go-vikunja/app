@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# The static checks of the CI job `checks` (D73 on GitLab, D86 on GitHub
-# Actions); runs the same locally.
+# The static checks of the CI job `checks` (D86); runs the same locally.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

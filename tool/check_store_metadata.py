@@ -51,6 +51,7 @@ CATEGORIES = {
 
 APP_NAME = 'Vikunja'
 UNOFFICIAL = re.compile(r'(?i)\bunofficial\b|not affiliated with|inoffiziell|gehört nicht zum Vikunja-Projekt')
+OLD_LICENCE = re.compile(r'(?i)\bagpl\b|affero')
 # The name fields and the keywords must not name other apps or companies
 # (D76; App Store Connect, keywords).
 NAME_FIELDS = {'title.txt', 'name.txt', 'subtitle.txt', 'keywords.txt'}
@@ -189,6 +190,8 @@ class Checker:
             self.error(path, f'names the other platform: {OTHER_PLATFORM[platform].search(value).group(0)}')
         if UNOFFICIAL.search(value):
             self.error(path, 'calls the app unofficial (D83)')
+        if OLD_LICENCE.search(value):
+            self.error(path, 'names the AGPL, but the app is under the MIT License (D87)')
         if name in ('title.txt', 'name.txt') and value != APP_NAME:
             self.error(path, f'must be "{APP_NAME}"')
         if name == 'keywords.txt':

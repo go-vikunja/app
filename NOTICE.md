@@ -1,64 +1,36 @@
 # Copyright and licence
 
-Copyright (C) 2026 Benedikt Lesch and the Rurana contributors
+Copyright (c) Vikunja and contributors
 
-Rurana is free software. This repository (the app, the packages, the plugin, the tools and the documentation) is licensed under the GNU Affero General Public License, version 3 or (at your option) any later version, with the additional permission for app stores below. The licence text is in [LICENSE](LICENSE). The packages and the plugin are not published on their own and have no licence file of their own; this notice covers them.
+This repository (the app, the packages, the plugin, the tools and the documentation) is licensed under the MIT License. The licence text is in [LICENSE](LICENSE). The packages and the plugin are not published on their own and have no licence file of their own; this notice covers them.
 
-Not covered by the licence: the name and the logo (see [Name and logo](#name-and-logo)), and the third-party material under [Third-party material](#third-party-material), which keeps its own licence.
+Not covered by the MIT License: the name and the logo (see [Name and logo](#name-and-logo)), and the third-party material under [Third-party material](#third-party-material), which keeps its own licence.
 
-Contributors keep the copyright in their contributions. By signing off their commits under the Developer Certificate of Origin, they license them under the same terms, the additional permission included ([CONTRIBUTING.md](CONTRIBUTING.md)).
+Contributors keep the copyright in their contributions and license them under the MIT License.
 
-## Licence notice
+## Earlier history
 
-```text
-Rurana, an unofficial mobile client for self-hosted Vikunja servers.
-Copyright (C) 2026 Benedikt Lesch and the Rurana contributors
+Benedikt Lesch is the author of every commit of this app's own history before the move, the history the import merged into go-vikunja/app (the app was called Rurana then). He licenses that earlier work under the MIT License as well. The previous app's history, up to the tag `legacy-final`, keeps its own licence and its contributors' copyright. Third-party material in old commits keeps its own licence. Examples are the editor code before commit f44e04f and the texts that followed Vikunja's web frontend (AGPL-3.0-or-later) closely.
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Affero General Public License for more details.
-
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
-```
-
-## App stores
-
-**Additional permission under GNU AGPL version 3 section 7**
-
-As an additional permission under section 7 of the GNU Affero General Public License, you may distribute the Program, or a work based on it, through an app store whose terms and conditions are incompatible with this License, such as Apple's App Store, provided that the Corresponding Source is also available under this License, with or without this permission, through a channel without such restrictions.
-
-The copyright holders of Rurana grant this permission for their own work. Third-party material keeps its own licence.
+The former name Rurana and its llama logo, with every image derived from it, remain reserved by Benedikt Lesch and are not licensed under the MIT License. Both stay in the earlier history. The images include logo-llama.jpg, the logo explorations and the icon sources and exports in branding, the in-app logo, the Android and iOS app icons and the store graphics as they were in the commits before 471014a (step 38a).
 
 ## Name and logo
 
-The name "Rurana" and the llama logo, with every image derived from it, are not licensed under the AGPL. All rights to them are reserved by Benedikt Lesch. Forks that distribute an app must use their own name and logo. The AGPL grants no rights to the name or the logo under trademark law (section 7(e)).
-
-You may copy and distribute the files listed below unmodified, but only as part of a copy of this repository or of its history, or of an unmodified build of the app published by Benedikt Lesch. No other right to them is granted. An app built from modified source may not be distributed with them.
-
-The files are listed in NOTICE.md at the root of the app's source code repository.
+The name "Vikunja" and the Vikunja logo belong to the Vikunja project and are not licensed under the MIT License. The app's icons derive from `logo.svg` of go-vikunja/vikunja and are used with the project's permission. A fork that distributes its own build uses its own name and logo.
 
 These files are the logo or derived from it:
 
 | Files | What |
 |---|---|
-| `branding/source/logo-llama.jpg` | The logo as supplied |
-| `branding/png/*.png` | The layers and exports derived from it |
-| `branding/explorations-v1/*.{svg,png}` | Rejected logo concepts, first round |
-| `branding/explorations-v2/**/*.{svg,png}` | Rejected logo concepts, second round |
+| `branding/source/logo.svg` | The logo, copied from go-vikunja/vikunja |
+| `branding/png/*.png` | The icons and store graphics derived from it, and their preview |
 | `app/assets/branding/{,2.0x/,3.0x/}logo.png` | The in-app logo |
 | `app/android/app/src/main/res/mipmap-*/ic_launcher.png` | The Android launcher icon |
 | `app/android/app/src/main/res/drawable-*/ic_launcher_{background,foreground,monochrome}.png` | The Android adaptive and themed icon layers |
 | `app/android/app/src/main/res/drawable-*/ic_notification.png` | The Android status bar icon |
 | `app/ios/Runner/Assets.xcassets/AppIcon.appiconset/*.png` | The iOS app icon in light, dark and tinted |
 
-Everything else in these folders is under the AGPL like the rest of the repository: the scripts (`branding/build-icons.sh`, `branding/preview.sh`), the Markdown files, and the files that wire the icons into the apps, such as `Contents.json` and `app/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml`.
+Everything else in these folders is under the MIT License like the rest of the repository: the scripts (`branding/build-icons.sh`, `branding/preview.sh`, `branding/build-store-graphics.sh`), the Markdown files, and the files that wire the icons into the apps, such as `Contents.json` and `app/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml`.
 
 ## Third-party material
 
@@ -71,11 +43,11 @@ The app ships third-party material under its own licences, and shows all of thei
 - The Android libraries the app is built with: `app/assets/legal/android.md`, generated from `app/android/app/gradle.lockfile` by `tool/build_android_notices.py`, with the code of other projects that the embedded Cronet library contains, as listed in the licence files of its AARs (copied into `tool/android_notices/cronet/third_party_licenses.txt`), and libc++, libc++abi, libunwind and the Rust standard library, which its native library links statically but those files do not name.
 - One of those libraries, desugar_jdk_libs, is OpenJDK code under the GPL-2.0 with the Classpath exception. Its entry on the licence page carries the written offer for its source code that the GPL-2.0 asks for, and every Android release keeps that source with its own.
 
-These tests and test fixtures contain test vectors from Vikunja's test suites (Copyright 2018-present Vikunja and contributors, AGPL-3.0-or-later). They are covered by the AGPL without the additional permission, and they are not part of the app:
+These tests and test fixtures contain test vectors from Vikunja's test suites (Copyright 2018-present Vikunja and contributors, AGPL-3.0-or-later). They stay under the AGPL-3.0-or-later, not the MIT License, and they never ship with the app:
 
 - `packages/vikunja_logic/test/quick_add/{dates,items,repeat,not_parsed,modes,date_keywords,weekday,indented_lines,web_flow_vectors}_test.dart`
 - `packages/vikunja_logic/test/filter/{filter_test_support,language_vectors_test,filter_evaluation_test,filter_transforms_test}.dart`
-- `packages/vikunja_logic/test/fixtures/filter/language_{web_transforms,parse,replace_operators,model_results,web_other,http_results}.jsonl`
+- `packages/vikunja_logic/test/fixtures/filter/language_{web_transforms,parse,replace_operators,model_results,model_sort,web_other,http_results,complexity,derived}.jsonl`
 - `packages/vikunja_logic/test/fixtures/{parseTaskIdFromUrl_vectors,sanitizer_oracle}.json`
 - `packages/vikunja_logic/test/{links/task_links_test,text/rich_text_oracle_test,text/checklist_test}.dart`
 - `packages/vikunja_logic/test/gantt/gantt_{layout,arrows,range,observed}_test.dart`

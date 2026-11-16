@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# A release dry run on a developer's machine and in GitLab's job `release`
-# (D73, D86); releases are published only by .github/workflows/release.yaml
-# in go-vikunja/app.
+# A release dry run on a developer's machine (D86); releases are published
+# only by .github/workflows/release.yaml in go-vikunja/app.
 #
 # Usage: tool/ci/release.sh [--tag TAG] --dry-run
 #

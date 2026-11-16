@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Forum
+    url: https://community.vikunja.io/
+    about: Questions, help with the app or your server, and ideas for the server.
+  - name: Chat on Matrix
+    url: https://matrix.to/#/#vikunja:matrix.org
+    about: Quick questions.
+  - name: Security problems
+    url: https://github.com/go-vikunja/app/security/policy
+    about: Report them privately as the security policy says, never in a public issue.
+  - name: Translations
+    url: https://crowdin.com/project/vikunja
+    about: Translations and new languages go through Crowdin, not through issues or pull requests.

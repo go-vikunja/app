@@ -33,7 +33,7 @@ void main() {
 
   final unofficial = find.textContaining(
     RegExp(
-      'unofficial|affiliated|inoffiziell|Vikunja-Projekt',
+      'unofficial|affiliated|inoffiziell|nicht zum Vikunja-Projekt',
       caseSensitive: false,
     ),
   );

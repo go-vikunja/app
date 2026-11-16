@@ -8,10 +8,10 @@ import 'package:vikunja_logic/src/text/rich_text.dart';
 import 'package:vikunja_logic/src/text/rich_text_schema.dart';
 
 // ProseMirror's DOMParser (prosemirror-model 1.25) over the editor schema,
-// with the parse rules TipTap and Vikunja register, ported to work on
-// package:html. Only what this schema can reach is ported: no open slices,
-// no position tracking, and whitespace is always preserved because TipTap
-// parses with `preserveWhitespace: true`.
+// translated to work on package:html, with parse rules matching what TipTap
+// and Vikunja's editor register. Only what this schema can reach is
+// ported: no open slices, no position tracking, and whitespace is always
+// preserved because TipTap parses with `preserveWhitespace: true`.
 //
 // Translated from prosemirror-model, Copyright (C) 2015-2017 by Marijn
 // Haverbeke and others, MIT License; see THIRD_PARTY_NOTICES.md in this

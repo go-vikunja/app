@@ -40,4 +40,4 @@ Privatsphäre
 • Keine Werbung, keine Analyse, kein Tracking, keine Absturzberichte. Die App spricht nur mit den Servern, die du hinzufügst. Der Entwickler betreibt keinen Server und erhält keine deiner Daten.
 
 Open Source
-Die App ist freie Software unter der GNU Affero General Public License, Version 3 oder neuer.
+Die App ist Open Source unter der MIT-Lizenz.

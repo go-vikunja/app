@@ -191,6 +191,20 @@ class CheckerTest(unittest.TestCase):
                 tree.write(f'fastlane/metadata/{name}', value + '\n')
                 self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: calls the app unofficial (D83)'])
 
+    def test_no_text_names_the_agpl(self):
+        cases = {
+            'android/en-GB/full_description.txt': 'The app is free software under the GNU Affero General Public License.',
+            'de-DE/description.txt': 'Die App steht unter der AGPL-3.0-or-later.',
+            'review_information/notes.txt': 'This is its open-source (AGPL-3.0) app.',
+        }
+        for name, value in cases.items():
+            with self.subTest(name=name):
+                tree = Tree()
+                self.addCleanup(tree.remove)
+                tree.write(f'fastlane/metadata/{name}', value + '\n')
+                self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: names the AGPL, but the app is under the '
+                                                'MIT License (D87)'])
+
     def test_claims_emoji_and_the_other_platform(self):
         cases = {
             'fastlane/metadata/android/en-GB/short_description.txt': ('The best task app', 'ranking, price'),

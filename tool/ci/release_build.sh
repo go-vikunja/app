@@ -8,7 +8,7 @@
 #
 # Anything but a tag run of go-vikunja/app on GitHub Actions is a dry run,
 # whose failed checks become reasons in NOT_RELEASABLE. Outside GitHub
-# Actions and GitLab CI, only --dry-run runs.
+# Actions, only --dry-run runs.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -40,12 +40,10 @@ done
 
 if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
   host=github
-elif [[ "${GITLAB_CI:-}" == true ]]; then
-  host=gitlab
 elif ((dry_run)); then
   host=local
 else
-  echo "error: outside GitHub Actions and GitLab CI, a release build is a dry run only: pass --dry-run" >&2
+  echo "error: outside GitHub Actions, a release build is a dry run only: pass --dry-run" >&2
   exit 2
 fi
 
@@ -71,9 +69,6 @@ fi
 
 if [[ -z "$tag" && "$host" == github && "${GITHUB_REF_TYPE:-}" == tag ]]; then
   tag="${GITHUB_REF_NAME:-}"
-fi
-if [[ -z "$tag" ]]; then
-  tag="${CI_COMMIT_TAG:-}"
 fi
 if [[ -z "$tag" ]]; then
   if ((dry_run)); then
@@ -110,12 +105,6 @@ case "$host" in
   github)
     source_url="${GITHUB_SERVER_URL:-}/${GITHUB_REPOSITORY:-}/tree/${tag}"
     if github_repository_public; then
-      public=1
-    fi
-    ;;
-  gitlab)
-    source_url="${CI_PROJECT_URL:-}/-/tree/${tag}"
-    if [[ "${CI_PROJECT_VISIBILITY:-}" == public ]]; then
       public=1
     fi
     ;;

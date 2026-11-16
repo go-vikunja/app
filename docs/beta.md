@@ -1,22 +1,161 @@
 # Beta and 1.0.0
 
-The owner's runbook for step 37d ([D77]): from the first push to GitLab through the closed test on Google Play and the TestFlight beta to 1.0.0 in both stores. Each part comes in the order it is done. [releasing.md](releasing.md) has how a release is cut and every one-time setting, and [store-listing.md](store-listing.md) every console form with its answer; this page links them and adds what neither covers. The tester-facing texts are in English and German. None of this is legal advice.
+The owner's runbook for step 37d ([D77]): from the move into go-vikunja/app through the closed test on Google Play and the TestFlight beta to 1.0.0 in both stores. Each part comes in the order it is done. [releasing.md](releasing.md) has how a release is cut and every one-time setting, and [store-listing.md](store-listing.md) every console form with its answer; this page links them and adds what neither covers. The tester-facing texts are in English and German. None of this is legal advice.
 
-Since [D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp) the beta runs in the official Vikunja listing, after the switch of steps 38a to 38f: the app is called Vikunja, its id is the official app's `io.vikunja.app` ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja)), the Play app is the one in Vikunja's Play account, and its bundles are signed with Vikunja's upload key. Since step 38a the names, ids and texts on this page are the official app's. Since step 38c the parts on CI, the keys and the releases (1, 2, 7 to 9, and the release steps during the beta and before 1.0.0) describe GitHub Actions in go-vikunja/app ([D86](decisions.md#d86-ci-and-releases-on-github-actions)); parts 3 to 5, the closed test and the tester texts are still written for a beta under the owner's own accounts and are rewritten with step 38f, before 37d goes on.
+Since [D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp) the beta runs in the official Vikunja listing, after the switch of steps 38a to 38f: the app is called Vikunja, its id is the official app's `io.vikunja.app` ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja)), the Play app is the one in Vikunja's Play account, and its bundles are signed with Vikunja's upload key. Since step 38a the names, ids and texts on this page are the official app's. Since step 38c the parts on CI, the keys and the releases (1, 2, 7 to 9, and the release steps during the beta and before 1.0.0) describe GitHub Actions in go-vikunja/app ([D86](decisions.md#d86-ci-and-releases-on-github-actions)); parts 3 to 5, the closed test and the tester texts are still written for a beta under the owner's own accounts and are rewritten with step 38f, before 37d goes on. Since step 38d (in review; [D87]) the repository is under the MIT License, GitLab's pipeline is gone, and [the move](#the-move) comes first.
 
-The owner's decisions of 2026-11-02 behind it ([D77]): every project of the GitLab group `coderoftime` public, so that the group can join GitLab for Open Source; [Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)'s option A for the keys; a new app id, since step 38a the official app's `io.vikunja.app` ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja)); a "Help and bug reports" row on the About page; the closed test's testers through a Google Group and TestFlight's external testers through a public link; testers on their own Vikunja server (2.3.0 or newer) or the public demo, `try.vikunja.io`. iOS builds stay on the owner's Mac.
+The owner's decisions of 2026-11-02 behind it ([D77]): [Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)'s option A for the keys; a new app id, since step 38a the official app's `io.vikunja.app` ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja)); a "Help and bug reports" row on the About page; the closed test's testers through a Google Group and TestFlight's external testers through a public link; testers on their own Vikunja server (2.3.0 or newer) or the public demo, `try.vikunja.io`. iOS builds stay on the owner's Mac.
+
+## The move
+
+Step 38d ([D87]): the repository joins go-vikunja/app with its whole history, so that every commit hash the docs cite stays valid. The pull request comes from the owner's fork and has only two commits of its own: one removes the old app's files, and one merges our `main` with `--allow-unrelated-histories`. The tree it leaves is exactly our `main`. The commands below were rehearsed on 2026-11-16 against a local copy of go-vikunja/app and a local stand-in for the fork, the pushes and the merge included.
+
+### Before you start
+
+- 38d's own changes are on our `main`, reviewed and green, so the imported tree is the reviewed one.
+- kolaente has agreed to the freeze of go-vikunja/app's `main`, from the tag of step 3 until the merge, and has changed the ruleset for the import ([what kolaente does](#what-kolaente-does)).
+- The GitHub account has `coderoftime@gmail.com` as a verified email, so that GitHub links the commits to it, and "Block command line pushes that expose my email" is off, or the push fails with GH007.
+- The tracked test-server users, `test_servers/seed/e2e-user.env` and `e2e-user-2.env`, hold nothing used anywhere else. The history goes public unchanged: it holds no real secret, and most of it is public on GitLab already.
+- The push to the fork publishes: commits pushed there stay reachable from every repository of the network, go-vikunja/app included, even after the fork is deleted ([forks][gh-forks]). Push nothing that has not passed the checks below.
+
+### The commands
+
+```sh
+# 1. A fresh clone beside the working repository; the working copy and its stash stay untouched
+WORK=~/path/to/the/working/repository
+git clone https://github.com/go-vikunja/app.git vikunja-import
+cd vikunja-import
+git config user.name "Benedikt Lesch"
+git config user.email "coderoftime@gmail.com"
+
+# 2. Our main from the working repository: no tags, no stash
+git remote add ours "$WORK"
+git fetch --no-tags ours main
+test "$(git rev-parse ours/main)" = "$(git -C "$WORK" rev-parse main)" && echo "ok: ours is the reviewed main"
+
+# 3. The freeze starts: tag the old main's last commit and push the tag alone
+git rev-parse origin/main   # cdbc6e39ac9b52c58443cb353c324342dd7ce6c7, unless something was merged since 2026-11-03
+git tag -a legacy-final -m "The old Vikunja app's last commit before the new app was imported" origin/main
+git push origin refs/tags/legacy-final   # needs write access to go-vikunja/app; starts no workflow
+
+# 4. The import branch: remove the old app, then merge our main
+git switch -c import-new-app origin/main
+git rm -r -q .
+git commit -m "chore: remove the old app before importing the new one" \
+  -m "The new Vikunja app replaces it; its last commit is tagged legacy-final."
+git merge --allow-unrelated-histories --no-ff ours/main \
+  -m "feat: import the new Vikunja app with its history" \
+  -m "Joins the new app's history (formerly Rurana) to the old app's, so every commit hash of both stays valid."
+```
+
+The removal takes everything of the old app: its workflows and `.drone.yml`, the `Makefile`, the devenv files and `.envrc`, `renovate.json` and `crowdin.yml` (no Crowdin sync until step 38e), `.vscode`, `.metadata` and the old Flutter tree. The old tags and releases stay; there is no `legacy` branch.
+
+### The checks before pushing
+
+Each line must print `ok`, or show what its comment says:
+
+```sh
+B=import-new-app
+test "$(git rev-parse "$B^{tree}")" = "$(git rev-parse 'ours/main^{tree}')" && echo "ok: the tree is exactly our main"
+test -z "$(git diff --stat "$B" ours/main)" && echo "ok: nothing differs from our main"
+git merge-base --is-ancestor legacy-final "$B" && echo "ok: the old main is an ancestor, so the PR has no conflicts"
+git merge-base --is-ancestor ours/main "$B" && echo "ok: every hash of ours stays"
+test -z "$(git status --porcelain)" && echo "ok: the working tree is clean"
+git log --format='%an <%ae> | %cn <%ce>' legacy-final.."$B" | sort | uniq -c   # one line: coderoftime@gmail.com
+git ls-tree --name-only "$B:.github/workflows"                                  # ci.yaml and release.yaml only
+git rev-list --objects legacy-final.."$B" | git cat-file --batch-check='%(objecttype) %(objectsize) %(rest)' |
+  awk '$1 == "blob"' | sort -k2 -n | tail -1                                    # far below GitHub's 50 MiB warning
+git log --graph --oneline -8 "$B"
+```
+
+### The pull request
+
+```sh
+gh repo fork go-vikunja/app --clone=false --remote=false   # or "Fork" on github.com; skip it if the fork exists
+git remote add fork https://github.com/<your-login>/app.git
+git push fork import-new-app                               # this branch only: never --all, --tags or --mirror
+gh pr create --repo go-vikunja/app --base main --head <your-login>:import-new-app \
+  --title "feat: import the new Vikunja app with its history" --body-file ../pr-body.md
+```
+
+Push only from this clone and only this branch: `--mirror` from the working repository would also publish its parked stash (D59), and tags have no place in the fork. `../pr-body.md`, outside the clone:
+
+```markdown
+This imports the new Vikunja app, announced in #343, with its whole history (D83 in `docs/decisions.md`).
+
+It has two commits of its own:
+1. `chore: remove the old app before importing the new one` removes every file of the old app. Its last commit is tagged `legacy-final`; the old tags and releases stay.
+2. `feat: import the new Vikunja app with its history` merges the new app's `main` (formerly Rurana) with `--allow-unrelated-histories`. The resulting tree is exactly that `main`.
+
+**Please merge with "Create a merge commit".** Squash or rebase would rewrite or drop the imported commits, whose hashes the docs cite.
+
+`main` stays frozen at `legacy-final` until this is merged. The "Files changed" tab cannot show a change this large; review it by commit, or locally with `git diff --stat legacy-final import-new-app`.
+
+AI disclosure: the new app was written with Claude Code, Anthropic's AI coding tool; each commit names the model in a `Co-Authored-By` line. I reviewed every step and answer for every line.
+```
+
+The pull request runs `checks`, `editor`, `contract`, `android`, `osv` and `ios`; the old app's workflows are deleted in its merge ref and do not run. GitHub's macOS runner may need a re-run of `ios` ([releasing.md](releasing.md#when-the-publish-job-fails)).
+
+### The merge
+
+Before the click, `main` must still be the tagged commit, and all six checks must be green:
+
+```sh
+git ls-remote https://github.com/go-vikunja/app refs/heads/main 'refs/tags/legacy-final*'
+# main's hash equals the one of the line refs/tags/legacy-final^{}
+```
+
+kolaente or another maintainer approves; the author cannot. The owner merges with **Create a merge commit**. Then, in the clone:
+
+```sh
+git fetch origin
+git merge-base --is-ancestor ours/main origin/main && echo "ok: every hash of ours is on main"
+test "$(git rev-parse 'origin/main^{tree}')" = "$(git rev-parse 'ours/main^{tree}')" && echo "ok: main's tree is ours"
+test "$(git rev-parse 'origin/main^1')" = "$(git rev-parse 'legacy-final^{commit}')" && echo "ok: the first parent is legacy-final"
+```
+
+### Afterwards
+
+- kolaente restores the ruleset: linear history again, squash only recommended.
+- The working repository follows go-vikunja/app, and later pull requests go through the fork; its stash stays:
+
+  ```sh
+  WORK=~/path/to/the/working/repository   # the same path as in step 1
+  cd "$WORK"
+  git remote set-url origin https://github.com/go-vikunja/app.git
+  git remote add fork https://github.com/<your-login>/app.git
+  git fetch origin
+  git switch main && git merge --ff-only origin/main
+  git remote get-url origin   # must print https://github.com/go-vikunja/app.git
+  ```
+
+- The GitLab project gets a description that points to https://github.com/go-vikunja/app and is archived (Settings > General > Advanced > Archive project). It is not deleted before step 38f has changed the website's links to it.
+- The test repository of step 38c is deleted or made private.
+- The result goes into [D87], which settles D83's open point on how the two histories are joined.
+
+### What kolaente does
+
+A list for the owner to forward:
+
+- **The ruleset "main protect", for the import:** allow merge commits (best: merge commits only until the import is merged, so that nobody squashes it by mistake) and turn "Require linear history" off; "Allow merge commits" must be on under Settings > General > Pull Requests too. Replace the required checks `Test / lint`, `Test / test` and `Test / build` with `checks`, `editor`, `contract`, `android`, `osv` and `ios`. After the merge, restore linear history; squash only is recommended.
+- **The name-and-logo text** in `NOTICE.md`: confirm it, and say who holds the copyright of the logo.
+- **Private vulnerability reporting:** turn it on, with the owner as a security manager ([releasing.md](releasing.md#once-in-go-vikunjaapp) step 12).
+- **CODEOWNERS** for `.github/` and `tool/ci/release_certificates.txt`: a suggestion.
+- **FUNDING.yml:** a suggestion.
+- **devenv:** the import removes the old app's devenv files; add one for the new app if you want it.
+- **The 8 stale branches** of the old app: keep or delete them.
+- **The release secrets,** entered again as secrets of the environment `release`, with no repository or organisation copy ([releasing.md](releasing.md#once-in-go-vikunjaapp) steps 1 and 2).
+- **The certificate fingerprints** in `tool/ci/release_certificates.txt` (step 3 there).
+- **The written offer** for the desugar_jdk_libs source: who makes it and with which contact, settled in step 38f.
 
 ## Before beta.1
 
 ### 1. The repository and CI
 
-The releases come from GitHub Actions in go-vikunja/app after the move (step 38d; [D86](decisions.md#d86-ci-and-releases-on-github-actions)). Until then the repository is on GitLab, whose pipeline runs the same scripts and publishes nothing.
+The releases come from GitHub Actions in go-vikunja/app after [the move](#the-move) (step 38d; [D86](decisions.md#d86-ci-and-releases-on-github-actions)). Until then the CI scripts run on the Mac and in the owner's test repository, and nothing is published.
 
 1. **The trial:** done on 2026-11-16 in a test repository of the owner's, with the repository variable `VIKUNJA_APP_RELEASE_DRY_RUN=true` and no secret, as [releasing.md](releasing.md#the-dry-run) describes. A test tag there ran the release with throwaway keys and published nothing. [D86](decisions.md#d86-ci-and-releases-on-github-actions) has the results.
-2. **go-vikunja/app,** after the move: Vikunja's maintainers set up the environment `release`, its secrets, the committed certificates, the rulesets and the Actions settings ([releasing.md](releasing.md#once-in-go-vikunjaapp)). The old pipeline's upload of every push to `main` to Play is off before the first tag.
-3. **GitLab until the move** ([releasing.md](releasing.md#gitlab-until-the-move)): every project of the group `coderoftime` public, each with an OSI-approved licence, so that the group can join GitLab for Open Source (one private project is allowed for security work, with GitLab's written permission). Before the project goes public, confirm that the tracked test-server users, `test_servers/seed/e2e-user.env` and `e2e-user-2.env`, hold nothing used anywhere else; they go public with the repository, and its history goes public as it is. Push `main` to `https://gitlab.com/coderoftime/rurana` (private since 2026-10-29, `origin/main` then at 80b19c9; local `main` is ahead) and add the weekly scan's schedule.
-4. **GitLab for Open Source** for the group, once every project is public ([releasing.md](releasing.md#gitlab-until-the-move) step 4): the form at [about.gitlab.com/solutions/open-source/join][gitlab-oss], a coupon by email, renewed every year. Until it is granted, the free 400 compute minutes a month cover the whole group; releases do not depend on them.
-5. **CI identity verification and the minutes used so far:** on GitLab.com's free tier a job can fail with "Identity verification is required in order to run CI jobs"; GitLab then asks to verify an email address, a phone number or a payment card ([identity verification][gitlab-identity]). Look at the project's pipelines since the push of 2026-10-29 for that error, and at the group's Settings > Usage quotas for the minutes already used this month.
+2. **go-vikunja/app,** after the move: Vikunja's maintainers set up the environment `release`, its secrets, the committed certificates, the rulesets, the Actions settings and private vulnerability reporting ([releasing.md](releasing.md#once-in-go-vikunjaapp)). The old pipeline's upload of every push to `main` to Play stops with the import, which removes its workflow.
 
 ### 2. The keys
 
@@ -59,13 +198,14 @@ The test repository's trial ([part 1](#1-the-repository-and-ci)) ran the workflo
 - ShellCheck over `tool/ci/`, after one round of fixes;
 - the contract tests on the runner's own Docker;
 - the NDK install and JDK 21;
+- the osv-scanner Linux binary and Gradle's memory caps;
 - the macOS build with Xcode 26.6.
 
-Still to watch in go-vikunja/app:
+Still to watch in go-vikunja/app, from the import's pull request on:
 - anonymous pulls from Docker Hub against its rate limits (a login is not built);
 - GitHub's macOS runners, which three times had none free for `ios` ([releasing.md](releasing.md#when-the-publish-job-fails)).
 
-On GitLab the first pipeline takes its own path: the Docker CLI and Compose in docker-in-docker with the `socat` forwarder. The osv-scanner Linux binary and Gradle's memory caps already ran on GitHub's Linux runner. Each fix is a commit on `main`; the tag waits for a green run. The environment, the real signing and the publishing first run on go-vikunja/app's first tag.
+Each fix is a commit on `main`; the tag waits for a green run. The environment, the real signing and the publishing first run on go-vikunja/app's first tag.
 
 ### 8. The threat model
 
@@ -95,7 +235,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 | The closed test | How easy was it to recruit testers? | Testers joined a Google Group announced to [where it was announced]; [N] opted in, [M] stayed for 14 days. |
 | | Did testers use all of the app's features? | They signed in to their own Vikunja servers (2.3.0 or newer) or the public demo and used [the Overview, Upcoming, search, the List, Kanban, Table and Gantt views, Quick Add Magic, task details with reminders, comments and attachments, offline changes, notifications, widgets, the app lock, several accounts]; [features little used]. |
 | | Did usage match what you expect in production? How did it differ? | Yes: the app is for people who already use Vikunja, and testers were such people; [differences, for example more demo use than in production]. |
-| | Summary of the feedback, and how it was collected | Through email to coderoftime@gmail.com, Play's private feedback, [GitLab issues] and the app's "Help and bug reports" row; [N] reports, [the main themes]; Play vitals for crashes. |
+| | Summary of the feedback, and how it was collected | Through email to coderoftime@gmail.com, Play's private feedback, [GitHub issues] and the app's "Help and bug reports" row; [N] reports, [the main themes]; Play vitals for crashes. |
 | The app | Target audience | Adults who run Vikunja, the open-source task manager, on their own server or use one at work, and want it on Android. |
 | | Value | An offline-first app for Vikunja servers: tasks and projects without a connection, reminders as notifications, widgets, Kanban and Gantt, several accounts; no account with the developer, no analytics or ads, open source. |
 | | Installs in the first year (not shown publicly) | [the owner's estimate] |
@@ -121,7 +261,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 
 > **Test the new Vikunja app before its release**
 >
-> The new Vikunja app is coming to Android, iPhone and iPad: the app for Vikunja, the open-source task manager that people run on their own servers. It is open source (AGPL-3.0-or-later): https://gitlab.com/coderoftime/rurana
+> The new Vikunja app is coming to Android, iPhone and iPad: the app for Vikunja, the open-source task manager that people run on their own servers. It is open source (MIT License): https://github.com/go-vikunja/app
 >
 > Before version 1.0.0 I am looking for testers. You need:
 >
@@ -142,7 +282,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 > - by email to coderoftime@gmail.com, with the app's version, your device and system version, your Vikunja server's version and the steps that show the problem; the row "Support details" after "Help and bug reports" shows these and more and shares them when you tap Share, without your tasks, names or passwords;
 > - on Android as private feedback on the app's page in Google Play; on iPhone and iPad through TestFlight: take a screenshot in the app and share it as beta feedback, or send feedback from the app's page in the TestFlight app.
 >
-> Please leave passwords and tokens out of every report, and report a security problem by email, not in a public issue.
+> Please leave passwords and tokens out of every report, and report a security problem privately to security@vikunja.io, not in a public issue.
 >
 > Thank you for helping!
 
@@ -150,7 +290,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 
 > **Teste die neue Vikunja-App vor der Veröffentlichung**
 >
-> Die neue Vikunja-App kommt für Android, iPhone und iPad: die App für Vikunja, die Open-Source-Aufgabenverwaltung, die man auf dem eigenen Server betreibt. Sie ist Open Source (AGPL-3.0-or-later): https://gitlab.com/coderoftime/rurana
+> Die neue Vikunja-App kommt für Android, iPhone und iPad: die App für Vikunja, die Open-Source-Aufgabenverwaltung, die man auf dem eigenen Server betreibt. Sie ist Open Source (MIT-Lizenz): https://github.com/go-vikunja/app
 >
 > Vor Version 1.0.0 suche ich Testerinnen und Tester. Du brauchst:
 >
@@ -171,7 +311,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 > - per E-Mail an coderoftime@gmail.com, mit der Version der App, deinem Gerät und seiner Systemversion, der Version deines Vikunja-Servers und den Schritten, die den Fehler zeigen; die Zeile „Support-Details“ nach „Hilfe und Fehler melden“ zeigt das und mehr und teilt es, wenn du auf „Teilen“ tippst, ohne deine Aufgaben, Namen oder Passwörter;
 > - unter Android als privates Feedback auf der Seite der App in Google Play; auf iPhone und iPad über TestFlight: Mach in der App einen Screenshot und teile ihn als Beta-Feedback, oder sende Feedback von der Seite der App in der TestFlight-App.
 >
-> Lass Passwörter und Tokens bitte aus jeder Meldung heraus, und melde ein Sicherheitsproblem per E-Mail, nicht öffentlich.
+> Lass Passwörter und Tokens bitte aus jeder Meldung heraus, und melde ein Sicherheitsproblem vertraulich an security@vikunja.io, nicht öffentlich.
 >
 > Danke, dass du hilfst!
 
@@ -213,7 +353,7 @@ TestFlight's What to Test for the first build, with Apple's names (Home Screen, 
 
 ## During the beta
 
-- **Where reports land:** the inbox of `coderoftime@gmail.com` (also the replies to TestFlight's invitations and the address on Play's opt-in page); Play's private feedback from testers in the Play Console [uncertain: where the Console lists it]; TestFlight's feedback with screenshots and its crash reports in App Store Connect under TestFlight; GitLab issues once the project is public. A security problem goes by email first, or into a confidential issue, never into a public one ([D77]).
+- **Where reports land:** the inbox of `coderoftime@gmail.com` (also the replies to TestFlight's invitations and the address on Play's opt-in page); Play's private feedback from testers in the Play Console [uncertain: where the Console lists it]; TestFlight's feedback with screenshots and its crash reports in App Store Connect under TestFlight; the issues of go-vikunja/app, through its bug and feature forms. A security problem goes privately to security@vikunja.io or through GitHub's private vulnerability reporting, never into a public issue ([SECURITY.md](../SECURITY.md), [D87]).
 - **The beta log:** for each report its date, channel, platform and version, what happened, and the fix with its beta.N, without testers' names or addresses. It answers Play's production application and goes into the 37d decision.
 - **Each fix ships as the next `v1.0.0-beta.N`,** never as a moved tag ([releasing.md](releasing.md#cutting-a-release)): a commit on `main` with its green CI, then the tag, whose release run uploads the bundle to Play's `beta` track once a second maintainer approves it. The workflow gives Play no release notes, so a line on what changed goes into them in the Play Console; the iOS build goes to TestFlight with its What to Test. Google's page counts the days testers stay opted in and says nothing about new releases restarting them.
 - **Crash data** comes only from Play vitals and TestFlight's crash reports: release builds log nothing, and the app has no crash reporting. A tester's report can carry the support details ([D20](decisions.md#d20-scope-cuts-and-mobile-forms-of-desktop-features)): the versions, the background state, the queue's counts and failure kinds and the last session end, never a log.
@@ -271,8 +411,6 @@ Once Play has granted production access and everything [before 1.0.0](#before-10
 
 Read on 2026-11-02.
 
-[gitlab-oss]: https://about.gitlab.com/solutions/open-source/join/
-[gitlab-identity]: https://docs.gitlab.com/security/identity_verification/
 [play-app-signing]: https://support.google.com/googleplay/android-developer/answer/9842756
 [android-verification]: https://developer.android.com/developer-verification/guides
 [play-device]: https://support.google.com/googleplay/android-developer/answer/14316361
@@ -286,12 +424,14 @@ Read on 2026-11-02.
 [bis-rule]: https://www.federalregister.gov/documents/2021/03/29/2021-05481/export-administration-regulations-implementation-of-wassenaar-arrangement-2019-plenary-decisions
 [cfr-740-17]: https://www.law.cornell.edu/cfr/text/15/740.17
 [vikunja-contact]: https://vikunja.io/contact/
+[gh-forks]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/about-permissions-and-visibility-of-forks
+[gh-limits]: https://docs.github.com/en/repositories/creating-and-managing-repositories/repository-limits
 
-- GitLab: [GitLab for Open Source][gitlab-oss], [identity verification][gitlab-identity]
 - Google Play and Android: [Play App Signing][play-app-signing], [developer verification][android-verification], [device verification for new personal accounts][play-device], [testing requirements for new personal accounts][play-testing-14], [testing tracks][play-tracks]
 - Apple: [TestFlight overview][tf-overview], [external testers][tf-external], [test information][tf-info], [complete review][apple-complete-review], [export compliance documentation][apple-export]
 - US export: [86 FR 16482][bis-rule], [15 CFR 740.17][cfr-740-17]
 - Vikunja: [contact][vikunja-contact]
+- GitHub, read on 2026-11-16 for [the move](#the-move): [forks and their network][gh-forks], [repository limits][gh-limits]
 
 [D67]: decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet
 [D71]: decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes
@@ -299,3 +439,4 @@ Read on 2026-11-02.
 [D75]: decisions.md#d75-owners-ui-review-no-task-identifier-coloured-folders-new-task-sheet-account-tab
 [D76]: decisions.md#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android
 [D77]: decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers
+[D87]: decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp

@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in the app does not work as it should.
+type: Bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Report a security problem privately as [SECURITY.md](https://github.com/go-vikunja/app/blob/main/SECURITY.md) says, never here. A bug of the server or the web interface goes to [go-vikunja/vikunja](https://github.com/go-vikunja/vikunja/issues). Never paste a password or a token.
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: The Account tab shows it at the bottom.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform and OS version
+      placeholder: Android 16 on a Pixel 9, or iOS 26.1 on an iPhone 16
+    validations:
+      required: true
+  - type: input
+    id: server-version
+    attributes:
+      label: Vikunja server version
+      description: Your server shows it at /api/v1/info.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Tap …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Screenshots help. So does the text of "Support details" on the About page.
+    validations:
+      required: true
