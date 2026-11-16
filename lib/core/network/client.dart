@@ -268,6 +268,11 @@ class Client {
   /// user has to log in again) from one that could not be completed (no
   /// network, timeout, server error), where the session may still be valid.
   Future<TokenRefreshResult> refreshToken() async {
+    final storedRefreshToken = await settingsDatasource.getRefreshToken();
+    if (storedRefreshToken == null || storedRefreshToken.isEmpty) {
+      return TokenRefreshResult.rejected;
+    }
+
     try {
       return await TokenLock.synchronized(() async {
         final refreshClient = _createIOClient();
