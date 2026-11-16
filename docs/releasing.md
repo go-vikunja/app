@@ -93,7 +93,7 @@ python3 -I tool/l10n_progress.py --shipped-list   # each shipped language's shar
 python3 -I tool/l10n_progress.py                  # every ARB file, shipped or not
 ```
 
-- **German at 100 %:** `release_build.sh` refuses while German lacks an English text, and the dry run names the reason `German incomplete`. New English texts reach German only through Crowdin: ask Vikunja's German translators there (or translate and approve as a proofreader), then merge the integration's next pull request once its checks pass. Never add German to `app_de.arb` in a pull request: Crowdin's next pull request takes it out again. `ios_release.sh` runs the same check before a TestFlight build.
+- **German at 100 %:** `release_build.sh` refuses while German lacks an English text, and the dry run names the reason `German incomplete`. New and changed English texts reach German only through Crowdin: a changed text keeps its German there, but unapproved, and the export leaves it out until it is approved again. Ask Vikunja's German translators there (or translate, or re-approve, as a proofreader), then merge the integration's next pull request once its checks pass. Never add German to `app_de.arb` in a pull request: Crowdin's next pull request takes it out again. `ios_release.sh` runs the same check before a TestFlight build.
 - **A shipped language below 50 %:** the build prints a warning and goes on. English grows with every feature, so a language falls behind without anyone touching it; ask its translators on Crowdin. Taking a language off is the reverse of adding one.
 - **Adding a language:** once `l10n_progress.py` shows it at 50 % or more, in a pull request of its own, as [CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-language) lists.
 

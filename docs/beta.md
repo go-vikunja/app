@@ -135,6 +135,8 @@ test "$(git rev-parse 'origin/main^1')" = "$(git rev-parse 'legacy-final^{commit
 
 ### The Crowdin rehearsal
 
+*Done on 2026-11-16 ([D88] has the results): the integration put the source into a version branch `main` beside the root file, so the German upload took `-b main`; its pull request had no `[ci skip]`, got new commits on later syncs instead of a force-push and was green once the German was in; the first export reformats every ARB file once; and an English change drops that text's translations until they are approved again. The run after the re-approval was green.*
+
 Before kolaente connects the real integration, the owner tries it once in a Crowdin project of his own against the test repository of step 38c, so that [the translations on Crowdin](#the-translations-on-crowdin) rest on what was seen, not only on Crowdin's docs. It touches neither project 462614 nor go-vikunja/app and may come before the move.
 
 1. **The test repository:** push our `main`, step 38e included, to its `main`, so that it has `crowdin.yml` and the ARB files.
@@ -144,39 +146,41 @@ Before kolaente connects the real integration, the owner tries it once in a Crow
    ```sh
    read -rs CROWDIN_PERSONAL_TOKEN && export CROWDIN_PERSONAL_TOKEN   # a new token, Account Settings > API, with the earliest expiry offered, not Never; step 9 deletes it
    P=<the test project's id>                                          # -i overrides crowdin.yml's 462614
-   crowdin config lint
-   crowdin upload sources -i "$P"
+   crowdin config lint                                                # refuses any custom language in crowdin.yml's mapping
+   crowdin upload sources -i "$P"                                     # no -b: the file lands at the root
    ```
 
-4. **The integration:** connect Crowdin's GitHub integration to the test repository as [kolaente will](#what-kolaente-does): the branch `main`, the configuration file `crowdin.yml`, "Push Sources" and "Import existing translations" off, and "Skip untranslated strings" and "Export only approved" in the project's export settings. Note where the source lands: still `/app_en.arb` at the root, or a new `main/app_en.arb`.
-5. **The German,** as in the real upload, with `-b main` if the source landed there:
+4. **The integration:** connect Crowdin's GitHub integration to the test repository as [kolaente will](#what-kolaente-does): the branch `main`, the configuration file `crowdin.yml`, "Push Sources", "One-time translation import after the branch is connected" and "Always import new translations from the repository" off, and "Skip untranslated strings" and "Export only approved translations" under the project's Settings > Export. The source lands in a new version branch `main` as `main/app_en.arb`, beside the root `/app_en.arb`.
+5. **The German,** as in the real upload, with `-b main`:
 
    ```sh
-   crowdin upload translations -i "$P" -l de --auto-approve-imported --import-eq-suggestions --dryrun
-   crowdin upload translations -i "$P" -l de --auto-approve-imported --import-eq-suggestions
+   crowdin upload translations -i "$P" -b main -l de --auto-approve-imported --import-eq-suggestions --dryrun
+   crowdin upload translations -i "$P" -b main -l de --auto-approve-imported --import-eq-suggestions
    ```
+
+   The CLI waits while Crowdin imports, several minutes. Crowdin may show German at 0 % for some minutes after it ends, then 100 % translated and 100 % proofread. Then delete the root `/app_en.arb` in the project's Sources, as kolaente will after his export: until then German's progress counts both files and shows 50 %.
 
 6. **A regional language:** in Crowdin's editor, translate a few strings into Brazilian Portuguese and approve them, and one into Esperanto, approved too.
 7. **The pull request,** after "Sync Now" in the integration or the hourly sync:
    - it comes from the branch `l10n_main` toward `main`;
-   - its commit message is "chore(i18n): update translations via Crowdin", with no `[ci skip]`;
-   - CI runs and is green;
-   - the files follow the mapping: `app_de.arb`, `app_pt.arb`, `app_pt_BR.arb` and `app_eo.arb`, which compiles but is not shipped, and none has `@@locale`;
+   - its title and commit message are "chore(i18n): update translations via Crowdin", with no `[ci skip]`; its commits, one per changed file, name the GitHub account that connected the integration as author;
+   - CI runs and is green once the German is in. A pull request opened before the German upload has almost no German and fails the tests that pin German texts (`project_titles_test.dart`, `german_texts_test.dart`) until a sync after the upload;
+   - the files follow the mapping: `app_de.arb`, `app_pt.arb` (`{}`, the empty base, even with nothing translated into pt-PT), `app_pt_BR.arb` and `app_eo.arb`, which compiles but is not shipped, and none has `@@locale`;
    - on `l10n_main`, `git diff main -- app/lib/l10n/arb/app_de.arb` differs from our file only in what Crowdin adds or changes: note any copied `@key` metadata, any reordered keys, any changed escapes (`\n`, „…“, …) and whether the final newline is missing;
-   - `python3 -I tool/l10n_progress.py` on its branch shows German at 100.0 % and Brazilian Portuguese with the strings you approved; a pull request opened before the German upload gets the German with a later sync.
-8. **An English change:** change one English text in `app_en.arb` on the test repository's `main` and push it. The text changes in the Crowdin file, and its German stays, unapproved. After the next sync, which drops that string's German from `app_de.arb`, note whether `l10n_main` was force-pushed or got a new commit.
+   - `python3 -I tool/l10n_progress.py` on its branch shows German at 100.0 % and Brazilian Portuguese with the strings you approved.
+8. **An English change:** change one English text in `app_en.arb` on the test repository's `main` and push it. The text changes in the Crowdin file, and its translations stay, unapproved. The next sync drops that string from `app_de.arb`, and from every other language that had it, and adds commits to `l10n_main`, without a force-push. CI fails where a test pins that German text (the rehearsal changed `connectTagline`, and `german_texts_test.dart` failed). Re-approve the German in Crowdin's editor and Sync Now: the string comes back.
 9. **The end:** write down what differed from this page in [D88], and the notes of steps 7 and 8 in its Limits, in place of the point on the untried export; if the copied metadata or a missing final newline would change every pull request, say so there too. Delete the Crowdin token (Account Settings > API) and the test project, which removes its integration, and revoke Crowdin's access under the GitHub account's Settings > Applications, as it reaches every repository the account can write to.
 
 ### The translations on Crowdin
 
-Step 38e ([D88]): the app's texts go into Vikunja's Crowdin project 462614, beside the web's and the API's, as the file `app_en.arb`, into which the old app's nightly workflow "Crowdin Sync" uploaded the old app's 188 strings until the import. Once kolaente has connected Crowdin's GitHub integration, it reads `crowdin.yml`, uploads the English source from `main` and opens pull requests with the approved translations. One upload comes once, by the owner, right after the source: our German as approved translations, so that German stays complete.
+Step 38e ([D88]): the app's texts go into Vikunja's Crowdin project 462614, beside the web's and the API's. The rehearsal showed that the integration puts the app's file into a version branch `main` as `main/app_en.arb`, beside the root `/app_en.arb`, into which the old app's nightly workflow "Crowdin Sync" uploaded the old app's 188 strings until the import. Once kolaente has connected Crowdin's GitHub integration, it reads `crowdin.yml`, uploads the English source from `main` and opens pull requests with the approved translations. One upload comes once, by the owner, right after the source: our German as approved translations, so that German stays complete.
 
 **Before you start:**
 
-- [The rehearsal](#the-crowdin-rehearsal) is done.
-- The import is merged, which removed the old workflow, or kolaente has disabled it: otherwise its next nightly run puts the old app's 188 strings back in place of ours, and the German of our strings goes with them.
-- kolaente has done the Crowdin items of [what kolaente does](#what-kolaente-does): what Crowdin held for `app_en.arb` exported, the manager role in project 462614 for you, and the integration connected.
-- kolaente has told you where the integration put the source, and the project's Sources show it with the app's strings: `app_en.arb` at the project's root, in place of the old app's file, or `main/app_en.arb` in a version branch `main`.
+- [The rehearsal](#the-crowdin-rehearsal) is done (2026-11-16).
+- The import is merged, which removed the old workflow, or kolaente has disabled it: otherwise its nightly runs keep writing the old app's 188 strings into the root `/app_en.arb`.
+- kolaente has done the Crowdin items of [what kolaente does](#what-kolaente-does): what Crowdin held in the old root `app_en.arb` exported, the manager role in project 462614 for you, and the integration connected.
+- kolaente has told you where the integration put the source, and the project's Sources show it with the app's strings: as in the rehearsal, `main/app_en.arb` in a version branch `main`, or `app_en.arb` at the project's root, in place of the old app's file.
 - The Crowdin CLI (`brew install crowdin`), a new personal access token of your Crowdin account, not the rehearsal's (Account Settings > API, with the earliest expiry offered, not the default Never), and a clean working copy of go-vikunja/app's `main`. `crowdin.yml` holds the project and the paths but no token: the CLI reads the token from `CROWDIN_PERSONAL_TOKEN`.
 
 **The commands,** from the repository root, the upload first as a dry run, which only lists what it would upload:
@@ -186,21 +190,23 @@ read -rs CROWDIN_PERSONAL_TOKEN && export CROWDIN_PERSONAL_TOKEN   # paste the t
 crowdin config lint
 
 # Our German, approved, also where it equals the English (Vikunja, Kanban, OK)
-crowdin upload translations -l de --auto-approve-imported --import-eq-suggestions --dryrun
-crowdin upload translations -l de --auto-approve-imported --import-eq-suggestions
+crowdin upload translations -b main -l de --auto-approve-imported --import-eq-suggestions --dryrun
+crowdin upload translations -b main -l de --auto-approve-imported --import-eq-suggestions
 ```
 
-- Add `-b main` to both if the source is `main/app_en.arb`: without it the CLI writes into the old `/app_en.arb` at the root, which the integration does not export.
-- Add `--translate-hidden` to both if the project hides duplicate strings: Crowdin otherwise skips the German of a text it hides as a duplicate, for example of the web's.
+- `-b main` is for the source in the version branch `main`: without it the CLI writes into the old `/app_en.arb` at the root, which the integration does not export. Drop it only if kolaente found the source at the root.
+- Add `--translate-hidden` to both if the project hides duplicate strings: Crowdin otherwise skips the German of a text it hides as a duplicate, for example of the web's. The rehearsal's project had none.
+- The CLI waits while Crowdin imports, several minutes. Crowdin may show German at 0 % for some minutes after it ends.
 - Leave the source to the integration: `crowdin upload sources` with the wrong `-b` would put a second copy of it into the project. Never add `--delete-obsolete`: the project holds the web's and the API's files too.
-- If the source replaced the root file, the file keeps its history: the old app's strings that we lack leave it, their translations stay in the translation memory, and a string whose English changed keeps its translations, unapproved (`update_as_unapproved` in `crowdin.yml`). If it is `main/app_en.arb`, the old root file stays until kolaente removes it after his export. The old app's Polish is not uploaded.
+- The source in the version branch is a new file, so the old app's translations do not carry over: they stay in the old root file and in the translation memory. The root file stays until kolaente removes it after his export; until then Crowdin's language progress counts it too. The old app's Polish is not uploaded.
 
 **Afterwards:**
 
 - Delete the Crowdin token under Account Settings > API: it acts with your manager role in 462614, which also holds the web's and the API's files.
-- On Crowdin, German shows the app's file as 100 % translated and approved.
-- The integration's next sync opens a pull request "chore(i18n): update translations via Crowdin" from its branch in go-vikunja/app. Its checks run (no `[ci skip]`), and `python3 -I tool/l10n_progress.py de` on its branch prints 100.0 %. Read its diff of `app_de.arb` before you merge: our texts, at most reordered or reformatted. A pull request the integration opened before the German upload lacks German texts: leave it unmerged until a later sync has updated it.
-- From then on German, like every language, changes only on Crowdin.
+- On Crowdin, German shows the app's file as 100 % translated and 100 % proofread.
+- The integration's next sync opens a pull request "chore(i18n): update translations via Crowdin" from its branch `l10n_main` in go-vikunja/app. Its checks run (no `[ci skip]`), and `python3 -I tool/l10n_progress.py de` on its branch prints 100.0 %. The first one reformats every ARB file once: Crowdin copies the template's `@` metadata into each translation, orders the keys its own way and writes no final newline. Read its diff of `app_de.arb` before you merge: the texts must stay ours. Later diffs stay small.
+- A pull request the integration opened before the German upload has almost no German and fails the tests that pin German texts: leave it unmerged until a sync after the upload ("Sync Now") has updated it.
+- From then on German, like every language, changes only on Crowdin. After an English change, a maintainer re-approves or retranslates its German there: the change leaves the translations unapproved, the export drops them, and the next Crowdin pull request fails where a test pins the German text.
 - Pre-translation from the web's translations through the shared translation memory waits for kolaente's agreement, as the web is under the AGPL and the app under the MIT License; once he agrees, it runs without approving, so that a proofreader approves each text. Until then nothing is pre-translated, though translators may see the web's texts as suggestions in the editor.
 
 ### What kolaente does
@@ -217,16 +223,16 @@ A list for the owner to forward:
 - **The release secrets,** entered again as secrets of the environment `release`, with no repository or organisation copy ([releasing.md](releasing.md#once-in-go-vikunjaapp) steps 1 and 2).
 - **The certificate fingerprints** in `tool/ci/release_certificates.txt` (step 3 there).
 - **The written offer** for the desugar_jdk_libs source: who makes it and with which contact, settled in step 38f.
-- **What Crowdin holds for `app_en.arb`:** export it first if anyone translated it since December 2025, since the new file replaces the old app's strings. If the integration uses a version branch, the old file at the root can go after the export; its translations stay in the translation memory.
-- **The old workflow "Crowdin Sync":** the import removes it; if the import is delayed, disable it (Actions > Crowdin Sync > Disable workflow), as each nightly run uploads the old app's `app_en.arb` into the project, over the new one once that is up.
+- **The old app's `app_en.arb`:** the integration does not replace it but puts the app's file beside it, as `main/app_en.arb` in a version branch `main` ([the rehearsal](#the-crowdin-rehearsal)). Export the old root file first if anyone translated it since December 2025, then delete it: until then it counts in each language's progress. Its translations stay in the translation memory.
+- **The old workflow "Crowdin Sync":** the import removes it; if the import is delayed, disable it (Actions > Crowdin Sync > Disable workflow), as each nightly run uploads the old app's `app_en.arb` into the project's root file again.
 - **The manager role** in project 462614 for the owner, for the one-time German upload.
-- **The project's export settings:** "Skip untranslated strings" and "Export only approved" on, as `crowdin.yml` asks for the app's file, since Crowdin does not document whether the integration follows `crowdin.yml` there; the server's sync passes both already.
+- **The project's export settings** (Settings > Export): "Skip untranslated strings" and "Export only approved translations" on, as `crowdin.yml` asks for the app's file, since Crowdin does not document whether the integration follows `crowdin.yml` there; the server's sync passes both already.
 - **Crowdin's GitHub integration** in project 462614 (Integrations > GitHub), for go-vikunja/app once the import is merged ([the translations on Crowdin](#the-translations-on-crowdin)):
-  - connected through a dedicated bot account, not a person's: Crowdin acts with that account's GitHub authorization, and only the member who sets the integration up can change it. The account needs write access to go-vikunja/app and nothing else; Crowdin's staff say it lists only repositories where the account is an admin, so admin at most for the setup;
-  - the branch `main` with the configuration file `crowdin.yml`, "Push Sources" off, and "Import existing translations" off, as the owner's upload brings the German, approved;
-  - no `[ci skip]`: Crowdin adds it to its commit messages by default, and GitHub then runs none of the required checks, so its pull requests could never be merged. `crowdin.yml` sets the commit message without it (`append_commit_message: false`); check that the integration's own settings do not add it back;
+  - connected through a dedicated bot account, not a person's: Crowdin acts with that account's GitHub authorization, its commits name that account as author, and only the member who sets the integration up can change it. The account needs write access to go-vikunja/app and nothing else; Crowdin's staff say it lists only repositories where the account is an admin, so admin at most for the setup;
+  - the branch `main` with the configuration file `crowdin.yml`, and "Push Sources", "One-time translation import after the branch is connected" and "Always import new translations from the repository" off, as the owner's upload brings the German, approved;
+  - no `[ci skip]`: Crowdin adds it to its commit messages by default, and GitHub then runs none of the required checks, so its pull requests could never be merged. `crowdin.yml` sets the commit message without it (`append_commit_message: false`), which held in the rehearsal; check that the integration's own settings do not add it back;
   - "main protect" keeps requiring a maintainer's approval, so that the account cannot merge its own pull requests;
-  - before the owner's German upload, check where it put the source and tell the owner: `app_en.arb` at the project's root, in place of the old app's file, or a new `main/app_en.arb` in a version branch `main`, for which the upload needs `-b main` ([the rehearsal](#the-crowdin-rehearsal) shows what to expect);
+  - before the owner's German upload, check where it put the source and tell the owner: in the rehearsal a new `main/app_en.arb` in a version branch `main`, for which the upload takes `-b main`, beside the old root file; or `app_en.arb` at the project's root, in place of the old app's file;
   - after the integration has synced once, the bot account lowered to Write; then Sync Now, and check that it still pushes `l10n_main` and updates its pull request. If it needs admin to keep working, tell the owner before going on, as the threat model's R40 assumes Write. The account stays off the bypass lists of "main protect" and of the `v*` ruleset, and the admin window stays short: a tag ruleset that lets the Repository admin role bypass it lets the bot bypass it too while the bot is admin.
 - **Swiss German:** in the project's language mapping, map the custom language `de-swiss` to `gsw` for the placeholder `two_letters_code` only. `crowdin.yml` cannot do it: the CLI accepts only Crowdin's standard codes there. The mapping is project-wide, but the web's and the API's files are named by `%locale%` (go-vikunja/vikunja's `crowdin.yml`), so they keep their names. Without the mapping Swiss German is exported under its own two-letter code, which must then not be `de`, or it overwrites the German.
 - **Pre-translation from the web:** whether the app may take the web's translations through the shared translation memory (the web is under the AGPL, the app under the MIT License).
