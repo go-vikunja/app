@@ -233,7 +233,7 @@ class SettingsPageState extends ConsumerState<SettingsPage> {
               Divider(),
               TextButton(
                 onPressed: () {
-                  ref.read(settingsRepositoryProvider).saveServer(null);
+                  // Keep the server address so logging back in is one tap.
                   ref.read(settingsRepositoryProvider).saveUserToken(null);
                   ref.read(settingsRepositoryProvider).saveRefreshToken(null);
 
