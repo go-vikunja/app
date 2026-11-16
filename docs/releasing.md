@@ -4,7 +4,7 @@ How a release of the app is cut ([D86](decisions.md#d86-ci-and-releases-on-githu
 
 *Step 38c, accepted 2026-11-16: the GitHub workflows passed their trial in the owner's test repository on 2026-11-16 ([D86](decisions.md#d86-ci-and-releases-on-github-actions)): CI on pushes, the weekly schedule and a test tag's release with throwaway keys ([the dry run](#the-dry-run)). The environment, the real signing and the publishing first run on go-vikunja/app's first tag after the move.*
 
-*Step 38d, in review ([D87](decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)): GitLab's pipeline, its release dry run and the Mac as a GitLab runner are gone; CI runs only on GitHub Actions. The repository moves into go-vikunja/app with its history as [beta.md](beta.md#the-move) says.*
+*Step 38d, accepted 2026-11-16 ([D87](decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)): GitLab's pipeline, its release dry run and the Mac as a GitLab runner are gone; CI runs only on GitHub Actions. The repository moves into go-vikunja/app with its history as [beta.md](beta.md#the-move) says.*
 
 ## Once, in go-vikunja/app
 
