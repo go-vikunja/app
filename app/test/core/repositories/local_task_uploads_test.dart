@@ -166,8 +166,9 @@ void main() {
       (await repository.watchPendingUploads(1).first).single.state,
       PendingUploadState.sending,
     );
+    final uploaded = repository.uploadedAttachments.first;
     held.complete();
-    await pumpEventQueue();
+    await uploaded;
     expect(await db.outboxDao.count(), 0);
 
     final left = await db.outboxDao.queueUpload(
@@ -285,9 +286,14 @@ void main() {
     expect(stored(), hasLength(1));
 
     expect(await repository.deleteTask(id), TaskDeletion.discarded);
-    await pumpEventQueue();
-
     expect(await db.outboxDao.count(), 0);
+
+    // deleteTask does not await the sweep of the copies, and its file I/O
+    // can outlast any fixed number of event loop turns under load.
+    final waited = Stopwatch()..start();
+    while (stored().isNotEmpty && waited.elapsed < const Duration(seconds: 5)) {
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+    }
     expect(stored(), isEmpty);
   });
 }

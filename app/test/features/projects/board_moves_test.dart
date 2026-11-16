@@ -338,7 +338,12 @@ void main() {
       5: (bucketId: 1, position: 400),
     };
     final projectTasks = [
-      sampleTask(id: 6, title: 'New', created: DateTime(2026, 10, 10, 13)),
+      sampleTask(id: 6, title: 'New', created: DateTime.utc(2026, 10, 10, 13)),
+      sampleTask(
+        id: 7,
+        title: 'On a page not downloaded',
+        created: DateTime.utc(2026, 10, 10, 11),
+      ),
       sampleTask(id: 1, title: 'Queued'),
       sampleTask(id: 2, title: 'Doing'),
       sampleTask(id: 3, title: 'Filtered out'),
@@ -348,7 +353,7 @@ void main() {
     const queued = {1: BucketPlacement(bucketId: 2, position: 50)};
     const movedHere = {4};
     const queuedDoneChanges = {5};
-    const matchingIds = {1, 2, 4, 5, 6};
+    const matchingIds = {1, 2, 4, 5, 6, 7};
 
     BoardSource source({Set<String> without = const {}}) => BoardSource(
       view: view,

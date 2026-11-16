@@ -87,6 +87,29 @@ void main() {
     return [for (final entry in directory.listSync()) p.basename(entry.path)];
   }
 
+  /// Holds every upload request until [release] completes; completes once
+  /// the first one has reached the server.
+  Future<void> holdUploads(Future<void> release) {
+    final reached = Completer<void>();
+    write.beforeRequest = (request) async {
+      if (!request.startsWith('upload')) return;
+      if (!reached.isCompleted) reached.complete();
+      await release;
+    };
+    return reached.future;
+  }
+
+  /// Fires the next timer and waits until the drain it starts is done or
+  /// waits again: an upload does real file I/O, which no fixed number of
+  /// event-loop turns is sure to outlast.
+  Future<void> fireNextAndSettle(OutboxSender outbox) async {
+    timers.fireNext();
+    expect(outbox.state, OutboxSenderState.draining);
+    await outbox.states.firstWhere(
+      (state) => state != OutboxSenderState.draining,
+    );
+  }
+
   setUp(() async {
     db = testDatabase();
     now = DateTime.utc(2026, 10, 20, 12);
@@ -142,12 +165,10 @@ void main() {
     test('an edit queued while an upload is on its way goes at once', () async {
       await queueUpload(1);
       final held = Completer<void>();
-      write.beforeRequest = (request) async {
-        if (request.startsWith('upload')) await held.future;
-      };
+      final onItsWay = holdUploads(held.future);
       final outbox = sender();
       final drained = outbox.drain();
-      await pumpEventQueue();
+      await onItsWay;
       await db.outboxDao.queueUpdate(
         2,
         const TaskChanges(isFavorite: true),
@@ -170,13 +191,11 @@ void main() {
         'it alone', () async {
       await queueUpload(1);
       final held = Completer<void>();
-      write.beforeRequest = (request) async {
-        if (request.startsWith('upload')) await held.future;
-      };
+      final onItsWay = holdUploads(held.future);
       read.taskDetails[1] = const TaskDetails();
       final outbox = sender();
       final drained = outbox.drain();
-      await pumpEventQueue();
+      await onItsWay;
 
       now = now.add(OutboxSender.staleSendingAfter);
       unawaited(outbox.drain());
@@ -220,8 +239,7 @@ void main() {
       for (var attempt = 2; attempt <= maxUploadTimeoutsInARow; attempt++) {
         expect(await db.outboxDao.loadProblems(), isEmpty);
         now = now.add(OutboxSender.maxBackoff);
-        timers.fireNext();
-        await pumpEventQueue(times: 50);
+        await fireNextAndSettle(outbox);
       }
 
       expect(
@@ -316,8 +334,7 @@ void main() {
       write.beforeRequest = null;
       read.taskDetails[1] = const TaskDetails();
       now = now.add(const Duration(seconds: 3));
-      timers.fireNext();
-      await pumpEventQueue(times: 50);
+      await fireNextAndSettle(outbox);
 
       expect(write.requests.where((r) => r.startsWith('upload')), hasLength(2));
       expect(read.requests, ['task details 1']);
@@ -516,10 +533,10 @@ void main() {
     test('cancel while sending aborts the request and drops the op', () async {
       final id = await queueUpload(1);
       final held = Completer<void>();
-      write.beforeRequest = (_) => held.future;
+      final onItsWay = holdUploads(held.future);
       final outbox = sender();
       final drained = outbox.drain();
-      await pumpEventQueue();
+      await onItsWay;
       expect(
         (await db.outboxDao.watchPendingUploads(1).first).single.state.name,
         'sending',
@@ -554,8 +571,7 @@ void main() {
       expect(timers.pendingWait, OutboxSender.inFlightRecheck);
 
       now = now.add(OutboxSender.staleSendingAfter);
-      timers.fireNext();
-      await pumpEventQueue(times: 50);
+      await fireNextAndSettle(outbox);
 
       expect(read.requests, ['task details 1']);
       expect(write.requests, ['update 2', 'upload 1 photo.png']);
