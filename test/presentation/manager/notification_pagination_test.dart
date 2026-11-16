@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/domain/entities/task.dart';
+import 'package:vikunja_app/domain/entities/user.dart';
 import 'package:vikunja_app/domain/repositories/task_repository.dart';
 import 'package:vikunja_app/presentation/manager/notifications.dart';
 
@@ -23,8 +24,17 @@ class FakeTaskRepository implements TaskRepository {
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-List<Task> _tasks(int from, int count) =>
-    List.generate(count, (i) => Task(id: from + i, title: 'Task ${from + i}'));
+final _user = User(username: 'testuser');
+
+List<Task> _tasks(int from, int count) => List.generate(
+  count,
+  (i) => Task(
+    id: from + i,
+    title: 'Task ${from + i}',
+    createdBy: _user,
+    projectId: 1,
+  ),
+);
 
 void main() {
   test('fetches every page reported by x-pagination-total-pages', () async {
