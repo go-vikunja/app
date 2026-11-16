@@ -1,4 +1,5 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
 export 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
@@ -11,7 +12,8 @@ const List<LocalizationsDelegate<Object?>> appLocalizationsDelegates = [
   ...GlobalMaterialLocalizations.delegates,
 ];
 
-const List<Locale> appSupportedLocales = AppLocalizations.supportedLocales;
+// Not AppLocalizations.supportedLocales, which has every ARB file's.
+const List<Locale> appSupportedLocales = shippedLocales;
 
 extension AppLocalizationsContext on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);

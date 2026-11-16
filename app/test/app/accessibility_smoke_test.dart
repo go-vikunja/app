@@ -70,6 +70,7 @@ import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comment_composer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/add_relation_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
@@ -646,7 +647,16 @@ void main() {
       expect(find.text(l10n.sharePickAccountTitle), findsOneWidget);
       expect(tester.takeException(), isNull);
       final alice = find.text('Alice Example With A Long Name');
-      await tester.ensureVisible(alice);
+      await tester.scrollUntilVisible(
+        alice,
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(AccountPickerSheet),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
       await tester.pumpAndSettle();
       await tester.tap(alice);
       await pumpFrames(tester, 5);

@@ -44,11 +44,11 @@ class PreviousAppTest {
     }
 
     @Test
-    fun `carries over only English and German`() {
+    fun `carries over only the shipped languages`() {
         assertEquals("en", PreviousApp.appLanguage("en"))
         assertEquals("de", PreviousApp.appLanguage("de"))
         assertNull(PreviousApp.appLanguage("de-DE"))
-        assertNull(PreviousApp.appLanguage("pl"))
+        assertNull(PreviousApp.appLanguage("eo"))
         assertNull(PreviousApp.appLanguage(null))
     }
 

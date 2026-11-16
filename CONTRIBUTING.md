@@ -21,7 +21,7 @@ AI tools are allowed. If an AI wrote a meaningful part of your change, say so in
 
 - Fork the repository, branch from `main` and open the pull request against `main` of [go-vikunja/app](https://github.com/go-vikunja/app). Pull requests on mirrors are not accepted.
 - Keep a pull request small: one topic, no unrelated changes, and tests for what changes.
-- Allow edits by maintainers, so that a maintainer can add the German texts or a small fix.
+- Allow edits by maintainers, so that a maintainer can add a small fix or the German of a native text ([Translations](#translations)).
 - Write the commit messages and the pull request's title as [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `perf:` or `chore:`, then what changes.
 - The description says what changes and why. A UI change shows screenshots after the change. Each issue the pull request closes gets a line of its own, `Fixes #N`. The [template](.github/PULL_REQUEST_TEMPLATE.md) asks for these.
 - The checks pass ([Setup and checks](#setup-and-checks)). The workflows of a pull request from outside the project wait until a maintainer approves them.
@@ -43,7 +43,7 @@ flutter analyze
 (cd plugins/vikunja_widgets && flutter test)
 ```
 
-- After a change to ARB files, annotated providers or Drift tables, regenerate and commit the generated code (`cd app && flutter gen-l10n && dart run build_runner build`).
+- After a change to annotated providers or Drift tables, regenerate and commit the generated code (`cd app && dart run build_runner build`). After an ARB change or a pull, run `flutter pub get` at the root; the l10n code it writes is not committed.
 - After a change to the description editor (`app/editor/`), run `tool/build_editor.sh` and commit the page it builds and its notices.
 - After a change to the Android dependencies, write the Gradle lockfile and the Android libraries' notices again (`python3 -I tool/build_android_notices.py`, see the [README](README.md#common-commands)).
 - After a change to the store texts (`fastlane/metadata/`), run `python3 -I tool/check_store_metadata.py`; the `checks` job runs it through its tests.
@@ -60,13 +60,23 @@ flutter analyze
 
 ## Translations
 
-English is the source. Other languages come only through Vikunja's [Crowdin project](https://crowdin.com/project/vikunja), never as pull requests. Until the app's texts are on Crowdin (roadmap step 38e), English and German are complete on every commit ([D71](docs/decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)): you change the English, and a maintainer adds the German to your pull request through maintainer edits.
+English is the source, and every other language, German included, comes only through Vikunja's [Crowdin project](https://crowdin.com/project/vikunja), never as a pull request ([D88](docs/decisions.md#d88-translations-through-vikunjas-crowdin-project)). A pull request changes the English in `app/lib/l10n/arb/app_en.arb` and leaves the other ARB files alone. Crowdin's GitHub integration opens pull requests with the translations that Crowdin's proofreaders approved, and a maintainer merges them. German may therefore lag English for a while; a release needs it complete ([docs/releasing.md](docs/releasing.md#the-translations)).
 
-- A new or changed string goes into both `app/lib/l10n/arb/app_en.arb` and `app_de.arb` before the merge. The parity test (`app/test/l10n/arb_parity_test.dart`) fails when one file has a message the other lacks, or when a translation drops or renames a placeholder.
-- English is US English, like the Vikunja web, and the base: `app_en.arb` is the template, its descriptions included; ARB keys keep the spelling they have. Both languages follow the [glossary](docs/glossary.md) for their terms, spelling, quotes, ellipses and dashes and for how a text names the app; German uses "du". `app/test/l10n/us_english_test.dart` fails on a British spelling.
-- Every new or changed message gets a `description` in `app_en.arb` that says where it appears; a string that is only spoken, never shown, starts its description with "Screen reader: ". The German file holds only the texts.
-- Placeholders: declare each one under the message's `placeholders` in `app_en.arb`, and keep its name and the ICU braces of a plural or select exactly the same in both files. A new plural puts the number in the singular branch too (`=1{{count} task}`). Add a key in both files at once, and leave the other entries and their order as they are.
-- A text of the Android widgets (`app/android/app/src/main/res/values*/strings.xml`) or of iOS changes in English and German too. On iOS the permission texts are in `app/ios/Runner/Info.plist` (English) and `app/ios/Runner/de.lproj/InfoPlist.strings`; the widget extension's English text is the key in its Swift sources (`app/ios/VikunjaWidgets/*.swift`) and in `en.lproj` and `de.lproj` `Localizable.strings`, or, for a count, `Localizable.stringsdict` with its plural forms, so changing it means changing all three.
+- English is US English, like the Vikunja web, and the template: `app_en.arb` holds the texts and their descriptions; ARB keys keep the spelling they have. English follows the [glossary](docs/glossary.md) for its terms, spelling, quotes, ellipses and dashes and for how a text names the app. `app/test/l10n/us_english_test.dart` fails on a British spelling.
+- Every new or changed message gets a `description` that says where it appears and what each placeholder holds: on Crowdin it is the translators' only context. A string that is only spoken, never shown, starts its description with "Screen reader: ".
+- Placeholders: declare each one under the message's `placeholders`. A plural uses `one{…}`, never `=1{…}`, and shows the number there too (`one{{count} task}`), since some languages use the one form for 21 or 31 as well and translators copy the English; wording that fits only exactly 1, like "Every day", is a message of its own that the code picks for 1. `app/test/l10n/plural_forms_test.dart` checks the English. Add a key once, and leave the other entries and their order as they are.
+- The translations are checked like code: `app/test/l10n/arb_parity_test.dart` lets a translation lack messages, which then show in English, but fails on a key English does not have, an empty text, invalid ICU or other placeholders than the English; `app/test/l10n/german_texts_test.dart` checks German terms. A Crowdin pull request that fails them is fixed on Crowdin, since the next one would bring the old text back.
+- The native texts stay outside Crowdin for now and in English and German only: the Android widgets' (`app/android/app/src/main/res/values*/strings.xml`) and those of iOS. A change there goes into both languages in the pull request, and a maintainer adds the German through maintainer edits if you do not. On iOS the permission texts are in `app/ios/Runner/Info.plist` (English) and `app/ios/Runner/de.lproj/InfoPlist.strings`; the widget extension's English text is the key in its Swift sources (`app/ios/VikunjaWidgets/*.swift`) and in `en.lproj` and `de.lproj` `Localizable.strings`, or, for a count, `Localizable.stringsdict` with its plural forms, so changing it means changing all three.
+
+### Adding a language
+
+A maintainer adds a language in one pull request once `python3 -I tool/l10n_progress.py` shows its ARB file at 50 % or more, the share at which Vikunja's web ships a language too (Crowdin exports only approved translations, so the share counts approved ones):
+
+- its `Locale` in `shippedLocales` in `app/lib/app/l10n/shipped_locales.dart` (English stays first);
+- its BCP 47 tag in `app/android/app/src/main/res/xml/locales_config.xml`, in `CFBundleLocalizations` in `app/ios/Runner/Info.plist` and in `LANGUAGES` in `app/android/app/src/main/kotlin/io/vikunja/app/PreviousApp.kt`;
+- a picker class for its language in `app/lib/app/l10n/picker_localizations.dart`, like `_GermanPickerLocalizations`, in the delegate's `_languages`.
+
+`app/test/l10n/shipped_locales_test.dart` and `app/test/features/tasks/picker_formats_test.dart` name what is missing. An ARB file not on the list compiles but is never shown. Not shipped for now, though translated on Crowdin and exported like any language: right-to-left languages (Arabic, Persian, Hebrew) until the app has had a right-to-left pass, Esperanto, which Material has no texts for, and Vikunja's Swiss German, exported as `app_gsw.arb`. A new language shows the native texts in English.
 
 ## Style
 

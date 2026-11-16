@@ -468,7 +468,9 @@ final class _AccountBuild {
           ? empty
           : WidgetText(
               l10n.widgetTaskCount(tasks.length),
-              body: l10n.widgetTitlesHiddenHint(tasks.length),
+              body: tasks.length == 1
+                  ? l10n.widgetTitleHiddenHint
+                  : l10n.widgetTitlesHiddenHint(tasks.length),
             ),
       message: _sessionMessage,
       messageLink: _sessionMessageLink,

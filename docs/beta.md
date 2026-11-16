@@ -2,7 +2,7 @@
 
 The owner's runbook for step 37d ([D77]): from the move into go-vikunja/app through the closed test on Google Play and the TestFlight beta to 1.0.0 in both stores. Each part comes in the order it is done. [releasing.md](releasing.md) has how a release is cut and every one-time setting, and [store-listing.md](store-listing.md) every console form with its answer; this page links them and adds what neither covers. The tester-facing texts are in English and German. None of this is legal advice.
 
-Since [D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp) the beta runs in the official Vikunja listing, after the switch of steps 38a to 38f: the app is called Vikunja, its id is the official app's `io.vikunja.app` ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja)), the Play app is the one in Vikunja's Play account, and its bundles are signed with Vikunja's upload key. Since step 38a the names, ids and texts on this page are the official app's. Since step 38c the parts on CI, the keys and the releases (1, 2, 7 to 9, and the release steps during the beta and before 1.0.0) describe GitHub Actions in go-vikunja/app ([D86](decisions.md#d86-ci-and-releases-on-github-actions)); parts 3 to 5, the closed test and the tester texts are still written for a beta under the owner's own accounts and are rewritten with step 38f, before 37d goes on. Since step 38d ([D87]) the repository is under the MIT License, GitLab's pipeline is gone, and [the move](#the-move) comes first.
+Since [D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp) the beta runs in the official Vikunja listing, after the switch of steps 38a to 38f: the app is called Vikunja, its id is the official app's `io.vikunja.app` ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja)), the Play app is the one in Vikunja's Play account, and its bundles are signed with Vikunja's upload key. Since step 38a the names, ids and texts on this page are the official app's. Since step 38c the parts on CI, the keys and the releases (1, 2, 7 to 9, and the release steps during the beta and before 1.0.0) describe GitHub Actions in go-vikunja/app ([D86](decisions.md#d86-ci-and-releases-on-github-actions)); parts 3 to 5, the closed test and the tester texts are still written for a beta under the owner's own accounts and are rewritten with step 38f, before 37d goes on. Since step 38d ([D87]) the repository is under the MIT License, GitLab's pipeline is gone, and [the move](#the-move) comes first. Since step 38e ([D88]) the translations come from Vikunja's Crowdin project, set up after the move and [a rehearsal](#the-crowdin-rehearsal) ([the translations on Crowdin](#the-translations-on-crowdin)).
 
 The owner's decisions of 2026-11-02 behind it ([D77]): [Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)'s option A for the keys; a new app id, since step 38a the official app's `io.vikunja.app` ([D15](decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja)); a "Help and bug reports" row on the About page; the closed test's testers through a Google Group and TestFlight's external testers through a public link; testers on their own Vikunja server (2.3.0 or newer) or the public demo, `try.vikunja.io`. iOS builds stay on the owner's Mac.
 
@@ -48,7 +48,7 @@ git merge --allow-unrelated-histories --no-ff ours/main \
   -m "Joins the new app's history (formerly Rurana) to the old app's, so every commit hash of both stays valid."
 ```
 
-The removal takes everything of the old app: its workflows and `.drone.yml`, the `Makefile`, the devenv files and `.envrc`, `renovate.json` and `crowdin.yml` (no Crowdin sync until step 38e), `.vscode`, `.metadata` and the old Flutter tree. The old tags and releases stay; there is no `legacy` branch.
+The removal takes everything of the old app: its workflows and `.drone.yml`, the `Makefile`, the devenv files and `.envrc`, `renovate.json` and its `crowdin.yml` (our `main` brings step 38e's own, [D88]), `.vscode`, `.metadata` and the old Flutter tree. The old tags and releases stay; there is no `legacy` branch.
 
 ### The checks before pushing
 
@@ -130,8 +130,78 @@ test "$(git rev-parse 'origin/main^1')" = "$(git rev-parse 'legacy-final^{commit
   ```
 
 - The GitLab project gets a description that points to https://github.com/go-vikunja/app and is archived (Settings > General > Advanced > Archive project). It is not deleted before step 38f has changed the website's links to it.
-- The test repository of step 38c is deleted or made private.
+- The test repository of step 38c is deleted or made private, once [the Crowdin rehearsal](#the-crowdin-rehearsal) has used it.
 - The result goes into [D87], which settles D83's open point on how the two histories are joined.
+
+### The Crowdin rehearsal
+
+Before kolaente connects the real integration, the owner tries it once in a Crowdin project of his own against the test repository of step 38c, so that [the translations on Crowdin](#the-translations-on-crowdin) rest on what was seen, not only on Crowdin's docs. It touches neither project 462614 nor go-vikunja/app and may come before the move.
+
+1. **The test repository:** push our `main`, step 38e included, to its `main`, so that it has `crowdin.yml` and the ARB files.
+2. **The project:** a public project on crowdin.com (free for public projects; you accept Crowdin's terms yourself), English as the source, German, Portuguese, Brazilian Portuguese and Esperanto as the targets. Note its project id.
+3. **An old file,** standing in for the old app's `/app_en.arb` at the root, from a working copy of the test repository:
+
+   ```sh
+   read -rs CROWDIN_PERSONAL_TOKEN && export CROWDIN_PERSONAL_TOKEN   # a new token, Account Settings > API, with the earliest expiry offered, not Never; step 9 deletes it
+   P=<the test project's id>                                          # -i overrides crowdin.yml's 462614
+   crowdin config lint
+   crowdin upload sources -i "$P"
+   ```
+
+4. **The integration:** connect Crowdin's GitHub integration to the test repository as [kolaente will](#what-kolaente-does): the branch `main`, the configuration file `crowdin.yml`, "Push Sources" and "Import existing translations" off, and "Skip untranslated strings" and "Export only approved" in the project's export settings. Note where the source lands: still `/app_en.arb` at the root, or a new `main/app_en.arb`.
+5. **The German,** as in the real upload, with `-b main` if the source landed there:
+
+   ```sh
+   crowdin upload translations -i "$P" -l de --auto-approve-imported --import-eq-suggestions --dryrun
+   crowdin upload translations -i "$P" -l de --auto-approve-imported --import-eq-suggestions
+   ```
+
+6. **A regional language:** in Crowdin's editor, translate a few strings into Brazilian Portuguese and approve them, and one into Esperanto, approved too.
+7. **The pull request,** after "Sync Now" in the integration or the hourly sync:
+   - it comes from the branch `l10n_main` toward `main`;
+   - its commit message is "chore(i18n): update translations via Crowdin", with no `[ci skip]`;
+   - CI runs and is green;
+   - the files follow the mapping: `app_de.arb`, `app_pt.arb`, `app_pt_BR.arb` and `app_eo.arb`, which compiles but is not shipped, and none has `@@locale`;
+   - on `l10n_main`, `git diff main -- app/lib/l10n/arb/app_de.arb` differs from our file only in what Crowdin adds or changes: note any copied `@key` metadata, any reordered keys, any changed escapes (`\n`, „…“, …) and whether the final newline is missing;
+   - `python3 -I tool/l10n_progress.py` on its branch shows German at 100.0 % and Brazilian Portuguese with the strings you approved; a pull request opened before the German upload gets the German with a later sync.
+8. **An English change:** change one English text in `app_en.arb` on the test repository's `main` and push it. The text changes in the Crowdin file, and its German stays, unapproved. After the next sync, which drops that string's German from `app_de.arb`, note whether `l10n_main` was force-pushed or got a new commit.
+9. **The end:** write down what differed from this page in [D88], and the notes of steps 7 and 8 in its Limits, in place of the point on the untried export; if the copied metadata or a missing final newline would change every pull request, say so there too. Delete the Crowdin token (Account Settings > API) and the test project, which removes its integration, and revoke Crowdin's access under the GitHub account's Settings > Applications, as it reaches every repository the account can write to.
+
+### The translations on Crowdin
+
+Step 38e ([D88]): the app's texts go into Vikunja's Crowdin project 462614, beside the web's and the API's, as the file `app_en.arb`, into which the old app's nightly workflow "Crowdin Sync" uploaded the old app's 188 strings until the import. Once kolaente has connected Crowdin's GitHub integration, it reads `crowdin.yml`, uploads the English source from `main` and opens pull requests with the approved translations. One upload comes once, by the owner, right after the source: our German as approved translations, so that German stays complete.
+
+**Before you start:**
+
+- [The rehearsal](#the-crowdin-rehearsal) is done.
+- The import is merged, which removed the old workflow, or kolaente has disabled it: otherwise its next nightly run puts the old app's 188 strings back in place of ours, and the German of our strings goes with them.
+- kolaente has done the Crowdin items of [what kolaente does](#what-kolaente-does): what Crowdin held for `app_en.arb` exported, the manager role in project 462614 for you, and the integration connected.
+- kolaente has told you where the integration put the source, and the project's Sources show it with the app's strings: `app_en.arb` at the project's root, in place of the old app's file, or `main/app_en.arb` in a version branch `main`.
+- The Crowdin CLI (`brew install crowdin`), a new personal access token of your Crowdin account, not the rehearsal's (Account Settings > API, with the earliest expiry offered, not the default Never), and a clean working copy of go-vikunja/app's `main`. `crowdin.yml` holds the project and the paths but no token: the CLI reads the token from `CROWDIN_PERSONAL_TOKEN`.
+
+**The commands,** from the repository root, the upload first as a dry run, which only lists what it would upload:
+
+```sh
+read -rs CROWDIN_PERSONAL_TOKEN && export CROWDIN_PERSONAL_TOKEN   # paste the token: it stays out of the shell's history
+crowdin config lint
+
+# Our German, approved, also where it equals the English (Vikunja, Kanban, OK)
+crowdin upload translations -l de --auto-approve-imported --import-eq-suggestions --dryrun
+crowdin upload translations -l de --auto-approve-imported --import-eq-suggestions
+```
+
+- Add `-b main` to both if the source is `main/app_en.arb`: without it the CLI writes into the old `/app_en.arb` at the root, which the integration does not export.
+- Add `--translate-hidden` to both if the project hides duplicate strings: Crowdin otherwise skips the German of a text it hides as a duplicate, for example of the web's.
+- Leave the source to the integration: `crowdin upload sources` with the wrong `-b` would put a second copy of it into the project. Never add `--delete-obsolete`: the project holds the web's and the API's files too.
+- If the source replaced the root file, the file keeps its history: the old app's strings that we lack leave it, their translations stay in the translation memory, and a string whose English changed keeps its translations, unapproved (`update_as_unapproved` in `crowdin.yml`). If it is `main/app_en.arb`, the old root file stays until kolaente removes it after his export. The old app's Polish is not uploaded.
+
+**Afterwards:**
+
+- Delete the Crowdin token under Account Settings > API: it acts with your manager role in 462614, which also holds the web's and the API's files.
+- On Crowdin, German shows the app's file as 100 % translated and approved.
+- The integration's next sync opens a pull request "chore(i18n): update translations via Crowdin" from its branch in go-vikunja/app. Its checks run (no `[ci skip]`), and `python3 -I tool/l10n_progress.py de` on its branch prints 100.0 %. Read its diff of `app_de.arb` before you merge: our texts, at most reordered or reformatted. A pull request the integration opened before the German upload lacks German texts: leave it unmerged until a later sync has updated it.
+- From then on German, like every language, changes only on Crowdin.
+- Pre-translation from the web's translations through the shared translation memory waits for kolaente's agreement, as the web is under the AGPL and the app under the MIT License; once he agrees, it runs without approving, so that a proofreader approves each text. Until then nothing is pre-translated, though translators may see the web's texts as suggestions in the editor.
 
 ### What kolaente does
 
@@ -147,6 +217,20 @@ A list for the owner to forward:
 - **The release secrets,** entered again as secrets of the environment `release`, with no repository or organisation copy ([releasing.md](releasing.md#once-in-go-vikunjaapp) steps 1 and 2).
 - **The certificate fingerprints** in `tool/ci/release_certificates.txt` (step 3 there).
 - **The written offer** for the desugar_jdk_libs source: who makes it and with which contact, settled in step 38f.
+- **What Crowdin holds for `app_en.arb`:** export it first if anyone translated it since December 2025, since the new file replaces the old app's strings. If the integration uses a version branch, the old file at the root can go after the export; its translations stay in the translation memory.
+- **The old workflow "Crowdin Sync":** the import removes it; if the import is delayed, disable it (Actions > Crowdin Sync > Disable workflow), as each nightly run uploads the old app's `app_en.arb` into the project, over the new one once that is up.
+- **The manager role** in project 462614 for the owner, for the one-time German upload.
+- **The project's export settings:** "Skip untranslated strings" and "Export only approved" on, as `crowdin.yml` asks for the app's file, since Crowdin does not document whether the integration follows `crowdin.yml` there; the server's sync passes both already.
+- **Crowdin's GitHub integration** in project 462614 (Integrations > GitHub), for go-vikunja/app once the import is merged ([the translations on Crowdin](#the-translations-on-crowdin)):
+  - connected through a dedicated bot account, not a person's: Crowdin acts with that account's GitHub authorization, and only the member who sets the integration up can change it. The account needs write access to go-vikunja/app and nothing else; Crowdin's staff say it lists only repositories where the account is an admin, so admin at most for the setup;
+  - the branch `main` with the configuration file `crowdin.yml`, "Push Sources" off, and "Import existing translations" off, as the owner's upload brings the German, approved;
+  - no `[ci skip]`: Crowdin adds it to its commit messages by default, and GitHub then runs none of the required checks, so its pull requests could never be merged. `crowdin.yml` sets the commit message without it (`append_commit_message: false`); check that the integration's own settings do not add it back;
+  - "main protect" keeps requiring a maintainer's approval, so that the account cannot merge its own pull requests;
+  - before the owner's German upload, check where it put the source and tell the owner: `app_en.arb` at the project's root, in place of the old app's file, or a new `main/app_en.arb` in a version branch `main`, for which the upload needs `-b main` ([the rehearsal](#the-crowdin-rehearsal) shows what to expect);
+  - after the integration has synced once, the bot account lowered to Write; then Sync Now, and check that it still pushes `l10n_main` and updates its pull request. If it needs admin to keep working, tell the owner before going on, as the threat model's R40 assumes Write. The account stays off the bypass lists of "main protect" and of the `v*` ruleset, and the admin window stays short: a tag ruleset that lets the Repository admin role bypass it lets the bot bypass it too while the bot is admin.
+- **Swiss German:** confirm that the custom language's id is `de-swiss`, which `crowdin.yml` maps to `gsw`.
+- **Pre-translation from the web:** whether the app may take the web's translations through the shared translation memory (the web is under the AGPL, the app under the MIT License).
+- **The old secrets** `CROWDIN_PROJECT_ID` and `CROWDIN_PERSONAL_TOKEN` of go-vikunja/app: delete them. Nothing uses them after the import, and a workflow on any branch can read a repository secret. Then check Settings > Secrets and variables > Actions of go-vikunja/app: there should be no other repository secret, and among the organisation secrets available to the repository only `S3_ENDPOINT`, `S3_BUCKET` and `S3_REGION` (no credential, [releasing.md](releasing.md#once-in-go-vikunjaapp) step 2) may remain. Remove go-vikunja/app from the access list of any other organisation secret, or enter that secret in the environment `release` instead: a workflow on any branch, one pushed through the integration's account included, can read every repository and organisation secret the repository gets.
 
 ## Before beta.1
 
@@ -294,8 +378,8 @@ A personal developer account created after 13 November 2023 can apply for produc
 >
 > Vor Version 1.0.0 suche ich Testerinnen und Tester. Du brauchst:
 >
-> - ein Konto auf einem Vikunja-Server ab Version 2.3.0: deinem eigenen, dem deiner Organisation oder der öffentlichen Demo von Vikunja (in der App „Öffentliche Demo ausprobieren“; das Demokonto teilen sich alle, und es wird ab und zu zurückgesetzt, also gib dort keine echten Daten ein);
-> - ein Android-Handy oder -Tablet ab Android 7.0 mit einem Google-Konto oder ein iPhone oder iPad ab iOS 15.
+> - einen Account auf einem Vikunja-Server ab Version 2.3.0: deinem eigenen, dem deiner Organisation oder der öffentlichen Demo von Vikunja (in der App „Öffentliche Demo ausprobieren“; den Demo-Account teilen sich alle, und er wird ab und zu zurückgesetzt, also gib dort keine echten Daten ein);
+> - ein Android-Smartphone oder -Tablet ab Android 7.0 mit einem Google-Konto oder ein iPhone oder iPad ab iOS 15.
 >
 > **Android (Google Play):**
 >
@@ -307,7 +391,7 @@ A personal developer account created after 13 November 2023 can apply for produc
 >
 > **Fehler oder Ideen melden:**
 >
-> - in der App: Tippe im Tab „Konto“ ganz unten auf die Version, dann auf „Hilfe und Fehler melden“;
+> - in der App: Tippe im Tab „Account“ ganz unten auf die Version, dann auf „Hilfe und Fehler melden“;
 > - per E-Mail an coderoftime@gmail.com, mit der Version der App, deinem Gerät und seiner Systemversion, der Version deines Vikunja-Servers und den Schritten, die den Fehler zeigen; die Zeile „Support-Details“ nach „Hilfe und Fehler melden“ zeigt das und mehr und teilt es, wenn du auf „Teilen“ tippst, ohne deine Aufgaben, Namen oder Passwörter;
 > - unter Android als privates Feedback auf der Seite der App in Google Play; auf iPhone und iPad über TestFlight: Mach in der App einen Screenshot und teile ihn als Beta-Feedback, oder sende Feedback von der Seite der App in der TestFlight-App.
 >
@@ -338,7 +422,7 @@ TestFlight's What to Test for the first build, with Apple's names (Home Screen, 
 
 > Vikunja-App 1.0.0-beta.1 ist die erste Beta. Nutze sie bitte für deine Aufgaben wie sonst auch, und probier vor allem aus:
 >
-> - die Anmeldung auf deinem Vikunja-Server oder „Öffentliche Demo ausprobieren“ und die erste Synchronisierung; ein zweites Konto, wenn du eins hast;
+> - die Anmeldung auf deinem Vikunja-Server oder „Öffentliche Demo ausprobieren“ und die erste Synchronisierung; einen zweiten Account, wenn du einen hast;
 > - „Überblick“, „Anstehend“ und die Suche;
 > - deine Projekte in den Ansichten Liste, Kanban, Tabelle und Gantt: Aufgaben erstellen, abhaken, verschieben und umsortieren;
 > - „Neue Aufgabe“ mit Quick Add Magic: Datum, Labels und Projekt direkt im Titel („So funktioniert Quick Add Magic“ erklärt es);
@@ -346,10 +430,10 @@ TestFlight's What to Test for the first build, with Apple's names (Home Screen, 
 > - offline: Ändere etwas ohne Verbindung; die App sendet es, sobald du wieder online bist;
 > - Erinnerungen als Mitteilungen, auch wenn die App geschlossen ist, und die Tasten „Erledigt“ und „… später“ in der Mitteilung;
 > - die Widgets auf deinem Home-Bildschirm;
-> - die App-Sperre: im Tab „Konto“ unter „App-Sperre und Privatsphäre“;
+> - die App-Sperre: im Tab „Account“ unter „App-Sperre und Privatsphäre“;
 > - die App auf Deutsch und auf Englisch.
 >
-> Schreib mir zu allem, was abstürzt, falsch aussieht, langsam ist, schwer zu bedienen ist oder fehlt: in der App mit „Hilfe und Fehler melden“ auf der Seite „Über die App“ (im Tab „Konto“ ganz unten auf die Version tippen), über das Feedback von TestFlight oder per E-Mail an coderoftime@gmail.com. Die Zeile „Support-Details“ auf derselben Seite gibt dir, was du einer Meldung beilegen kannst.
+> Schreib mir zu allem, was abstürzt, falsch aussieht, langsam ist, schwer zu bedienen ist oder fehlt: in der App mit „Hilfe und Fehler melden“ auf der Seite „Über die App“ (im Tab „Account“ ganz unten auf die Version tippen), über das Feedback von TestFlight oder per E-Mail an coderoftime@gmail.com. Die Zeile „Support-Details“ auf derselben Seite gibt dir, was du einer Meldung beilegen kannst.
 
 ## During the beta
 
@@ -426,12 +510,17 @@ Read on 2026-11-02.
 [vikunja-contact]: https://vikunja.io/contact/
 [gh-forks]: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/about-permissions-and-visibility-of-forks
 [gh-limits]: https://docs.github.com/en/repositories/creating-and-managing-repositories/repository-limits
+[crowdin-cli-sources]: https://crowdin.github.io/crowdin-cli/commands/crowdin-upload-sources
+[crowdin-cli-translations]: https://crowdin.github.io/crowdin-cli/commands/crowdin-upload-translations
+[crowdin-config]: https://support.crowdin.com/developer/configuration-file/
+[crowdin-github]: https://support.crowdin.com/github-integration/
 
 - Google Play and Android: [Play App Signing][play-app-signing], [developer verification][android-verification], [device verification for new personal accounts][play-device], [testing requirements for new personal accounts][play-testing-14], [testing tracks][play-tracks]
 - Apple: [TestFlight overview][tf-overview], [external testers][tf-external], [test information][tf-info], [complete review][apple-complete-review], [export compliance documentation][apple-export]
 - US export: [86 FR 16482][bis-rule], [15 CFR 740.17][cfr-740-17]
 - Vikunja: [contact][vikunja-contact]
 - GitHub, read on 2026-11-16 for [the move](#the-move): [forks and their network][gh-forks], [repository limits][gh-limits]
+- Crowdin, read on 2026-11-16 for [the translations on Crowdin](#the-translations-on-crowdin): [the CLI's source upload][crowdin-cli-sources] and [translation upload][crowdin-cli-translations], [the configuration file][crowdin-config], [the GitHub integration][crowdin-github]
 
 [D67]: decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet
 [D71]: decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes
@@ -440,3 +529,4 @@ Read on 2026-11-02.
 [D76]: decisions.md#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android
 [D77]: decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers
 [D87]: decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp
+[D88]: decisions.md#d88-translations-through-vikunjas-crowdin-project

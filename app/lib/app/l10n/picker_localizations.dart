@@ -52,9 +52,17 @@ final class _PickerMaterialLocalizationsDelegate
   final int? firstDayOfWeekIndex;
   final bool? use24HourFormat;
 
+  // Material's class of each language has to be extended by name. A
+  // shipped language missing here would give the pickers its locale's week
+  // start and clock, not the account's; a test asks for every shipped one.
+  static const Map<String, _PickerLocalizationsFactory> _languages = {
+    'en': _EnglishPickerLocalizations.new,
+    'de': _GermanPickerLocalizations.new,
+  };
+
   @override
   bool isSupported(Locale locale) =>
-      locale.languageCode == 'en' || locale.languageCode == 'de';
+      _languages.containsKey(locale.languageCode);
 
   // The global delegate's load initializes intl's date data for the locale
   // and stays synchronous, so the picker never shows an empty frame.
@@ -62,28 +70,25 @@ final class _PickerMaterialLocalizationsDelegate
   Future<MaterialLocalizations> load(Locale locale) =>
       GlobalMaterialLocalizations.delegate
           .load(locale)
-          .then((_) => _localizationsFor(locale.languageCode));
-
-  MaterialLocalizations _localizationsFor(String language) {
-    final formats = _Formats(language);
-    return language == 'de'
-        ? _GermanPickerLocalizations(
-            formats,
-            firstDayOfWeek: firstDayOfWeekIndex,
-            use24Hour: use24HourFormat,
-          )
-        : _EnglishPickerLocalizations(
-            formats,
-            firstDayOfWeek: firstDayOfWeekIndex,
-            use24Hour: use24HourFormat,
+          .then(
+            (_) => _languages[locale.languageCode]!(
+              _Formats(locale.languageCode),
+              firstDayOfWeek: firstDayOfWeekIndex,
+              use24Hour: use24HourFormat,
+            ),
           );
-  }
 
   @override
   bool shouldReload(_PickerMaterialLocalizationsDelegate old) =>
       old.firstDayOfWeekIndex != firstDayOfWeekIndex ||
       old.use24HourFormat != use24HourFormat;
 }
+
+typedef _PickerLocalizationsFactory = MaterialLocalizations Function(
+  _Formats formats, {
+  required int? firstDayOfWeek,
+  required bool? use24Hour,
+});
 
 /// The formats `GlobalMaterialLocalizations.delegate` builds for a
 /// language intl knows.

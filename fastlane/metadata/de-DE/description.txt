@@ -1,6 +1,6 @@
 Vikunja ist die quelloffene Aufgabenverwaltung, die du auf deinem eigenen Server betreiben kannst. Das ist ihre App für iPhone und iPad.
 
-Melde dich bei deinem Vikunja-Server an (Version 2.3 oder neuer) – deinem eigenen, dem deiner Organisation oder einem gehosteten – oder probiere die öffentliche Demo aus. Die App hält eine Kopie deines Kontos auf deinem iPhone oder iPad, damit deine Projekte und Aufgaben auch ohne Verbindung da sind.
+Melde dich bei deinem Vikunja-Server an (Version 2.3 oder neuer) – deinem eigenen, dem deiner Organisation oder einem gehosteten – oder probiere die öffentliche Demo aus. Die App hält eine Kopie deines Accounts auf deinem iPhone oder iPad, damit deine Projekte und Aufgaben auch ohne Verbindung da sind.
 
 Funktioniert offline
 • Jeder Bildschirm liest aus der Kopie auf deinem Gerät.
@@ -26,9 +26,9 @@ Erinnerungen und Widgets
 • Widgets für den Home-Bildschirm und den Sperrbildschirm: „Heute“, die nächsten Tage, „Überfällig“, „Favoriten“, ein Projekt, ein Label oder ein gespeicherter Filter; Aufgaben hakst du direkt auf dem Home-Bildschirm ab. Ein zweites Widget erstellt eine neue Aufgabe.
 
 Außerdem
-• Mehrere Konten, auf einem Server oder auf mehreren, und Gastzugang über einen geteilten Link.
+• Mehrere Accounts, auf einem Server oder auf mehreren, und Gastzugang über einen geteilten Link.
 • Labels, Teams und Projekte, die du mit Personen und Teams teilst.
-• Deine Kontoeinstellungen, der Status der Zwei-Faktor-Authentifizierung und die Sitzungen, die bei deinem Konto angemeldet sind.
+• Deine Account-Einstellungen, der Status der Zwei-Faktor-Authentifizierung und die Sitzungen, die bei deinem Account angemeldet sind.
 • Auf einem iPad im Querformat, auf einem 13-Zoll-iPad auch im Hochformat, öffnet sich eine Aufgabe neben der Liste.
 • Heller und dunkler Modus, Deutsch und Englisch.
 • Für selbst gehostete Server: Vertraue dem eigenen Zertifikat oder CA-Zertifikat deines Servers, nutze ein Client-Zertifikat oder Zugangs-Header und erlaube unverschlüsseltes http erst nach deiner Bestätigung.

@@ -30,8 +30,9 @@ Limits:
 *Accepted 2026-10-09 (step 1).*
 
 - flutter_riverpod 3 with riverpod_annotation and riverpod_generator for dependency injection and state; a headless `ProviderContainer` serves the non-UI isolates (why: background tasks, notification actions and widget callbacks build the same object graph without a widget tree).
-- The generated `*.g.dart` and l10n files are committed and excluded from analysis and from the format check.
-  - CI regenerates them and fails when the result differs. After changing ARB files or annotated providers, run `cd app && flutter gen-l10n && dart run build_runner build`.
+- The generated `*.g.dart` files are committed and excluded from analysis and from the format check.
+  - CI regenerates them and fails when the result differs. After changing annotated providers or Drift tables, run `cd app && dart run build_runner build`.
+  - The l10n code in `app/lib/l10n/generated/`, excluded the same way, is not committed since step 38e (in review, [D88](#d88-translations-through-vikunjas-crowdin-project)): `flutter pub get` at the root writes it, and so do `flutter build` and `flutter run`.
 - riverpod_lint is not enabled (it would be a new dependency).
 
 ## D4: go_router
@@ -251,8 +252,8 @@ Limits:
 
 *Accepted 2026-10-09 (step 1 review), the owner's decision.*
 
-- The first release ships English and German; the web's 32 locales are not imported, and more languages may come later. How both are written, error texts included, is [D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)'s.
-- Every string is in both ARB files (definition of done); new and changed keys get a description ([D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep)).
+- The first release ships English and German; the web's 32 locales are not imported. More languages ship through Vikunja's Crowdin project once at least half translated (since step 38e, in review, [D88](#d88-translations-through-vikunjas-crowdin-project)). How English and German are written, error texts included, is [D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)'s.
+- Every string is in `app_en.arb` (definition of done), and new and changed keys get a description ([D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep)). Since step 38e German comes through Crowdin and must be complete before a release, no longer in every commit (in review, [D88](#d88-translations-through-vikunjas-crowdin-project)).
 
 ## D22: Session keep-alive through background sync
 
@@ -1647,7 +1648,7 @@ Limits:
 - **Gantt** (`TimelineSemantics`): a row's label ends with "blocks …", "blocked by …", "precedes …" or "follows …" for the arrows the chart draws, at both ends; one text node over the header reads "Today, *date*; showing *range*".
 - **Refresh buttons** (`RefreshButton`) in the app bars of the session, API token and CalDAV lists (why: many screen-reader and switch users cannot pull to refresh).
 - **The iOS tab bar's** inactive labels are `onSurfaceVariant` (Cupertino's grey stays below 4.5:1).
-- **Strings:** new and changed ARB keys get a description, starting with "Screen reader: " for strings that are only spoken; new plurals put the number in the singular branch as well (`=1{{count} task}`). Older keys get theirs in step 36f.
+- **Strings:** new and changed ARB keys get a description, starting with "Screen reader: " for strings that are only spoken. A plural shows its number in a `one{…}` branch and has no `=1{…}` (`one{{count} task}`; since step 38e, in review, [D88](#d88-translations-through-vikunjas-crowdin-project), in place of `=1{{count} task}`). Step 38e described the older messages with a placeholder or a plural; other older ones still have no description.
 
 **Deviations from WCAG 2.2 AA:**
 - 1.4.4 Resize Text, below 200 %: the navigation labels above; the inbox badge at 1.3× ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)); the offline banner at 1.3×; Upcoming's date column at 1.3× (out of the semantics; the rows carry the dates) and its day strip at 1.5×; the Gantt header at 1.5× ([D61](#d61-table-as-a-detailed-list-gantt-as-a-read-only-timeline)); avatar initials, reaction emoji and inline pills unscaled; Flutter's app bar title at 1.34×, ellipsized when long and spoken in full.
@@ -1746,24 +1747,24 @@ Limits:
 
 ## D71: English and German: US base, glossary, error texts, live language changes
 
-*Accepted 2026-10-29 (step 36e); US English since 2026-11-13 (owner, [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)), accepted 2026-11-14 (step 38a).*
+*Accepted 2026-10-29 (step 36e); US English since 2026-11-13 (owner, [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)), accepted 2026-11-14 (step 38a); German through Crowdin and with Vikunja's German terms since step 38e, which is in review (owner, [D88](#d88-translations-through-vikunjas-crowdin-project)).*
 
 **Languages and wording:**
 - The base language is US English, like the Vikunja web (owner), with `app_en.arb` as the template:
   - spelling and terms only: color, favorite, organize and organization, recognize, license, check off, the trash. Sentence case, the spaced em dash, curly quotes and punctuation outside quotes stay as the glossary has them;
-  - the descriptions in `app_en.arb` follow it too, as they become Crowdin's source text (step 38e);
+  - the descriptions in `app_en.arb` follow it too, as they are the translators' context on Crowdin ([D88](#d88-translations-through-vikunjas-crowdin-project));
   - ARB keys, identifiers, comments, log strings and test names keep their British spelling (`taskEditColour`, `projectsFavouritesHeading`; why: renaming keys touches hundreds of call sites for nothing a user sees);
   - Flutter's own licence page keeps Flutter's English ("Licenses"), and the app's own words in the Material Icons notice are US English too;
   - the store texts in the `en-GB` folders stay British until step 38f decides the listing's languages ([D76](#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android));
   - `app/test/l10n/us_english_test.dart` fails on a British spelling in an English value or description (key names in descriptions ignored) or in the native English texts, the Material Icons notice and, since step 38d, the app's own notice, on "Rurana" in a value or description of either language or a native text, and on "unofficial" or „inoffiziell“.
-- German stays complete on every commit; `app/test/l10n/arb_parity_test.dart` enforces parity and placeholders. Contributors change the English, and until step 38e a maintainer adds the German to their pull request through maintainer edits; other languages come only through Crowdin ([D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)).
-- No web texts are copied ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)), and there is no ARB import tool for `error.*`. Error texts are written per code in our own words.
+- Contributors change only the English. Since step 38e German comes through Vikunja's Crowdin project like every other language, so it may lag the English on `main`, and a release needs it complete (owner, in review, [D88](#d88-translations-through-vikunjas-crowdin-project)). `app/test/l10n/arb_parity_test.dart` checks each translation's keys, ICU and placeholders against the English. Until then German was complete in every commit, added by a maintainer to the contributor's pull request ([D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)).
+- No web texts are copied ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)), and there is no ARB import tool for `error.*`. Error texts are written per code in our own words. This stands until kolaente agrees to pre-translating the app from the web's translations on Crowdin ([D88](#d88-translations-through-vikunjas-crowdin-project)).
 - [glossary.md](glossary.md) sets the terms and style for both languages and for the native strings. Highlights:
-  - German: du, „…“, erstellen, Gerät (not Handy). The field is „Fälligkeitsdatum“, but the detail sheet's row label stays the short „Fällig am“ (`taskDetailDueDateRow`) for the narrow label column beside the value ([D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)).
+  - German: du, „…“, erstellen, Gerät (never Handy), and since step 38e Vikunja's own terms "Account" (never „Konto“) and „Anmeldename“ (never „Benutzername“), as in its German translation instructions (owner, in review, [D88](#d88-translations-through-vikunjas-crowdin-project)). The field is „Fälligkeitsdatum“, but the detail sheet's row label stays the short „Fällig am“ (`taskDetailDueDateRow`) for the narrow label column beside the value ([D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)).
   - English: US spelling, sentence case, the ASCII apostrophe, a spaced em dash, "Mark as done", and "column" for a bucket.
   - After the update from the old app, its note calls this app "the new Vikunja app" („die neue Vikunja-App“), and the note and the Widgets page call the old one "the previous app" („die bisherige App“), never old or legacy (step 38b).
   - The server's trash keeps the web's word, the trash („Papierkorb“) ([D79](#d79-the-trash-of-vikunja-280-undo-queued-deletes-a-trash-page)), and its subscriptions are following („folgen“) ([D80](#d80-reminders-follow-subscriptions-on-vikunja-280-and-later)).
-  - A bug is reported („einen Fehler melden“), never in a „Fehlermeldung“, which reads as a message the app shows; a label that shows something says „anzeigen“; the texts on waiting for a sign-out use the full imperative. `app/test/l10n/german_texts_test.dart` checks these three.
+  - A bug is reported („einen Fehler melden“), never in a „Fehlermeldung“, which reads as a message the app shows; a label that shows something says „anzeigen“; the texts on waiting for a sign-out use the full imperative. `app/test/l10n/german_texts_test.dart` checks these three, and since step 38e (in review) also "Account", „Anmeldename“ and „Gerät“ in `app_de.arb`, the native German strings and the German store texts.
 - The support details' text ([D20](#d20-scope-cuts-and-mobile-forms-of-desktop-features)) stays English in every app language, so reports compare; only their page is translated.
 - Texts change only when they are inconsistent, wrong, unclear or misspelt, never for taste. Every new or changed message has a description ([D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep)).
 - An API token's expiry reads "Last valid day" and "Until the end of {date}" (German keeps „bis einschließlich“), and the token expires at the end of that day. The no-project error says "Create one on the Projects tab first".
@@ -1792,7 +1793,7 @@ Limits:
 **The language followed while the app runs:**
 - On a locale change and on every resume, the UI follows the device's language or the per-app language without a restart, and so do the notification channels, scheduled notifications, widgets, activity notifications, the lock prompt and the app shortcut. Android reports both changes through `didChangeLocales`, because the manifest handles `locale` in `configChanges`; iOS restarts the app instead.
 - `deviceAppLocalizationsProvider` (`core/notifications/local_notification_gateway_provider.dart`) is a kept-alive Notifier, overridden at bootstrap with `loadDeviceAppLocalizations` and in the three headless entry points with a value.
-  - `follow(locales)` takes the first supported locale, else English; an empty list changes nothing. On a change it notes the tag under `notifications.locale`.
+  - `follow(locales)` resolves the locale list the way MaterialApp does, else English; an empty list changes nothing. On a change it notes the tag under `notifications.locale`. Since step 38e (in review) both this and the noted tag go through `shippedLocaleFor`, which runs Flutter's `basicLocaleListResolution` over the shipped list, so the OS texts always match the UI (English for [fr, de_AT, en], where the first shipped language would have been German), a language with an ARB file that does not ship is not used, and a noted script tag such as `zh-Hant` is read as a script ([D88](#d88-translations-through-vikunjas-crowdin-project)).
   - The headless isolates resolve their texts once, from the device or that tag ([D39](#d39-local-notifications-a-scheduler-per-account-with-a-rolling-window)).
   - `deviceLanguageFollowerProvider` (UI engine only) calls `follow` from `didChangeLocales` and from an `AppLifecycleListener` on resume, and once in a microtask after it is first listened to, so that a per-app language set during bootstrap, as after the update from the old app, reaches the notification texts without a resume (step 38b).
 - The notification gateway is not rebuilt, because the activity tray keeps its instance. Instead, `LocalNotificationGateway.updateTexts` creates both Android channels again under their ids once the plugin is initialised, which renames them and keeps the user's settings; it never throws. On iOS the categories keep their texts until the app restarts.
@@ -1807,7 +1808,7 @@ Limits:
 - Opening it is an `AppExcursions.launchAway` excursion, so the app does not lock ([D64](#d64-app-lock-over-the-ui-and-device-privacy-settings)); the excursion ends at once when the page did not open, and a failure is logged by its type only.
 - It is the last row of the Account tab's Appearance section, after Theme and "Use system colors", with "On this device" under its subtitle (owner, [D75](#d75-owners-ui-review-no-task-identifier-coloured-folders-new-task-sheet-account-tab)).
 - The account's language setting ([D54](#d54-account-settings-in-the-app-password-and-email-on-the-web)) never changes the app's language.
-- After the update from the old app ([D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)), its language override becomes the per-app language on Android 13 and later (`setAppLanguage` on the device channel, `LocaleManager.setApplicationLocales`), only for `en` and `de` and only when the app has no per-app language yet; it is set even when it equals the device's language, as the old override pinned it too. Other languages (the old app had empty stubs for about 30) and older Android versions follow the device.
+- After the update from the old app ([D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)), its language override becomes the per-app language on Android 13 and later (`setAppLanguage` on the device channel, `LocaleManager.setApplicationLocales`), only for a shipped language (since step 38e, in review, [D88](#d88-translations-through-vikunjas-crowdin-project); English and German so far) and only when the app has no per-app language yet; it is set even when it equals the device's language, as the old override pinned it too. Other languages and older Android versions follow the device.
 
 **Sorting, measuring and wrapping:**
 - `compareTitles` (`core/text/title_order.dart`) sorts projects, the row label pills (`rowLabels`), the label list (`LocalLabelRepository.watchAll`), a team's members (by display name, then username, then id) and the sort menu (`sortsInMenuOrder`). It folds case, accents and ß, with stable tie-breaks: "apfel", "Ärger", "Zahlung".
@@ -1850,7 +1851,7 @@ Limits:
 
 **The jobs** (each is a job of the same name in [D86](#d86-ci-and-releases-on-github-actions)'s workflow `ci.yaml`):
 - `checks` runs in one job, to save one Flutter setup per run.
-  - `checks.sh` checks that `flutter gen-l10n` and `build_runner` leave the generated code unchanged, then runs the format check, `tool/check_pure_dart_packages.sh`, the Android notices' self-test and check, `desugar_source.py --check-manifest`, `flutter analyze`, the Python tests of `tool/ci/`, and shellcheck when it is installed.
+  - `checks.sh` checks that `build_runner` leaves the committed generated code unchanged (until step 38e also `flutter gen-l10n`, whose code is no longer committed, in review, [D88](#d88-translations-through-vikunjas-crowdin-project)), then runs the format check, `tool/check_pure_dart_packages.sh`, the Android notices' self-test and check, `desugar_source.py --check-manifest`, `flutter analyze`, the Python tests of `tool/ci/`, and shellcheck when it is installed.
   - `test.sh` runs the tests of the app, every package and `vikunja_widgets`, except the contract tests, with `vikunja_logic`'s `test/time` run again in Europe/Berlin, on every CPU of the runner (half of them locally).
   - `outdated.sh` runs afterwards, for information only.
 - `editor` (Node 26.10.0, the owner's Node; `.nvmrc` stays `26`) runs `npm audit --package-lock-only --audit-level=high` and `tool/build_editor.sh --check`.
@@ -1914,7 +1915,7 @@ Limits:
 
 ## D74: iOS phase: App Store prerequisites, TestFlight from the Mac, photo locations, capture cover
 
-*Accepted 2026-11-02 (step 37b), the owner's decision where marked; the names, the source link and the CI check of step 38c, accepted 2026-11-16; the source link's single form of step 38d, accepted 2026-11-16.*
+*Accepted 2026-11-02 (step 37b), the owner's decision where marked; the names, the source link and the CI check of step 38c, accepted 2026-11-16; the source link's single form of step 38d, accepted 2026-11-16; the German check of step 38e, in review.*
 
 - The iOS share extension ("Share to Vikunja") comes after 1.0 (owner). Until then, iOS takes files only through the in-app pickers.
 - On iOS, one-time secrets are covered while the screen is captured (recording, AirPlay or a mirrored display) (owner). Screenshots stay possible, and no undocumented secure-field trick is used.
@@ -1934,7 +1935,7 @@ Limits:
 **The iOS release:**
 - The version comes from the tag ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)): `IOS_BUILD_NAME` is the tag's `MAJOR.MINOR.PATCH`, since `CFBundleShortVersionString` takes nothing else, and `IOS_BUILD_NUMBER` is the Android build number. So the betas of 1.0.0 are 1.0.0 with growing build numbers.
 - The owner runs TestFlight uploads by hand from the Mac with `tool/ci/ios_release.sh`. There is no CI job, because signing and the API key would have to live in a runner's macOS account (threat model R35) or in CI secrets; GitHub's job `ios` builds unsigned only ([D86](#d86-ci-and-releases-on-github-actions)).
-  - It refuses to run unless all of these hold: Xcode is selected, Flutter is the pinned one, HEAD is the tag with a clean tree, the source link is https and opens signed out, `DEVELOPMENT_TEAM` and the key variables `VIKUNJA_APP_ASC_KEY_ID`, `VIKUNJA_APP_ASC_ISSUER_ID` and `VIKUNJA_APP_ASC_KEY_FILE` (the names since step 38c) are set (the key file readable by its owner only), and the 1024 icon is sRGB without alpha.
+  - It refuses to run unless all of these hold: Xcode is selected, Flutter is the pinned one, HEAD is the tag with a clean tree, the source link is https and opens signed out, `DEVELOPMENT_TEAM` and the key variables `VIKUNJA_APP_ASC_KEY_ID`, `VIKUNJA_APP_ASC_ISSUER_ID` and `VIKUNJA_APP_ASC_KEY_FILE` (the names since step 38c) are set (the key file readable by its owner only), German has every English text (`python3 -I tool/l10n_progress.py --min 100 de`, "German incomplete" in a dry run; since step 38e, in review, [D88](#d88-translations-through-vikunjas-crowdin-project)), and the 1024 icon is sRGB without alpha.
   - The source link is the tree at the tag of `VIKUNJA_APP_SOURCE_CODE_URL`, the repository's https URL, by default https://github.com/go-vikunja/app: `<repository>/tree/<tag>`, as the Android release links it ([D86](#d86-ci-and-releases-on-github-actions); in place of `RURANA_SOURCE_CODE_URL` with `CI_PROJECT_URL` as the fallback). Since step 38d it builds no `/-/tree/` link for another host, and its refusal of a link that does not open signed out names no AGPL section ([D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)).
   - It runs the release-only source-link test.
   - It builds with `flutter build ipa --release`, using the tag's version, `SOURCE_CODE_URL` and export options for automatic signing with the team in `DEVELOPMENT_TEAM`.
@@ -2380,7 +2381,7 @@ Limits:
 
 ## D83: Successor of the official Vikunja app in go-vikunja/app
 
-*Accepted 2026-11-12, the owner's decision, agreed with the Vikunja maintainers; the decisions of 2026-11-13 for the switch (owner); steps 38a and 38b accepted 2026-11-14; the decisions of 2026-11-14 for step 38c (owner); step 38c accepted 2026-11-16; the decisions of 2026-11-16 for step 38d (owner, [D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)); step 38d accepted 2026-11-16.*
+*Accepted 2026-11-12, the owner's decision, agreed with the Vikunja maintainers; the decisions of 2026-11-13 for the switch (owner); steps 38a and 38b accepted 2026-11-14; the decisions of 2026-11-14 for step 38c (owner); step 38c accepted 2026-11-16; the decisions of 2026-11-16 for step 38d (owner, [D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)); step 38d accepted 2026-11-16; the decisions of 2026-11-16 for step 38e (owner, [D88](#d88-translations-through-vikunjas-crowdin-project)), which is in review.*
 
 - The app becomes the official Vikunja mobile app and moves into https://github.com/go-vikunja/app; the owner is its main maintainer.
 - **Android:** the Play listing `io.vikunja.app` stays in Vikunja's Play account, and the app ships there as an update of the old app: the same application id, signed with Vikunja's upload key, with a higher version code (why: the old app's installs keep updating).
@@ -2388,7 +2389,7 @@ Limits:
 - **Licence:** MIT, in place of [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)'s AGPL with the app store permission, since step 38d ([D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)).
 - **Name and icon:** "Vikunja", and an icon derived from Vikunja's `logo.svg` with the old app's icons as the look to follow (owner, 2026-11-13), in place of Rurana and its llama ([D15](#d15-app-id-iovikunjaapp-and-the-name-vikunja), [D42](#d42-app-icon-vikunjas-logo-every-variant-derived-by-script)).
 - **Language:** US English like the Vikunja web; the German stays (owner, 2026-11-13; [D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)).
-- **Translations:** Vikunja's existing Crowdin project; its integration is still to be built (step 38e), and it replaces step 36f.
+- **Translations:** Vikunja's existing Crowdin project, which replaces step 36f. Step 38e connects it through Crowdin's GitHub integration and moves the German there (in review, [D88](#d88-translations-through-vikunjas-crowdin-project)).
 - **Order:** the remaining steps of the roadmap were finished first; the switch follows as steps 38a–38f, then the beta of 37d in the official listing. Until then nothing that would fix an id is created: no signing keys, Play app, Apple App IDs or release tag (why: [D15](#d15-app-id-iovikunjaapp-and-the-name-vikunja) makes an id permanent once these exist).
 - **Step 38a, the identity**: the application id `io.vikunja.app` with every id derived from it, and the scheme and client id `vikunja-io.vikunja.app` ([D15](#d15-app-id-iovikunjaapp-and-the-name-vikunja), [D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)); the name in the app's texts, the store texts and their checks, without the "unofficial" lines ([D76](#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android)); the icons from Vikunja's logo ([D42](#d42-app-icon-vikunjas-logo-every-variant-derived-by-script)); US English ([D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)); the User-Agent `Vikunja-App/…` with the sessions page's label ([D55](#d55-security-settings-two-factor-status-sessions-and-tokens-a-new-token-shown-once)). The internal names that ship or that contributors see were renamed while nothing depends on them: the widgets plugin `vikunja_widgets`, the iOS extension target `VikunjaWidgets` and the WidgetKit kinds `VikunjaTasks` and `VikunjaQuickAdd` ([D63](#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios)), the root package `vikunja_app` with the notice asset `assets/legal/vikunja_app.md` ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)), the editor bridge `VikunjaEditor` and `window.vikunja` with the npm name `vikunja-editor` ([D52](#d52-descriptions-edited-in-a-locked-down-tiptap-webview-never-silently-overwritten)), the background runners' and the pre-consent probe's names and the IDE's run configurations.
 - **Step 38b, the update from the old app**: on Android the first start after the update takes over the old app's server, session, theme and language, clears its leftovers and keeps its placed widgets ([D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)).
@@ -2399,7 +2400,7 @@ Limits:
   - 38d, the licence and the move: done by step 38d ([D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)). `NOTICE.md`, the app's notice, `copyrightNotice` and the About page carry the copyright "Copyright (c) Vikunja and contributors", the MIT licence and the terms for Vikunja's name and logo, whose file table lists the icon files as derived from Vikunja's logo ([D42](#d42-app-icon-vikunjas-logo-every-variant-derived-by-script)); the llama source and the explorations left `branding/`; `CONTRIBUTING.md` follows Vikunja's rules. The import into go-vikunja/app follows once kolaente has changed the ruleset.
   - 38f, the store listing and the website: the app's pages on `coderoftime.dev/rurana/…` (the About page's rows, the store URLs and their checker), the contact `coderoftime@gmail.com`, the listing's languages (the `en-GB` texts stay British until then), the screenshots, which still show the llama and Rurana, the App Store name if "Vikunja" is taken there, and who makes the written offer for the desugar_jdk_libs source, with its contact ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet), [D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)).
   - Test data that needs Docker or a new capture keeps the old name: the TLS test certificates, the seeded E2E user, the captured fixtures and their capture tools, and the contract tests' user agents and titles.
-- Step 38c changed [D72](#d72-first-release-android-and-ios-together-play-and-an-apk-beta-first), [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move), [D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover), [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers) and the source link of [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet) and added [D86](#d86-ci-and-releases-on-github-actions). Step 38d added [D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp), which supersedes the licence of [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet) and the GitLab parts of [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move), and changed the entries that named the AGPL, the DCO or GitLab. Step 38f changes [D76](#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android).
+- Step 38c changed [D72](#d72-first-release-android-and-ios-together-play-and-an-apk-beta-first), [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move), [D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover), [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers) and the source link of [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet) and added [D86](#d86-ci-and-releases-on-github-actions). Step 38d added [D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp), which supersedes the licence of [D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet) and the GitLab parts of [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move), and changed the entries that named the AGPL, the DCO or GitLab. Step 38e adds [D88](#d88-translations-through-vikunjas-crowdin-project) and changes [D3](#d3-riverpod-3-with-code-generation), [D21](#d21-languages-english-and-german), [D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep), [D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes), [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move), [D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover), [D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept), [D86](#d86-ci-and-releases-on-github-actions) and [D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp) (in review). Step 38f changes [D76](#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android).
 
 Open:
 - Whether the owner gets release rights in Vikunja's Play Console.
@@ -2512,7 +2513,7 @@ Limits:
 **Theme, system colors and language** are carried over (owner):
 - `dynamic_colors` sets "Use system colors" ([D45](#d45-app-shell-colour-scheme-display-settings-projects-tab-smart-lists-offline-banner)): on only for `true`, and only when the old store could be read (why: the old default was off, so its users saw the brand blue).
 - `theme_mode` `light` or `dark` becomes the device's theme, `appearance.theme` ([D45](#d45-app-shell-colour-scheme-display-settings-projects-tab-smart-lists-offline-banner)), whatever the server, the public demo included, as nothing goes to an account (owner, 2026-11-13). Bootstrap runs the import before it reads the theme, so the first frame after the update has it. `system` and other values leave the default, System.
-- `locale_override` `en` or `de` becomes the per-app language on Android 13 and later, only when the app has none yet ([D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)).
+- `locale_override` becomes the per-app language on Android 13 and later, only when the app has none yet ([D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)), and only when it is the tag of a shipped language, as the old app stored a bare language code. Since step 38e (in review, [D88](#d88-translations-through-vikunjas-crowdin-project)) Dart reads the shipped list, `shippedLocales`, and Kotlin `PreviousApp.LANGUAGES`, which a test keeps equal to it; until then both named `en` and `de`, which are still the only shipped languages.
 
 **Cleared** (owner):
 - first the old reminders, their stored list and the shown notifications (flutter_local_notifications' `cancelAll`), as a reminder that fires would create its channel again;
@@ -2577,6 +2578,7 @@ The update test ([threat model 8.2](threat-model.md#82-manual-on-the-android-emu
   - exactly these two workflow files, no filters or inputs on pull requests, runs by hand and calls, and the exact `if:` conditions;
   - each CI job runs exactly its scripts, and the editor job's Node is a release of `app/editor/.nvmrc` (since step 38d, in place of the comparison with GitLab's jobs and image).
 - No DCO job: Vikunja has none, and since step 38d the app follows Vikunja's contribution rules, without a sign-off ([D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)).
+- No Crowdin workflow: since step 38e Crowdin's GitHub integration opens the translation pull requests, with no workflow and no secret in the repository, and they run `ci.yaml` like any other (in review, [D88](#d88-translations-through-vikunjas-crowdin-project)).
 
 **Runners and tools:**
 - The bare hosted images, not the cirruslabs container (why: hosted images cannot be pinned anyway, `contract` needs the host's Docker and `ios` macOS, and the images bring the tools: JDK 21, the Android SDK with build-tools 37 (`apksigner`, `zipalign`, `aapt2`), Ruby, Python, ShellCheck, `gh`, the AWS CLI, `openssl`, Docker with Compose).
@@ -2587,7 +2589,7 @@ The update test ([threat model 8.2](threat-model.md#82-manual-on-the-android-emu
 **The build** (`tool/ci/release_build.sh`, job `build`):
 - Only a tag run of go-vikunja/app on GitHub Actions is real (`official_release_run` in `tool/ci/release_lib.sh`): `GITHUB_ACTIONS`, `GITHUB_REPOSITORY=go-vikunja/app`, its numeric id `GITHUB_REPOSITORY_ID=395095540` and a tag ref (why the id: another repository renamed to that name does not pass). Anything else is a dry run, whose failed checks become reasons in `NOT_RELEASABLE`; outside GitHub Actions the script runs only with `--dry-run`.
 - The source link, the `SOURCE_CODE_URL` define ([D67](#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)), is the tree at the tag of the repository the workflow runs in: `https://github.com/<owner>/<repo>/tree/<tag>` (locally a placeholder). The repository must be public (the event's `repository.private`) and the link must answer 200 signed out; the written offer needs its contact.
-- It runs the release-only source-link test and the notices' checks, builds the bundle and one universal APK with `VIKUNJA_APP_UNSIGNED=true`, runs the exported-components check, and checks that neither file is signed (so a stray `key.properties` cannot sign a CI build) and the APK's version with `aapt2`. It fetches the desugar_jdk_libs source ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)) and writes `build/release/unsigned/` with `release.env`, which records the version, the source link, each file's SHA-256 and the reasons.
+- It runs the release-only source-link test and the notices' checks, checks the translations (since step 38e, in review, [D88](#d88-translations-through-vikunjas-crowdin-project): a warning for a shipped language below 50 %, and a refusal, "German incomplete", when German lacks an English text), builds the bundle and one universal APK with `VIKUNJA_APP_UNSIGNED=true`, runs the exported-components check, and checks that neither file is signed (so a stray `key.properties` cannot sign a CI build) and the APK's version with `aapt2`. It fetches the desugar_jdk_libs source ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)) and writes `build/release/unsigned/` with `release.env`, which records the version, the source link, each file's SHA-256 and the reasons.
 
 **Signing** (`tool/ci/release_sign.sh`, in `publish`):
 - The secrets of the environment `release` keep the old app's names, so Vikunja's maintainers need no new ones: `KEYSTORE_BASE64` (the upload keystore, JKS or PKCS12) and `KEY_PROPERTIES` (`storePassword`, `keyAlias` and `keyPassword`; `storeFile` is ignored), parsed by `tool/ci/key_properties.py` with the rules of Java's `Properties.load`, which the old app's Gradle used. A separate APK key is optional: `APK_KEYSTORE_BASE64` with `APK_KEY_PROPERTIES`, both or neither. Without it Vikunja's upload key signs the APK too, as in the old app (why: installs of the old app's APKs keep updating).
@@ -2672,13 +2674,13 @@ Step 38d of [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp). 
   - Open pull requests from a fork against `main`, keep them small, and allow edits by maintainers.
   - Add screenshots for UI changes and a `Fixes #N` line per issue.
   - A pull request whose review questions stay unanswered may be closed after two weeks. Labels are set by hand, with no automation.
-- **Translations** come only through Vikunja's Crowdin project, with English as the source. Until step 38e the English–German parity test stays, and a maintainer adds the German through maintainer edits ([D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)).
+- **Translations** come only through Vikunja's Crowdin project, with English as the source; since step 38e German too, which ended the English–German parity test and the German that maintainers added to pull requests (in review, [D88](#d88-translations-through-vikunjas-crowdin-project), [D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)).
 - **No CLA and no DCO:** `tool/check_dco.py`, `tool/ci/dco.sh`, GitLab's job `dco` and the DCO section of `CONTRIBUTING.md` are deleted.
 - **Security reports** go privately to security@vikunja.io or through GitHub's private vulnerability reporting, never in a public issue ([D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)). `SECURITY.md` at the root says so, with the scope (the app with its widgets and its editor, and the scripts and workflows that build and release it) and a pointer to the server's policy. An admin of go-vikunja/app switches the reporting on ([releasing.md](releasing.md#once-in-go-vikunjaapp)).
 - **Issue forms:**
   - `.github/ISSUE_TEMPLATE/bug.yml` and `feature.yml`, which set the organisation's issue types Bug and Feature. A feature needs a maintainer's agreement in its issue before a pull request.
   - `config.yml` turns blank issues off and links, like the server's, the forum, Matrix, the security policy and Crowdin.
-- **A pull request template**, `.github/PULL_REQUEST_TEMPLATE.md`, of five lines: what and why, `Fixes #`, screenshots for UI changes, the AI disclosure, and "Generated code and ARB parity done".
+- **A pull request template**, `.github/PULL_REQUEST_TEMPLATE.md`, of five lines: what and why, `Fixes #`, screenshots for UI changes, the AI disclosure, and a checkbox for the generated code, which since step 38e names build_runner's code and the English texts in place of "Generated code and ARB parity done" (in review, [D88](#d88-translations-through-vikunjas-crowdin-project)).
 - **Not added** (owner): `AGENTS.md`, `CLAUDE.md`, `CODEOWNERS` and `FUNDING.yml`. CODEOWNERS and FUNDING go to kolaente as suggestions.
 - **Not copied:** the paragraph of Vikunja's CONTRIBUTING that asks automated agents to put a marker in the pull request's title.
 
@@ -2701,7 +2703,7 @@ Step 38d of [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp). 
 - **The removal commit removes:**
   - the old app's workflows and `.drone.yml`;
   - `Makefile`, the devenv files and `.envrc`;
-  - `renovate.json` and `crowdin.yml` (no Crowdin sync until step 38e);
+  - `renovate.json` and the old app's `crowdin.yml`; step 38e's own `crowdin.yml` comes with our `main` (in review, [D88](#d88-translations-through-vikunjas-crowdin-project));
   - `.vscode`, `.metadata` and the old Flutter tree.
 - **`legacy-final`:** an annotated tag on the old `main`'s last commit (cdbc6e3 on 2026-11-16), pushed when the freeze of that `main` starts. There is no `legacy` branch. The old tags and releases stay.
 - **kolaente changes the ruleset "main protect" for the import:**
@@ -2734,10 +2736,114 @@ Step 38d of [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp). 
 
 Limits:
 - Until an admin switches on private vulnerability reporting, only the email route of `SECURITY.md` works.
-- Until step 38e the app's texts are not on Crowdin: English and German only, the German added by maintainers.
+- The app's texts reach Crowdin only after the import, once kolaente has connected the integration of step 38e ([D88](#d88-translations-through-vikunjas-crowdin-project), in review).
 - The old app's workflows stay in its commits. A `v*` tag pushed onto an old commit would run that commit's release workflow; the secrets only in the environment `release` and a ruleset for `v*` tags close this ([releasing.md](releasing.md#once-in-go-vikunjaapp)).
 
 Open:
 - kolaente's confirmations: the name-and-logo text and who holds the logo's copyright, the ruleset and private vulnerability reporting.
 - The import pull request waits for the ruleset. Until it is merged, go-vikunja/app's `main` is the old app, frozen from the push of `legacy-final` on.
 - Who makes the written offer, and its contact, and what the App Store's `copyright.txt` says (step 38f).
+
+## D88: Translations through Vikunja's Crowdin project
+
+*The owner's decisions of 2026-11-16; step 38e is in review.*
+
+Step 38e of [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp). The points marked (owner) are the owner's answers of 2026-11-16; the others are defaults the owner was shown and did not object to.
+
+**The generated l10n code leaves git** (owner, answers [Q18](open-questions.md#q18-generated-localisation-code-in-git)):
+- `app/lib/l10n/generated/` is in `app/.gitignore` and no longer in the repository (why: Crowdin's pull requests change only ARB files and would fail the check for stale generated code; each language adds about 224 KB of generated code whatever it translates, about 8 MB at the web's 37 languages, and an English change rewrites the file of every language that lacks that text).
+- `flutter pub get` at the workspace root writes it, and so do `flutter build` and `flutter run`. Every CI script that runs Flutter starts with pub get ([D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move)), so CI needed no new step.
+- `flutter analyze` and `flutter test` do not write it, so developers run `flutter pub get` after a pull or an ARB change (README, CONTRIBUTING).
+- `checks.sh`'s check for stale generated code covers only build_runner's `*.g.dart` files, which stay committed ([D3](#d3-riverpod-3-with-code-generation)).
+
+**German comes through Crowdin** (owner):
+- The German of every message is imported once into Crowdin as approved translations (below). From then on German comes through Crowdin like every other language, by Vikunja's rule that translations come only through Crowdin (why: Crowdin's export writes whole files, so German changed in a pull request would be overwritten by the next export).
+- German may therefore lag English on `main` until Crowdin's next pull request. `app/test/l10n/arb_parity_test.dart` lets a translation lack messages, as English stands in for them, but fails on a key English does not have, an empty text, ICU that gen-l10n would refuse, or placeholders other than the English message's (why: a renamed placeholder passes gen-l10n and breaks the call sites). It also checks the English and that no ARB file names another locale in `@@locale` than its file name.
+- A release needs German complete: `tool/ci/release_build.sh` for Android ([D86](#d86-ci-and-releases-on-github-actions)) and `tool/ci/ios_release.sh` before a TestFlight build ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)) run `python3 -I tool/l10n_progress.py --min 100 de` and refuse otherwise, so a real release fails and a dry run adds the reason "German incomplete".
+
+**German terms follow Vikunja's German translation instructions** (owner):
+- "Account" in place of „Konto“ (der Account, die Accounts, Account-Einstellungen), with articles, adjectives and pronouns adjusted, and „Anmeldename“ in place of „Benutzername“.
+- „Handy“, which [glossary.md](glossary.md) already rejected, became „Gerät“ in the connect tagline and „Smartphone“ for another phone (`linkShareQrHint`).
+- This holds everywhere the app says it: `app_de.arb`, the native German strings (the widgets' `de.lproj`), the German store texts in `fastlane/metadata`, the German glossary and the tests that pin German texts.
+- `app/test/l10n/german_texts_test.dart` reads `app_de.arb`, the native German strings and the German store texts, and fails on „Konto“ or „Konten“, a neuter „Account“, a compound with „Account“ without a hyphen, „Benutzername“ and „Handy“.
+
+**Which languages ship** (owner):
+- A language ships once at least 50 % of the app's file is translated and approved, as on Vikunja's web. English and German ship from the start.
+- `shippedLocales` in `app/lib/app/l10n/shipped_locales.dart` is the list, English first as the fallback:
+  - MaterialApp's `supportedLocales` is this list, not every ARB file's: an ARB file not on it compiles but is never shown;
+  - the language of the notifications, the widgets and the lock prompt comes from it through `shippedLocaleFor` ([D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)), and a noted tag with a script (`zh-Hant`) is read as one;
+  - Android's `locales_config.xml`, iOS's `CFBundleLocalizations` and `PreviousApp.LANGUAGES` in Kotlin repeat it. `app/test/l10n/shipped_locales_test.dart` keeps them equal and checks that each shipped language has an ARB file and Material's, Cupertino's and the widgets' texts;
+  - the pickers keep the account's week start and clock only through a class per language in `app/lib/app/l10n/picker_localizations.dart`, and `picker_formats_test.dart` asks for one for each shipped language.
+- `tool/l10n_progress.py` prints, per ARB file, the share of the template's messages the file has, rounded down (why: Crowdin exports only approved translations and leaves untranslated messages out, so a message present is an approved one). `--shipped-list` reads the list from `shipped_locales.dart`, and `--min` exits 1 below a share. `tool/ci/test_l10n_progress.py` tests it.
+- A maintainer adds a language in one pull request once the report shows at least 50 %: its `Locale` in `shippedLocales`, its tag in the three platform lists and its picker class. CONTRIBUTING.md lists the steps.
+- Before a release, `release_build.sh` also runs `l10n_progress.py --shipped-list --min 50` and warns about a shipped language below 50 %, in the real run and the dry run alike, without refusing (why: English grows with every feature, so a language's share falls without anyone touching it). Only German must be complete (above).
+
+**Not shipped yet**, though they may be translated on Crowdin, and the integration exports their files, which compile but are never shown:
+- right-to-left languages (Arabic, Persian, Hebrew), until a pass over the layouts in right-to-left;
+- Esperanto (`app_eo.arb`), which Material does not support, so the app would break in it if it shipped;
+- Vikunja's custom Swiss German (`de-swiss`), exported as `app_gsw.arb` (why: under its own code gen-l10n would read the file as German in a script `swiss`, which no device reports; `gsw` is Swiss German's language code, which Material supports). Shipping it at 50 % is a later decision.
+
+**Crowdin's languages as Flutter's locales:**
+- `pt-PT` → `pt`, `pt-BR` → `pt_BR`, `zh-CN` → `zh` (Simplified as the base), `zh-TW` → `zh_Hant`, Norwegian `no` → `nb` (the code Norwegian devices report), `sr-CS` → `sr_Latn` with an empty base file `app_sr.arb`, Vikunja's custom `de-swiss` → `gsw`; the rest by their two-letter code.
+- Every regional or script file has its base file (why: gen-l10n fails without one). The template has no `@@locale`, so the exports carry none (why: Crowdin writes its own codes there, such as `pt-BR`, which gen-l10n refuses).
+- `tool/ci/test_crowdin_export.py` runs a simulated export of the mapped languages, French and Esperanto, through gen-l10n, `arb_parity_test.dart` and `l10n_progress.py`, and checks that a hyphenated file name, a `@@locale` such as `pt-BR` and a missing base file fail.
+
+**The integration** is Crowdin's GitHub integration, which kolaente sets up in Crowdin through a dedicated bot account:
+- `crowdin.yml` at the root holds:
+  - the project 462614, which only the CLI reads (the integration works in the project it is set up in), and `preserve_hierarchy`;
+  - the commit message and pull request title "chore(i18n): update translations via Crowdin", with `append_commit_message: false` (why: Crowdin appends `[ci skip]` by default, which skips the workflows whose checks a pull request needs; the title is a Conventional Commit, as CONTRIBUTING.md asks);
+  - one file: the source `app/lib/l10n/arb/app_en.arb` as the Crowdin file `/app_en.arb`, translations as `app_%two_letters_code%.arb`, type `arb`, `update_as_unapproved`, export only approved, skip untranslated strings and the mapping above, with Norwegian's `"no"` quoted (why: YAML 1.1 reads a bare `no` as false).
+
+  `tool/ci/test_crowdin_config.py` checks it.
+- It holds no token, and the repository gets no workflow and no secret, as [D86](#d86-ci-and-releases-on-github-actions) asks: the integration keeps its credential in Crowdin, and the CLI reads `CROWDIN_PERSONAL_TOKEN` from the environment.
+- Its pull requests come from a branch of go-vikunja/app itself (`l10n_main`) and run `ci.yaml` like any other. Whoever holds the credential can push branches and open pull requests there, but not merge them while "main protect" requires a maintainer's approval, and not release: `v*` tags are protected and the environment `release` needs a reviewer (why the bot account: the credential reaches only what that account reaches; [threat model](threat-model.md) M47, R40). This holds while the account has write access, not admin, and is on no ruleset's bypass list: an admin can change the rulesets and the environment.
+- A translation cannot inject code: gen-l10n escapes it. Broken ICU makes `flutter pub get` fail, and a renamed placeholder fails `arb_parity_test.dart`, both on Crowdin's pull request; the fix is made on Crowdin.
+- The Crowdin file stays `app_en.arb`, so the old app's file is replaced under its name: a string whose key and text stay keeps its translations, one whose text changed keeps them unapproved (`update_as_unapproved`), and the old app's other strings leave the file while their translations stay in the translation memory. This holds if the integration uses the file at the project's root; it may instead put a new `main/app_en.arb` into a version branch `main` (Limits).
+
+**The uploads:**
+- The app's source goes up only after the import pull request has removed the old app's nightly "Crowdin Sync" workflow, or after kolaente has disabled it (why: every night it uploads the old app's `app_en.arb` of 188 strings into the same Crowdin file, which would remove the app's strings and the German on them). The integration uploads the source itself once it is connected, as it syncs the repository's sources continuously.
+- Right after the source, the owner, as a manager of project 462614, uploads the German once with the Crowdin CLI: `--auto-approve-imported --import-eq-suggestions`, and `--translate-hidden` if the project hides duplicates, after a dry run, and `-b main` if the integration put the file into a version branch `main`. Why `--import-eq-suggestions`: 63 German texts equal the English (Vikunja, Account, OK, Kanban …), and Crowdin skips such a translation without it, so the export would leave them out and German would never count as complete. The commands are in [beta.md](beta.md#the-translations-on-crowdin).
+- Before kolaente connects the integration, the owner rehearses it with a public Crowdin project of his own and his test repository of step 38c ([beta.md](beta.md#the-crowdin-rehearsal)): where the source lands, the German upload, a regional language, the pull request's branch, commit message, CI, file names and layout, and an English change reaching Crowdin, with whether the integration force-pushes its branch. The test project is deleted afterwards.
+
+**The texts before the upload:**
+- Every English plural has a `one{…}` branch that shows its number, and no `=1{…}` (why: some languages use the one form for 21 or 31 too, French for 0, and translators copy the English). Wording that fits only exactly one, such as "Every day", is a message of its own that the code picks for 1 (`repeatEveryDay` and its siblings, `widgetTitleHiddenHint`). German follows, and `app/test/l10n/plural_forms_test.dart` checks the English.
+- Every message with a placeholder or a plural has a description, the translators' only context on Crowdin; 229 such messages had none.
+
+**The previous app's language** ([D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)) is carried over for every shipped language whose tag equals the bare code the old app stored, in Dart from `shippedLocales` and in Kotlin from `PreviousApp.LANGUAGES`.
+
+**Native strings** (Android's `strings.xml`, iOS's `InfoPlist.strings`, the widgets' `Localizable.strings` and `Localizable.stringsdict`) stay English and German. They go to Crowdin in a later step, once a third language is about to ship.
+
+**The old app's Polish** is not uploaded (why: it was written by hand for the old app's 188 strings, of which few recur).
+
+**The web's translations:** pre-translating the app from the web's translations through the shared translation memory waits for kolaente's OK (why: the web is under the AGPL, the app under the MIT License). Once he agrees, it runs without auto-approval. Until then [D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)'s "no web texts are copied" stands; translators may still see the memory's suggestions in Crowdin's editor.
+
+**For kolaente**, added to [beta.md](beta.md#what-kolaente-does):
+- Crowdin's GitHub integration for go-vikunja/app, connected through a bot account, with the commit message of `crowdin.yml`, so without `[ci skip]`, and without its import of existing translations, as the owner's upload brings the German (why: the owner's CLI upload comes once the source is in place, can be dry-run first, and takes `-b main` for a version branch and `--translate-hidden` for duplicates the project hides, which the integration's page does not mention; the integration's import runs when kolaente connects the branch, with its options "Allow target translation to match source" and "Approve added translations" set in an integration only he can change);
+- the bot account lowered to Write once the integration has synced, and the integration checked to still push its branch and update its pull request;
+- "main protect" keeping a maintainer's approval required, so that the integration's account cannot merge its own pull requests;
+- the old nightly Crowdin workflow disabled before the upload, unless the import pull request has removed it already;
+- the manager role in project 462614 for the owner;
+- "Skip untranslated strings" and "Export only approved" in the project's export settings (why: Crowdin does not document whether the integration follows these two options of `crowdin.yml`);
+- where the integration put `app_en.arb`, told to the owner before the German upload: at the root, in place of the old app's file, or as `main/app_en.arb` in a version branch `main`, so that the upload takes `-b main`; and the id of the custom Swiss German language, which `crowdin.yml` maps as `de-swiss`;
+- whether the web's translations may pre-translate the app;
+- the old repository secrets `CROWDIN_PROJECT_ID` and `CROWDIN_PERSONAL_TOKEN` deleted, as any workflow on any branch can read them and nothing uses them any more, and a check that go-vikunja/app gets no other repository or organisation secret than `S3_ENDPOINT`, `S3_BUCKET` and `S3_REGION`, which hold no credential;
+- a look at what Crowdin holds for `app_en.arb`, with an export first if anything was translated there since December 2025.
+
+Step 38e changed [D3](#d3-riverpod-3-with-code-generation), [D21](#d21-languages-english-and-german), [D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep), [D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes), [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move), [D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover), [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp), [D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept), [D86](#d86-ci-and-releases-on-github-actions) and [D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp) for it.
+
+Limits:
+- Nothing reaches Crowdin before kolaente's part. Until the German upload, `app_de.arb` in the repository is what the upload takes, so German added there before it is kept.
+- Where the integration puts the source is not documented for a project that already has the file: Crowdin adds a Git branch as a version branch, shown as a folder, so it may create `main/app_en.arb` beside the old app's `/app_en.arb` instead of replacing it. Then `update_as_unapproved` has no old file to update, and the German upload needs `-b main`: without it the CLI writes into the old file, which the integration does not export. The rehearsal shows which, and kolaente checks it before the German upload.
+- No real export from Crowdin was tried, only the simulated one: whether the files keep the key order, the escapes and the final newline, carry no `@@locale` and get the mapped names shows with the rehearsal's and the first real pull request, and so does whether the integration force-pushes its branch. Steps 7 and 8 of the rehearsal note them, and what they show replaces this point.
+- Within a shipped language an untranslated message shows in English, so a language at 50 % is half English, and an untranslated `appLanguageName` shows "English" in the App language row.
+- A third language sees English in the native strings: the widgets' labels and the permission prompts.
+- No right-to-left layout has been checked.
+- After a pull that adds an ARB file, an incremental `flutter build` or `flutter run` keeps the old languages until `flutter pub get` runs, as gen-l10n's dependency file lists only the ARB files it saw. An editor shows errors until pub get. CI always runs pub get first.
+- Only the Android release build warns about a shipped language below 50 %; `ios_release.sh` checks only German.
+
+Open:
+- The rehearsal ([beta.md](beta.md#the-crowdin-rehearsal)), and its answer to where the integration puts the source.
+- Whether the integration keeps working once the bot account has Write only: the rehearsal uses the owner's admin account and cannot show it.
+- kolaente's part (above) with the integration's source upload, and after it the German upload and the first pull request from Crowdin.
+- Pre-translation from the web's translations.
+- The native strings on Crowdin, and a right-to-left pass, in later steps.

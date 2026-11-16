@@ -137,7 +137,7 @@ void main() {
 
       for (final label in [
         mixedDue,
-        en.repeatEveryWeeks(1),
+        en.repeatEveryWeek,
         'Work',
         'urgent',
         en.quickAddNewLabel('neu'),
@@ -174,7 +174,7 @@ void main() {
         composerText(tester),
         'Reifen wechseln *neu +Work @sam !3 every week',
       );
-      await removeChip(tester, en.repeatEveryWeeks(1));
+      await removeChip(tester, en.repeatEveryWeek);
       expect(composerText(tester), 'Reifen wechseln *neu +Work @sam !3');
       await removeChip(tester, 'Work');
       expect(composerText(tester), 'Reifen wechseln *neu @sam !3');

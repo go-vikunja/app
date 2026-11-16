@@ -386,7 +386,7 @@ void main() {
 
     expect(inSheet(find.text('Errand')), findsNothing);
     expect(inSheet(find.text('Alice')), findsNothing);
-    expect(inSheet(find.text(en.repeatEveryDays(1))), findsOneWidget);
+    expect(inSheet(find.text(en.repeatEveryDay)), findsOneWidget);
   });
 
   testWidgets('dates are localized in German', (tester) async {

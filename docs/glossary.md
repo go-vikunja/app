@@ -1,6 +1,6 @@
 # Glossary and style
 
-The terms and the style of the app's texts in English and German ([D71](decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)). They apply to `app/lib/l10n/arb/app_*.arb` and to the native strings (Android `res/values*/strings.xml`; on iOS the permission texts in `ios/Runner/Info.plist` and `ios/Runner/de.lproj/InfoPlist.strings`, and the widget extension's texts, whose English is the key in its Swift sources and in `en.lproj` and `de.lproj` `Localizable.strings`, or `Localizable.stringsdict` for the plurals), and every new string follows them. Translators of a future language read the English part for the app's terms. How to add a string is in [CONTRIBUTING.md](../CONTRIBUTING.md#translations).
+The terms and the style of the app's texts in English and German ([D71](decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)). They apply to `app/lib/l10n/arb/app_*.arb` and to the native strings (Android `res/values*/strings.xml`; on iOS the permission texts in `ios/Runner/Info.plist` and `ios/Runner/de.lproj/InfoPlist.strings`, and the widget extension's texts, whose English is the key in its Swift sources and in `en.lproj` and `de.lproj` `Localizable.strings`, or `Localizable.stringsdict` for the plurals), and every new string follows them. Since step 38e the translations, German included, come through Vikunja's Crowdin project, and the German terms follow Vikunja's [German translation instructions](https://vikunja.io/docs/german-translation-instructions) (in review, [D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)). Translators of other languages read the English part for the app's terms. How to add a string is in [CONTRIBUTING.md](../CONTRIBUTING.md#translations).
 
 ## Both languages
 
@@ -60,7 +60,7 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - Helper sentences use the du imperative ("Lass das Feld leer, …"); placeholders and field hints may be infinitives ("Emoji eingeben").
   - Imperatives with and without -e are both correct. New strings use the full form (Prüfe, Versuche, Wähle), and one sentence never mixes the two.
   - Field errors are a du imperative with a full stop, without "Bitte" ("Gib einen Titel ein.").
-- **Quotes:** „…“ only. UI names cited in running text go in „…“ (im Tab „Konto“, tippe auf „Weiter“). Settings paths written with › stay unquoted.
+- **Quotes:** „…“ only. UI names cited in running text go in „…“ (im Tab „Account“, tippe auf „Weiter“). Settings paths written with › stay unquoted.
 - **Ellipsis:**
   - a space before "…" when it stands for missing words or marks progress ("Wird gespeichert …", "Alle …");
   - no space where it shortens a path or URL (/share/…/auth).
@@ -73,7 +73,7 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - "Versuch(e) es noch einmal" (or "erneut"), not "noch mal" or "nochmal";
   - "Das lässt sich nicht rückgängig machen." for "This can't be undone."
 - **Verbs:**
-  - erstellen for creating anything (Aufgabe, Projekt, Label, Team, Spalte, Ansicht, Link, Token, Konto), never anlegen;
+  - erstellen for creating anything (Aufgabe, Projekt, Label, Team, Spalte, Ansicht, Link, Token, Account), never anlegen;
   - festlegen for giving a field a value (Datum, Priorität, Titelbild, Spalte), and "Nicht festgelegt" / "Kein … festgelegt" for an unset value. setzen only in its literal sense (in Anführungszeichen setzen, zurücksetzen);
   - anzeigen for show actions, toggles, chips and hints, paired with ausblenden. A finite "zeigt" that describes what something displays may stay;
   - löschen for delete, entfernen for remove;
@@ -92,10 +92,10 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - boards: Spalte (bucket), Board (kanban view), Karte;
   - Bezeichner for an identifier (not Kennung);
   - Zugriff for access and Berechtigung for permission, not Rechte;
-  - accounts: Konto; anmelden/Anmeldung, abmelden; a session the server ended is "beendet", not "abgelaufen";
+  - accounts [in review, step 38e]: Account, as in Vikunja's German translation instructions (der Account, die Accounts, Account-Einstellungen, Account-Passwort), never Konto; Anmeldename for the username, never Benutzername (both checked by `app/test/l10n/german_texts_test.dart`); anmelden/Anmeldung, abmelden; a session the server ended is "beendet", not "abgelaufen";
   - Synchronisierung;
   - Aktivitäten for the notification category and its switch;
-  - Gerät for the device; Handy only for a literal phone and in the tagline;
+  - Gerät for the device, also in the connect tagline; Smartphone for another phone (`linkShareQrHint`); never Handy (`german_texts_test.dart`);
   - Startbildschirm (Home-Bildschirm only in iOS steps);
   - 12-/24-Stunden-Format;
   - "die Person, die den Server betreut" for whoever runs the server;
@@ -104,5 +104,5 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - Support-Details, plural, for the support details („die Support-Details“; the row and the page „Support-Details“).
   - Papierkorb for the server's trash: in den Papierkorb verschieben, wiederherstellen, endgültig löschen, „Papierkorb leeren“; Rückgängig for Undo.
   - folgen for the server's subscriptions, with the dative (einer Aufgabe, einem Projekt folgen), and „nicht mehr folgen“; never abonnieren or beobachten. Only the share cleanup notice keeps „Abonnements“.
-- **Compounds:** German nouns form closed compounds (Standardspalte, Standardprojekt, Spaltenlimit). A hyphen only with English words, abbreviations or participles (Projekt-Admin, Label-Titel, CalDAV-Token, Erledigt-Spalte).
+- **Compounds:** German nouns form closed compounds (Standardspalte, Standardprojekt, Spaltenlimit). A hyphen only with English words, abbreviations or participles (Projekt-Admin, Label-Titel, CalDAV-Token, Account-Einstellungen, Erledigt-Spalte).
 - **The web's own labels** are quoted as the German web shows them („Account erstellen“).

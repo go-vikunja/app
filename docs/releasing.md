@@ -6,6 +6,8 @@ How a release of the app is cut ([D86](decisions.md#d86-ci-and-releases-on-githu
 
 *Step 38d, accepted 2026-11-16 ([D87](decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)): GitLab's pipeline, its release dry run and the Mac as a GitLab runner are gone; CI runs only on GitHub Actions. The repository moves into go-vikunja/app with its history as [beta.md](beta.md#the-move) says.*
 
+*Step 38e, in review ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)): the translations come from Vikunja's Crowdin project; a release needs German complete and warns about a shipped language below 50 % ([the translations](#the-translations)).*
+
 ## Once, in go-vikunja/app
 
 Vikunja's maintainers set these up after [the move](beta.md#the-move) (step 38d) and before the first tag. The workflows need nothing else; they use no personal token, only the workflow's own `github.token`.
@@ -53,7 +55,7 @@ Nothing in this repository waits for the website: the About page links its addre
 
 ## Cutting a release
 
-1. **Bump the version** (after [raising Cronet](#raising-cronet) if Google has a newer one) in `app/pubspec.yaml` to the release's name, for example `version: 1.0.0-beta.1+1`. Only the part before `+` counts; the build number comes from the tag. Run the [dry run](#the-dry-run) for the tag, `tool/ci/release.sh --dry-run --tag v1.0.0-beta.1`: it must end with only the expected reasons, `not a tag run of go-vikunja/app on GitHub Actions`, `placeholder source URL` and `throwaway keys`, and `no committed certificate fingerprints (tool/ci/release_certificates.txt)` while the certificates of [step 3 above](#once-in-go-vikunjaapp) are not committed; `no written-offer contact` means that the contact of step 10 above is empty, and the release would fail. Run the contract tests once locally against the newest release of the previous minor version, today 2.7.1: `VIKUNJA_APP_TEST_VIKUNJA_IMAGE=vikunja/vikunja:2.7.1 tool/ci/contract.sh` starts the local test server again, empty, with that image, and the tests expect its version. The script stops at the first suite that fails: when the vikunja_api suite fails, run the app's suite alone against the same server, `(cd app && VIKUNJA_CONTRACT=1 TZ=Europe/Berlin flutter test --tags contract --concurrency=1 test/contract)`, before you record anything. Fix what fails or record it in [D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only). Then `docker compose -f test_servers/docker-compose.yaml up -d` brings back the latest release, and `tool/seed_e2e_user.sh` and `E2E_USER_ENV=test_servers/seed/e2e-user-2.env tool/seed_e2e_user.sh` the two sign-in test users. Merge the bump into `main` and wait for its green CI run before you tag.
+1. **Bump the version** (after [raising Cronet](#raising-cronet) if Google has a newer one) in `app/pubspec.yaml` to the release's name, for example `version: 1.0.0-beta.1+1`. Only the part before `+` counts; the build number comes from the tag. Run the [dry run](#the-dry-run) for the tag, `tool/ci/release.sh --dry-run --tag v1.0.0-beta.1`: it must end with only the expected reasons, `not a tag run of go-vikunja/app on GitHub Actions`, `placeholder source URL` and `throwaway keys`, and `no committed certificate fingerprints (tool/ci/release_certificates.txt)` while the certificates of [step 3 above](#once-in-go-vikunjaapp) are not committed; `no written-offer contact` means that the contact of step 10 above is empty, and the release would fail. `German incomplete` means that German lacks English texts, and the release would fail too: German must be complete on Crowdin and its pull request merged ([the translations](#the-translations)). The build also prints each shipped language's share (`python3 -I tool/l10n_progress.py --shipped-list`) and warns when one is below 50 %; that does not stop a release. Run the contract tests once locally against the newest release of the previous minor version, today 2.7.1: `VIKUNJA_APP_TEST_VIKUNJA_IMAGE=vikunja/vikunja:2.7.1 tool/ci/contract.sh` starts the local test server again, empty, with that image, and the tests expect its version. The script stops at the first suite that fails: when the vikunja_api suite fails, run the app's suite alone against the same server, `(cd app && VIKUNJA_CONTRACT=1 TZ=Europe/Berlin flutter test --tags contract --concurrency=1 test/contract)`, before you record anything. Fix what fails or record it in [D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only). Then `docker compose -f test_servers/docker-compose.yaml up -d` brings back the latest release, and `tool/seed_e2e_user.sh` and `E2E_USER_ENV=test_servers/seed/e2e-user-2.env tool/seed_e2e_user.sh` the two sign-in test users. Merge the bump into `main` and wait for its green CI run before you tag.
 2. **Tag and push the tag,** as a maintainer whom the tag ruleset allows:
 
    ```sh
@@ -81,6 +83,21 @@ Nothing in this repository waits for the website: the About page links its addre
 4. **Check the release:** on the GitHub release, the three files open signed out, `SHA256SUMS` matches the APK, and the certificate's SHA-256 is the committed one; the APK on dl.vikunja.io has the same SHA-256; the Play Console shows the release on its track.
 5. **A final release's rollout:** watch the Play Console's vitals, then raise the share or complete the rollout in the Play Console (Test and release > Production), or halt it there. The workflow never changes a rollout after its upload.
 6. **Upload the iOS build** from the Mac: [each TestFlight build](#each-testflight-build).
+
+## The translations
+
+English is the source; every other language comes from Vikunja's Crowdin project through the pull requests of Crowdin's GitHub integration, German included ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)). Before the version bump of step 1 above:
+
+```sh
+python3 -I tool/l10n_progress.py --shipped-list   # each shipped language's share of the English texts
+python3 -I tool/l10n_progress.py                  # every ARB file, shipped or not
+```
+
+- **German at 100 %:** `release_build.sh` refuses while German lacks an English text, and the dry run names the reason `German incomplete`. New English texts reach German only through Crowdin: ask Vikunja's German translators there (or translate and approve as a proofreader), then merge the integration's next pull request once its checks pass. Never add German to `app_de.arb` in a pull request: Crowdin's next pull request takes it out again. `ios_release.sh` runs the same check before a TestFlight build.
+- **A shipped language below 50 %:** the build prints a warning and goes on. English grows with every feature, so a language falls behind without anyone touching it; ask its translators on Crowdin. Taking a language off is the reverse of adding one.
+- **Adding a language:** once `l10n_progress.py` shows it at 50 % or more, in a pull request of its own, as [CONTRIBUTING.md](../CONTRIBUTING.md#adding-a-language) lists.
+
+The widgets' and iOS's native texts are English and German only, outside Crowdin; any other language shows them in English.
 
 ## Raising Cronet
 
@@ -164,7 +181,7 @@ tool/ci/ios_release.sh --tag v1.0.0-beta.1
 
 The script:
 
-- refuses to run unless `xcode-select` points to Xcode (the native-asset build hooks ignore `DEVELOPER_DIR`), Flutter is exactly the version `tool/ci/pins.sh` pins, HEAD is the tag with a clean working tree, the source link opens signed out at the tag, the team id and the three key variables are set, and the App Store icon is 1024 × 1024, RGB without an alpha channel and untagged or sRGB;
+- refuses to run unless `xcode-select` points to Xcode (the native-asset build hooks ignore `DEVELOPER_DIR`), Flutter is exactly the version `tool/ci/pins.sh` pins, HEAD is the tag with a clean working tree, the source link opens signed out at the tag, the team id and the three key variables are set, the App Store icon is 1024 × 1024, RGB without an alpha channel and untagged or sRGB, and German has every English text ([the translations](#the-translations));
 - computes the version from the tag with `release_version.py` and runs the release-only source-link test;
 - builds with `flutter build ipa --release`, the tag's version, `SOURCE_CODE_URL` and generated export options: method `app-store-connect`, automatic signing, the team, and `manageAppVersionAndBuildNumber` off so that Xcode never changes the version;
 - checks the archived `Runner.app` and `VikunjaWidgets.appex`: both carry the tag's version, the app declares `ITSAppUsesNonExemptEncryption` false, both privacy manifests are the committed ones, every required-reason API that a binary in them uses is declared (`tool/ci/required_reason_apis.py`, [below](#privacy-manifests)), and the licence page has every notice (`tool/ci/ios_notices.py`, [below](#licence-notices));
@@ -190,7 +207,7 @@ tool/ci/ios_release.sh --dry-run                       # the tag defaults to v<t
 tool/ci/ios_release.sh --dry-run --tag v1.0.0-beta.1   # the pubspec must have that version
 ```
 
-It builds the archive unsigned (`--no-codesign`) with the same checks, the licence notices included, and stops before the export and the upload. It prints the source link it would check, the tree at the tag of `VIKUNJA_APP_SOURCE_CODE_URL` or its default, without opening it. The tag, the clean tree, the team id, the key variables, Flutter's version and an undeclared required-reason API only warn; it needs neither the Apple account nor the key, and checks them when they are set. It prints the export options it would use and ends with `DRY RUN: NOT RELEASABLE (unsigned build, …)`.
+It builds the archive unsigned (`--no-codesign`) with the same checks, the licence notices included, and stops before the export and the upload. It prints the source link it would check, the tree at the tag of `VIKUNJA_APP_SOURCE_CODE_URL` or its default, without opening it. The tag, the clean tree, the team id, the key variables, Flutter's version, an undeclared required-reason API and an incomplete German only warn; it needs neither the Apple account nor the key, and checks them when they are set. It prints the export options it would use and ends with `DRY RUN: NOT RELEASABLE (unsigned build, …)`.
 
 ### Export compliance
 

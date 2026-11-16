@@ -1,5 +1,4 @@
 {
-  "@@locale": "en",
   "appTitle": "Vikunja",
   "@appTitle": {
     "description": "Name of the app, shown in the task switcher and on the connect screen. A brand name: do not translate."
@@ -30,6 +29,7 @@
   },
   "failureInvalidAddressExplanation": "“{input}” is not a web address the app can open.",
   "@failureInvalidAddressExplanation": {
+    "description": "Explanation of the connect failure when the typed text is not a web address the app can open; input is the text as typed, for example ftp://example.",
     "placeholders": {
       "input": {
         "type": "String",
@@ -41,6 +41,7 @@
   "failureUnreachableTitle": "Server not reachable",
   "failureUnreachableExplanation": "{host} could not be reached. The address may be misspelled, the server may be offline, or your device has no internet connection.",
   "@failureUnreachableExplanation": {
+    "description": "Explanation of the failure when the server could not be reached, on the connect screen, at sign-in and when loading data; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -52,6 +53,7 @@
   "failureTimeoutTitle": "The server took too long to answer",
   "failureTimeoutExplanation": "{host} did not respond in time.",
   "@failureTimeoutExplanation": {
+    "description": "Explanation of the failure when the server did not answer in time, on the connect screen, at sign-in and when loading data; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -63,6 +65,7 @@
   "failureTlsTitle": "Secure connection failed",
   "failureTlsExplanation": "This device does not trust the certificate of {host}. It may be self-signed, issued for a different address, or expired.",
   "@failureTlsExplanation": {
+    "description": "Explanation of the failure when the device does not trust the server's certificate, on the connect screen, at sign-in and when loading data; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -87,6 +90,7 @@
   "failureNotVikunjaTitle": "No Vikunja server found",
   "failureNotVikunjaExplanation": "{host} answered, but not like a Vikunja server.",
   "@failureNotVikunjaExplanation": {
+    "description": "Explanation of the connect failure when the address answers but is not a Vikunja server; host is the address, for example example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -98,6 +102,7 @@
   "failureUnavailableTitle": "Server temporarily unavailable",
   "failureUnavailableExplanation": "{host} answered with an error instead of Vikunja. Vikunja may be down, restarting or overloaded.",
   "@failureUnavailableExplanation": {
+    "description": "Explanation of the failure when the server answered with an error instead of Vikunja, on the connect screen and when loading data; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -112,6 +117,7 @@
   },
   "failureLoginProxyExplanation": "A proxy in front of {host} asks for its own sign-in before Vikunja can be reached.",
   "@failureLoginProxyExplanation": {
+    "description": "Explanation of the connect failure when a proxy in front of the server shows its own sign-in page; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -125,6 +131,7 @@
   "insecureDialogTitle": "Unencrypted connection",
   "insecureDialogBody": "{host} uses http:// instead of https://. Your password and tasks would travel unencrypted, and anyone on the same network could read or change them.\n\nOnly continue on a network you trust, such as your home network or a VPN.",
   "@insecureDialogBody": {
+    "description": "Body of the warning before connecting to a server over plain http; host is the server's address, for example 192.168.1.20:3456.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -137,6 +144,7 @@
   "overviewTitle": "Server found",
   "overviewVikunjaVersion": "Vikunja {version}",
   "@overviewVikunjaVersion": {
+    "description": "The server's Vikunja version, on the server overview screen and the Account tab; version is the version number, for example 2.7.0.",
     "placeholders": {
       "version": {
         "type": "String",
@@ -147,6 +155,7 @@
   "overviewVikunjaVersionUnknown": "Vikunja, version unknown",
   "overviewApiBadge": "API {version}",
   "@overviewApiBadge": {
+    "description": "Badge on the server overview screen for an API version the server offers; version is its name, for example v2.",
     "placeholders": {
       "version": {
         "type": "String",
@@ -164,6 +173,7 @@
   "unsupportedTitle": "This server is too old",
   "unsupportedBody": "This app needs Vikunja {minimum} or newer. This server runs {found}.",
   "@unsupportedBody": {
+    "description": "Body of the card on the server overview screen when the server's Vikunja is too old for the app; minimum is the oldest version the app supports, for example 2.3.0, and found is the server's version, for example 1.0.0.",
     "placeholders": {
       "minimum": {
         "type": "String",
@@ -212,6 +222,7 @@
   "featureAttachments": "Attachments",
   "featureAttachmentsWithLimit": "Attachments up to {size}",
   "@featureAttachmentsWithLimit": {
+    "description": "A row of the server overview screen's feature list: the server takes attachments up to a size; size is that size, for example 20 MB.",
     "placeholders": {
       "size": {
         "type": "String",
@@ -251,6 +262,7 @@
   "signInRateLimitedTitle": "Too many sign-in attempts",
   "signInRateLimitedExplanation": "{host} is limiting sign-ins from your network for now.",
   "@signInRateLimitedExplanation": {
+    "description": "Explanation of the sign-in failure when the server refuses more sign-in attempts for a while; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -259,8 +271,9 @@
     }
   },
   "signInRateLimitedSuggestion": "Wait a minute, then try again.",
-  "signInRateLimitedSuggestionSeconds": "Wait {seconds, plural, =1{1 second} other{{seconds} seconds}}, then try again.",
+  "signInRateLimitedSuggestionSeconds": "Wait {seconds, plural, one{{seconds} second} other{{seconds} seconds}}, then try again.",
   "@signInRateLimitedSuggestionSeconds": {
+    "description": "Suggestion under the too-many-sign-in-attempts failure when the server says how long to wait; seconds is the number of seconds, for example 30.",
     "placeholders": {
       "seconds": {
         "type": "int",
@@ -268,8 +281,9 @@
       }
     }
   },
-  "signInRateLimitedSuggestionMinutes": "Wait {minutes, plural, =1{1 minute} other{{minutes} minutes}}, then try again.",
+  "signInRateLimitedSuggestionMinutes": "Wait {minutes, plural, one{{minutes} minute} other{{minutes} minutes}}, then try again.",
   "@signInRateLimitedSuggestionMinutes": {
+    "description": "Suggestion under the too-many-sign-in-attempts failure when the server says how long to wait; minutes is the number of minutes, for example 5.",
     "placeholders": {
       "minutes": {
         "type": "int",
@@ -279,6 +293,7 @@
   },
   "signInServerErrorExplanation": "{host} answered the sign-in with an error (HTTP {status}).",
   "@signInServerErrorExplanation": {
+    "description": "Explanation of the sign-in failure when the server answered with an error; host is the server's address, for example vikunja.example.com, and status is the HTTP status code, for example 502.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -296,6 +311,7 @@
   "signInRejectedTitle": "Sign-in rejected",
   "signInRejectedExplanation": "{host} did not accept the sign-in from this app (error {code}).",
   "@signInRejectedExplanation": {
+    "description": "Explanation of the sign-in failure when the server rejected the app's sign-in; host is the server's address, for example vikunja.example.com, and code is the server's error code, for example 17006, or ? when it sent none.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -331,6 +347,7 @@
   "signInAccountDisabledTitle": "Account disabled",
   "signInAccountDisabledExplanation": "Your account on {host} is disabled.",
   "@signInAccountDisabledExplanation": {
+    "description": "Explanation of the sign-in failure when the user's account on the server is disabled; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -341,6 +358,7 @@
   "signInAccountLockedTitle": "Account locked",
   "signInAccountLockedExplanation": "Your account on {host} is locked.",
   "@signInAccountLockedExplanation": {
+    "description": "Explanation of the sign-in failure when the user's account on the server is locked; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -351,6 +369,7 @@
   "signInAccountBlockedSuggestion": "Check your email for instructions, or ask whoever runs the server.",
   "signInSessionEndedExplanation": "{host} ended the new session right away.",
   "@signInSessionEndedExplanation": {
+    "description": "Explanation of the sign-in failure when the server ended the new session right after the sign-in; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -361,6 +380,7 @@
   "signInEndpointMissingTitle": "Sign-in not available",
   "signInEndpointMissingExplanation": "{host} does not answer at the sign-in address the app needs. A reverse proxy may be blocking it.",
   "@signInEndpointMissingExplanation": {
+    "description": "Explanation of the sign-in failure when the server does not answer at the address the app signs in with; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -373,6 +393,7 @@
   "signInDifferentUserTitle": "Signed in as a different user",
   "signInDifferentUserExplanation": "The sign-in page signed you in as @{signedIn}, but this account is @{expected}. Nothing was changed.",
   "@signInDifferentUserExplanation": {
+    "description": "Explanation of the sign-in failure when the browser signed in another user than the account being signed in again; signedIn is the username that signed in, for example bob, and expected is the account's username, for example alice; both follow an @.",
     "placeholders": {
       "signedIn": {
         "type": "String",
@@ -386,6 +407,7 @@
   },
   "signInDifferentUserSuggestion": "Sign in again as @{expected}. If the browser signs you in on its own, sign out of {host} in the browser first.",
   "@signInDifferentUserSuggestion": {
+    "description": "Suggestion under the signed-in-as-a-different-user failure; expected is the account's username after an @, for example alice, and host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "expected": {
         "type": "String",
@@ -431,6 +453,7 @@
   },
   "signOutDialogSwitchesTo": "The app then switches to {name}.",
   "@signOutDialogSwitchesTo": {
+    "description": "In the sign-out dialog when the app then switches to another signed-in account; name is that account's name, for example Bob.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -438,8 +461,9 @@
       }
     }
   },
-  "signOutDialogPendingChanges": "{count, plural, =1{One change has not been sent to the server yet and will be lost; tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; tap Send now first to keep them.}}",
+  "signOutDialogPendingChanges": "{count, plural, one{{count} change has not been sent to the server yet and will be lost; tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; tap Send now first to keep them.}}",
   "@signOutDialogPendingChanges": {
+    "description": "In the sign-out dialog when changes made on this device have not reached the server yet; count is how many, for example 3.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -450,16 +474,18 @@
   "signOutDialogConfirm": "Sign out",
   "removeAccountDialogTitle": "Remove account?",
   "removeAccountDialogConfirm": "Remove",
-  "removeAccountDialogPendingChanges": "{count, plural, =1{One change has not been sent to the server yet and will be lost; switch to this account and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this account and tap Send now first to keep them.}}",
+  "removeAccountDialogPendingChanges": "{count, plural, one{{count} change has not been sent to the server yet and will be lost; switch to this account and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this account and tap Send now first to keep them.}}",
   "@removeAccountDialogPendingChanges": {
+    "description": "In the dialog for removing an account other than the current one, when its changes have not reached the server yet; count is how many, for example 3.",
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "removeAccountDialogPendingChangesSignInFirst": "{count, plural, =1{One change has not been sent to the server yet and will be lost; switch to this account, sign in again and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this account, sign in again and tap Send now first to keep them.}}",
+  "removeAccountDialogPendingChangesSignInFirst": "{count, plural, one{{count} change has not been sent to the server yet and will be lost; switch to this account, sign in again and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this account, sign in again and tap Send now first to keep them.}}",
   "@removeAccountDialogPendingChangesSignInFirst": {
+    "description": "Like removeAccountDialogPendingChanges, for an account the server signed out, which has to sign in again before it can send; count is how many, for example 3.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -469,6 +495,7 @@
   "reauthTitle": "Signed out by the server",
   "reauthBody": "{host} ended your session. Sign in again to keep your tasks in sync. Nothing on this device is lost.",
   "@reauthBody": {
+    "description": "Body of the Account tab's banner when the server ended the account's session; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -498,6 +525,7 @@
   "accountCurrent": "Current",
   "accountSubtitle": "@{username} · {host}",
   "@accountSubtitle": {
+    "description": "Second line of an account in the account list, the switcher and the Account tab's header, and the subtitle of its notifications when several accounts are signed in; username is the account's username after an @, for example alice, and host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "username": {
         "type": "String",
@@ -523,6 +551,7 @@
   "accountManage": "Manage accounts",
   "accountMoreActions": "More for {name}",
   "@accountMoreActions": {
+    "description": "Tooltip of the more button on an account in the account list; name is the account's name, for example Bob.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -533,6 +562,7 @@
   "accountRemove": "Remove…",
   "accountSwitchedTo": "Switched to {name}",
   "@accountSwitchedTo": {
+    "description": "Snackbar after switching to another account; name is that account's name, for example Bob.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -542,6 +572,7 @@
   },
   "accountSignedOutOf": "Signed out of {name}",
   "@accountSignedOutOf": {
+    "description": "Snackbar after signing out of an account; name is the account's name, for example Bob.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -605,7 +636,7 @@
   "@savedFilterUnknownTitle": {
     "description": "App bar title of a saved filter's list while the filter is not among those the last sync saw."
   },
-  "smartListOpenTaskCount": "{count, plural, =1{1 open task} other{{count} open tasks}}",
+  "smartListOpenTaskCount": "{count, plural, one{{count} open task} other{{count} open tasks}}",
   "@smartListOpenTaskCount": {
     "description": "Under the Favorites list in the Projects tab.",
     "placeholders": {
@@ -638,6 +669,7 @@
   "smartListFilterDownloadingTitle": "Downloading this filter…",
   "smartListFilterDownloadingBody": "The server applies the saved filter “{title}”. Its tasks are on their way.",
   "@smartListFilterDownloadingBody": {
+    "description": "Empty-state text of a saved filter's page while its tasks download for the first time; title is the saved filter's title, for example Due this week.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -650,6 +682,7 @@
   "smartListFilterDownloadFailedTitle": "Couldn't download this filter",
   "smartListFilterDownloadFailedBody": "The server applies the saved filter “{title}”. Pull down to try again.",
   "@smartListFilterDownloadFailedBody": {
+    "description": "Empty-state text of a saved filter's page when its tasks could not be downloaded; title is the saved filter's title, for example Due this week.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -688,8 +721,9 @@
   "@appearanceSystemColorsSubtitle": {
     "description": "Under the switch for Android's dynamic colors; the switch applies to the whole device."
   },
-  "projectChildCount": "{count, plural, =1{1 subproject} other{{count} subprojects}}",
+  "projectChildCount": "{count, plural, one{{count} subproject} other{{count} subprojects}}",
   "@projectChildCount": {
+    "description": "On a project in the project tree: how many subprojects it has; count is the number, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -709,6 +743,7 @@
   },
   "projectCollapse": "Hide subprojects of {title}",
   "@projectCollapse": {
+    "description": "Tooltip of the collapse control of an expanded project in the project tree; title is the project's title, for example Work.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -738,6 +773,7 @@
   },
   "projectMovedOut": "Moved out of {project}",
   "@projectMovedOut": {
+    "description": "Screen reader: announced after the Move out action on a subproject in the project tree; project is the parent it moved out of, for example Work.",
     "placeholders": {
       "project": {
         "type": "String",
@@ -824,6 +860,7 @@
   "taskDone": "Done",
   "taskDueSemantics": "Due {when}",
   "@taskDueSemantics": {
+    "description": "Screen reader: a task's due date in a task row, a board card or a widget row; when is the date as spoken, for example in 3 days.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -833,6 +870,7 @@
   },
   "taskOverdueSemantics": "Overdue, due {when}",
   "@taskOverdueSemantics": {
+    "description": "Screen reader: the due date of an overdue task, in a task row, a board card, a widget row and the task detail sheet; when is the date as spoken, for example 2 days ago.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -842,6 +880,7 @@
   },
   "prioritySemantics": "Priority: {priority}",
   "@prioritySemantics": {
+    "description": "Screen reader: a task's priority in a task row, a widget row and on its priority chip; priority is the priority's name, for example High.",
     "placeholders": {
       "priority": {
         "type": "String",
@@ -851,6 +890,7 @@
   },
   "labelSemantics": "Label: {label}",
   "@labelSemantics": {
+    "description": "Screen reader: a label of a task in a task row, on its label chips and in the Quick Add preview; label is the label's title, for example Urgent.",
     "placeholders": {
       "label": {
         "type": "String",
@@ -865,8 +905,9 @@
   "priorityUrgent": "Urgent",
   "priorityDoNow": "Do now",
   "relativeNow": "now",
-  "relativeInMinutes": "{count, plural, =1{in 1 minute} other{in {count} minutes}}",
+  "relativeInMinutes": "{count, plural, one{in {count} minute} other{in {count} minutes}}",
   "@relativeInMinutes": {
+    "description": "A relative time some minutes from now, for dates and times across the app; count is the number of minutes, for example 5.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -874,8 +915,9 @@
       }
     }
   },
-  "relativeMinutesAgo": "{count, plural, =1{1 minute ago} other{{count} minutes ago}}",
+  "relativeMinutesAgo": "{count, plural, one{{count} minute ago} other{{count} minutes ago}}",
   "@relativeMinutesAgo": {
+    "description": "A relative time some minutes ago, for dates and times across the app; count is the number of minutes, for example 5.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -883,8 +925,9 @@
       }
     }
   },
-  "relativeInHours": "{count, plural, =1{in 1 hour} other{in {count} hours}}",
+  "relativeInHours": "{count, plural, one{in {count} hour} other{in {count} hours}}",
   "@relativeInHours": {
+    "description": "A relative time some hours from now, for dates and times across the app; count is the number of hours, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -892,8 +935,9 @@
       }
     }
   },
-  "relativeHoursAgo": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "relativeHoursAgo": "{count, plural, one{{count} hour ago} other{{count} hours ago}}",
   "@relativeHoursAgo": {
+    "description": "A relative time some hours ago, for dates and times across the app; count is the number of hours, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -901,8 +945,9 @@
       }
     }
   },
-  "relativeInDays": "{count, plural, =1{in 1 day} other{in {count} days}}",
+  "relativeInDays": "{count, plural, one{in {count} day} other{in {count} days}}",
   "@relativeInDays": {
+    "description": "A relative time some days from now, for dates and times across the app; count is the number of days, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -910,8 +955,9 @@
       }
     }
   },
-  "relativeDaysAgo": "{count, plural, =1{1 day ago} other{{count} days ago}}",
+  "relativeDaysAgo": "{count, plural, one{{count} day ago} other{{count} days ago}}",
   "@relativeDaysAgo": {
+    "description": "A relative time some days ago, for dates and times across the app; count is the number of days, for example 2.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -919,8 +965,9 @@
       }
     }
   },
-  "relativeInMonths": "{count, plural, =1{in 1 month} other{in {count} months}}",
+  "relativeInMonths": "{count, plural, one{in {count} month} other{in {count} months}}",
   "@relativeInMonths": {
+    "description": "A relative time some months from now, for dates and times across the app; count is the number of months, for example 2.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -928,8 +975,9 @@
       }
     }
   },
-  "relativeMonthsAgo": "{count, plural, =1{1 month ago} other{{count} months ago}}",
+  "relativeMonthsAgo": "{count, plural, one{{count} month ago} other{{count} months ago}}",
   "@relativeMonthsAgo": {
+    "description": "A relative time some months ago, for dates and times across the app; count is the number of months, for example 2.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -937,8 +985,9 @@
       }
     }
   },
-  "relativeInYears": "{count, plural, =1{in 1 year} other{in {count} years}}",
+  "relativeInYears": "{count, plural, one{in {count} year} other{in {count} years}}",
   "@relativeInYears": {
+    "description": "A relative time some years from now, for dates and times across the app; count is the number of years, for example 2.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -946,8 +995,9 @@
       }
     }
   },
-  "relativeYearsAgo": "{count, plural, =1{1 year ago} other{{count} years ago}}",
+  "relativeYearsAgo": "{count, plural, one{{count} year ago} other{{count} years ago}}",
   "@relativeYearsAgo": {
+    "description": "A relative time some years ago, for dates and times across the app; count is the number of years, for example 2.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -983,6 +1033,7 @@
   "taskDetailProgress": "Progress",
   "taskPercentDone": "{percent}% done",
   "@taskPercentDone": {
+    "description": "A task's percent done, in a task row and on the task edit page's progress slider; percent is a whole number, for example 50.",
     "placeholders": {
       "percent": {
         "type": "int",
@@ -1001,8 +1052,13 @@
     "description": "Tooltip of the close button of the task detail sheet and pane. It names the details, not the task, which would read as marking it done; the sheet's drag handle already reads as the system's Dismiss, which is “Schließen” in German."
   },
   "repeatMonthly": "Every month",
-  "repeatEverySeconds": "{count, plural, =1{Every second} other{Every {count} seconds}}",
+  "repeatEverySecond": "Every second",
+  "@repeatEverySecond": {
+    "description": "How often a task repeats when the interval is one second, in its details; repeatEverySeconds covers other numbers."
+  },
+  "repeatEverySeconds": "{count, plural, one{Every {count} second} other{Every {count} seconds}}",
   "@repeatEverySeconds": {
+    "description": "How often a task repeats, in its details, for any number of seconds but 1 (repeatEverySecond covers 1); count is the number, for example 30. English never shows the one form; it is there for languages whose one form also covers numbers like 21 or 31.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1010,8 +1066,13 @@
       }
     }
   },
-  "repeatEveryMinutes": "{count, plural, =1{Every minute} other{Every {count} minutes}}",
+  "repeatEveryMinute": "Every minute",
+  "@repeatEveryMinute": {
+    "description": "How often a task repeats when the interval is one minute, in its details; repeatEveryMinutes covers other numbers."
+  },
+  "repeatEveryMinutes": "{count, plural, one{Every {count} minute} other{Every {count} minutes}}",
   "@repeatEveryMinutes": {
+    "description": "How often a task repeats, in its details, for any number of minutes but 1 (repeatEveryMinute covers 1); count is the number, for example 30. English never shows the one form; it is there for languages whose one form also covers numbers like 21 or 31.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1019,8 +1080,13 @@
       }
     }
   },
-  "repeatEveryHours": "{count, plural, =1{Every hour} other{Every {count} hours}}",
+  "repeatEveryHour": "Every hour",
+  "@repeatEveryHour": {
+    "description": "How often a task repeats when the interval is one hour, in its details and the Quick Add preview; repeatEveryHours covers other numbers."
+  },
+  "repeatEveryHours": "{count, plural, one{Every {count} hour} other{Every {count} hours}}",
   "@repeatEveryHours": {
+    "description": "How often a task repeats, in its details and the Quick Add preview, for any number of hours but 1 (repeatEveryHour covers 1); count is the number, for example 2. English never shows the one form; it is there for languages whose one form also covers numbers like 21 or 31.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1028,8 +1094,13 @@
       }
     }
   },
-  "repeatEveryDays": "{count, plural, =1{Every day} other{Every {count} days}}",
+  "repeatEveryDay": "Every day",
+  "@repeatEveryDay": {
+    "description": "How often a task repeats when the interval is one day, in its details and the Quick Add preview; repeatEveryDays covers other numbers."
+  },
+  "repeatEveryDays": "{count, plural, one{Every {count} day} other{Every {count} days}}",
   "@repeatEveryDays": {
+    "description": "How often a task repeats, in its details and the Quick Add preview, for any number of days but 1 (repeatEveryDay covers 1); count is the number, for example 3. English never shows the one form; it is there for languages whose one form also covers numbers like 21 or 31.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1037,8 +1108,13 @@
       }
     }
   },
-  "repeatEveryWeeks": "{count, plural, =1{Every week} other{Every {count} weeks}}",
+  "repeatEveryWeek": "Every week",
+  "@repeatEveryWeek": {
+    "description": "How often a task repeats when the interval is one week, in its details and the Quick Add preview; repeatEveryWeeks covers other numbers."
+  },
+  "repeatEveryWeeks": "{count, plural, one{Every {count} week} other{Every {count} weeks}}",
   "@repeatEveryWeeks": {
+    "description": "How often a task repeats, in its details and the Quick Add preview, for any number of weeks but 1 (repeatEveryWeek covers 1); count is the number, for example 2. English never shows the one form; it is there for languages whose one form also covers numbers like 21 or 31.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1048,6 +1124,7 @@
   },
   "repeatFromCompletion": "{repeat}, counted from completion",
   "@repeatFromCompletion": {
+    "description": "How often a task repeats when the interval counts from when it was marked done; repeat is the interval, for example Every 2 weeks.",
     "placeholders": {
       "repeat": {
         "type": "String",
@@ -1055,8 +1132,9 @@
       }
     }
   },
-  "periodSeconds": "{count, plural, =1{1 second} other{{count} seconds}}",
+  "periodSeconds": "{count, plural, one{{count} second} other{{count} seconds}}",
   "@periodSeconds": {
+    "description": "A length of time in a reminder relative to a date, as in 30 seconds before the due date; count is the number of seconds, for example 30.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1064,8 +1142,9 @@
       }
     }
   },
-  "periodMinutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "periodMinutes": "{count, plural, one{{count} minute} other{{count} minutes}}",
   "@periodMinutes": {
+    "description": "A length of time in a reminder relative to a date, as in 30 minutes before the due date; count is the number of minutes, for example 30.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1073,8 +1152,9 @@
       }
     }
   },
-  "periodHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "periodHours": "{count, plural, one{{count} hour} other{{count} hours}}",
   "@periodHours": {
+    "description": "A length of time in a reminder relative to a date, as in 2 hours before the due date; count is the number of hours, for example 2.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1082,8 +1162,9 @@
       }
     }
   },
-  "periodDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "periodDays": "{count, plural, one{{count} day} other{{count} days}}",
   "@periodDays": {
+    "description": "A length of time in a reminder relative to a date, as in 3 days before the due date; count is the number of days, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1091,8 +1172,9 @@
       }
     }
   },
-  "periodWeeks": "{count, plural, =1{1 week} other{{count} weeks}}",
+  "periodWeeks": "{count, plural, one{{count} week} other{{count} weeks}}",
   "@periodWeeks": {
+    "description": "A length of time in a reminder relative to a date, as in 2 weeks before the due date; count is the number of weeks, for example 2.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1102,6 +1184,7 @@
   },
   "reminderBefore": "{period} before the {reference}",
   "@reminderBefore": {
+    "description": "A reminder some time before one of the task's dates; period is the time, for example 1 hour, and reference is the date, for example due date.",
     "placeholders": {
       "period": {
         "type": "String",
@@ -1115,6 +1198,7 @@
   },
   "reminderAfter": "{period} after the {reference}",
   "@reminderAfter": {
+    "description": "A reminder some time after one of the task's dates; period is the time, for example 1 hour, and reference is the date, for example due date.",
     "placeholders": {
       "period": {
         "type": "String",
@@ -1128,6 +1212,7 @@
   },
   "reminderAtReference": "At the {reference}",
   "@reminderAtReference": {
+    "description": "A reminder at one of the task's dates; reference is the date, for example due date.",
     "placeholders": {
       "reference": {
         "type": "String",
@@ -1149,6 +1234,7 @@
   "dataFailureStaleNote": "Showing what was loaded last.",
   "dataFailureSessionEnded": "Your session on {host} has ended. Sign in again on the Account tab.",
   "@dataFailureSessionEnded": {
+    "description": "Error when loading data because the server ended the account's session; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -1158,6 +1244,7 @@
   },
   "dataFailureForbidden": "{host} refused the request. You may no longer have access to this.",
   "@dataFailureForbidden": {
+    "description": "Error when the server refused to load something, usually because the user no longer has access; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -1167,6 +1254,7 @@
   },
   "dataFailureNotFound": "{host} no longer has this. It may have been deleted.",
   "@dataFailureNotFound": {
+    "description": "Error when the server no longer has what was being loaded; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -1176,6 +1264,7 @@
   },
   "dataFailureRateLimited": "{host} is limiting requests from your network for now.",
   "@dataFailureRateLimited": {
+    "description": "Error when the server refuses requests for a while because there were too many; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -1185,6 +1274,7 @@
   },
   "dataFailureUnexpected": "An unexpected error occurred while loading from {host}.",
   "@dataFailureUnexpected": {
+    "description": "Error when loading failed for a reason the app cannot name; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -1196,6 +1286,7 @@
   "firstSyncTitle": "Getting your tasks",
   "firstSyncBody": "The app is saving everything from {host} on this device, so it works offline too.",
   "@firstSyncBody": {
+    "description": "Text of the first-sync screen while the app downloads an account's data after the sign-in; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -1218,6 +1309,7 @@
   "syncPhaseFinishing": "Finishing up…",
   "syncProgressOfTotal": "{done} of {total}",
   "@syncProgressOfTotal": {
+    "description": "Progress on the first-sync screen, under the name of what is being downloaded; done is how many items are done, for example 12, and total is how many there are, for example 120.",
     "placeholders": {
       "done": {
         "type": "int",
@@ -1233,6 +1325,7 @@
   },
   "syncProgressCount": "{count} so far",
   "@syncProgressCount": {
+    "description": "Progress on the first-sync screen when the total is not known; count is how many items are done, for example 12.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1248,6 +1341,7 @@
   "offlineNotice": "Offline — showing saved data",
   "accountLastSynced": "Last synced {when}",
   "@accountLastSynced": {
+    "description": "When the account last synced, on the Account tab and in the offline banner; when is a relative time, for example 5 minutes ago.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -1303,6 +1397,7 @@
   "taskDeleteDialogTitle": "Delete task?",
   "taskDeleteDialogBody": "“{title}” will be deleted on the server too. This cannot be undone.",
   "@taskDeleteDialogBody": {
+    "description": "Body of the delete-task confirmation on servers without the trash; title is the task's title, for example Pay the bill.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -1356,6 +1451,7 @@
   },
   "accountPendingChanges": "Pending changes: {count}",
   "@accountPendingChanges": {
+    "description": "On the Account tab: how many changes made on this device have not been sent to the server yet; count is the number, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1368,6 +1464,7 @@
   "accountSending": "Sending…",
   "accountSendNowFailed": "Not sent. {reason}",
   "@accountSendNowFailed": {
+    "description": "Snackbar when Send now failed; reason is the explanation of the failure, a full sentence, for example tasks.example.org could not be reached.",
     "placeholders": {
       "reason": {
         "type": "String",
@@ -1403,6 +1500,7 @@
   "syncProblemUnexpected": "The server answered in an unexpected way.",
   "syncProblemFailedAt": "Failed {when}",
   "@syncProblemFailedAt": {
+    "description": "Footnote of a sync problem on the Account tab: when the change failed; when is a relative time, for example 5 minutes ago.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -1429,6 +1527,7 @@
   "taskEditProjectPickerTitle": "Choose a project",
   "taskEditProjectSemantics": "Project: {project}",
   "@taskEditProjectSemantics": {
+    "description": "Screen reader: the project field of the new-task sheet and the project chip of the Quick Add preview and the share sheet; project is the project's title, for example Inbox.",
     "placeholders": {
       "project": {
         "type": "String",
@@ -1484,6 +1583,7 @@
   "taskEditNoColour": "No color",
   "taskEditColourSemantics": "Color {hex}",
   "@taskEditColourSemantics": {
+    "description": "Screen reader: a swatch of the color choice for a task, project or label; hex is the color as a hex code, for example #1973ff.",
     "placeholders": {
       "hex": {
         "type": "String",
@@ -1525,6 +1625,7 @@
   "newTaskNoProject": "No project",
   "newTaskCreated": "Added “{title}”",
   "@newTaskCreated": {
+    "description": "Snackbar after adding a task; title is the task's title, for example Buy milk.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -1532,7 +1633,7 @@
       }
     }
   },
-  "newTaskAddMany": "{count, plural, =1{Add 1 task} other{Add {count} tasks}}",
+  "newTaskAddMany": "{count, plural, one{Add {count} task} other{Add {count} tasks}}",
   "@newTaskAddMany": {
     "description": "The Add button once several lines are pasted.",
     "placeholders": {
@@ -1542,8 +1643,9 @@
       }
     }
   },
-  "newTaskCreatedMany": "{count, plural, =1{Added 1 task} other{Added {count} tasks}}",
+  "newTaskCreatedMany": "{count, plural, one{Added {count} task} other{Added {count} tasks}}",
   "@newTaskCreatedMany": {
+    "description": "Snackbar after adding several tasks at once from pasted lines; count is how many, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -1563,6 +1665,7 @@
   },
   "newTaskNamesKept": "Nobody found for {names}, so they stay in the title.",
   "@newTaskNamesKept": {
+    "description": "Warning after adding a task when people written with Quick Add were not found, so their words stay in the title; names is a comma-separated list of them as typed, for example @sam, @alex.",
     "placeholders": {
       "names": {
         "type": "String",
@@ -1576,6 +1679,7 @@
   },
   "newTaskAddFailed": "The task could not be added: {reason}",
   "@newTaskAddFailed": {
+    "description": "Error on the new-task sheet when the server refused the task; reason is the server's message, for example Forbidden.",
     "placeholders": {
       "reason": {
         "type": "String",
@@ -1584,7 +1688,7 @@
     }
   },
   "newTaskAddFailedUnknown": "The task could not be added.",
-  "newTaskLineCountOnly": "{count, plural, =1{1 task} other{{count} tasks, one per line}}",
+  "newTaskLineCountOnly": "{count, plural, one{{count} task} other{{count} tasks, one per line}}",
   "@newTaskLineCountOnly": {
     "description": "Above the preview once several lines are pasted and the first line has nothing to preview.",
     "placeholders": {
@@ -1608,7 +1712,7 @@
       }
     }
   },
-  "newTaskLineCount": "{count, plural, =1{1 task} other{{count} tasks, one per line}} · the first one:",
+  "newTaskLineCount": "{count, plural, one{{count} task} other{{count} tasks, one per line}} · the first one:",
   "@newTaskLineCount": {
     "description": "Above the preview of the first line once several lines are pasted.",
     "placeholders": {
@@ -1620,6 +1724,7 @@
   },
   "quickAddMagicOnly": "Only magic words, so nothing is recognized: the task will be called “{title}”.",
   "@quickAddMagicOnly": {
+    "description": "Note in the Quick Add preview when the text is only magic words, so all of it becomes the title; title is that text, for example *urgent.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -1629,6 +1734,7 @@
   },
   "quickAddDueLabel": "{date} · {relative}",
   "@quickAddDueLabel": {
+    "description": "Due date chip in the Quick Add preview; date is the date and time, for example Tue, Oct 13 9:00 AM, and relative is how far away it is, for example in 21 hours.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -1642,6 +1748,7 @@
   },
   "quickAddDueSemantics": "Due {date}, {relative}",
   "@quickAddDueSemantics": {
+    "description": "Screen reader: the due date chip in the Quick Add preview; date is the date and time, for example Tue, Oct 13 9:00 AM, and relative is how far away it is, for example in 21 hours.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -1655,6 +1762,7 @@
   },
   "quickAddRepeatSemantics": "Repeats: {repeat}",
   "@quickAddRepeatSemantics": {
+    "description": "Screen reader: the repeat chip in the Quick Add preview; repeat is how often, for example Every week.",
     "placeholders": {
       "repeat": {
         "type": "String",
@@ -1684,6 +1792,7 @@
   },
   "quickAddNewLabel": "{label} · new",
   "@quickAddNewLabel": {
+    "description": "A label that does not exist yet and is created with the task, in the Quick Add preview, the label picker and the label chips of the task edit page; label is its title, for example car.",
     "placeholders": {
       "label": {
         "type": "String",
@@ -1703,6 +1812,7 @@
   },
   "quickAddAssigneeSemantics": "Assigned to {name}",
   "@quickAddAssigneeSemantics": {
+    "description": "Screen reader: a person chip in the Quick Add preview; name is the person's name, for example Sam Example.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -1722,6 +1832,7 @@
   },
   "quickAddLookedUpSemantics": "{name}, will be looked up when you add the task",
   "@quickAddLookedUpSemantics": {
+    "description": "Screen reader: a person chip in the Quick Add preview for someone not found on this device yet; name is the name as typed, for example @sam.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -1731,6 +1842,7 @@
   },
   "quickAddReminderSemantics": "Reminder: {reminder}",
   "@quickAddReminderSemantics": {
+    "description": "Screen reader: a reminder chip in the Quick Add preview; reminder is the reminder, for example 1 day before the due date.",
     "placeholders": {
       "reminder": {
         "type": "String",
@@ -1777,6 +1889,7 @@
   "quickAddHelpPriorityTitle": "Priority",
   "quickAddHelpPriorityBody": "{prefix} and a number from 1 (low) to 5 (do now).",
   "@quickAddHelpPriorityBody": {
+    "description": "Text of the Priority section of the Quick Add help sheet; prefix is the priority prefix, for example !, kept as it is.",
     "placeholders": {
       "prefix": {
         "type": "String",
@@ -1787,6 +1900,7 @@
   "quickAddHelpPeopleTitle": "People",
   "quickAddHelpPeopleBody": "{prefix} and a username or name. Anyone who isn't found stays in the title.",
   "@quickAddHelpPeopleBody": {
+    "description": "Text of the People section of the Quick Add help sheet; prefix is the assignee prefix, for example @, kept as it is.",
     "placeholders": {
       "prefix": {
         "type": "String",
@@ -1821,6 +1935,7 @@
   },
   "quickAddHelpMode": "These are the {mode} prefixes, as set in your account settings.",
   "@quickAddHelpMode": {
+    "description": "Last line of the Quick Add help sheet; mode is the name of the Quick Add magic mode, Vikunja or Todoist, kept as it is.",
     "placeholders": {
       "mode": {
         "type": "String",
@@ -1831,6 +1946,7 @@
   "taskEditAddLabel": "Add label",
   "taskEditRemoveLabel": "Remove label {label}",
   "@taskEditRemoveLabel": {
+    "description": "Tooltip of the remove button on a label chip of the task edit page; label is the label's title, for example Finance.",
     "placeholders": {
       "label": {
         "type": "String",
@@ -1841,6 +1957,7 @@
   "taskEditAssign": "Assign",
   "taskEditUnassign": "Unassign {name}",
   "@taskEditUnassign": {
+    "description": "Tooltip of the remove button on an assignee chip of the task edit page; name is the person's name, for example Alice Example.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -1852,6 +1969,7 @@
   "taskEditEditReminder": "Edit reminder",
   "taskEditRemoveReminder": "Remove reminder: {reminder}",
   "@taskEditRemoveReminder": {
+    "description": "Tooltip of the remove button of a reminder on the task edit page; reminder is the reminder as spoken, for example 1 day before the due date.",
     "placeholders": {
       "reminder": {
         "type": "String",
@@ -1919,6 +2037,7 @@
   },
   "labelPickerTitleTooLong": "A label title can have at most {max} characters.",
   "@labelPickerTitleTooLong": {
+    "description": "Error in the label picker when a new label's title is too long; max is the most characters allowed, for example 250.",
     "placeholders": {
       "max": {
         "type": "int",
@@ -1944,6 +2063,7 @@
   "assigneePickerSearchFailed": "Search failed",
   "assigneeUsername": "@{username}",
   "@assigneeUsername": {
+    "description": "A username after an @, under the name in the people pickers and as a tooltip in the filter editor; username is the username, for example alice.",
     "placeholders": {
       "username": {
         "type": "String",
@@ -1987,7 +2107,7 @@
     }
   },
   "inboxTitle": "Notifications",
-  "inboxButton": "{count, plural, =0{Notifications} =1{Notifications, 1 unread} other{Notifications, {count} unread}}",
+  "inboxButton": "{count, plural, =0{Notifications} one{Notifications, {count} unread} other{Notifications, {count} unread}}",
   "@inboxButton": {
     "description": "Screen reader label of the bell on the Overview and of the notifications item in Upcoming's menu.",
     "placeholders": {
@@ -2042,6 +2162,7 @@
   },
   "inboxAssignedYou": "{doer} assigned you to {task}",
   "@inboxAssignedYou": {
+    "description": "Inbox row: someone assigned the user to a task; doer is that person's name, for example Anna, and task is the task's title, for example Pay rent.",
     "placeholders": {
       "doer": {
         "type": "String",
@@ -2055,6 +2176,7 @@
   },
   "inboxAssigned": "{doer} assigned {assignee} to {task}",
   "@inboxAssigned": {
+    "description": "Inbox row: someone assigned another person to a task; doer is who did it, for example Anna, assignee is who was assigned, for example Ben, and task is the task's title, for example Pay rent.",
     "placeholders": {
       "doer": {
         "type": "String",
@@ -2086,6 +2208,7 @@
   },
   "inboxMentioned": "{doer} mentioned you on {task}",
   "@inboxMentioned": {
+    "description": "Inbox row: someone mentioned the user on a task; doer is that person's name, for example Anna, and task is the task's title, for example Pay rent.",
     "placeholders": {
       "doer": {
         "type": "String",
@@ -2099,6 +2222,7 @@
   },
   "inboxTaskCreated": "{doer} created {task}",
   "@inboxTaskCreated": {
+    "description": "Inbox row: someone created a task; doer is that person's name, for example Anna, and task is the task's title, for example Pay rent.",
     "placeholders": {
       "doer": {
         "type": "String",
@@ -2112,6 +2236,7 @@
   },
   "inboxTaskDeleted": "{doer} deleted {task}",
   "@inboxTaskDeleted": {
+    "description": "Inbox row: someone deleted a task; doer is that person's name, for example Anna, and task is the task's title, for example Pay rent.",
     "placeholders": {
       "doer": {
         "type": "String",
@@ -2125,6 +2250,7 @@
   },
   "inboxProjectCreated": "{doer} created {project}",
   "@inboxProjectCreated": {
+    "description": "Inbox row: someone created a project; doer is that person's name, for example Anna, and project is the project's title, for example Garden.",
     "placeholders": {
       "doer": {
         "type": "String",
@@ -2138,6 +2264,7 @@
   },
   "inboxAddedYouToTeam": "{doer} added you to the {team} team",
   "@inboxAddedYouToTeam": {
+    "description": "Inbox row: someone added the user to a team; doer is that person's name, for example Anna, and team is the team's name, for example Family.",
     "placeholders": {
       "doer": {
         "type": "String",
@@ -2151,6 +2278,7 @@
   },
   "inboxAddedToTeam": "{doer} added {member} to the {team} team",
   "@inboxAddedToTeam": {
+    "description": "Inbox row: someone added another person to a team; doer is who did it, for example Anna, member is who was added, for example Ben, and team is the team's name, for example Family.",
     "placeholders": {
       "doer": {
         "type": "String",
@@ -2252,7 +2380,7 @@
   "notificationsTurnOn": "Turn on",
   "notificationsMayBeLate": "Reminders may be late",
   "notificationsAllowExactAlarms": "Allow exact alarms",
-  "notificationsScheduled": "{count, plural, =0{Nothing scheduled} =1{1 scheduled} other{{count} scheduled}}",
+  "notificationsScheduled": "{count, plural, =0{Nothing scheduled} one{{count} scheduled} other{{count} scheduled}}",
   "@notificationsScheduled": {
     "description": "How many notifications the OS holds for this account.",
     "placeholders": {
@@ -2299,6 +2427,7 @@
   },
   "activityNotificationCommentedNoText": "{name} commented",
   "@activityNotificationCommentedNoText": {
+    "description": "Body of an OS notification for a new comment without its text; the title is the task's title; name is who commented, for example Anna.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -2318,6 +2447,7 @@
   },
   "activityNotificationAssignedOther": "{name} assigned {assignee}",
   "@activityNotificationAssignedOther": {
+    "description": "Body of an OS notification: someone assigned another person to the task in the title; name is who did it, for example Anna, and assignee is who was assigned, for example Ben.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -2341,6 +2471,7 @@
   },
   "activityNotificationMentioned": "{name} mentioned you",
   "@activityNotificationMentioned": {
+    "description": "Body of an OS notification: someone mentioned the user on the task in the title; name is that person's name, for example Anna.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -2350,6 +2481,7 @@
   },
   "activityNotificationTaskCreated": "{name} created this task in {project}",
   "@activityNotificationTaskCreated": {
+    "description": "Body of an OS notification: someone created the task in the title; name is that person's name, for example Anna, and project is the project's title, for example Garden.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -2363,6 +2495,7 @@
   },
   "activityNotificationTaskCreatedNoProject": "{name} created this task",
   "@activityNotificationTaskCreatedNoProject": {
+    "description": "Like activityNotificationTaskCreated when the project's title is not known; name is that person's name, for example Anna.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -2372,6 +2505,7 @@
   },
   "activityNotificationTaskDeleted": "{name} deleted this task",
   "@activityNotificationTaskDeleted": {
+    "description": "Body of an OS notification: someone deleted the task in the title; name is that person's name, for example Anna.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -2409,6 +2543,7 @@
   },
   "activityNotificationTeamAddedOther": "{name} added {member} to the team {team}",
   "@activityNotificationTeamAddedOther": {
+    "description": "Body of an OS notification whose title is the team's name: someone added another person to the team; name is who did it, for example Anna, member is who was added, for example Ben, and team is the team's name, for example Gardeners.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -2442,8 +2577,9 @@
   "@activityNotificationMoreTitle": {
     "description": "Title of the OS notification that stands for the new notifications of one sync beyond the few shown one by one."
   },
-  "activityNotificationMoreBody": "{count, plural, =1{1 more new notification} other{{count} more new notifications}}",
+  "activityNotificationMoreBody": "{count, plural, one{{count} more new notification} other{{count} more new notifications}}",
   "@activityNotificationMoreBody": {
+    "description": "Body of the More activity notification: how many new notifications of one sync are not shown one by one; count is that number, for example 7.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -2597,6 +2733,7 @@
   "taskDuplicateNotSynced": "You can duplicate this task once its changes are synced.",
   "taskDuplicateFailed": "Couldn't duplicate the task: {message}",
   "@taskDuplicateFailed": {
+    "description": "Error when duplicating a task failed; message is the server's message, for example Forbidden.",
     "placeholders": {
       "message": {
         "type": "String",
@@ -2637,6 +2774,7 @@
   "followInheritedTaskTitle": "Stop following this task?",
   "followInheritedTaskBody": "You follow the project “{project}”, which includes this task. You will stop getting notifications about this task only and keep following the project.",
   "@followInheritedTaskBody": {
+    "description": "Body of the confirmation for unfollowing a task the user follows through its project; project is the project's title, for example Work.",
     "placeholders": {
       "project": {
         "type": "String",
@@ -2647,6 +2785,7 @@
   "followInheritedProjectTitle": "Stop following this project?",
   "followInheritedProjectBody": "You follow the parent project “{project}”. You will stop getting notifications about this project only and keep following “{project}”.",
   "@followInheritedProjectBody": {
+    "description": "Body of the confirmation for unfollowing a project the user follows through its parent project; project is the parent's title, for example Work.",
     "placeholders": {
       "project": {
         "type": "String",
@@ -2657,7 +2796,7 @@
   "followInheritedConfirm": "Stop following",
   "projectFollowed": "You follow this project now",
   "projectUnfollowed": "You no longer follow this project",
-  "newTaskTreeCount": "{count, plural, =1{1 task} other{{count} tasks}}, {subtasks, plural, =1{1 as a subtask} other{{subtasks} as subtasks}} · the first one:",
+  "newTaskTreeCount": "{count, plural, one{{count} task} other{{count} tasks}}, {subtasks, plural, one{{subtasks} as a subtask} other{{subtasks} as subtasks}} · the first one:",
   "@newTaskTreeCount": {
     "description": "Above the preview of the first line once indented lines are pasted: indented lines become subtasks of the line above.",
     "placeholders": {
@@ -2669,7 +2808,7 @@
       }
     }
   },
-  "newTaskTreeCountOnly": "{count, plural, =1{1 task} other{{count} tasks}}, {subtasks, plural, =1{1 as a subtask} other{{subtasks} as subtasks}}",
+  "newTaskTreeCountOnly": "{count, plural, one{{count} task} other{{count} tasks}}, {subtasks, plural, one{{subtasks} as a subtask} other{{subtasks} as subtasks}}",
   "@newTaskTreeCountOnly": {
     "description": "Like newTaskTreeCount when the first line has nothing to preview.",
     "placeholders": {
@@ -2711,6 +2850,7 @@
   },
   "upcomingRangeSemantics": "Date range {name}, {dates}",
   "@upcomingRangeSemantics": {
+    "description": "Screen reader: the date range button of the Upcoming screen; name is the range's name, for example Next 7 Days, and dates are its first and last day, for example Oct 13 – Oct 20.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -2791,6 +2931,7 @@
   },
   "overviewFilterNotLoadedBody": "Your Overview shows the saved filter “{title}”, picked in your account settings. Its tasks download with the next sync.",
   "@overviewFilterNotLoadedBody": {
+    "description": "Below \"This filter loads once you're online\" on the Overview when it shows a saved filter whose tasks were never downloaded; title is the saved filter's title, for example My Open Tasks.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -2800,6 +2941,7 @@
   },
   "overviewFilterEmptyBody": "The saved filter “{title}” has no open tasks.",
   "@overviewFilterEmptyBody": {
+    "description": "Empty-state text of a saved filter without open tasks, on its page, the Overview and a home-screen widget; title is the saved filter's title, for example My Open Tasks.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -2899,6 +3041,7 @@
   "projectTasksEmptyDoneBody": "Nothing in this view is done yet.",
   "projectViewFilterNotice": "The server applies this view's filter “{filter}”. Shown as of {when}; changes made elsewhere appear after the next download.",
   "@projectViewFilterNotice": {
+    "description": "Note above the tasks of a project view with a filter of its own, which the server applies; filter is the filter as written, for example priority >= 3, and when is when the tasks were downloaded, for example 5 minutes ago.",
     "placeholders": {
       "filter": {
         "type": "String",
@@ -2929,6 +3072,7 @@
   "taskDoneSemantics": "Done",
   "taskAssigneesSemantics": "Assigned to {names}",
   "@taskAssigneesSemantics": {
+    "description": "Screen reader: a task's assignees in a task row; names is a comma-separated list of their names, for example Anna, Ben.",
     "placeholders": {
       "names": {
         "type": "String",
@@ -2960,7 +3104,7 @@
       }
     }
   },
-  "taskChecklistAllDone": "{total, plural, =1{1 task} other{{total} tasks}}",
+  "taskChecklistAllDone": "{total, plural, one{{total} task} other{{total} tasks}}",
   "@taskChecklistAllDone": {
     "description": "The checkboxes in a task's description, all checked.",
     "placeholders": {
@@ -3013,6 +3157,7 @@
   "projectViewDownloadFailedTitle": "Couldn't download this view",
   "projectViewDownloadFailedBody": "The server applies this view's filter “{filter}”. Pull down to try again.",
   "@projectViewDownloadFailedBody": {
+    "description": "Empty-state text of a project view with a filter of its own when its tasks could not be downloaded; filter is the filter as written, for example priority >= 3.",
     "placeholders": {
       "filter": {
         "type": "String",
@@ -3042,7 +3187,7 @@
   "@boardDoneColumnHint": {
     "description": "Tooltip of the double check mark on the done bucket of a kanban board (the web's \"done bucket\"), also read by screen readers for that column; also the line under the done column in the list of taskMoveToColumnTitle."
   },
-  "boardColumnTaskCount": "{count, plural, =1{1 task} other{{count} tasks}}",
+  "boardColumnTaskCount": "{count, plural, one{{count} task} other{{count} tasks}}",
   "@boardColumnTaskCount": {
     "description": "Read by screen readers after a kanban column's title.",
     "placeholders": {
@@ -3052,7 +3197,7 @@
       }
     }
   },
-  "boardColumnTaskCountOfLimit": "{count} of at most {limit, plural, =1{1 task} other{{limit} tasks}}",
+  "boardColumnTaskCountOfLimit": "{count} of at most {limit, plural, one{{limit} task} other{{limit} tasks}}",
   "@boardColumnTaskCountOfLimit": {
     "description": "Read by screen readers after the title of a kanban column with a task limit.",
     "placeholders": {
@@ -3074,7 +3219,7 @@
   "@boardColumnLimitReached": {
     "description": "Why a full kanban column takes no new task and refuses a dropped card."
   },
-  "boardTasksLeftInDefaultColumn": "{count, plural, =1{1 task didn't fit into the column and went to {column}.} other{{count} tasks didn't fit into the column and went to {column}.}}",
+  "boardTasksLeftInDefaultColumn": "{count, plural, one{{count} task didn't fit into the column and went to {column}.} other{{count} tasks didn't fit into the column and went to {column}.}}",
   "@boardTasksLeftInDefaultColumn": {
     "description": "After adding several tasks to a kanban column with a task limit: those beyond the limit stay in the board's default column, named by its title.",
     "placeholders": {
@@ -3217,7 +3362,7 @@
   },
   "boardColumnLimitTitle": "Column limit",
   "boardColumnLimitLabel": "Limit",
-  "boardColumnLimitHelp": "{count, plural, =1{1 task is in this column now.} other{{count} tasks are in this column now.}} Leave it empty for no limit.",
+  "boardColumnLimitHelp": "{count, plural, one{{count} task is in this column now.} other{{count} tasks are in this column now.}} Leave it empty for no limit.",
   "@boardColumnLimitHelp": {
     "description": "Helper text under the limit field of a kanban column; count is how many tasks the column holds now.",
     "placeholders": {
@@ -3237,6 +3382,7 @@
   },
   "boardDeleteColumnBody": "Are you sure you want to delete the column “{column}”?",
   "@boardDeleteColumnBody": {
+    "description": "Body of the confirmation for deleting a kanban column; column is the column's title, for example Doing.",
     "placeholders": {
       "column": {
         "type": "String",
@@ -3395,6 +3541,7 @@
   "attachmentSourceCamera": "Take a photo",
   "attachmentTooLarge": "“{name}” is too large: attachments can be up to {limit}.",
   "@attachmentTooLarge": {
+    "description": "Error when a file picked as an attachment is larger than the server takes; name is the file name, for example holiday.mov, and limit is the largest size, for example 20 MB.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -3406,7 +3553,7 @@
       }
     }
   },
-  "attachmentsQueued": "{count, plural, =1{1 file will be uploaded} other{{count} files will be uploaded}}",
+  "attachmentsQueued": "{count, plural, one{{count} file will be uploaded} other{{count} files will be uploaded}}",
   "@attachmentsQueued": {
     "description": "After files were added to a task; they upload when there is a connection.",
     "placeholders": {
@@ -3417,6 +3564,7 @@
   },
   "attachmentAddFailed": "“{name}” couldn't be added.",
   "@attachmentAddFailed": {
+    "description": "Error when a picked file couldn't be added as an attachment; name is the file name, for example scan.pdf.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -3437,6 +3585,7 @@
   "attachmentUploadTooLarge": "Not uploaded: too large",
   "attachmentCancelUpload": "Cancel upload of {name}",
   "@attachmentCancelUpload": {
+    "description": "Tooltip of the cancel button on an attachment waiting to upload; name is the file name, for example scan.pdf.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -3446,6 +3595,7 @@
   },
   "attachmentOptions": "Options for {name}",
   "@attachmentOptions": {
+    "description": "Tooltip of the more button on an attachment of a task; name is the file name, for example scan.pdf.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -3468,6 +3618,7 @@
   },
   "attachmentDeleteBody": "“{name}” will be deleted from this task. This can't be undone.",
   "@attachmentDeleteBody": {
+    "description": "Body of the confirmation for deleting an attachment; name is the file name, for example scan.pdf.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -3485,6 +3636,7 @@
   "attachmentSaving": "Saving…",
   "attachmentCancelDownload": "Cancel download of {name}",
   "@attachmentCancelDownload": {
+    "description": "Tooltip of the cancel button on an attachment that is downloading; name is the file name, for example scan.pdf.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -3502,6 +3654,7 @@
   "attachmentFileTooLarge": "The file is too large for the server.",
   "attachmentFileTooLargeLimit": "The file is too large: attachments can be up to {limit}.",
   "@attachmentFileTooLargeLimit": {
+    "description": "Error when an attachment, or an image added in the description editor, is larger than the server takes; limit is the largest size, for example 20 MB.",
     "placeholders": {
       "limit": {
         "type": "String",
@@ -3512,6 +3665,7 @@
   "attachmentNotSynced": "This works once the task has been synced.",
   "attachmentRefused": "The server refused it: {message}",
   "@attachmentRefused": {
+    "description": "Error when the server refused an attachment; message is the server's message, for example Forbidden.",
     "placeholders": {
       "message": {
         "type": "String",
@@ -3534,6 +3688,7 @@
   "shareFiles": "Files",
   "shareRemoveFile": "Remove {name}",
   "@shareRemoveFile": {
+    "description": "Tooltip of the remove button on a file in the sheet for what another app shared; name is the file name, for example scan.pdf.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -3544,6 +3699,7 @@
   "shareFilePreparing": "Preparing…",
   "shareFileTooLarge": "Too large: attachments can be up to {limit}",
   "@shareFileTooLarge": {
+    "description": "Under a file in the sheet for what another app shared, when it is larger than the server takes; limit is the largest size, for example 20 MB.",
     "placeholders": {
       "limit": {
         "type": "String",
@@ -3555,6 +3711,7 @@
   "shareFilesLeftOut": "This server doesn't take attachments, so the files are left out.",
   "shareTooManyFiles": "Only the first {count} files are added.",
   "@shareTooManyFiles": {
+    "description": "Note in the sheet for what another app shared, when it shared more files than the app adds; count is the most it adds, 20.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -3565,16 +3722,18 @@
   "sharePickTask": "Choose a task.",
   "shareCreate": "Create task",
   "shareAdd": "Add",
-  "shareTaskCreated": "{count, plural, =0{Task created} =1{Task created, 1 file will be uploaded} other{Task created, {count} files will be uploaded}}",
+  "shareTaskCreated": "{count, plural, =0{Task created} one{Task created, {count} file will be uploaded} other{Task created, {count} files will be uploaded}}",
   "@shareTaskCreated": {
+    "description": "Snackbar after a task was created from what another app shared; count is how many shared files will upload, for example 2.",
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "shareAddedToTask": "{count, plural, =0{Added to the task} =1{Added to the task, 1 file will be uploaded} other{Added to the task, {count} files will be uploaded}}",
+  "shareAddedToTask": "{count, plural, =0{Added to the task} one{Added to the task, {count} file will be uploaded} other{Added to the task, {count} files will be uploaded}}",
   "@shareAddedToTask": {
+    "description": "Snackbar after what another app shared was added to an existing task; count is how many shared files will upload, for example 2.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -3584,6 +3743,7 @@
   "shareFailed": "What was shared couldn't be added.",
   "syncProblemUploadFailed": "“{name}” could not be uploaded.",
   "@syncProblemUploadFailed": {
+    "description": "A sync problem on the Account tab: an attachment could not be uploaded; name is the file name, for example scan.pdf.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -3598,6 +3758,7 @@
   "syncProblemUploadFileMissing": "The copy kept on this device is gone; discard it.",
   "taskDetailComments": "Comments ({count})",
   "@taskDetailComments": {
+    "description": "Heading of the comments section of a task that has comments; count is how many, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -3628,6 +3789,7 @@
   },
   "reactionByOne": "{user} reacted with {reaction}",
   "@reactionByOne": {
+    "description": "Who added a reaction to a task or comment, when one person did; user is that person's name, for example Anna, and reaction is the emoji, for example 👍.",
     "placeholders": {
       "user": {
         "type": "String",
@@ -3641,6 +3803,7 @@
   },
   "reactionBySeveral": "{users} and {lastUser} reacted with {reaction}",
   "@reactionBySeveral": {
+    "description": "Who added a reaction to a task or comment, when two to ten people did; users is a comma-separated list of all but the last, for example Anna, Ben, lastUser is the last one, for example Carla, and reaction is the emoji, for example 👍.",
     "placeholders": {
       "users": {
         "type": "String",
@@ -3676,6 +3839,7 @@
   },
   "taskDetailCreatedBy": "Created {when} by {name}",
   "@taskDetailCreatedBy": {
+    "description": "In the task detail sheet: when the task was created and by whom; when is a relative time, for example 2 days ago, and name is the creator's name, for example Anna.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -3689,6 +3853,7 @@
   },
   "taskDetailCreated": "Created {when}",
   "@taskDetailCreated": {
+    "description": "When a task was created, in the task detail sheet and a Table view row; when is a relative time, for example 2 days ago.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -3698,6 +3863,7 @@
   },
   "taskDetailUpdated": "Updated {when}",
   "@taskDetailUpdated": {
+    "description": "When a task was last changed, in the task detail sheet and a Table view row; when is a relative time, for example 1 hour ago.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -3707,6 +3873,7 @@
   },
   "taskDetailDoneWhen": "Done {when}",
   "@taskDetailDoneWhen": {
+    "description": "When a task was marked done, in the task detail sheet and a Table view row; when is a relative time, for example 1 hour ago.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -3740,7 +3907,7 @@
   "@richTextImageOffline": {
     "description": "An attachment image in a description or comment that could not load without a connection; a tap tries again."
   },
-  "commentsLoaded": "{count, plural, =0{No more comments} =1{1 comment loaded} other{{count} comments loaded}}",
+  "commentsLoaded": "{count, plural, =0{No more comments} one{{count} comment loaded} other{{count} comments loaded}}",
   "@commentsLoaded": {
     "description": "Read by screen readers once a page of comments the user asked for has arrived.",
     "placeholders": {
@@ -3844,6 +4011,7 @@
   "projectDelete": "Delete",
   "projectDeleteTitle": "Delete “{project}”?",
   "@projectDeleteTitle": {
+    "description": "Title of the confirmation for deleting a project; project is the project's title, for example Work.",
     "placeholders": {
       "project": {
         "type": "String",
@@ -3851,7 +4019,7 @@
       }
     }
   },
-  "projectDeleteTasks": "{count, plural, =0{It has no tasks. It is deleted for everyone.} =1{This deletes 1 task, for everyone.} other{This deletes {count} tasks, for everyone.}}",
+  "projectDeleteTasks": "{count, plural, =0{It has no tasks. It is deleted for everyone.} one{This deletes {count} task, for everyone.} other{This deletes {count} tasks, for everyone.}}",
   "@projectDeleteTasks": {
     "description": "What deleting a project without subprojects removes; counts done tasks too.",
     "placeholders": {
@@ -3861,7 +4029,7 @@
       }
     }
   },
-  "projectDeleteTasksAndSubprojects": "This deletes {tasks, plural, =0{no tasks} =1{1 task} other{{tasks} tasks}} and {subprojects, plural, =1{1 subproject} other{{subprojects} subprojects}}, for everyone.",
+  "projectDeleteTasksAndSubprojects": "This deletes {tasks, plural, =0{no tasks} one{{tasks} task} other{{tasks} tasks}} and {subprojects, plural, one{{subprojects} subproject} other{{subprojects} subprojects}}, for everyone.",
   "@projectDeleteTasksAndSubprojects": {
     "description": "What deleting a project removes: the tasks of the project and of all its subprojects, and the subprojects at every level.",
     "placeholders": {
@@ -3889,7 +4057,7 @@
       }
     }
   },
-  "projectTrashTasks": "{count, plural, =0{It has no tasks. It moves to the trash, for everyone.} =1{It moves to the trash with {count} task, for everyone.} other{It moves to the trash with {count} tasks, for everyone.}}",
+  "projectTrashTasks": "{count, plural, =0{It has no tasks. It moves to the trash, for everyone.} one{It moves to the trash with {count} task, for everyone.} other{It moves to the trash with {count} tasks, for everyone.}}",
   "@projectTrashTasks": {
     "description": "Confirmation for deleting a project on servers that support the trash: what deleting a project without subprojects moves to the trash; counts done tasks too.",
     "placeholders": {
@@ -3899,7 +4067,7 @@
       }
     }
   },
-  "projectTrashTasksAndSubprojects": "It moves to the trash with {subprojects, plural, =1{{subprojects} subproject} other{{subprojects} subprojects}} and {tasks, plural, =0{no tasks} =1{{tasks} task} other{{tasks} tasks}}, for everyone.",
+  "projectTrashTasksAndSubprojects": "It moves to the trash with {subprojects, plural, one{{subprojects} subproject} other{{subprojects} subprojects}} and {tasks, plural, =0{no tasks} one{{tasks} task} other{{tasks} tasks}}, for everyone.",
   "@projectTrashTasksAndSubprojects": {
     "description": "Confirmation for deleting a project on servers that support the trash: the subprojects at every level and the tasks of the project and all its subprojects move to the trash with it.",
     "placeholders": {
@@ -3970,6 +4138,7 @@
   },
   "projectChangeRefused": "The server refused the change: {message}",
   "@projectChangeRefused": {
+    "description": "Error when the server refused a change to a project or saved filter; message is the server's message, for example Invalid Data.",
     "placeholders": {
       "message": {
         "type": "String",
@@ -3982,6 +4151,7 @@
   "projectViewEditTitle": "Edit view",
   "projectViewOptionsFor": "Options for {view}",
   "@projectViewOptionsFor": {
+    "description": "Tooltip of the more button on a view of a project's views page; view is the view's title, for example Kanban.",
     "placeholders": {
       "view": {
         "type": "String",
@@ -3992,6 +4162,7 @@
   "projectViewDelete": "Delete",
   "projectViewDeleteTitle": "Delete “{view}”?",
   "@projectViewDeleteTitle": {
+    "description": "Title of the confirmation for deleting a view of a project; view is the view's title, for example Kanban.",
     "placeholders": {
       "view": {
         "type": "String",
@@ -4039,7 +4210,7 @@
     "description": "Example in the web's filter syntax; keep the syntax untranslated."
   },
   "filterHelp": "In the web's filter syntax, with label and project titles. Suggestions follow what you type.",
-  "filterMatchCount": "{count, plural, =0{No task matches on this device} =1{1 task matches on this device} other{{count} tasks match on this device}}",
+  "filterMatchCount": "{count, plural, =0{No task matches on this device} one{{count} task matches on this device} other{{count} tasks match on this device}}",
   "@filterMatchCount": {
     "description": "Live count under the filter field, from the tasks stored on the device.",
     "placeholders": {
@@ -4055,6 +4226,7 @@
   "filterErrorUnknownField": "A field in this filter doesn't exist. Fields are written like dueDate or labels.",
   "filterErrorUnknownFieldNamed": "“{field}” isn't a field. Fields are written like dueDate or labels.",
   "@filterErrorUnknownFieldNamed": {
+    "description": "Error under a filter that names a field that doesn't exist; field is the word as written, for example dueDat. dueDate and labels are field names: keep them.",
     "placeholders": {
       "field": {
         "type": "String",
@@ -4064,6 +4236,7 @@
   },
   "filterErrorLabelValue": "No label is called “{value}”.",
   "@filterErrorLabelValue": {
+    "description": "Error under a filter that names a label that doesn't exist; value is the name as written, for example Wrok.",
     "placeholders": {
       "value": {
         "type": "String",
@@ -4073,6 +4246,7 @@
   },
   "filterErrorProjectValue": "No project is called “{value}”.",
   "@filterErrorProjectValue": {
+    "description": "Error under a filter that names a project that doesn't exist; value is the name as written, for example Inbx.",
     "placeholders": {
       "value": {
         "type": "String",
@@ -4156,6 +4330,7 @@
   "savedFilterDeleted": "Saved filter deleted",
   "savedFilterDeleteTitle": "Delete “{title}”?",
   "@savedFilterDeleteTitle": {
+    "description": "Title of the confirmation for deleting a saved filter; title is the saved filter's title, for example My Open Tasks.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -4194,6 +4369,7 @@
   "searchNoResultsTitle": "Nothing found",
   "searchNoResultsBody": "Nothing on this device matches “{query}”.",
   "@searchNoResultsBody": {
+    "description": "Empty-state text of the search page when nothing matches; query is what was typed, for example report.",
     "placeholders": {
       "query": {
         "type": "String",
@@ -4201,7 +4377,7 @@
       }
     }
   },
-  "searchMoreTasks": "{count, plural, =1{1 more task matches. Type more to narrow it down.} other{{count} more tasks match. Type more to narrow it down.}}",
+  "searchMoreTasks": "{count, plural, one{{count} more task matches. Type more to narrow it down.} other{{count} more tasks match. Type more to narrow it down.}}",
   "@searchMoreTasks": {
     "description": "Note under the search results when more tasks match than are listed; count is how many more.",
     "placeholders": {
@@ -4210,7 +4386,7 @@
       }
     }
   },
-  "searchResultCount": "{count, plural, =0{No results} =1{1 result} other{{count} results}}",
+  "searchResultCount": "{count, plural, =0{No results} one{{count} result} other{{count} results}}",
   "@searchResultCount": {
     "description": "Announced to screen readers as the results change.",
     "placeholders": {
@@ -4222,6 +4398,7 @@
   "labelTasksEmptyTitle": "No open tasks",
   "labelTasksEmptyBody": "Open tasks with the label “{label}” show here.",
   "@labelTasksEmptyBody": {
+    "description": "Empty-state text of a label's task list, on its page and in a home-screen widget; label is the label's title, for example Work.",
     "placeholders": {
       "label": {
         "type": "String",
@@ -4273,6 +4450,7 @@
   "editorParagraph": "Paragraph",
   "editorHeading": "Heading {level}",
   "@editorHeading": {
+    "description": "A heading level in the description editor's text style menu; level is its number, for example 1.",
     "placeholders": {
       "level": {
         "type": "int",
@@ -4330,7 +4508,7 @@
   "@syncProblemUseWebs": {
     "description": "Drops the phone's description and takes the one on the server."
   },
-  "editorMentionsFound": "{count, plural, =1{1 person found} other{{count} people found}}",
+  "editorMentionsFound": "{count, plural, one{{count} person found} other{{count} people found}}",
   "@editorMentionsFound": {
     "description": "Announced to screen readers when mention suggestions arrive.",
     "placeholders": {
@@ -4362,6 +4540,7 @@
   "accountSettingsTitle": "Account settings",
   "accountSettingsIntro": "Saved to your account on {host}: they apply on the web and on all your devices.",
   "@accountSettingsIntro": {
+    "description": "Intro at the top of the account settings page; host is the server's address, for example tasks.example.org.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -4393,6 +4572,7 @@
   },
   "accountSettingsNameManaged": "Your sign-in provider ({provider}) sets your name at every sign-in. Change it there.",
   "@accountSettingsNameManaged": {
+    "description": "Under the Name field of Account settings when the single sign-on provider sets the name; provider is the provider's name on the server, for example Keycloak.",
     "placeholders": {
       "provider": {
         "type": "String",
@@ -4412,6 +4592,7 @@
   "accountSettingsOpensWeb": "Opens the web in your browser",
   "accountSettingsPendingEmail": "Waiting for confirmation of {email}",
   "@accountSettingsPendingEmail": {
+    "description": "Under the email address in Account settings while a new address waits for confirmation; email is the new address, for example alice@example.org.",
     "placeholders": {
       "email": {
         "type": "String",
@@ -4421,6 +4602,7 @@
   },
   "accountSettingsManagedBySignInNamed": "Managed by your sign-in provider ({provider})",
   "@accountSettingsManagedBySignInNamed": {
+    "description": "Row in the security section of Account settings when the single sign-on provider manages the password; provider is the provider's name on the server, for example Keycloak.",
     "placeholders": {
       "provider": {
         "type": "String",
@@ -4467,6 +4649,7 @@
   "accountSettingsTimezoneAll": "All time zones",
   "accountSettingsTimezoneInvalid": "The server does not know the time zone {zone}. Choose another one.",
   "@accountSettingsTimezoneInvalid": {
+    "description": "Error in Account settings when the server does not know the chosen time zone; zone is the time zone's name, for example America/Ciudad Juarez.",
     "placeholders": {
       "zone": {
         "type": "String",
@@ -4492,6 +4675,7 @@
   "accountSettingsDateYearMonthDaySlashed": "YYYY/MM/DD",
   "accountSettingsDateExample": "Example: {example}",
   "@accountSettingsDateExample": {
+    "description": "Value of the date display setting in Account settings: a date as the chosen display shows it; example is that date, for example 10/20/2026 14:30 or in 3 days.",
     "placeholders": {
       "example": {
         "type": "String",
@@ -4528,6 +4712,7 @@
   "accountSettingsSignInAgain": "Sign in again to change account settings.",
   "accountSettingsRefused": "The server refused the change: {message}",
   "@accountSettingsRefused": {
+    "description": "Error when the server refused a change in Account settings; message is the server's message, for example Invalid Data.",
     "placeholders": {
       "message": {
         "type": "String",
@@ -4556,6 +4741,7 @@
   "avatarManagedLdap": "Your avatar comes from your organization's directory (LDAP). Ask your IT team how to change it.",
   "avatarManagedOpenId": "Your avatar comes from your sign-in provider ({provider}). Change it there.",
   "@avatarManagedOpenId": {
+    "description": "On the avatar page when the single sign-on provider sets the avatar; provider is the provider's name on the server, for example Keycloak.",
     "placeholders": {
       "provider": {
         "type": "String",
@@ -4597,8 +4783,9 @@
     "description": "Under the two-factor authentication row while it is on. On Vikunja 2.8.0 and newer accountSettingsAccountLockout follows it, joined with a space."
   },
   "accountSettingsSessions": "Sessions",
-  "accountSettingsSessionsCount": "{count, plural, =1{1 signed-in device or browser} other{{count} signed-in devices and browsers}}",
+  "accountSettingsSessionsCount": "{count, plural, one{{count} signed-in device or browser} other{{count} signed-in devices and browsers}}",
   "@accountSettingsSessionsCount": {
+    "description": "Subtitle of the Sessions row in Account settings; count is the number of signed-in devices and browsers, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -4609,8 +4796,9 @@
   "accountSettingsSessionsHint": "Where you are signed in",
   "accountSettingsIntegrations": "Integrations",
   "accountSettingsApiTokens": "API tokens",
-  "accountSettingsApiTokensCount": "{count, plural, =0{No tokens} =1{1 token} other{{count} tokens}}",
+  "accountSettingsApiTokensCount": "{count, plural, =0{No tokens} one{{count} token} other{{count} tokens}}",
   "@accountSettingsApiTokensCount": {
+    "description": "Subtitle of the API tokens row in Account settings; count is the number of tokens, for example 2.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -4628,6 +4816,7 @@
   "accountSettingsExport": "Export your data",
   "accountSettingsExportReady": "Ready to download until {date}",
   "@accountSettingsExportReady": {
+    "description": "Subtitle of the data export row in Account settings when an export is ready; date is when it stops being available, for example 10/28/2026 7:20 AM.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -4648,6 +4837,7 @@
   },
   "accountDeletionScheduled": "Your account will be deleted on {date}.",
   "@accountDeletionScheduled": {
+    "description": "Note on the Account tab and in Account settings when the account is scheduled for deletion; date is the date and time, for example October 24, 2026 at 7:22 AM.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -4657,6 +4847,7 @@
   },
   "accountDeletionOverdue": "Your account has been due for deletion since {date}.",
   "@accountDeletionOverdue": {
+    "description": "Note on the Account tab and in Account settings when the scheduled deletion date has passed and the server has not deleted the account yet; date is that date and time, for example October 18, 2026 at 5:22 AM.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -4667,6 +4858,7 @@
   "accountDeletionCancel": "Cancel deletion",
   "accountDeletionScheduledRow": "Deletion on {date}. Cancel it on the web.",
   "@accountDeletionScheduledRow": {
+    "description": "Subtitle of the account deletion row in Account settings when the account is scheduled for deletion; date is the date and time, for example October 24, 2026 at 7:22 AM.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -4676,6 +4868,7 @@
   },
   "accountDeletionOverdueRow": "Deletion due since {date}. Cancel it on the web.",
   "@accountDeletionOverdueRow": {
+    "description": "Subtitle of the account deletion row in Account settings when the scheduled deletion date has passed; date is that date and time, for example October 18, 2026 at 5:22 AM.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -4714,6 +4907,7 @@
   "accountSecurityRateLimited": "The server is busy. Try again in a minute.",
   "accountSecurityRefused": "The server refused: {message}",
   "@accountSecurityRefused": {
+    "description": "Error when the server refused a change on the sessions, API tokens or CalDAV page; message is the server's message, for example Invalid Data.",
     "placeholders": {
       "message": {
         "type": "String",
@@ -4728,6 +4922,7 @@
   },
   "accountSecurityCreated": "Created {date}",
   "@accountSecurityCreated": {
+    "description": "When an API token or CalDAV token was created, on its row; date is the date and time, for example 10/20/2026 9:00 AM.",
     "placeholders": {
       "date": {
         "type": "String",
@@ -4742,6 +4937,7 @@
   "sessionsThisDeviceHint": "To end this session, sign out of the account in this app.",
   "sessionsLastActive": "Last active {when}",
   "@sessionsLastActive": {
+    "description": "On a session of the sessions page: when it was last used; when is a relative time, for example 3 hours ago.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -4756,6 +4952,7 @@
   "sessionsUnknownDevice": "Unknown device",
   "sessionsBrowserOn": "{browser} on {system}",
   "@sessionsBrowserOn": {
+    "description": "Name of a session on the sessions page; browser is the browser or app, for example Firefox, and system is the operating system, for example Linux.",
     "placeholders": {
       "browser": {
         "type": "String",
@@ -4779,6 +4976,7 @@
   "sessionsEndTitle": "End this session?",
   "sessionsEndBody": "{device} will be signed out. It can take up to 10 minutes.",
   "@sessionsEndBody": {
+    "description": "Body of the confirmation for ending a session; device is the session's name, for example Firefox on Linux.",
     "placeholders": {
       "device": {
         "type": "String",
@@ -4789,8 +4987,9 @@
   "sessionsEnded": "Session ended. It can take up to 10 minutes to take effect.",
   "sessionsEndOthers": "End all other sessions",
   "sessionsEndOthersTitle": "End all other sessions?",
-  "sessionsEndOthersBody": "{count, plural, =1{The other device or browser is signed out} other{All {count} other devices and browsers are signed out}} within 10 minutes. This device stays signed in.",
+  "sessionsEndOthersBody": "{count, plural, one{{count} other device or browser is signed out} other{All {count} other devices and browsers are signed out}} within 10 minutes. This device stays signed in.",
   "@sessionsEndOthersBody": {
+    "description": "Body of the confirmation for ending all other sessions; count is how many other sessions there are, for example 2.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -4798,8 +4997,9 @@
       }
     }
   },
-  "sessionsEndedOthers": "{count, plural, =0{No other session to end.} =1{1 session ended. It can take up to 10 minutes to take effect.} other{{count} sessions ended. It can take up to 10 minutes to take effect.}}",
+  "sessionsEndedOthers": "{count, plural, =0{No other session to end.} one{{count} session ended. It can take up to 10 minutes to take effect.} other{{count} sessions ended. It can take up to 10 minutes to take effect.}}",
   "@sessionsEndedOthers": {
+    "description": "Screen reader: announced after ending all other sessions; count is how many ended, for example 2.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -4809,6 +5009,7 @@
   },
   "sessionsNotAllEnded": "Ended: {ended}. Still signed in: {notEnded}.",
   "@sessionsNotAllEnded": {
+    "description": "Error when only some of the other sessions could be ended; ended is how many ended, for example 1, and notEnded is how many are still signed in, for example 2.",
     "placeholders": {
       "ended": {
         "type": "int",
@@ -4824,6 +5025,7 @@
   "sessionsNoOthersBody": "Only this device is signed in to your account.",
   "sessionsOptionsFor": "Options for {device}",
   "@sessionsOptionsFor": {
+    "description": "Tooltip of the more button on a session; device is the session's name, for example Firefox on Linux.",
     "placeholders": {
       "device": {
         "type": "String",
@@ -4850,6 +5052,7 @@
   },
   "apiTokensExpired": "Expired {when}",
   "@apiTokensExpired": {
+    "description": "Expiry line of an API token that has expired; when is a relative time, for example 3 days ago.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -4857,8 +5060,9 @@
       }
     }
   },
-  "apiTokensPermissionCount": "{count, plural, =1{1 permission} other{{count} permissions}}",
+  "apiTokensPermissionCount": "{count, plural, one{{count} permission} other{{count} permissions}}",
   "@apiTokensPermissionCount": {
+    "description": "On an API token's row: how many permissions it has; count is the number, for example 4.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -4870,6 +5074,7 @@
   "apiTokensDelete": "Delete token",
   "apiTokensDeleteTitle": "Delete the token “{title}”?",
   "@apiTokensDeleteTitle": {
+    "description": "Title of the confirmation for deleting an API token; title is the token's title, for example Home Assistant.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -4887,8 +5092,9 @@
   "apiTokenFormNameHint": "A title you will recognize later",
   "apiTokenFormNameRequired": "Enter a title.",
   "apiTokenFormExpiry": "Expires",
-  "apiTokenFormExpiryDays": "{days, plural, =1{In 1 day} other{In {days} days}}",
+  "apiTokenFormExpiryDays": "{days, plural, one{In {days} day} other{In {days} days}}",
   "@apiTokenFormExpiryDays": {
+    "description": "An expiry choice on the new API token form; days is 30, 60 or 90.",
     "placeholders": {
       "days": {
         "type": "int",
@@ -4923,6 +5129,7 @@
   "apiTokenPresetFullAccess": "Full access",
   "apiTokenFormGroupSelected": "{selected} of {total}",
   "@apiTokenFormGroupSelected": {
+    "description": "On a permission group of the new API token form: how many of its permissions are picked; selected is that number, for example 3, and total is how many the group has, for example 10.",
     "placeholders": {
       "selected": {
         "type": "int",
@@ -4946,6 +5153,7 @@
   },
   "apiTokenFormHideGroup": "Hide the permissions of {group}",
   "@apiTokenFormHideGroup": {
+    "description": "Tooltip and screen reader label of the button that collapses a permission group on the new API token form; group is the group's name from the server, for example Tasks.",
     "placeholders": {
       "group": {
         "type": "String",
@@ -4964,6 +5172,7 @@
   "oneTimeSecretApiUsage": "Scripts and apps send it as a bearer token in the Authorization header.",
   "oneTimeSecretCaldavUsage": "Enter it as the password in your CalDAV app, with the username {username}.",
   "@oneTimeSecretCaldavUsage": {
+    "description": "Under a new CalDAV token, which is shown only once; username is the account's username, for example alice.",
     "placeholders": {
       "username": {
         "type": "String",
@@ -4990,6 +5199,7 @@
   "caldavTokenTotp": "Two-factor authentication is on, so your account password does not work here. Use a CalDAV token as the password.",
   "caldavTokenProvider": "You sign in through {provider}, so use a CalDAV token as the password.",
   "@caldavTokenProvider": {
+    "description": "On the CalDAV page when the user signs in through single sign-on; provider is the provider's name on the server, for example Keycloak.",
     "placeholders": {
       "provider": {
         "type": "String",
@@ -5009,6 +5219,7 @@
   "caldavTokensEmpty": "No CalDAV tokens yet.",
   "caldavTokenName": "Token {id}",
   "@caldavTokenName": {
+    "description": "Name of a CalDAV token on the CalDAV page; id is its number, for example 3.",
     "placeholders": {
       "id": {
         "type": "int",
@@ -5019,6 +5230,7 @@
   "caldavNewToken": "New CalDAV token",
   "caldavDeleteToken": "Delete token {id}",
   "@caldavDeleteToken": {
+    "description": "Tooltip of the delete button on a CalDAV token; id is the token's number, for example 3.",
     "placeholders": {
       "id": {
         "type": "int",
@@ -5028,6 +5240,7 @@
   },
   "caldavDeleteTitle": "Delete token {id}?",
   "@caldavDeleteTitle": {
+    "description": "Title of the confirmation for deleting a CalDAV token; id is the token's number, for example 3.",
     "placeholders": {
       "id": {
         "type": "int",
@@ -5048,6 +5261,7 @@
   "dataExportReadyTitle": "Ready to download",
   "dataExportReadyBody": "{size}, available until {date}",
   "@dataExportReadyBody": {
+    "description": "On the data export page when an export is ready; size is its file size, for example 2.4 KB, and date is when it stops being available, for example 10/28/2026 7:20 AM.",
     "placeholders": {
       "size": {
         "type": "String",
@@ -5094,7 +5308,7 @@
       }
     }
   },
-  "overviewTasksLeftToday": "{count, plural, =0{Nothing left for today} =1{1 task left for today} other{{count} tasks left for today}}",
+  "overviewTasksLeftToday": "{count, plural, =0{Nothing left for today} one{{count} task left for today} other{{count} tasks left for today}}",
   "@overviewTasksLeftToday": {
     "description": "Under the Overview's greeting: the open tasks it shows that are due today or overdue.",
     "placeholders": {
@@ -5105,7 +5319,7 @@
       }
     }
   },
-  "upcomingSubtitle": "{range}, {dates} · {count, plural, =0{nothing open} =1{1 open} other{{count} open}}",
+  "upcomingSubtitle": "{range}, {dates} · {count, plural, =0{nothing open} one{{count} open} other{{count} open}}",
   "@upcomingSubtitle": {
     "description": "Under Upcoming's app bar: the date range's name, its days and how many open tasks are due in it.",
     "placeholders": {
@@ -5124,7 +5338,7 @@
       }
     }
   },
-  "upcomingDaySemantics": "{day}, {count, plural, =0{nothing open} =1{1 open} other{{count} open}}",
+  "upcomingDaySemantics": "{day}, {count, plural, =0{nothing open} one{{count} open} other{{count} open}}",
   "@upcomingDaySemantics": {
     "description": "Screen reader label of a day in Upcoming's day strip.",
     "placeholders": {
@@ -5242,6 +5456,7 @@
   "commentComposerOffline": "Needs a connection. What you wrote stays here.",
   "commentReplyingTo": "Replying to {name}",
   "@commentReplyingTo": {
+    "description": "Above the comment field while replying to a comment; name is the comment author's name, for example Anna.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5255,6 +5470,7 @@
   },
   "commentOptions": "Options for the comment by {name}",
   "@commentOptions": {
+    "description": "Tooltip of the more button on a comment; name is the author's name, for example Anna.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5310,7 +5526,7 @@
     "description": "Screen reader hint for a tap on a reaction chip the user reacted with."
   },
   "reactionFailed": "The reaction couldn't be saved. Try again later.",
-  "taskCommentCount": "{count, plural, =1{1 comment} other{{count} comments}}",
+  "taskCommentCount": "{count, plural, one{{count} comment} other{{count} comments}}",
   "@taskCommentCount": {
     "description": "Read by screen readers for a task row's comment count.",
     "placeholders": {
@@ -5320,7 +5536,7 @@
       }
     }
   },
-  "taskCommentCountUnread": "{count, plural, =1{1 comment, unread} other{{count} comments, unread}}",
+  "taskCommentCountUnread": "{count, plural, one{{count} comment, unread} other{{count} comments, unread}}",
   "@taskCommentCountUnread": {
     "description": "Read by screen readers for a task row whose comments include one the user has not seen.",
     "placeholders": {
@@ -5393,8 +5609,9 @@
   "@shareHiddenTeam": {
     "description": "A team share whose name the server hides because the user is not in the team."
   },
-  "shareTeamMemberCount": "{count, plural, =1{1 member} other{{count} members}}",
+  "shareTeamMemberCount": "{count, plural, one{{count} member} other{{count} members}}",
   "@shareTeamMemberCount": {
+    "description": "Under a team on a project's sharing page and in the team picker: how many members it has; count is the number, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -5426,6 +5643,7 @@
   "shareRemove": "Remove",
   "shareRemoveTitle": "Remove {name}?",
   "@shareRemoveTitle": {
+    "description": "Title of the confirmation for removing a person's or team's access to a project; name is the person's or team's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5435,6 +5653,7 @@
   },
   "shareRemovePersonBody": "{name} loses access to this project and the projects under it at once.",
   "@shareRemovePersonBody": {
+    "description": "Body of the confirmation for removing a person's access to a project; name is the person's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5445,6 +5664,7 @@
   "shareRemoveSelfBody": "You lose access to this project and the projects under it at once, unless you have it in another way.",
   "shareRemoveTeamBody": "The members of {name} lose access to this project and the projects under it at once, unless they have it in another way.",
   "@shareRemoveTeamBody": {
+    "description": "Body of the confirmation for removing a team's access to a project; name is the team's name, for example Design.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5462,6 +5682,7 @@
   "shareCleanupSelfWebhooks": "webhooks you created",
   "shareAdded": "{name} has access now",
   "@shareAdded": {
+    "description": "Snackbar after giving a person or team access to a project; name is the person's or team's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5471,6 +5692,7 @@
   },
   "sharePermissionChanged": "Access for {name} changed",
   "@sharePermissionChanged": {
+    "description": "Snackbar after changing the permission of a person or team on a project; name is the person's or team's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5480,6 +5702,7 @@
   },
   "shareRemoved": "{name} removed",
   "@shareRemoved": {
+    "description": "Snackbar after removing a person's or team's access to a project; name is the person's or team's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5503,6 +5726,7 @@
   "linkSharePasswordProtected": "Password protected",
   "linkShareCreatedBy": "Created by {name}",
   "@linkShareCreatedBy": {
+    "description": "On a link share of a project: who created it; name is that person's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5528,6 +5752,7 @@
   "linkShareDelete": "Delete",
   "linkShareDeleteTitle": "Delete the link “{name}”?",
   "@linkShareDeleteTitle": {
+    "description": "Title of the confirmation for deleting a link share that has a name; name is the link's name, for example Family.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5592,7 +5817,7 @@
   "@accountTrashEntry": {
     "description": "Account tab row that opens the trash page, on servers that support the trash."
   },
-  "labelsCount": "{count, plural, =1{1 label} other{{count} labels}}",
+  "labelsCount": "{count, plural, one{{count} label} other{{count} labels}}",
   "@labelsCount": {
     "description": "How many labels are on this device, read out for the count next to the Labels entry.",
     "placeholders": {
@@ -5627,6 +5852,7 @@
   },
   "labelsOptionsFor": "Options for {label}",
   "@labelsOptionsFor": {
+    "description": "Tooltip of the more button on a label of the labels page; label is the label's title, for example Urgent.",
     "placeholders": {
       "label": {
         "type": "String",
@@ -5639,6 +5865,7 @@
   "labelsSearch": "Search labels",
   "labelsSearchEmpty": "No label matches “{query}”.",
   "@labelsSearchEmpty": {
+    "description": "On the labels page when the search matches no label; query is what was typed, for example urg.",
     "placeholders": {
       "query": {
         "type": "String",
@@ -5668,6 +5895,7 @@
   },
   "labelsDeleteTitle": "Delete label “{title}”?",
   "@labelsDeleteTitle": {
+    "description": "Title of the confirmation for deleting a label; title is the label's title, for example Urgent.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -5683,7 +5911,7 @@
   "@labelsTitleRequired": {
     "description": "Error of the label form's title field when it is empty."
   },
-  "labelsTitleRemaining": "{count, plural, =1{1 character left} other{{count} characters left}}",
+  "labelsTitleRemaining": "{count, plural, one{{count} character left} other{{count} characters left}}",
   "@labelsTitleRemaining": {
     "description": "Read out with the counter of a label title near its limit.",
     "placeholders": {
@@ -5733,6 +5961,7 @@
   "labelsInvalid": "The server did not accept this label. Check its title and color.",
   "labelsRefused": "The server refused: {message}",
   "@labelsRefused": {
+    "description": "Error when the server refused a change to a label; message is the server's message, for example Forbidden.",
     "placeholders": {
       "message": {
         "type": "String",
@@ -5753,8 +5982,9 @@
   "@teamsNewOffline": {
     "description": "Tooltip of the dimmed New team button while offline, and error when creating a team failed because there is no connection to the server."
   },
-  "teamMemberCount": "{count, plural, =1{1 member} other{{count} members}}",
+  "teamMemberCount": "{count, plural, one{{count} member} other{{count} members}}",
   "@teamMemberCount": {
+    "description": "Under a team on the teams page and on its own page: how many members it has; count is the number, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -5842,6 +6072,7 @@
   "teamRoleMember": "Member",
   "teamMemberOptionsFor": "Options for {name}",
   "@teamMemberOptionsFor": {
+    "description": "Tooltip of the more button on a team member; name is the member's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5854,6 +6085,7 @@
   "teamRemoveMember": "Remove from team",
   "teamMadeAdmin": "{name} is an admin now",
   "@teamMadeAdmin": {
+    "description": "Snackbar after making a team member an admin; name is the member's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5863,6 +6095,7 @@
   },
   "teamMadeMember": "{name} is a member now",
   "@teamMadeMember": {
+    "description": "Snackbar after making a team admin a regular member; name is the member's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5873,6 +6106,7 @@
   "teamAddMember": "Add member",
   "teamMemberAdded": "{name} added to the team",
   "@teamMemberAdded": {
+    "description": "Snackbar after adding a person to a team; name is the person's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5882,6 +6116,7 @@
   },
   "teamMemberRemoved": "{name} removed from the team",
   "@teamMemberRemoved": {
+    "description": "Snackbar after removing a person from a team; name is the person's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5891,6 +6126,7 @@
   },
   "teamRemoveTitle": "Remove {name} from the team?",
   "@teamRemoveTitle": {
+    "description": "Title of the confirmation for removing a person from a team; name is the person's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5900,6 +6136,7 @@
   },
   "teamRemoveBody": "{name} loses access to every project shared with this team.",
   "@teamRemoveBody": {
+    "description": "Body of the confirmation for removing a person from a team; name is the person's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -5911,6 +6148,7 @@
   "teamLeave": "Leave team",
   "teamLeaveTitle": "Leave “{team}”?",
   "@teamLeaveTitle": {
+    "description": "Title of the confirmation for leaving a team; team is the team's name, for example Design.",
     "placeholders": {
       "team": {
         "type": "String",
@@ -5928,6 +6166,7 @@
   "teamDelete": "Delete team",
   "teamDeleteTitle": "Delete “{team}”?",
   "@teamDeleteTitle": {
+    "description": "Title of the confirmation for deleting a team; team is the team's name, for example Design.",
     "placeholders": {
       "team": {
         "type": "String",
@@ -5956,6 +6195,7 @@
   "teamGone": "This team no longer exists, or you are no longer in it.",
   "teamRefused": "The server refused: {message}",
   "@teamRefused": {
+    "description": "Error when the server refused a change to a team; message is the server's message, for example Forbidden.",
     "placeholders": {
       "message": {
         "type": "String",
@@ -6052,7 +6292,7 @@
       }
     }
   },
-  "trashDeletedForGoodIn": "{days, plural, =0{Deleted forever today} =1{Deleted forever in {days} day} other{Deleted forever in {days} days}}",
+  "trashDeletedForGoodIn": "{days, plural, =0{Deleted forever today} one{Deleted forever in {days} day} other{Deleted forever in {days} days}}",
   "@trashDeletedForGoodIn": {
     "description": "Line of a task or project on the trash page: the whole days left until the server deletes it forever.",
     "placeholders": {
@@ -6062,7 +6302,7 @@
       }
     }
   },
-  "trashSubprojects": "{count, plural, =1{With {count} subproject: {titles}} other{With {count} subprojects: {titles}}}",
+  "trashSubprojects": "{count, plural, one{With {count} subproject: {titles}} other{With {count} subprojects: {titles}}}",
   "@trashSubprojects": {
     "description": "Line of a project on the trash page: the subprojects in the trash with it. The titles are the subprojects' titles joined with a comma and a space.",
     "placeholders": {
@@ -6138,7 +6378,7 @@
   "@trashEmptyProjectsTitle": {
     "description": "Title of the confirmation for emptying the Projects tab of the trash page."
   },
-  "trashEmptyTasks": "{count, plural, =1{{count} task is deleted forever.} other{{count} tasks are deleted forever.}}",
+  "trashEmptyTasks": "{count, plural, one{{count} task is deleted forever.} other{{count} tasks are deleted forever.}}",
   "@trashEmptyTasks": {
     "description": "Confirmation for emptying the Tasks tab of the trash page: how many tasks the server deletes.",
     "placeholders": {
@@ -6148,7 +6388,7 @@
       }
     }
   },
-  "trashEmptyProjects": "{count, plural, =1{{count} project is deleted forever, with everything in it.} other{{count} projects are deleted forever, with everything in them.}}",
+  "trashEmptyProjects": "{count, plural, one{{count} project is deleted forever, with everything in it.} other{{count} projects are deleted forever, with everything in them.}}",
   "@trashEmptyProjects": {
     "description": "Confirmation for emptying the Projects tab of the trash page: how many projects the server deletes, with their subprojects and tasks.",
     "placeholders": {
@@ -6158,7 +6398,7 @@
       }
     }
   },
-  "trashEmptyByOthers": "{count, plural, =1{{count} of them was moved to the trash by someone else.} other{{count} of them were moved to the trash by other people.}}",
+  "trashEmptyByOthers": "{count, plural, one{{count} of them was moved to the trash by someone else.} other{{count} of them were moved to the trash by other people.}}",
   "@trashEmptyByOthers": {
     "description": "Confirmation for emptying a tab of the trash page: how many of the items other people moved to the trash. Emptying deletes them too.",
     "placeholders": {
@@ -6479,6 +6719,7 @@
   },
   "projectTableStartsSemantics": "Starts {when}",
   "@projectTableStartsSemantics": {
+    "description": "Screen reader: a task's start date in a Table view row; when is the date as spoken, for example in 2 days.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -6488,6 +6729,7 @@
   },
   "projectTableEndsSemantics": "Ends {when}",
   "@projectTableEndsSemantics": {
+    "description": "Screen reader: a task's end date in a Table view row; when is the date as spoken, for example in 2 days.",
     "placeholders": {
       "when": {
         "type": "String",
@@ -6497,6 +6739,7 @@
   },
   "projectTableCreatedBySemantics": "Created by {name}",
   "@projectTableCreatedBySemantics": {
+    "description": "Screen reader: who created a task, in a Table view row; name is the person's name, for example Kim.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -6571,6 +6814,7 @@
   },
   "guestReauthBody": "{host} ended this guest access. Open the shared link again to keep the project in sync: a link with a password asks for it, and a deleted link needs a new one from whoever shared it. Nothing on this device is lost.",
   "@guestReauthBody": {
+    "description": "Body of the Account tab's banner when the server no longer accepts a link-share guest; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -6612,6 +6856,7 @@
   "guestRemoveDialogTitle": "Remove guest access?",
   "guestRemoveDialogBody": "The app will remove the guest access to {name} on {host} and delete its tasks saved on this device. You can open the shared link again at any time.",
   "@guestRemoveDialogBody": {
+    "description": "Body of the dialog for removing a link-share guest access; name is the share's name or the shared project's title, for example Garden, and host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -6623,8 +6868,9 @@
       }
     }
   },
-  "guestRemoveDialogPendingChangesOpenLinkFirst": "{count, plural, =1{One change has not been sent to the server yet and will be lost; switch to this guest access, open the link again and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this guest access, open the link again and tap Send now first to keep them.}}",
+  "guestRemoveDialogPendingChangesOpenLinkFirst": "{count, plural, one{{count} change has not been sent to the server yet and will be lost; switch to this guest access, open the link again and tap Send now first to keep it.} other{{count} changes have not been sent to the server yet and will be lost; switch to this guest access, open the link again and tap Send now first to keep them.}}",
   "@guestRemoveDialogPendingChangesOpenLinkFirst": {
+    "description": "In the dialog for removing a link-share guest access the server ended, when its changes have not reached the server yet; count is how many, for example 3.",
     "placeholders": {
       "count": {
         "type": "int"
@@ -6633,6 +6879,7 @@
   },
   "guestRemoved": "Guest access to {name} removed",
   "@guestRemoved": {
+    "description": "Snackbar after removing a link-share guest access; name is the share's name or the shared project's title, for example Garden.",
     "placeholders": {
       "name": {
         "type": "String",
@@ -6860,6 +7107,7 @@
   },
   "guestAccessEndedNotificationBody": "{host} ended this guest access. The app can't sync the project until you open the shared link again.",
   "@guestAccessEndedNotificationBody": {
+    "description": "Body of the OS notification when the server ended a link-share guest's access; host is the server's address, for example tasks.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -6903,7 +7151,7 @@
       }
     }
   },
-  "widgetMoreTasks": "{count, plural, =1{+1 more} other{+{count} more}}",
+  "widgetMoreTasks": "{count, plural, one{+{count} more} other{+{count} more}}",
   "@widgetMoreTasks": {
     "description": "Below the rows of a home-screen widget: how many matching tasks do not fit.",
     "placeholders": {
@@ -6912,7 +7160,7 @@
       }
     }
   },
-  "widgetTaskCount": "{count, plural, =0{No tasks} =1{1 task} other{{count} tasks}}",
+  "widgetTaskCount": "{count, plural, =0{No tasks} one{{count} task} other{{count} tasks}}",
   "@widgetTaskCount": {
     "description": "Screen reader text of the task count in a home-screen widget's header.",
     "placeholders": {
@@ -6931,9 +7179,9 @@
       }
     }
   },
-  "widgetUpcomingTitle": "{days, plural, =1{Next day} other{Next {days} days}}",
+  "widgetUpcomingTitle": "{days, plural, one{Next {days} day} other{Next {days} days}}",
   "@widgetUpcomingTitle": {
-    "description": "Title of a home-screen widget with the tasks due in the next days.",
+    "description": "Title of a home-screen widget with the tasks due in the next days; days is 3, 7 or 14.",
     "placeholders": {
       "days": {
         "type": "int"
@@ -7070,7 +7318,7 @@
   "@widgetKindQuickAddHint": {
     "description": "What the New task button widget does."
   },
-  "widgetUpcomingDays": "{count, plural, =1{1 day} other{{count} days}}",
+  "widgetUpcomingDays": "{count, plural, one{{count} day} other{{count} days}}",
   "@widgetUpcomingDays": {
     "description": "How many days ahead an Upcoming widget shows.",
     "placeholders": {
@@ -7197,7 +7445,7 @@
   "@privacyLockAfterImmediately": {
     "description": "Lock after choice: lock as soon as the app leaves the screen."
   },
-  "privacyLockAfterMinutes": "{count, plural, =1{1 minute} other{{count} minutes}}",
+  "privacyLockAfterMinutes": "{count, plural, one{{count} minute} other{{count} minutes}}",
   "@privacyLockAfterMinutes": {
     "description": "Lock after choice: lock when the app has been away this many minutes. Also used after \"after\" in the Account tab entry.",
     "placeholders": {
@@ -7207,7 +7455,7 @@
       }
     }
   },
-  "privacyLockAfterHours": "{count, plural, =1{1 hour} other{{count} hours}}",
+  "privacyLockAfterHours": "{count, plural, one{{count} hour} other{{count} hours}}",
   "@privacyLockAfterHours": {
     "description": "Lock after choice: lock when the app has been away this many hours. Also used after \"after\" in the Account tab entry.",
     "placeholders": {
@@ -7365,9 +7613,13 @@
   "@appLockPromptStuck": {
     "description": "On the lock screen and under the app lock switch when the system's prompt is still held by an earlier one that never answered; only restarting the app releases it."
   },
-  "widgetTitlesHiddenHint": "{count, plural, =1{Open Vikunja to see it} other{Open Vikunja to see them}}",
+  "widgetTitleHiddenHint": "Open Vikunja to see it",
+  "@widgetTitleHiddenHint": {
+    "description": "Like widgetTitlesHiddenHint when the widget lists one task, which \"it\" stands for."
+  },
+  "widgetTitlesHiddenHint": "{count, plural, other{Open Vikunja to see them}}",
   "@widgetTitlesHiddenHint": {
-    "description": "Shown in a home-screen list widget below the task count, instead of the task rows, while the privacy setting hides task titles in widgets.",
+    "description": "Shown in a home-screen list widget below the task count, instead of the task rows, while the privacy setting hides task titles in widgets; for two or more tasks (widgetTitleHiddenHint is for one). count is the number of tasks, for example 5, and is not shown: every plural form refers to several tasks.",
     "placeholders": {
       "count": {
         "type": "int",

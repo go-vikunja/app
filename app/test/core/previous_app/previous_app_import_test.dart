@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
+import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/previous_install.dart';
@@ -291,10 +292,12 @@ void main() {
       );
     });
 
+    // Esperanto cannot ship: Material has no texts for it.
     for (final (locale, call) in [
-      ('de', 'setAppLanguage de'),
-      ('en', 'setAppLanguage en'),
-      ('pl', null),
+      for (final shipped in shippedLocales)
+        (shipped.toLanguageTag(), 'setAppLanguage ${shipped.toLanguageTag()}'),
+      ('eo', null),
+      ('de-DE', null),
       (null, null),
     ]) {
       test('the language $locale', () async {

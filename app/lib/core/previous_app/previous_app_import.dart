@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
+import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/previous_install.dart';
@@ -165,8 +166,11 @@ final class PreviousAppImport {
         () => _preferences.setString(themeModeKey, theme),
       );
     }
+    // The previous app stored a bare language code.
     if (values[_localeKey] case final language?
-        when language == 'en' || language == 'de') {
+        when shippedLocales.any(
+          (shipped) => shipped.toLanguageTag() == language,
+        )) {
       await _guarded(
         'carry over the language',
         () => _platform.setAppLanguage(language),

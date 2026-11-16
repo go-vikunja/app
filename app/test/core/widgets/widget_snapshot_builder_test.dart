@@ -475,6 +475,16 @@ void main() {
       expect(overdue.empty, const WidgetText('Nothing overdue'));
     });
 
+    test('one task is "it"', () async {
+      final overdue = (await hidden({const OverdueKind()})).values.single;
+
+      expect(overdue.total, 1);
+      expect(
+        overdue.empty,
+        const WidgetText('1 task', body: 'Open Vikunja to see it'),
+      );
+    });
+
     test('one task, in German', () async {
       final german = await WidgetTexts.load(
         lookupAppLocalizations(const Locale('de')),

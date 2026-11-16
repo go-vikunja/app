@@ -25,7 +25,7 @@ void main() {
     );
     expect(
       de.actionFailureSessionEnded,
-      'Deine Sitzung ist beendet. Melde dich im Tab „Konto“ neu an.',
+      'Deine Sitzung ist beendet. Melde dich im Tab „Account“ neu an.',
     );
     expect(
       en.actionFailureRateLimited,
@@ -43,7 +43,7 @@ void main() {
     );
     expect(
       de.actionFailureGuestAccessEnded,
-      'Dein Gastzugang ist beendet. Öffne den Link im Tab „Konto“ erneut.',
+      'Dein Gastzugang ist beendet. Öffne den Link im Tab „Account“ erneut.',
     );
   });
 

@@ -5,6 +5,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 cd "$repo_root"
 
+# Only build_runner's code is committed; git ignores the l10n code (D88).
 # Compared with the state before the generators run, so that uncommitted
 # local edits do not fail it; in CI the tree starts clean.
 app_lib_state() {
@@ -15,7 +16,7 @@ before="$(app_lib_state)"
 setup_flutter_with_codegen
 if [[ "$(app_lib_state)" != "$before" ]]; then
   git status --short -- app/lib
-  echo "error: generated code is stale. Run: cd app && flutter gen-l10n && dart run build_runner build" >&2
+  echo "error: generated code is stale. Run: cd app && dart run build_runner build" >&2
   exit 1
 fi
 

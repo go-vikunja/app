@@ -137,6 +137,17 @@ if ! python3 -I tool/build_android_notices.py --require-offer-contact >/dev/null
   refuse "the written offer has no contact: set WRITTEN_OFFER_CONTACT in tool/build_android_notices.py, then run it to write app/assets/legal/android.md again" \
     "no written-offer contact"
 fi
+l10n_status=0
+python3 -I tool/l10n_progress.py --shipped-list --min 50 || l10n_status=$?
+if ((l10n_status == 1)); then
+  echo "warning: a shipped language has less than 50 % of the English texts: translate it on Crowdin or take it out of app/lib/app/l10n/shipped_locales.dart (D88)" >&2
+elif ((l10n_status != 0)); then
+  exit "$l10n_status"
+fi
+if ! python3 -I tool/l10n_progress.py --min 100 de >/dev/null; then
+  refuse "German is not complete: a release needs every English text in German (D88); finish it on Crowdin and merge Crowdin's pull request" \
+    "German incomplete"
+fi
 
 rm -rf "$release_unsigned_dir"
 apk_built=app/build/app/outputs/flutter-apk/app-release.apk

@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart'
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
@@ -170,11 +171,11 @@ final class _LocalesObserver with WidgetsBindingObserver {
   void didChangeLocales(List<Locale>? locales) => _onChange(locales);
 }
 
-/// The first of [locales] the app supports, else English when the engine
-/// reports any locale, the tag noted under [notificationLocaleKey] when it
-/// reports none (the headless engine the plugin starts on iOS has no view
-/// to take them from), else English. A resolved locale is noted for that
-/// case.
+/// The language [locales] resolve to as MaterialApp resolves them
+/// ([shippedLocaleFor]) when the engine reports any, else the tag noted
+/// under [notificationLocaleKey] (the headless engine the plugin starts on
+/// iOS has no view to take them from) resolved the same way, else English.
+/// A language resolved from [locales] is noted for that case.
 Future<AppLocalizations> loadDeviceAppLocalizations(
   PreferencesStore preferences, {
   Iterable<Locale>? locales,
@@ -186,27 +187,21 @@ Future<AppLocalizations> loadDeviceAppLocalizations(
     return l10n;
   }
   final noted = await preferences.getString(notificationLocaleKey);
-  if (noted != null) {
-    final subtags = noted.split('-');
-    final locale = Locale(
-      subtags.first,
-      subtags.length > 1 ? subtags[1] : null,
-    );
-    if (AppLocalizations.delegate.isSupported(locale)) {
-      return lookupAppLocalizations(locale);
-    }
-  }
-  return lookupAppLocalizations(const Locale('en'));
+  return _resolveAppLocalizations([if (noted != null) _localeOfTag(noted)]);
 }
 
-/// The first of [locales] the app supports, else English.
-AppLocalizations _resolveAppLocalizations(Iterable<Locale> locales) {
-  for (final locale in locales) {
-    if (AppLocalizations.delegate.isSupported(locale)) {
-      return lookupAppLocalizations(locale);
-    }
-  }
-  return lookupAppLocalizations(const Locale('en'));
+AppLocalizations _resolveAppLocalizations(Iterable<Locale> locales) =>
+    lookupAppLocalizations(shippedLocaleFor(locales));
+
+/// The locale of a tag [_noteLocale] wrote, like `pt-BR` or `zh-Hant`.
+Locale _localeOfTag(String tag) {
+  final subtags = tag.split('-');
+  final script = subtags.elementAtOrNull(1)?.length == 4 ? subtags[1] : null;
+  return Locale.fromSubtags(
+    languageCode: subtags.first,
+    scriptCode: script,
+    countryCode: subtags.elementAtOrNull(script == null ? 1 : 2),
+  );
 }
 
 Future<void> _noteLocale(PreferencesStore preferences, AppLocalizations l10n) =>

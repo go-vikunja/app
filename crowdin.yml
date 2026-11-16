@@ -1,0 +1,32 @@
+# Vikunja's Crowdin project, synced by Crowdin's GitHub integration (D88).
+# No credentials here: the integration holds its own, and the CLI reads
+# CROWDIN_PERSONAL_TOKEN from the environment.
+project_id: "462614"
+preserve_hierarchy: true
+# Crowdin appends "[ci skip]" by default, which leaves the pull request's
+# required checks unreported.
+commit_message: "chore(i18n): update translations via Crowdin"
+append_commit_message: false
+pull_request_title: "chore(i18n): update translations via Crowdin"
+
+files:
+  - source: /app/lib/l10n/arb/app_en.arb
+    dest: /app_en.arb
+    translation: /app/lib/l10n/arb/app_%two_letters_code%.arb
+    type: arb
+    update_option: update_as_unapproved
+    export_only_approved: true
+    skip_untranslated_strings: true
+    # Every regional or script file needs its base language's file
+    # (app_sr.arb is committed). "no" is quoted: YAML 1.1 reads it as false.
+    # de-swiss, Vikunja's custom Swiss German, is written as gsw: its own
+    # code is no locale a device reports, and may be de's.
+    languages_mapping:
+      two_letters_code:
+        pt-PT: pt
+        pt-BR: pt_BR
+        zh-CN: zh
+        zh-TW: zh_Hant
+        "no": nb
+        sr-CS: sr_Latn
+        de-swiss: gsw

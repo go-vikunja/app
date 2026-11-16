@@ -57,13 +57,19 @@ String formatPeriod(AppLocalizations l10n, Duration period) =>
     };
 
 /// "Every day", "Every 2 weeks": one phrase per unit, so that German can
-/// decline it.
-String _formatRepeatInterval(AppLocalizations l10n, Duration period) =>
+/// decline it. A single unit has its own phrase, since some languages use a
+/// plural's one form for 21 or 31 too.
+String formatRepeatInterval(AppLocalizations l10n, Duration period) =>
     switch (_wholeUnits(period)) {
+      (_PeriodUnit.weeks, 1) => l10n.repeatEveryWeek,
       (_PeriodUnit.weeks, final count) => l10n.repeatEveryWeeks(count),
+      (_PeriodUnit.days, 1) => l10n.repeatEveryDay,
       (_PeriodUnit.days, final count) => l10n.repeatEveryDays(count),
+      (_PeriodUnit.hours, 1) => l10n.repeatEveryHour,
       (_PeriodUnit.hours, final count) => l10n.repeatEveryHours(count),
+      (_PeriodUnit.minutes, 1) => l10n.repeatEveryMinute,
       (_PeriodUnit.minutes, final count) => l10n.repeatEveryMinutes(count),
+      (_PeriodUnit.seconds, 1) => l10n.repeatEverySecond,
       (_PeriodUnit.seconds, final count) => l10n.repeatEverySeconds(count),
     };
 
@@ -72,9 +78,9 @@ String? formatRepeat(AppLocalizations l10n, Task task) {
   if (!task.repeats) return null;
   return switch (task.repeatMode) {
     RepeatMode.monthly => l10n.repeatMonthly,
-    RepeatMode.afterAmount => _formatRepeatInterval(l10n, task.repeatAfter),
+    RepeatMode.afterAmount => formatRepeatInterval(l10n, task.repeatAfter),
     RepeatMode.fromCurrentDate => l10n.repeatFromCompletion(
-      _formatRepeatInterval(l10n, task.repeatAfter),
+      formatRepeatInterval(l10n, task.repeatAfter),
     ),
   };
 }

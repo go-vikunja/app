@@ -31,6 +31,9 @@ internal object PreviousApp {
     const val WORK_TAG = "BackgroundDownloader"
     val PREFERENCE_FILES = listOf("HomeWidgetPreferences", "InternalHomeWidgetPreferences")
     const val DOWNLOADER_KEY_PREFIX = "com.bbflight.background_downloader"
+
+    // The language tags of shippedLocales in app/lib/app/l10n/shipped_locales.dart;
+    // app/test/l10n/shipped_locales_test.dart keeps them equal.
     val LANGUAGES = setOf("en", "de")
 
     private const val TAG = "Vikunja"

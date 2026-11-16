@@ -30,6 +30,7 @@ import '../../helpers/auth_fakes.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/unshipped_language.dart';
 import '../../helpers/widget_fakes.dart';
 
 const _channel = MethodChannel('dexterous.com/flutter/local_notifications');
@@ -291,6 +292,30 @@ void main() {
     );
     expect(todayTitle(account), en.sectionToday);
   });
+
+  final unshipped = unshippedLanguageWithArb();
+
+  test('a language with an ARB file that the app does not ship falls back '
+      'to English for the notifications, the widgets and the lock '
+      'prompt', () async {
+    binding.platformDispatcher.localesTestValue = const [Locale('de', 'DE')];
+    final account = await started(de);
+    calls.clear();
+
+    binding.platformDispatcher.localesTestValue = [unshipped!];
+    await pumpEventQueue();
+
+    expect(container.read(deviceAppLocalizationsProvider).localeName, 'en');
+    expect(auth.preferences.values[notificationLocaleKey], 'en');
+    expect(
+      argumentsOf(callsOf('createNotificationChannel').first)['name'],
+      en.notificationChannelReminders,
+    );
+    expect(todayTitle(account), en.sectionToday);
+    expect(container.read(appLockControllerProvider).locked, isTrue);
+    await container.read(appLockControllerProvider.notifier).unlock();
+    expect(authenticator.reasons, [en.appLockPromptReason]);
+  }, skip: unshipped == null ? 'every language with an ARB file ships' : null);
 
   test('a resume in the same language changes nothing; one after a change '
       'that went unreported follows it', () async {

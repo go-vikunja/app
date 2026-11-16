@@ -13,6 +13,8 @@ import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
+import '../../helpers/unshipped_language.dart';
+
 const _channel = MethodChannel('dexterous.com/flutter/local_notifications');
 
 final AppLocalizations en = lookupAppLocalizations(const Locale('en'));
@@ -663,18 +665,57 @@ void main() {
   });
 
   group('device localizations', () {
-    test(
-      'the first supported locale of the engine wins and is noted',
-      () async {
+    final unshipped = unshippedLanguageWithArb();
+    final noUnshipped = unshipped == null
+        ? 'every language with an ARB file ships'
+        : null;
+
+    test("the engine's locales resolve as MaterialApp resolves them, and "
+        'the result is noted', () async {
+      // MaterialApp takes the exact en over the language match of de_AT
+      // below the first locale.
+      for (final (locales, resolved) in [
+        (const [Locale('fr'), Locale('de', 'AT')], 'de'),
+        (const [Locale('fr'), Locale('de', 'AT'), Locale('en')], 'en'),
+      ]) {
         final l10n = await loadDeviceAppLocalizations(
           preferences,
-          locales: const [Locale('fr'), Locale('de', 'AT'), Locale('en')],
+          locales: locales,
         );
 
-        expect(l10n.localeName, 'de');
-        expect(preferences.values[notificationLocaleKey], 'de');
-      },
-    );
+        expect(l10n.localeName, resolved, reason: '$locales');
+        expect(preferences.values[notificationLocaleKey], resolved);
+      }
+    });
+
+    test('a language with an ARB file that is not shipped is passed over, '
+        'or falls back to English', () async {
+      final passedOver = await loadDeviceAppLocalizations(
+        preferences,
+        locales: [unshipped!, const Locale('de')],
+      );
+      expect(passedOver.localeName, 'de');
+      expect(preferences.values[notificationLocaleKey], 'de');
+
+      final alone = await loadDeviceAppLocalizations(
+        preferences,
+        locales: [unshipped],
+      );
+      expect(alone.localeName, 'en');
+      expect(preferences.values[notificationLocaleKey], 'en');
+    }, skip: noUnshipped);
+
+    test('a noted language with an ARB file that is not shipped gives '
+        'English', () async {
+      preferences.values[notificationLocaleKey] = unshipped!.toLanguageTag();
+
+      final l10n = await loadDeviceAppLocalizations(
+        preferences,
+        locales: const [],
+      );
+
+      expect(l10n.localeName, 'en');
+    }, skip: noUnshipped);
 
     test('an engine with only unsupported locales gets English, which is '
         'noted too', () async {

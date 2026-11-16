@@ -113,14 +113,12 @@ setup_flutter() {
   (cd "$repo_root" && flutter pub get --enforce-lockfile)
 }
 
-# setup_flutter, then the app's generated code written again.
+# setup_flutter, whose pub get writes the l10n code, then build_runner's code
+# written again.
 setup_flutter_with_codegen() {
   setup_flutter
   (
     cd "${repo_root}/app" || exit
-    if [[ -f l10n.yaml ]]; then
-      flutter gen-l10n
-    fi
     if grep -rqE "^part '[^']+\.g\.dart';" lib; then
       dart run build_runner build
     fi

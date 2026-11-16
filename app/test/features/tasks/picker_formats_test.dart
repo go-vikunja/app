@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
+import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/features/common/presentation/day_range_picker.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
@@ -286,5 +288,47 @@ void main() {
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     expect(find.text('AM'), findsNothing);
+  });
+
+  testWidgets('every shipped language keeps the week start and the clock '
+      'the user picked', (tester) async {
+    for (final locale in shippedLocales) {
+      late MaterialLocalizations picker;
+      await tester.pumpWidget(
+        MaterialApp(
+          locale: locale,
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          home: Builder(
+            builder: (context) =>
+                pickerFormatsBuilder(
+                  firstDayOfWeekIndex: 3,
+                  use24HourFormat: false,
+                )(
+                  context,
+                  Builder(
+                    builder: (context) {
+                      picker = MaterialLocalizations.of(context);
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ),
+          ),
+        ),
+      );
+      final material = await GlobalMaterialLocalizations.delegate.load(locale);
+
+      expect(picker.firstDayOfWeekIndex, 3, reason: '$locale');
+      expect(
+        picker.timeOfDayFormat(),
+        TimeOfDayFormat.h_colon_mm_space_a,
+        reason: '$locale',
+      );
+      expect(
+        picker.cancelButtonLabel,
+        material.cancelButtonLabel,
+        reason: '$locale',
+      );
+    }
   });
 }

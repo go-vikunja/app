@@ -136,6 +136,10 @@ if [[ -n "$key_file" ]]; then
     refuse "VIKUNJA_APP_ASC_KEY_FILE can be read by other users: chmod 600 it" "API key readable by others"
   fi
 fi
+if ! python3 -I tool/l10n_progress.py --min 100 de >/dev/null; then
+  refuse "German is not complete: a release needs every English text in German (D88); finish it on Crowdin and merge Crowdin's pull request" \
+    "German incomplete"
+fi
 
 icon=app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
 icon_info="$(sips -g pixelWidth -g pixelHeight -g hasAlpha -g space -g profile "$icon")"

@@ -486,7 +486,7 @@ void main() {
       );
       expect(
         de.caldavDeleteBodyLockout,
-        endsWith('sperren dein Konto, bis du dein Passwort zurücksetzt.'),
+        endsWith('sperren deinen Account, bis du dein Passwort zurücksetzt.'),
       );
     });
   });

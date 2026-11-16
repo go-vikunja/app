@@ -4,17 +4,15 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
 /// How the task will repeat, as the task screens say it; null when the
 /// phrase amounts to no repeat (`every 0 days`).
 String? describeQuickAddRepeat(AppLocalizations l10n, QuickAddRepeat repeat) {
   final (:repeatAfter, :mode) = repeat.toTaskRepeat();
   if (mode == RepeatMode.monthly) return l10n.repeatMonthly;
-  final hours = repeatAfter.inHours;
-  if (hours <= 0) return null;
-  if (hours % (24 * 7) == 0) return l10n.repeatEveryWeeks(hours ~/ (24 * 7));
-  if (hours % 24 == 0) return l10n.repeatEveryDays(hours ~/ 24);
-  return l10n.repeatEveryHours(hours);
+  if (repeatAfter.inHours <= 0) return null;
+  return formatRepeatInterval(l10n, repeatAfter);
 }
 
 /// "Tue, Oct 13 9:00 AM" and "in 21 hours" for [due] (UTC) seen at [now];

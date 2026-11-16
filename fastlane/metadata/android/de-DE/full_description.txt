@@ -1,6 +1,6 @@
 Vikunja ist die quelloffene Aufgabenverwaltung, die du auf deinem eigenen Server betreiben kannst. Das ist ihre App für Android.
 
-Melde dich bei deinem Vikunja-Server an (Version 2.3 oder neuer) – deinem eigenen, dem deiner Organisation oder einem gehosteten – oder probiere die öffentliche Demo aus. Die App hält eine Kopie deines Kontos auf dem Gerät, damit deine Projekte und Aufgaben auch ohne Verbindung da sind.
+Melde dich bei deinem Vikunja-Server an (Version 2.3 oder neuer) – deinem eigenen, dem deiner Organisation oder einem gehosteten – oder probiere die öffentliche Demo aus. Die App hält eine Kopie deines Accounts auf dem Gerät, damit deine Projekte und Aufgaben auch ohne Verbindung da sind.
 
 Funktioniert offline
 • Jeder Bildschirm liest aus der Kopie auf deinem Gerät.
@@ -27,9 +27,9 @@ Erinnerungen und Widgets
 • Erinnerungen auf die Minute brauchen die Berechtigung für genaue Alarme; ohne sie kann Android sie einige Minuten später zustellen.
 
 Außerdem
-• Mehrere Konten, auf einem Server oder auf mehreren, und Gastzugang über einen geteilten Link.
+• Mehrere Accounts, auf einem Server oder auf mehreren, und Gastzugang über einen geteilten Link.
 • Labels, Teams und Projekte, die du mit Personen und Teams teilst.
-• Deine Kontoeinstellungen, der Status der Zwei-Faktor-Authentifizierung und die Sitzungen, die bei deinem Konto angemeldet sind.
+• Deine Account-Einstellungen, der Status der Zwei-Faktor-Authentifizierung und die Sitzungen, die bei deinem Account angemeldet sind.
 • Auf einem Tablet oder einem aufgeklappten Foldable öffnet sich eine Aufgabe neben der Liste.
 • Teile Text, Links oder Dateien aus anderen Apps in eine neue oder eine bestehende Aufgabe.
 • Heller und dunkler Modus, Farben aus deinem Hintergrundbild ab Android 12, Deutsch und Englisch.
