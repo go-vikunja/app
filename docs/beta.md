@@ -12,7 +12,7 @@ The owner's decisions of 2026-11-02 behind it ([D77]): every project of the GitL
 
 The releases come from GitHub Actions in go-vikunja/app after the move (step 38d; [D86](decisions.md#d86-ci-and-releases-on-github-actions), in review). Until then the repository is on GitLab, whose pipeline runs the same scripts and publishes nothing.
 
-1. **The trial:** the owner tries the workflows first in a private test repository of the owner's, with the repository variable `VIKUNJA_APP_RELEASE_DRY_RUN=true` and no secret, as [releasing.md](releasing.md#the-dry-run) describes; a test tag there runs the release with throwaway keys and publishes nothing.
+1. **The trial:** done on 2026-11-16 in a test repository of the owner's, with the repository variable `VIKUNJA_APP_RELEASE_DRY_RUN=true` and no secret, as [releasing.md](releasing.md#the-dry-run) describes. A test tag there ran the release with throwaway keys and published nothing. [D86](decisions.md#d86-ci-and-releases-on-github-actions) has the results.
 2. **go-vikunja/app,** after the move: Vikunja's maintainers set up the environment `release`, its secrets, the committed certificates, the rulesets and the Actions settings ([releasing.md](releasing.md#once-in-go-vikunjaapp)). The old pipeline's upload of every push to `main` to Play is off before the first tag.
 3. **GitLab until the move** ([releasing.md](releasing.md#gitlab-until-the-move)): every project of the group `coderoftime` public, each with an OSI-approved licence, so that the group can join GitLab for Open Source (one private project is allowed for security work, with GitLab's written permission). Before the project goes public, confirm that the tracked test-server users, `test_servers/seed/e2e-user.env` and `e2e-user-2.env`, hold nothing used anywhere else; they go public with the repository, and its history goes public as it is. Push `main` to `https://gitlab.com/coderoftime/rurana` (private since 2026-10-29, `origin/main` then at 80b19c9; local `main` is ahead) and add the weekly scan's schedule.
 4. **GitLab for Open Source** for the group, once every project is public ([releasing.md](releasing.md#gitlab-until-the-move) step 4): the form at [about.gitlab.com/solutions/open-source/join][gitlab-oss], a coupon by email, renewed every year. Until it is granted, the free 400 compute minutes a month cover the whole group; releases do not depend on them.
@@ -54,7 +54,18 @@ The website has been live since 2026-11-02; only the Impressum's c/o address for
 
 ### 7. The first runs
 
-The test repository's trial ([part 1](#1-the-repository-and-ci)) runs the workflows on GitHub for the first time. Expect fixes in the paths that only GitHub's hosted runners take and that never ran: the Flutter tarball and the macOS zip with their checksums, ShellCheck over `tool/ci/` (never run before), the contract tests on the runner's own Docker, the NDK install, JDK 21, the macOS build with Xcode 26.6, and anonymous pulls from Docker Hub against its rate limits (a login is not built). On GitLab the first pipeline takes its own paths: the Docker CLI and Compose in docker-in-docker with the `socat` forwarder, the osv-scanner Linux binary and Gradle's memory caps. Each fix is a commit on `main`; the tag waits for a green run. The environment, the real signing and the publishing first run on go-vikunja/app's first tag.
+The test repository's trial ([part 1](#1-the-repository-and-ci)) ran the workflows on GitHub for the first time, and the paths that only GitHub's hosted runners take passed:
+- the Flutter tarball and the macOS zip with their checksums;
+- ShellCheck over `tool/ci/`, after one round of fixes;
+- the contract tests on the runner's own Docker;
+- the NDK install and JDK 21;
+- the macOS build with Xcode 26.6.
+
+Still to watch in go-vikunja/app:
+- anonymous pulls from Docker Hub against its rate limits (a login is not built);
+- GitHub's macOS runners, which three times had none free for `ios` ([releasing.md](releasing.md#when-the-publish-job-fails)).
+
+On GitLab the first pipeline takes its own path: the Docker CLI and Compose in docker-in-docker with the `socat` forwarder. The osv-scanner Linux binary and Gradle's memory caps already ran on GitHub's Linux runner. Each fix is a commit on `main`; the tag waits for a green run. The environment, the real signing and the publishing first run on go-vikunja/app's first tag.
 
 ### 8. The threat model
 

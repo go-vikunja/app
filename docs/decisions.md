@@ -1919,7 +1919,7 @@ Limits:
 **Runners:** GitLab's small shared runners. A full pipeline takes an estimated 100–150 compute minutes, and the free 400 a month are shared by every project of `coderoftime`, so the group, made public, applies for GitLab for Open Source (owner, [D77](#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers)). iOS builds stay on the owner's Mac.
 
 Limits:
-- Until the first pipeline on GitLab ([beta.md](beta.md)), the Linux-only paths are untested: the Flutter tarball, docker-in-docker with the forwarder, the osv-scanner Linux binary, the NDK install and the Gradle caps. ShellCheck has not run over `tool/ci/` either, as it is not installed locally.
+- Until the first pipeline on GitLab ([beta.md](beta.md)), its own path is untested: docker-in-docker with the forwarder. The Flutter tarball, the osv-scanner Linux binary, the NDK install, the Gradle caps and ShellCheck over `tool/ci/` have run on GitHub's Linux runner since step 38c's trial ([D86](#d86-ci-and-releases-on-github-actions)).
 - Some downloads are not pinned by the project:
   - the `android` job and the release build install NDK 28.2.13676358 from Google's SDK repository on every run;
   - `socat` comes unpinned from Ubuntu;
@@ -2630,7 +2630,22 @@ The update test ([threat model 8.2](threat-model.md#82-manual-on-the-android-emu
 **What Vikunja's maintainers set up in go-vikunja/app**, listed in [releasing.md](releasing.md#once-in-go-vikunjaapp): the environment `release` with the owner and kolaente as its required reviewers, either of whom may approve a release, their own tag's too ("Prevent self-review" off, owner, 2026-11-14), and no administrator bypass, deploying from `v*` tags only; its secrets entered again at environment level, and no repository or organisation copy of the seven credentials; the certificates in `release_certificates.txt`; optionally `VIKUNJA_APP_PLAY_ROLLOUT`; rulesets for `v*` tags and for `main` with the six checks; read-only workflow permissions and approval for workflows of outside contributors' pull requests.
 
 Limits:
-- Nothing has run on GitHub yet. The trial in the owner's private test repository comes after the review (owner); it cannot show the environment, the rulesets, real signing, Play, dl.vikunja.io or a real GitHub release, which only go-vikunja/app's first tag after the move shows. ShellCheck has never run over `tool/ci/`; `checks` runs it on GitHub's image.
+- The trial in the owner's test repository, public rather than private as planned (2026-11-14 to 2026-11-16):
+  - **CI on pushes to `main`:** green after two rounds of fixes. ShellCheck's first findings in `tool/ci/` were fixed. Five tests had failed only on the Linux runner: a fixed number of pumps against real file I/O, a cold performance sample, and local-time fixtures under UTC. Typical durations:
+    - `checks` 23–27 minutes, of which `test.sh` takes about 21;
+    - `contract` about 14 minutes on the runner's own Docker;
+    - `android` 6–7 minutes, including the NDK download;
+    - `ios` 5–6 minutes with Xcode 26.6;
+    - `editor` 20 seconds and `osv` 7 seconds.
+  - **The weekly schedule:** it ran `osv` alone.
+  - **A test tag `v1.0.0-beta.1`:**
+    - `build` took 14–17 minutes. Its artifact of 174 MB holds the 102 MB bundle and the 117 MB universal APK, zipped. Because that repository is public, its source link was really checked signed out.
+    - `dry-run` was green in 37 seconds. Its first run named a reason twice, which is now fixed.
+    - `publish` and `secret-scope` were skipped.
+  - **The macOS runners:** three times on 2026-11-16 GitHub gave `ios` no macOS runner within 15 minutes: in CI, in the test tag's release and in that release's re-run. The job failed with "The job was not acquired by Runner of type hosted even after multiple attempts", beside GitHub's note on capacity constraints for macOS arm64 runners. With `VIKUNJA_APP_IOS_JOB` removed, "Re-run failed jobs" skipped `ios` and ran `dry-run` on the kept build.
+  - **The caches:** about 6 GB of the 10 GB a repository gets.
+  - **What the trial did not try:** pull requests and a run by hand.
+  - **What it cannot show:** the environment, the rulesets, real signing, Play, dl.vikunja.io, a real GitHub release, and a run that `official_release_run` takes as real. Only go-vikunja/app's first tag after the move shows them.
 - The hosted images cannot be pinned, so the JDK, the build-tools, the AWS CLI, `gh` and Docker change with GitHub's image updates.
 - The Play path is tested against a fake server only: how Play's API treats a production release while another rollout is in progress, managed publishing, a version code used elsewhere and the upload of a large bundle show with the first real tag. `jarsigner` picks the bundle's signature algorithm from the JDK's defaults for the key.
 - That `secrets.X != ''` and the `secret-scope` expression give the strings `true` or `false` is documented, not yet seen.
