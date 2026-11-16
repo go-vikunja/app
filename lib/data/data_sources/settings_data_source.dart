@@ -156,9 +156,15 @@ class SettingsDatasource {
     return _storage.write(key: "refresh-token", value: token);
   }
 
-  Future<void> clearAuthData() async {
+  /// Removes the session tokens but keeps the server address, so logging
+  /// in again does not require typing the server.
+  Future<void> clearTokens() async {
     await saveUserToken(null);
     await saveRefreshToken(null);
+  }
+
+  Future<void> clearAuthData() async {
+    await clearTokens();
     await saveServer(null);
   }
 

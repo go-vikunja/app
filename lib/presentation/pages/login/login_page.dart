@@ -38,6 +38,7 @@ class LoginPageState extends ConsumerState<LoginPage> {
   bool _showCancel = false;
   bool _cancelled = false;
   String? _loadingServer;
+  String? _lastServer;
 
   @override
   void initState() {
@@ -45,7 +46,19 @@ class LoginPageState extends ConsumerState<LoginPage> {
 
     Future.delayed(Duration.zero, () async {
       var settingsDatasource = SettingsDatasource(FlutterSecureStorage());
-      await settingsDatasource.clearAuthData();
+      await settingsDatasource.clearTokens();
+
+      // Keep the last server so a re-login after an expired session is a
+      // single tap instead of typing the address again.
+      var lastServer = await settingsDatasource.getServer();
+      if (lastServer != null && lastServer.isNotEmpty && mounted) {
+        setState(() {
+          _lastServer = lastServer;
+          if (_serverController.text.isEmpty) {
+            _serverController.text = lastServer;
+          }
+        });
+      }
 
       var pastSevers = await ref
           .read(settingsRepositoryProvider)
@@ -170,10 +183,18 @@ class LoginPageState extends ConsumerState<LoginPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        if (_lastServer != null) ...[
+          _buildPresetButton(
+            url: _lastServer!,
+            label: Uri.tryParse(_lastServer!)?.host ?? _lastServer!,
+            filled: true,
+          ),
+          const SizedBox(height: 12),
+        ],
         _buildPresetButton(
           url: 'https://app.vikunja.cloud',
           label: AppLocalizations.of(context).vikunjaCloud,
-          filled: true,
+          filled: _lastServer == null,
         ),
         const SizedBox(height: 12),
         _buildPresetButton(

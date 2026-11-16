@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart' as http_testing;
 import 'package:vikunja_app/core/network/client.dart';
+import 'package:vikunja_app/core/network/response.dart';
 import 'package:vikunja_app/core/network/token_lock.dart';
 import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 
@@ -336,6 +337,59 @@ void main() {
       final response = await client.get<void>(url: '/test');
 
       expect(response.isError, isTrue);
+      expect(requestCount, 1);
+    });
+
+    Future<Response<void>> requestWithRefreshStatus(
+      int refreshStatus,
+    ) async {
+      settings.token = 'old-token';
+      settings.refreshToken = 'valid-refresh';
+
+      final tempDir = await Directory.systemTemp.createTemp('refresh_test_');
+      TokenLock.setLockDirectory(tempDir);
+      HttpOverrides.global = _TestHttpOverrides(() {
+        return MockHttpClientIo((url, headers, body) {
+          return http.Response('{"message": "nope"}', refreshStatus);
+        });
+      });
+
+      try {
+        final client = _createClient(
+          settings,
+          http_testing.MockClient((_) async {
+            requestCount++;
+            return http.Response(
+              jsonEncode({'code': 11, 'message': 'token expired'}),
+              401,
+            );
+          }),
+        );
+        return await client.get<void>(url: '/test');
+      } finally {
+        TokenLock.setLockDirectory(null);
+        HttpOverrides.global = null;
+        if (await tempDir.exists()) await tempDir.delete(recursive: true);
+      }
+    }
+
+    test('keeps the session when the refresh hits a server error', () async {
+      final response = await requestWithRefreshStatus(502);
+
+      expect(response.isException, isTrue);
+      expect(
+        response.toException().exception,
+        isA<TokenRefreshFailedException>(),
+      );
+      expect(settings.refreshToken, 'valid-refresh');
+      expect(requestCount, 1);
+    });
+
+    test('returns the 401 when the server rejects the refresh', () async {
+      final response = await requestWithRefreshStatus(401);
+
+      expect(response.isError, isTrue);
+      expect(response.toError().statusCode, 401);
       expect(requestCount, 1);
     });
 

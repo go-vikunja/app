@@ -30,7 +30,7 @@ class _InitPageState extends ConsumerState<InitPage> {
         error: err,
         onRetry: () => ref.invalidate(initControllerProvider),
         onSecondaryAction: () {
-          // LoginPage clears any saved auth (and server address) in initState.
+          // LoginPage clears the saved tokens in initState (the server is kept).
           globalNavigatorKey.currentState?.pushReplacementNamed('/login');
         },
         secondaryActionLabel: AppLocalizations.of(context).logout,

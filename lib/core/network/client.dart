@@ -17,6 +17,24 @@ import 'package:vikunja_app/data/data_sources/settings_data_source.dart';
 import 'package:vikunja_app/main.dart';
 import 'package:vikunja_app/presentation/widgets/string_extension.dart';
 
+enum TokenRefreshResult {
+  /// A new access token was stored.
+  refreshed,
+
+  /// The server refused the refresh token, or there is none: log in again.
+  rejected,
+
+  /// The refresh did not complete (network, timeout, server error).
+  failed,
+}
+
+class TokenRefreshFailedException implements Exception {
+  const TokenRefreshFailedException();
+
+  @override
+  String toString() => 'Could not refresh the session, please try again.';
+}
+
 class Client {
   final log = Logger('Client logger');
 
@@ -241,14 +259,22 @@ class Client {
     return VoidResponse<T>();
   }
 
-  Future<bool> tryRefreshToken() async {
+  Future<bool> tryRefreshToken() async =>
+      await refreshToken() == TokenRefreshResult.refreshed;
+
+  /// Exchanges the stored refresh token for a new access token.
+  ///
+  /// Tells apart a refresh the server rejected (the session is gone and the
+  /// user has to log in again) from one that could not be completed (no
+  /// network, timeout, server error), where the session may still be valid.
+  Future<TokenRefreshResult> refreshToken() async {
     try {
       return await TokenLock.synchronized(() async {
         final refreshClient = _createIOClient();
         try {
           var refreshToken = await settingsDatasource.getRefreshToken();
           if (refreshToken == null || refreshToken.isEmpty) {
-            return false;
+            return TokenRefreshResult.rejected;
           }
 
           var response = await refreshClient
@@ -275,18 +301,23 @@ class Client {
               if (newRefreshToken != null && newRefreshToken.isNotEmpty) {
                 await settingsDatasource.saveRefreshToken(newRefreshToken);
               }
-              return true;
+              return TokenRefreshResult.refreshed;
             }
+            return TokenRefreshResult.rejected;
+          }
+
+          if (response.statusCode >= 500) {
+            return TokenRefreshResult.failed;
           }
         } finally {
           refreshClient.close();
         }
 
-        return false;
+        return TokenRefreshResult.rejected;
       });
     } catch (e) {
       developer.log("Error refreshing token: $e");
-      return false;
+      return TokenRefreshResult.failed;
     }
   }
 
@@ -299,10 +330,22 @@ class Client {
     if (response.statusCode == 401) {
       Map<String, dynamic> error = _decoder.convert(response.body);
       if (error.containsKey('code') && error['code'] == 11) {
-        bool refreshed = await tryRefreshToken();
-        if (refreshed) {
-          var retryResponse = await executeRequest().timeout(_requestTimeout);
-          return _handleResponse(retryResponse, mapper);
+        final result = await refreshToken();
+        switch (result) {
+          case TokenRefreshResult.refreshed:
+            var retryResponse = await executeRequest().timeout(
+              _requestTimeout,
+            );
+            return _handleResponse(retryResponse, mapper);
+          case TokenRefreshResult.failed:
+            // The refresh could not reach the server. Keep the session and
+            // report a transient error instead of sending the user to login.
+            return ExceptionResponse<T>(
+              const TokenRefreshFailedException(),
+              StackTrace.current,
+            );
+          case TokenRefreshResult.rejected:
+            break;
         }
       }
     }
