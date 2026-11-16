@@ -6,7 +6,7 @@ How a release of the app is cut ([D86](decisions.md#d86-ci-and-releases-on-githu
 
 *Step 38d, accepted 2026-11-16 ([D87](decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)): GitLab's pipeline, its release dry run and the Mac as a GitLab runner are gone; CI runs only on GitHub Actions. The repository moves into go-vikunja/app with its history as [beta.md](beta.md#the-move) says.*
 
-*Step 38e, in review ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)): the translations come from Vikunja's Crowdin project; a release needs German complete and warns about a shipped language below 50 % ([the translations](#the-translations)).*
+*Step 38e, accepted 2026-11-16 ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)): the translations come from Vikunja's Crowdin project; a release needs German complete and warns about a shipped language below 50 % ([the translations](#the-translations)).*
 
 ## Once, in go-vikunja/app
 

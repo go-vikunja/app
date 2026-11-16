@@ -1,6 +1,6 @@
 # Open questions
 
-The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 2026-10-27, answered Q21 on 2026-11-02 (step 37c) and Q20 and Q22 the same day (step 37d). Step 38d made Q22 obsolete and removed the DCO of Q3 and Q17 ([D87](decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)). The owner answered Q18 on 2026-11-16 for step 38e, which is in review ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)). This page records each answer and where it was turned into a decision. The questions themselves are condensed from [research/synthesis.md](research/synthesis.md) §5.
+The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 2026-10-27, answered Q21 on 2026-11-02 (step 37c) and Q20 and Q22 the same day (step 37d). Step 38d made Q22 obsolete and removed the DCO of Q3 and Q17 ([D87](decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)). The owner answered Q18 on 2026-11-16 for step 38e ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)). This page records each answer and where it was turned into a decision. The questions themselves are condensed from [research/synthesis.md](research/synthesis.md) §5.
 
 **Still deferred:** [Q11](#q11-optional-near-real-time-push-on-android) push, [Q12](#q12-crash-reporting) crash reporting, [Q14](#q14-licensed-features) licensed features.
 
@@ -92,7 +92,7 @@ The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 20
 - **Asked:** English and German first, or all 32 web locales from step 36?
 - **Answer:** English and German for the beginning.
 - **Result:** step 36 no longer imports the web locales. [D21](decisions.md#d21-languages-english-and-german).
-- **Since step 38e** (in review, [D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)): more languages come through Vikunja's Crowdin project, and a language ships once at least 50 % of the app's texts are translated and approved there (owner). English and German ship from the start; German comes through Crowdin too and must be complete for a release.
+- **Since step 38e** ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)): more languages come through Vikunja's Crowdin project, and a language ships once at least 50 % of the app's texts are translated and approved there (owner). English and German ship from the start; German comes through Crowdin too and must be complete for a release.
 
 ## Q14: Licensed features
 
@@ -112,7 +112,7 @@ The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 20
 - **Asked:** which platform the community translates on, and when it is connected.
 - **Options:** Hosted Weblate (Libre plan; the repository prepared in 36f, the project connected in step 37 once the repository is public); Crowdin's open-source plan (commits as a bot, proprietary); self-hosted Weblate; no platform, merge requests only.
 - **Recommendation:** Hosted Weblate. It is libre, keeps each translator's authorship in git, offers contributor agreements, checks ICU messages and also handles the Android and Apple string formats of the widgets and permission texts.
-- **Since step 38e** (in review, [D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)): Crowdin's GitHub integration, which kolaente connects through a bot account, opens the translation pull requests; `crowdin.yml` in the repository holds the paths and the languages, and no token, workflow or secret. The native strings stay English and German until a later step.
+- **Since step 38e** ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)): Crowdin's GitHub integration, which kolaente connects through a bot account, opens the translation pull requests; `crowdin.yml` in the repository holds the paths and the languages, and no token, workflow or secret. The native strings stay English and German until a later step.
 
 ## Q17: Licence path for community translations
 
@@ -125,7 +125,7 @@ The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 20
 
 ## Q18: Generated localisation code in git
 
-**Answered 2026-11-16** by the owner: stop committing it. Step 38e built it and is in review ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)).
+**Answered 2026-11-16** by the owner: stop committing it. Step 38e built it ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)).
 
 - **Asked:** whether `app/lib/l10n/generated/` (about 210 KB per language) stays committed. Today every commit that changes only an ARB file fails CI's check for stale generated code, so every translation merge request would fail.
 - **Options:** stop committing it (gen-l10n runs on `pub get`, on every build and in every CI job); keep committing it and regenerate on every translation merge request; keep committing it and let a CI bot push the regenerated files to the platform's branch.

@@ -1,6 +1,6 @@
 # Glossary and style
 
-The terms and the style of the app's texts in English and German ([D71](decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)). They apply to `app/lib/l10n/arb/app_*.arb` and to the native strings (Android `res/values*/strings.xml`; on iOS the permission texts in `ios/Runner/Info.plist` and `ios/Runner/de.lproj/InfoPlist.strings`, and the widget extension's texts, whose English is the key in its Swift sources and in `en.lproj` and `de.lproj` `Localizable.strings`, or `Localizable.stringsdict` for the plurals), and every new string follows them. Since step 38e the translations, German included, come through Vikunja's Crowdin project, and the German terms follow Vikunja's [German translation instructions](https://vikunja.io/docs/german-translation-instructions) (in review, [D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)). Translators of other languages read the English part for the app's terms. How to add a string is in [CONTRIBUTING.md](../CONTRIBUTING.md#translations).
+The terms and the style of the app's texts in English and German ([D71](decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes)). They apply to `app/lib/l10n/arb/app_*.arb` and to the native strings (Android `res/values*/strings.xml`; on iOS the permission texts in `ios/Runner/Info.plist` and `ios/Runner/de.lproj/InfoPlist.strings`, and the widget extension's texts, whose English is the key in its Swift sources and in `en.lproj` and `de.lproj` `Localizable.strings`, or `Localizable.stringsdict` for the plurals), and every new string follows them. Since step 38e the translations, German included, come through Vikunja's Crowdin project, and the German terms follow Vikunja's [German translation instructions](https://vikunja.io/docs/german-translation-instructions) ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)). Translators of other languages read the English part for the app's terms. How to add a string is in [CONTRIBUTING.md](../CONTRIBUTING.md#translations).
 
 ## Both languages
 
@@ -92,7 +92,7 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - boards: Spalte (bucket), Board (kanban view), Karte;
   - Bezeichner for an identifier (not Kennung);
   - Zugriff for access and Berechtigung for permission, not Rechte;
-  - accounts [in review, step 38e]: Account, as in Vikunja's German translation instructions (der Account, die Accounts, Account-Einstellungen, Account-Passwort), never Konto; Anmeldename for the username, never Benutzername (both checked by `app/test/l10n/german_texts_test.dart`); anmelden/Anmeldung, abmelden; a session the server ended is "beendet", not "abgelaufen";
+  - accounts [exists, step 38e]: Account, as in Vikunja's German translation instructions (der Account, die Accounts, Account-Einstellungen, Account-Passwort), never Konto; Anmeldename for the username, never Benutzername (both checked by `app/test/l10n/german_texts_test.dart`); anmelden/Anmeldung, abmelden; a session the server ended is "beendet", not "abgelaufen";
   - Synchronisierung;
   - Aktivitäten for the notification category and its switch;
   - Gerät for the device, also in the connect tagline; Smartphone for another phone (`linkShareQrHint`); never Handy (`german_texts_test.dart`);
