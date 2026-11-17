@@ -6957,6 +6957,16 @@
   "@guestPasswordNotStored": {
     "description": "Password sheet: helper under the field"
   },
+  "guestPasswordSentTo": "The app sends the password to {host}.",
+  "@guestPasswordSentTo": {
+    "description": "Password sheet of a shared project, below guestPasswordBody: the host of the server the password goes to, so the user can check that it is the shared project's server. Shown on the Connect screen and when a guest's link is opened again.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "tasks.example.org"
+      }
+    }
+  },
   "guestShareTitle": "Open the shared project?",
   "@guestShareTitle": {
     "description": "Sheet when another app shares a link to a shared project into this app"
@@ -7098,6 +7108,20 @@
   "guestServerNeededSuggestion": "Enter the server's address above and tap Continue to open the link.",
   "@guestServerNeededSuggestion": {
     "description": "Connect screen card: what to do to open the shared link."
+  },
+  "guestServerClaimed": "{server}, the server of an account on this device, says its web is at {linkHost}, so its address is filled in above. If you continue, the shared link, and its password if it has one, go to {server}. Only continue if {linkHost} belongs to {server}; otherwise enter the server's address above.",
+  "@guestServerClaimed": {
+    "description": "Connect screen card “Which server is it?”, in place of guestServerNeededSuggestion: no Vikunja server answers at the shared link's host, but the server of an account (or guest access) already on this device says that its web runs there. Its address is filled into the field; tapping Continue sends the link's secret, and the share's password if it asks for one, to that server. Any server can claim another host, so the user decides.",
+    "placeholders": {
+      "server": {
+        "type": "String",
+        "example": "api.example.org"
+      },
+      "linkHost": {
+        "type": "String",
+        "example": "tasks.example.org"
+      }
+    }
   },
   "guestAlreadyAdded": "This shared project was already on this device. Switched to it.",
   "@guestAlreadyAdded": {

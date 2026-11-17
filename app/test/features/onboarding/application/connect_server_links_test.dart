@@ -384,6 +384,94 @@ void main() {
       );
     });
 
+    group("with a stored server that names the link's host as its web", () {
+      final claiming = accountPagesServer270(
+        root: 'https://evil.example.net',
+        frontendUrl: Uri.parse(base),
+      );
+      final claimingAddress = '${claiming.rootUri}';
+
+      setUp(() async {
+        await auth.seedAccount(
+          claiming,
+          tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+        );
+        auth.linkShareGateway.serve(token);
+      });
+
+      test(
+        "goes to the server at the link's own host when it answers",
+        () async {
+          await controller().connect(shareLink());
+
+          expect(connector.inputs, [base]);
+          expect(auth.linkShareGateway.connections.single, same(server));
+          expect(state(), isA<ConnectServerGuestSignedIn>());
+        },
+      );
+
+      test('when nothing answers there, offers it and sends it the link only '
+          'once the user continues with it', () async {
+        connector.handler = (input) async => input == claimingAddress
+            ? claiming
+            : throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+
+        await controller().connect(shareLink());
+
+        expect(
+          state(),
+          isA<ConnectServerShareNeedsServer>()
+              .having((s) => s.linkBase, 'linkBase', Uri.parse(base))
+              .having(
+                (s) => s.claimingServer,
+                'claimingServer',
+                claiming.rootUri,
+              ),
+        );
+        expect(connector.inputs, [base]);
+        expect(auth.linkShareGateway.authentications, isEmpty);
+
+        await controller().connect(claimingAddress, forPendingShare: true);
+
+        expect(connector.inputs, [base, claimingAddress]);
+        expect(auth.linkShareGateway.connections.single, same(claiming));
+        expect(state(), isA<ConnectServerGuestSignedIn>());
+      });
+
+      test('another address entered instead gets the link, and the stored '
+          'server gets nothing', () async {
+        final apiServer = fullServer270(root: 'https://api.example.org');
+        connector.handler = (input) async => input == 'api.example.org'
+            ? apiServer
+            : throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+        await controller().connect(shareLink());
+
+        await controller().connect('api.example.org', forPendingShare: true);
+
+        expect(connector.inputs, [base, 'api.example.org']);
+        expect(auth.linkShareGateway.connections.single, same(apiServer));
+        expect(state(), isA<ConnectServerGuestSignedIn>());
+      });
+
+      test("is not offered when the link's host refuses the app like an "
+          'access proxy', () async {
+        connector.handler = (input) async =>
+            throw NotAVikunjaServer(Uri.parse(base), statusCode: 403);
+
+        await controller().connect(shareLink());
+
+        expect(
+          state(),
+          isA<ConnectServerShareNeedsServer>().having(
+            (s) => s.claimingServer,
+            'claimingServer',
+            isNull,
+          ),
+        );
+        expect(auth.linkShareGateway.authentications, isEmpty);
+      });
+    });
+
     test('waiting for its server goes to no server the user did not give '
         'for it', () async {
       connector.handler = (input) async => input == base

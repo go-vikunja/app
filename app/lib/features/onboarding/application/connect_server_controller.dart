@@ -225,10 +225,17 @@ class ConnectServerController extends _$ConnectServerController {
     } on ServerConnectionFailure catch (failure) {
       if (failure is NotAVikunjaServer && serverAddress == null) {
         // The web frontend can run on a host of its own, apart from the API.
+        // A refusal like an access proxy's is a server there, whose headers
+        // are missing.
+        final claimingServer = connectionFixFor(failure) == null
+            ? await _serverClaiming(share)
+            : null;
+        if (cancelToken.isCancelled) return const ConnectServerIdle();
         _share = share;
         return ConnectServerShareNeedsServer(
           linkBase: share.base,
           failure: failure,
+          claimingServer: claimingServer,
         );
       }
       return ConnectServerFailed(
@@ -245,6 +252,15 @@ class ConnectServerController extends _$ConnectServerController {
       return ConnectServerAwaitingInsecureConsent(connection);
     }
     return await _signInAsGuest(connection, share);
+  }
+
+  Future<Uri?> _serverClaiming(ParsedLinkShareUrl share) async {
+    try {
+      return await ref.read(guestSignInProvider).serverClaiming(share);
+    } on Object catch (error) {
+      _log.info('No stored server for the link: ${error.runtimeType}');
+      return null;
+    }
   }
 
   Future<ConnectServerState> _signInAsGuest(

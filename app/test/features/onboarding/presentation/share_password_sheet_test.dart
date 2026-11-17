@@ -18,6 +18,7 @@ void main() {
         builder: (context, child) => AnnouncerHost(child: child!),
         home: Scaffold(
           body: SharePasswordSheet(
+            serverRoot: Uri.parse('https://tasks.example.org/vikunja'),
             submit: (_) =>
                 Future.delayed(answerAfter, () => SharePasswordOutcome.wrong),
           ),

@@ -51,6 +51,7 @@ class _GuestReauthBannerState extends ConsumerState<GuestReauthBanner> {
     if (result is GuestPasswordRequired && mounted) {
       final outcome = await askForSharePassword(
         context,
+        serverRoot: widget.entry.connection.rootUri,
         submit: (password) async {
           result = await attempt(password: password);
           return switch (result) {

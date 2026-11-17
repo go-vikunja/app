@@ -1340,11 +1340,11 @@ Limits:
 
 **Guest entry:**
 - The Connect screen recognises a pasted share link before any probe (`parseLinkShareUrl`: an explicit http(s) scheme, any path before `share/`, the web's `#share-auth-token=` address, a link inside text), shown shortened in the progress line, never with its hash, and the hash stays out of the screen's state.
-- The link's server: a stored account's server whose web frontend is the link's base, else the base probed like a typed address (an http server asks first); if no Vikunja server answers, "Which server is it?" asks for the server's address and the link opens once it is entered. Offline, timeouts and TLS errors stay ordinary connection errors.
+- The link's server: a stored account's server whose web frontend is the link's base, since step 40c only one on the link's own origin (the scheme, host and port of its root), else the base probed like a typed address (an http server asks first); if no Vikunja server answers, "Which server is it?" asks for the server's address and the link opens once it is entered. Since step 40c, when a stored server on another origin names the link's base as its web frontend, that card fills in its address and names both hosts, and the link, and its password if it has one, go there only on Continue ([D92](#d92-fixes-from-the-code-review-security)). Offline, timeouts and TLS errors stay ordinary connection errors.
 - Link sharing switched off is answered without a request only for a freshly probed server with no stored account, because a stored account's `/info` can be hours old; otherwise the server's 404 says it.
 - "Open a shared link" under "Try the public demo" opens a sheet with a field and Paste. Only the address field, Continue and the known-server chips carry a pending share on, not the demo button, so a hash never goes to try.vikunja.io.
 - Android share target: a shared text with a share link offers "Open as guest", signed in also "Make it a new task instead"; an invite link goes to the invite check; a share with files is never taken for a link. iOS has no share extension before 1.0 (owner, [D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)); a link is pasted there.
-- Password sheet (13001, 13002): obscured with show and hide, no autofill, "Wrong password" inline with the field kept focused, and the note that the app does not save the password.
+- Password sheet (13001, 13002): obscured with show and hide, no autofill, "Wrong password" inline with the field kept focused, and the note that the app does not save the password; since step 40c the sheet also names the host the password goes to ("The app sends the password to {host}."), on the Connect screen and when a guest's link is opened again ([D92](#d92-fixes-from-the-code-review-security)).
 - `GuestSignIn` signs in and writes the secrets before it replaces the share's old session, so the old one keeps answering until the new one exists and a failed write leaves it working. Before it writes them, a guest removed a moment ago waits until part of the app lets go of its old database ([D31](#d31-one-drift-sqlite-file-per-account-shared-across-isolates)); when that wait gives up, the link fails with "Still removing the guest access" and the new token is dropped without being stored. It upserts and activates the account; after the first sync the guest lands on the shared project in the link's view (`?view=<id>`). "Open the link again" uses the stored hash and server and stays where the user is.
 
 **Guest UI:**
@@ -3067,3 +3067,42 @@ Limits:
 - A WebView that stops during a slow online save still ends that save's saving state, as before step 40b, so a second Save could in theory start; only the wait for an upload guards against it.
 - The German texts of the two new strings, `editorImageNotAdded` and `shareKeptEditing`, come through Crowdin ([D88](#d88-translations-through-vikunjas-crowdin-project)); until then they show in English.
 - The step's tests run against a fake bridge and the editor page's own tests in Node. On an Android 16 emulator on 2026-11-17 a description typed into the real WebView came back after `am force-stop` as "Restore unsaved changes?", which a tap beside it and Back did not close; Restore brought the text back, leaving asked, and Discard dropped the draft without touching the task. The dialogs, sheets and pages during a switch of account were not tried on a device, as the emulator has one account.
+
+## D92: Fixes from the code review: security
+
+*Step 40c, in review.*
+
+Step 40c takes the security findings of the code review of 2026-11-17 ([D90](#d90-fixes-from-the-code-review-before-beta1)): S1 and S2. S1 is fixed; S2 is not, by the owner's decision of 2026-11-17 (below). The owner reviews the step as a whole; apart from S2, nothing here is marked as the owner's decision yet.
+
+**A shared link's server** (S1):
+- Before: `GuestSignIn.connect` took a stored account's server, with no probe and no question, whenever its `/info` named the link's base as its web frontend (`frontend_url`, [D62](#d62-onboarding-through-the-browser-link-share-guests-as-an-account-kind)). Only that server says so, and any server the user once added, as an account or as a guest, can name another server's web host. A later link to that host then sent the hash, a long-lived secret (the threat model's R6), and a typed share password to that server, and the password sheet named no host.
+- Now a stored server is taken without asking only on the link's own origin: when the link's base has the origin of the server's root (`OriginKey`: scheme, host and port) and the server's web frontend is that base. This is the usual setup, with the web and the API on one host.
+- Otherwise the link's base is probed like a typed address, as before, and a Vikunja server that answers there wins over any claim.
+- Only when no Vikunja server answers there (`NotAVikunjaServer`) does a stored server that names the base as its web frontend come in (`GuestSignIn.serverClaiming`: the first in the registry's order, a user's or a guest's). A 401 or 403 does not count: it points to an access gate in front of the link's host, so the card stays as before, with "Add headers" and no stored server. Offline, timeouts and TLS errors stay connection errors and offer none either.
+- "Which server is it?" then fills in that server's address without focusing the field, so the keyboard does not cover the card. While the field still holds that address, a line in place of the suggestion names both hosts, with their schemes where they would read alike: the server of an account on this device says that its web is at the link's host, and if the user continues, the shared link, and its password if it has one, go to that server (`guestServerClaimed`).
+- Continue is the confirmation: it probes that address and opens the link there. Until then the claiming server gets no request. Another address in the field gets the link instead; Cancel or the demo button forgets it.
+- Why ask: it is the idea of the question before a sign-in page on another host ([D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session), the threat model's [M13](threat-model.md#62-transport)): name both hosts and let the user decide, since only the claiming server makes the claim and the app cannot check it. Why the card and not M13's dialog: the card is already the step that asks for this server's address, with its field and its live region; a dialog would ask the same question twice and add an overlay.
+- The password sheet names the host the password goes to ("The app sends the password to {host}.", `guestPasswordSentTo`), on the Connect screen and in the guest's "Open the link again" banner.
+- "Open the link again" (`storedLink`, `reopen`) uses the guest's own stored server, as before.
+- The accessibility sweep has the card with a claiming server as a state of its own, "shared link server question" ([D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep)).
+
+**The Tasks widget's mutable PendingIntent** (S2), not fixed:
+- The list widget's rows sit in Glance's `LazyColumn`, whose collection template gives the launcher a mutable `PendingIntent` with which it can start the app's components, the non-exported ones included (the threat model's [R17](threat-model.md#7-residual-and-accepted-risks)). The review wanted it closed for the official app, and the widget-link key rotated when a widget is removed or set up again.
+- The owner was asked to choose for 1.0 between:
+  - a fixed list: a `Column` with immutable intents for every row and an "N more" row, which no longer scrolls;
+  - a scrolling list of the app's own, whose template names an activity of the app, a trampoline that checks every tap before it starts anything;
+  - keeping the risk.
+- The owner chose to keep accepting R17 for 1.0 (owner, 2026-11-17). R17 records the decision and keeps both lists for a later step.
+- Nothing of S2 is built: the widget-link key still rotates only on a fresh install.
+
+Step 40c changed [D62](#d62-onboarding-through-the-browser-link-share-guests-as-an-account-kind) for it.
+
+Limits:
+- The contract tests passed against the local Vikunja 2.8.0, the link-share guest's among them, whose links are on the server's own origin. Nothing of the step ran on a device: the local test server has no web frontend on a host of its own, so the card's claim was seen only in widget tests.
+- In a split setup (web and API on different hosts) whose server has an account on the device, each new link from the web host stops at "Which server is it?" with the server filled in and needs one Continue; before, it opened without asking.
+- When the web host of a split setup is down or answers with an error, opening the link now fails with that error instead of silently using the stored server. That is the safer direction.
+- Only the first claiming server in the registry's order is offered; the others stay reachable through the known-server chips in Add account or by typing their address.
+- A user who continues without reading the card, or whom a look-alike host misleads, still sends the link and its password to the claiming server (the threat model's [R41](threat-model.md#7-residual-and-accepted-risks)).
+- The origin comparison lowercases only the host, so a link whose host is written another way, with a trailing dot for example, is never taken silently; it goes through the probe.
+- The German texts of the two new strings, `guestServerClaimed` and `guestPasswordSentTo`, come through Crowdin ([D88](#d88-translations-through-vikunjas-crowdin-project)); until then they show in English.
+- How TalkBack and VoiceOver read the card's longer live region and the sheet's new line is part of the open manual pass ([Q19](open-questions.md#q19-device-setup-for-the-manual-talkback-pass)).

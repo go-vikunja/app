@@ -85,13 +85,23 @@ final class ConnectServerLinkFailed extends ConnectServerState {
 /// web frontend runs apart from the API, whose address the user enters
 /// next to open the link.
 final class ConnectServerShareNeedsServer extends ConnectServerState {
-  const new({required this.linkBase, required this.failure});
+  const new({
+    required this.linkBase,
+    required this.failure,
+    this.claimingServer,
+  });
 
   final Uri linkBase;
   final ServerConnectionFailure failure;
+
+  /// A stored account's server that names [linkBase] as its web frontend,
+  /// offered as the address; the link goes there only once the user
+  /// continues with it.
+  final Uri? claimingServer;
 }
 
-/// The shared project has a password, which the screen asks for.
+/// The shared project has a password, which the screen asks for, naming
+/// [serverRoot]'s host, where the password goes.
 final class ConnectServerSharePasswordNeeded extends ConnectServerState {
   const new(this.serverRoot);
 

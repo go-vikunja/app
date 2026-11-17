@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/link_share_account_id.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_sign_in.dart';
@@ -126,6 +127,10 @@ void main() {
 
       expect(find.byType(SharePasswordSheet), findsOneWidget);
       expect(find.text(en.guestPasswordBody), findsOneWidget);
+      expect(
+        inPasswordSheet(find.text(en.guestPasswordSentTo('tasks.example.org'))),
+        findsOneWidget,
+      );
       final field = tester.widget<TextField>(
         inPasswordSheet(find.byType(TextField)),
       );
@@ -265,6 +270,107 @@ void main() {
         ),
         isNotNull,
       );
+    });
+  });
+
+  group("with a stored server that names the link's host as its web", () {
+    final claiming = accountPagesServer270(
+      root: 'https://evil.example.net',
+      frontendUrl: Uri.parse(base),
+    );
+    final apiServer = fullServer270(root: 'https://api.example.org');
+
+    final claimLine = en.guestServerClaimed(
+      'evil.example.net',
+      'tasks.example.org',
+    );
+
+    /// A focused field first scrolls its caret into view, which can move
+    /// Continue below the screen.
+    Future<void> tapContinue(WidgetTester tester) async {
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(_continueButton);
+      await tester.pumpAndSettle();
+      await tester.tap(_continueButton);
+      await tester.pumpAndSettle();
+    }
+
+    /// Adds an account over the shell with the link, whose host has no API.
+    Future<void> openLink(WidgetTester tester) async {
+      usePhoneSurface(tester);
+      await auth.seedAccount(
+        claiming,
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      connector.handler = (input) async => switch (input) {
+        'https://evil.example.net' => claiming,
+        'api.example.org' => apiServer,
+        _ => throw NotAVikunjaServer(Uri.parse(base), statusCode: 200),
+      };
+      await pump(tester);
+      unawaited(
+        containerOf(tester).read(appRouterProvider).push(AppRoutes.addAccount),
+      );
+      await tester.pumpAndSettle();
+      connector.inputs.clear();
+      await tester.enterText(_addressField, shareLink());
+      await tapContinue(tester);
+    }
+
+    testWidgets('fills it in, names both hosts, and sends it the link and '
+        'the password only after Continue', (tester) async {
+      auth.linkShareGateway.serve(token, password: 'tomato');
+      await openLink(tester);
+
+      expect(find.text(en.guestServerNeededTitle), findsOneWidget);
+      expect(find.text(en.guestServerNeededSuggestion), findsNothing);
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.controller!.text, 'https://evil.example.net');
+      // No keyboard covers the line, and no Go on it sends the link unread.
+      expect(field.focusNode!.hasFocus, isFalse);
+      expect(tester.testTextInput.isVisible, isFalse);
+      expect(find.text(claimLine).hitTestable(), findsOneWidget);
+      expect(_continueButton.hitTestable(), findsOneWidget);
+      expect(connector.inputs, [base]);
+      expect(auth.linkShareGateway.authentications, isEmpty);
+
+      await tester.tap(_continueButton);
+      await tester.pumpAndSettle();
+
+      expect(
+        inPasswordSheet(find.text(en.guestPasswordSentTo('evil.example.net'))),
+        findsOneWidget,
+      );
+      await submitPassword(tester, 'tomato');
+
+      expect(connector.inputs, [base, 'https://evil.example.net']);
+      expect(auth.linkShareGateway.authentications, [
+        (fakeShareHash, null),
+        (fakeShareHash, 'tomato'),
+      ]);
+      expect(
+        auth.linkShareGateway.connections.map((c) => c.rootUri),
+        everyElement(claiming.rootUri),
+      );
+    });
+
+    testWidgets('another address entered instead gets the link', (
+      tester,
+    ) async {
+      auth.linkShareGateway.serve(token);
+      await openLink(tester);
+
+      await tester.enterText(_addressField, 'api.example.org');
+      await tester.pumpAndSettle();
+      expect(find.text(claimLine), findsNothing);
+      expect(find.text(en.guestServerNeededSuggestion), findsOneWidget);
+      // The card changed its size, but the field being edited keeps the view.
+      expect(_addressField.hitTestable(), findsOneWidget);
+
+      await tapContinue(tester);
+
+      expect(connector.inputs, [base, 'api.example.org']);
+      expect(auth.linkShareGateway.connections.single, same(apiServer));
     });
   });
 

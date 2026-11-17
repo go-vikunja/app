@@ -24,6 +24,7 @@ import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart
 import '../helpers/auth_fakes.dart';
 import '../helpers/connection_fakes.dart';
 import '../helpers/fakes.dart';
+import '../helpers/guest_entry_fakes.dart';
 import '../helpers/notification_ui_fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/server_connections.dart';
@@ -33,6 +34,9 @@ import 'sweep_harness.dart';
 
 final _secure = OriginKey.of(Uri.parse('https://vikunja.example.com'));
 final _plain = OriginKey.of(Uri.parse('http://192.168.1.20:3456'));
+
+/// A shared link's host with only the web, which a stored server names.
+const _webOnly = 'https://web.example.org/';
 
 Finder _connectionOverview() => find.byWidgetPredicate(
   (widget) => widget.runtimeType.toString() == '_ConnectionOverview',
@@ -170,7 +174,8 @@ final List<SweepScenario> onboardingRouteScenarios = [
 ];
 
 /// The connect screen's failure, its question before an unencrypted
-/// connection, the hint before the browser opens, and a failed sign-in.
+/// connection, a shared link asking for its server, the hint before the
+/// browser opens, and a failed sign-in.
 final List<SweepScenario> onboardingStateScenarios = [
   SweepScenario(
     kind: SweepKind.state,
@@ -195,6 +200,38 @@ final List<SweepScenario> onboardingStateScenarios = [
     ),
     navigate: (tester, _) => _submitAddress(tester, '192.168.1.20:3456'),
     expectScreen: (_) => alertDialog,
+  ),
+  SweepScenario(
+    kind: SweepKind.state,
+    name: 'shared link server question',
+    route: AppRoutes.addAccount,
+    setUp: (tester, _) async {
+      final auth = AuthFakes();
+      await auth.seedAccount(
+        accountPagesServer270(
+          root: 'https://api.example.org',
+          frontendUrl: Uri.parse(_webOnly),
+        ),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      await pumpVikunjaApp(
+        tester,
+        auth: auth,
+        sync: sweepData(),
+        connector: FakeServerConnector.failing(
+          NotAVikunjaServer(Uri.parse(_webOnly), statusCode: 200),
+        ),
+        overrides: guestEntryOverrides(),
+      );
+    },
+    navigate: (tester, _) async {
+      pushTo(tester, AppRoutes.addAccount);
+      await tester.pumpAndSettle();
+      await _submitAddress(tester, shareLink(base: _webOnly));
+    },
+    expectScreen: (l10n) => find.text(
+      l10n.guestServerClaimed('api.example.org', 'web.example.org'),
+    ),
   ),
   SweepScenario(
     kind: SweepKind.state,

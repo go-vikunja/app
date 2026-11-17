@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_landing.dart';
 
@@ -95,27 +96,45 @@ final class GuestSignIn {
   final AccountDatabaseFiles _files;
   final DateTime Function() _clock;
 
-  /// The server behind [link]: a stored account's server whose web frontend
-  /// is the link's base, else the link's base probed like an address typed
-  /// on the Connect screen, or [serverAddress] when given. Throws a
-  /// `ServerConnectionFailure` when nothing answers there, which happens
-  /// when the web frontend runs on another host than the API: then ask for
-  /// the server's address and call again with it. The connection may be
+  /// The server behind [link]: a stored account's server on the link's own
+  /// origin whose web frontend is the link's base, else the link's base
+  /// probed like an address typed on the Connect screen, or [serverAddress]
+  /// when given. Throws a `ServerConnectionFailure` when nothing answers
+  /// there, which happens when the web frontend runs on another host than
+  /// the API: then ask for the server's address, offering
+  /// [serverClaiming], and call again with it. The connection may be
   /// insecure (`isInsecure`), which needs the user's consent first.
   Future<ServerConnection> connect(
     ParsedLinkShareUrl link, {
     String? serverAddress,
     CancelToken? cancelToken,
   }) async {
-    if (serverAddress == null) {
+    final linkOrigin = OriginKey.tryOf(link.base);
+    if (serverAddress == null && linkOrigin != null) {
       for (final entry in (await _registry.load()).accounts) {
-        if (_frontendOf(entry.connection) == link.base) return entry.connection;
+        if (_frontendOf(entry.connection) == link.base &&
+            OriginKey.tryOf(entry.connection.rootUri) == linkOrigin) {
+          return entry.connection;
+        }
       }
     }
     return await _connector.connect(
       serverAddress ?? link.base.toString(),
       cancelToken: cancelToken,
     );
+  }
+
+  /// The root of a stored account's server whose `/info` names [link]'s
+  /// base as its web frontend. Only that server says so, and any server
+  /// can name another's host, so it is offered for the link but the hash
+  /// goes there only once the user confirmed it.
+  Future<Uri?> serverClaiming(ParsedLinkShareUrl link) async {
+    for (final entry in (await _registry.load()).accounts) {
+      if (_frontendOf(entry.connection) == link.base) {
+        return entry.connection.rootUri;
+      }
+    }
+    return null;
   }
 
   /// Authenticates with [link]'s hash and, with [password] when the share

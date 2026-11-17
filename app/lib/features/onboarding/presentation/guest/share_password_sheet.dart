@@ -5,24 +5,36 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_state.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
 /// Asks for a shared project's password and hands each try to [submit]; a
 /// wrong one keeps the sheet open with a note, anything else closes it.
 /// Null when the user closed it. The password lives only in the field and
-/// the one request [submit] makes.
+/// the one request [submit] makes, to [serverRoot], whose host the sheet
+/// names.
 Future<SharePasswordOutcome?> askForSharePassword(
   BuildContext context, {
+  required Uri serverRoot,
   required Future<SharePasswordOutcome> Function(String password) submit,
 }) => showPickerSheet<SharePasswordOutcome>(
   context,
-  builder: (context, scrollController) =>
-      SharePasswordSheet(submit: submit, scrollController: scrollController),
+  builder: (context, scrollController) => SharePasswordSheet(
+    serverRoot: serverRoot,
+    submit: submit,
+    scrollController: scrollController,
+  ),
 );
 
 class SharePasswordSheet extends StatefulWidget {
-  const new({required this.submit, this.scrollController, super.key});
+  const new({
+    required this.serverRoot,
+    required this.submit,
+    this.scrollController,
+    super.key,
+  });
 
+  final Uri serverRoot;
   final Future<SharePasswordOutcome> Function(String password) submit;
   final ScrollController? scrollController;
 
@@ -82,6 +94,9 @@ class _SharePasswordSheetState extends State<SharePasswordSheet> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
+    final noteStyle = theme.textTheme.bodyMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
     return PopScope(
       canPop: !_submitting,
       child: SingleChildScrollView(
@@ -105,11 +120,16 @@ class _SharePasswordSheetState extends State<SharePasswordSheet> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Text(
-                  l10n.guestPasswordBody,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  spacing: 8,
+                  children: [
+                    Text(l10n.guestPasswordBody, style: noteStyle),
+                    Text(
+                      l10n.guestPasswordSentTo(displayHost(widget.serverRoot)),
+                      style: noteStyle,
+                    ),
+                  ],
                 ),
               ),
               Padding(

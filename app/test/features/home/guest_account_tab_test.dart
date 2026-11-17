@@ -238,6 +238,13 @@ void main() {
       await pumpGuestTab(tester, needsReauth: true);
 
       await tapOpenLinkAgain(tester, asksPassword: true);
+      expect(
+        find.descendant(
+          of: find.byType(SharePasswordSheet),
+          matching: find.text(en.guestPasswordSentTo(host)),
+        ),
+        findsOneWidget,
+      );
 
       // Held open for a frame, as a real request is.
       final held = auth.linkShareGateway.holdNextAuthentication();

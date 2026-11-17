@@ -53,7 +53,9 @@ class ConnectServerScreen extends ConsumerStatefulWidget {
 class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   final _formKey = GlobalKey<FormState>();
   final GlobalKey _errorKey = GlobalKey();
+  final GlobalKey _continueKey = GlobalKey();
   final GlobalKey _keepingKey = GlobalKey();
+  ConnectServerState? _revealedState;
   final _address = TextEditingController();
   final _addressFocus = FocusNode();
   Timer? _tapHold;
@@ -286,17 +288,24 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
         unawaited(context.push(AppRoutes.addAccountServer));
       case ConnectServerConnected():
         context.go(AppRoutes.serverOverview);
-      case ConnectServerShareNeedsServer():
+      case ConnectServerShareNeedsServer(:final claimingServer):
         unawaited(HapticFeedback.heavyImpact());
-        // The field holds the link, which is not the server's address.
-        if (parseLinkShareUrl(_address.text) != null) _address.clear();
-        // Once the field is enabled again; a disabled one takes no focus.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _addressFocus.requestFocus();
-        });
-      case ConnectServerSharePasswordNeeded()
+        if (claimingServer != null) {
+          // Without focus: a keyboard would cover the card naming both
+          // hosts, and its Go would send the link before that was read.
+          _addressFocus.unfocus();
+          _address.text = '$claimingServer';
+        } else {
+          // The field holds the link, which is not the server's address.
+          if (parseLinkShareUrl(_address.text) != null) _address.clear();
+          // Once the field is enabled again; a disabled one takes no focus.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _addressFocus.requestFocus();
+          });
+        }
+      case ConnectServerSharePasswordNeeded(:final serverRoot)
           when previous is! ConnectServerSharePasswordNeeded:
-        unawaited(_askForSharePassword());
+        unawaited(_askForSharePassword(serverRoot));
       case ConnectServerGuestSignedIn(:final isNewAccount):
         // After the password sheet has closed.
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -310,9 +319,10 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     }
   }
 
-  Future<void> _askForSharePassword() async {
+  Future<void> _askForSharePassword(Uri serverRoot) async {
     final outcome = await askForSharePassword(
       context,
+      serverRoot: serverRoot,
       submit: _controller.submitSharePassword,
     );
     if (outcome == null && mounted) _controller.reset();
@@ -330,16 +340,27 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   }
 
   // Runs once AnimatedSize has grown, because before that the scroll extent
-  // does not include the card yet.
-  void _revealError() {
+  // does not include the card yet. Once for each state: a card that changes
+  // its size as the address is edited leaves the view to the field.
+  Future<void> _revealError() async {
     final errorContext = _errorKey.currentContext;
-    if (errorContext == null) return;
-    Scrollable.ensureVisible(
-      errorContext,
-      duration: reduceMotionOf(errorContext)
-          ? Duration.zero
-          : const Duration(milliseconds: 250),
-    );
+    final state = ref.read(connectServerControllerProvider);
+    if (errorContext == null || identical(state, _revealedState)) return;
+    _revealedState = state;
+    final duration = reduceMotionOf(errorContext)
+        ? Duration.zero
+        : const Duration(milliseconds: 250);
+    await Scrollable.ensureVisible(errorContext, duration: duration);
+    // Continue confirms the stored server the card names.
+    if (state case ConnectServerShareNeedsServer(claimingServer: _?)) {
+      final continueContext = _continueKey.currentContext;
+      if (continueContext == null || !continueContext.mounted) return;
+      await Scrollable.ensureVisible(
+        continueContext,
+        duration: duration,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    }
   }
 
   Future<void> _askForInsecureConsent(ServerConnection connection) async {
@@ -455,7 +476,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                       AnimatedSize(
                         duration: const Duration(milliseconds: 200),
                         alignment: Alignment.topCenter,
-                        onEnd: _revealError,
+                        onEnd: () => unawaited(_revealError()),
                         child: switch (state) {
                           ConnectServerFailed(:final failure, :final input) =>
                             Padding(
@@ -503,6 +524,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                           ConnectServerShareNeedsServer(
                             :final linkBase,
                             :final failure,
+                            :final claimingServer,
                           ) =>
                             Padding(
                               padding: const EdgeInsets.only(top: 16),
@@ -513,7 +535,18 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                                 body: l10n.guestServerNeededExplanation(
                                   displayHost(linkBase),
                                 ),
-                                footnote: l10n.guestServerNeededSuggestion,
+                                // Only while Continue sends the link there.
+                                footnote: switch (claimingServer) {
+                                  final server?
+                                      when _typedOrigin ==
+                                          OriginKey.tryOf(server) =>
+                                    _claimedServerNote(
+                                      l10n,
+                                      linkBase: linkBase,
+                                      server: server,
+                                    ),
+                                  _ => l10n.guestServerNeededSuggestion,
+                                },
                                 background:
                                     theme.colorScheme.secondaryContainer,
                                 foreground:
@@ -563,7 +596,11 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                       ),
                       if (state is! ConnectServerInviteFound) ...[
                         const SizedBox(height: 24),
-                        ConnectButton(isConnecting: busy, onContinue: _submit),
+                        ConnectButton(
+                          key: _continueKey,
+                          isConnecting: busy,
+                          onContinue: _submit,
+                        ),
                       ],
                       if (state case final ConnectServerConnecting connecting)
                         _ProgressLine(_connectingText(l10n, connecting))
@@ -666,6 +703,21 @@ String _connectingText(
   ),
   ConnectTarget.server => l10n.connectConnectingTo(connecting.input.trim()),
 };
+
+/// Names both hosts, with their schemes where they would read alike.
+String _claimedServerNote(
+  AppLocalizations l10n, {
+  required Uri linkBase,
+  required Uri server,
+}) {
+  var link = displayHost(linkBase);
+  var claiming = displayHost(server);
+  if (link == claiming) {
+    link = '${linkBase.scheme}://$link';
+    claiming = '${server.scheme}://$claiming';
+  }
+  return l10n.guestServerClaimed(claiming, link);
+}
 
 /// The origin whose connection settings apply to what was typed: a shared
 /// link's or an invite's server, else the address as the connector reads

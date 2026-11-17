@@ -357,14 +357,61 @@ void main() {
   });
 
   group('connect', () {
-    test("takes a stored account's server whose web frontend the link is "
-        'under, without probing', () async {
+    /// A server the user once added, whose `/info` names the link's host
+    /// as its web.
+    final claiming = accountPagesServer270(
+      root: 'https://evil.example.net',
+      frontendUrl: Uri.parse('https://tasks.example.org/vikunja/'),
+    );
+
+    test("takes a stored account's server on the link's own origin whose "
+        'web frontend the link is under, without probing', () async {
       await auth.seedAccount(server, tokens: issueTokens(issuedAt: now));
 
       final connection = await guestSignIn.connect(link());
 
       expect(connection.rootUri, server.rootUri);
       expect(connector.inputs, isEmpty);
+    });
+
+    test('never takes a stored server on another origin that names the '
+        "link's host as its web: the link's host is probed and wins", () async {
+      await auth.seedAccount(claiming, tokens: issueTokens(issuedAt: now));
+
+      final connection = await guestSignIn.connect(link());
+
+      expect(connection, same(server));
+      expect(connector.inputs, ['https://tasks.example.org/vikunja/']);
+      expect(await guestSignIn.serverClaiming(link()), claiming.rootUri);
+    });
+
+    for (final root in [
+      'https://tasks.example.org:8443/vikunja',
+      'http://tasks.example.org/vikunja',
+    ]) {
+      test('never takes a stored server on the same host under another '
+          "origin ($root): the link's host is probed and wins", () async {
+        final sameHost = accountPagesServer270(
+          root: root,
+          frontendUrl: Uri.parse('https://tasks.example.org/vikunja/'),
+        );
+        await auth.seedAccount(sameHost, tokens: issueTokens(issuedAt: now));
+
+        final connection = await guestSignIn.connect(link());
+
+        expect(connection, same(server));
+        expect(connector.inputs, ['https://tasks.example.org/vikunja/']);
+        expect(await guestSignIn.serverClaiming(link()), sameHost.rootUri);
+      });
+    }
+
+    test('offers no server when none names the link as its web', () async {
+      await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: now),
+      );
+
+      expect(await guestSignIn.serverClaiming(link()), isNull);
     });
 
     test("probes the link's base, or the address the user gave", () async {
@@ -411,6 +458,28 @@ void main() {
       expect((await auth.registry.find(guestId))?.account.needsReauth, isFalse);
       expect(connector.inputs, isEmpty);
       expect(landings.take(guestId), isNull);
+    });
+
+    test("keeps the guest's own server, also one whose web is on another "
+        'host', () async {
+      final api = accountPagesServer270(
+        root: 'https://api.example.org',
+        frontendUrl: Uri.parse('https://tasks.example.org/vikunja/'),
+      );
+      final guest = await auth.seedGuest(
+        api,
+        token: issueLinkShareToken(issuedAt: now),
+        needsReauth: true,
+      );
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+
+      final stored = await guestSignIn.storedLink(guest.id);
+      final opened = await guestSignIn.reopen(guest.id);
+
+      expect(stored?.base, Uri.parse('https://tasks.example.org/vikunja/'));
+      expect(opened, isA<GuestSignedIn>());
+      expect(gateway.connections.single.rootUri, api.rootUri);
+      expect(connector.inputs, isEmpty);
     });
 
     test('is gone with its hash', () async {
