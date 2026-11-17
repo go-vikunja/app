@@ -248,6 +248,68 @@ void main() {
       );
     });
 
+    test("state carries the page's revision; one that is no count reads "
+        'as 0', () {
+      int revisionOf(Object? revision) =>
+          (decode({
+                    'type': 'state',
+                    'token': token,
+                    'dirty': true,
+                    'revision': revision,
+                  }, expected: token)!
+                  as EditorStateChanged)
+              .state
+              .revision;
+
+      expect(revisionOf(7), 7);
+      expect(revisionOf(0), 0);
+      for (final garbage in [null, -1, 1.5, '3', true, <Object>[]]) {
+        expect(revisionOf(garbage), 0, reason: '$garbage');
+      }
+      expect(
+        (decode({'type': 'state', 'token': token}, expected: token)!
+                as EditorStateChanged)
+            .state
+            .revision,
+        0,
+      );
+    });
+
+    test('two states are equal by their values, so that the page redraws '
+        'only for a change', () {
+      EditorState stateOf(Map<String, Object?> fields) =>
+          (decode({
+                    'type': 'state',
+                    'token': token,
+                    ...fields,
+                  }, expected: token)!
+                  as EditorStateChanged)
+              .state;
+      const fields = {
+        'dirty': true,
+        'revision': 3,
+        'canUndo': true,
+        'active': {'bold': true, 'heading': 2, 'link': true, 'linkHref': 'a'},
+      };
+
+      expect(stateOf(fields), stateOf(fields));
+      expect(stateOf(fields).hashCode, stateOf(fields).hashCode);
+      for (final other in [
+        {...fields, 'revision': 4},
+        {...fields, 'canRedo': true},
+        {
+          ...fields,
+          'active': {'bold': true, 'heading': 2, 'link': true, 'linkHref': 'b'},
+        },
+        {
+          ...fields,
+          'active': {'bold': true, 'heading': 3, 'link': true, 'linkHref': 'a'},
+        },
+      ]) {
+        expect(stateOf(other), isNot(stateOf(fields)), reason: '$other');
+      }
+    });
+
     test('a heading beyond the toolbar keeps its level', () {
       final event = decode({
         'type': 'state',

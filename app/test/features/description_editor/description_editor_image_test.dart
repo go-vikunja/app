@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 
 import '../../helpers/attachment_picker_fake.dart';
 import '../../helpers/auth_fakes.dart';
@@ -158,6 +159,85 @@ void main() {
     expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(saveEnabled(tester), isTrue);
     expect(data.attachments.cancelTokens.single?.isCancelled, isFalse);
+  });
+
+  testWidgets('Save in the leave dialog waits for the upload, saving '
+      'meanwhile, and saves the description with the image', (tester) async {
+    const src =
+        'https://tasks.example.org/vikunja/api/v2/tasks/1/attachments/500';
+    const image = '<img data-src="$src" src="#" id="tiptap-image-1-500">';
+    final upload = Completer<void>();
+    data.attachments.beforeCall = (_) => upload.future;
+    await openEditor(tester);
+    final bridge = bridges.last..edit('<p>a b</p>');
+    bridge.onCommand = (command) {
+      if (command.name == EditorCommandName.insertImage) {
+        bridge.edit('<p>a b</p>$image');
+      }
+    };
+    await tester.pump();
+    await insertFrom(tester, en.attachmentSourcePhotos, settle: false);
+
+    await tester.pageBack();
+    await pumpFrames(tester, 5);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(Dialog),
+        matching: find.text(en.taskEditSave),
+      ),
+    );
+    await pumpFrames(tester, 5);
+    expect(find.byType(Dialog), findsNothing);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    expect(data.tasks.descriptionUpdates, isEmpty);
+    expect(bridge.readOnly, isEmpty);
+
+    upload.complete();
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.descriptionUpdates, [
+      (1, '<p>a b</p>$image', '<p>a</p>'),
+    ]);
+    expect(data.attachments.cancelTokens.single?.isCancelled, isFalse);
+    expect(find.byType(DescriptionEditorPage), findsNothing);
+  });
+
+  testWidgets('Back while Save waits for the upload stops it: the '
+      'description is saved without the image, and the page says so', (
+    tester,
+  ) async {
+    data.attachments.beforeCall = (_) async {
+      await data.attachments.cancelTokens.last!.whenCancel;
+      throw const NetworkFailure(NetworkProblem.unreachable);
+    };
+    await openEditor(tester);
+    final bridge = bridges.last..edit('<p>a b</p>');
+    await tester.pump();
+    await insertFrom(tester, en.attachmentSourcePhotos, settle: false);
+    await tester.pageBack();
+    await pumpFrames(tester, 5);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(Dialog),
+        matching: find.text(en.taskEditSave),
+      ),
+    );
+    await pumpFrames(tester, 5);
+    expect(data.tasks.descriptionUpdates, isEmpty);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+
+    expect(data.attachments.cancelTokens.single?.isCancelled, isTrue);
+    expect(find.text(en.editorImageNotAdded), findsOneWidget);
+    expect(data.tasks.descriptionUpdates, [(1, '<p>a b</p>', '<p>a</p>')]);
+    expect(
+      bridge.commands.where(
+        (command) => command.name == EditorCommandName.insertImage,
+      ),
+      isEmpty,
+    );
+    expect(find.byType(DescriptionEditorPage), findsNothing);
   });
 
   testWidgets('a refused upload says why and inserts nothing', (tester) async {

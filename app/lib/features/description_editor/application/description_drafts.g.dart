@@ -26,7 +26,7 @@ final class DescriptionDraftsProvider
         argument: null,
         retry: null,
         name: r'descriptionDraftsProvider',
-        isAutoDispose: true,
+        isAutoDispose: false,
         dependencies: null,
         $allTransitiveDependencies: null,
       );
@@ -54,4 +54,4 @@ final class DescriptionDraftsProvider
   }
 }
 
-String _$descriptionDraftsHash() => r'4fc14d4982f6b30ea2b8038d7b379a66e11a13b5';
+String _$descriptionDraftsHash() => r'd5f82663acf4b248f48de5a409fbf45e474d8a6e';

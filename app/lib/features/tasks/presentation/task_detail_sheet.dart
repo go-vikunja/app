@@ -1039,7 +1039,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   Future<void> _openProject(Project project) async {
     final router = GoRouter.of(context);
     ref.read(rootModalRoutesProvider).closeAll();
-    if (!await popPagesOverShell(router)) return;
+    if (await popPagesOverShell(router) != LeaveOutcome.left) return;
     router.go(AppRoutes.project(project.id));
   }
 

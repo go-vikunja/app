@@ -34,6 +34,11 @@ final class RootModalRoutes extends NavigatorObserver {
   bool isOpenOn(NavigatorState navigator) =>
       _routes.any((route) => route.isActive && route.navigator == navigator);
 
+  /// The newest one open on [navigator].
+  Route<Object?>? lastOn(NavigatorState navigator) => _routes
+      .where((route) => route.isActive && route.navigator == navigator)
+      .lastOrNull;
+
   /// Without animation, the topmost first; their futures complete with null.
   void closeAll() {
     for (final route in _routes.reversed.toList()) {

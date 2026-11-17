@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/share/presentation/share_sheet.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
@@ -15,6 +17,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dar
 
 import '../features/accounts/accounts_harness.dart';
 import '../helpers/auth_fakes.dart';
+import '../helpers/editor_bridge_fakes.dart';
 import '../helpers/pump_app.dart';
 import '../helpers/sample_data.dart';
 import '../helpers/server_connections.dart';
@@ -455,6 +458,100 @@ void main() {
       await tapAction(tester, en.shareCreate);
       expect(accounts.bobData.tasks.writes, ['create -1 Seeds']);
       expect(accounts.aliceData.tasks.writes, isEmpty);
+    });
+
+    testWidgets('over an edit page with unsaved changes the page asks before '
+        'the switch; Keep editing keeps it and drops the share with a '
+        'note', (tester) async {
+      await accounts.seed();
+      accounts.aliceData.projects.all = data.projects.all;
+      accounts.aliceData.tasks.all = data.tasks.all;
+      usePhoneSurface(tester, logicalSize: const Size(360, 2200));
+      await accounts.pump(tester);
+      final router = containerOf(tester).read(appRouterProvider);
+      unawaited(router.push(AppRoutes.taskEdit(7)));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, en.taskEditTitleLabel),
+        'Changed',
+      );
+      await tester.pumpAndSettle();
+
+      accounts.data.shareSource.push(const IncomingShare(text: 'Seeds'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AccountPickerSheet),
+          matching: find.text('Bob'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      expect(
+        containerOf(tester).read(accountsProvider).value!.activeAccountId,
+        accounts.alice.id,
+      );
+      expect(router.state.matchedLocation, AppRoutes.taskEdit(7));
+      expect(find.widgetWithText(TextField, 'Changed'), findsOneWidget);
+      expect(sheet, findsNothing);
+      expect(find.text(en.shareKeptEditing), findsOneWidget);
+      expect(accounts.data.shareSource.calls.last, 'clear');
+    });
+
+    testWidgets('a page that was left but takes too long to go drops the '
+        'share without the note', (tester) async {
+      final bridges = FakeEditorBridges();
+      await accounts.seed();
+      accounts.aliceData.projects.all = data.projects.all;
+      accounts.aliceData.tasks.all = data.tasks.all;
+      usePhoneSurface(tester, logicalSize: const Size(360, 2200));
+      await accounts.pump(tester, overrides: [bridges.override]);
+      unawaited(
+        containerOf(tester)
+            .read(appRouterProvider)
+            .push(AppRoutes.projectDescription(1)),
+      );
+      await tester.pumpAndSettle();
+      bridges.last.edit('<p>Edited</p>');
+      await tester.pump();
+      final saved = Completer<void>();
+      accounts.aliceData.projects.beforeCall = (_) => saved.future;
+
+      accounts.data.shareSource.push(const IncomingShare(text: 'Seeds'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AccountPickerSheet),
+          matching: find.text('Bob'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(en.descriptionEditorLeaveTitle), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text(en.taskEditSave),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 31));
+      await pumpFrames(tester, 5);
+
+      expect(find.text(en.shareKeptEditing), findsNothing);
+      expect(accounts.data.shareSource.calls.last, 'clear');
+      expect(sheet, findsNothing);
+
+      saved.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+      expect(
+        containerOf(tester).read(accountsProvider).value!.activeAccountId,
+        accounts.alice.id,
+      );
+      expect(sheet, findsNothing);
     });
 
     testWidgets('closing the question drops the share', (tester) async {

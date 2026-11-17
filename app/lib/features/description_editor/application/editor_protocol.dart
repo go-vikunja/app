@@ -241,12 +241,51 @@ final class EditorActive {
   /// The address of the link at the cursor.
   final String? linkHref;
   final bool table;
+
+  @override
+  bool operator ==(Object other) =>
+      other is EditorActive &&
+      other.bold == bold &&
+      other.italic == italic &&
+      other.underline == underline &&
+      other.strike == strike &&
+      other.code == code &&
+      other.highlight == highlight &&
+      other.heading == heading &&
+      other.bulletList == bulletList &&
+      other.orderedList == orderedList &&
+      other.taskList == taskList &&
+      other.blockquote == blockquote &&
+      other.codeBlock == codeBlock &&
+      other.link == link &&
+      other.linkHref == linkHref &&
+      other.table == table;
+
+  @override
+  int get hashCode => Object.hash(
+    bold,
+    italic,
+    underline,
+    strike,
+    code,
+    highlight,
+    heading,
+    bulletList,
+    orderedList,
+    taskList,
+    blockquote,
+    codeBlock,
+    link,
+    linkHref,
+    table,
+  );
 }
 
 @immutable
 final class EditorState {
   const new({
     this.dirty = false,
+    this.revision = 0,
     this.canUndo = false,
     this.canRedo = false,
     this.active = const EditorActive(),
@@ -254,9 +293,25 @@ final class EditorState {
 
   /// The document differs from the one the page was given.
   final bool dirty;
+
+  /// How many edits the page has made since it loaded its document; a new
+  /// value means the document changed.
+  final int revision;
   final bool canUndo;
   final bool canRedo;
   final EditorActive active;
+
+  @override
+  bool operator ==(Object other) =>
+      other is EditorState &&
+      other.dirty == dirty &&
+      other.revision == revision &&
+      other.canUndo == canUndo &&
+      other.canRedo == canRedo &&
+      other.active == active;
+
+  @override
+  int get hashCode => Object.hash(dirty, revision, canUndo, canRedo, active);
 }
 
 /// What the page reports, once its token checked out.
@@ -387,6 +442,10 @@ EditorEvent? decodeEditorMessage(String message, {required String? token}) {
     'state' => EditorStateChanged(
       EditorState(
         dirty: decoded['dirty'] == true,
+        revision: switch (decoded['revision']) {
+          final int revision when revision >= 0 => revision,
+          _ => 0,
+        },
         canUndo: decoded['canUndo'] == true,
         canRedo: decoded['canRedo'] == true,
         active: switch (decoded['active']) {

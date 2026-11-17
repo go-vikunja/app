@@ -186,14 +186,18 @@ class _WidgetLinkListenerState extends ConsumerState<WidgetLinkListener> {
   static int _savedFilterProjectId(int id) =>
       id > 0 ? SavedFilter.pseudoProjectIdOf(id) : id;
 
-  /// The dialogs and sheets close, the pages over the shell go as if the
-  /// user went back (the edit page asks first), then the tab shows
-  /// [location].
+  /// The pages, dialogs and sheets over the shell go as if the user went
+  /// back (the edit page asks first), then the tab shows [location]; on that
+  /// tab already, only the dialogs and sheets close.
   Future<void> _goToTab(String location) async {
-    ref.read(rootModalRoutesProvider).closeAll();
     final router = _opener.router;
-    if (router.routerDelegate.state.matchedLocation == location) return;
-    if (await popPagesOverShell(router) && mounted) router.go(location);
+    if (router.routerDelegate.state.matchedLocation == location) {
+      ref.read(rootModalRoutesProvider).closeAll();
+      return;
+    }
+    if (await popPagesOverShell(router) == LeaveOutcome.left && mounted) {
+      router.go(location);
+    }
   }
 
   /// [location] over the shell, unless it shows already.

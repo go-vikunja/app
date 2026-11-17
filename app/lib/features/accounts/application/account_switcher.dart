@@ -27,10 +27,14 @@ final class AccountSwitcher {
   final bool Function() _busy;
   var _switching = false;
 
+  /// Whether a switch may start now: none is under way, nor a sign-in or a
+  /// sign-out.
+  bool get canSwitch => !_switching && !_busy();
+
   /// False when nothing changed: for the active account, an unknown id,
   /// during a sign-in or sign-out and while another switch is under way.
   Future<bool> switchTo(String accountId) async {
-    if (_switching || _busy()) return false;
+    if (!canSwitch) return false;
     _switching = true;
     try {
       final state = await _registry.load();

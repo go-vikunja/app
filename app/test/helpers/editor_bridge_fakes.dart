@@ -28,6 +28,9 @@ final class FakeEditorBridge implements EditorBridge {
   final List<bool> readOnly = [];
   int focusCalls = 0;
   int htmlCalls = 0;
+
+  /// How often the page built the view, once per build of the page.
+  int viewBuilds = 0;
   bool disposed = false;
 
   /// What [html] answers, the document of [start] until an [edit], dirty
@@ -35,19 +38,29 @@ final class FakeEditorBridge implements EditorBridge {
   /// set.
   String document = '';
   bool dirty = false;
+  int revision = 0;
   Exception? htmlFailure;
+
+  /// Called with each command as the page would run it, to play its effect.
+  void Function(EditorCommand command)? onCommand;
 
   void emit(EditorEvent event) {
     if (event case EditorStateChanged(:final state)) dirty = state.dirty;
     if (!_events.isClosed) _events.add(event);
   }
 
-  /// The user changed the document to [html].
+  /// The user changed the document to [html], one more edit by the page's
+  /// count.
   void edit(String html, {EditorActive active = const EditorActive()}) {
     document = html;
     emit(
       EditorStateChanged(
-        EditorState(dirty: true, canUndo: true, active: active),
+        EditorState(
+          dirty: true,
+          revision: ++revision,
+          canUndo: true,
+          active: active,
+        ),
       ),
     );
   }
@@ -64,7 +77,10 @@ final class FakeEditorBridge implements EditorBridge {
   }
 
   @override
-  Future<void> command(EditorCommand command) async => commands.add(command);
+  Future<void> command(EditorCommand command) async {
+    commands.add(command);
+    onCommand?.call(command);
+  }
 
   @override
   Future<void> insertMention(EditorMention mention) async =>
@@ -88,8 +104,10 @@ final class FakeEditorBridge implements EditorBridge {
   Future<void> focus() async => focusCalls++;
 
   @override
-  Widget buildView(BuildContext context) =>
-      const ColoredBox(key: viewKey, color: Color(0x00000000));
+  Widget buildView(BuildContext context) {
+    viewBuilds++;
+    return const ColoredBox(key: viewKey, color: Color(0x00000000));
+  }
 
   @override
   void dispose() {

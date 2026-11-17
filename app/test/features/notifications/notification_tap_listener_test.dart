@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -14,6 +15,9 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
+import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
+import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_screen.dart';
@@ -26,6 +30,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.d
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/editor_bridge_fakes.dart';
 import '../../helpers/label_user_fakes.dart';
 import '../../helpers/notification_ui_fakes.dart';
 import '../../helpers/pump_app.dart';
@@ -288,6 +293,311 @@ void main() {
 
     expect(activeAccountId(tester), accounts.alice.id);
     expect(sheet, findsNothing);
+  });
+
+  // The switch would remove the pages over the shell without asking.
+  group('a tap for another account over a page that covers the shell', () {
+    late ThreeAccounts accounts;
+    late FakeEditorBridges bridges;
+
+    setUp(() async {
+      accounts = ThreeAccounts();
+      _withLinkKey(accounts.auth);
+      await accounts.seed();
+      accounts.aliceData.projects.all = data.projects.all;
+      accounts.aliceData.tasks.all = data.tasks.all;
+      accounts.bobData.projects.all = [sampleProject(id: 3, title: 'Garden')];
+      accounts.bobData.tasks.all = [
+        sampleTask(id: 31, title: 'Mow the lawn', projectId: 3),
+      ];
+      bridges = FakeEditorBridges();
+    });
+
+    Future<void> pumpAndEditTitle(
+      WidgetTester tester, {
+      bool switcherBusy = false,
+    }) async {
+      usePhoneSurface(tester, logicalSize: const Size(360, 2200));
+      await accounts.pump(
+        tester,
+        notifications: notifications,
+        overrides: [
+          bridges.override,
+          if (switcherBusy)
+            accountSwitcherProvider.overrideWith(
+              (ref) => AccountSwitcher(
+                registry: ref.watch(accountRegistryProvider),
+                prepare: (_) async {},
+                busy: () => true,
+              ),
+            ),
+        ],
+      );
+      unawaited(routerOf(tester).push(AppRoutes.taskEdit(7)));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, en.taskEditTitleLabel),
+        'Changed',
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> tapForBob(WidgetTester tester) async {
+      notifications.taps.tap(payload(accountId: accounts.bob.id, taskId: 31));
+      await tester.pumpAndSettle();
+    }
+
+    Finder bobsTask() =>
+        find.descendant(of: sheet, matching: find.text('Mow the lawn'));
+
+    testWidgets('with unsaved changes asks first; Keep editing keeps the '
+        'page, its text and the account, and drops the tap', (tester) async {
+      await pumpAndEditTitle(tester);
+
+      await tapForBob(tester);
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+      expect(activeAccountId(tester), accounts.alice.id);
+
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+      expect(activeAccountId(tester), accounts.alice.id);
+      expect(location(tester), AppRoutes.taskEdit(7));
+      expect(find.widgetWithText(TextField, 'Changed'), findsOneWidget);
+      expect(sheet, findsNothing);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+      expect(activeAccountId(tester), accounts.alice.id);
+      expect(location(tester), AppRoutes.overview);
+      expect(sheet, findsNothing);
+    });
+
+    testWidgets('Discard lets the switch go on', (tester) async {
+      await pumpAndEditTitle(tester);
+
+      await tapForBob(tester);
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+
+      expect(activeAccountId(tester), accounts.bob.id);
+      expect(location(tester), AppRoutes.overview);
+      expect(find.byType(TaskEditPage), findsNothing);
+      expect(bobsTask(), findsOneWidget);
+      expect(accounts.aliceData.tasks.writes, isEmpty);
+    });
+
+    testWidgets('each page asks in turn: Save in the description editor '
+        'saves, Discard on the edit page under it, then the switch goes on', (
+      tester,
+    ) async {
+      await pumpAndEditTitle(tester);
+      unawaited(routerOf(tester).push(AppRoutes.taskDescription(7)));
+      await tester.pumpAndSettle();
+      bridges.last.edit('<p>Edited</p>');
+      await tester.pump();
+
+      await tapForBob(tester);
+      expect(find.text(en.descriptionEditorLeaveTitle), findsOneWidget);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text(en.taskEditSave),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(accounts.aliceData.tasks.descriptionUpdates, [
+        (7, '<p>Edited</p>', ''),
+      ]);
+      expect(location(tester), AppRoutes.taskEdit(7));
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+      expect(activeAccountId(tester), accounts.alice.id);
+
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+
+      expect(activeAccountId(tester), accounts.bob.id);
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+      expect(bobsTask(), findsOneWidget);
+    });
+
+    testWidgets('without changes nothing is asked', (tester) async {
+      await accounts.pump(tester, notifications: notifications);
+      unawaited(routerOf(tester).push(AppRoutes.taskEdit(7)));
+      await tester.pumpAndSettle();
+
+      await tapForBob(tester);
+
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(activeAccountId(tester), accounts.bob.id);
+      expect(find.byType(TaskEditPage), findsNothing);
+      expect(bobsTask(), findsOneWidget);
+    });
+
+    testWidgets('while a sign-in or sign-out runs nothing is asked: the '
+        'switch would be refused anyway', (tester) async {
+      await pumpAndEditTitle(tester, switcherBusy: true);
+
+      await tapForBob(tester);
+
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(activeAccountId(tester), accounts.alice.id);
+      expect(location(tester), AppRoutes.taskEdit(7));
+      expect(find.widgetWithText(TextField, 'Changed'), findsOneWidget);
+    });
+
+    testWidgets('two pages at the same location both go', (tester) async {
+      await accounts.pump(tester, notifications: notifications);
+      for (var page = 0; page < 2; page++) {
+        unawaited(routerOf(tester).push(AppRoutes.privacy));
+        await tester.pumpAndSettle();
+      }
+
+      await tapForBob(tester);
+
+      expect(activeAccountId(tester), accounts.bob.id);
+      expect(location(tester), AppRoutes.overview);
+      expect(bobsTask(), findsOneWidget);
+    });
+
+    BuildContext rootContext(WidgetTester tester) =>
+        routerOf(tester).routerDelegate.navigatorKey.currentContext!;
+
+    /// A sheet whose typed note is asked about before it goes.
+    void showNoteSheet(WidgetTester tester) => showModalBottomSheet<void>(
+      context: rootContext(tester),
+      builder: (sheet) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) async {
+          if (didPop) return;
+          final drop = await showDialog<bool>(
+            context: sheet,
+            builder: (dialog) => AlertDialog(
+              title: const Text('Drop the note?'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialog, false),
+                  child: const Text('Keep the note'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialog, true),
+                  child: const Text('Drop it'),
+                ),
+              ],
+            ),
+          );
+          if ((drop ?? false) && sheet.mounted) Navigator.pop(sheet);
+        },
+        child: const Padding(
+          padding: EdgeInsets.all(16),
+          child: TextField(key: Key('note')),
+        ),
+      ),
+    );
+
+    Future<void> typeNote(WidgetTester tester) async {
+      showNoteSheet(tester);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('note')), 'Half a thought');
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a sheet over the page asks through its PopScope; keeping it '
+        'refuses the switch with the sheet, its text and the page kept', (
+      tester,
+    ) async {
+      await pumpAndEditTitle(tester);
+      await typeNote(tester);
+
+      await tapForBob(tester);
+      expect(find.text('Drop the note?'), findsOneWidget);
+      await tester.tap(find.text('Keep the note'));
+      await tester.pumpAndSettle();
+
+      expect(activeAccountId(tester), accounts.alice.id);
+      expect(find.widgetWithText(TextField, 'Half a thought'), findsOneWidget);
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(location(tester), AppRoutes.taskEdit(7));
+      expect(bobsTask(), findsNothing);
+    });
+
+    testWidgets('once the sheet over the page is left, the page asks in '
+        'turn', (tester) async {
+      await pumpAndEditTitle(tester);
+      await typeNote(tester);
+
+      await tapForBob(tester);
+      await tester.tap(find.text('Drop it'));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('note')), findsNothing);
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+
+      expect(activeAccountId(tester), accounts.bob.id);
+      expect(bobsTask(), findsOneWidget);
+    });
+
+    testWidgets('a sheet that would not ask closes at once, never showing '
+        "the next account's data", (tester) async {
+      await accounts.pump(tester, notifications: notifications);
+      showModalBottomSheet<void>(
+        context: rootContext(tester),
+        builder: (_) => Consumer(
+          builder: (context, ref, _) =>
+              Text('Sheet of ${ref.watch(activeAccountIdProvider)}'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Sheet of ${accounts.alice.id}'), findsOneWidget);
+
+      notifications.taps.tap(payload(accountId: accounts.bob.id, taskId: 31));
+      for (var frame = 0; frame < 40; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(find.text('Sheet of ${accounts.bob.id}'), findsNothing);
+      }
+      await tester.pumpAndSettle();
+
+      expect(activeAccountId(tester), accounts.bob.id);
+      expect(bobsTask(), findsOneWidget);
+    });
+
+    testWidgets("the description editor's offer of a draft refuses the "
+        'switch and keeps the draft', (tester) async {
+      await accounts.pump(
+        tester,
+        notifications: notifications,
+        overrides: [bridges.override],
+      );
+      final drafts = containerOf(tester).read(descriptionDraftsProvider);
+      await drafts.save(
+        const DescriptionDraft(html: '<p>Draft</p>', base: ''),
+        account: accounts.alice.id,
+        target: const TaskDescriptionTarget(7),
+      );
+      unawaited(routerOf(tester).push(AppRoutes.taskDescription(7)));
+      await pumpFrames(tester, 10);
+      expect(find.text(en.descriptionEditorRestoreTitle), findsOneWidget);
+
+      notifications.taps.tap(payload(accountId: accounts.bob.id, taskId: 31));
+      await pumpFrames(tester, 10);
+
+      expect(find.text(en.descriptionEditorRestoreTitle), findsOneWidget);
+      expect(activeAccountId(tester), accounts.alice.id);
+      expect(
+        (await drafts.read(
+          account: accounts.alice.id,
+          target: const TaskDescriptionTarget(7),
+        ))?.html,
+        '<p>Draft</p>',
+      );
+      await tester.tap(find.text(en.descriptionEditorRestore));
+      await tester.pumpAndSettle();
+      expect(bridges.last.init!.html, '<p>Draft</p>');
+      expect(activeAccountId(tester), accounts.alice.id);
+      expect(bobsTask(), findsNothing);
+    });
   });
 
   testWidgets('a task that is gone is reported', (tester) async {

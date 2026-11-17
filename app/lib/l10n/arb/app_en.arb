@@ -3680,7 +3680,15 @@
   "@editorImageInserted": {
     "description": "Announced to screen readers once an uploaded image is in the description."
   },
+  "editorImageNotAdded": "The image was not added.",
+  "@editorImageNotAdded": {
+    "description": "Shown in the description editor when the user chose Save while an image was still uploading and then went back while the save waited for it: the upload stops and the description is saved without the image."
+  },
   "shareSignedOut": "Sign in to Vikunja first, then share again.",
+  "shareKeptEditing": "Save or discard your changes first, then share again.",
+  "@shareKeptEditing": {
+    "description": "Shown when something was shared into the app for another account while a page or sheet with unsaved changes was open and stayed: the user chose Keep editing when asked to discard the changes, or it could not be left just then. The app stayed in the current account and nothing was shared."
+  },
   "sharePickAccountTitle": "Share to which account?",
   "sharePickAccountBody": "What you share goes to that account's server.",
   "shareSheetTitle": "Share to Vikunja",

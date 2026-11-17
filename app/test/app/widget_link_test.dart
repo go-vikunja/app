@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -409,6 +410,32 @@ void main() {
       expect(activeAccountId(tester), accounts.bob.id);
       expect(location(tester), AppRoutes.overview);
       expect(inSheet('Mow the lawn'), findsOneWidget);
+    });
+
+    testWidgets('over an edit page with unsaved changes the page asks '
+        'before the switch; Keep editing drops the link', (tester) async {
+      usePhoneSurface(tester, logicalSize: const Size(360, 2200));
+      await pumpAccounts(tester);
+      unawaited(routerOf(tester).push(AppRoutes.taskEdit(7)));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, en.taskEditTitleLabel),
+        'Changed',
+      );
+      await tester.pumpAndSettle();
+
+      await push(
+        tester,
+        WidgetTaskLink(accountId: accounts.bob.id, taskId: 31),
+      );
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      expect(activeAccountId(tester), accounts.alice.id);
+      expect(location(tester), AppRoutes.taskEdit(7));
+      expect(find.widgetWithText(TextField, 'Changed'), findsOneWidget);
+      expect(sheet, findsNothing);
     });
 
     testWidgets('its list opens in that account', (tester) async {

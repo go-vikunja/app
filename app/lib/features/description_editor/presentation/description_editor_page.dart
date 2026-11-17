@@ -35,6 +35,7 @@ import 'package:vikunja_mobile/features/description_editor/presentation/editor_t
 import 'package:vikunja_mobile/features/description_editor/presentation/link_sheet.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/mention_bar.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/webview_editor_bridge.dart';
+import 'package:vikunja_mobile/features/inbox/application/local_task_lookup.dart';
 import 'package:vikunja_mobile/features/labels/presentation/label_change_failure.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -87,10 +88,12 @@ typedef _Subject = ({String description, int? projectId});
 /// description changed meanwhile. Pops with true once saved, with the
 /// stored `TaskComment` for a comment.
 ///
-/// The edit itself lives in the WebView, so the page keeps a copy of it a
-/// moment after each change: when the WebView's process ends, Reload goes
-/// on from that copy, and when the app goes to the background it is kept
-/// as a draft that a later editor for the same description offers back.
+/// The edit itself lives in the WebView, so the page keeps a copy of it at
+/// most a moment behind, also while typing goes on: when the WebView's
+/// process ends, Reload goes on from that copy. Each new copy is kept as a
+/// draft too, which a later editor for the same description offers back
+/// when the app was ended meanwhile; Save and Discard drop it, and so does
+/// leaving with nothing unsaved.
 ///
 /// A task's description can take images while online: each is uploaded as
 /// an attachment of the task first and then inserted the way the web
@@ -130,7 +133,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     search: _searchPeople,
     known: _knownPeople,
   )..addListener(_announceSuggestions);
-  late final DescriptionDrafts _drafts = ref.read(descriptionDraftsProvider);
+  late final DescriptionDrafts _drafts;
   late final AppLifecycleListener _lifecycle;
   EditorBridge? _bridge;
   StreamSubscription<EditorEvent>? _events;
@@ -151,7 +154,15 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
 
   /// The latest copy of the edit, null while there is none.
   String? _copy;
+
+  /// The copy as this page last wrote it to the draft, null when it wrote
+  /// none or dropped it.
+  String? _drafted;
+
+  /// Draft writes one after the other, so that a later one wins.
+  Future<void> _draftWrites = Future.value();
   String? _account;
+  TaskIdResolver? _resolveTaskId;
   int? _projectId;
   EditorTheme? _theme;
   var _starting = false;
@@ -164,11 +175,22 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   var _editingLink = false;
   var _searching = false;
   var _pickingImage = false;
-  CancelToken? _imageUpload;
+  var _saveRuns = 0;
+
+  /// The image being uploaded: cancelled when the page goes, waited for by
+  /// a Save chosen meanwhile.
+  ({CancelToken cancel, Future<void> done})? _imageUpload;
+
+  /// The upload a Save waits for, which Back stops.
+  CancelToken? _awaitedUpload;
 
   /// What the current page load recognises attachment images by.
   EditorLinks? _links;
+
+  /// What the page shows of the editor's state; the revision is in
+  /// [_revision].
   var _state = const EditorState();
+  var _revision = 0;
 
   bool get _unsaved =>
       _ready ? _state.dirty || _restored != null : _copy != null;
@@ -176,6 +198,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   @override
   void initState() {
     super.initState();
+    _drafts = ref.read(descriptionDraftsProvider);
     _lifecycle = AppLifecycleListener(onHide: () => unawaited(_keepDraft()));
   }
 
@@ -187,20 +210,18 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
 
   @override
   void dispose() {
-    _imageUpload?.cancel();
+    _imageUpload?.cancel.cancel();
     _lifecycle.dispose();
     _copyTimer?.cancel();
     _stop();
     _mentions.dispose();
-    if (_account case final account?) {
-      unawaited(
-        _drafts
-            .discard(account: account, target: widget.target)
-            .catchError(
-              (Object error) => _log.warning(
-                'Dropping the draft failed: ${error.runtimeType}',
-              ),
-            ),
+    // The fallback for a removal that bypasses the PopScope, as a sign-out
+    // or `go` does: an unsaved edit, or a draft still offered, stays for the
+    // next editor.
+    if (_account case final account?
+        when _opened != null && !_closing && !_unsaved) {
+      _queueDraftWrite(
+        () => _drafts.discard(account: account, target: widget.target),
       );
     }
     super.dispose();
@@ -266,29 +287,51 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   }
 
   /// Offers a draft the app kept for this description before starting
-  /// from [stored].
+  /// from [stored]; one declined, or saved already, is dropped.
   Future<void> _open(String stored) async {
     final account = _account = ref.read(activeAccountIdProvider);
+    final resolveTaskId = _resolveTaskId = _taskIdResolver();
     DescriptionDraft? draft;
     if (account != null) {
       try {
-        draft = await _drafts.read(account: account, target: widget.target);
+        draft = await _drafts.read(
+          account: account,
+          target: widget.target,
+          resolveTaskId: resolveTaskId,
+        );
       } on Object catch (error) {
         _log.warning('Reading the draft failed: ${error.runtimeType}');
       }
     }
     if (!mounted) return;
-    if (draft == null || draft.html == stored) {
+    if (draft == null || account == null) {
       _start(stored);
       return;
     }
-    final restore = await _askToRestore();
+    // Closed from outside, the offer was not answered: restored, the edit
+    // counts as unsaved, so leaving asks.
+    final restore = draft.html != stored && (await _askToRestore() ?? true);
     if (!mounted) return;
-    if (restore ?? false) {
+    if (restore) {
       _start(draft.base, restored: draft.html);
     } else {
+      _queueDraftWrite(
+        () => _drafts.discard(
+          account: account,
+          target: widget.target,
+          resolveTaskId: resolveTaskId,
+        ),
+      );
       _start(stored);
     }
+  }
+
+  /// Follows a task's temporary id through the account's tasks, which know
+  /// the server id once the create was answered.
+  TaskIdResolver? _taskIdResolver() {
+    final tasks = ref.read(taskRepositoryProvider);
+    if (tasks == null || widget.target is! TaskDescriptionTarget) return null;
+    return (taskId) async => (await findLocalTask(tasks, taskId))?.id ?? taskId;
   }
 
   /// A fresh page load of the edit that started from [opened]: [restored]
@@ -312,7 +355,9 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       _failed = false;
       _stopped = false;
       _state = const EditorState();
+      _revision = 0;
     });
+    _syncDraft();
     _events = bridge.events.listen(_onEvent);
     _loadTimer = Timer(DescriptionEditorPage.loadTimeout, _fail);
     unawaited(
@@ -352,12 +397,29 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         _syncTheme();
         unawaited(_bridge?.focus());
       case EditorStateChanged(:final state):
-        setState(() => _state = state);
-        _copyTimer?.cancel();
-        if (state.dirty) {
-          _copyTimer = Timer(DescriptionEditorPage.copyDelay, _takeCopy);
-        } else {
+        final edited =
+            state.revision != _revision || state.dirty != _state.dirty;
+        _revision = state.revision;
+        // Typing reports a new revision up to every 50 ms; only the copy
+        // needs it.
+        final shown = EditorState(
+          dirty: state.dirty,
+          canUndo: state.canUndo,
+          canRedo: state.canRedo,
+          active: state.active,
+        );
+        if (shown != _state) setState(() => _state = shown);
+        if (!state.dirty) {
+          _copyTimer?.cancel();
           _copy = _restored;
+          _syncDraft();
+        } else if (edited && !(_copyTimer?.isActive ?? false)) {
+          // Not restarted by later edits, so that the copy is at most this
+          // old while typing goes on.
+          _copyTimer = Timer(
+            DescriptionEditorPage.copyDelay,
+            () => unawaited(_takeCopy()),
+          );
         }
       case MentionQuery(:final query):
         _mentions.query(query);
@@ -384,53 +446,75 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     }
   }
 
-  Future<void> _takeCopy() async {
+  /// With [force], the copy is written as the draft even when this page
+  /// wrote the same before.
+  Future<void> _takeCopy({bool force = false}) async {
     final bridge = _bridge;
-    if (bridge == null || !_ready) return;
-    try {
-      final document = await bridge.html();
-      if (!mounted || !identical(bridge, _bridge) || !_ready) return;
-      _copy = document.dirty ? document.html : _restored;
-    } on Object catch (error) {
-      _log.fine('Copying the edit failed: ${error.runtimeType}');
-    }
-  }
-
-  /// Keeps the edit when the app leaves the screen: the system may end it
-  /// in the background, and with it the WebView.
-  Future<void> _keepDraft() async {
-    final opened = _opened;
-    final account = _account;
-    if (opened == null || account == null || _closing || !_unsaved) return;
-    var html = _copy;
-    final bridge = _bridge;
-    if (_ready && bridge != null) {
+    if (bridge != null && _ready) {
       try {
         final document = await bridge.html().timeout(
           DescriptionEditorPage.draftTimeout,
         );
-        html = document.dirty ? document.html : _restored;
+        if (!mounted || !identical(bridge, _bridge) || !_ready) return;
+        _copy = document.dirty ? document.html : _restored;
       } on Object catch (error) {
-        _log.fine('Reading the edit for a draft failed: ${error.runtimeType}');
+        _log.fine('Copying the edit failed: ${error.runtimeType}');
+        if (!mounted) return;
       }
     }
-    // Signed out, the page stays until the next frame, which a hidden app
-    // does not draw; the sign-out has wiped this account's draft by then.
-    if (html == null ||
-        !mounted ||
-        _closing ||
-        ref.read(activeAccountIdProvider) != account) {
-      return;
-    }
-    try {
-      await _drafts.save(
-        DescriptionDraft(html: html, base: opened),
-        account: account,
-        target: widget.target,
-      );
-    } on Object catch (error) {
-      _log.warning('Keeping the draft failed: ${error.runtimeType}');
-    }
+    _syncDraft(force: force);
+  }
+
+  /// A copy at once when the app leaves the screen: the system may end it
+  /// in the background, and with it the WebView. Written even when this
+  /// page wrote it before, as another editor of the same description may
+  /// have replaced or dropped it since.
+  Future<void> _keepDraft() async {
+    if (!_closing && _unsaved) await _takeCopy(force: true);
+  }
+
+  /// Writes the copy as the draft when it changed, or with [force], and
+  /// drops the draft once nothing is unsaved.
+  void _syncDraft({bool force = false}) {
+    final copy = _copy;
+    final opened = _opened;
+    final account = _account;
+    final resolveTaskId = _resolveTaskId;
+    if (opened == null || account == null) return;
+    if (copy == _drafted && (!force || copy == null)) return;
+    _drafted = copy;
+    _queueDraftWrite(() async {
+      // Signed out, the page stays until the next frame, which a hidden app
+      // does not draw; the sign-out has wiped this account's draft by then.
+      if (!mounted ||
+          _closing ||
+          ref.read(activeAccountIdProvider) != account) {
+        return;
+      }
+      if (copy == null) {
+        await _drafts.discard(
+          account: account,
+          target: widget.target,
+          resolveTaskId: resolveTaskId,
+        );
+      } else {
+        await _drafts.save(
+          DescriptionDraft(html: copy, base: opened),
+          account: account,
+          target: widget.target,
+          resolveTaskId: resolveTaskId,
+        );
+      }
+    });
+  }
+
+  void _queueDraftWrite(Future<void> Function() write) {
+    _draftWrites = _draftWrites
+        .then((_) => write())
+        .catchError(
+          (Object error) =>
+              _log.warning('Writing the draft failed: ${error.runtimeType}'),
+        );
   }
 
   void _announceSuggestions() {
@@ -553,7 +637,8 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       return;
     }
     final cancel = CancelToken();
-    setState(() => _imageUpload = cancel);
+    final done = Completer<void>();
+    setState(() => _imageUpload = (cancel: cancel, done: done.future));
     try {
       final attachment = await attachments.uploadNow(
         taskId,
@@ -563,7 +648,11 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         cancel: cancel,
       );
       final links = _links;
-      if (!mounted || !identical(bridge, _bridge) || !_ready || links == null) {
+      if (cancel.isCancelled ||
+          !mounted ||
+          !identical(bridge, _bridge) ||
+          !_ready ||
+          links == null) {
         return;
       }
       await bridge.command(
@@ -588,6 +677,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       if (mounted) _showMessage(attachmentFailureText(l10n, error));
     } finally {
       unawaited(_deletePicked(picked));
+      done.complete();
       if (mounted) setState(() => _imageUpload = null);
     }
   }
@@ -631,10 +721,29 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     ..showSnackBar(SnackBar(content: Text(text)));
 
   Future<void> _save() async {
+    if (_saving) return;
+    final run = ++_saveRuns;
+    // Only the leave dialog saves during an upload: the image goes in first,
+    // unless Back stops the upload meanwhile.
+    if (_imageUpload case (:final cancel, :final done)?) {
+      setState(() => _saving = true);
+      _awaitedUpload = cancel;
+      try {
+        await Future.any<Object?>([done, cancel.whenCancel]);
+      } finally {
+        if (run == _saveRuns) _awaitedUpload = null;
+      }
+      // The page stopped meanwhile, which ends a save, or a Save chosen
+      // after that took over.
+      if (!mounted || !_saving || run != _saveRuns) return;
+    }
     final opened = _opened;
     final bridge = _ready ? _bridge : null;
     final copy = _copy;
-    if (opened == null || _saving || (bridge == null && copy == null)) return;
+    if (opened == null || (bridge == null && copy == null)) {
+      if (_saving) setState(() => _saving = false);
+      return;
+    }
     final l10n = context.l10n;
     setState(() => _saving = true);
     final String html;
@@ -796,6 +905,16 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   }
 
   void _close({required bool saved}) {
+    if (_account case final account?) {
+      final resolveTaskId = _resolveTaskId;
+      _queueDraftWrite(
+        () => _drafts.discard(
+          account: account,
+          target: widget.target,
+          resolveTaskId: resolveTaskId,
+        ),
+      );
+    }
     setState(() => _closing = true);
     GoRouter.of(context).pop(saved ? _savedComment ?? true : false);
   }
@@ -830,32 +949,47 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     );
   }
 
+  /// Answered only by its buttons: leaving it otherwise would decide
+  /// against the draft unseen. Null when something else closed it.
   Future<bool?> _askToRestore() {
     final l10n = context.l10n;
     return showAdaptiveDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog.adaptive(
-        scrollable: true,
-        title: Text(l10n.descriptionEditorRestoreTitle),
-        content: Text(l10n.descriptionEditorRestoreBody),
-        actions: [
-          AdaptiveDialogAction(
-            onPressed: () => Navigator.of(context).pop(false),
-            isDestructive: true,
-            child: Text(l10n.taskEditDiscard),
-          ),
-          AdaptiveDialogAction(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(l10n.descriptionEditorRestore),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog.adaptive(
+          scrollable: true,
+          title: Text(l10n.descriptionEditorRestoreTitle),
+          content: Text(l10n.descriptionEditorRestoreBody),
+          actions: [
+            AdaptiveDialogAction(
+              onPressed: () => Navigator.of(context).pop(false),
+              isDestructive: true,
+              child: Text(l10n.taskEditDiscard),
+            ),
+            AdaptiveDialogAction(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(l10n.descriptionEditorRestore),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  /// Without Save when the description has gone meanwhile.
+  /// Without Save when the description has gone meanwhile. While a Save
+  /// waits for an image, stops its upload instead, so that the Save goes on
+  /// without it.
   Future<void> _confirmLeave() async {
-    if (_saving || _closing) return;
+    if (_closing) return;
+    if (_saving) {
+      if (_awaitedUpload case final upload? when !upload.isCancelled) {
+        upload.cancel();
+        _showMessage(context.l10n.editorImageNotAdded);
+      }
+      return;
+    }
     final l10n = context.l10n;
     final choice = await showAdaptiveDialog<_Leave>(
       context: context,

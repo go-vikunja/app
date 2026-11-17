@@ -200,7 +200,9 @@ mixin ProjectManagementActions<W extends ConsumerStatefulWidget>
     );
     if (!deleted) return;
     modals.closeAll();
-    if (await popPagesOverShell(router)) router.go(AppRoutes.projects);
+    if (await popPagesOverShell(router) == LeaveOutcome.left) {
+      router.go(AppRoutes.projects);
+    }
   }
 
   /// The user's default project when it is below [projectId], so that

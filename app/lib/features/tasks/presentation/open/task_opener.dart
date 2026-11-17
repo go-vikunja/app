@@ -10,6 +10,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -40,11 +41,12 @@ String taskOpenFailureText(AppLocalizations l10n, Object error) =>
 
 /// Opens a task from outside the screens (a notification, a deep link, a
 /// home-screen widget, the inbox) the same way: once the router shows the
-/// shell, in the task's account, which becomes active first, with the
-/// detail in the Overview's pane where the window has room for one, else in
-/// a sheet over the Overview or over a page that covers the shell (the edit
-/// page keeps its unsaved changes). A detail that opens a task itself shows
-/// the next one over or in place of itself and only uses [resolve].
+/// shell, in the task's account, which becomes active first (the edit page
+/// asks before it goes), with the detail in the Overview's pane where the
+/// window has room for one, else in a sheet over the Overview or over a
+/// page that covers the shell (the edit page keeps its unsaved changes).
+/// A detail that opens a task itself shows the next one over or in place of
+/// itself and only uses [resolve].
 final class TaskOpener {
   new(this._ref) : _router = _ref.read(appRouterProvider) {
     _router.routerDelegate.addListener(_runWhenReady);
@@ -112,13 +114,29 @@ final class TaskOpener {
 
   /// Makes [accountId] active, and true once the providers follow; false
   /// for an account that is not signed in or a switch that was refused.
-  Future<bool> activate(String accountId) async {
+  /// The switch would drop the dialogs, sheets and pages over the shell
+  /// without asking, so they go first as if the user went back: an edit
+  /// page or a sheet asks, and when one stays, the switch is refused and
+  /// [pageStays] runs. One that was left but does not go in time refuses
+  /// the switch too, without [pageStays].
+  Future<bool> activate(String accountId, {VoidCallback? pageStays}) async {
     final accounts = _ref.read(accountsProvider).value;
     if (accounts?.find(accountId) == null) return false;
     if (accounts?.activeAccountId != accountId) {
-      final switched = await _ref
-          .read(accountSwitcherProvider)
-          .switchTo(accountId);
+      final switcher = _ref.read(accountSwitcherProvider);
+      if (!switcher.canSwitch) return false;
+      switch (await popPagesOverShell(_router)) {
+        case LeaveOutcome.left:
+          break;
+        case LeaveOutcome.stayed:
+          if (!_disposed) pageStays?.call();
+          return false;
+        case LeaveOutcome.slow:
+          _log.info('A page over the shell did not go; no switch');
+          return false;
+      }
+      if (_disposed) return false;
+      final switched = await switcher.switchTo(accountId);
       if (!switched || _disposed) return false;
       // The shell closes the previous account's modals and resets the tabs
       // when the registry change reaches the providers; a sheet shown

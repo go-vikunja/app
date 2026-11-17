@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
+import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/editor_theme.dart';
@@ -58,6 +59,20 @@ void main() {
     );
   });
 
+  Future<void> startApp(WidgetTester tester, {Size size = phoneSize}) async {
+    usePhoneSurface(tester, logicalSize: size);
+    await pumpSignedInApp(
+      tester,
+      sync: data,
+      auth: auth,
+      now: now,
+      overrides: [
+        bridges.override,
+        userRepositoryProvider.overrideWithValue(users),
+      ],
+    );
+  }
+
   /// Opens the editor for [route]; what it pops with lands in the list.
   Future<List<bool?>> openEditor(
     WidgetTester tester, {
@@ -66,19 +81,7 @@ void main() {
     bool pumpApp = true,
     Size size = phoneSize,
   }) async {
-    if (pumpApp) {
-      usePhoneSurface(tester, logicalSize: size);
-      await pumpSignedInApp(
-        tester,
-        sync: data,
-        auth: auth,
-        now: now,
-        overrides: [
-          bridges.override,
-          userRepositoryProvider.overrideWithValue(users),
-        ],
-      );
-    }
+    if (pumpApp) await startApp(tester, size: size);
     final popped = <bool?>[];
     unawaited(
       containerOf(tester)
@@ -880,6 +883,50 @@ void main() {
       ]);
     });
 
+    testWidgets('typing on without a pause keeps the copy at most a moment '
+        'old: Reload goes on from the latest text', (tester) async {
+      await openEditor(tester);
+      final bridge = bridges.last;
+      // 2.4 s of typing, never pausing for a copy delay.
+      for (var length = 1; length <= 8; length++) {
+        bridge.edit('<p>${'a' * length}</p>');
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+
+      bridge.emit(const EditorStopped());
+      await tester.pumpAndSettle();
+      expect(find.text(en.descriptionEditorStoppedKept), findsOneWidget);
+      await tester.tap(find.text(en.descriptionEditorReload));
+      await tester.pumpAndSettle();
+
+      expect(bridges.last.init!.html, '<p>aaaaaaaa</p>');
+      expect(bridge.htmlCalls, 2);
+    });
+
+    testWidgets('an edit that only moves the revision on redraws nothing, '
+        'and is copied', (tester) async {
+      await openEditor(tester);
+      final bridge = bridges.last..edit('<p>a</p>');
+      await tester.pump(DescriptionEditorPage.copyDelay);
+      await tester.pump();
+      expect(bridge.htmlCalls, 1);
+      final builds = bridge.viewBuilds;
+
+      bridge.edit('<p>ab</p>');
+      await tester.pump();
+      expect(bridge.viewBuilds, builds);
+      await tester.pump(DescriptionEditorPage.copyDelay);
+      await tester.pump();
+      expect(bridge.htmlCalls, 2);
+      expect(bridge.viewBuilds, builds);
+
+      bridge.emit(const EditorStopped());
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.descriptionEditorReload));
+      await tester.pumpAndSettle();
+      expect(bridges.last.init!.html, '<p>ab</p>');
+    });
+
     testWidgets('before a copy was taken it says the changes are lost; Reload '
         'starts from the description', (tester) async {
       await openEditor(tester);
@@ -914,6 +961,41 @@ void main() {
       await tester.pumpAndSettle();
     }
 
+    List<Map<String, Object?>> keptDrafts() =>
+        switch (auth.preferences.values[DescriptionDrafts.key]) {
+          final String raw => [
+            for (final entry in jsonDecode(raw) as List<Object?>)
+              entry! as Map<String, Object?>,
+          ],
+          _ => const [],
+        };
+
+    Map<String, Object?>? keptDraft([String target = 'task:1']) =>
+        keptDrafts().where((entry) => entry['target'] == target).firstOrNull;
+
+    Future<void> copyTaken(WidgetTester tester) async {
+      await tester.pump(DescriptionEditorPage.copyDelay);
+      await tester.pump();
+    }
+
+    Future<void> keepDraft(
+      WidgetTester tester,
+      String html, {
+      int taskId = 1,
+      String base = '<p>Numbers</p>',
+    }) {
+      final container = containerOf(tester);
+      return container
+          .read(descriptionDraftsProvider)
+          .save(
+            DescriptionDraft(html: html, base: base),
+            account: container.read(activeAccountIdProvider)!,
+            target: TaskDescriptionTarget(taskId),
+          );
+    }
+
+    Finder restoreTitle() => find.text(en.descriptionEditorRestoreTitle);
+
     testWidgets('going to the background keeps the edit, which an editor '
         'opened after a restart offers back', (tester) async {
       await openEditor(tester);
@@ -921,9 +1003,8 @@ void main() {
       await tester.pump();
 
       await toBackground(tester);
-      final kept = auth.preferences.values[DescriptionDrafts.key];
-      expect(kept, isNotNull);
-      expect(jsonDecode(kept!), containsPair('html', '<p>Draft</p>'));
+      final kept = auth.preferences.values[DescriptionDrafts.key]!;
+      expect(keptDraft(), containsPair('html', '<p>Draft</p>'));
       expect(data.tasks.descriptionUpdates, isEmpty);
       toForeground(tester);
 
@@ -971,6 +1052,168 @@ void main() {
       expect(auth.preferences.values[DescriptionDrafts.key], isNull);
     });
 
+    testWidgets('while editing each new copy is kept as the draft, written '
+        'only when it changed; nothing is saved', (tester) async {
+      await openEditor(tester);
+      final bridge = bridges.last..edit('<p>Draft</p>');
+      await copyTaken(tester);
+      expect(keptDraft(), {
+        'account': containerOf(tester).read(activeAccountIdProvider),
+        'target': 'task:1',
+        'html': '<p>Draft</p>',
+        'base': '<p>Numbers</p>',
+      });
+
+      auth.preferences.values.remove(DescriptionDrafts.key);
+      bridge.edit('<p>Draft</p>');
+      await copyTaken(tester);
+      expect(bridge.htmlCalls, 2);
+      expect(keptDraft(), isNull);
+
+      bridge.edit('<p>Draft, longer</p>');
+      await copyTaken(tester);
+      expect(keptDraft(), containsPair('html', '<p>Draft, longer</p>'));
+      expect(data.tasks.writes, isEmpty);
+    });
+
+    testWidgets('an edit undone back to the description drops the draft', (
+      tester,
+    ) async {
+      await openEditor(tester);
+      bridges.last.edit('<p>Draft</p>');
+      await copyTaken(tester);
+      expect(keptDraft(), isNotNull);
+
+      bridges.last.emit(const EditorStateChanged(EditorState()));
+      await tester.pump();
+
+      expect(keptDraft(), isNull);
+    });
+
+    testWidgets('Save and Discard drop the draft', (tester) async {
+      for (final (index, choice) in [
+        en.taskEditSave,
+        en.taskEditDiscard,
+      ].indexed) {
+        await openEditor(tester, pumpApp: index == 0);
+        bridges.last.edit('<p>Draft $index</p>');
+        await copyTaken(tester);
+        expect(keptDraft(), isNotNull, reason: choice);
+
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.descendant(of: find.byType(Dialog), matching: find.text(choice)),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(DescriptionEditorPage), findsNothing);
+        expect(keptDraft(), isNull, reason: choice);
+      }
+      expect(data.tasks.descriptionUpdates, [
+        (1, '<p>Draft 0</p>', '<p>Numbers</p>'),
+      ]);
+    });
+
+    testWidgets('removed past its PopScope, as `go` does, the page keeps its '
+        'unsaved edit as the draft and writes none after', (tester) async {
+      await openEditor(tester);
+      final bridge = bridges.last..edit('<p>Draft</p>');
+      await copyTaken(tester);
+      bridge.edit('<p>Draft, not yet copied</p>');
+      await tester.pump();
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.overview);
+      await tester.pumpAndSettle();
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+      await tester.pump(DescriptionEditorPage.copyDelay * 2);
+
+      expect(keptDraft(), containsPair('html', '<p>Draft</p>'));
+      expect(bridge.htmlCalls, 1);
+    });
+
+    testWidgets('removed past its PopScope with nothing unsaved, the draft '
+        'goes', (tester) async {
+      await startApp(tester);
+      await keepDraft(tester, '<p>Draft</p>');
+      // Not offered, as reading it failed this once.
+      auth.preferences.failNextRead.add(DescriptionDrafts.key);
+      await openEditor(tester, pumpApp: false);
+      expect(restoreTitle(), findsNothing);
+      expect(keptDraft(), isNotNull);
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.overview);
+      await tester.pumpAndSettle();
+
+      expect(keptDraft(), isNull);
+    });
+
+    testWidgets('signed out before the edit was copied, the copy keeps no '
+        'draft', (tester) async {
+      await openEditor(tester);
+      bridges.last.edit('<p>Draft</p>');
+      await tester.pump();
+      final container = containerOf(tester);
+      final account = container.read(activeAccountIdProvider)!;
+
+      await container.read(accountRegistryProvider).remove(account);
+      await container.read(descriptionDraftsProvider).discardAll(account);
+      await copyTaken(tester);
+
+      expect(bridges.last.htmlCalls, 1);
+      expect(keptDraft(), isNull);
+    });
+
+    testWidgets('the offer of a draft is answered only by its buttons, not by '
+        'a tap beside it or Back', (tester) async {
+      await startApp(tester);
+      await keepDraft(tester, '<p>Draft</p>');
+      await openEditor(tester, pumpApp: false, settle: false);
+      await pumpFrames(tester, 10);
+      expect(restoreTitle(), findsOneWidget);
+
+      // The page shows its loading animation behind the dialog meanwhile.
+      await tester.tapAt(const Offset(4, 4));
+      await pumpFrames(tester, 5);
+      expect(restoreTitle(), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await pumpFrames(tester, 5);
+      expect(restoreTitle(), findsOneWidget);
+      expect(bridges.created, isEmpty);
+
+      await tester.tap(find.text(en.descriptionEditorRestore));
+      await tester.pumpAndSettle();
+      expect(bridges.last.init!.html, '<p>Draft</p>');
+    });
+
+    testWidgets("a draft kept under a task's temporary id is offered once the "
+        'task has its server id', (tester) async {
+      data.tasks.all = [
+        ...data.tasks.all,
+        sampleTask(id: -1, title: 'Created offline'),
+      ];
+      await startApp(tester);
+      await keepDraft(tester, '<p>Offline draft</p>', taskId: -1, base: '');
+      data.tasks.remapTask(-1, 42);
+
+      await openEditor(
+        tester,
+        route: AppRoutes.taskDescription(42),
+        pumpApp: false,
+        settle: false,
+      );
+      await pumpFrames(tester, 10);
+      expect(restoreTitle(), findsOneWidget);
+      await tester.tap(find.text(en.descriptionEditorRestore));
+      await tester.pumpAndSettle();
+      expect(bridges.last.init!.html, '<p>Offline draft</p>');
+
+      await tester.tap(saveButton());
+      await tester.pumpAndSettle();
+      expect(data.tasks.descriptionUpdates, [(42, '<p>Offline draft</p>', '')]);
+      expect(keptDraft(), isNull);
+    });
+
     testWidgets('a declined draft is dropped, and one for another '
         'description is not offered', (tester) async {
       await openEditor(tester);
@@ -1003,6 +1246,99 @@ void main() {
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(auth.preferences.values[DescriptionDrafts.key], isNull);
+    });
+
+    testWidgets('an offer closed from outside counts as unanswered: the page '
+        'starts from the draft, which stays, and leaving asks first', (
+      tester,
+    ) async {
+      await startApp(tester);
+      await keepDraft(tester, '<p>Draft</p>');
+      await openEditor(tester, pumpApp: false, settle: false);
+      await pumpFrames(tester, 10);
+      expect(restoreTitle(), findsOneWidget);
+
+      // As a notification for the active account does before its task shows.
+      containerOf(tester).read(rootModalRoutesProvider).closeAll();
+      await tester.pumpAndSettle();
+
+      expect(restoreTitle(), findsNothing);
+      expect(bridges.last.init!.html, '<p>Draft</p>');
+      expect(keptDraft(), containsPair('html', '<p>Draft</p>'));
+      expect(saveEnabled(tester), isTrue);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(find.text(en.descriptionEditorLeaveTitle), findsOneWidget);
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+      expect(find.byType(DescriptionEditorPage), findsOneWidget);
+      expect(keptDraft(), containsPair('html', '<p>Draft</p>'));
+      expect(data.tasks.descriptionUpdates, isEmpty);
+    });
+
+    testWidgets('removed while it offers a draft, the page leaves the draft '
+        'for the next editor', (tester) async {
+      await startApp(tester);
+      await keepDraft(tester, '<p>Draft</p>');
+      await openEditor(tester, pumpApp: false, settle: false);
+      await pumpFrames(tester, 10);
+      expect(restoreTitle(), findsOneWidget);
+
+      containerOf(tester).read(appRouterProvider).go(AppRoutes.overview);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+      expect(keptDraft(), containsPair('html', '<p>Draft</p>'));
+    });
+
+    testWidgets("typing in another description's editor leaves this one's "
+        'draft alone', (tester) async {
+      await startApp(tester);
+      await keepDraft(tester, '<p>Draft</p>');
+      await openEditor(
+        tester,
+        route: AppRoutes.taskDescription(2),
+        pumpApp: false,
+      );
+      expect(restoreTitle(), findsNothing);
+      bridges.last.edit('<p>Other</p>');
+      await copyTaken(tester);
+      expect(keptDraft('task:2'), containsPair('html', '<p>Other</p>'));
+      expect(keptDraft(), containsPair('html', '<p>Draft</p>'));
+
+      await tester.tap(saveButton());
+      await tester.pumpAndSettle();
+      expect(keptDraft('task:2'), isNull);
+      expect(keptDraft(), containsPair('html', '<p>Draft</p>'));
+
+      await openEditor(tester, pumpApp: false, settle: false);
+      await pumpFrames(tester, 10);
+      expect(restoreTitle(), findsOneWidget);
+    });
+
+    testWidgets('going to the background writes the draft again, also when '
+        'another editor of the description dropped it meanwhile', (
+      tester,
+    ) async {
+      await openEditor(tester);
+      final bridge = bridges.last..edit('<p>Draft</p>');
+      await copyTaken(tester);
+      expect(keptDraft(), isNotNull);
+      final container = containerOf(tester);
+      // As another editor of this description does on Save.
+      await container
+          .read(descriptionDraftsProvider)
+          .discard(
+            account: container.read(activeAccountIdProvider)!,
+            target: const TaskDescriptionTarget(1),
+          );
+      expect(keptDraft(), isNull);
+
+      await toBackground(tester);
+
+      expect(keptDraft(), containsPair('html', '<p>Draft</p>'));
+      expect(bridge.htmlCalls, 2);
     });
   });
 

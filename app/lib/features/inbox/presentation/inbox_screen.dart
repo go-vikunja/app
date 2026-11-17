@@ -120,7 +120,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
       return;
     }
     final router = GoRouter.of(context);
-    if (!await popPagesOverShell(router)) return;
+    if (await popPagesOverShell(router) != LeaveOutcome.left) return;
     router.go(AppRoutes.project(project.id));
   }
 

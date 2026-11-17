@@ -1,20 +1,86 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/root_modal_routes.dart';
 
-/// Pops the pages that cover the shell, one by one through their
-/// `PopScope`, so the edit page asks before its unsaved changes go; `go`
-/// would drop them without asking. True once a tab is on top, false when a
-/// page stays: its dialog decides, and the caller navigates nowhere.
-Future<bool> popPagesOverShell(GoRouter router) async {
+/// How long a page or sheet may take to go once its question was answered
+/// by leaving it: Save writes first, online for a project, label or team.
+const _leaveTimeout = Duration(seconds: 30);
+
+/// How [popPagesOverShell] ended.
+enum LeaveOutcome {
+  /// A tab is on top, with no dialog or sheet over it.
+  left,
+
+  /// The user kept editing, or a page, dialog or sheet would not go.
+  stayed,
+
+  /// A question was answered by leaving, but its page or sheet did not go
+  /// in time.
+  slow,
+}
+
+/// Pops the dialogs, sheets and pages that cover the shell, one by one
+/// through their `PopScope`, as if the user went back, so that an edit page
+/// or a sheet asks before its unsaved changes go; `go` or closing them would
+/// drop those without asking. A question one shows is waited for: null or
+/// false (Keep editing, a tap beside it) stays, any other answer waits for
+/// the page or sheet to go. A dialog or sheet that would not ask closes
+/// without an exit animation, as an account switch closes them.
+Future<LeaveOutcome> popPagesOverShell(GoRouter router) async {
   final delegate = router.routerDelegate;
+  final modals = router.observers?.whereType<RootModalRoutes>().firstOrNull;
   while (true) {
-    final location = delegate.state.matchedLocation;
-    if (AppRoutes.isTab(location)) return true;
     final navigator = delegate.navigatorKey.currentState;
-    if (navigator == null || !navigator.canPop()) return true;
+    if (navigator == null) return LeaveOutcome.left;
+    final modal = modals?.lastOn(navigator);
+    if (modal == null &&
+        (AppRoutes.isTab(delegate.state.matchedLocation) ||
+            !navigator.canPop())) {
+      return LeaveOutcome.left;
+    }
+    // A page pushed from a sheet covers it and goes first.
+    final shown = modal != null && modal.isCurrent ? modal : null;
+    if (shown != null && shown.popDisposition != RoutePopDisposition.doNotPop) {
+      navigator.removeRoute(shown);
+      continue;
+    }
+    final pages = delegate.currentConfiguration;
+    // By the route, not the location: two pages may share one.
+    bool gone() =>
+        !identical(delegate.currentConfiguration, pages) ||
+        (shown != null && !shown.isActive);
     await navigator.maybePop();
     await WidgetsBinding.instance.endOfFrame;
-    if (delegate.state.matchedLocation == location) return false;
+    if (gone()) continue;
+    final question = modals?.lastOn(navigator);
+    if (question == null || question == modal) return LeaveOutcome.stayed;
+    final answer = await question.popped;
+    if (answer == null || answer == false) return LeaveOutcome.stayed;
+    if (!await _goes(delegate, shown, gone)) return LeaveOutcome.slow;
+  }
+}
+
+/// A page's pop reaches [delegate]'s listeners, a dialog's or sheet's its
+/// `popped`.
+Future<bool> _goes(
+  GoRouterDelegate delegate,
+  Route<Object?>? modal,
+  bool Function() gone,
+) async {
+  if (gone()) return true;
+  final went = Completer<bool>();
+  void check() {
+    if (!went.isCompleted && gone()) went.complete(true);
+  }
+
+  delegate.addListener(check);
+  unawaited(modal?.popped.then((_) => check()));
+  try {
+    return await went.future.timeout(_leaveTimeout, onTimeout: () => false);
+  } finally {
+    delegate.removeListener(check);
   }
 }

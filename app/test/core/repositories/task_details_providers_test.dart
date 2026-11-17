@@ -274,16 +274,14 @@ void main() {
     const draft = DescriptionDraft(html: '<p>Half written</p>', base: '');
     final wipe = container.read(accountDataWiperProvider);
 
-    // One slot: another account's draft first, then alice's.
     await drafts.save(draft, account: 'someone-else', target: target);
+    await drafts.save(draft, account: alice.id, target: target);
     await wipe(alice.id);
+
+    expect(await drafts.read(account: alice.id, target: target), isNull);
     expect(
       await drafts.read(account: 'someone-else', target: target),
       isNotNull,
     );
-
-    await drafts.save(draft, account: alice.id, target: target);
-    await wipe(alice.id);
-    expect(await drafts.read(account: alice.id, target: target), isNull);
   });
 }

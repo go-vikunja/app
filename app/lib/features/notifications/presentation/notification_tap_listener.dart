@@ -214,14 +214,14 @@ class _NotificationTapListenerState
   /// notification's tap with [confirmTest] has a visible result there too,
   /// where the button that sent it lives.
   Future<void> _openAccountTab({required bool confirmTest}) async {
-    ref.read(rootModalRoutesProvider).closeAll();
     final router = _opener.router;
     if (router.routerDelegate.state.matchedLocation != AppRoutes.account) {
-      if (await popPagesOverShell(router) && mounted) {
+      if (await popPagesOverShell(router) == LeaveOutcome.left && mounted) {
         router.go(AppRoutes.account);
       }
       return;
     }
+    ref.read(rootModalRoutesProvider).closeAll();
     if (!confirmTest) return;
     await _opener.showMessage((l10n) => l10n.notificationTestReceived);
   }

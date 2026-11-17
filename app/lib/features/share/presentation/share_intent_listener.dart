@@ -23,12 +23,14 @@ final _log = Logger('ShareIntent');
 /// and the ones that arrive while it runs: once the app is past the splash
 /// and the first sync and the app lock is open (the platform keeps the
 /// share meanwhile), with several accounts the user picks one first (a
-/// switch follows), then the share sheet opens over the current screen.
-/// Signed out it says so. A shared project's link is offered to open as a
-/// guest and an admin's invite goes to its check, signed in or out, both on
-/// the connect screen. Whatever happens, the share is cleared at the end,
-/// which deletes the inbox copies that did not move into uploads. A newer
-/// share replaces one still being handled. Nothing shared is logged.
+/// switch follows, before which an edit page asks; when it stays, the
+/// share is dropped with a note), then the share sheet opens over the
+/// current screen. Signed out it says so. A shared project's link is
+/// offered to open as a guest and an admin's invite goes to its check,
+/// signed in or out, both on the connect screen. Whatever happens, the
+/// share is cleared at the end, which deletes the inbox copies that did not
+/// move into uploads. A newer share replaces one still being handled.
+/// Nothing shared is logged.
 class ShareIntentListener extends ConsumerStatefulWidget {
   const new({required this.child, super.key});
 
@@ -154,7 +156,15 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
       if (!picked.isCompleted) picked.complete(null);
       final accountId = await picked.future;
       if (!current()) return;
-      if (accountId == null || !await _opener.activate(accountId)) {
+      var pageStays = false;
+      if (accountId == null ||
+          !await _opener.activate(
+            accountId,
+            pageStays: () => pageStays = true,
+          )) {
+        if (pageStays && current()) {
+          await _opener.showMessage((l10n) => l10n.shareKeptEditing);
+        }
         await _clear(generation);
         return;
       }

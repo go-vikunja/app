@@ -164,6 +164,28 @@ describe('dirty', () => {
     assert.equal((await latestState()).dirty, false)
   })
 
+  test('every edit is reported, plain typing too: the revision counts them', async () => {
+    const editor = await open('<p>text</p>')
+    assert.equal(posted.find(message => message.type === 'state').revision, 0)
+    posted.length = 0
+    editor.commands.insertContentAt(5, 'a')
+    assert.equal(posted.at(-1).revision, 1)
+    editor.commands.insertContentAt(6, 'b')
+    editor.commands.insertContentAt(7, 'c')
+    let state = await latestState()
+    assert.equal(state.revision, 3)
+    assert.equal(state.dirty, true)
+    editor.commands.insertContentAt(8, 'd')
+    assert.equal((await latestState()).revision, 4)
+    assert.equal(posted.filter(message => message.type === 'state').length, 3)
+
+    editor.commands.setTextSelection(2)
+    state = await latestState()
+    assert.equal(state.revision, 4)
+    await open('<p>again</p>')
+    assert.equal(posted.find(message => message.type === 'state').revision, 0)
+  })
+
   test('the html answer says whether the document differs from the one given', async () => {
     const editor = await open('<p>text</p>')
     const ask = async () => {

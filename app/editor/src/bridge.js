@@ -22,6 +22,7 @@ export function createBridge({mount, post, root}) {
   let lastMention = null
   let lastState = null
   let lastDirty = false
+  let revision = 0
   let stateTimer = null
   let focused = false
   let pending = []
@@ -76,6 +77,7 @@ export function createBridge({mount, post, root}) {
     return {
       type: 'state',
       dirty: isDirty(),
+      revision,
       canUndo: editor.can().undo(),
       canRedo: editor.can().redo(),
       active: {
@@ -111,8 +113,10 @@ export function createBridge({mount, post, root}) {
   }
 
   // A change of `dirty` goes at once: the app decides on it whether leaving
-  // asks first.
-  function scheduleState() {
+  // asks first. `revision` counts the edits, so that plain typing reaches
+  // the app too, which keeps a copy of the edit from it.
+  function scheduleState({editor: source, transaction}) {
+    if (source === editor && transaction.docChanged) revision++
     if (editor !== null && isDirty() !== lastDirty) sendState()
     else if (stateTimer === null) stateTimer = setTimeout(() => sendState(), stateDelay)
   }
@@ -135,6 +139,7 @@ export function createBridge({mount, post, root}) {
     mentionProps = null
     lastMention = null
     lastDirty = false
+    revision = 0
     focused = false
     const created = new Editor({
       element: mount,
