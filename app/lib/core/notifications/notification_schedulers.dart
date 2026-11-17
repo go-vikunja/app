@@ -15,13 +15,17 @@ final class NotificationSchedulers {
 
   NotificationScheduler? find(String accountId) => _schedulers[accountId];
 
-  /// Replaces the account's earlier scheduler, which is disposed.
-  void register(NotificationScheduler scheduler) {
+  /// Replaces the account's earlier scheduler, which is disposed. True
+  /// when the account had none (its first in this isolate, or the first
+  /// after its sign-out) or the earlier one was disposed before its re-arm
+  /// reached the OS.
+  bool register(NotificationScheduler scheduler) {
     final previous = _schedulers[scheduler.accountId];
     if (previous != null && !identical(previous, scheduler)) {
       unawaited(previous.dispose());
     }
     _schedulers[scheduler.accountId] = scheduler;
+    return previous == null || previous.rearmPending;
   }
 
   /// The permission was granted or refused inside the app, which no

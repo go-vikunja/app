@@ -27,8 +27,10 @@ IOS_SHARED = {'copyright.txt', 'primary_category.txt'}
 REVIEW_FIELDS = {'notes.txt', 'demo_user.txt', 'demo_password.txt', 'email_address.txt'}
 BYTE_LIMITS = {'keywords.txt', 'notes.txt'}
 REVIEW_NOTES_BYTES = 4000
+CHANGELOG = 'changelog'
 CHANGELOG_LIMIT = 500
-MULTILINE = {'full_description.txt', 'description.txt', 'promotional_text.txt', 'release_notes.txt', 'notes.txt'}
+MULTILINE = {'full_description.txt', 'description.txt', 'promotional_text.txt', 'release_notes.txt', 'notes.txt',
+             CHANGELOG}
 OPTIONAL = {'release_notes.txt'}
 # The app's pages on vikunja.io, the contact and the App Store copyright
 # (D89). vikunja.io is English only, so both listing languages link the same
@@ -54,7 +56,7 @@ OLD_LICENCE = re.compile(r'(?i)\bagpl\b|affero')
 # docs/glossary.md: US spelling, and tasks are checked off, never ticked off.
 # The review notes are English too.
 BRITISH = re.compile(r'(?i)colour|favourit|licenc|organis|recognis|prioritis|synchronis|customis|categoris|centre'
-                     r'|behaviour|neighbour|catalogue|\bgrey\b|\bbins?\b|\btick(s|ed|ing)?\b|full stop')
+                     r'|behaviour|neighbour|catalogue|tyre|\bgrey\b|\bbins?\b|\btick(s|ed|ing)?\b|full stop')
 ENGLISH_SHARED = {'notes.txt'}
 # The name fields and the keywords must not name other apps or companies
 # (D76; App Store Connect, keywords).
@@ -147,7 +149,7 @@ class Checker:
             self.check_directory(os.path.join(self.metadata, 'android', locale), ANDROID_FIELDS, 'android', lang,
                                  extra={'changelogs', 'images'})
             self.check_directory(os.path.join(self.metadata, locale), IOS_FIELDS, 'ios', lang)
-            self.check_changelogs(os.path.join(self.metadata, 'android', locale, 'changelogs'))
+        self.check_changelogs()
         self.check_directory(self.metadata, {name: 255 for name in IOS_SHARED}, 'ios', None,
                              extra={'android', 'review_information', *LOCALES})
         self.check_directory(os.path.join(self.metadata, 'review_information'),
@@ -227,21 +229,29 @@ class Checker:
         if len(set(lowered)) != len(lowered):
             self.error(path, 'repeated keyword')
 
-    def check_changelogs(self, directory):
-        if not os.path.isdir(directory):
-            return
-        for entry in sorted(os.listdir(directory)):
-            path = os.path.join(directory, entry)
-            if entry.startswith('.'):
+    def check_changelogs(self):
+        """Play's "What's new", which tool/ci/play_upload.py sends with the
+        release of that version code in every language that has one."""
+        found = {}
+        for locale, lang in LOCALES.items():
+            directory = os.path.join(self.metadata, 'android', locale, 'changelogs')
+            found[locale] = set()
+            if not os.path.isdir(directory):
                 continue
-            if not re.fullmatch(r'(default|[1-9][0-9]*)\.txt', entry):
-                self.error(path, 'a changelog is <version code>.txt or default.txt')
-                continue
-            value = read_value(path)
-            if not value:
-                self.error(path, 'empty')
-            elif len(value) > CHANGELOG_LIMIT:
-                self.error(path, f'{len(value)} characters, the limit is {CHANGELOG_LIMIT}')
+            for entry in sorted(os.listdir(directory)):
+                path = os.path.join(directory, entry)
+                if entry.startswith('.'):
+                    continue
+                if not re.fullmatch(r'[1-9][0-9]*\.txt', entry):
+                    self.error(path, 'a changelog is <version code>.txt')
+                    continue
+                found[locale].add(entry)
+                self.check_value(path, CHANGELOG, read_value(path), CHANGELOG_LIMIT, 'android', lang)
+        everywhere = set().union(*found.values())
+        for locale, entries in found.items():
+            for entry in sorted(everywhere - entries):
+                self.error(os.path.join(self.metadata, 'android', locale, 'changelogs', entry),
+                           'missing, but another listing language has this changelog')
 
     def check_category(self):
         path = os.path.join(self.metadata, 'primary_category.txt')

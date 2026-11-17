@@ -7,9 +7,17 @@ import urllib.error
 from unittest import mock
 
 TOOL = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-_spec = importlib.util.spec_from_file_location('seed_demo_data', os.path.join(TOOL, 'seed_demo_data.py'))
-seed_demo_data = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(seed_demo_data)
+
+
+def load(name):
+    spec = importlib.util.spec_from_file_location(name, os.path.join(TOOL, f'{name}.py'))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+seed_demo_data = load('seed_demo_data')
+check_store_metadata = load('check_store_metadata')
 
 GERMAN_CHECKLIST = (
     '<p>Die Maschine pumpt <strong>nicht ab</strong>, die Anzeige blinkt E24.</p>'
@@ -106,6 +114,21 @@ class DataSetTest(unittest.TestCase):
             self.assertNotIn(letter, flat)
         self.assertEqual(len(english['columns']), 3)
 
+    def test_the_english_set_uses_us_spelling(self):
+        # The English set is in the store screenshots, so the listing's check applies.
+        def strings(value):
+            if isinstance(value, str):
+                yield value
+            elif isinstance(value, tuple):
+                for item in value:
+                    yield from strings(item)
+
+        texts = list(strings(tuple(seed_demo_data.TEXTS['en'].values())))
+        self.assertIn('Change the tires', texts)
+        for text in texts:
+            with self.subTest(text=text):
+                self.assertIsNone(check_store_metadata.BRITISH.search(text))
+
     def test_the_german_checklist_is_unchanged(self):
         self.assertEqual(seed_demo_data.checklist(seed_demo_data.TEXTS['de']['checklist']), GERMAN_CHECKLIST)
 
@@ -196,28 +219,29 @@ class ResetTest(unittest.TestCase):
                     {'id': 2, 'title': 'chores', 'created_by': {'id': 9}},
                     {'id': 3, 'title': 'mine', 'created_by': {'id': 1}},
                     {'id': 4, 'title': 'garage', 'created_by': {'id': 1}}],
-            inbox_tasks=[{'id': 50, 'title': 'Reifen wechseln'}, {'id': 51, 'title': 'Change the tyres'},
-                         {'id': 52, 'title': 'Something else'}])
+            inbox_tasks=[{'id': 50, 'title': 'Reifen wechseln'}, {'id': 51, 'title': 'Change the tires'},
+                         {'id': 52, 'title': 'Something else'}, {'id': 53, 'title': 'Change the tyres'}])
         with mock.patch.object(seed_demo_data, 'call', server):
             seed_demo_data.reset('token', ME)
         self.assertEqual([path for path, _ in server.sent('DELETE')], [
             '/projects/10', '/projects/11', '/projects/13', '/filters/5', '/filters/6',
-            '/labels/1', '/labels/4', '/tasks/50', '/tasks/51'])
+            '/labels/1', '/labels/4', '/tasks/50', '/tasks/51', '/tasks/53'])
 
     def test_the_demo_data_in_the_trash_is_deleted_for_good(self):
         server = FakeServer(trash={
             'projects': [[project(20, 'Work'), project(21, 'Wohnung'), project(22, 'Work', owner=9)],
                          [project(23, 'My own project'), project(24, 'Old project')]],
-            'tasks': [[{'id': 60, 'title': 'Change the tyres', 'project_id': 1},
+            'tasks': [[{'id': 60, 'title': 'Change the tires', 'project_id': 1},
                        {'id': 61, 'title': 'Reifen wechseln', 'project_id': 30},
                        {'id': 62, 'title': 'Something else', 'project_id': 1},
-                       {'id': 63, 'title': 'Reifen wechseln', 'project_id': 1}]]})
+                       {'id': 63, 'title': 'Reifen wechseln', 'project_id': 1},
+                       {'id': 64, 'title': 'Change the tyres', 'project_id': 1}]]})
         with mock.patch.object(seed_demo_data, 'call', server):
             seed_demo_data.reset('token', ME)
         self.assertEqual([(path, version) for (method, path, _), version in zip(server.requests, server.versions)
                           if method == 'DELETE'], [
             ('/projects/20/permanent', 'v2'), ('/projects/21/permanent', 'v2'), ('/projects/24/permanent', 'v2'),
-            ('/tasks/60/permanent', 'v2'), ('/tasks/63/permanent', 'v2')])
+            ('/tasks/60/permanent', 'v2'), ('/tasks/63/permanent', 'v2'), ('/tasks/64/permanent', 'v2')])
         self.assertEqual([path for path, _ in server.sent('GET') if '/deleted?' in path], [
             '/projects/deleted?per_page=50&page=1', '/projects/deleted?per_page=50&page=2',
             '/tasks/deleted?per_page=50&page=1'])

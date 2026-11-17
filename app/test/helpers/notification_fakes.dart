@@ -5,7 +5,9 @@ import 'package:vikunja_mobile/core/notifications/notification_preferences.dart'
 
 /// An OS that holds what was scheduled in [pending] until it is cancelled
 /// or [fire]d; every call is logged. [current] is what [capabilities]
-/// reports and what [requestPermission] answers.
+/// reports and what [requestPermission] answers. [pending] is what
+/// [pendingIds] lists, [alarms] what would ring: on Android the two part
+/// at a [forceStop].
 final class FakeNotificationGateway implements NotificationGateway {
   NotificationCapabilities current = const NotificationCapabilities(
     permission: NotificationPermission.granted,
@@ -13,6 +15,7 @@ final class FakeNotificationGateway implements NotificationGateway {
   );
 
   final Map<int, ScheduledNotification> pending = {};
+  final Set<int> alarms = {};
   final List<ScheduledNotification> scheduled = [];
   final List<int> cancelled = [];
   final List<
@@ -36,7 +39,17 @@ final class FakeNotificationGateway implements NotificationGateway {
   Future<void> Function(String call)? beforeCall;
 
   /// The OS showed the notification: it is no longer pending.
-  void fire(int osId) => pending.remove(osId);
+  void fire(int osId) {
+    pending.remove(osId);
+    alarms.remove(osId);
+  }
+
+  /// Android drops the alarms and empties the tray; the plugin's list in
+  /// the app's preferences stays.
+  void forceStop() {
+    alarms.clear();
+    tray.clear();
+  }
 
   Future<void> _call(String description) async {
     calls.add(description);
@@ -69,6 +82,7 @@ final class FakeNotificationGateway implements NotificationGateway {
     await _call('schedule ${notification.osId}');
     scheduled.add(notification);
     pending[notification.osId] = notification;
+    alarms.add(notification.osId);
   }
 
   @override
@@ -76,6 +90,7 @@ final class FakeNotificationGateway implements NotificationGateway {
     await _call('cancel $osId');
     cancelled.add(osId);
     pending.remove(osId);
+    alarms.remove(osId);
     tray.remove(osId);
   }
 

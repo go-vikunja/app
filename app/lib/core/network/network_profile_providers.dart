@@ -20,9 +20,6 @@ NetworkProfiles networkProfiles(Ref ref) {
   return NetworkProfiles(
     preferences: preferences,
     secureStore: ref.watch(secureStoreProvider),
-    // A registry instance of its own: the shared one runs its operations one
-    // at a time, and one of them may be waiting for the very request that
-    // triggers the migration.
     accountRoots: () async {
       final registry = AccountRegistry(preferences);
       try {

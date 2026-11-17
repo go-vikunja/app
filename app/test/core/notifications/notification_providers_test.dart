@@ -1,9 +1,11 @@
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
@@ -41,14 +43,15 @@ void main() {
   late FakeNotificationGateway gateway;
   late ProviderContainer container;
 
-  List<Override> overrides() => [
+  List<Override> overrides({OpenDatabases? databases}) => [
     ...auth.overrides,
     accountDatabaseFilesProvider.overrideWithValue(files),
     openDatabasesProvider.overrideWithValue(
-      OpenDatabases(
-        files,
-        open: (_, _) => AppDatabase(NativeDatabase.memory()),
-      ),
+      databases ??
+          OpenDatabases(
+            files,
+            open: (_, _) => AppDatabase(NativeDatabase.memory()),
+          ),
     ),
     clockProvider.overrideWithValue(() => now),
     notificationGatewayProvider.overrideWithValue(gateway),
@@ -176,6 +179,114 @@ void main() {
     expect(gateway.pending.keys, [aliceDue]);
     expect(gateway.calls.where((c) => c.startsWith('schedule')), isEmpty);
     expect(gateway.cancelled, isEmpty);
+  });
+
+  group('the first build in a process', () {
+    late Map<String, Database> sqlite;
+
+    setUp(() {
+      sqlite = {};
+      addTearDown(() {
+        for (final database in sqlite.values) {
+          database.close();
+        }
+      });
+    });
+
+    Iterable<String> schedulesAndCancels() => gateway.calls.where(
+      (c) => c.startsWith('schedule') || c.startsWith('cancel'),
+    );
+
+    /// A container whose databases outlive it, as the files outlive a
+    /// process.
+    ProviderContainer process({bool headless = false}) {
+      final databases = OpenDatabases(
+        files,
+        open: (accountId, _) => AppDatabase(
+          NativeDatabase.opened(
+            sqlite.putIfAbsent(accountId, sqlite3.openInMemory),
+            closeUnderlyingOnClose: false,
+          ),
+        ),
+      );
+      final process = ProviderContainer(
+        overrides: [
+          ...overrides(databases: databases),
+          if (headless) runsHeadlessProvider.overrideWithValue(true),
+        ],
+      );
+      addTearDown(process.dispose);
+      return process;
+    }
+
+    /// An earlier process of the app scheduled alice's due notification
+    /// and has ended; the plugin lists it as pending.
+    Future<(String alice, int due)> scheduledByAnEarlierProcess() async {
+      container = process();
+      final (alice, _) = await twoAccounts();
+      container.listen(notificationSchedulerProvider(alice), (_, _) {});
+      await pumpEventQueue();
+      final due = notificationOsIdFor(alice, '1:due');
+      expect(gateway.pending.keys, [due]);
+      container.dispose();
+      gateway.calls.clear();
+      return (alice, due);
+    }
+
+    test('on Android schedules again what the plugin lists after a force '
+        'stop, cancelling nothing; a rebuild and a resume in the same '
+        'process do not', () async {
+      final (alice, due) = await scheduledByAnEarlierProcess();
+      gateway.forceStop();
+
+      final app = process()
+        ..listen(notificationSchedulerProvider(alice), (_, _) {});
+      await pumpEventQueue();
+
+      expect(schedulesAndCancels(), ['schedule $due']);
+      expect(gateway.alarms, [due]);
+
+      gateway.calls.clear();
+      final first = app.read(notificationSchedulerProvider(alice));
+      app.invalidate(notificationSchedulerProvider(alice));
+      await pumpEventQueue();
+      expect(
+        app.read(notificationSchedulerProvider(alice)),
+        isNot(same(first)),
+      );
+      TestWidgetsFlutterBinding.instance
+        ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+        ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await pumpEventQueue();
+
+      expect(gateway.calls.where((c) => c == 'pendingIds').length, 2);
+      expect(schedulesAndCancels(), isEmpty);
+    });
+
+    test('in a headless container leaves the re-arming to the app', () async {
+      final (alice, _) = await scheduledByAnEarlierProcess();
+      gateway.forceStop();
+
+      process(headless: true)
+          .listen(notificationSchedulerProvider(alice), (_, _) {});
+      await pumpEventQueue();
+
+      expect(gateway.calls, contains('pendingIds'));
+      expect(schedulesAndCancels(), isEmpty);
+      expect(gateway.alarms, isEmpty);
+    });
+
+    test("on iOS is a normal run: the pending list is the system's", () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final (alice, _) = await scheduledByAnEarlierProcess();
+
+      process().listen(notificationSchedulerProvider(alice), (_, _) {});
+      await pumpEventQueue();
+
+      expect(gateway.calls, contains('pendingIds'));
+      expect(schedulesAndCancels(), isEmpty);
+    });
   });
 
   group('following subscriptions (D80)', () {

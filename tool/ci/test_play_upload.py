@@ -28,6 +28,8 @@ EDIT = 'edit-1'
 API = f'/androidpublisher/v3/applications/{PACKAGE}'
 UPLOAD = f'/upload/androidpublisher/v3/applications/{PACKAGE}'
 SIGNING_FAILED = "openssl could not sign with the service account's private_key"
+NOTES = {'de-DE': 'Die neue Vikunja-App: Aufgaben offline, für dich.', 'en-US': 'The new Vikunja app.'}
+WHATS_NEW = [{'language': language, 'text': text} for language, text in sorted(NOTES.items())]
 
 
 def unb64url(text):
@@ -218,11 +220,31 @@ class Fixture(unittest.TestCase):
             f.write(secrets.token_bytes(4096))
         with open(self.bundle, 'rb') as f:
             self.bundle_bytes = f.read()
+        self.metadata = os.path.join(self.tmp, 'metadata')
+        self.write_notes()
+
+    def write_notes(self):
+        """The release notes of 1000001 and 1000099 in both languages."""
+        shutil.rmtree(self.metadata, ignore_errors=True)
+        os.makedirs(os.path.join(self.metadata, 'en-US', 'images'))
+        for code in ('1000001', '1000099'):
+            for language, text in NOTES.items():
+                self.write_changelog(language, code, text + '\n')
+
+    def changelog(self, language, code):
+        return os.path.join(self.metadata, language, 'changelogs', f'{code}.txt')
+
+    def write_changelog(self, language, code, content):
+        path = self.changelog(language, code)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'wb') as f:
+            f.write(content if isinstance(content, bytes) else content.encode('utf-8'))
 
     def arguments(self, track='beta', version_code='1000001', name='1.0.0-beta.1', fraction=None,
                   api_root='https://androidpublisher.googleapis.com', account=None):
         arguments = ['--package', PACKAGE, '--bundle', self.bundle, '--version-code', version_code,
-                     '--track', track, '--release-name', name, '--api-root', api_root]
+                     '--track', track, '--release-name', name, '--metadata-dir', self.metadata,
+                     '--api-root', api_root]
         if fraction is not None:
             arguments += ['--user-fraction', fraction]
         if account is not None:
@@ -257,6 +279,15 @@ class ArgumentTest(Fixture):
     def test_missing_bundle(self):
         os.remove(self.bundle)
         self.assert_usage_error(self.arguments() + ['--dry-run'], 'is not a file')
+
+    def test_metadata_dir(self):
+        arguments = self.arguments() + ['--dry-run']
+        index = arguments.index('--metadata-dir')
+        self.assert_usage_error(arguments[:index] + arguments[index + 2:],
+                                'the following arguments are required: --metadata-dir')
+        for path in (os.path.join(self.tmp, 'no-such-directory'), self.bundle):
+            arguments[index + 1] = path
+            self.assert_usage_error(arguments, 'is not a directory')
 
     def test_version_code_range(self):
         for code in ('0', '2100000001', 'abc', '-1', '01', ' 1'):
@@ -300,21 +331,96 @@ class ArgumentTest(Fixture):
         self.assertEqual(fake.requests, [])
         self.assertEqual(result.stderr, '')
         lines = result.stdout.splitlines()
-        self.assertEqual(len(lines), 6)
+        self.assertEqual(len(lines), 7)
         self.assertTrue(all(line.startswith('Would ') for line in lines), lines)
         self.assertIn(f'{fake.root}{API}/edits (edits.insert)', lines[1])
         self.assertIn('versionCode 1000001 is already on beta', lines[2])
         self.assertIn(f'{fake.root}{UPLOAD}/edits/<edit>/bundles?uploadType=media', lines[3])
         self.assertIn('app-release.aab, 4096 bytes', lines[3])
-        self.assertIn('{"track": "beta", "releases": [{"name": "1.0.0-beta.1", "versionCodes": ["1000001"], '
-                      '"status": "completed"}]}', lines[4])
-        self.assertIn(':commit (edits.commit)', lines[5])
+        self.assertEqual(lines[4], "Would send Play's What's new in de-DE, en-US, from "
+                         f'{self.metadata}/<language>/changelogs/1000001.txt')
+        self.assertIn(json.dumps({'track': 'beta', 'releases': [{
+            'name': '1.0.0-beta.1', 'versionCodes': ['1000001'], 'status': 'completed', 'releaseNotes': WHATS_NEW}]}),
+            lines[5])
+        self.assertIn(':commit (edits.commit)', lines[6])
 
     def test_dry_run_production(self):
         result = run_script(self.arguments(track='production', version_code='1000099', name='1.0.0',
                                            fraction='0.25') + ['--dry-run'], self.tmp)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('"status": "inProgress", "userFraction": 0.25}', result.stdout)
+        self.assertIn(f'"status": "inProgress", "userFraction": 0.25, "releaseNotes": {json.dumps(WHATS_NEW)}}}',
+                      result.stdout)
+
+
+class WhatsNewTest(Fixture):
+    def dry_run(self, track='beta'):
+        if track == 'production':
+            arguments = self.arguments(track='production', version_code='1000099', name='1.0.0', fraction='0.1')
+        else:
+            arguments = self.arguments()
+        return run_script(arguments + ['--dry-run'], self.tmp)
+
+    def sent_notes(self, result):
+        self.assertEqual(result.returncode, 0, result.stderr)
+        line = next(line for line in result.stdout.splitlines() if '(tracks.update) with ' in line)
+        return json.loads(line.split('(tracks.update) with ', 1)[1])['releases'][0].get('releaseNotes')
+
+    def test_production_needs_the_english_text_before_any_request(self):
+        os.remove(self.changelog('en-US', '1000099'))
+        expected = ("error: production needs Play's What's new in en-US, the default listing language: "
+                    f"{self.changelog('en-US', '1000099')} is missing\n")
+        result = self.dry_run('production')
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (1, '', expected))
+        fake = FakePlay()
+        self.addCleanup(fake.close)
+        account = os.path.join(self.tmp, 'no-such-account.json')
+        result = run_script(self.arguments(track='production', version_code='1000099', name='1.0.0', fraction='0.1',
+                                           api_root=fake.root, account=account), self.tmp)
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (1, '', expected))
+        self.assertEqual(fake.requests, [])
+
+    def test_production_without_the_german_text(self):
+        os.remove(self.changelog('de-DE', '1000099'))
+        self.assertEqual(self.sent_notes(self.dry_run('production')),
+                         [{'language': 'en-US', 'text': NOTES['en-US']}])
+
+    def test_beta_takes_what_is_there(self):
+        os.remove(self.changelog('en-US', '1000001'))
+        self.assertEqual(self.sent_notes(self.dry_run()), [{'language': 'de-DE', 'text': NOTES['de-DE']}])
+        os.remove(self.changelog('de-DE', '1000001'))
+        result = self.dry_run()
+        self.assertIsNone(self.sent_notes(result))
+        self.assertIn(f"Would send no What's new: there is no {self.metadata}/<language>/changelogs/1000001.txt\n",
+                      result.stdout)
+
+    def test_only_the_release_s_own_text_counts(self):
+        for language in NOTES:
+            os.remove(self.changelog(language, '1000001'))
+            self.write_changelog(language, 'default', 'Bug fixes.\n')
+            self.write_changelog(language, '1000002', 'Bug fixes.\n')
+        self.assertIsNone(self.sent_notes(self.dry_run()))
+
+    def test_the_text_is_trimmed_and_may_have_500_characters(self):
+        self.write_changelog('en-US', '1000001', '\n  ' + 'a' * 250 + '\n\n' + 'b' * 248 + ' \n\n')
+        self.write_changelog('.hidden', '1000001', 'x' * 600)
+        self.assertEqual(self.sent_notes(self.dry_run()), [
+            {'language': 'de-DE', 'text': NOTES['de-DE']},
+            {'language': 'en-US', 'text': 'a' * 250 + '\n\n' + 'b' * 248}])
+
+    def test_refused_texts(self):
+        for track, code in (('beta', '1000001'), ('production', '1000099')):
+            for language, content, message in [
+                ('de-DE', 'ä' * 501, f"{self.changelog('de-DE', code)} has 501 characters, Play takes 500"),
+                ('en-US', ' \n\n', f"{self.changelog('en-US', code)} is empty"),
+                ('en-US', b'\xff\xfe broken', f"cannot read {self.changelog('en-US', code)} as UTF-8"),
+                ('English', 'Fixes.', f"{self.changelog('English', code)}: 'English' is not a language tag"),
+            ]:
+                with self.subTest(track=track, language=language):
+                    self.write_notes()
+                    self.write_changelog(language, code, content)
+                    result = self.dry_run(track)
+                    self.assertEqual((result.returncode, result.stdout, result.stderr),
+                                     (1, '', f'error: {message}\n'))
 
 
 @unittest.skipUnless(OPENSSL, 'openssl is missing')
@@ -366,8 +472,19 @@ class PlayUploadTest(Fixture):
         self.assertEqual(update['path'], f'{API}/edits/{EDIT}/tracks/beta')
         self.assertEqual(json.loads(update['body']), {
             'track': 'beta',
-            'releases': [{'name': '1.0.0-beta.1', 'versionCodes': ['1000001'], 'status': 'completed'}]})
-        self.assertIn('Committed versionCode 1000001 to beta (completed)', result.stdout)
+            'releases': [{'name': '1.0.0-beta.1', 'versionCodes': ['1000001'], 'status': 'completed',
+                          'releaseNotes': WHATS_NEW}]})
+        self.assertIn("Committed versionCode 1000001 to beta (completed) with the What's new in de-DE, en-US\n",
+                      result.stdout)
+
+    def test_beta_without_whats_new(self):
+        for language in NOTES:
+            os.remove(self.changelog(language, '1000001'))
+        result = self.upload()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(self.fake.request('track-update')['body'])['releases'],
+                         [{'name': '1.0.0-beta.1', 'versionCodes': ['1000001'], 'status': 'completed'}])
+        self.assertIn("Committed versionCode 1000001 to beta (completed) without a What's new\n", result.stdout)
 
     def test_production_staged_rollout(self):
         self.fake.upload_version_code = 1000099
@@ -378,8 +495,9 @@ class PlayUploadTest(Fixture):
         self.assertEqual(json.loads(update['body']), {
             'track': 'production',
             'releases': [{'name': '1.0.0', 'versionCodes': ['1000099'], 'status': 'inProgress',
-                          'userFraction': 0.25}]})
-        self.assertIn('Committed versionCode 1000099 to production (inProgress, 0.25)', result.stdout)
+                          'userFraction': 0.25, 'releaseNotes': WHATS_NEW}]})
+        self.assertIn("Committed versionCode 1000099 to production (inProgress, 0.25) with the What's new in "
+                      'de-DE, en-US\n', result.stdout)
 
     def test_a_missing_track_counts_as_empty(self):
         del self.fake.tracks['beta']

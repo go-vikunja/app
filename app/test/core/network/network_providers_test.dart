@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
+import 'package:vikunja_mobile/core/network/network_profile.dart';
 import 'package:vikunja_mobile/core/network/network_profile_adapter.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
+import 'package:vikunja_mobile/core/network/network_profile_secrets.dart';
 import 'package:vikunja_mobile/core/network/network_profiles.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
@@ -17,7 +19,7 @@ void main() {
 
   late MemoryPreferencesStore preferences;
 
-  ProviderContainer container() {
+  ProviderContainer container({MemorySecureStore? secureStore}) {
     final container = ProviderContainer(
       overrides: [
         clientIdentityProvider.overrideWithValue(
@@ -29,7 +31,9 @@ void main() {
           ),
         ),
         preferencesStoreProvider.overrideWithValue(preferences),
-        secureStoreProvider.overrideWithValue(MemorySecureStore()),
+        secureStoreProvider.overrideWithValue(
+          secureStore ?? MemorySecureStore(),
+        ),
       ],
     );
     addTearDown(container.dispose);
@@ -68,19 +72,26 @@ void main() {
     );
   });
 
-  test('the migration reads the registry for http accounts', () async {
+  test("the reset reads the registry for the accounts' origins", () async {
     final auth = AuthFakes();
     preferences = auth.preferences;
     await auth.seedAccount(
       insecureServer(),
       tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
     );
+    final account = OriginKey.fromString('http://192.168.1.20:3456');
+    final secureStore = MemorySecureStore();
+    final providers = container(secureStore: secureStore);
+    final profiles = providers.read(networkProfilesProvider);
+    await profiles.consentToCleartext(account);
+    await profiles.setHeaders(account, {'X-Token': 'dummy'});
+    final secret = NetworkProfileSecrets.keyFor(NetworkProfile.idFor(account));
+    expect(secureStore.values, contains(secret));
+    preferences.values[NetworkProfiles.storageKey] = '{nope';
 
-    final profile = await container()
-        .read(networkProfilesProvider)
-        .metadataFor(OriginKey.fromString('http://192.168.1.20:3456'));
+    await profiles.resetAll();
 
-    expect(profile?.hasCleartextConsent, isTrue);
+    expect(secureStore.values, isNot(contains(secret)));
   });
 
   test('the screen state follows edits made in this isolate', () async {

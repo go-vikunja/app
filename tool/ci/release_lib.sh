@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # Shared by the release scripts (D86): release.sh, release_build.sh,
-# release_sign.sh and release_publish.sh source it after lib.sh.
+# release_sign.sh, release_publish.sh and ios_release.sh source it after lib.sh.
 # shellcheck disable=SC2034
 
 OFFICIAL_REPOSITORY=go-vikunja/app
@@ -53,4 +53,90 @@ jdk_tool() {
   else
     echo "$1"
   fi
+}
+
+# The vikunja.io pages that the app's About page (WebsitePage in
+# app/lib/app/legal.dart) and the store listings (fastlane/metadata/, Play's
+# account deletion URL in docs/store-listing.md) link, which the stores need
+# live; test_website_pages.py keeps them equal. Links into Vikunja's docs are
+# not release blockers.
+RELEASE_WEBSITE_PAGES=(
+  https://vikunja.io/help/mobile
+  https://vikunja.io/help/mobile#delete-your-account
+  https://vikunja.io/privacy/
+  https://vikunja.io/privacy/#mobile-app
+  https://vikunja.io/imprint/
+)
+
+# file id: whether the HTML file has an element with this id, in any form HTML
+# allows (quoted or not, ID=, character references).
+html_has_id() {
+  python3 -I -c '
+import html.parser
+import sys
+
+
+class Ids(html.parser.HTMLParser):
+    found = False
+
+    def handle_starttag(self, tag, attrs):
+        self.found = self.found or ("id", sys.argv[2]) in attrs
+
+
+parser = Ids()
+with open(sys.argv[1], encoding="utf-8", errors="replace") as f:
+    parser.feed(f.read())
+sys.exit(0 if parser.found else 1)
+' "$1" "$2"
+}
+
+# Each page must answer 200 signed out and have the element its fragment
+# names. Redirects are followed over https only and must end on the page's own
+# origin: a move within vikunja.io (a trailing slash) still opens for the
+# reader, a move to another host does not pass. Failures go to the caller's
+# refuse MESSAGE REASON after the cleanup, since refuse may exit. --would only
+# names the checks.
+check_website_pages() {
+  local url page anchor origin result status final problem why body="" i failed_messages=() failed_reasons=()
+  if [[ "${1:-}" != --would ]]; then
+    body="$(mktemp "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/vikunja-app-page.XXXXXX")"
+  fi
+  for url in "${RELEASE_WEBSITE_PAGES[@]}"; do
+    page="${url%%#*}"
+    anchor="${url#"$page"}"
+    anchor="${anchor#\#}"
+    if [[ -z "$body" ]]; then
+      echo "Would check that ${url} opens signed out${anchor:+ and has the id ${anchor}}."
+      continue
+    fi
+    origin="${page#https://}"
+    origin="https://${origin%%/*}"
+    result="$(curl --silent --location --max-redirs 5 --proto =https --max-time 30 --retry 3 \
+      --output "$body" --write-out '%{http_code} %{url_effective}' "$page" || true)"
+    status="${result%% *}"
+    final="${result#* }"
+    problem=""
+    if [[ "$status" != 200 ]]; then
+      problem="answered ${status:-nothing}"
+      why="the app or a store listing links it, so it must open for everyone signed out (docs/vikunja-io-drafts.md)"
+    elif [[ "$final" != "$origin" && "$final" != "${origin}/"* ]]; then
+      problem="ends on ${final}"
+      why="a page the app or a store listing links must stay on ${origin}"
+    elif [[ -n "$anchor" ]] && ! html_has_id "$body" "$anchor"; then
+      problem="has no element with the id ${anchor}"
+      why="the link would open at the top of the page (docs/vikunja-io-drafts.md)"
+    fi
+    if [[ -n "$problem" ]]; then
+      failed_messages+=("${url} ${problem}: ${why}")
+      failed_reasons+=("${url} ${problem}")
+    else
+      echo "OK: ${url} opens signed out${anchor:+ and has the id ${anchor}}."
+    fi
+  done
+  if [[ -n "$body" ]]; then
+    rm -f "$body"
+  fi
+  for ((i = 0; i < ${#failed_reasons[@]}; i++)); do
+    refuse "${failed_messages[i]}" "${failed_reasons[i]}"
+  done
 }

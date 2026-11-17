@@ -70,79 +70,14 @@ final class AppDatabase extends _$AppDatabase {
   new(super.e);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 1;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    onUpgrade: (m, from, to) async {
-      if (from < 2) {
-        await m.addColumn(tasks, tasks.pendingChanges);
-        await m.addColumn(tasks, tasks.pendingDelete);
-        await m.createTable(outbox);
-        await m.createIndex(outboxStateSequence);
-      }
-      if (from < 3) {
-        // A database from before 2 got the outbox in its current shape.
-        if (from == 2) await m.addColumn(outbox, outbox.sentAt);
-        await m.createTable(taskIdRemaps);
-      }
-      if (from < 4) await m.createTable(scheduledNotifications);
-      if (from < 5) await m.createTable(serverNotifications);
-      if (from < 6) {
-        await m.createTable(listSnapshots);
-        await m.createTable(listSnapshotTasks);
-        await m.createTable(listPreferenceEntries);
-        // Before v6 a child's pull could move its edge to the end of the
-        // parent's relations; the next run is a full one, so every parent
-        // gets its subtasks back in the server's order.
-        await (delete(
-          syncState,
-        )..where((row) => row.key.equals('last_full_sync_at'))).go();
-      }
-      if (from < 7) {
-        await m.createTable(kanbanBuckets);
-        // A database from before 6 got the snapshot rows in their current
-        // shape.
-        if (from == 6) {
-          await m.addColumn(listSnapshotTasks, listSnapshotTasks.bucketId);
-        }
-      }
-      if (from < 8) {
-        await m.addColumn(tasks, tasks.commentCount);
-        await m.addColumn(tasks, tasks.isUnread);
-        // The incremental run only sees tasks that change, so the next run
-        // is a full one that fills both in for every task.
-        await (delete(
-          syncState,
-        )..where((row) => row.key.equals('last_full_sync_at'))).go();
-      }
-      if (from < 9) {
-        await m.addColumn(projects, projects.maxPermission);
-        // The next run is a full one, which writes every project with it.
-        await (delete(
-          syncState,
-        )..where((row) => row.key.equals('last_full_sync_at'))).go();
-      }
-      if (from < 10) await m.createTable(importedWidgetActions);
-      // A database from before 4 got the table in its current shape. The
-      // defaults are what the OS was told before.
-      if (from >= 4 && from < 11) {
-        await m.addColumn(
-          scheduledNotifications,
-          scheduledNotifications.hiddenOnLockScreen,
-        );
-        await m.addColumn(
-          scheduledNotifications,
-          scheduledNotifications.doneNeedsUnlock,
-        );
-      }
-      if (from < 12) {
-        await m.addColumn(tasks, tasks.ownSubscription);
-        // No full run needed: the incremental run compares every project
-        // with the list each time, so it writes each followed one next.
-        await m.addColumn(projects, projects.subscribedVia);
-      }
-    },
+    // At version 1 only a newer database gets here: the development builds'
+    // 12, which has these same tables, or a later version's after a
+    // rollback, whose tables stay as they are.
+    onUpgrade: (m, from, to) async {},
     beforeOpen: (_) => customStatement('PRAGMA foreign_keys = ON'),
   );
 }

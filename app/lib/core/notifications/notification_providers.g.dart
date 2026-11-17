@@ -59,27 +59,29 @@ String _$notificationPreferencesStoreHash() =>
     r'd00a5103908bc5ed4ac83b2aa489c5aa47922240';
 
 /// One account's scheduler, reconciling when built (app start, and the
-/// first run of a background action) and when the app comes back to the
-/// front, and rescheduling everything when the notification content, the
-/// app lock or the app's language changes; a content that shows less also
-/// withdraws what the account has in the tray. Built again, and so
-/// reconciling at once, when a refreshed `/info` moves the server to one
-/// whose reminders follow the subscriptions (D80). Null once the account
-/// is gone. Disposed with the account's database on sign-out, after which
-/// [NotificationSchedulers] still holds it for the wipe.
+/// first run of a background action; the app's first build in a process
+/// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
+/// to the front, and rescheduling everything when the notification
+/// content, the app lock or the app's language changes; a content that
+/// shows less also withdraws what the account has in the tray. Built
+/// again, and so reconciling at once, when a refreshed `/info` moves the
+/// server to one whose reminders follow the subscriptions (D80). Null once
+/// the account is gone. Disposed with the account's database on sign-out,
+/// after which [NotificationSchedulers] still holds it for the wipe.
 
 @ProviderFor(notificationScheduler)
 final notificationSchedulerProvider = NotificationSchedulerFamily._();
 
 /// One account's scheduler, reconciling when built (app start, and the
-/// first run of a background action) and when the app comes back to the
-/// front, and rescheduling everything when the notification content, the
-/// app lock or the app's language changes; a content that shows less also
-/// withdraws what the account has in the tray. Built again, and so
-/// reconciling at once, when a refreshed `/info` moves the server to one
-/// whose reminders follow the subscriptions (D80). Null once the account
-/// is gone. Disposed with the account's database on sign-out, after which
-/// [NotificationSchedulers] still holds it for the wipe.
+/// first run of a background action; the app's first build in a process
+/// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
+/// to the front, and rescheduling everything when the notification
+/// content, the app lock or the app's language changes; a content that
+/// shows less also withdraws what the account has in the tray. Built
+/// again, and so reconciling at once, when a refreshed `/info` moves the
+/// server to one whose reminders follow the subscriptions (D80). Null once
+/// the account is gone. Disposed with the account's database on sign-out,
+/// after which [NotificationSchedulers] still holds it for the wipe.
 
 final class NotificationSchedulerProvider
     extends
@@ -90,14 +92,15 @@ final class NotificationSchedulerProvider
         >
     with $Provider<NotificationScheduler?> {
   /// One account's scheduler, reconciling when built (app start, and the
-  /// first run of a background action) and when the app comes back to the
-  /// front, and rescheduling everything when the notification content, the
-  /// app lock or the app's language changes; a content that shows less also
-  /// withdraws what the account has in the tray. Built again, and so
-  /// reconciling at once, when a refreshed `/info` moves the server to one
-  /// whose reminders follow the subscriptions (D80). Null once the account
-  /// is gone. Disposed with the account's database on sign-out, after which
-  /// [NotificationSchedulers] still holds it for the wipe.
+  /// first run of a background action; the app's first build in a process
+  /// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
+  /// to the front, and rescheduling everything when the notification
+  /// content, the app lock or the app's language changes; a content that
+  /// shows less also withdraws what the account has in the tray. Built
+  /// again, and so reconciling at once, when a refreshed `/info` moves the
+  /// server to one whose reminders follow the subscriptions (D80). Null once
+  /// the account is gone. Disposed with the account's database on sign-out,
+  /// after which [NotificationSchedulers] still holds it for the wipe.
   NotificationSchedulerProvider._({
     required NotificationSchedulerFamily super.from,
     required String super.argument,
@@ -151,17 +154,18 @@ final class NotificationSchedulerProvider
 }
 
 String _$notificationSchedulerHash() =>
-    r'ecda7f6f03ecc45c483726ae6a6e796306412968';
+    r'dd5d94f2635bfb815fe8bfa64e820210f96e273a';
 
 /// One account's scheduler, reconciling when built (app start, and the
-/// first run of a background action) and when the app comes back to the
-/// front, and rescheduling everything when the notification content, the
-/// app lock or the app's language changes; a content that shows less also
-/// withdraws what the account has in the tray. Built again, and so
-/// reconciling at once, when a refreshed `/info` moves the server to one
-/// whose reminders follow the subscriptions (D80). Null once the account
-/// is gone. Disposed with the account's database on sign-out, after which
-/// [NotificationSchedulers] still holds it for the wipe.
+/// first run of a background action; the app's first build in a process
+/// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
+/// to the front, and rescheduling everything when the notification
+/// content, the app lock or the app's language changes; a content that
+/// shows less also withdraws what the account has in the tray. Built
+/// again, and so reconciling at once, when a refreshed `/info` moves the
+/// server to one whose reminders follow the subscriptions (D80). Null once
+/// the account is gone. Disposed with the account's database on sign-out,
+/// after which [NotificationSchedulers] still holds it for the wipe.
 
 final class NotificationSchedulerFamily extends $Family
     with $FunctionalFamilyOverride<NotificationScheduler?, String> {
@@ -175,14 +179,15 @@ final class NotificationSchedulerFamily extends $Family
       );
 
   /// One account's scheduler, reconciling when built (app start, and the
-  /// first run of a background action) and when the app comes back to the
-  /// front, and rescheduling everything when the notification content, the
-  /// app lock or the app's language changes; a content that shows less also
-  /// withdraws what the account has in the tray. Built again, and so
-  /// reconciling at once, when a refreshed `/info` moves the server to one
-  /// whose reminders follow the subscriptions (D80). Null once the account
-  /// is gone. Disposed with the account's database on sign-out, after which
-  /// [NotificationSchedulers] still holds it for the wipe.
+  /// first run of a background action; the app's first build in a process
+  /// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
+  /// to the front, and rescheduling everything when the notification
+  /// content, the app lock or the app's language changes; a content that
+  /// shows less also withdraws what the account has in the tray. Built
+  /// again, and so reconciling at once, when a refreshed `/info` moves the
+  /// server to one whose reminders follow the subscriptions (D80). Null once
+  /// the account is gone. Disposed with the account's database on sign-out,
+  /// after which [NotificationSchedulers] still holds it for the wipe.
 
   NotificationSchedulerProvider call(String accountId) =>
       NotificationSchedulerProvider._(argument: accountId, from: this);

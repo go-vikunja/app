@@ -91,7 +91,10 @@ abstract interface class NotificationGateway {
 
   Future<void> cancel(int osId);
 
-  /// The ids the OS still holds for this app, every account included.
+  /// The ids scheduled and not yet shown or cancelled, every account
+  /// included. iOS answers from its own list; on Android the plugin answers
+  /// from its record in the app's preferences, which a force stop leaves
+  /// behind although it drops every alarm.
   Future<Set<int>> pendingIds();
 
   /// What this app has in the tray, every account included.

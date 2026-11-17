@@ -283,12 +283,13 @@ void main() {
   testWidgets('a revoked consent takes the http socket down', (tester) async {
     await seed(insecureServer());
     final container = containerWith();
+    final profiles = container.read(networkProfilesProvider);
+    final origin = OriginKey.fromString('http://192.168.1.20:3456');
+    await profiles.consentToCleartext(origin);
     final shell = await listen(tester, container);
     expect(sync.realtime.connectCalls, 1);
 
-    await container
-        .read(networkProfilesProvider)
-        .revokeCleartext(OriginKey.fromString('http://192.168.1.20:3456'));
+    await profiles.revokeCleartext(origin);
     await settle(tester);
 
     // The new connection's connect fails closed in the real connector; the

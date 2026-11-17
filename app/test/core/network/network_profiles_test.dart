@@ -178,7 +178,6 @@ void main() {
 
       preferences.values[NetworkProfiles.storageKey] = jsonEncode({
         'schemaVersion': 1,
-        'cleartextMigrated': true,
         'profiles': <String, Object?>{},
       });
       expect((await reader.metadataFor(https))?.pin, isNotNull);
@@ -293,7 +292,6 @@ void main() {
         'an entry with both a pin and a CA',
         jsonEncode({
           'schemaVersion': 1,
-          'cleartextMigrated': true,
           'profiles': {
             '$https': {
               'revision': 1,
@@ -355,59 +353,34 @@ void main() {
       },
     );
 
-    test('the reset deletes the secrets of every origin it can derive and '
-        'does not migrate consents again', () async {
-      accountRoots = [Uri.parse('http://192.168.1.20:3456/')];
+    test('the reset deletes the secrets of every origin it can '
+        'derive', () async {
       final writer = profiles();
       await writer.setHeaders(other, {'X-Token': 'dummy'});
+      await writer.consentToCleartext(http);
       await writer.setHeaders(http, {'X-Token': 'dummy'});
       expect(secure.inner.values, hasLength(2));
 
       await writer.resetAll();
 
       expect(secure.inner.values, isEmpty);
-      expect(stored()['cleartextMigrated'], isTrue);
+      expect(stored()['profiles'], isEmpty);
       expect(await profiles().forOrigin(http), isNull);
     });
-  });
 
-  group('cleartext migration', () {
-    test('http accounts get consent once; https ones and existing entries '
-        'nothing', () async {
-      accountRoots = [
-        Uri.parse('http://192.168.1.20:3456/'),
-        Uri.parse('https://vikunja.example.com/'),
-      ];
-
-      final profile = await profiles().forOrigin(http);
-
-      expect(profile?.cleartextConsentAt, now);
-      expect(profile?.revision, 1);
-      expect(await profiles().forOrigin(https), isNull);
-      expect(stored()['cleartextMigrated'], isTrue);
-    });
-
-    test("one instance's revoke survives another's migration run", () async {
+    test("from damaged metadata the reset still deletes the accounts' "
+        'secrets', () async {
       accountRoots = [Uri.parse('http://192.168.1.20:3456/')];
-      final a = profiles();
-      final b = profiles();
-      await a.forOrigin(http);
+      final writer = profiles();
+      await writer.consentToCleartext(http);
+      await writer.setHeaders(http, {'X-Token': 'dummy'});
+      expect(secure.inner.values, hasLength(1));
+      preferences.values[NetworkProfiles.storageKey] = '{nope';
 
-      await a.revokeCleartext(http);
-      // B never loaded; its first read must not migrate again.
-      final seenByB = await b.forOrigin(http);
+      await profiles().resetAll();
 
-      expect(seenByB?.hasCleartextConsent ?? false, isFalse);
-      expect(stored()['profiles'], isNot(contains('$http')));
-    });
-
-    test('an edit before any read writes the migration with it', () async {
-      accountRoots = [Uri.parse('http://192.168.1.20:3456/')];
-
-      await profiles().trustCertificate(https, certificate);
-
-      expect(storedEntry(http)['cleartextConsentAt'], isNotNull);
-      expect(storedEntry(https)['pin'], isNotNull);
+      expect(secure.inner.values, isEmpty);
+      expect(await profiles().forOrigin(http), isNull);
     });
   });
 
@@ -609,7 +582,6 @@ void main() {
     test('other entries and unknown fields are kept as stored', () async {
       preferences.values[NetworkProfiles.storageKey] = jsonEncode({
         'schemaVersion': 1,
-        'cleartextMigrated': true,
         'futureTopLevel': 'kept',
         'profiles': {
           'not an origin key': {'kept': true},

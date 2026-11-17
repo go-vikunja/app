@@ -61,6 +61,9 @@ FILTER = 'priority >= 3 && done = false'
 # the second; the server puts done tasks into the done column itself.
 BOARD_PROJECT = 'work'
 BOARD_IN_PROGRESS = ('report', 'presentation')
+# Inbox titles of earlier demo data, which --reset removes too: a server
+# seeded before would otherwise keep them beside the new ones.
+RETIRED_INBOX_TITLES = {'Change the tyres'}
 
 TEXTS = {
     'de': {
@@ -101,7 +104,7 @@ TEXTS = {
         'expenses': 'Submit travel expenses',
         'rent': 'Pay the rent',
         'boxes': 'Get moving boxes',
-        'tyres': 'Change the tyres',
+        'tyres': 'Change the tires',
         'book': 'Return the library book',
         'kickoff': 'Send the kickoff notes',
         'checklist': ('The dishwasher <strong>does not drain</strong>, the display flashes E24.',
@@ -222,7 +225,7 @@ def reset(token, me):
         if label['title'] in labels and label['created_by']['id'] == me['id']:
             call('DELETE', f'/labels/{label["id"]}', token)
     inbox = inbox_id(token)
-    inbox_tasks = demo_titles(title for project, title, *_ in TASKS if project == 'inbox')
+    inbox_tasks = demo_titles(title for project, title, *_ in TASKS if project == 'inbox') | RETIRED_INBOX_TITLES
     for task in call('GET', f'/projects/{inbox}/tasks?per_page=50', token) or []:
         if task['title'] in inbox_tasks:
             call('DELETE', f'/tasks/{task["id"]}', token)

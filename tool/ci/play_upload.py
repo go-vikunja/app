@@ -2,11 +2,16 @@
 """Uploads a signed bundle to a Google Play track (D86).
 
   python3 -I tool/ci/play_upload.py --package P --bundle F --version-code N
-      --track beta|production --release-name S [--user-fraction F]
-      [--service-account-file F] [--api-root URL] [--dry-run]
+      --track beta|production --release-name S --metadata-dir D
+      [--user-fraction F] [--service-account-file F] [--api-root URL]
+      [--dry-run]
 
 beta gets a completed release, production a staged rollout (inProgress) to
 --user-fraction of the users. A versionCode already on the track is skipped.
+The release notes, Play's "What's new", are D/<language>/changelogs/<N>.txt
+(fastlane's layout, D = fastlane/metadata/android) of every language that
+has one: production needs en-US's, beta takes what is there. They are
+checked before any request, with --dry-run too.
 Standard library only, so that no third-party code handles the service
 account's key: openssl gets the key through stdin, and the access token is
 masked on GitHub Actions. --dry-run prints the calls and reads no
@@ -37,6 +42,9 @@ MAX_VERSION_CODE = 2_100_000_000
 LOCAL_HOSTS = ('127.0.0.1', 'localhost')
 PACKAGE = re.compile(r'[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+')
 VERSION_CODE = re.compile(r'[1-9][0-9]*')
+LANGUAGE = re.compile(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*')
+DEFAULT_LANGUAGE = 'en-US'
+RELEASE_NOTES_LIMIT = 500
 SIGNING_FAILED = "openssl could not sign with the service account's private_key"
 
 
@@ -68,6 +76,7 @@ def parse_arguments(argv):
     parser.add_argument('--version-code', required=True)
     parser.add_argument('--track', required=True, choices=('beta', 'production'))
     parser.add_argument('--release-name', required=True)
+    parser.add_argument('--metadata-dir', required=True)
     parser.add_argument('--user-fraction')
     parser.add_argument('--service-account-file')
     parser.add_argument('--api-root', default=DEFAULT_API_ROOT)
@@ -95,6 +104,8 @@ def parse_arguments(argv):
         parser.error('--user-fraction is only for production')
     if not os.path.isfile(args.bundle):
         parser.error(f'--bundle {args.bundle} is not a file')
+    if not os.path.isdir(args.metadata_dir):
+        parser.error(f'--metadata-dir {args.metadata_dir} is not a directory')
     if not https_or_local(args.api_root):
         parser.error('--api-root must be an https URL (http only for 127.0.0.1 or localhost)')
     args.api_root = args.api_root.rstrip('/')
@@ -103,12 +114,50 @@ def parse_arguments(argv):
     return args
 
 
+def changelog_path(args, language):
+    return os.path.join(args.metadata_dir, language, 'changelogs', f'{args.version_code}.txt')
+
+
+def release_notes(args):
+    try:
+        languages = sorted(os.listdir(args.metadata_dir))
+    except OSError as error:
+        raise PlayError(f'cannot list {args.metadata_dir}: {error.strerror}') from None
+    notes = []
+    for language in languages:
+        path = changelog_path(args, language)
+        if language.startswith('.') or not os.path.isfile(path):
+            continue
+        if not LANGUAGE.fullmatch(language):
+            raise PlayError(f'{path}: {language!r} is not a language tag')
+        try:
+            with open(path, encoding='utf-8') as f:
+                text = f.read().strip()
+        except (OSError, UnicodeDecodeError):
+            raise PlayError(f'cannot read {path} as UTF-8') from None
+        if not text:
+            raise PlayError(f'{path} is empty')
+        if len(text) > RELEASE_NOTES_LIMIT:
+            raise PlayError(f'{path} has {len(text)} characters, Play takes {RELEASE_NOTES_LIMIT}')
+        notes.append({'language': language, 'text': text})
+    if args.track == 'production' and DEFAULT_LANGUAGE not in [note['language'] for note in notes]:
+        raise PlayError(f"production needs Play's What's new in {DEFAULT_LANGUAGE}, the default listing language: "
+                        f'{changelog_path(args, DEFAULT_LANGUAGE)} is missing')
+    return notes
+
+
+def notes_languages(args):
+    return ', '.join(note['language'] for note in args.release_notes)
+
+
 def release_body(args):
     release = {'name': args.release_name, 'versionCodes': [str(args.version_code)]}
     if args.track == 'production':
         release.update(status='inProgress', userFraction=args.user_fraction)
     else:
         release['status'] = 'completed'
+    if args.release_notes:
+        release['releaseNotes'] = args.release_notes
     return release
 
 
@@ -129,6 +178,11 @@ def print_dry_run(args):
     print(f'Would POST {upload}/edits/<edit>/bundles?uploadType=media (bundles.upload) with '
           f'{os.path.basename(args.bundle)}, {os.path.getsize(args.bundle)} bytes; '
           f"the answer's versionCode must be {code}")
+    source = changelog_path(args, '<language>')
+    if args.release_notes:
+        print(f"Would send Play's What's new in {notes_languages(args)}, from {source}")
+    else:
+        print(f"Would send no What's new: there is no {source}")
     print(f'Would PUT {base}/edits/<edit>/tracks/{args.track} (tracks.update) with {json.dumps(track)}')
     print(f'Would POST {base}/edits/<edit>:commit (edits.commit)')
 
@@ -296,16 +350,18 @@ def publish(args):
         delete_edit(edit_url, token)
         raise
     detail = release['status'] + (f', {args.user_fraction:g}' if args.track == 'production' else '')
-    print(f'Committed versionCode {code} to {args.track} ({detail})')
+    notes = f"with the What's new in {notes_languages(args)}" if args.release_notes else "without a What's new"
+    print(f'Committed versionCode {code} to {args.track} ({detail}) {notes}')
     return 0
 
 
 def main(argv):
     args = parse_arguments(argv)
-    if args.dry_run:
-        print_dry_run(args)
-        return 0
     try:
+        args.release_notes = release_notes(args)
+        if args.dry_run:
+            print_dry_run(args)
+            return 0
         return publish(args)
     except PlayError as error:
         print(f'error: {error}', file=sys.stderr)

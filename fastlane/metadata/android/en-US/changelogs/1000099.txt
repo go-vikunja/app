@@ -1,0 +1,5 @@
+This is the new Vikunja app, rebuilt from the ground up.
+
+It may ask you to sign in again. Like the previous app, it needs Vikunja 2.3.0 or newer on your server.
+
+Widgets of the previous app stay on your home screen: tap each one once to set it up again. The Quick Settings tile is gone.

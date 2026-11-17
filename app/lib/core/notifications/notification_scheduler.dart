@@ -41,13 +41,15 @@ typedef CreateTimer = Timer Function(
 ///
 /// [reconcile] loads the open tasks and the stored snoozes, plans what the
 /// account should have, diffs that against what the table says the OS
-/// holds (minus what the OS has dropped meanwhile, so a fired or lost
+/// holds, minus what the gateway no longer lists as pending (so a fired
 /// notification is scheduled again when it is still wanted), cancels and
-/// schedules through the gateway and writes the table. It runs after every
-/// change to the tasks, reminders, assignees or projects (debounced), after
-/// a change of this account's preferences, and whenever the caller asks.
-/// Without the notification permission, or with every kind switched off,
-/// it cancels everything the account holds.
+/// schedules through the gateway and writes the table. That list is the
+/// system's on iOS; on Android it is the plugin's own record, which keeps
+/// the ids of the alarms a force stop drops (see [reconcile]'s `rearm`).
+/// It runs after every change to the tasks, reminders, assignees or
+/// projects (debounced), after a change of this account's preferences, and
+/// whenever the caller asks. Without the notification permission, or with
+/// every kind switched off, it cancels everything the account holds.
 final class NotificationScheduler {
   new({
     required this.accountId,
@@ -112,6 +114,8 @@ final class NotificationScheduler {
   Future<void>? _running;
   var _requested = false;
   var _forced = false;
+  var _rearming = false;
+  var _rearmPending = false;
   var _disposed = false;
   Timer? _debounceTimer;
 
@@ -121,18 +125,25 @@ final class NotificationScheduler {
   /// starts from the table as it is. With [force], every pending
   /// notification of the account is cancelled and scheduled again, and a
   /// run that fails leaves that to the next one; the snoozes in the table
-  /// stay.
-  Future<void> reconcile({bool force = false}) {
+  /// stay. [rearm] schedules every entry again without cancelling the
+  /// unchanged ones, so what the tray shows under their ids stays; a failed
+  /// run leaves it to the next one too.
+  Future<void> reconcile({bool force = false, bool rearm = false}) {
     if (_disposed) return Future.value();
     _requested = true;
     if (force) _forced = true;
+    if (rearm) _rearming = _rearmPending = true;
     return _running ??= _loop().whenComplete(() => _running = null);
   }
 
+  /// A re-arm was asked for and has not reached the OS yet, also when this
+  /// scheduler was disposed first; its successor takes it over.
+  bool get rearmPending => _rearmPending;
+
   /// [reconcile] for the triggers, which have nobody to report to: an error
   /// is logged and the next trigger starts afresh.
-  void reconcileQuietly({bool force = false}) => unawaited(
-    reconcile(force: force).then<void>(
+  void reconcileQuietly({bool force = false, bool rearm = false}) => unawaited(
+    reconcile(force: force, rearm: rearm).then<void>(
       (_) {},
       onError: (Object error) => _log.warning(
         'Could not reconcile the notifications of account $accountId: '
@@ -314,22 +325,26 @@ final class NotificationScheduler {
     while (_requested && !_disposed) {
       _requested = false;
       final force = _forced;
+      final rearm = _rearming;
       _forced = false;
+      _rearming = false;
       try {
-        await _run(force: force);
+        await _run(force: force, rearm: rearm);
       } on Object {
         if (force) _forced = true;
+        if (rearm) _rearming = true;
         rethrow;
       }
     }
   }
 
-  Future<void> _run({required bool force}) async {
+  Future<void> _run({required bool force, required bool rearm}) async {
     final capabilities = await _gateway.capabilities();
     final preferences = await _preferences.read(accountId);
     if (capabilities.permission != NotificationPermission.granted ||
         !preferences.anyEnabled) {
       await cancelAll();
+      if (rearm) _rearmPending = false;
       return;
     }
     final (:describe, :privacy) = await _presentation();
@@ -383,7 +398,7 @@ final class NotificationScheduler {
           : null,
     );
     if (_disposed) return;
-    final (:cancelOsIds, :schedule) = diffSchedule(
+    final (:cancelOsIds, schedule: changed) = diffSchedule(
       desired: desired,
       scheduled: scheduled,
       window: _window,
@@ -392,6 +407,9 @@ final class NotificationScheduler {
       force: force,
     );
     final window = desired.take(_window).toList();
+    // Scheduling an id again replaces its alarm; a cancel first would also
+    // take what is shown under that id out of the tray.
+    final schedule = rearm ? window : changed;
     final osIds = _assignOsIds(window, rows);
 
     for (final osId in cancelOsIds) {
@@ -415,6 +433,7 @@ final class NotificationScheduler {
         ),
       );
     }
+    if (rearm) _rearmPending = false;
     if (_disposed) return;
     _heldOsIds = osIds.values.toSet();
     final written = await _db.scheduledNotificationsDao.replaceAll([

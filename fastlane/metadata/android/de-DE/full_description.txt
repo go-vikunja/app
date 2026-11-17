@@ -4,9 +4,9 @@ Vikunja ist die quelloffene Aufgabenverwaltung, die du auf deinem eigenen Server
 
 Melde dich bei deinem Vikunja-Server an (Version 2.3 oder neuer) – deinem eigenen, dem deiner Organisation oder einem gehosteten – oder probiere die öffentliche Demo aus. Die App hält eine Kopie deines Accounts auf dem Gerät, damit deine Projekte und Aufgaben auch ohne Verbindung da sind.
 
-Funktioniert offline
-• Jeder Bildschirm liest aus der Kopie auf deinem Gerät.
+Offline und Synchronisierung
 • Aufgaben, die du offline erstellst, bearbeitest, als erledigt markierst oder auf einem Board verschiebst, werden gesendet, sobald der Server wieder antwortet.
+• Kommentare, Reaktionen und die Anhänge einer Aufgabe lädt die App nur mit Verbindung, und auch das Verwalten von Projekten, Spalten, Labels, Teams und Freigaben braucht eine. Anhänge, die du offline hinzufügst, werden später gesendet.
 • Die App synchronisiert beim Start, solange sie offen ist, und im Hintergrund.
 
 Deine Aufgaben im Überblick
@@ -25,6 +25,7 @@ Alles zu einer Aufgabe
 
 Erinnerungen und Widgets
 • Benachrichtigungen zu jeder Erinnerung und zur Fälligkeit, auf dem Gerät geplant: Erledige die Aufgabe direkt dort oder lass dich in zehn Minuten oder einer Stunde erneut erinnern.
+• Vikunja verschickt keine Push-Benachrichtigungen: Eine Erinnerung, die du im Web hinzufügst, oder eine Aufgabe, die dir dort zugewiesen wird, kommt mit der nächsten Synchronisierung auf dieses Gerät.
 • Widgets für den Startbildschirm: „Heute“, die nächsten Tage, „Überfällig“, „Favoriten“, ein Projekt, ein Label oder ein gespeicherter Filter; Aufgaben hakst du direkt dort ab. Ein zweites Widget erstellt eine neue Aufgabe.
 • Erinnerungen auf die Minute brauchen die Berechtigung für genaue Alarme; ohne sie kann Android sie einige Minuten später zustellen.
 

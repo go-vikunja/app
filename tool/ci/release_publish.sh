@@ -13,7 +13,8 @@
 #           GITHUB_SHA; reads build/release/unsigned, the others
 #           build/release/signed
 #   play    GOOGLE_PLAY_SERVICE_ACCOUNT_JSON, VIKUNJA_APP_PLAY_ROLLOUT
-#           (production's user fraction, default 0.1)
+#           (production's user fraction, default 0.1); the What's new from
+#           fastlane/metadata/android/<language>/changelogs/<versionCode>.txt
 #   dl      S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT, S3_BUCKET, S3_REGION
 #           (optional, default us-east-1)
 #   github  GH_TOKEN, GITHUB_REPOSITORY, GITHUB_SHA
@@ -325,7 +326,7 @@ run_play() {
     fail "VIKUNJA_APP_PLAY_ROLLOUT (${play_fraction}) is not a fraction between 0 and 1 such as 0.1"
   fi
   arguments=(--package io.vikunja.app --bundle "${release_dir}/app-release.aab" --version-code "$build_number"
-    --track "$play_track" --release-name "$build_name")
+    --track "$play_track" --release-name "$build_name" --metadata-dir fastlane/metadata/android)
   if [[ -n "$play_fraction" ]]; then
     arguments+=(--user-fraction "$play_fraction")
   fi

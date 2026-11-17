@@ -32,15 +32,12 @@ final class StoredNotificationPreferences
       if (decoded case {
         'reminders': final bool reminders,
         'dueDates': final bool dueDates,
+        'activity': final bool activity,
       }) {
         return NotificationPreferences(
           reminders: reminders,
           dueDates: dueDates,
-          // Stored before step 16 without the key: on, like a new account.
-          activity: switch (decoded) {
-            {'activity': final bool activity} => activity,
-            _ => true,
-          },
+          activity: activity,
         );
       }
     } on FormatException {

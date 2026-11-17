@@ -209,6 +209,7 @@ class CheckerTest(unittest.TestCase):
             'en-US/description.txt': ('Due dates, priority and colour.', 'colour'),
             'en-US/promotional_text.txt': ('Tick off tasks on the Home Screen.', 'Tick'),
             'en-US/subtitle.txt': ('Tasks you tick off', 'tick'),
+            'en-US/keywords.txt': ('kanban,winter tyres', 'tyre'),
             'review_information/notes.txt': ('Turn on Airplane Mode, tick off or edit a task.', 'tick'),
         }
         for name, (value, found) in cases.items():
@@ -249,8 +250,38 @@ class CheckerTest(unittest.TestCase):
         errors = self.errors()
         self.assertIn('fastlane/metadata/de-DE/name.txt: missing', errors)
         self.assertIn('fastlane/metadata/en-US/subtitles.txt: not a file of this layout', errors)
-        self.assertIn('fastlane/metadata/android/en-US/changelogs/latest.txt: a changelog is <version code>.txt or '
-                      'default.txt', errors)
+        self.assertIn('fastlane/metadata/android/en-US/changelogs/latest.txt: a changelog is <version code>.txt',
+                      errors)
+
+    def test_changelogs(self):
+        changelogs = 'fastlane/metadata/android/{}/changelogs/{}.txt'
+        for locale in check_store_metadata.LOCALES:
+            self.tree.write(changelogs.format(locale, 1000001), 'This is the new app.\n\nIt may ask you to sign in.\n')
+        self.tree.write(changelogs.format('en-US', 1000002), 'Fixes.\n')
+        self.tree.write(changelogs.format('de-DE', 1000003), 'Fehler behoben.\n')
+        self.tree.write(changelogs.format('en-US', 'default'), 'Fixes.\n')
+        self.assertEqual(sorted(self.errors()), [
+            f"{changelogs.format('de-DE', 1000002)}: missing, but another listing language has this changelog",
+            f"{changelogs.format('en-US', 1000003)}: missing, but another listing language has this changelog",
+            f"{changelogs.format('en-US', 'default')}: a changelog is <version code>.txt",
+        ])
+
+    def test_changelogs_follow_the_text_rules(self):
+        changelogs = 'fastlane/metadata/android/{}/changelogs/1000001.txt'
+        for en, de, (locale, message) in [
+            ('Pick a colour.', 'Wähle eine Farbe.', ('en-US', "not the US spelling or the glossary's term: colour")),
+            ('Fixes.', 'Jetzt auch fürs iPhone.', ('de-DE', 'names the other platform: iPhone')),
+            ('An unofficial app.', 'Eine App.', ('en-US', 'calls the app unofficial (D83)')),
+            ('Fixes. ', 'Fehler behoben.', ('en-US', 'leading or trailing whitespace')),
+            ('', 'Fehler behoben.', ('en-US', 'empty')),
+            ('a' * 501, 'Fehler behoben.', ('en-US', '501 characters, the limit is 500')),
+        ]:
+            with self.subTest(message=message):
+                tree = Tree()
+                self.addCleanup(tree.remove)
+                tree.write(changelogs.format('en-US'), en + '\n' if en else '')
+                tree.write(changelogs.format('de-DE'), de + '\n')
+                self.assertEqual(tree.check(), [f'{changelogs.format(locale)}: {message}'])
 
     def test_values(self):
         self.tree.write('fastlane/metadata/android/en-US/title.txt', 'Vikunja\nTasks\n')

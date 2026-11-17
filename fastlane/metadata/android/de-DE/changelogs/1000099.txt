@@ -1,0 +1,5 @@
+Das ist die neue Vikunja-App, von Grund auf neu entwickelt.
+
+Eventuell musst du dich noch einmal anmelden. Wie die bisherige App braucht sie Vikunja 2.3.0 oder neuer auf deinem Server.
+
+Widgets der bisherigen App bleiben auf deinem Startbildschirm: Tippe einmal auf jedes, um es neu einzurichten. Die Kachel in den Schnelleinstellungen gibt es nicht mehr.

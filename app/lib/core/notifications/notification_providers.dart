@@ -42,14 +42,15 @@ NotificationPreferencesStore notificationPreferencesStore(Ref ref) {
 }
 
 /// One account's scheduler, reconciling when built (app start, and the
-/// first run of a background action) and when the app comes back to the
-/// front, and rescheduling everything when the notification content, the
-/// app lock or the app's language changes; a content that shows less also
-/// withdraws what the account has in the tray. Built again, and so
-/// reconciling at once, when a refreshed `/info` moves the server to one
-/// whose reminders follow the subscriptions (D80). Null once the account
-/// is gone. Disposed with the account's database on sign-out, after which
-/// [NotificationSchedulers] still holds it for the wipe.
+/// first run of a background action; the app's first build in a process
+/// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
+/// to the front, and rescheduling everything when the notification
+/// content, the app lock or the app's language changes; a content that
+/// shows less also withdraws what the account has in the tray. Built
+/// again, and so reconciling at once, when a refreshed `/info` moves the
+/// server to one whose reminders follow the subscriptions (D80). Null once
+/// the account is gone. Disposed with the account's database on sign-out,
+/// after which [NotificationSchedulers] still holds it for the wipe.
 @Riverpod(keepAlive: true)
 NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
   final user = ref.watch(
@@ -76,7 +77,9 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
     linkKey: () => readWidgetLinkKey(ref.read(preferencesStoreProvider)),
     now: ref.watch(clockProvider),
   );
-  ref.watch(notificationSchedulersProvider).register(scheduler);
+  final rearmDue = ref
+      .watch(notificationSchedulersProvider)
+      .register(scheduler);
   ref
     ..listen(privacySettingsProvider, (previous, next) {
       if (_changesWhatIsScheduled(previous?.value, next.value)) {
@@ -95,9 +98,19 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
     lifecycle.dispose();
     unawaited(scheduler.dispose());
   });
-  scheduler.reconcileQuietly();
+  scheduler.reconcileQuietly(rearm: rearmDue && _rearmsFirstRun(ref));
   return scheduler;
 }
+
+/// Android answers the pending ids from the plugin's own record, which a
+/// force stop leaves behind while it drops every alarm, and from which the
+/// plugin re-arms only after a boot or an update. So the app's first run
+/// of an account in a process schedules everything again. A headless
+/// container leaves that to the app: after a force stop, the background
+/// runs only come back once the app has run.
+bool _rearmsFirstRun(Ref ref) =>
+    defaultTargetPlatform == TargetPlatform.android &&
+    !ref.read(runsHeadlessProvider);
 
 /// The device's privacy settings, which a headless container reads anew
 /// for every run: the app may have changed them since the container

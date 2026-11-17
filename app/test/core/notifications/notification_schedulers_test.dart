@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_scheduler.dart';
@@ -71,6 +73,26 @@ void main() {
 
     expect(reconciles(), 1);
     expect(registry.find('a1'), same(second));
+  });
+
+  test('a re-arm is due for the first scheduler of an account, and for the '
+      'next one only while the earlier was disposed before its re-arm '
+      'reached the OS', () async {
+    expect(registry.register(scheduler('a1')), isTrue);
+    expect(registry.register(scheduler('a1')), isFalse);
+
+    final done = scheduler('a2');
+    registry.register(done);
+    await done.reconcile(rearm: true);
+    expect(done.rearmPending, isFalse);
+    expect(registry.register(scheduler('a2')), isFalse);
+
+    final cut = scheduler('a3');
+    registry.register(cut);
+    unawaited(cut.reconcile(rearm: true));
+    expect(registry.register(scheduler('a3')), isTrue);
+    await pumpEventQueue();
+    expect(cut.rearmPending, isTrue);
   });
 
   test('cancelAll forgets the account; a later reconcileAll skips '

@@ -14,6 +14,7 @@ from test_play_upload import EMAIL, OPENSSL, FakePlay, generate_key
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCRIPT = os.path.join(ROOT, 'tool/ci/release_publish.sh')
+METADATA = os.path.join(ROOT, 'fastlane/metadata/android')
 OFFICIAL = {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': 'go-vikunja/app', 'GITHUB_REPOSITORY_ID': '395095540',
             'GITHUB_REF_TYPE': 'tag'}
 SECRETS = ('KEYSTORE_BASE64', 'KEY_PROPERTIES', 'APK_KEYSTORE_BASE64', 'APK_KEY_PROPERTIES',
@@ -120,6 +121,17 @@ def write(path, data):
     with open(path, 'wb') as f:
         f.write(data)
     return hashlib.sha256(data).hexdigest()
+
+
+def whats_new(version_code):
+    """The repository's release notes of version_code, as Play gets them."""
+    notes = []
+    for language in sorted(os.listdir(METADATA)):
+        path = os.path.join(METADATA, language, 'changelogs', f'{version_code}.txt')
+        if os.path.isfile(path):
+            with open(path, encoding='utf-8') as f:
+                notes.append({'language': language, 'text': f.read().strip()})
+    return notes
 
 
 def write_env(path, values):
@@ -782,8 +794,11 @@ class PlayDryRunTest(Fixture):
         result = self.publish('--dry-run', 'play')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Would upload app-release.aab to Google Play's beta track:", result.stdout)
-        self.assertIn('"releases": [{"name": "1.0.0-beta.1", "versionCodes": ["1000001"], "status": "completed"}]',
-                      result.stdout)
+        notes = whats_new(1000001)
+        self.assertEqual([note['language'] for note in notes], ['de-DE', 'en-US'])
+        self.assertIn(json.dumps({'track': 'beta', 'releases': [{
+            'name': '1.0.0-beta.1', 'versionCodes': ['1000001'], 'status': 'completed', 'releaseNotes': notes}]}),
+            result.stdout)
         self.assertNotIn('userFraction', result.stdout)
 
     def test_service_account_required(self):
@@ -802,7 +817,8 @@ class FinalPlayDryRunTest(Fixture):
                 result = self.publish('--dry-run', 'play', env=env)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn('"versionCodes": ["1000099"], "status": "inProgress", '
-                              f'"userFraction": {expected}}}]', result.stdout)
+                              f'"userFraction": {expected}, "releaseNotes": {json.dumps(whats_new(1000099))}}}]',
+                              result.stdout)
 
     def test_bad_rollout_refused(self):
         for rollout in ('1.5', 'abc', '1', '0', '0.0', '.5', '0.1 '):
@@ -811,6 +827,28 @@ class FinalPlayDryRunTest(Fixture):
                 self.assertEqual(result.returncode, 1)
                 self.assertIn('VIKUNJA_APP_PLAY_ROLLOUT', result.stderr)
                 self.assertNotIn('Would ', result.stdout)
+
+
+class WhatsNewDryRunTest(Fixture):
+    TAG = 'v9.9.9'
+
+    def test_production_without_the_english_text_is_refused(self):
+        result = self.publish('--dry-run', 'play')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("error: production needs Play's What's new in en-US, the default listing language: "
+                      'fastlane/metadata/android/en-US/changelogs/9090999.txt is missing', result.stderr)
+        self.assertNotIn('Would PUT', result.stdout)
+
+
+class BetaWithoutWhatsNewDryRunTest(Fixture):
+    TAG = 'v9.9.9-beta.1'
+
+    def test_a_beta_goes_without(self):
+        result = self.publish('--dry-run', 'play')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Would send no What's new: there is no "
+                      'fastlane/metadata/android/<language>/changelogs/9090901.txt', result.stdout)
+        self.assertIn('"status": "completed"}]}', result.stdout)
 
 
 @unittest.skipUnless(OPENSSL, 'openssl is missing')
@@ -849,8 +887,10 @@ class PlayTest(PlayFixture):
         with open(os.path.join(self.signed, 'app-release.aab'), 'rb') as f:
             self.assertEqual(fake.request('upload')['body'], f.read())
         self.assertEqual(json.loads(fake.request('track-update')['body'])['releases'],
-                         [{'name': '1.0.0-beta.1', 'versionCodes': ['1000001'], 'status': 'completed'}])
-        self.assertIn('Committed versionCode 1000001 to beta (completed)', result.stdout)
+                         [{'name': '1.0.0-beta.1', 'versionCodes': ['1000001'], 'status': 'completed',
+                           'releaseNotes': whats_new(1000001)}])
+        self.assertIn("Committed versionCode 1000001 to beta (completed) with the What's new in de-DE, en-US",
+                      result.stdout)
 
 
 class FinalPlayTest(PlayFixture):
@@ -863,7 +903,8 @@ class FinalPlayTest(PlayFixture):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(fake.request('track-update')['body']), {
             'track': 'production',
-            'releases': [{'name': '1.0.0', 'versionCodes': ['1000099'], 'status': 'inProgress', 'userFraction': 0.25}]})
+            'releases': [{'name': '1.0.0', 'versionCodes': ['1000099'], 'status': 'inProgress', 'userFraction': 0.25,
+                          'releaseNotes': whats_new(1000099)}]})
 
 
 if __name__ == '__main__':

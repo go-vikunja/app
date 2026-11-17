@@ -19,6 +19,8 @@
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
+# shellcheck source=tool/ci/release_lib.sh
+source "$(dirname "${BASH_SOURCE[0]}")/release_lib.sh"
 cd "$repo_root"
 
 usage() {
@@ -110,12 +112,14 @@ fi
 source_url="${source_repository}/tree/${tag}"
 if ((dry_run)); then
   echo "Would check that ${source_url} opens signed out."
+  check_website_pages --would
 else
   status="$(curl --silent --output /dev/null --write-out '%{http_code}' --retry 3 "$source_url" || true)"
   if [[ "$status" != 200 ]]; then
     refuse "${source_url} answered ${status} signed out: the source link must open for everyone" \
       "source not public"
   fi
+  check_website_pages
 fi
 
 team="${DEVELOPMENT_TEAM:-}"

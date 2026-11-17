@@ -4,9 +4,9 @@ Vikunja is the open-source task manager you can run on your own server. This is 
 
 Sign in to your Vikunja server (version 2.3 or newer) — your own, your organization's or a hosted one — or try the public demo. The app keeps a copy of your account on the device, so your projects and tasks are there even without a connection.
 
-Works offline
-• Every screen reads from the copy on your device.
+Offline and sync
 • Tasks you create, edit, check off or move on a board while offline are sent as soon as the server answers again.
+• Comments, reactions and a task's attachments load only with a connection, and managing projects, board columns, labels, teams and shares needs one too. Attachments you add offline are sent later.
 • The app syncs when it starts, while it is open and in the background.
 
 Your tasks at a glance
@@ -25,6 +25,7 @@ Everything about a task
 
 Reminders and widgets
 • Notifications at each reminder and at the due time, planned on the device: mark the task done right there, or be reminded again in ten minutes or an hour.
+• Vikunja sends no push notifications: a reminder you add on the web, or a task assigned to you there, reaches this device with the next sync.
 • Home screen widgets for Today, the next days, Overdue, Favorites, a project, a label or a saved filter; check tasks off right there. A second widget adds a new task.
 • Reminders at the exact minute need the permission for exact alarms (Android's “Alarms & reminders”); without it, Android may deliver them a few minutes late.
 

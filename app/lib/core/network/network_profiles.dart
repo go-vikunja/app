@@ -397,7 +397,6 @@ final class NetworkProfiles {
   });
 
   /// Starts over with no settings at all, also from damaged metadata.
-  /// Consents to unencrypted connections are not migrated again.
   Future<void> resetAll() => _locked(() async {
     final origins = <OriginKey>{};
     var revisionCounter = 0;
@@ -419,7 +418,6 @@ final class NetworkProfiles {
       storageKey,
       jsonEncode({
         'schemaVersion': schemaVersion,
-        'cleartextMigrated': true,
         'revisionCounter': revisionCounter + 1,
         'profiles': <String, Object?>{},
       }),
@@ -462,7 +460,7 @@ final class NetworkProfiles {
     }
   }
 
-  Future<_Snapshot> _load({bool migrate = true}) async {
+  Future<_Snapshot> _load() async {
     final generation = _generation;
     final String? stored;
     try {
@@ -480,49 +478,22 @@ final class NetworkProfiles {
       _log.warning('Stored connection settings are damaged');
       return _snapshot = _Snapshot(null, _clock(), generation);
     }
-    if (migrate && !document.migrated) {
-      try {
-        await _locked(() async {
-          final fresh = await _readForWrite(null);
-          if (fresh.migratingNow) await _save(fresh, const {});
-        });
-      } on Object catch (error) {
-        _log.info('Cleartext migration failed: ${error.runtimeType}');
-        throw const _PreferencesUnreadable();
-      }
-      return await _load(migrate: false);
-    }
     return _snapshot = _Snapshot(document, _clock(), generation);
   }
 
-  /// The stored document with the one-time migration applied (written by
-  /// the caller's save): consent for the http origins of existing accounts
-  /// that have no entry yet. It never changes an existing entry, so a
-  /// revoked consent stays revoked.
-  Future<_Document> _readForWrite(OriginKey? origin) async {
+  Future<_Document> _readForWrite(OriginKey origin) async {
     final String? stored;
     try {
       stored = await _preferences.getString(storageKey);
     } on Object catch (error) {
       _log.info('Metadata not readable for a write: ${error.runtimeType}');
-      throw ConnectionProfileLockedException(origin?.toString() ?? '');
+      throw ConnectionProfileLockedException(origin.toString());
     }
-    final _Document document;
     try {
-      document = _Document.parse(stored);
+      return _Document.parse(stored);
     } on FormatException {
       throw const ConnectionProfilesDamagedException();
     }
-    if (document.migrated) return document;
-    final now = _clock().toUtc();
-    final added = <OriginKey, NetworkProfile>{};
-    for (final root in await _accountRoots()) {
-      final origin = OriginKey.tryOf(root);
-      if (origin == null || origin.isSecure) continue;
-      if (document.hasEntry(origin) || added.containsKey(origin)) continue;
-      added[origin] = NetworkProfile(origin: origin, cleartextConsentAt: now);
-    }
-    return document..migrate(added);
   }
 
   Future<void> _edit(
@@ -532,10 +503,7 @@ final class NetworkProfiles {
     final document = await _readForWrite(origin);
     final current = document.profileOrEmpty(origin);
     final next = change(current, document.nextRevision(current));
-    if (next == null) {
-      if (!document.migrated) await _save(document, const {});
-      return;
-    }
+    if (next == null) return;
     await _save(document, {origin: next.isEmpty ? null : next});
     if (next.isEmpty) await _deleteSecrets(next.id);
   });
@@ -764,20 +732,9 @@ final class _Document {
   final Map<String, Object?> _raw;
   final Map<String, Object?> _rawProfiles;
   final Map<OriginKey, NetworkProfile> profiles;
-  final _pending = <OriginKey, NetworkProfile>{};
-  var _migratedNow = false;
-
-  bool get migrated => _raw['cleartextMigrated'] == true || _migratedNow;
-
-  /// The migration ran on this copy and still has to be written.
-  bool get migratingNow => _migratedNow;
-
-  bool hasEntry(OriginKey origin) => _rawProfiles.containsKey('$origin');
 
   NetworkProfile profileOrEmpty(OriginKey origin) =>
-      _pending[origin] ??
-      profiles[origin] ??
-      NetworkProfile(origin: origin, revision: 0);
+      profiles[origin] ?? NetworkProfile(origin: origin, revision: 0);
 
   int get _revisionCounter => switch (_raw['revisionCounter']) {
     final int counter => counter,
@@ -792,14 +749,9 @@ final class _Document {
           : _revisionCounter) +
       1;
 
-  void migrate(Map<OriginKey, NetworkProfile> added) {
-    _pending.addAll(added);
-    _migratedNow = true;
-  }
-
   String encode(Map<OriginKey, NetworkProfile?> changes) {
     final entries = <String, Object?>{..._rawProfiles};
-    for (final MapEntry(:key, :value) in {..._pending, ...changes}.entries) {
+    for (final MapEntry(:key, :value) in changes.entries) {
       if (value == null) {
         entries.remove('$key');
       } else {
@@ -813,7 +765,6 @@ final class _Document {
     return jsonEncode({
       ..._raw,
       'schemaVersion': NetworkProfiles.schemaVersion,
-      'cleartextMigrated': true,
       'revisionCounter': counter,
       'profiles': entries,
     });

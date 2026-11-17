@@ -38,38 +38,32 @@ void main() {
     expect(changes, [('a1', const NotificationPreferences(dueDates: false))]);
   });
 
-  test(
-    'activity is stored too; a value written without it reads as on',
-    () async {
-      await store.write('a1', const NotificationPreferences(activity: false));
-      preferences.values['notifications.a2'] =
-          '{"reminders":false,"dueDates":true}';
+  test('activity is stored too and does not count for the scheduler', () async {
+    await store.write('a1', const NotificationPreferences(activity: false));
 
-      expect(
-        await store.read('a1'),
-        const NotificationPreferences(activity: false),
-      );
-      expect(
-        await store.read('a2'),
-        const NotificationPreferences(reminders: false),
-      );
-      expect(const NotificationPreferences(activity: false).anyEnabled, isTrue);
-      expect(
-        const NotificationPreferences(
-          reminders: false,
-          dueDates: false,
-        ).anyEnabled,
-        isFalse,
-      );
-    },
-  );
+    expect(
+      await store.read('a1'),
+      const NotificationPreferences(activity: false),
+    );
+    expect(const NotificationPreferences(activity: false).anyEnabled, isTrue);
+    expect(
+      const NotificationPreferences(
+        reminders: false,
+        dueDates: false,
+      ).anyEnabled,
+      isFalse,
+    );
+  });
 
   test('an unreadable value counts as the defaults', () async {
     preferences.values['notifications.a1'] = 'not json';
     preferences.values['notifications.a2'] = '{"reminders":"yes"}';
+    preferences.values['notifications.a3'] =
+        '{"reminders":false,"dueDates":true}';
 
     expect(await store.read('a1'), const NotificationPreferences());
     expect(await store.read('a2'), const NotificationPreferences());
+    expect(await store.read('a3'), const NotificationPreferences());
   });
 
   test('delete removes the key', () async {

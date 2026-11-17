@@ -133,6 +133,11 @@ else
       "repository not public"
   fi
 fi
+if [[ "$host" == local ]]; then
+  check_website_pages --would
+else
+  check_website_pages
+fi
 if ! python3 -I tool/build_android_notices.py --require-offer-contact >/dev/null 2>&1; then
   refuse "the written offer has no contact: set WRITTEN_OFFER_CONTACT in tool/build_android_notices.py, then run it to write app/assets/legal/android.md again" \
     "no written-offer contact"
