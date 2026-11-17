@@ -16,12 +16,9 @@ _spec.loader.exec_module(check_store_metadata)
 Checker = check_store_metadata.Checker
 
 URLS = {
-    'en-GB': {'support_url.txt': 'https://coderoftime.dev/rurana/support/',
-              'privacy_url.txt': 'https://coderoftime.dev/rurana/privacy/',
-              'marketing_url.txt': 'https://coderoftime.dev/rurana/'},
-    'de-DE': {'support_url.txt': 'https://coderoftime.dev/de/rurana/support/',
-              'privacy_url.txt': 'https://coderoftime.dev/rurana/privacy/#de',
-              'marketing_url.txt': 'https://coderoftime.dev/de/rurana/'},
+    'support_url.txt': 'https://vikunja.io/help/mobile',
+    'privacy_url.txt': 'https://vikunja.io/privacy/',
+    'marketing_url.txt': 'https://vikunja.io/help/mobile',
 }
 
 
@@ -59,14 +56,14 @@ class Tree:
             self.write(f'{ios}/keywords.txt', 'kanban,offline,reminders\n')
             self.write(f'{ios}/promotional_text.txt', 'Your tasks, offline.\n')
             self.write(f'{ios}/release_notes.txt', '')
-            for name, url in URLS[locale].items():
+            for name, url in URLS.items():
                 self.write(f'{ios}/{name}', url + '\n')
-        self.write('fastlane/metadata/copyright.txt', '2026 Benedikt Lesch\n')
+        self.write('fastlane/metadata/copyright.txt', '2026 Vikunja and contributors\n')
         self.write('fastlane/metadata/primary_category.txt', 'PRODUCTIVITY\n')
         self.write('fastlane/metadata/review_information/notes.txt', 'Tap "Try the public demo".\n')
         self.write('fastlane/metadata/review_information/demo_user.txt', 'demo\n')
         self.write('fastlane/metadata/review_information/demo_password.txt', 'demo\n')
-        self.write('fastlane/metadata/review_information/email_address.txt', 'coderoftime@gmail.com\n')
+        self.write('fastlane/metadata/review_information/email_address.txt', 'hello@vikunja.io\n')
 
     def write(self, name, content):
         path = os.path.join(self.root, name)
@@ -112,18 +109,18 @@ class CheckerTest(unittest.TestCase):
         errors = self.errors(strict=True)
         self.assertEqual(len(errors), 8, errors)
         self.assertIn('fastlane/metadata/android/de-DE/images: 0 phone screenshots, Play needs at least 2', errors)
-        self.assertIn('fastlane/screenshots/en-GB: no iPad 13" screenshots', errors)
+        self.assertIn('fastlane/screenshots/en-US: no iPad 13" screenshots', errors)
         self.tree.screenshots()
         self.assertEqual(self.errors(strict=True), [])
 
     def test_limits(self):
         cases = {
-            'fastlane/metadata/android/en-GB/title.txt': 'V' * 31,
-            'fastlane/metadata/android/en-GB/short_description.txt': 'a' * 81,
+            'fastlane/metadata/android/en-US/title.txt': 'V' * 31,
+            'fastlane/metadata/android/en-US/short_description.txt': 'a' * 81,
             'fastlane/metadata/android/de-DE/full_description.txt': 'a' * 4001,
             'fastlane/metadata/de-DE/subtitle.txt': 'a' * 31,
-            'fastlane/metadata/en-GB/promotional_text.txt': 'a' * 171,
-            'fastlane/metadata/en-GB/description.txt': 'a' * 4001,
+            'fastlane/metadata/en-US/promotional_text.txt': 'a' * 171,
+            'fastlane/metadata/en-US/description.txt': 'a' * 4001,
         }
         for name, value in cases.items():
             with self.subTest(name=name):
@@ -141,7 +138,7 @@ class CheckerTest(unittest.TestCase):
         self.assertError('notes.txt: 4002 bytes, the limit is 4000')
 
     def test_no_other_brand_in_the_name_fields(self):
-        for name in ('android/en-GB/title.txt', 'en-GB/name.txt', 'de-DE/subtitle.txt', 'en-GB/keywords.txt'):
+        for name in ('android/en-US/title.txt', 'en-US/name.txt', 'de-DE/subtitle.txt', 'en-US/keywords.txt'):
             with self.subTest(name=name):
                 tree = Tree()
                 self.addCleanup(tree.remove)
@@ -150,7 +147,7 @@ class CheckerTest(unittest.TestCase):
                 self.assertIn('names another product or company: ', ' '.join(tree.check()))
 
     def test_the_title_and_the_name_are_vikunja(self):
-        for name in ('android/en-GB/title.txt', 'android/de-DE/title.txt', 'en-GB/name.txt', 'de-DE/name.txt'):
+        for name in ('android/en-US/title.txt', 'android/de-DE/title.txt', 'en-US/name.txt', 'de-DE/name.txt'):
             for value in ('Tasks', 'vikunja', 'Vikunja Tasks'):
                 with self.subTest(name=name, value=value):
                     tree = Tree()
@@ -159,28 +156,28 @@ class CheckerTest(unittest.TestCase):
                     self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: must be "Vikunja"'])
 
     def test_vikunja_is_indexed_as_the_name_and_fine_in_the_subtitle(self):
-        self.tree.write('fastlane/metadata/en-GB/keywords.txt', 'tasks,Vikunja tasks\n')
-        self.assertEqual(self.errors(), ['fastlane/metadata/en-GB/keywords.txt: the app name is indexed already'])
-        self.tree.write('fastlane/metadata/en-GB/keywords.txt', 'kanban,offline,reminders\n')
+        self.tree.write('fastlane/metadata/en-US/keywords.txt', 'tasks,Vikunja tasks\n')
+        self.assertEqual(self.errors(), ['fastlane/metadata/en-US/keywords.txt: the app name is indexed already'])
+        self.tree.write('fastlane/metadata/en-US/keywords.txt', 'kanban,offline,reminders\n')
         self.tree.write('fastlane/metadata/de-DE/subtitle.txt', 'Für deinen Vikunja-Server\n')
         self.assertEqual(self.errors(), [])
 
     def test_vikunja_is_fine_in_descriptions(self):
-        self.tree.write('fastlane/metadata/android/en-GB/short_description.txt',
+        self.tree.write('fastlane/metadata/android/en-US/short_description.txt',
                         'The app for your Vikunja server\n')
         self.assertEqual(self.errors(), [])
 
     def test_no_text_calls_the_app_unofficial(self):
         cases = {
-            'android/en-GB/full_description.txt': 'An unofficial app for Vikunja.',
-            'android/en-GB/short_description.txt': 'Unofficial app for Vikunja servers',
+            'android/en-US/full_description.txt': 'An unofficial app for Vikunja.',
+            'android/en-US/short_description.txt': 'Unofficial app for Vikunja servers',
             'android/de-DE/full_description.txt': 'Eine inoffizielle App für Vikunja.',
             'android/de-DE/short_description.txt': 'Inoffizielle App für Vikunja-Server',
-            'en-GB/description.txt': 'It is not affiliated with or endorsed by the Vikunja project.',
+            'en-US/description.txt': 'It is not affiliated with or endorsed by the Vikunja project.',
             'de-DE/description.txt': 'Sie gehört nicht zum Vikunja-Projekt.',
-            'en-GB/subtitle.txt': 'The unofficial task app',
+            'en-US/subtitle.txt': 'The unofficial task app',
             'de-DE/subtitle.txt': 'Inoffiziell, offline',
-            'en-GB/promotional_text.txt': 'Your tasks, offline. Unofficial.',
+            'en-US/promotional_text.txt': 'Your tasks, offline. Unofficial.',
             'de-DE/promotional_text.txt': 'Die inoffizielle App.',
             'review_information/notes.txt': 'An unofficial client for Vikunja.',
         }
@@ -193,7 +190,7 @@ class CheckerTest(unittest.TestCase):
 
     def test_no_text_names_the_agpl(self):
         cases = {
-            'android/en-GB/full_description.txt': 'The app is free software under the GNU Affero General Public License.',
+            'android/en-US/full_description.txt': 'The app is free software under the GNU Affero General Public License.',
             'de-DE/description.txt': 'Die App steht unter der AGPL-3.0-or-later.',
             'review_information/notes.txt': 'This is its open-source (AGPL-3.0) app.',
         }
@@ -205,12 +202,36 @@ class CheckerTest(unittest.TestCase):
                 self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: names the AGPL, but the app is under the '
                                                 'MIT License (D87)'])
 
+    def test_the_english_texts_use_us_spelling_and_the_glossary_s_terms(self):
+        cases = {
+            'android/en-US/full_description.txt': ('Projects with subprojects and favourites.', 'favourit'),
+            'android/en-US/short_description.txt': ("Your organisation's tasks", 'organis'),
+            'en-US/description.txt': ('Due dates, priority and colour.', 'colour'),
+            'en-US/promotional_text.txt': ('Tick off tasks on the Home Screen.', 'Tick'),
+            'en-US/subtitle.txt': ('Tasks you tick off', 'tick'),
+            'review_information/notes.txt': ('Turn on Airplane Mode, tick off or edit a task.', 'tick'),
+        }
+        for name, (value, found) in cases.items():
+            with self.subTest(name=name):
+                tree = Tree()
+                self.addCleanup(tree.remove)
+                tree.write(f'fastlane/metadata/{name}', value + '\n')
+                self.assertEqual(tree.check(),
+                                 [f"fastlane/metadata/{name}: not the US spelling or the glossary's term: {found}"])
+
+    def test_the_german_texts_keep_their_spelling(self):
+        self.tree.write('fastlane/metadata/android/de-DE/full_description.txt',
+                        'Der Server deiner Organisation, mit Farben und Favoriten.\n')
+        self.tree.write('fastlane/metadata/android/en-US/full_description.txt',
+                        "Your organization's server, with colors and favorites; check tasks off.\n")
+        self.assertEqual(self.errors(), [])
+
     def test_claims_emoji_and_the_other_platform(self):
         cases = {
-            'fastlane/metadata/android/en-GB/short_description.txt': ('The best task app', 'ranking, price'),
+            'fastlane/metadata/android/en-US/short_description.txt': ('The best task app', 'ranking, price'),
             'fastlane/metadata/de-DE/promotional_text.txt': ('Kostenlos und offline', 'ranking, price'),
-            'fastlane/metadata/en-GB/subtitle.txt': ('Tasks \u2705', 'emoji'),
-            'fastlane/metadata/en-GB/description.txt': ('The app for your server. Also on Android.', 'other platform'),
+            'fastlane/metadata/en-US/subtitle.txt': ('Tasks \u2705', 'emoji'),
+            'fastlane/metadata/en-US/description.txt': ('The app for your server. Also on Android.', 'other platform'),
             'fastlane/metadata/android/de-DE/full_description.txt': ('Die App für deinen Server. Auch fürs iPhone.',
                                                                      'other platform'),
         }
@@ -223,48 +244,47 @@ class CheckerTest(unittest.TestCase):
 
     def test_layout(self):
         os.remove(os.path.join(self.tree.root, 'fastlane/metadata/de-DE/name.txt'))
-        self.tree.write('fastlane/metadata/en-GB/subtitles.txt', 'x\n')
-        self.tree.write('fastlane/metadata/android/en-GB/changelogs/latest.txt', 'x\n')
+        self.tree.write('fastlane/metadata/en-US/subtitles.txt', 'x\n')
+        self.tree.write('fastlane/metadata/android/en-US/changelogs/latest.txt', 'x\n')
         errors = self.errors()
         self.assertIn('fastlane/metadata/de-DE/name.txt: missing', errors)
-        self.assertIn('fastlane/metadata/en-GB/subtitles.txt: not a file of this layout', errors)
-        self.assertIn('fastlane/metadata/android/en-GB/changelogs/latest.txt: a changelog is <version code>.txt or '
+        self.assertIn('fastlane/metadata/en-US/subtitles.txt: not a file of this layout', errors)
+        self.assertIn('fastlane/metadata/android/en-US/changelogs/latest.txt: a changelog is <version code>.txt or '
                       'default.txt', errors)
 
     def test_values(self):
-        self.tree.write('fastlane/metadata/android/en-GB/title.txt', 'Vikunja\nTasks\n')
+        self.tree.write('fastlane/metadata/android/en-US/title.txt', 'Vikunja\nTasks\n')
         self.tree.write('fastlane/metadata/de-DE/name.txt', ' Vikunja\n')
-        self.tree.write('fastlane/metadata/en-GB/promotional_text.txt', '')
+        self.tree.write('fastlane/metadata/en-US/promotional_text.txt', '')
         self.tree.write('fastlane/metadata/primary_category.txt', 'Productivity\n')
         self.tree.write('fastlane/metadata/android/de-DE/changelogs/1000001.txt', 'x' * 501 + '\n')
         errors = self.errors()
-        self.assertIn('fastlane/metadata/android/en-GB/title.txt: must be one line', errors)
+        self.assertIn('fastlane/metadata/android/en-US/title.txt: must be one line', errors)
         self.assertIn('fastlane/metadata/de-DE/name.txt: leading or trailing whitespace', errors)
-        self.assertIn('fastlane/metadata/en-GB/promotional_text.txt: empty', errors)
+        self.assertIn('fastlane/metadata/en-US/promotional_text.txt: empty', errors)
         self.assertIn('fastlane/metadata/primary_category.txt: not an App Store category id: Productivity', errors)
         self.assertIn('fastlane/metadata/android/de-DE/changelogs/1000001.txt: 501 characters, the limit is 500',
                       errors)
 
     def test_keywords(self):
-        self.tree.write('fastlane/metadata/en-GB/keywords.txt', 'kanban, offline,to,vikunja tasks,Kanban\n')
+        self.tree.write('fastlane/metadata/en-US/keywords.txt', 'kanban, offline,to,vikunja tasks,Kanban\n')
         errors = ' '.join(self.errors())
         for message in ('spaces around commas', 'keyword too short: "to"', 'the app name is indexed',
                         'repeated keyword'):
             self.assertIn(message, errors)
 
-    def test_the_urls_are_the_website_s_pages_for_the_language(self):
-        on_the_website = 'must be an https URL on coderoftime.dev'
+    def test_the_urls_are_the_app_s_pages_on_vikunja_io_in_both_languages(self):
+        on_the_website = 'must be an https URL on vikunja.io'
         for name, value, message in [
-            ('en-GB/privacy_url.txt', 'http://coderoftime.dev/rurana/privacy/', on_the_website),
-            ('en-GB/support_url.txt', 'https://rurana.example/en/support/', on_the_website),
-            ('de-DE/support_url.txt', 'https://coderoftime.dev.example/de/rurana/support/', on_the_website),
-            ('en-GB/privacy_url.txt', 'https://coderoftime.dev/rurana/privacy/#de',
-             'must be https://coderoftime.dev/rurana/privacy/'),
-            ('de-DE/privacy_url.txt', 'https://coderoftime.dev/rurana/privacy/',
-             'must be https://coderoftime.dev/rurana/privacy/#de'),
-            ('de-DE/marketing_url.txt', 'https://coderoftime.dev/rurana/',
-             'must be https://coderoftime.dev/de/rurana/'),
-            ('en-GB/marketing_url.txt', '', 'empty'),
+            ('en-US/privacy_url.txt', 'http://vikunja.io/privacy/', on_the_website),
+            ('en-US/support_url.txt', 'https://example.org/help/mobile', on_the_website),
+            ('de-DE/support_url.txt', 'https://vikunja.io.example/help/mobile', on_the_website),
+            ('de-DE/privacy_url.txt', 'https://try.vikunja.io/privacy/', on_the_website),
+            ('en-US/privacy_url.txt', 'https://vikunja.io/privacy/#mobile-app', 'must be https://vikunja.io/privacy/'),
+            ('de-DE/privacy_url.txt', 'https://vikunja.io/de/privacy/', 'must be https://vikunja.io/privacy/'),
+            ('de-DE/support_url.txt', 'https://vikunja.io/support/', 'must be https://vikunja.io/help/mobile'),
+            ('de-DE/marketing_url.txt', 'https://vikunja.io/', 'must be https://vikunja.io/help/mobile'),
+            ('en-US/marketing_url.txt', '', 'empty'),
         ]:
             with self.subTest(name=name, value=value):
                 tree = Tree()
@@ -274,8 +294,8 @@ class CheckerTest(unittest.TestCase):
 
     def test_the_contact_and_the_copyright(self):
         cases = {
-            'review_information/email_address.txt': ('hello@rurana.example', 'must be "coderoftime@gmail.com"'),
-            'copyright.txt': ('2026 Benedikt Lesch and the Rurana contributors', 'must be "2026 Benedikt Lesch"'),
+            'review_information/email_address.txt': ('app@example.org', 'must be "hello@vikunja.io"'),
+            'copyright.txt': ('2026 Vikunja', 'must be "2026 Vikunja and contributors"'),
         }
         for name, (value, message) in cases.items():
             with self.subTest(name=name):
@@ -306,33 +326,33 @@ class ScreenshotTest(unittest.TestCase):
                 check_store_metadata.png_or_jpeg_size(path)
 
     def test_play_rules(self):
-        shots = 'fastlane/metadata/android/en-GB/images/phoneScreenshots'
+        shots = 'fastlane/metadata/android/en-US/images/phoneScreenshots'
         self.tree.write(f'{shots}/01.png', png(1080, 1920, colour_type=6))
         self.tree.write(f'{shots}/02.png', png(1080, 2400))
         self.tree.write(f'{shots}/03.jpg', jpeg(1080, 1920))
         self.tree.write(f'{shots}/04.webp', b'RIFF')
-        self.tree.write('fastlane/metadata/android/en-GB/images/tenInchScreenshots/01.png', png(1024, 600))
-        self.tree.write('fastlane/metadata/android/en-GB/images/featureGraphic.png', png(1024, 500, colour_type=6))
-        self.tree.write('fastlane/metadata/android/en-GB/images/icon.png', png(512, 512, colour_type=6))
+        self.tree.write('fastlane/metadata/android/en-US/images/tenInchScreenshots/01.png', png(1024, 600))
+        self.tree.write('fastlane/metadata/android/en-US/images/featureGraphic.png', png(1024, 500, colour_type=6))
+        self.tree.write('fastlane/metadata/android/en-US/images/icon.png', png(512, 512, colour_type=6))
         errors = self.tree.check()
         self.assertEqual(sorted(errors), sorted([
             f'{shots}/01.png: has an alpha channel',
             f'{shots}/02.png: 1080x2400: sides 320-3840 px, the long side at most twice the short',
             f'{shots}/04.webp: not a .png or .jpg file',
-            'fastlane/metadata/android/en-GB/images/tenInchScreenshots/01.png: 1024x600: sides 1080-7680 px, the long '
+            'fastlane/metadata/android/en-US/images/tenInchScreenshots/01.png: 1024x600: sides 1080-7680 px, the long '
             'side at most twice the short',
-            'fastlane/metadata/android/en-GB/images/featureGraphic.png: must be 1024x500 without alpha',
+            'fastlane/metadata/android/en-US/images/featureGraphic.png: must be 1024x500 without alpha',
         ]))
 
     def test_apple_rules(self):
-        self.tree.write('fastlane/screenshots/en-GB/01.png', png(2868, 1320))
-        self.tree.write('fastlane/screenshots/en-GB/02.png', png(1080, 1920))
-        self.tree.write('fastlane/screenshots/en-GB/03.png', png(2064, 2752, colour_type=6))
+        self.tree.write('fastlane/screenshots/en-US/01.png', png(2868, 1320))
+        self.tree.write('fastlane/screenshots/en-US/02.png', png(1080, 1920))
+        self.tree.write('fastlane/screenshots/en-US/03.png', png(2064, 2752, colour_type=6))
         self.tree.write('fastlane/screenshots/fr-FR/01.png', png(1320, 2868))
         errors = self.tree.check()
         self.assertEqual(sorted(errors), sorted([
-            'fastlane/screenshots/en-GB/02.png: 1080x1920 is none of the App Store sizes used here',
-            'fastlane/screenshots/en-GB/03.png: has an alpha channel',
+            'fastlane/screenshots/en-US/02.png: 1080x1920 is none of the App Store sizes used here',
+            'fastlane/screenshots/en-US/03.png: has an alpha channel',
             'fastlane/screenshots/fr-FR: not a listing language',
         ]))
 
@@ -357,11 +377,10 @@ class MainTest(unittest.TestCase):
         status, out, _ = self.run_main('--root', tree.root, '--strict')
         self.assertEqual(status, 0)
         self.assertIn('store metadata (strict): OK', out)
-        tree.write('fastlane/metadata/review_information/email_address.txt', 'hello@rurana.example\n')
+        tree.write('fastlane/metadata/review_information/email_address.txt', 'app@example.org\n')
         status, _, err = self.run_main('--root', tree.root)
         self.assertEqual(status, 1)
-        self.assertIn('error: fastlane/metadata/review_information/email_address.txt: must be '
-                      '"coderoftime@gmail.com"', err)
+        self.assertIn('error: fastlane/metadata/review_information/email_address.txt: must be "hello@vikunja.io"', err)
 
 
 if __name__ == '__main__':

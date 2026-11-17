@@ -137,8 +137,8 @@ source code is published at {repository}
 at commit {commit} (upstream has no
 tag for {version}), and a copy is attached to every release of this app.
 
-Written offer: for at least three years after he last distributes this
-version of the app, Benedikt Lesch gives anyone who asks a complete
+Written offer: for at least three years after this version of the app was
+last distributed, the Vikunja project gives anyone who asks a complete
 machine-readable copy of the corresponding source code of desugar_jdk_libs
 {version}, on a medium customarily used for software interchange, for a
 charge no more than the cost of physically performing that distribution.
@@ -149,7 +149,7 @@ SOURCE_MANIFESTS = {
 }
 # How to ask for the source under the written offer; the release job fails
 # while it is empty.
-WRITTEN_OFFER_CONTACT = 'coderoftime@gmail.com'
+WRITTEN_OFFER_CONTACT = 'hello@vikunja.io'
 
 DESUGARING = re.compile(r'^\s*coreLibraryDesugaring\("([^":]+):([^":]+):([^":]+)"\)', re.MULTILINE)
 # Cronet's licence file: Chromium's licence under CHROMIUM_HEADING, then each
@@ -213,7 +213,7 @@ def fenced(names, text, source):
 
 def offer_request(contact):
     if contact:
-        return f'Ask Benedikt Lesch at {contact}.'
+        return f'Ask the Vikunja project at {contact}.'
     return "Ask through the contact given where the app's source code is published."
 
 
@@ -764,8 +764,8 @@ def self_test():
     assert 'Written offer: for at least three years' in output, output
     assert "distribution.\nAsk through the contact given where the app's source code is published.\n```" in output
     with_contact = render(libraries + desugaring, texts, cronet, sources=sources, contact='offer@example.org')
-    assert 'distribution.\nAsk Benedikt Lesch at offer@example.org.\n```' in with_contact, with_contact
-    assert with_contact.replace('Ask Benedikt Lesch at offer@example.org.',
+    assert 'distribution.\nAsk the Vikunja project at offer@example.org.\n```' in with_contact, with_contact
+    assert with_contact.replace('Ask the Vikunja project at offer@example.org.',
                                 "Ask through the contact given where the app's source code is published.") == output
     assert sources['com.android.tools:desugar_jdk_libs']['note'] == 'a=b'
     other_version = {key: dict(value, version='2.1.3') for key, value in sources.items()}

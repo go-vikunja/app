@@ -74,9 +74,10 @@ A maintainer adds a language in one pull request once `python3 -I tool/l10n_prog
 
 - its `Locale` in `shippedLocales` in `app/lib/app/l10n/shipped_locales.dart` (English stays first);
 - its BCP 47 tag in `app/android/app/src/main/res/xml/locales_config.xml`, in `CFBundleLocalizations` in `app/ios/Runner/Info.plist` and in `LANGUAGES` in `app/android/app/src/main/kotlin/io/vikunja/app/PreviousApp.kt`;
-- a picker class for its language in `app/lib/app/l10n/picker_localizations.dart`, like `_GermanPickerLocalizations`, in the delegate's `_languages`.
+- a picker class for its language in `app/lib/app/l10n/picker_localizations.dart`, like `_GermanPickerLocalizations`, in the delegate's `_languages`;
+- its English name in the "• Languages:" line of `fastlane/metadata/en-US/description.txt` and `fastlane/metadata/android/en-US/full_description.txt`, its German name in the "• Sprachen:" line of the two de-DE descriptions, and both names in `_listings` of `app/test/l10n/store_listing_languages_test.dart`.
 
-`app/test/l10n/shipped_locales_test.dart` and `app/test/features/tasks/picker_formats_test.dart` name what is missing. An ARB file not on the list compiles but is never shown. Not shipped for now, though translated on Crowdin and exported like any language: right-to-left languages (Arabic, Persian, Hebrew) until the app has had a right-to-left pass, Esperanto, which Material has no texts for, and Vikunja's Swiss German, exported as `app_gsw.arb`. A new language shows the native texts in English.
+`app/test/l10n/shipped_locales_test.dart`, `app/test/l10n/store_listing_languages_test.dart` and `app/test/features/tasks/picker_formats_test.dart` name what is missing. An ARB file not on the list compiles but is never shown. Not shipped for now, though translated on Crowdin and exported like any language: right-to-left languages (Arabic, Persian, Hebrew) until the app has had a right-to-left pass, Esperanto, which Material has no texts for, and Vikunja's Swiss German, exported as `app_gsw.arb`. A new language shows the native texts in English.
 
 ## Style
 

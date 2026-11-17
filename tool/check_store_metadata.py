@@ -14,7 +14,7 @@ import sys
 import urllib.parse
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOCALES = {'en-GB': 'en', 'de-DE': 'de'}
+LOCALES = {'en-US': 'en', 'de-DE': 'de'}
 COPYRIGHT_YEAR = 2026
 
 ANDROID_FIELDS = {'title.txt': 30, 'short_description.txt': 80, 'full_description.txt': 4000}
@@ -30,17 +30,16 @@ REVIEW_NOTES_BYTES = 4000
 CHANGELOG_LIMIT = 500
 MULTILINE = {'full_description.txt', 'description.txt', 'promotional_text.txt', 'release_notes.txt', 'notes.txt'}
 OPTIONAL = {'release_notes.txt'}
-# The app's pages on the owner's website until step 38f, per listing
-# language, the contact and the App Store copyright (D76).
-WEBSITE_HOST = 'coderoftime.dev'
+# The app's pages on vikunja.io, the contact and the App Store copyright
+# (D89). vikunja.io is English only, so both listing languages link the same
+# pages.
+WEBSITE_HOST = 'vikunja.io'
 URLS = {
-    'support_url.txt': {'en': 'https://coderoftime.dev/rurana/support/',
-                        'de': 'https://coderoftime.dev/de/rurana/support/'},
-    'privacy_url.txt': {'en': 'https://coderoftime.dev/rurana/privacy/',
-                        'de': 'https://coderoftime.dev/rurana/privacy/#de'},
-    'marketing_url.txt': {'en': 'https://coderoftime.dev/rurana/', 'de': 'https://coderoftime.dev/de/rurana/'},
+    'support_url.txt': 'https://vikunja.io/help/mobile',
+    'privacy_url.txt': 'https://vikunja.io/privacy/',
+    'marketing_url.txt': 'https://vikunja.io/help/mobile',
 }
-FIXED = {'email_address.txt': 'coderoftime@gmail.com', 'copyright.txt': f'{COPYRIGHT_YEAR} Benedikt Lesch'}
+FIXED = {'email_address.txt': 'hello@vikunja.io', 'copyright.txt': f'{COPYRIGHT_YEAR} Vikunja and contributors'}
 # App Store Connect's category ids, as fastlane deliver takes them.
 CATEGORIES = {
     'BOOKS', 'BUSINESS', 'DEVELOPER_TOOLS', 'EDUCATION', 'ENTERTAINMENT', 'FINANCE', 'FOOD_AND_DRINK', 'GAMES',
@@ -52,6 +51,11 @@ CATEGORIES = {
 APP_NAME = 'Vikunja'
 UNOFFICIAL = re.compile(r'(?i)\bunofficial\b|not affiliated with|inoffiziell|gehört nicht zum Vikunja-Projekt')
 OLD_LICENCE = re.compile(r'(?i)\bagpl\b|affero')
+# docs/glossary.md: US spelling, and tasks are checked off, never ticked off.
+# The review notes are English too.
+BRITISH = re.compile(r'(?i)colour|favourit|licenc|organis|recognis|prioritis|synchronis|customis|categoris|centre'
+                     r'|behaviour|neighbour|catalogue|\bgrey\b|\bbins?\b|\btick(s|ed|ing)?\b|full stop')
+ENGLISH_SHARED = {'notes.txt'}
 # The name fields and the keywords must not name other apps or companies
 # (D76; App Store Connect, keywords).
 NAME_FIELDS = {'title.txt', 'name.txt', 'subtitle.txt', 'keywords.txt'}
@@ -192,12 +196,14 @@ class Checker:
             self.error(path, 'calls the app unofficial (D83)')
         if OLD_LICENCE.search(value):
             self.error(path, 'names the AGPL, but the app is under the MIT License (D87)')
+        if (lang == 'en' or name in ENGLISH_SHARED) and BRITISH.search(value):
+            self.error(path, f"not the US spelling or the glossary's term: {BRITISH.search(value).group(0)}")
         if name in ('title.txt', 'name.txt') and value != APP_NAME:
             self.error(path, f'must be "{APP_NAME}"')
         if name == 'keywords.txt':
             self.check_keywords(path, value)
         if name in URLS:
-            self.check_url(path, value, URLS[name][lang])
+            self.check_url(path, value, URLS[name])
         if name in FIXED and value != FIXED[name]:
             self.error(path, f'must be "{FIXED[name]}"')
 

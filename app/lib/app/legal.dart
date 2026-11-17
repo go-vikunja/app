@@ -4,30 +4,18 @@
 const String? sourceCodeUrl = _sourceCodeUrl == '' ? null : _sourceCodeUrl;
 const _sourceCodeUrl = String.fromEnvironment('SOURCE_CODE_URL');
 
-/// The app's pages on the owner's website (D76, D77), each in English and
-/// German; an app in German opens the German one, every other language the
-/// English one.
+/// The app's pages on vikunja.io (D89). The site is in English only, so every
+/// language opens the same page.
 enum WebsitePage {
-  support(
-    'https://coderoftime.dev/rurana/support/',
-    'https://coderoftime.dev/de/rurana/support/',
-  ),
-  privacy(
-    'https://coderoftime.dev/rurana/privacy/',
-    'https://coderoftime.dev/rurana/privacy/#de',
-  ),
-  legalNotice(
-    'https://coderoftime.dev/impressum/#en',
-    'https://coderoftime.dev/impressum/#de',
-  );
+  support('https://vikunja.io/help/mobile'),
+  privacy('https://vikunja.io/privacy/#mobile-app'),
+  legalNotice('https://vikunja.io/imprint/');
 
-  new(this.english, this.german);
+  new(this.address);
 
-  final String english;
-  final String german;
+  final String address;
 
-  Uri uri({required String languageCode}) =>
-      Uri.parse(languageCode == 'de' ? german : english);
+  Uri get uri => Uri.parse(address);
 }
 
 const copyrightNotice = 'Copyright (c) Vikunja and contributors';

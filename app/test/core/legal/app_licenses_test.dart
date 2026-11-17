@@ -214,7 +214,10 @@ Text
       );
       expect(
         _text(android['com.android.tools:desugar_jdk_libs']!.last),
-        contains('Written offer'),
+        allOf(
+          contains('Written offer'),
+          contains('Ask the Vikunja project at hello@vikunja.io.'),
+        ),
       );
       expect(ios.keys.where((name) => name.startsWith('androidx.')), isEmpty);
     });

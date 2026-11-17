@@ -786,12 +786,12 @@ source code is published at https://github.com/google/desugar_jdk_libs
 at commit 50d9c1fb3e85fa4c00161525a45484f712c1f003 (upstream has no
 tag for 2.1.4), and a copy is attached to every release of this app.
 
-Written offer: for at least three years after he last distributes this
-version of the app, Benedikt Lesch gives anyone who asks a complete
+Written offer: for at least three years after this version of the app was
+last distributed, the Vikunja project gives anyone who asks a complete
 machine-readable copy of the corresponding source code of desugar_jdk_libs
 2.1.4, on a medium customarily used for software interchange, for a
 charge no more than the cost of physically performing that distribution.
-Ask Benedikt Lesch at coderoftime@gmail.com.
+Ask the Vikunja project at hello@vikunja.io.
 ```
 
 The other projects in cronet-bundled 500.1.0 whose licences are not above, as the licence files of its AARs list them:

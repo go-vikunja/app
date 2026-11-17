@@ -8557,11 +8557,11 @@
   },
   "aboutWebsiteHeading": "Help, privacy and legal notice",
   "@aboutWebsiteHeading": {
-    "description": "Section header on the About page over the links to the app's support page, privacy policy and legal notice on the developer's website, coderoftime.dev, and over the row that opens the support details (supportDetailsTitle)."
+    "description": "Section header on the About page over the links to the app's help page, privacy policy and legal notice on vikunja.io, and over the row that opens the support details (supportDetailsTitle)."
   },
   "aboutSupport": "Help and bug reports",
   "@aboutSupport": {
-    "description": "Opens the app's support page on coderoftime.dev in the browser: answers to common questions, and how to report a bug or a security problem. A noun phrase like its neighbors aboutPrivacyPolicy and aboutLegalNotice."
+    "description": "Opens the app's help page on vikunja.io in the browser: answers to common questions, and how to report a bug or a security problem. A noun phrase like its neighbors aboutPrivacyPolicy and aboutLegalNotice."
   },
   "aboutSupportSubtitle": "Answers to common questions and how to report a bug",
   "@aboutSupportSubtitle": {
@@ -8569,7 +8569,7 @@
   },
   "aboutPrivacyPolicy": "Privacy policy",
   "@aboutPrivacyPolicy": {
-    "description": "Opens the app's privacy policy on coderoftime.dev in the browser; the server's own legal links are elsewhere (legalPrivacy)."
+    "description": "Opens the privacy policy on vikunja.io at its section on the app, in the browser; the server's own legal links are elsewhere (legalPrivacy)."
   },
   "aboutPrivacyPolicySubtitle": "How the app handles your data",
   "@aboutPrivacyPolicySubtitle": {
@@ -8577,7 +8577,7 @@
   },
   "aboutLegalNotice": "Legal notice",
   "@aboutLegalNotice": {
-    "description": "Opens the legal notice (the German Impressum) on coderoftime.dev in the browser; the server's own is legalImprint."
+    "description": "Opens the legal notice (the German Impressum) on vikunja.io in the browser; the server's own is legalImprint."
   },
   "aboutLegalNoticeSubtitle": "Who publishes the app",
   "@aboutLegalNoticeSubtitle": {

@@ -1,1 +1,0 @@
-The app for your Vikunja server: tasks offline, with reminders and widgets

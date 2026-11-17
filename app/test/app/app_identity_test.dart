@@ -177,16 +177,14 @@ void main() {
     expect(_widgetExtensions(), hasLength(1));
   });
 
-  test('no shipped source names Rurana, apart from the named exceptions', () {
+  test('no shipped source names Rurana or coderoftime', () {
     final hits = [
       for (final root in _shippedRoots())
         for (final path in _files(root))
           if (_oldName.hasMatch(path))
             path
           else
-            for (final (index, line) in LineSplitter.split(
-              _withoutExceptions(path, _read(path)),
-            ).indexed)
+            for (final (index, line) in LineSplitter.split(_read(path)).indexed)
               if (_oldName.hasMatch(line)) '$path:${index + 1}',
     ];
 
@@ -206,19 +204,6 @@ void main() {
     ];
 
     expect(hits, isEmpty);
-  });
-
-  test('every exception to the Rurana check still applies', () {
-    _nameExceptions.forEach((path, patterns) {
-      final text = _read(path);
-      for (final pattern in patterns) {
-        expect(
-          pattern.hasMatch(text),
-          isTrue,
-          reason: '$path ${pattern.pattern}',
-        );
-      }
-    });
   });
 }
 
@@ -246,30 +231,10 @@ List<String> _shippedRoots() => [
   for (final package in _directories('../packages')) '$package/lib',
 ];
 
-final _oldName = RegExp('rurana', caseSensitive: false);
-
-final _nameExceptions = <String, List<RegExp>>{
-  'lib/app/legal.dart': [
-    // Until step 38f: the app's pages on the owner's website.
-    RegExp(r"'https://coderoftime\.dev/[^']*'"),
-  ],
-};
+final _oldName = RegExp('rurana|coderoftime', caseSensitive: false);
 
 String _read(String path) =>
     utf8.decode(File(path).readAsBytesSync(), allowMalformed: true);
-
-// Blanks each exception but keeps its line breaks, so hits keep their line
-// numbers.
-String _withoutExceptions(String path, String text) {
-  var result = text;
-  for (final pattern in _nameExceptions[path] ?? const <RegExp>[]) {
-    result = result.replaceAllMapped(
-      pattern,
-      (match) => match[0]!.replaceAll(RegExp('[^\n]'), ''),
-    );
-  }
-  return result;
-}
 
 List<String> _assignments(String gradle, String name) => [
   for (final match in RegExp(

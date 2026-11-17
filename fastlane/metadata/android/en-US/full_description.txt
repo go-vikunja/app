@@ -1,20 +1,22 @@
+The app for your Vikunja server: tasks offline, with reminders and widgets.
+
 Vikunja is the open-source task manager you can run on your own server. This is its app for Android.
 
-Sign in to your Vikunja server (version 2.3 or newer) — your own, your organisation's or a hosted one — or try the public demo. The app keeps a copy of your account on the device, so your projects and tasks are there even without a connection.
+Sign in to your Vikunja server (version 2.3 or newer) — your own, your organization's or a hosted one — or try the public demo. The app keeps a copy of your account on the device, so your projects and tasks are there even without a connection.
 
 Works offline
 • Every screen reads from the copy on your device.
-• Tasks you create, edit, tick off or move on a board while offline are sent as soon as the server answers again.
+• Tasks you create, edit, check off or move on a board while offline are sent as soon as the server answers again.
 • The app syncs when it starts, while it is open and in the background.
 
 Your tasks at a glance
 • Overview: your open tasks, grouped into Overdue, Today, Next 7 days, Later and No due date.
 • Upcoming: the tasks due in a date range, day by day.
-• Projects with subprojects, favourites, saved filters and archived projects.
+• Projects with subprojects, favorites, saved filters and archived projects.
 • Each project in its List, Kanban, Table and Gantt views.
 
 Everything about a task
-• Due, start and end dates, priority, progress, colour, repeat and reminders.
+• Due, start and end dates, priority, progress, color, repeat and reminders.
 • Labels, assignees, subtasks and related tasks.
 • Descriptions in the web's own editor, with checklists, links and tables, offline too.
 • Comments with @mentions, and reactions.
@@ -23,7 +25,7 @@ Everything about a task
 
 Reminders and widgets
 • Notifications at each reminder and at the due time, planned on the device: mark the task done right there, or be reminded again in ten minutes or an hour.
-• Home screen widgets for Today, the next days, Overdue, Favourites, a project, a label or a saved filter; tick tasks off right there. A second widget adds a new task.
+• Home screen widgets for Today, the next days, Overdue, Favorites, a project, a label or a saved filter; check tasks off right there. A second widget adds a new task.
 • Reminders at the exact minute need the permission for exact alarms (Android's “Alarms & reminders”); without it, Android may deliver them a few minutes late.
 
 Also
@@ -32,12 +34,13 @@ Also
 • Your account settings, the two-factor status and the sessions signed in to your account.
 • On a tablet or an unfolded foldable, a task opens beside the list.
 • Share text, links or files from other apps into a new or an existing task.
-• Light and dark mode, colours from your wallpaper on Android 12 and later, English and German.
+• Light and dark mode, and colors from your wallpaper on Android 12 and later.
+• Languages: English and German.
 • For self-hosted setups: trust your server's own certificate or CA certificate, use a client certificate or access headers, and allow plain http only after you confirm it.
 
 Privacy
 • An optional app lock with your fingerprint, face or screen lock; task titles can be hidden in notifications and widgets, and screenshots blocked.
-• No ads, no analytics, no tracking, no crash reporting. The app talks only to the servers you add. The developer runs no server and receives none of your data.
+• No ads, no analytics, no tracking, no crash reporting. The app has no server of its own: it talks only to the servers you add.
 
 Open source
 The app is open source under the MIT License.

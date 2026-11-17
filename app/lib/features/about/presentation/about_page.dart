@@ -145,13 +145,7 @@ class AboutPage extends ConsumerWidget {
     title: Text(title),
     subtitle: Text(subtitle),
     trailing: const Icon(Icons.open_in_new),
-    onTap: () => unawaited(
-      _open(
-        context,
-        ref,
-        page.uri(languageCode: Localizations.localeOf(context).languageCode),
-      ),
-    ),
+    onTap: () => unawaited(_open(context, ref, page.uri)),
   );
 
   void _showSupportDetails(BuildContext context) =>

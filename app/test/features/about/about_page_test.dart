@@ -249,6 +249,12 @@ void main() {
   });
 
   group('the support page, the privacy policy and the legal notice', () {
+    final vikunjaPages = [
+      Uri.parse('https://vikunja.io/help/mobile'),
+      Uri.parse('https://vikunja.io/privacy/#mobile-app'),
+      Uri.parse('https://vikunja.io/imprint/'),
+    ];
+
     Future<FakeExternalLinkOpener> pumpAbout(
       WidgetTester tester, {
       bool opens = true,
@@ -280,7 +286,7 @@ void main() {
       }
     }
 
-    testWidgets('open in English', (tester) async {
+    testWidgets("open the app's pages on vikunja.io", (tester) async {
       final opener = await pumpAbout(tester);
 
       expect(find.text(en.aboutWebsiteHeading), findsOneWidget);
@@ -290,15 +296,13 @@ void main() {
         en.aboutLegalNotice,
       ]);
 
-      expect(opener.opened, [
-        Uri.parse('https://coderoftime.dev/rurana/support/'),
-        Uri.parse('https://coderoftime.dev/rurana/privacy/'),
-        Uri.parse('https://coderoftime.dev/impressum/#en'),
-      ]);
+      expect(opener.opened, vikunjaPages);
       expect(find.text(en.legalOpenFailed), findsNothing);
     });
 
-    testWidgets('open in German when the app is in German', (tester) async {
+    testWidgets('open the same English pages when the app is in German', (
+      tester,
+    ) async {
       useLocale(tester, const Locale('de'));
       final opener = await pumpAbout(tester);
 
@@ -310,11 +314,7 @@ void main() {
         de.aboutLegalNotice,
       ]);
 
-      expect(opener.opened, [
-        Uri.parse('https://coderoftime.dev/de/rurana/support/'),
-        Uri.parse('https://coderoftime.dev/rurana/privacy/#de'),
-        Uri.parse('https://coderoftime.dev/impressum/#de'),
-      ]);
+      expect(opener.opened, vikunjaPages);
     });
 
     testWidgets('in German, the page is about the app and no line calls it '
@@ -340,23 +340,6 @@ void main() {
       await openRows(tester, [en.aboutPrivacyPolicy]);
 
       expect(find.text(en.legalOpenFailed), findsOneWidget);
-    });
-
-    test('are English for every language but German', () {
-      for (final languageCode in ['en', 'fr', 'nl']) {
-        expect(
-          WebsitePage.support.uri(languageCode: languageCode),
-          Uri.parse('https://coderoftime.dev/rurana/support/'),
-        );
-        expect(
-          WebsitePage.privacy.uri(languageCode: languageCode),
-          Uri.parse('https://coderoftime.dev/rurana/privacy/'),
-        );
-        expect(
-          WebsitePage.legalNotice.uri(languageCode: languageCode),
-          Uri.parse('https://coderoftime.dev/impressum/#en'),
-        );
-      }
     });
   });
 

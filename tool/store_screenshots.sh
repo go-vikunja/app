@@ -8,8 +8,8 @@
 # Ctrl-C. The clock shows the device's own time at each shot, so it agrees
 # with the Overview's greeting and the due times.
 #
-# Usage: tool/store_screenshots.sh [--no-wait] android <emulator serial> <en-GB|de-DE> <phone|tablet> [motif...]
-#        tool/store_screenshots.sh [--no-wait] ios <simulator UDID> <en-GB|de-DE> <phone|tablet> [motif...]
+# Usage: tool/store_screenshots.sh [--no-wait] android <emulator serial> <en-US|de-DE> <phone|tablet> [motif...]
+#        tool/store_screenshots.sh [--no-wait] ios <simulator UDID> <en-US|de-DE> <phone|tablet> [motif...]
 #        tool/store_screenshots.sh --list
 # Without motifs it goes through all of the form factor's motifs in order.
 # --no-wait takes the named motifs at once, for a device that already shows
@@ -75,8 +75,8 @@ platform="$1" device="$2" locale="$3" form="$4"
 shift 4
 
 case "$locale" in
-  en-GB | de-DE) ;;
-  *) die "the listing languages are en-GB and de-DE, not $locale" ;;
+  en-US | de-DE) ;;
+  *) die "the listing languages are en-US and de-DE, not $locale" ;;
 esac
 case "$form" in
   phone) all_motifs="$phone_motifs" ;;
