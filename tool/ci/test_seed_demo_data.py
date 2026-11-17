@@ -28,18 +28,32 @@ def project(id_, title, parent=0, owner=1):
 
 
 class FakeServer:
-    def __init__(self, projects=(), labels=(), inbox_tasks=()):
+    # trash holds the pages of the project and of the task trash; servers
+    # before 2.8.0 have none.
+    def __init__(self, projects=(), labels=(), inbox_tasks=(), trash=None, without_trash=False):
         self.requests = []
         self.tokens = []
+        self.versions = []
         self.projects = [project(1, 'Inbox'), *projects]
         self.labels = list(labels)
         self.inbox_tasks = list(inbox_tasks)
+        self.trash = trash or {}
+        self.without_trash = without_trash
         self.last_id = 100
 
-    def __call__(self, method, path, token=None, body=None, version='v1', ctype='application/json'):
+    def __call__(self, method, path, token=None, body=None, version='v1', ctype='application/json', none_on=()):
         self.requests.append((method, path, body))
         self.tokens.append(token)
+        self.versions.append(version)
         if method == 'GET':
+            if '/deleted?' in path:
+                if self.without_trash:
+                    if 422 in none_on:
+                        return None
+                    raise SystemExit(f'{method} {path}: HTTP 422')
+                pages = self.trash.get(path.split('/')[1], [])
+                page = int(path.rsplit('page=', 1)[1])
+                return {'items': pages[page - 1] if pages else [], 'total_pages': len(pages)}
             if path.startswith('/projects?'):
                 return self.projects
             if path.endswith('/views'):
@@ -190,6 +204,31 @@ class ResetTest(unittest.TestCase):
             '/projects/10', '/projects/11', '/projects/13', '/filters/5', '/filters/6',
             '/labels/1', '/labels/4', '/tasks/50', '/tasks/51'])
 
+    def test_the_demo_data_in_the_trash_is_deleted_for_good(self):
+        server = FakeServer(trash={
+            'projects': [[project(20, 'Work'), project(21, 'Wohnung'), project(22, 'Work', owner=9)],
+                         [project(23, 'My own project'), project(24, 'Old project')]],
+            'tasks': [[{'id': 60, 'title': 'Change the tyres', 'project_id': 1},
+                       {'id': 61, 'title': 'Reifen wechseln', 'project_id': 30},
+                       {'id': 62, 'title': 'Something else', 'project_id': 1},
+                       {'id': 63, 'title': 'Reifen wechseln', 'project_id': 1}]]})
+        with mock.patch.object(seed_demo_data, 'call', server):
+            seed_demo_data.reset('token', ME)
+        self.assertEqual([(path, version) for (method, path, _), version in zip(server.requests, server.versions)
+                          if method == 'DELETE'], [
+            ('/projects/20/permanent', 'v2'), ('/projects/21/permanent', 'v2'), ('/projects/24/permanent', 'v2'),
+            ('/tasks/60/permanent', 'v2'), ('/tasks/63/permanent', 'v2')])
+        self.assertEqual([path for path, _ in server.sent('GET') if '/deleted?' in path], [
+            '/projects/deleted?per_page=50&page=1', '/projects/deleted?per_page=50&page=2',
+            '/tasks/deleted?per_page=50&page=1'])
+
+    def test_a_server_without_trash_deletes_outright(self):
+        server = FakeServer(projects=[project(10, 'Arbeit')], inbox_tasks=[{'id': 50, 'title': 'Reifen wechseln'}],
+                            without_trash=True)
+        with mock.patch.object(seed_demo_data, 'call', server):
+            seed_demo_data.reset('token', ME)
+        self.assertEqual([path for path, _ in server.sent('DELETE')], ['/projects/10', '/tasks/50'])
+
 
 class MainTest(unittest.TestCase):
     def run_main(self, argv, server):
@@ -240,6 +279,13 @@ class CallTest(unittest.TestCase):
                 mock.patch.object(seed_demo_data.time, 'sleep') as sleep:
             self.assertEqual(seed_demo_data.call('PUT', '/projects/1/tasks', 'token', {'title': 'x'}), {'id': 3})
         sleep.assert_called_once_with(1)
+
+    def test_the_listed_errors_answer_none(self):
+        with mock.patch('urllib.request.urlopen', side_effect=self.error(422)):
+            self.assertIsNone(seed_demo_data.call('GET', '/projects/deleted', 'token', version='v2', none_on=(422,)))
+        with mock.patch('urllib.request.urlopen', side_effect=self.error(422)), \
+                self.assertRaisesRegex(SystemExit, 'GET /projects/deleted: HTTP 422'):
+            seed_demo_data.call('GET', '/projects/deleted', 'token', version='v2')
 
     def test_other_errors_stop(self):
         with mock.patch('urllib.request.urlopen', side_effect=self.error(403)), \

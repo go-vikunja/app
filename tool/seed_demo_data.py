@@ -10,7 +10,9 @@ tokens.
 Usage: python3 -I tool/seed_demo_data.py [--lang de|en] [--reset] [base URL]
        (default: German, http://localhost:34527)
 --reset removes the demo data of both languages first, found by its titles,
-so the other language replaces it without signing in again.
+so the other language replaces it without signing in again. From Vikunja
+2.8.0 on, it also deletes that data from the trash for good: a trashed
+project keeps its identifier, which the new language's project needs.
 """
 import argparse
 import json
@@ -131,7 +133,7 @@ def credentials(name):
     return values['E2E_USERNAME'], values['E2E_PASSWORD']
 
 
-def call(method, path, token=None, body=None, version='v1', ctype='application/json'):
+def call(method, path, token=None, body=None, version='v1', ctype='application/json', none_on=()):
     data = None if body is None else json.dumps(body).encode()
     headers = {'Accept': 'application/json'}
     if data is not None:
@@ -145,7 +147,7 @@ def call(method, path, token=None, body=None, version='v1', ctype='application/j
                 raw = response.read().decode()
                 return json.loads(raw) if raw else None
         except urllib.error.HTTPError as error:
-            if error.code == 304:
+            if error.code == 304 or error.code in none_on:
                 return None
             if error.code == 429:
                 time.sleep(int(error.headers.get('Retry-After', '30')) + 1)
@@ -219,10 +221,31 @@ def reset(token, me):
     for label in call('GET', '/labels?per_page=50', token) or []:
         if label['title'] in labels and label['created_by']['id'] == me['id']:
             call('DELETE', f'/labels/{label["id"]}', token)
+    inbox = inbox_id(token)
     inbox_tasks = demo_titles(title for project, title, *_ in TASKS if project == 'inbox')
-    for task in call('GET', f'/projects/{inbox_id(token)}/tasks?per_page=50', token) or []:
+    for task in call('GET', f'/projects/{inbox}/tasks?per_page=50', token) or []:
         if task['title'] in inbox_tasks:
             call('DELETE', f'/tasks/{task["id"]}', token)
+    for project in trash(token, 'projects'):
+        if project['title'] in projects and project['owner']['id'] == me['id']:
+            call('DELETE', f'/projects/{project["id"]}/permanent', token, version='v2')
+    for task in trash(token, 'tasks'):
+        if task['title'] in inbox_tasks and task['project_id'] == inbox:
+            call('DELETE', f'/tasks/{task["id"]}/permanent', token, version='v2')
+
+
+def trash(token, kind):
+    # Servers before 2.8.0 delete outright and have no trash; they read
+    # "deleted" as a project or task id and answer 422.
+    items, page = [], 1
+    while True:
+        result = call('GET', f'/{kind}/deleted?per_page=50&page={page}', token, version='v2', none_on=(422,))
+        if result is None:
+            return items
+        items += result['items'] or []
+        if page >= result['total_pages']:
+            return items
+        page += 1
 
 
 def inbox_id(token):
