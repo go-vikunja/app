@@ -5,7 +5,6 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
-import 'package:vikunja_mobile/core/logging/redaction.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
@@ -420,7 +419,7 @@ class ConnectServerController extends _$ConnectServerController {
       return;
     }
     _log.severe(
-      'Unexpected connect failure: ${redactSecrets('$error')}',
+      'Unexpected connect failure: ${error.runtimeType}',
       null,
       stackTrace,
     );

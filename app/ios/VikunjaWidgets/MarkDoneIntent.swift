@@ -11,16 +11,22 @@ struct MarkDoneIntent: AppIntent {
 
   @Parameter(title: "Account") var accountId: String
   @Parameter(title: "Task") var taskId: Int
+  @Parameter(title: "Due date") var dueAt: Date?
+  // False in a button drawn before the rows said what they showed.
+  @Parameter(title: "Row known", default: false) var showsRow: Bool
 
   init() {}
 
-  init(accountId: String, taskId: Int) {
+  init(accountId: String, taskId: Int, dueAt: Date?) {
     self.accountId = accountId
     self.taskId = taskId
+    self.dueAt = dueAt
+    self.showsRow = true
   }
 
   func perform() async throws -> some IntentResult {
-    try DoneTaps.record(accountId: accountId, taskId: taskId)
+    try DoneTaps.record(
+      accountId: accountId, taskId: taskId, shown: showsRow ? ShownRow(dueAt: dueAt) : nil)
     WidgetCenter.shared.reloadTimelines(ofKind: WidgetKinds.tasks)
     return .result()
   }

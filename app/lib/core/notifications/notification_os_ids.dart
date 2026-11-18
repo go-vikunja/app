@@ -13,6 +13,11 @@ abstract final class NotificationOsIds {
   static const testNotification = 1;
   static const first = 2;
   static const last = 0x7fffffff;
+
+  /// The reminders to open the app before a session ends, one per account
+  /// (`sessionReminderOsId`): negative, so no hash above reaches them.
+  static const sessionRemindersFirst = -0x7fffffff;
+  static const sessionRemindersLast = -1;
 }
 
 int notificationOsIdFor(String accountId, String key) {

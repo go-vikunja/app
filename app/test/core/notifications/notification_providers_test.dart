@@ -21,9 +21,11 @@ import 'package:vikunja_mobile/core/notifications/notification_preferences.dart'
 import 'package:vikunja_mobile/core/notifications/notification_preferences_store.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_schedulers.dart';
+import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
 import '../../helpers/app_lock_fakes.dart';
@@ -95,14 +97,124 @@ void main() {
     return (alice.id, bob.id);
   }
 
-  test('the window is 60 on iOS and 100 elsewhere', () {
-    expect(notificationWindow(TargetPlatform.iOS), 60);
-    expect(notificationWindow(TargetPlatform.android), 100);
+  test('the window is 60 on iOS, shared evenly by the accounts with a '
+      'session reminder each, and 100 per account elsewhere', () {
+    expect(notificationWindow(platform: TargetPlatform.iOS), 59);
+    expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 2), 29);
+    expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 3), 19);
+    expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 7), 7);
+    for (var accounts = 1; accounts <= 30; accounts++) {
+      final window = notificationWindow(
+        platform: TargetPlatform.iOS,
+        accounts: accounts,
+      );
+      expect(
+        accounts * (window + 1),
+        lessThanOrEqualTo(60),
+        reason: '$accounts',
+      );
+    }
+    expect(notificationWindow(platform: TargetPlatform.android), 100);
+    expect(
+      notificationWindow(platform: TargetPlatform.android, accounts: 3),
+      100,
+    );
+  });
+
+  group('on iOS the accounts share the 64 the system keeps', () {
+    setUp(() {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    });
+
+    /// Forty due tasks of the user's own in the account's database.
+    Future<void> fortyOwnTasks(String accountId, int userId) async {
+      final db = container.read(appDatabaseProvider(accountId));
+      await db.projectsDao.upsertAll([sampleProject(id: 7, title: 'Work')]);
+      await db.tasksDao.upsertAll([
+        for (var id = 1; id <= 40; id++)
+          sampleTask(
+            id: id,
+            title: 'Task $id',
+            projectId: 7,
+            due: dueAt.add(Duration(minutes: id)),
+          ).copyWith(
+            createdBy: User(id: userId, username: 'u$userId'),
+          ),
+      ], syncRunId: 'run');
+    }
+
+    Map<String, int> pendingPerAccount() {
+      final counts = <String, int>{};
+      for (final notification in gateway.pending.values) {
+        final account = NotificationPayload.fromJson(notification.payload)
+            .accountId;
+        counts[account] = (counts[account] ?? 0) + 1;
+      }
+      return counts;
+    }
+
+    Future<RegisteredAccount> carolSignsIn() => auth.seedAccount(
+      fullServer270(root: 'https://carol.example.com'),
+      tokens: issueTokens(issuedAt: now, userId: 9, username: 'carol'),
+      activate: false,
+    );
+
+    test("two accounts hold 29 each, so neither drops the other's "
+        'soonest', () async {
+      final (alice, bob) = await twoAccounts();
+      await fortyOwnTasks(alice, 7);
+      await fortyOwnTasks(bob, 8);
+
+      container.listen(accountNotificationSchedulersProvider, (_, _) {});
+      await pumpEventQueue();
+
+      expect(pendingPerAccount(), {alice: 29, bob: 29});
+      expect(gateway.pending.keys, contains(notificationOsIdFor(bob, '1:due')));
+      expect(
+        gateway.pending.keys,
+        contains(notificationOsIdFor(alice, '1:due')),
+      );
+    });
+
+    test('a third account takes its share from the others: 19 each and a '
+        'session reminder each, 60 in all', () async {
+      final (alice, bob) = await twoAccounts();
+      await fortyOwnTasks(alice, 7);
+      await fortyOwnTasks(bob, 8);
+      container.listen(accountNotificationSchedulersProvider, (_, _) {});
+      await pumpEventQueue();
+      expect(pendingPerAccount(), {alice: 29, bob: 29});
+
+      final carol = await carolSignsIn();
+      container.invalidate(accountsProvider);
+      await container.read(accountsProvider.future);
+      await fortyOwnTasks(carol.id, 9);
+      final carols = container.read(notificationSchedulerProvider(carol.id));
+      await carols!.reconcile();
+      for (final account in [alice, bob, carol.id]) {
+        await container.read(appDatabaseProvider(account)).syncStateDao.write({
+          SyncStateKeys.lastSyncedAt: now.toIso8601String(),
+        });
+        await container.read(sessionRemindersProvider).update(account);
+      }
+      await pumpEventQueue();
+
+      expect(pendingPerAccount(), {alice: 20, bob: 20, carol.id: 20});
+      expect(
+        gateway.pending.keys,
+        containsAll([
+          for (final account in [alice, bob, carol.id])
+            sessionReminderOsId(account),
+        ]),
+      );
+      expect(gateway.pending, hasLength(60));
+    });
   });
 
   test('every signed-in account gets a scheduler while the shell listens; '
-      'signing one out cancels its notifications, forgets its preferences '
-      'and drops it', () async {
+      'signing one out cancels its notifications, its session reminder '
+      'included, forgets its preferences and drops it', () async {
     final (alice, bob) = await twoAccounts();
     final aliceDue = notificationOsIdFor(alice, '1:due');
     final bobDue = notificationOsIdFor(bob, '1:due');
@@ -128,10 +240,17 @@ void main() {
     expect(registry.find(alice), isNotNull);
     expect(registry.find(bob), isNotNull);
 
+    await container.read(appDatabaseProvider(alice)).syncStateDao.write({
+      SyncStateKeys.lastSyncedAt: now.toIso8601String(),
+    });
+    await container.read(sessionRemindersProvider).update(alice);
+    expect(gateway.pending.keys, contains(sessionReminderOsId(alice)));
+    gateway.cancelled.clear();
+
     await container.read(signOutProvider).call(alice);
     await pumpEventQueue();
 
-    expect(gateway.cancelled, [aliceDue]);
+    expect(gateway.cancelled, [aliceDue, sessionReminderOsId(alice)]);
     expect(gateway.pending.keys, [bobDue]);
     expect(schedulers.read(), {bob});
     expect(registry.find(alice), isNull);
@@ -442,8 +561,8 @@ void main() {
       await pumpEventQueue();
 
       expect(
-        gateway.calls.where((c) => c.startsWith('cancel')),
-        unorderedEquals(['cancel $aliceDue', 'cancel $bobDue']),
+        gateway.calls.where((c) => c.startsWith('schedule')),
+        unorderedEquals(['schedule $aliceDue', 'schedule $bobDue']),
       );
       expect(gateway.pending.keys, unorderedEquals([aliceDue, bobDue]));
       for (final notification in gateway.pending.values) {
@@ -490,41 +609,45 @@ void main() {
       expect(due.payload, payload);
     });
 
-    test("a content that shows less withdraws every account's reminders "
-        'and activity from the tray, but not the sign-in notification; one '
-        'that shows more withdraws nothing', () async {
-      final (alice, bob) = await twoAccounts();
-      container.listen(accountNotificationSchedulersProvider, (_, _) {});
-      await pumpEventQueue();
-      String payload(String accountId, String key) => NotificationPayload(
-        accountId: accountId,
-        taskId: 1,
-        key: key,
-      ).toJson();
-      gateway.tray.addAll({
-        101: payload(alice, '1:due'),
-        102: payload(alice, ActivityTray.activityKey(5)),
-        103: payload(alice, ActivityTray.sessionKey(alice)),
-        201: payload(bob, ActivityTray.moreKey(bob)),
-        301: null,
-      });
+    test(
+      "a content that shows less withdraws every account's reminders "
+      'and activity from the tray, but not the sign-in notification nor '
+      'the session reminder; one that shows more withdraws nothing',
+      () async {
+        final (alice, bob) = await twoAccounts();
+        container.listen(accountNotificationSchedulersProvider, (_, _) {});
+        await pumpEventQueue();
+        String payload(String accountId, String key) => NotificationPayload(
+          accountId: accountId,
+          taskId: 1,
+          key: key,
+        ).toJson();
+        gateway.tray.addAll({
+          101: payload(alice, '1:due'),
+          102: payload(alice, ActivityTray.activityKey(5)),
+          103: payload(alice, ActivityTray.sessionKey(alice)),
+          105: payload(alice, SessionReminders.key(alice)),
+          201: payload(bob, ActivityTray.moreKey(bob)),
+          301: null,
+        });
 
-      await change(
-        (settings) => settings.copyWith(
-          notificationContent: NotificationContent.noTitles,
-        ),
-      );
-      await pumpEventQueue();
-      expect(gateway.tray.keys, unorderedEquals([103, 301]));
+        await change(
+          (settings) => settings.copyWith(
+            notificationContent: NotificationContent.noTitles,
+          ),
+        );
+        await pumpEventQueue();
+        expect(gateway.tray.keys, unorderedEquals([103, 105, 301]));
 
-      gateway.tray[104] = payload(alice, '1:due');
-      await change(
-        (settings) =>
-            settings.copyWith(notificationContent: NotificationContent.all),
-      );
-      await pumpEventQueue();
-      expect(gateway.tray.keys, unorderedEquals([103, 104, 301]));
-    });
+        gateway.tray[104] = payload(alice, '1:due');
+        await change(
+          (settings) =>
+              settings.copyWith(notificationContent: NotificationContent.all),
+        );
+        await pumpEventQueue();
+        expect(gateway.tray.keys, unorderedEquals([103, 104, 105, 301]));
+      },
+    );
 
     test('a headless container reads them anew for every run, since the '
         'app may have changed them meanwhile', () async {

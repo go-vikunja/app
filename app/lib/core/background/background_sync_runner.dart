@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/background/background_runner_channel.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
+import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
@@ -376,6 +377,7 @@ final class _Run {
     final syncing = kind == BackgroundRunKind.sync;
     if (account.needsReauth) {
       await _step(account, 'notice', () => notifier.sessionEnded(account));
+      await _remindBeforeSessionEnds(account);
       await _reconcile(account);
       await _publishWidgets(account);
       return;
@@ -419,6 +421,7 @@ final class _Run {
     }
     // What the sync brought (a reminder set on the web) is planned too.
     if (synced == _Step.done) await _reconcile(account);
+    await _remindBeforeSessionEnds(account);
     await _publishWidgets(account);
     if (synced == _Step.done && _goesOn(account.id)) {
       await _step(
@@ -462,6 +465,14 @@ final class _Run {
     () async => await container
         .read(notificationSchedulerProvider(account.id))
         ?.reconcile(),
+  );
+
+  /// Moved by the turn's contacts, cancelled once the session ended; it
+  /// reads the account's state anew.
+  Future<void> _remindBeforeSessionEnds(Account account) => _step(
+    account,
+    'session reminder',
+    () => container.read(sessionRemindersProvider).update(account.id),
   );
 
   Future<void> _publishWidgets(Account account) => _step(

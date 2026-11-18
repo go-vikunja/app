@@ -341,6 +341,40 @@ void main() {
       expect(await db.outboxDao.count(), 0);
     });
 
+    test('an upload that keeps getting a 5xx is a problem after '
+        '${OutboxSender.maxFailedUploadAnswersInARow} attempts, far fewer '
+        "than an edit's, as each sends the whole file", () async {
+      await queueUpload(1);
+      write.beforeRequest = (request) async {
+        if (request.startsWith('upload')) throw const ServerFailure(502);
+      };
+      read.taskDetails[1] = const TaskDetails();
+      final outbox = sender();
+      await outbox.drain();
+      for (
+        var attempt = 2;
+        attempt <= OutboxSender.maxFailedUploadAnswersInARow;
+        attempt++
+      ) {
+        expect(await db.outboxDao.loadProblems(), isEmpty);
+        now = now.add(timers.pendingWait);
+        await fireNextAndSettle(outbox);
+      }
+
+      expect(
+        write.requests.where((r) => r.startsWith('upload')),
+        hasLength(OutboxSender.maxFailedUploadAnswersInARow),
+      );
+      expect(
+        OutboxSender.maxFailedUploadAnswersInARow,
+        lessThan(OutboxSender.maxFailedAnswersInARow),
+      );
+      final problem = (await db.outboxDao.loadProblems()).single;
+      expect(problem.kind, OutboxOperationKind.uploadAttachment);
+      expect(problem.failure, isA<ServerFailure>());
+      expect(timers.active, isEmpty);
+    });
+
     test(
       'an upload waiting out its backoff holds up none queued after it',
       () async {
@@ -418,6 +452,41 @@ void main() {
       expect(await db.outboxDao.count(), 0);
       expect(await storedCopies(), isEmpty);
     });
+
+    for (final (what, answer) in [
+      (
+        'a 2xx whose body cannot be read',
+        () => throw const UnexpectedResponse(200, message: 'not an attachment'),
+      ),
+      ('an exception after the request', () => throw StateError('a bug')),
+    ]) {
+      test('$what may have stored the file: it is looked for, not uploaded '
+          'again', () async {
+        await queueUpload(1, bytes: const [1, 2, 3, 4]);
+        write.afterRequest = (request) async => answer();
+        final outbox = sender();
+        await outbox.drain();
+
+        final op = (await db.outboxDao.all()).single;
+        expect(op.state, OutboxState.pending.name);
+        expect(op.sentAt, now);
+        expect(await db.outboxDao.loadProblems(), isEmpty);
+
+        write.afterRequest = null;
+        read.taskDetails[1] = TaskDetails(
+          attachments: [write.serverAttachments[1]!.single],
+        );
+        now = now.add(OutboxSender.initialBackoff);
+        await fireNextAndSettle(outbox);
+
+        expect(
+          write.requests.where((r) => r.startsWith('upload')),
+          hasLength(1),
+        );
+        expect(read.requests, ['task details 1']);
+        expect(await db.outboxDao.count(), 0);
+      });
+    }
 
     test('a lost answer without a match is sent again', () async {
       await queueUpload(1);

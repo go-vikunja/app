@@ -1,25 +1,68 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show immutable;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
+import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
+import 'package:vikunja_mobile/core/notifications/notification_plan.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 
 final _log = Logger('ExternalDone');
 
+/// What a notification or a widget row showed of a task when its Done was
+/// tapped. The server moves a repeating task on with every Done it gets,
+/// so a Done tapped on an occurrence the task has left behind (done in the
+/// app or on the web since) would move it once more and lose its next
+/// reminder.
+@immutable
+final class TappedOccurrence {
+  /// A reminder or due-date notification: its key and the task's own
+  /// instant it stood for.
+  const new notification({
+    required String this._key,
+    required DateTime this._at,
+  });
+
+  /// A widget row and the due date it showed, null for none.
+  const new widgetRow({DateTime? dueAt}) : _key = null, _at = dueAt;
+
+  final String? _key;
+  final DateTime? _at;
+
+  /// The Done is not for [task] as it is now: it is done already, or it
+  /// repeats and has another instant than the one shown. A task that does
+  /// not repeat takes the Done whatever was shown. A widget row tells by
+  /// the due date alone, so a repeating task without one takes it too.
+  bool passedBy(Task task) {
+    if (task.done) return true;
+    if (!task.repeats) return false;
+    final DateTime? current;
+    if (_key case final key?) {
+      final parsed = parseNotificationKey(key);
+      if (parsed == null) return false;
+      current = notificationInstantOf(task, parsed.kind, parsed.ordinal);
+    } else {
+      current = task.dueDate;
+    }
+    return !sameInstant(current, _at);
+  }
+}
+
 /// A Done tapped outside the app's screens, on a notification or a
 /// home-screen widget, in whatever container the OS started for it: the
 /// task is marked done through the outbox (a temporary id is followed to
-/// the server id), its notifications are cancelled and the widgets redrawn
-/// before anything waits for the network, the outbox is drained for at
-/// most [drainTimeout] (with session managers that never refresh, a
-/// rejected token queues a background drain instead), then the account's
-/// notifications are planned again and the widgets redrawn once more.
+/// the server id), its notifications are cancelled, also in the tray, and
+/// the widgets redrawn before anything waits for the network, the outbox is
+/// drained for at most [drainTimeout] (with session managers that never
+/// refresh, a rejected token queues a background drain instead), then the
+/// account's notifications are planned again and the widgets redrawn once
+/// more.
 final class ExternalDone {
   new(this._container, {this.drainTimeout = const Duration(seconds: 20)});
 
@@ -29,7 +72,30 @@ final class ExternalDone {
   /// queued either way.
   final Duration drainTimeout;
 
-  Future<void> markDone(String accountId, int taskId) async {
+  /// With [shown], a Done the task has passed by ([TappedOccurrence]) is
+  /// ignored, and only the account's notifications are planned again,
+  /// which withdraws what the tray still shows of the old occurrence.
+  /// Without it (a notification scheduled before step 40e) the Done always
+  /// goes.
+  Future<void> markDone(
+    String accountId,
+    int taskId, {
+    TappedOccurrence? shown,
+  }) async {
+    if (shown != null) {
+      final db = _container.read(appDatabaseProvider(accountId));
+      final task = await db.tasksDao.find(await db.tasksDao.resolveId(taskId));
+      if (task != null && shown.passedBy(task)) {
+        _log.info(
+          'Ignored a Done of task $taskId from outside the app: the task is '
+          'done or has moved on since',
+        );
+        await _container
+            .read(notificationSchedulerProvider(accountId))
+            ?.reconcile();
+        return;
+      }
+    }
     // Kept alive for the write: the repository is not a keep-alive provider.
     final repository = _container.listen(
       accountTaskRepositoryProvider(accountId),
@@ -53,7 +119,7 @@ final class ExternalDone {
     bool drains = true,
   }) async {
     final db = _container.read(appDatabaseProvider(accountId));
-    await _cancelNotificationsOf(taskIds, db);
+    await _cancelNotificationsOf(accountId, taskIds, db);
     await _refreshWidgets(accountId);
     if (drains) await _drain(accountId, taskIds);
     await _container
@@ -91,9 +157,14 @@ final class ExternalDone {
     }
   }
 
-  /// Before the drain, so the OS is told while the isolate is sure to run;
-  /// a gateway that fails does not hold the drain back.
-  Future<void> _cancelNotificationsOf(Set<int> taskIds, AppDatabase db) async {
+  /// The scheduled ones and those in the tray, before the drain, so the OS
+  /// is told while the isolate is sure to run; a gateway that fails does
+  /// not hold the drain back.
+  Future<void> _cancelNotificationsOf(
+    String accountId,
+    Set<int> taskIds,
+    AppDatabase db,
+  ) async {
     final ids = {
       ...taskIds,
       for (final taskId in taskIds) await db.tasksDao.resolveId(taskId),
@@ -103,6 +174,14 @@ final class ExternalDone {
     try {
       for (final row in rows) {
         await gateway.cancel(row.osId);
+      }
+      for (final shown in await gateway.delivered()) {
+        final payload = NotificationPayload.tryParse(shown.payload);
+        if (payload == null || payload.accountId != accountId) continue;
+        if (parseNotificationKey(payload.key) case final key?
+            when ids.contains(key.taskId)) {
+          await gateway.cancel(shown.osId);
+        }
       }
     } on Object catch (error) {
       _log.warning(

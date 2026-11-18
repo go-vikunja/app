@@ -59,3 +59,60 @@ final class ClockProvider
 }
 
 String _$clockHash() => r'3f65ad34ac6fcd532de9004042bdf2ed2bd85b13';
+
+/// The device's offset from UTC at an instant; overridden in tests that
+/// need a fixed time zone.
+
+@ProviderFor(utcOffsetAt)
+final utcOffsetAtProvider = UtcOffsetAtProvider._();
+
+/// The device's offset from UTC at an instant; overridden in tests that
+/// need a fixed time zone.
+
+final class UtcOffsetAtProvider
+    extends
+        $FunctionalProvider<
+          Duration Function(DateTime utc),
+          Duration Function(DateTime utc),
+          Duration Function(DateTime utc)
+        >
+    with $Provider<Duration Function(DateTime utc)> {
+  /// The device's offset from UTC at an instant; overridden in tests that
+  /// need a fixed time zone.
+  UtcOffsetAtProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'utcOffsetAtProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$utcOffsetAtHash();
+
+  @$internal
+  @override
+  $ProviderElement<Duration Function(DateTime utc)> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  Duration Function(DateTime utc) create(Ref ref) {
+    return utcOffsetAt(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Duration Function(DateTime utc) value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Duration Function(DateTime utc)>(
+        value,
+      ),
+    );
+  }
+}
+
+String _$utcOffsetAtHash() => r'749243a1c9fbb77a8f1322731d9f1786afa76e95';

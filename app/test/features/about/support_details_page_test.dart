@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/files/link_share_actions.dart';
+import 'package:vikunja_mobile/core/logging/diagnostics_log.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 import 'package:vikunja_mobile/features/about/application/support_details.dart';
 import 'package:vikunja_mobile/features/about/presentation/support_details_page.dart';
@@ -26,6 +27,7 @@ final _snapshot = SupportSnapshot(
   ),
   accounts: Collected([
     AccountSupport(
+      id: 'a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1',
       isGuest: false,
       active: true,
       needsSignIn: false,
@@ -42,6 +44,15 @@ final _snapshot = SupportSnapshot(
       queue: const Collected.unknown(),
       notifications: const Collected(NotificationPreferences()),
       lastSessionEnd: const Collected(null),
+    ),
+  ]),
+  log: Collected([
+    DiagnosticsEntry(
+      at: DateTime.utc(2026, 11, 12, 14, 1, 30),
+      part: 'app',
+      level: 'WARNING',
+      logger: 'SyncEngine',
+      message: 'Sync run 2 failed at tasks: NetworkFailure',
     ),
   ]),
 );
@@ -87,6 +98,15 @@ void main() {
     await pumpPage(tester);
 
     expect(find.text(en.supportDetailsIntro), findsOneWidget);
+    expect(find.text(en.supportDetailsLogNote), findsOneWidget);
+    expect(
+      shownText(tester),
+      endsWith(
+        'Log: warnings and errors of the last 7 days: 1\n'
+        '2026-11-12 14:01:30 UTC [app] WARNING SyncEngine: Sync run 2 '
+        'failed at tasks: NetworkFailure',
+      ),
+    );
     expect(shownText(tester), contains('Server: <server-1>\n'));
     expect(shownText(tester), isNot(contains('tasks.example.org')));
 

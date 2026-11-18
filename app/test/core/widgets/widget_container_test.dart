@@ -243,6 +243,66 @@ void main() {
       expect(host.actions, hasLength(1));
     });
 
+    group('of a repeating task', () {
+      final shownDue = repeating.dueDate!;
+      final nextDue = shownDue.add(const Duration(days: 7));
+
+      WidgetDoneTap showing(String id, String accountId, DateTime? dueAt) =>
+          WidgetDoneTap(
+            id: id,
+            accountId: accountId,
+            taskId: 2,
+            createdAt: now,
+            shown: (dueAt: dueAt),
+          );
+
+      test('whose row showed a due date it has moved past since are '
+          'settled without a Done, so it does not move once more', () async {
+        final (accountId, db) = await signedIn();
+        await db.tasksDao.upsertAll([
+          repeating.copyWith(dueDate: nextDue),
+        ], syncRunId: 'run');
+        host.actions.add(showing('stale', accountId, shownDue));
+
+        await importWidgetTaps(container);
+
+        expect(write.updates, isEmpty);
+        expect(await db.outboxDao.count(), 0);
+        expect(host.actions, isEmpty);
+        expect(await db.importedWidgetActionsDao.contains('stale'), isTrue);
+        expect((await db.tasksDao.find(2))!.dueDate, nextDue);
+      });
+
+      test('whose row showed the due date it still has are applied', () async {
+        final (accountId, _) = await signedIn();
+        host.actions.add(showing('current', accountId, shownDue));
+
+        await importWidgetTaps(
+          container,
+          drainTimeout: const Duration(seconds: 1),
+        );
+
+        expect(write.updates, hasLength(1));
+        expect(write.updates.single.$1, 2);
+      });
+
+      test('written before the rows said what they showed are applied as '
+          'before', () async {
+        final (accountId, db) = await signedIn();
+        await db.tasksDao.upsertAll([
+          repeating.copyWith(dueDate: nextDue),
+        ], syncRunId: 'run');
+        host.actions.add(tap('old', accountId, 2));
+
+        await importWidgetTaps(
+          container,
+          drainTimeout: const Duration(seconds: 1),
+        );
+
+        expect(write.updates, hasLength(1));
+      });
+    });
+
     test('of a task that is gone are settled', () async {
       final (accountId, db) = await signedIn();
       host.actions.add(tap('gone', accountId, 404));

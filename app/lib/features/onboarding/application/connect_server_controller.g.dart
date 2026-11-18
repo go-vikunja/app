@@ -106,7 +106,7 @@ final class ConnectServerControllerProvider
 }
 
 String _$connectServerControllerHash() =>
-    r'7b6694d5402d403adc8b921e32aeee1ac7ffc9c6';
+    r'd71c09fb6373910c54c5064d008e0ac58482b824';
 
 /// A server's address, an admin's registration invite (checked on its
 /// server) or a shared project's link (opened as a guest), from the

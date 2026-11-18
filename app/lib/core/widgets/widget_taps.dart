@@ -14,8 +14,9 @@ final _log = Logger('WidgetTaps');
 /// outbox and its id recorded in one transaction of its account's
 /// database, so a tap read again after a crash between that commit and
 /// the deletion of its file is skipped. A tap of an account that is not
-/// signed in (any more) is dropped. Then [ExternalDone.settle] runs per
-/// account: notifications, widgets, the drain and the plan.
+/// signed in (any more) is dropped, and so is one whose task has passed
+/// what its row showed ([TappedOccurrence]). Then [ExternalDone.settle]
+/// runs per account: notifications, widgets, the drain and the plan.
 final class WidgetTapImport {
   new(this._container, {required this._done, this.drains = true});
 
@@ -58,13 +59,25 @@ final class WidgetTapImport {
             if (await db.importedWidgetActionsDao.contains(tap.id)) {
               return false;
             }
-            final queued = await db.outboxDao.queueUpdate(
+            await db.importedWidgetActionsDao.add(tap.id, at: now());
+            if (tap.shown case (:final dueAt)) {
+              final task = await db.tasksDao.find(
+                await db.tasksDao.resolveId(tap.taskId),
+              );
+              if (task != null &&
+                  TappedOccurrence.widgetRow(dueAt: dueAt).passedBy(task)) {
+                _log.info(
+                  'Ignored a widget Done of task ${tap.taskId}: the task is '
+                  'done or has moved on since',
+                );
+                return false;
+              }
+            }
+            return await db.outboxDao.queueUpdate(
               tap.taskId,
               const TaskChanges(done: true),
               now: now(),
             );
-            await db.importedWidgetActionsDao.add(tap.id, at: now());
-            return queued;
           });
           settled.add(tap.id);
           if (queued) done.add(tap.taskId);

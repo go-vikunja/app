@@ -19,6 +19,7 @@ import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/links/widget_link.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
+import 'package:vikunja_mobile/core/logging/diagnostics_log.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -26,6 +27,7 @@ import 'package:vikunja_mobile/core/network/request_log_interceptor.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/platform/background_permissions.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
@@ -60,6 +62,7 @@ final _apiToken = 'tk_${'feed' * 10}';
 final String _caldavToken = 'Cd4v' * 16;
 const _title = 'Garden TITLE-MARKER plan';
 const _email = 'marker.user@example.com';
+const _uncaughtText = 'Unexpected UNCAUGHT-TEXT-MARKER';
 
 final class _StubServer implements HttpClientAdapter {
   new(this.handle);
@@ -113,6 +116,7 @@ final class _FixedToken implements AccessTokenSource {
 void main() {
   late List<LogRecord> records;
   late List<String> lines;
+  late Directory diagnosticsFolder;
 
   void capture({required bool printToConsole}) {
     final debugPrintBefore = debugPrint;
@@ -123,7 +127,12 @@ void main() {
     lines = [];
     debugPrint = (message, {wrapWidth}) => lines.add(message ?? '');
     final subscription = Logger.root.onRecord.listen(records.add);
-    configureLogging(printToConsole: printToConsole);
+    diagnosticsFolder = Directory.systemTemp.createTempSync('diagnostics');
+    configureLogging(
+      part: AppPart.app,
+      printToConsole: printToConsole,
+      diagnosticsDirectory: () async => diagnosticsFolder,
+    );
     addTearDown(() async {
       resetLoggingForTest();
       await subscription.cancel();
@@ -131,7 +140,20 @@ void main() {
       FlutterError.onError = flutterErrorBefore;
       PlatformDispatcher.instance.onError = uncaughtBefore;
       Logger.root.level = levelBefore;
+      await diagnosticsFolder.delete(recursive: true);
     });
+  }
+
+  // What the diagnostics log keeps, in memory and on disk: the export reads
+  // both.
+  Future<String> diagnosticsBytes() async {
+    final log = currentDiagnosticsLog!;
+    await log.idle;
+    return [
+      for (final entry in log.entries) jsonEncode(entry.toJson()),
+      for (final file in diagnosticsFolder.listSync().whereType<File>())
+        file.readAsStringSync(),
+    ].join('\n');
   }
 
   // Also what goes through `print` instead of `debugPrint`.
@@ -169,8 +191,12 @@ void main() {
       }
     }
     final output = lines.join('\n');
+    final kept = currentDiagnosticsLog!.entries
+        .map((e) => jsonEncode(e.toJson()))
+        .join('\n');
     for (final piece in pieces) {
       expect(output, isNot(contains(piece)));
+      expect(kept, isNot(contains(piece)));
     }
   }
 
@@ -615,6 +641,18 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
+    // What the log calls name, and uncaught errors quoting everything.
+    Logger('Probe')
+      ..warning('Could not read the tokens of account ${user.id}: StateError')
+      ..warning('Session of guest ${guest.id} ended: SessionEnded(expired)');
+    // Its text reaches only the debug console, the rest by type.
+    reportUncaught(
+      FormatException(
+        _uncaughtText,
+        '{"access_token":"${tokens.accessToken}","host":"https://$host/vik",'
+        '"email":"$_email"}',
+      ),
+    );
 
     final snapshot = await container.read(supportSnapshotProvider.future);
     final hidden = renderSupportDetails(
@@ -632,6 +670,10 @@ void main() {
     expect(hidden, contains('validation_failed code 2002'));
     expect(hidden, isNot(contains(host)));
     expect(shown, contains('Server: https://$host/vik\n'));
+    expect(hidden, contains('tokens of account <account-1>: StateError\n'));
+    expect(hidden, contains('Session of guest <account-2> ended'));
+    expect(hidden, contains('Uncaught error (Flutter framework)\n'));
+    expect(hidden, contains('  error: FormatException\n'));
     final secrets = [
       tokens.accessToken,
       tokens.refreshToken,
@@ -656,19 +698,25 @@ void main() {
       'QUERY-MARKER',
       'FRAGMENT',
       'Keycloak',
-      user.id,
-      guest.id,
     ];
+    // The log keeps accounts by id (threat model, section 10, rule 3); the
+    // export names them by number.
+    final ids = [user.id, guest.id];
+    final stored = await diagnosticsBytes();
     for (final text in [hidden, shown]) {
-      for (final piece in piecesOf(secrets)) {
+      for (final piece in piecesOf([...secrets, ...ids, _uncaughtText])) {
         expect(text, isNot(contains(piece)), reason: piece);
       }
+    }
+    for (final piece in piecesOf([...secrets, host, _uncaughtText])) {
+      expect(stored, isNot(contains(piece)), reason: piece);
     }
     expectNowhere(secrets);
   });
 
   test('a release build prints nothing for an uncaught error, whatever it '
-      'quotes', () async {
+      'quotes, and its diagnostics log, file and export keep only its '
+      'type', () async {
     capture(printToConsole: false);
     final tokens = issueTokens(issuedAt: _now, refreshToken: _refreshMarker(5));
     final quoted = [
@@ -689,8 +737,25 @@ void main() {
         reportUncaught(Exception('failed with $value'));
       }
     });
+    final export = await copyableSupportDetails(null, appLanguage: 'en');
+    final stored = await diagnosticsBytes();
 
     expect(lines, isEmpty);
-    expect(records, isEmpty);
+    expect(records.map((r) => r.level).toSet(), {Level.SEVERE});
+    expect(
+      currentDiagnosticsLog!.entries.map((e) => (e.message, e.error)).toSet(),
+      {
+        ('Uncaught error (Flutter framework)', 'FormatException'),
+        ('Uncaught error (Flutter framework)', '_Exception'),
+        ('Uncaught error', 'FormatException'),
+        ('Uncaught error', '_Exception'),
+      },
+    );
+    expect(export, contains('  error: FormatException\n'));
+    expect(stored, contains('"error":"FormatException"'));
+    for (final piece in piecesOf([...quoted, 'Unexpected character'])) {
+      expect(export, isNot(contains(piece)), reason: piece);
+      expect(stored, isNot(contains(piece)), reason: piece);
+    }
   });
 }

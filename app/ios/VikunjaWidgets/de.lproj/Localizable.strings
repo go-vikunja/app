@@ -11,6 +11,8 @@
 "Label" = "Label";
 "Saved filter" = "Gespeicherter Filter";
 "Task" = "Aufgabe";
+"Due date" = "Fälligkeitsdatum";
+"Row known" = "Zeile bekannt";
 "Today" = "Heute";
 "Upcoming" = "Anstehend";
 "Overdue" = "Überfällig";

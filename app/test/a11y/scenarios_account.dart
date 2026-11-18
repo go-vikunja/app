@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/data_expor
 import 'package:vikunja_mobile/features/account_settings/presentation/sessions_page.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/privacy/presentation/privacy_page.dart';
 
 import '../helpers/account_security_fakes.dart';
@@ -155,6 +156,28 @@ SweepScenario _sessions(
 /// its states; and the lock screen with each message, which the app lock
 /// draws over every route.
 final List<SweepScenario> accountStateScenarios = [
+  SweepScenario(
+    kind: SweepKind.state,
+    name: '${AppRoutes.account} background sync limited',
+    route: AppRoutes.account,
+    setUp: (tester, _) =>
+        pumpSweepApp(tester, overrides: [limitedBackgroundSync]),
+    navigate: (tester, l10n) async {
+      goTo(tester, AppRoutes.account);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text(l10n.backgroundSyncLimitedTitle),
+        300,
+        scrollable: find
+            .descendant(
+              of: find.byType(AccountTab),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+    },
+    expectScreen: (l10n) => find.text(l10n.backgroundSyncLimitedTitle),
+  ),
   _sessions(
     'empty',
     (security) => security

@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
+import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/inbox/application/local_task_lookup.dart';
@@ -28,7 +29,8 @@ final _log = Logger('NotificationTap');
 /// task, and so does the one that stands for several; a test notification
 /// and one about an ended session open the Account tab, after the pages
 /// over the shell went as if the user went back (the edit page asks
-/// first). Signed out, the tap is dropped. All this only for a payload with
+/// first). The reminder to open the app before a session ends only opens
+/// it. Signed out, the tap is dropped. All this only for a payload with
 /// the install's widget-link key: on Android any app can make one up, so a
 /// tap without it (or from a notification scheduled before the key) never
 /// switches accounts silently and marks nothing read; its task opens like a
@@ -84,6 +86,9 @@ class _NotificationTapListenerState
       _log.fine('Ignoring a notification without a readable payload');
       return;
     }
+    // Opening the app is all it asks for: in front, the app syncs every
+    // account's activity, which keeps the sessions alive.
+    if (SessionReminders.isKey(payload.key)) return;
     unawaited(
       _linkKey.then((key) {
         if (!mounted) return;

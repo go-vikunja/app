@@ -15,7 +15,9 @@ import 'package:vikunja_mobile/core/background/background_runner_channel.dart';
 import 'package:vikunja_mobile/core/background/background_sync_runner.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
+import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
+import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -113,6 +115,9 @@ void main() {
           (ref, accountId) => writeOf(accountId),
         ),
         clockProvider.overrideWithValue(() => now),
+        // Six hours behind UTC, so that the session reminders fall in the
+        // day.
+        utcOffsetAtProvider.overrideWithValue((_) => const Duration(hours: -6)),
         notificationGatewayProvider.overrideWithValue(gateway),
         widgetHostProvider.overrideWithValue(widgets),
       ],
@@ -789,6 +794,71 @@ void main() {
         throwsA(isA<SessionEnded>()),
       );
       expect(auth.linkShareGateway.authentications, isEmpty);
+    });
+
+    test('gets no session reminder', () async {
+      final guest = await guestSignedIn(syncedAt: monday);
+
+      expect(await runner().run(), BackgroundRunOutcome.completed);
+
+      final reminderId = sessionReminderOsId(guest.id);
+      expect(gateway.calls, isNot(contains('scheduleActivity $reminderId')));
+      expect(gateway.calls, isNot(contains('cancel $reminderId')));
+    });
+  });
+
+  group('the session reminder', () {
+    const sixtyHours = Duration(hours: 60);
+
+    test('is moved by the turn: 60 h after the sync it made', () async {
+      final entry = await signedIn(1, syncedAt: monday, activitySynced: false);
+      now = monday.add(const Duration(minutes: 30));
+      engineOf(entry.id).onRefresh = () => databases[entry.id]!.syncStateDao
+          .write({SyncStateKeys.lastSyncedAt: now.toIso8601String()});
+
+      expect(await runner().run(), BackgroundRunOutcome.completed);
+
+      final reminder = gateway.scheduledActivities.single;
+      expect(reminder.osId, sessionReminderOsId(entry.id));
+      expect(reminder.fireAt, now.add(sixtyHours));
+    });
+
+    test('is cancelled once the session ended during the turn', () async {
+      final entry = await signedIn(1, syncedAt: monday);
+      await container.read(accountsProvider.future);
+      await container.read(sessionRemindersProvider).update(entry.id);
+      expect(gateway.pending, contains(sessionReminderOsId(entry.id)));
+      auth.tokenGateway.onRefresh = (_) async =>
+          throw const SessionEnded(SessionEndReason.expired);
+      engineOf(entry.id).onRefresh = () async {
+        await container
+            .read(sessionManagersProvider)
+            .forAccount(entry.id)
+            .validAccessToken();
+      };
+      now = monday.add(const Duration(hours: 1));
+
+      expect(await runner().run(), BackgroundRunOutcome.partial);
+
+      expect(gateway.pending, isNot(contains(sessionReminderOsId(entry.id))));
+    });
+
+    test('is cancelled for an account that must sign in again', () async {
+      final entry = await signedIn(1, syncedAt: monday, needsReauth: true);
+      final reminderId = sessionReminderOsId(entry.id);
+      gateway.pending[reminderId] = ScheduledNotification(
+        osId: reminderId,
+        fireAt: monday.add(sixtyHours),
+        title: 'Open the app',
+        body: '',
+        payload: '',
+        exact: false,
+      );
+
+      await runner().run();
+
+      expect(gateway.pending, isNot(contains(reminderId)));
+      expect(gateway.scheduledActivities, isEmpty);
     });
   });
 }

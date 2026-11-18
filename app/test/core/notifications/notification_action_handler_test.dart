@@ -268,6 +268,141 @@ void main() {
       expect(gateway.cancelled, [localReminderId]);
       expect(await db.scheduledNotificationsDao.forTasks({-1, 100}), isEmpty);
     });
+
+    test(
+      "takes the task's notifications out of the tray before the send",
+      () async {
+        final (accountId, _) = await signedIn();
+        final reminderId = notificationOsIdFor(accountId, '1:reminder:0');
+        final dueId = notificationOsIdFor(accountId, '1:due');
+        final secondId = notificationOsIdFor(accountId, '2:due');
+        // Both of the task's fired, and a run dropped their rows since.
+        now = dueAt.add(const Duration(minutes: 1));
+        gateway
+          ..tray.addAll({
+            reminderId: gateway.pending[reminderId]!.payload,
+            dueId: gateway.pending[dueId]!.payload,
+            secondId: 'an activity of another task',
+          })
+          ..fire(reminderId)
+          ..fire(dueId);
+        final db = container.read(appDatabaseProvider(accountId));
+        await container
+            .read(notificationSchedulerProvider(accountId))!
+            .reconcile();
+        expect(await db.scheduledNotificationsDao.forTasks({1}), isEmpty);
+        Set<int>? trayBeforeSend;
+        write.beforeRequest = (_) async =>
+            trayBeforeSend ??= {...gateway.tray.keys};
+
+        await handler.handle(
+          action(
+            NotificationActionIds.markDone,
+            accountId: accountId,
+            taskId: 1,
+            key: '1:reminder:0',
+          ),
+        );
+
+        expect(trayBeforeSend, {secondId});
+        expect(gateway.tray.keys, [secondId]);
+      },
+    );
+
+    group('for an occurrence the task has passed', () {
+      final daily = water.copyWith(repeatAfter: const Duration(days: 1));
+      final nextDue = dueAt.add(const Duration(days: 1));
+
+      Future<(String, AppDatabase)> dailySignedIn() async {
+        final (accountId, db) = await signedIn();
+        await db.tasksDao.upsertAll([daily], syncRunId: 'run');
+        write.serverTasks[daily.id] = daily;
+        return (accountId, db);
+      }
+
+      NotificationResponse doneOf(String accountId, String key, DateTime? at) =>
+          action(
+            NotificationActionIds.markDone,
+            accountId: accountId,
+            taskId: 1,
+            key: key,
+            payload: NotificationPayload(
+              accountId: accountId,
+              taskId: 1,
+              key: key,
+              occurrence: at,
+            ).toJson(),
+          );
+
+      test('a repeating task done on the web since, its next due date '
+          'synced, ignores it, so it does not move once more', () async {
+        final (accountId, db) = await dailySignedIn();
+        await db.tasksDao.upsertAll([
+          daily.copyWith(
+            dueDate: nextDue,
+            reminders: [
+              TaskReminder(reminder: reminderAt.add(const Duration(days: 1))),
+            ],
+          ),
+        ], syncRunId: 'run');
+
+        await handler.handle(doneOf(accountId, '1:due', dueAt));
+        await handler.handle(doneOf(accountId, '1:reminder:0', reminderAt));
+
+        expect(write.requests, isEmpty);
+        expect(await db.outboxDao.count(), 0);
+        final task = (await db.tasksDao.find(1))!;
+        expect(task.done, isFalse);
+        expect(task.dueDate, nextDue);
+      });
+
+      test('a repeating task still at that occurrence takes it', () async {
+        final (accountId, db) = await dailySignedIn();
+
+        await handler.handle(doneOf(accountId, '1:due', dueAt));
+
+        expect(write.updates, [(1, const TaskChanges(done: true))]);
+      });
+
+      test('a task done meanwhile, in the app or on the web, ignores it, '
+          'repeating or not', () async {
+        final (accountId, db) = await signedIn();
+        await db.tasksDao.upsertAll([
+          water.copyWith(done: true),
+        ], syncRunId: 'run');
+
+        await handler.handle(doneOf(accountId, '1:due', dueAt));
+
+        expect(write.requests, isEmpty);
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test(
+        'a task that does not repeat takes it whatever its time is now',
+        () async {
+          final (accountId, db) = await signedIn();
+          await db.tasksDao.upsertAll([
+            water.copyWith(dueDate: nextDue),
+          ], syncRunId: 'run');
+
+          await handler.handle(doneOf(accountId, '1:due', dueAt));
+
+          expect(write.updates, [(1, const TaskChanges(done: true))]);
+        },
+      );
+
+      test('a payload scheduled before step 40e, without the instant, takes '
+          'it as before', () async {
+        final (accountId, db) = await dailySignedIn();
+        await db.tasksDao.upsertAll([
+          daily.copyWith(dueDate: nextDue),
+        ], syncRunId: 'run');
+
+        await handler.handle(doneOf(accountId, '1:due', null));
+
+        expect(write.updates, [(1, const TaskChanges(done: true))]);
+      });
+    });
   });
 
   group('Snooze', () {
@@ -386,6 +521,58 @@ void main() {
       final row = (await db.scheduledNotificationsDao.find('1:reminder:0'))!;
       expect(row.snoozedUntil, later);
       expect(row.snoozeOriginalFireAt, reminderAt);
+    });
+
+    test('a snooze of an occurrence the task has moved on from only '
+        "reconciles, so the next one keeps its time; the next one's snooze "
+        'moves it', () async {
+      final (accountId, db) = await signedIn();
+      final dueId = notificationOsIdFor(accountId, '1:due');
+      final nextDue = dueAt.add(const Duration(days: 1));
+      NotificationResponse snoozeOf(DateTime shown) => action(
+        NotificationActionIds.snooze1Hour,
+        accountId: accountId,
+        taskId: 1,
+        key: '1:due',
+        payload: NotificationPayload(
+          accountId: accountId,
+          taskId: 1,
+          key: '1:due',
+          occurrence: shown,
+        ).toJson(),
+      );
+      now = dueAt.add(const Duration(minutes: 1));
+      gateway.fire(dueId);
+      // Done on the web, and the next occurrence synced.
+      await db.tasksDao.upsertAll([
+        water.copyWith(
+          repeatAfter: const Duration(days: 1),
+          dueDate: nextDue,
+          reminders: [
+            TaskReminder(reminder: reminderAt.add(const Duration(days: 1))),
+          ],
+        ),
+      ], syncRunId: 'run');
+      await container
+          .read(notificationSchedulerProvider(accountId))!
+          .reconcile();
+      expect(gateway.pending[dueId]!.fireAt, nextDue);
+
+      await handler.handle(snoozeOf(dueAt));
+
+      expect(gateway.pending[dueId]!.fireAt, nextDue);
+      var row = (await db.scheduledNotificationsDao.find('1:due'))!;
+      expect(row.snoozedUntil, isNull);
+
+      now = nextDue.add(const Duration(minutes: 1));
+      gateway.fire(dueId);
+      await handler.handle(snoozeOf(nextDue));
+
+      final until = now.add(const Duration(hours: 1));
+      expect(gateway.pending[dueId]!.fireAt, until);
+      row = (await db.scheduledNotificationsDao.find('1:due'))!;
+      expect(row.snoozedUntil, until);
+      expect(row.snoozeOriginalFireAt, nextDue);
     });
 
     test('a snooze of a task that does not exist does nothing', () async {

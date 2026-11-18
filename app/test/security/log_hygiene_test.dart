@@ -32,6 +32,24 @@ const _allowed = <String, Map<String, String>>{
         'The debug console sink: prints only redacted records, release '
         'builds install none.',
   },
+  'sink': {
+    'lib/bootstrap/logging_setup.dart':
+        'The debug console sink, and the diagnostics log of every build '
+        '(DiagnosticsLog.add): from WARNING up, redacted at capture, errors '
+        "by type and the stack by the app's frames, kept in the cache "
+        'folder and leaving only through the support details.',
+  },
+};
+
+/// Errors that warning and severe calls quote beyond their type, by path
+/// suffix and expression, each with its reason.
+const _allowedErrorTexts = <(String, String), String>{
+  ('lib/core/security/privacy_providers.dart', 'error.cause'):
+      'The type of what made the settings unreadable, as the store names '
+      'it from a runtimeType.',
+  ('lib/core/platform/location_removal.dart', 'error.message'):
+      "The platform's reason: a fixed text of LocationRemoval.Reason or a "
+      'type on Android, a type on iOS, never a path.',
 };
 
 /// Interpolations the log-call rule flags that are allowed, by path suffix
@@ -54,6 +72,16 @@ final _verboseLogging = RegExp(
 final _dartLogCall = RegExp(
   r'(?:\b_?\w*[Ll]og(?:ger)?|Logger\([^)]*\)|Logger\.root)'
   '\\.(?:$_logLevels)\\(',
+);
+// What the diagnostics log keeps (threat model, section 10, rule 2).
+final _keptLogCall = RegExp(
+  r'(?:\b_?\w*[Ll]og(?:ger)?|Logger\([^)]*\)|Logger\.root)'
+  r'\.(?:warning|severe|shout)\(',
+);
+final _recordSink = RegExp(r'\.onRecord\b');
+final _byType = RegExp(r'\.(?:runtimeType|code|name)$');
+final _errorText = RegExp(
+  r'\b(?:e|err|error|ex|exception)\b|\.(?:message|cause)$',
 );
 // The OAuth code, PKCE verifier and state, a TOTP passcode and access-header
 // values (A4, A5) are bare values that redaction cannot recognise.
@@ -255,6 +283,35 @@ List<String> _unsafeLogInterpolations(Iterable<_Source> sources) => [
             source.finding(match.start, 'logs \$$expression'),
 ];
 
+bool _quotesError(String expression) =>
+    !_byType.hasMatch(expression) && _errorText.hasMatch(expression);
+
+List<String> _errorTextsKept(Iterable<_Source> sources) => [
+  for (final source in sources)
+    for (final match in _keptLogCall.allMatches(source.text))
+      if (!_isComment(source, match.start))
+        for (final expression in _interpolations(
+          source.text.substring(
+            match.end,
+            _closing(source.text, match.end - 1),
+          ),
+        ))
+          if (_quotesError(expression) &&
+              !_allowedErrorTexts.keys.any(
+                (allowed) =>
+                    source.path.endsWith(allowed.$1) &&
+                    expression == allowed.$2,
+              ))
+            source.finding(match.start, 'keeps the text of \$$expression'),
+];
+
+List<String> _recordSinks(Iterable<_Source> sources) => [
+  for (final source in sources)
+    for (final match in _recordSink.allMatches(source.text))
+      if (!_isComment(source, match.start))
+        source.finding(match.start, match[0]!),
+];
+
 /// The `toString` overrides of [source]: the class they are in, the offset
 /// and the body.
 Iterable<(String, int, String)> _toStrings(_Source source) sync* {
@@ -425,6 +482,17 @@ void main() {
     expect(_unsafeLogInterpolations(dart), isEmpty);
   });
 
+  test('warning and severe calls, which the diagnostics log keeps, name an '
+      'error by its type, never its text, redacted or not', () {
+    expect(_errorTextsKept(dart), isEmpty);
+  });
+
+  test('only the logging setup listens to the records: the debug console '
+      'and the diagnostics log', () {
+    expect(_notAllowed('sink', _recordSinks(dart)), isEmpty);
+    expect(_recordSinks(dart), hasLength(2));
+  });
+
   test('no toString prints a secret field', () {
     expect(_secretsInToString(dart), isEmpty);
   });
@@ -515,6 +583,26 @@ void f() {
         r'logs $user.name',
         r'logs $parsed',
       ]);
+    });
+
+    test("errors' texts in what the diagnostics log keeps, and record "
+        'sinks', () {
+      final source = sample('lib/x.dart', r'''
+void f() {
+  _log.warning('Adapter failed: $error');
+  _log.severe('Unexpected: ${redactSecrets('$error')}', null, stack);
+  _log.warning('Failed: ${e.message} ${error.runtimeType} ${error.code}');
+  _log.info('Failed: $error');
+  _log.warning('Run $runId failed: ${failure.runtimeType} $failure');
+  Logger.root.onRecord.listen(print);
+}
+''');
+      expect(_errorTextsKept([source]).map((f) => f.split(': ').last), [
+        r'keeps the text of $error',
+        r"keeps the text of $redactSecrets('$error')",
+        r'keeps the text of $e.message',
+      ]);
+      expect(_recordSinks([source]), hasLength(1));
     });
 
     test('secrets and content in toString', () {

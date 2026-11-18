@@ -74,6 +74,10 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// one is minus one more. Never reused, so a remap stays unambiguous.
   static const localTaskIdsKey = 'local_task_ids';
 
+  /// `sync_state` key: the process whose senders claim ops (see
+  /// [resetSending]).
+  static const sendingProcessKey = 'outbox_sending_process';
+
   final _random = Random.secure();
 
   /// Inserts the task under the next temporary id, with its reminders, and
@@ -225,7 +229,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// they are. A temporary id whose create was answered meanwhile is
   /// followed to the server id. A create that has not left the device goes
   /// with the delete once the sender gets to it; one the server refused, or
-  /// a row without its create, is discarded at once with every op.
+  /// a row without its create, is discarded at once with every op. A failed
+  /// create that may have reached the server (`sent_at`) keeps the delete
+  /// behind it.
   /// [TaskDeletion.none] when the task is unknown here or already queued
   /// for deletion.
   Future<TaskDeletion> queueDelete(
@@ -237,7 +243,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     if (row == null || row.pendingDelete) return TaskDeletion.none;
     if (taskId < 0) {
       final create = await _createOf(taskId);
-      if (create == null || create.state == OutboxState.failed.name) {
+      if (create == null ||
+          (create.state == OutboxState.failed.name && create.sentAt == null)) {
         await cancelCreate(taskId);
         return TaskDeletion.discarded;
       }
@@ -646,6 +653,32 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         await remove(op.id);
       });
 
+  /// The sender gave up on answers that were not the server's last word
+  /// (a 5xx, an answer it could not read), any of which may have reached
+  /// the server: a create or upload marked so (`sent_at`) keeps the mark,
+  /// so its Retry looks first, and such a create takes no edit and no
+  /// delete into it, as the server may have the task. Otherwise as
+  /// [markFailed].
+  Future<void> markGivenUp(String id, VikunjaFailure failure) =>
+      transaction(() async {
+        final op = await find(id);
+        if (op == null) return;
+        if (op.sentAt == null ||
+            (op.kind != OutboxOperationKind.createTask.name &&
+                op.kind != OutboxOperationKind.uploadAttachment.name)) {
+          await markFailed(id, failure);
+          return;
+        }
+        await _write(
+          id,
+          OutboxCompanion(
+            state: Value(OutboxState.failed.name),
+            nextAttemptAt: const Value(null),
+            lastError: Value(encodeFailure(failure)),
+          ),
+        );
+      });
+
   /// Labels gone from the server for this user (deleted, or no longer
   /// visible) can never be attached or detached, so their ids leave every
   /// unsent update: an add of one would otherwise fail the op for good and
@@ -803,21 +836,31 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// them may have reached the server, so it is marked uncertain as of its
   /// attempt (an earlier `sent_at` stays), and the next attempt looks for
   /// the task or attachment before sending it again.
+  ///
+  /// The first call with a [process] (the caller's process id) other than
+  /// the one stored ([sendingProcessKey]) resets every op `sending` at
+  /// once, as every isolate of the app runs in one process, so a process
+  /// that left them has died, and stores [process]. One that finds no
+  /// process stored, the first after an update to this version, keeps
+  /// the age rule. A new process that got the dead one's id keeps it too.
   Future<int> resetSending({
     required DateTime now,
     Duration olderThan = Duration.zero,
     Set<String> keep = const {},
+    int? process,
   }) => transaction(() async {
+    final orphaned = process != null && await _takeOverSending(process);
+    final age = orphaned ? Duration.zero : olderThan;
     const millis = EpochMillis();
     // A clock set back since the attempt must not hold the op for good.
     final sending =
         outbox.state.equals(OutboxState.sending.name) &
         (outbox.lastAttemptAt.isNull() |
             outbox.lastAttemptAt.isSmallerOrEqualValue(
-              millis.toSql(now.subtract(olderThan)),
+              millis.toSql(now.subtract(age)),
             ) |
             outbox.lastAttemptAt.isBiggerOrEqualValue(
-              millis.toSql(now.add(olderThan)),
+              millis.toSql(now.add(age)),
             )) &
         outbox.id.isNotIn(keep);
     await (update(outbox)..where(
@@ -841,6 +884,20 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       OutboxCompanion(state: Value(OutboxState.pending.name)),
     );
   });
+
+  /// Stores [process] as the one whose senders claim ops from now on;
+  /// true when another one was stored.
+  Future<bool> _takeOverSending(int process) async {
+    final stored = await (select(
+      syncState,
+    )..where((s) => s.key.equals(sendingProcessKey))).getSingleOrNull();
+    if (stored?.value == '$process') return false;
+    await into(syncState).insert(
+      SyncStateRow(key: sendingProcessKey, value: '$process'),
+      mode: InsertMode.insertOrReplace,
+    );
+    return stored != null;
+  }
 
   /// Drops every backoff, for "Send now".
   Future<int> clearBackoff() =>
@@ -1094,11 +1151,10 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
           .getSingleOrNull();
 
   /// A create the server was never asked for, or rejected: it still takes
-  /// edits. In flight, or sent without an answer, the server may have it,
-  /// so later ops queue behind it.
+  /// edits. In flight, or sent without an answer (also one the sender gave
+  /// up on), the server may have it, so later ops queue behind it.
   static bool _neverReachedServer(OutboxRow create) =>
-      create.state == OutboxState.failed.name ||
-      (create.state == OutboxState.pending.name && create.sentAt == null);
+      create.state != OutboxState.sending.name && create.sentAt == null;
 
   /// Whether a delete of the task is queued, whatever its state.
   Future<bool> hasQueuedDelete(int taskId) async =>

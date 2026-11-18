@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
+import 'package:vikunja_mobile/core/logging/diagnostics_log.dart';
 import 'package:vikunja_mobile/core/logging/redaction.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
@@ -54,6 +55,7 @@ final class SupportSnapshot {
     required this.createdAt,
     required this.device,
     required this.accounts,
+    required this.log,
   });
 
   final DateTime createdAt;
@@ -61,6 +63,9 @@ final class SupportSnapshot {
 
   /// In registry order.
   final Collected<List<AccountSupport>> accounts;
+
+  /// The diagnostics log, oldest first.
+  final Collected<List<DiagnosticsEntry>> log;
 }
 
 @immutable
@@ -90,6 +95,7 @@ final class DeviceSupport {
 @immutable
 final class AccountSupport {
   const new({
+    required this.id,
     required this.isGuest,
     required this.active,
     required this.needsSignIn,
@@ -108,6 +114,8 @@ final class AccountSupport {
     required this.lastSessionEnd,
   });
 
+  /// Only to name the account in the log by its number; never shown.
+  final String id;
   final bool isGuest;
   final bool active;
   final bool needsSignIn;
@@ -381,6 +389,56 @@ Future<SupportSnapshot> supportSnapshot(Ref ref) async {
     createdAt: createdAt,
     device: device,
     accounts: accounts,
+    log: await _collectLog(ref.read(diagnosticsLogProvider)),
+  );
+}
+
+Future<Collected<List<DiagnosticsEntry>>> _collectLog(DiagnosticsLog? log) =>
+    _collect('the log', () async => await log?.readAll() ?? const []);
+
+/// The support details as the release error widget copies them, servers
+/// hidden. Without [container], or when the snapshot cannot be collected,
+/// the platform and this isolate's diagnostics log only. Never throws.
+Future<String> copyableSupportDetails(
+  ProviderContainer? container, {
+  required String appLanguage,
+}) async {
+  SupportSnapshot? snapshot;
+  if (container != null) {
+    try {
+      final subscription = container.listen(
+        supportSnapshotProvider.future,
+        (_, _) {},
+      );
+      try {
+        snapshot = await subscription.read().timeout(
+          const Duration(seconds: 10),
+        );
+      } finally {
+        subscription.close();
+      }
+    } on Object catch (error) {
+      _log.info('Support details from the log only: ${error.runtimeType}');
+    }
+  }
+  snapshot ??= SupportSnapshot(
+    createdAt: DateTime.now().toUtc(),
+    device: DeviceSupport(
+      platform: defaultTargetPlatform.name.toLowerCase(),
+      app: const Collected.unknown(),
+      osVersion: const Collected.unknown(),
+      deviceLocale: const Collected.unknown(),
+      notifications: const Collected.unknown(),
+      background: const Collected.unknown(),
+      lastBackgroundRun: const Collected.unknown(),
+    ),
+    accounts: const Collected.unknown(),
+    log: await _collectLog(currentDiagnosticsLog),
+  );
+  return renderSupportDetails(
+    snapshot,
+    showServers: false,
+    appLanguage: appLanguage,
   );
 }
 
@@ -449,6 +507,7 @@ Future<AccountSupport> _collectAccount(
   final connection = entry.connection;
   final info = connection.info;
   return AccountSupport(
+    id: id,
     isGuest: entry.account.isLinkShare,
     active: active,
     needsSignIn: entry.account.needsReauth,
@@ -506,7 +565,8 @@ String _senderLabel(OutboxSender sender) => switch (sender.blockedBy) {
 };
 
 /// The support details as plain English "key: value" lines, the same in
-/// every app language so reports compare. Hosts only with [showServers].
+/// every app language so reports compare, and the diagnostics log last.
+/// Hosts only with [showServers].
 String renderSupportDetails(
   SupportSnapshot snapshot, {
   required bool showServers,
@@ -518,13 +578,14 @@ String renderSupportDetails(
     ..._deviceLines(snapshot.device, appLanguage: appLanguage),
   ];
   final accounts = snapshot.accounts;
+  final list = accounts.value ?? const <AccountSupport>[];
+  final servers = <Uri, int>{};
+  for (final account in list) {
+    servers.putIfAbsent(account.server, () => servers.length + 1);
+  }
   if (!accounts.known) {
     lines.addAll(['', 'Accounts: unknown']);
-  } else if (accounts.value case final list? when list.isNotEmpty) {
-    final servers = <Uri, int>{};
-    for (final account in list) {
-      servers.putIfAbsent(account.server, () => servers.length + 1);
-    }
+  } else if (list.isNotEmpty) {
     for (final (index, account) in list.indexed) {
       lines
         ..add('')
@@ -541,7 +602,92 @@ String renderSupportDetails(
   } else {
     lines.addAll(['', 'Accounts: none']);
   }
+  final names = _LogNames(
+    {for (final (index, account) in list.indexed) account.id: index + 1},
+    servers: servers,
+    hideAddresses: !showServers,
+  );
+  lines
+    ..add('')
+    ..addAll(_logLines(snapshot.log, names.apply));
   return redactSecrets('${lines.join('\n')}\n');
+}
+
+/// What the log lines may name that the rest of the text names otherwise:
+/// an account by its number, and a server by its number unless the
+/// addresses are shown.
+final class _LogNames {
+  new(
+    this._accounts, {
+    required Map<Uri, int> servers,
+    required this.hideAddresses,
+  }) : _hosts = [
+         for (final (host, number) in [
+           for (final MapEntry(key: server, :value) in servers.entries)
+             if (server.host.isNotEmpty) (server.host, value),
+         ]..sort((a, b) => b.$1.length - a.$1.length))
+           (_hostToken(host), number),
+       ];
+
+  final Map<String, int> _accounts;
+  final List<(RegExp, int)> _hosts;
+  final bool hideAddresses;
+
+  // The registry's account ids: 32 hex characters (accountIdFor).
+  static final _accountId = RegExp('(?<![0-9a-f])[0-9a-f]{32}(?![0-9a-f])');
+  static final _address = RegExp(
+    r'''\b([a-z][a-z0-9+.-]*://)[^/\s"'<>]+''',
+    caseSensitive: false,
+  );
+
+  /// [host] as a whole host name, not inside a longer one, a package path
+  /// or an identifier: a single-label host such as `vikunja` is part of
+  /// the app's own frames.
+  static RegExp _hostToken(String host) => RegExp(
+    '(?<![A-Za-z0-9_.-])${RegExp.escape(host)}'
+    r'(?![A-Za-z0-9_-]|\.[A-Za-z0-9])',
+  );
+
+  String apply(String text) {
+    var result = text.replaceAllMapped(
+      _accountId,
+      (m) => switch (_accounts[m[0]]) {
+        final number? => '<account-$number>',
+        null => '<account>',
+      },
+    );
+    if (hideAddresses) {
+      for (final (host, number) in _hosts) {
+        result = result.replaceAll(host, '<server-$number>');
+      }
+      result = result.replaceAllMapped(_address, (m) => '${m[1]}<server>');
+    }
+    return result;
+  }
+}
+
+/// The diagnostics log under a heading of its own: a record a line, its
+/// error type and the app's frames indented below it.
+List<String> _logLines(
+  Collected<List<DiagnosticsEntry>> log,
+  String Function(String text) scrub,
+) {
+  const heading = 'Log: warnings and errors of the last 7 days';
+  final entries = log.value;
+  if (!log.known || entries == null) return ['$heading: unknown'];
+  if (entries.isEmpty) return ['$heading: none'];
+  return [
+    '$heading: ${entries.length}',
+    for (final entry in entries) ...[
+      scrub(
+        '${_logTime(entry.at)} [${_partName(entry.part)}] ${entry.level} '
+        '${entry.logger}: ${entry.message}'
+        '${entry.count > 1 ? ' (${entry.count} times)' : ''}',
+      ),
+      if (entry.error case final error?) '  error: ${scrub(error)}',
+      for (final frame in entry.frames) '  at ${scrub(frame)}',
+    ],
+  ];
 }
 
 List<String> _deviceLines(DeviceSupport device, {required String appLanguage}) {
@@ -754,7 +900,17 @@ String _token(String value) {
 
 String _time(DateTime time) {
   final utc = time.toUtc();
-  String two(int value) => value.toString().padLeft(2, '0');
-  return '${utc.year.toString().padLeft(4, '0')}-${two(utc.month)}-'
-      '${two(utc.day)} ${two(utc.hour)}:${two(utc.minute)} UTC';
+  return '${_date(utc)} ${_two(utc.hour)}:${_two(utc.minute)} UTC';
 }
+
+String _logTime(DateTime time) {
+  final utc = time.toUtc();
+  return '${_date(utc)} '
+      '${_two(utc.hour)}:${_two(utc.minute)}:${_two(utc.second)} UTC';
+}
+
+String _date(DateTime utc) =>
+    '${utc.year.toString().padLeft(4, '0')}-${_two(utc.month)}-'
+    '${_two(utc.day)}';
+
+String _two(int value) => value.toString().padLeft(2, '0');

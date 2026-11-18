@@ -123,6 +123,45 @@ void main() {
       expect(desired.map((d) => d.key), ['1:reminder:3']);
     });
 
+    test('with a late limit, instants that passed within it are planned '
+        'too, earlier ones not', () {
+      final desired = planNotifications(
+        tasks: [
+          own(
+            id: 1,
+            due: anHourAgo,
+            reminders: [
+              TaskReminder(reminder: now.subtract(const Duration(hours: 4))),
+              TaskReminder(reminder: inAnHour),
+            ],
+          ),
+        ],
+        userId: alice.id,
+        preferences: const NotificationPreferences(),
+        now: now,
+        late: const Duration(hours: 3),
+        snoozes: [
+          Snooze(
+            key: '1:reminder:0',
+            until: now.subtract(const Duration(minutes: 5)),
+            originalFireAt: now.subtract(const Duration(hours: 4)),
+          ),
+        ],
+        describe: describe,
+      );
+
+      expect(desired.map((d) => (d.key, d.fireAt)), [
+        ('1:due', anHourAgo),
+        ('1:reminder:0', now.subtract(const Duration(minutes: 5))),
+        ('1:reminder:1', inAnHour),
+      ]);
+      expect(desired.map((d) => d.occurrence), [
+        anHourAgo,
+        now.subtract(const Duration(hours: 4)),
+        inAnHour,
+      ]);
+    });
+
     test('the key follows the reminder order of the task', () {
       final desired = plan([
         own(
@@ -180,6 +219,37 @@ void main() {
         );
 
         expect(desired, isEmpty);
+      });
+
+      test('with a late limit, a snooze that took over an occurrence still '
+          'ahead stops holding it back once it has fired', () {
+        List<DesiredNotification> lateWith(Snooze snooze) => planNotifications(
+          tasks: [
+            own(id: 1, reminders: [TaskReminder(reminder: inAnHour)]),
+          ],
+          userId: alice.id,
+          preferences: const NotificationPreferences(),
+          now: now,
+          late: const Duration(hours: 3),
+          snoozes: [snooze],
+          describe: describe,
+        );
+
+        final fired = lateWith(
+          Snooze(
+            key: '1:reminder:0',
+            until: now.subtract(const Duration(minutes: 30)),
+            originalFireAt: inAnHour,
+          ),
+        );
+        expect(fired.map((d) => (d.fireAt, d.snooze)), [(inAnHour, null)]);
+
+        final ahead = Snooze(
+          key: '1:reminder:0',
+          until: now.add(const Duration(minutes: 10)),
+          originalFireAt: inAnHour,
+        );
+        expect(lateWith(ahead).single.snooze, same(ahead));
       });
 
       test('a snooze applies to the due date too', () {
@@ -574,7 +644,7 @@ void main() {
     );
 
     test('schedules what is missing, keeps the unchanged, cancels the gone '
-        'and the changed', () {
+        'and schedules the changed again under their ids without a cancel', () {
       final diff = diffSchedule(
         desired: [
           desired('same', inAnHour),
@@ -591,10 +661,17 @@ void main() {
         window: 10,
         exact: true,
         privacy: const NotificationPrivacy(),
+        now: now,
       );
 
-      expect(diff.cancelOsIds, [11, 12, 13]);
+      expect(diff.cancelOsIds, [13]);
       expect(diff.schedule.map((d) => d.key), ['moved', 'renamed', 'new']);
+      expect(diff.window.map((d) => d.key), [
+        'same',
+        'moved',
+        'renamed',
+        'new',
+      ]);
     });
 
     test('only the first window entries are wanted; those beyond it are '
@@ -609,10 +686,12 @@ void main() {
         window: 2,
         exact: true,
         privacy: const NotificationPrivacy(),
+        now: now,
       );
 
       expect(diff.cancelOsIds, [30]);
       expect(diff.schedule.map((d) => d.key), ['a', 'b']);
+      expect(diff.window.map((d) => d.key), ['a', 'b']);
     });
 
     test('nothing to do when the OS already holds the window', () {
@@ -622,6 +701,7 @@ void main() {
         window: 60,
         exact: true,
         privacy: const NotificationPrivacy(),
+        now: now,
       );
 
       expect(diff.cancelOsIds, isEmpty);
@@ -638,9 +718,10 @@ void main() {
         window: 60,
         exact: true,
         privacy: const NotificationPrivacy(),
+        now: now,
       );
 
-      expect(diff.cancelOsIds, [1]);
+      expect(diff.cancelOsIds, isEmpty);
       expect(diff.schedule.map((d) => d.key), ['a']);
 
       final revoked = diffSchedule(
@@ -649,8 +730,9 @@ void main() {
         window: 60,
         exact: false,
         privacy: const NotificationPrivacy(),
+        now: now,
       );
-      expect(revoked.cancelOsIds, [1]);
+      expect(revoked.cancelOsIds, isEmpty);
       expect(revoked.schedule.map((d) => d.key), ['a']);
     });
 
@@ -665,14 +747,15 @@ void main() {
         window: 60,
         exact: true,
         privacy: hidden,
+        now: now,
       );
 
-      expect(diff.cancelOsIds, [1]);
+      expect(diff.cancelOsIds, isEmpty);
       expect(diff.schedule.map((d) => d.key), ['a']);
     });
 
-    test('forced, every scheduled entry is cancelled and the window '
-        'scheduled again, unchanged ones too', () {
+    test('everything schedules the whole window again, unchanged entries '
+        'too, and cancels only what left it', () {
       final diff = diffSchedule(
         desired: [desired('a', inAnHour), desired('b', inTwoHours)],
         scheduled: [
@@ -682,11 +765,58 @@ void main() {
         window: 60,
         exact: true,
         privacy: const NotificationPrivacy(),
-        force: true,
+        now: now,
+        everything: true,
       );
 
-      expect(diff.cancelOsIds, [1, 2]);
+      expect(diff.cancelOsIds, [2]);
       expect(diff.schedule.map((d) => d.key), ['a', 'b']);
+    });
+
+    test('a late entry stays while the OS holds it at that instant; one '
+        'that fired, or that the OS holds at another instant, is not wanted '
+        'and never scheduled anew', () {
+      final diff = diffSchedule(
+        desired: [
+          desired('deferred', anHourAgo),
+          desired('fired', anHourAgo),
+          desired('moved', anHourAgo),
+          desired('ahead', inAnHour),
+        ],
+        scheduled: [
+          scheduled('deferred', 1, anHourAgo),
+          scheduled('moved', 3, anHourAgo.subtract(const Duration(hours: 1))),
+          scheduled('ahead', 4, inAnHour),
+        ],
+        window: 60,
+        exact: true,
+        privacy: const NotificationPrivacy(),
+        now: now,
+      );
+
+      expect(diff.window.map((d) => d.key), ['deferred', 'ahead']);
+      expect(diff.cancelOsIds, [3]);
+      expect(diff.schedule, isEmpty);
+    });
+
+    test('a late entry takes its place in the window, and everything '
+        'schedules it again like any other', () {
+      final diff = diffSchedule(
+        desired: [desired('deferred', anHourAgo), desired('ahead', inAnHour)],
+        scheduled: [
+          scheduled('deferred', 1, anHourAgo),
+          scheduled('ahead', 2, inAnHour),
+        ],
+        window: 1,
+        exact: true,
+        privacy: const NotificationPrivacy(),
+        now: now,
+        everything: true,
+      );
+
+      expect(diff.window.map((d) => d.key), ['deferred']);
+      expect(diff.cancelOsIds, [2]);
+      expect(diff.schedule.map((d) => d.key), ['deferred']);
     });
 
     test('an empty plan cancels everything', () {
@@ -696,6 +826,7 @@ void main() {
         window: 60,
         exact: true,
         privacy: const NotificationPrivacy(),
+        now: now,
       );
 
       expect(diff.cancelOsIds, [1, 2]);

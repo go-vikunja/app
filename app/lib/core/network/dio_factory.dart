@@ -52,12 +52,17 @@ HttpClientAdapter createPlatformHttpAdapter() {
             ..httpCookieAcceptPolicy =
                 NSHTTPCookieAcceptPolicy.NSHTTPCookieAcceptPolicyNever,
       createFallbackAdapter: (error, _) {
-        _log.warning('Cronet unavailable, using dart:io instead: $error');
+        _log.warning(
+          'Cronet unavailable, using dart:io instead: ${error.runtimeType}',
+        );
         return IOHttpClientAdapter();
       },
     );
   } on Object catch (error) {
-    _log.warning('Native HTTP adapter failed, using dart:io instead: $error');
+    _log.warning(
+      'Native HTTP adapter failed, using dart:io instead: '
+      '${error.runtimeType}',
+    );
     return IOHttpClientAdapter();
   }
 }

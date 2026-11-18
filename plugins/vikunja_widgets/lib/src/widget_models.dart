@@ -73,6 +73,7 @@ final class WidgetAction {
     required this.accountId,
     required this.taskId,
     required this.createdAt,
+    this.shown,
   });
 
   factory fromJson(Map<String, Object?> json) {
@@ -88,18 +89,21 @@ final class WidgetAction {
         id: id,
         accountId: accountId,
         taskId: taskId,
-        // A writer with fractional milliseconds (Foundation's date
-        // encoding) must not lose its tap.
-        createdAt: DateTime.fromMillisecondsSinceEpoch(
-          createdAt.round(),
-          isUtc: true,
-        ),
+        createdAt: _instant(createdAt)!,
+        shown: switch (json['version']) {
+          final num version when version >= showsRow => (
+            dueAt: _instant(json['dueAt']),
+          ),
+          _ => null,
+        },
       );
     }
     throw const FormatException('Not a widget action');
   }
 
-  static const version = 1;
+  /// The version from which an entry says what its row showed; one before
+  /// it has no [shown].
+  static const showsRow = 2;
 
   final String id;
   final String accountId;
@@ -108,12 +112,27 @@ final class WidgetAction {
   final int taskId;
   final DateTime createdAt;
 
+  /// What the tapped row showed: its due date, null for none. Null for a
+  /// tap written before the widgets recorded it.
+  final ({DateTime? dueAt})? shown;
+
   Map<String, Object?> toJson() => {
-    'version': version,
+    'version': shown == null ? 1 : showsRow,
     'id': id,
     'accountId': accountId,
     'taskId': taskId,
     'createdAt': createdAt.millisecondsSinceEpoch,
+    'dueAt': ?shown?.dueAt?.millisecondsSinceEpoch,
+  };
+
+  // A writer with fractional milliseconds (Foundation's date encoding)
+  // must not lose its tap.
+  static DateTime? _instant(Object? milliseconds) => switch (milliseconds) {
+    final num ms when ms.isFinite => DateTime.fromMillisecondsSinceEpoch(
+      ms.round(),
+      isUtc: true,
+    ),
+    _ => null,
   };
 
   @override
@@ -122,10 +141,11 @@ final class WidgetAction {
       other.id == id &&
       other.accountId == accountId &&
       other.taskId == taskId &&
-      other.createdAt == createdAt;
+      other.createdAt == createdAt &&
+      other.shown == shown;
 
   @override
-  int get hashCode => Object.hash(id, accountId, taskId, createdAt);
+  int get hashCode => Object.hash(id, accountId, taskId, createdAt, shown);
 
   // Task titles never appear here, so the action may be logged.
   @override

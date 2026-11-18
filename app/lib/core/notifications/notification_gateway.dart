@@ -114,6 +114,18 @@ abstract interface class NotificationGateway {
     NotificationPrivacy privacy = const NotificationPrivacy(),
   });
 
+  /// Schedules a notification at [fireAt] on the activity channel, like
+  /// [showActivity] and without an exact alarm: the reminder to open the
+  /// app before a session ends. An instant that has passed shows it at
+  /// once.
+  Future<void> scheduleActivity({
+    required int osId,
+    required DateTime fireAt,
+    required String title,
+    required String body,
+    required String payload,
+  });
+
   /// Shows a notification at once (the "Send a test notification" button).
   Future<void> showNow({
     required int osId,

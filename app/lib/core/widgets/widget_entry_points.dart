@@ -34,7 +34,7 @@ Future<void> runWidgetActions({
 }) async {
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  configureLogging();
+  configureLogging(part: AppPart.widgetAction);
   final ProviderContainer container;
   try {
     container = await createContainer();

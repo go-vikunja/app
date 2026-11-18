@@ -21,6 +21,8 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
       l10n.syncProblemListNotReorderable,
     Forbidden() => l10n.syncProblemForbidden,
     RelatedTaskMissing() => l10n.syncProblemRelatedTaskMissing,
+    // A web server's 404, not Vikunja's; the outbox gave up on it.
+    NotFound(routeAbsent: true) => l10n.syncProblemUnexpected,
     NotFound(code: 3018) => l10n.syncProblemProjectInTrash,
     NotFound(code: 4040) => l10n.syncProblemTaskInTrash,
     NotFound(projectGone: true) => l10n.syncProblemProjectMissing,
@@ -38,6 +40,7 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
     DomainError(code: 4007) => l10n.syncProblemRejected,
     ValidationFailed() => l10n.syncProblemRejected,
     DescriptionConflict() => l10n.syncProblemDescriptionConflict,
+    ServerFailure() => l10n.syncProblemServerKeptFailing,
     _ => l10n.syncProblemUnexpected,
   };
   return '$what $why';
@@ -60,6 +63,7 @@ String _whyUploadFailed(AppLocalizations l10n, VikunjaFailure failure) =>
     switch (failure) {
       NotFound(code: 3018) => l10n.syncProblemProjectInTrash,
       NotFound(code: 4040) => l10n.syncProblemTaskInTrash,
+      ServerFailure() => l10n.syncProblemServerKeptFailing,
       _ => switch (uploadProblemReason(failure)) {
         UploadProblemReason.tooLarge => l10n.syncProblemUploadTooLarge,
         UploadProblemReason.taskGone => l10n.syncProblemTaskMissing,

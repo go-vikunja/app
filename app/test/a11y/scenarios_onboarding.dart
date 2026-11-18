@@ -179,6 +179,31 @@ final List<SweepScenario> onboardingRouteScenarios = [
 final List<SweepScenario> onboardingStateScenarios = [
   SweepScenario(
     kind: SweepKind.state,
+    name: 'notification setup background sync limited',
+    route: AppRoutes.notificationsSetup,
+    setUp: (tester, _) async {
+      final auth = AuthFakes(notificationsOnboarded: false);
+      await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      await pumpVikunjaApp(
+        tester,
+        auth: auth,
+        sync: sweepData(),
+        notifications: NotificationFakes(
+          capabilities: const NotificationCapabilities(
+            permission: NotificationPermission.notAsked,
+            exactAlarms: false,
+          ),
+        ),
+        overrides: [limitedBackgroundSync],
+      );
+    },
+    expectScreen: (l10n) => find.text(l10n.backgroundSyncLimitedTitle),
+  ),
+  SweepScenario(
+    kind: SweepKind.state,
     name: 'connect failure',
     route: AppRoutes.connect,
     setUp: (tester, _) => pumpVikunjaApp(

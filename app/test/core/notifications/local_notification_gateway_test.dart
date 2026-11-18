@@ -439,6 +439,25 @@ void main() {
       expect(platformSpecifics(call('show'))['actions'], hasLength(3));
     });
 
+    test('a late one first cancels an alarm still pending under its id, '
+        'which would show it again', () async {
+      await gateway().schedule(
+        ScheduledNotification(
+          osId: 3,
+          fireAt: now.subtract(const Duration(minutes: 20)),
+          title: 't',
+          body: 'b',
+          payload: 'p',
+          exact: false,
+        ),
+      );
+
+      final methods = calls.map((c) => c.method).toList();
+      expect(methods.indexOf('cancel'), lessThan(methods.indexOf('show')));
+      expect(args(call('cancel'))['id'], 3);
+      expect(args(call('show'))['id'], 3);
+    });
+
     test('a refused exact alarm is scheduled inexactly', () async {
       throwing = (call) =>
           call.method == 'zonedSchedule' &&
@@ -566,6 +585,69 @@ void main() {
       final specifics = platformSpecifics(call('show'));
       expect(specifics['categoryIdentifier'], isNull);
       expect(specifics['presentAlert'], isTrue);
+    });
+  });
+
+  group('scheduleActivity', () {
+    test('Android: the activity channel at the UTC instant, inexact, without '
+        'actions', () async {
+      await gateway().scheduleActivity(
+        osId: -5,
+        fireAt: DateTime.utc(2036, 10, 13, 8, 30),
+        title: 'Open the app to stay signed in to tasks.example.com',
+        body: 'Otherwise your session ends soon.',
+        payload: '{"account":"a","task":0,"key":"session-reminder:a"}',
+      );
+
+      final scheduled = args(call('zonedSchedule'));
+      expect(scheduled['id'], -5);
+      expect(
+        scheduled['title'],
+        'Open the app to stay signed in to tasks.example.com',
+      );
+      expect(scheduled['timeZoneName'], 'Etc/UTC');
+      expect(scheduled['scheduledDateTime'], '2036-10-13T08:30:00');
+      expect(
+        scheduled['payload'],
+        '{"account":"a","task":0,"key":"session-reminder:a"}',
+      );
+      final specifics = platformSpecifics(call('zonedSchedule'));
+      expect(specifics['scheduleMode'], 'inexactAllowWhileIdle');
+      expect(
+        specifics['channelId'],
+        LocalNotificationGateway.activityChannelId,
+      );
+      expect(specifics['actions'], anyOf(isNull, isEmpty));
+    });
+
+    test('iOS: no category, so no task actions', () async {
+      await gateway(platform: TargetPlatform.iOS).scheduleActivity(
+        osId: -5,
+        fireAt: DateTime.utc(2036, 10, 13, 8, 30),
+        title: 't',
+        body: 'b',
+        payload: 'p',
+      );
+
+      final specifics = platformSpecifics(call('zonedSchedule'));
+      expect(specifics['categoryIdentifier'], isNull);
+      expect(specifics['presentAlert'], isTrue);
+    });
+
+    test('an instant that has passed is shown at once', () async {
+      await gateway().scheduleActivity(
+        osId: -5,
+        fireAt: now,
+        title: 't',
+        body: 'b',
+        payload: 'p',
+      );
+
+      expect(calls.map((c) => c.method), isNot(contains('zonedSchedule')));
+      expect(
+        platformSpecifics(call('show'))['channelId'],
+        LocalNotificationGateway.activityChannelId,
+      );
     });
   });
 

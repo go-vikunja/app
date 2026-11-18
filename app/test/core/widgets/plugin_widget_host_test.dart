@@ -119,14 +119,29 @@ void main() {
 
   test('hands over the Done taps and acknowledges them', () async {
     final at = DateTime.utc(2026, 10, 26, 9);
-    plugin.actions.add(
+    final dueAt = at.add(const Duration(hours: 3));
+    plugin.actions.addAll([
       WidgetAction(id: 'a', accountId: alice, taskId: -4, createdAt: at),
-    );
+      WidgetAction(
+        id: 'b',
+        accountId: alice,
+        taskId: 5,
+        createdAt: at,
+        shown: (dueAt: dueAt),
+      ),
+    ]);
 
     expect(await host.takeActions(), [
       WidgetDoneTap(id: 'a', accountId: alice, taskId: -4, createdAt: at),
+      WidgetDoneTap(
+        id: 'b',
+        accountId: alice,
+        taskId: 5,
+        createdAt: at,
+        shown: (dueAt: dueAt),
+      ),
     ]);
-    await host.ackActions(['a']);
+    await host.ackActions(['a', 'b']);
     expect(plugin.actions, isEmpty);
   });
 

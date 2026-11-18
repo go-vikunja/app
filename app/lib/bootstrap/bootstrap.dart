@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/vikunja_app.dart';
+import 'package:vikunja_mobile/app/widgets/release_error_widget.dart';
 import 'package:vikunja_mobile/bootstrap/appearance_start.dart';
 import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
 import 'package:vikunja_mobile/bootstrap/previous_app_start.dart';
@@ -17,6 +18,7 @@ import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_entry_points.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/platform/backup_exclusion.dart';
 import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
@@ -30,7 +32,8 @@ final _log = Logger('Bootstrap');
 
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
-  configureLogging();
+  configureLogging(part: AppPart.app);
+  installErrorWidget();
   registerAppLicenses();
   final clientIdentity = await ClientIdentity.load();
   final deviceL10n = await loadDeviceAppLocalizations(SharedPreferencesStore());

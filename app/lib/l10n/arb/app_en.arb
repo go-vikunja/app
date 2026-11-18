@@ -1371,6 +1371,26 @@
   "accountBackgroundSyncJustNow": "Background sync: just now",
   "accountBackgroundSyncNever": "Background sync has not run yet",
   "accountBackgroundSyncIosHint": "iOS decides when apps may sync in the background.",
+  "backgroundSyncLimitedTitle": "Background sync is limited",
+  "@backgroundSyncLimitedTitle": {
+    "description": "Title of a note in the Account tab's Sync section and on the notification setup screen when the device keeps the app from syncing in the background, which is what keeps the user signed in."
+  },
+  "backgroundSyncLimitedIos": "Background App Refresh is off for Vikunja. If you don't open the app for 3 days, you'll need to sign in again.",
+  "@backgroundSyncLimitedIos": {
+    "description": "Body of the note backgroundSyncLimitedTitle on iOS. Background App Refresh is the name of the iOS setting; use the name iOS uses in the language. The server ends a session after 3 days without a sync."
+  },
+  "backgroundSyncLimitedAndroid": "Android limits how often the app can sync in the background. If you don't open it for 3 days, you'll need to sign in again. To change this, allow background usage in the app's battery settings.",
+  "@backgroundSyncLimitedAndroid": {
+    "description": "Body of the note backgroundSyncLimitedTitle on Android, where the app's battery use is restricted. The server ends a session after 3 days without a sync. The battery settings are App info › App battery usage, where Android 14 and later have the switch Allow background usage (earlier versions: Optimized or Unrestricted instead of Restricted); use the names Android uses in the language."
+  },
+  "backgroundSyncOpenSettings": "Open settings",
+  "@backgroundSyncOpenSettings": {
+    "description": "Button of the note backgroundSyncLimitedTitle: opens the app's page in the system settings (on Android its App info, which leads to its battery use)."
+  },
+  "backgroundSyncSettingsNotOpened": "The settings could not be opened.",
+  "@backgroundSyncSettingsNotOpened": {
+    "description": "Shown briefly when backgroundSyncOpenSettings could not open the app's page in the system settings."
+  },
   "taskMarkDone": "Mark as done",
   "@taskMarkDone": {
     "description": "Tooltip and screen reader label of the done checkbox of an open task, in a task list and in a task's Subtasks section. Done is the task's state."
@@ -1498,6 +1518,10 @@
   "syncProblemListMissing": "The list no longer exists.",
   "syncProblemRejected": "The server rejected the change.",
   "syncProblemUnexpected": "The server answered in an unexpected way.",
+  "syncProblemServerKeptFailing": "The server kept answering with an error; try again later.",
+  "@syncProblemServerKeptFailing": {
+    "description": "Entry in the Sync problems section of the Account tab, after the sentence that says what could not be saved: the server answered the change with an error (HTTP 5xx) many times in a row, usually over an hour or two, so the app stopped sending it until the user taps Retry."
+  },
   "syncProblemFailedAt": "Failed {when}",
   "@syncProblemFailedAt": {
     "description": "Footnote of a sync problem on the Account tab: when the change failed; when is a relative time, for example 5 minutes ago.",
@@ -2604,6 +2628,26 @@
   "sessionEndedNotificationBody": "Your session as {username} has ended. The app cannot sync this account until you sign in again.",
   "@sessionEndedNotificationBody": {
     "description": "Body of the OS notification when the server ended an account's session; username is the account's username.",
+    "placeholders": {
+      "username": {
+        "type": "String",
+        "example": "anna"
+      }
+    }
+  },
+  "sessionReminderNotificationTitle": "Open the app to stay signed in to {host}",
+  "@sessionReminderNotificationTitle": {
+    "description": "Title of the OS notification about 12 hours before the server would end an account's session, because the app has not reached the server for about 2.5 days (it ends after 3 days without a sync). host is the server's address. Tapping it opens the app, which then syncs.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "tasks.example.com"
+      }
+    }
+  },
+  "sessionReminderNotificationBody": "Otherwise your session as {username} ends soon and you'll need to sign in again.",
+  "@sessionReminderNotificationBody": {
+    "description": "Body under sessionReminderNotificationTitle; username is the account's username.",
     "placeholders": {
       "username": {
         "type": "String",
@@ -8922,6 +8966,18 @@
   "supportDetailsShare": "Share",
   "@supportDetailsShare": {
     "description": "Button in the app bar of the support details page; opens the share sheet with the text."
+  },
+  "supportDetailsLogNote": "The details end with the app's warnings and errors of the last 7 days. The app keeps them only on this device.",
+  "@supportDetailsLogNote": {
+    "description": "Second note at the top of the support details page, below supportDetailsIntro; screen readers read it on its own. The details are the support details (supportDetailsTitle); the app's log of warnings and errors is the last part of their text."
+  },
+  "errorWidgetMessage": "This part of the screen could not be shown.",
+  "@errorWidgetMessage": {
+    "description": "Shown in place of a part of a screen that failed because of a bug in the app, above the button errorWidgetCopySupportDetails. Not shown in debug builds."
+  },
+  "errorWidgetCopySupportDetails": "Copy support details",
+  "@errorWidgetCopySupportDetails": {
+    "description": "Button below errorWidgetMessage: copies the support details (supportDetailsTitle) for a bug report, with the servers' addresses hidden."
   },
   "signInFinishingSignOut": "Finishing the sign-out…",
   "@signInFinishingSignOut": {

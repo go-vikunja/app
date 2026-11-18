@@ -37,6 +37,18 @@ class WidgetActionQueueTest {
     }
 
     @Test
+    fun `keeps what the row showed, and reads a tap written before without it`() {
+        queue.add(WidgetAction("a", "acc", 1, 10, TappedRow(dueAt = 500)), snapshotGeneratedAt = 0)
+        queue.add(WidgetAction("b", "acc", 2, 20, TappedRow(dueAt = null)), snapshotGeneratedAt = 0)
+        files.queue.appendText("{\"version\":1,\"id\":\"c\",\"accountId\":\"acc\",\"taskId\":3,\"createdAt\":30}\n")
+
+        assertEquals(listOf(TappedRow(500), TappedRow(null), null), queue.queued().map { it.shown })
+        assertEquals(listOf("2", "2", "1"), files.queue.readLines().filter { it.isNotBlank() }.map {
+            org.json.JSONObject(it).get("version").toString()
+        })
+    }
+
+    @Test
     fun `skips lines it cannot read`() {
         files.queue.writeText("garbage\n{\"version\":1}\n")
 

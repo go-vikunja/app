@@ -47,13 +47,20 @@ enum OutboxSenderState {
 ///
 /// Transient failures (network, 5xx, 429, a token the server rejected
 /// after the interceptor's own refresh, and answers that are not Vikunja's,
-/// such as a captive portal's page or a proxy's redirect) are retried with
+/// such as a proxy's redirect or a web server's 404) are retried with
 /// exponential backoff from [initialBackoff], doubling per attempt up to
 /// [maxBackoff], shortened by up to half at random; a `Retry-After` is
 /// honoured instead. The oldest op blocks the queue while it waits, so
-/// later ops never overtake it. A session that ended pauses the sender
-/// with the op still queued. Everything else is final: the op becomes a
-/// `SyncProblem` until it is retried or discarded. After a drain that sent
+/// later ops never overtake it. An answer that is neither success nor the
+/// server's last word counts, and the op becomes a `SyncProblem` after
+/// [maxFailedAnswersInARow] of them in a row (an upload after
+/// [maxFailedUploadAnswersInARow]); a network failure, a 429 or a rejected
+/// token never does, as nothing else could go meanwhile either. A session
+/// that ended pauses the sender with the op still queued. Everything else
+/// is final, an exception without an answer and a 2xx whose body cannot be
+/// read too, except for a create or an upload, which count, as the server
+/// may have stored them: the op becomes a `SyncProblem` until it is
+/// retried or discarded. After a drain that sent
 /// something the sync engine refreshes, so server-computed fields arrive,
 /// unless its caller syncs itself ([sendNow]); and a sync that reaches the
 /// server while an op waits out a network failure sends at once, because
@@ -75,10 +82,12 @@ enum OutboxSenderState {
 ///
 /// A create has no idempotency key, so a request that may have reached the
 /// server without an answer (a network failure, a 5xx a proxy answers for
-/// a slow upstream, a kill while the request was in flight) is not simply
-/// sent again: the next attempt first looks for a task with the sent title
-/// that this user created since [lostResponseWindow] before that attempt
-/// and adopts it.
+/// a slow upstream, a 2xx whose body cannot be read, an exception, a kill
+/// while the request was in flight) is not simply sent again: the next
+/// attempt first looks for a task with the sent title that this user
+/// created since [lostResponseWindow] before that attempt and adopts it.
+/// One that becomes a sync problem that way keeps that mark, so its Retry
+/// looks first too.
 /// A create never sent whose task was deleted meanwhile goes with the
 /// delete and the row, without a request.
 ///
@@ -88,7 +97,9 @@ enum OutboxSenderState {
 /// flight (`sending`) stops the queue like a backoff: nothing overtakes it
 /// and nothing sends it again until it is [staleSendingAfter] old, which
 /// no live sender takes over one op, so only an op a dead run left behind
-/// goes back to the queue.
+/// goes back to the queue. Every isolate of the app runs in one process,
+/// so what another process left `sending` goes back at the first drain
+/// after a restart, without that wait.
 ///
 /// Uploads go one file per request in a lane of their own, the oldest
 /// ready one first, beside the rest of the queue: a large file never holds
@@ -119,12 +130,14 @@ final class OutboxSender {
     this._headless = false,
     int? Function()? currentUserId,
     int? Function()? maxUploadBytes,
+    int? processId,
   }) : _write = writeClient,
        _read = readClient,
        _now = now ?? DateTime.now,
        _random = random ?? Random(),
        _currentUserId = currentUserId ?? _unknownUser,
-       _maxUploadBytes = maxUploadBytes ?? _unknownLimit {
+       _maxUploadBytes = maxUploadBytes ?? _unknownLimit,
+       _process = processId ?? pid {
     _syncStatus = _sync.status.listen(_onSyncStatus);
   }
 
@@ -133,6 +146,19 @@ final class OutboxSender {
 
   static const initialBackoff = Duration(seconds: 2);
   static const maxBackoff = Duration(minutes: 15);
+
+  /// The backoff reaches [maxBackoff] after the 10th, so the 16th comes one
+  /// to two hours after the first: long enough to ride out a server's
+  /// restart or upgrade behind a proxy that answers 502 meanwhile, short
+  /// enough that a change the server never takes holds back the queue no
+  /// longer. Send now and the background runs skip the backoff and get
+  /// there sooner, each attempt still an answer of the server.
+  static const maxFailedAnswersInARow = 16;
+
+  /// Lower, as each attempt sends the whole file again (up to
+  /// [appMaxUploadBytes]), though the 4th comes only 7 to 14 s of backoff
+  /// after the first.
+  static const maxFailedUploadAnswersInARow = 4;
 
   /// How far before an unanswered create's attempt the lookup reaches: the
   /// server's `created` is its clock, the attempt time this device's, and
@@ -167,6 +193,7 @@ final class OutboxSender {
   final bool _headless;
   final int? Function() _currentUserId;
   final int? Function() _maxUploadBytes;
+  final int _process;
   final _uploading = <String, CancelToken>{};
   final _uploadingChanges = StreamController<Set<String>>.broadcast(sync: true);
   final _uploaded = StreamController<TaskAttachment>.broadcast();
@@ -213,8 +240,9 @@ final class OutboxSender {
   Stream<TaskAttachment> get uploadedAttachments => _uploaded.stream;
 
   /// The uploads this sender is sending right now; replays the current set
-  /// on subscription. A `sending` op not among them was left by a run
-  /// that died and waits for [staleSendingAfter].
+  /// on subscription. A `sending` op not among them is another isolate's,
+  /// or was left by a run that died and waits for [staleSendingAfter] or,
+  /// after a restart, for the next drain.
   Stream<Set<String>> get uploadingOperations => Stream.multi((subscriber) {
     final subscription = _uploadingChanges.stream.listen(
       subscriber.addSync,
@@ -485,6 +513,7 @@ final class OutboxSender {
       now: _now(),
       olderThan: staleSendingAfter,
       keep: _uploading.keys.toSet(),
+      process: _process,
     );
     var sent = 0;
     while (!_disposed && !_paused) {
@@ -605,10 +634,10 @@ final class OutboxSender {
   /// True when the server accepted the op. Only the request is guarded:
   /// once the server has stored the change, an error while applying it
   /// propagates and leaves the op `sending`, so nothing is re-sent on the
-  /// spot; once it is [staleSendingAfter] old a drain resets it and sends
-  /// an update or delete again (at least once), while a create is looked
-  /// up first, and an update with a repeating task's Done is checked
-  /// against the server first ([_updateOnce]).
+  /// spot; once it is [staleSendingAfter] old, or after a restart, a drain
+  /// resets it and sends an update or delete again (at least once), while a
+  /// create is looked up first, and an update with a repeating task's Done
+  /// is checked against the server first ([_updateOnce]).
   Future<bool> _send(OutboxRow op) async {
     final kind = OutboxOperationKind.values.asNameMap()[op.kind];
     if (kind == null) {
@@ -663,20 +692,14 @@ final class OutboxSender {
         await _applyDelete(op);
         return true;
       }
-      if (kind == OutboxOperationKind.createTask &&
-          _mayHaveReachedServer(failure) &&
-          !_disposed) {
-        await _db.outboxDao.markUncertain(
-          op.id,
-          sentAt: op.lastAttemptAt ?? _now(),
-        );
-      }
-      await _handleFailure(op, failure);
+      await _handleSendFailure(op, kind, failure);
       return false;
     } on Object catch (error) {
-      // A cancelled request or a bug; never a server answer.
-      await _handleFailure(
+      // A bug, or an answer the client could not decode after the server
+      // took the request.
+      await _handleSendFailure(
         op,
+        kind,
         UnexpectedResponse(null, message: '${error.runtimeType}'),
       );
       return false;
@@ -833,19 +856,23 @@ final class OutboxSender {
       }
       await _handleFailure(op, failure);
       return;
-    } on DioException catch (error) {
-      // Cancelled by the user, who dropped the op, or by dispose, which
-      // leaves it for the next start.
-      if (error.type == DioExceptionType.cancel) return;
-      await _handleFailure(
-        op,
-        UnexpectedResponse(null, message: '${error.runtimeType}'),
-      );
-      return;
     } on FileSystemException {
       await _failMissingCopy(op);
       return;
     } on Object catch (error) {
+      // Cancelled by the user, who dropped the op, or by dispose, which
+      // leaves it for the next start.
+      if (error is DioException && error.type == DioExceptionType.cancel) {
+        return;
+      }
+      // An answer the client could not decode, so the file may be stored,
+      // or a bug.
+      if (!_disposed) {
+        await _db.outboxDao.markUncertain(
+          op.id,
+          sentAt: op.lastAttemptAt ?? _now(),
+        );
+      }
       await _handleFailure(
         op,
         UnexpectedResponse(null, message: '${error.runtimeType}'),
@@ -1074,16 +1101,52 @@ final class OutboxSender {
     await sweepUploads();
   }
 
+  /// A create whose attempt may have left the task on the server is looked
+  /// for before it is sent again.
+  Future<void> _handleSendFailure(
+    OutboxRow op,
+    OutboxOperationKind kind,
+    VikunjaFailure failure,
+  ) async {
+    if (kind == OutboxOperationKind.createTask &&
+        _mayHaveReachedServer(failure) &&
+        !_disposed) {
+      await _db.outboxDao.markUncertain(
+        op.id,
+        sentAt: op.lastAttemptAt ?? _now(),
+      );
+    }
+    await _handleFailure(op, failure);
+  }
+
   /// [attempts] counts the failed attempts including this one, when they
-  /// are not simply one more than before.
+  /// are not simply one more than before. A counted failure after one that
+  /// is not counted starts again from one, so a day offline uses up none
+  /// of the op's answers.
   Future<void> _handleFailure(
     OutboxRow op,
     VikunjaFailure failure, {
     int? attempts,
   }) async {
     if (_disposed) return;
-    if (_isTransient(failure)) {
-      final failed = attempts ?? op.attempts + 1;
+    final retry = _retryOf(op, failure);
+    if (retry != _Retry.never) {
+      final failed =
+          attempts ??
+          (retry == _Retry.counted && !_followsCounted(op)
+              ? 1
+              : op.attempts + 1);
+      final limit = op.kind == OutboxOperationKind.uploadAttachment.name
+          ? maxFailedUploadAnswersInARow
+          : maxFailedAnswersInARow;
+      if (retry == _Retry.counted && failed >= limit) {
+        _log.warning(
+          '${op.kind} for task ${op.taskId} failed with '
+          '${failure.runtimeType} $failed times in a row; given up',
+        );
+        await _markFailed(op, failure, givenUp: true);
+        return;
+      }
       // A Retry-After of 0 (the last second of a rate-limit window) would
       // make the next attempt immediate.
       final delay = switch (failure) {
@@ -1117,8 +1180,20 @@ final class OutboxSender {
       );
       return;
     }
-    await _db.outboxDao.markFailed(op.id, failure);
     _log.warning('${op.kind} for task ${op.taskId} was rejected: $failure');
+    await _markFailed(op, failure);
+  }
+
+  Future<void> _markFailed(
+    OutboxRow op,
+    VikunjaFailure failure, {
+    bool givenUp = false,
+  }) async {
+    if (givenUp) {
+      await _db.outboxDao.markGivenUp(op.id, failure);
+    } else {
+      await _db.outboxDao.markFailed(op.id, failure);
+    }
     // A refused create with a delete queued behind it went with its row.
     if (op.kind == OutboxOperationKind.createTask.name &&
         await _db.outboxDao.find(op.id) == null) {
@@ -1127,27 +1202,50 @@ final class OutboxSender {
   }
 
   /// A request the server may have processed without this device seeing
-  /// the answer: the connection broke or timed out, or a proxy answered
-  /// for an upstream that was still at work.
+  /// the answer: the connection broke or timed out, a proxy answered for
+  /// an upstream that was still at work, or an answer came that could not
+  /// be read (a 2xx whose body is not what was asked for, or an exception
+  /// without a status).
   static bool _mayHaveReachedServer(VikunjaFailure failure) =>
-      failure is NetworkFailure || failure is ServerFailure;
+      switch (failure) {
+        NetworkFailure() || ServerFailure() => true,
+        UnexpectedResponse(:final statusCode) =>
+          statusCode == null || statusCode < 300,
+        _ => false,
+      };
 
-  /// What a later attempt may get past. A token the server rejects after
-  /// the interceptor's own refresh means a session that was replaced or a
-  /// server that will accept the next token; the session that ended for
-  /// good arrives as `SessionEnded`. An answer without a Vikunja error
-  /// code (a captive portal's page, a proxy's redirect, a web server's
-  /// 404 during a deploy, an empty body) is not the server's last word.
-  static bool _isTransient(VikunjaFailure failure) => switch (failure) {
-    NetworkFailure() ||
-    ServerFailure() ||
-    RateLimited() ||
-    RefreshRaceLost() ||
-    TokenRejected() => true,
-    NotFound(:final routeAbsent) => routeAbsent,
-    UnexpectedResponse(:final statusCode) =>
-      statusCode == null || statusCode < 400,
-    _ => false,
+  /// A token the server rejects after the interceptor's own refresh means
+  /// a session that was replaced or a server that will accept the next
+  /// token; the session that ended for good arrives as `SessionEnded`. An
+  /// answer without a Vikunja error code (a proxy's redirect, a web
+  /// server's 404 during a deploy) is not the server's last word. A 2xx
+  /// whose body cannot be read, or an exception without a status, is final
+  /// (a retry would only repeat it), except for a create or an upload: the
+  /// server may have stored it, and the next attempt looks for it first.
+  static _Retry _retryOf(OutboxRow op, VikunjaFailure failure) =>
+      switch (failure) {
+        NetworkFailure() ||
+        RateLimited() ||
+        RefreshRaceLost() ||
+        TokenRejected() => _Retry.waits,
+        ServerFailure() => _Retry.counted,
+        NotFound(:final routeAbsent) =>
+          routeAbsent ? _Retry.counted : _Retry.never,
+        UnexpectedResponse(:final statusCode?) when statusCode >= 400 =>
+          _Retry.never,
+        UnexpectedResponse(:final statusCode?) when statusCode >= 300 =>
+          _Retry.counted,
+        UnexpectedResponse() =>
+          op.kind == OutboxOperationKind.createTask.name ||
+                  op.kind == OutboxOperationKind.uploadAttachment.name
+              ? _Retry.counted
+              : _Retry.never,
+        _ => _Retry.never,
+      };
+
+  static bool _followsCounted(OutboxRow op) => switch (op.lastError) {
+    final json? => _retryOf(op, decodeFailure(json)) == _Retry.counted,
+    null => false,
   };
 
   /// [attempts] failed so far: 2 s, 4 s, 8 s, … up to [maxBackoff], each
@@ -1249,4 +1347,16 @@ final class OutboxSender {
     _state = state;
     _changes.add(state);
   }
+}
+
+enum _Retry {
+  /// Not the server's word on the op (the network, a rate limit, the
+  /// session): it waits as long as that lasts.
+  waits,
+
+  /// An answer that is neither success nor the server's last word.
+  counted,
+
+  /// A sync problem at once.
+  never,
 }

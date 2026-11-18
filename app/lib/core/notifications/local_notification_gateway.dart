@@ -284,10 +284,13 @@ final class LocalNotificationGateway implements NotificationGateway {
   @override
   Future<void> schedule(ScheduledNotification notification) async {
     // The plugin refuses an instant that has passed, and it sends whole
-    // seconds, so what is due within the second is shown at once.
+    // seconds, so what is due within the second is shown at once. An alarm
+    // still pending under the id, one Android deferred, would show it again
+    // when it fires.
     if (!notification.fireAt.isAfter(
       _clock().add(const Duration(seconds: 1)),
     )) {
+      await cancel(notification.osId);
       await showNow(
         osId: notification.osId,
         title: notification.title,
@@ -384,30 +387,74 @@ final class LocalNotificationGateway implements NotificationGateway {
       id: osId,
       title: title,
       body: body,
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          activityChannelId,
-          _texts.activityChannelName,
-          channelDescription: _texts.activityChannelDescription,
-          category: AndroidNotificationCategory.social,
-          // A comment's first line rarely fits the collapsed view.
-          styleInformation: BigTextStyleInformation(body),
-          subText: subtitle,
-          groupKey: group,
-          visibility: _visibility(privacy),
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBanner: true,
-          presentList: true,
-          presentSound: true,
-          subtitle: subtitle,
-          threadIdentifier: group,
-        ),
+      notificationDetails: _activityDetails(
+        body: body,
+        subtitle: subtitle,
+        group: group,
+        privacy: privacy,
       ),
       payload: payload,
     );
   }
+
+  @override
+  Future<void> scheduleActivity({
+    required int osId,
+    required DateTime fireAt,
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    if (!fireAt.isAfter(_clock().add(const Duration(seconds: 1)))) {
+      await showActivity(
+        osId: osId,
+        title: title,
+        body: body,
+        payload: payload,
+      );
+      return;
+    }
+    await initialize();
+    await _plugin.zonedSchedule(
+      id: osId,
+      title: title,
+      body: body,
+      scheduledDate: tz.TZDateTime.from(fireAt, tz.UTC),
+      notificationDetails: _activityDetails(
+        body: body,
+        privacy: const NotificationPrivacy(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      payload: payload,
+    );
+  }
+
+  NotificationDetails _activityDetails({
+    required String body,
+    required NotificationPrivacy privacy,
+    String? subtitle,
+    String? group,
+  }) => NotificationDetails(
+    android: AndroidNotificationDetails(
+      activityChannelId,
+      _texts.activityChannelName,
+      channelDescription: _texts.activityChannelDescription,
+      category: AndroidNotificationCategory.social,
+      // A comment's first line rarely fits the collapsed view.
+      styleInformation: BigTextStyleInformation(body),
+      subText: subtitle,
+      groupKey: group,
+      visibility: _visibility(privacy),
+    ),
+    iOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentBanner: true,
+      presentList: true,
+      presentSound: true,
+      subtitle: subtitle,
+      threadIdentifier: group,
+    ),
+  );
 
   /// The tap that started the app, for a cold start; null otherwise.
   Future<NotificationResponse?> launchResponse() async {

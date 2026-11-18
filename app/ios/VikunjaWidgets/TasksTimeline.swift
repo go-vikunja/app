@@ -10,6 +10,8 @@ struct TaskRowContent: Identifiable {
   var title: String
   var dueLabel: String?
   var dueTone: DueTone
+  /// Goes with a Done, so the app can tell the occurrence it was for.
+  var dueAt: Date?
   var priorityLabel: String?
   var priorityLevel: Int
   var projectTitle: String?
@@ -172,7 +174,7 @@ struct TasksTimeline {
       tone = .overdue
     }
     return TaskRowContent(
-      id: row.id, title: row.title, dueLabel: row.due, dueTone: tone,
+      id: row.id, title: row.title, dueLabel: row.due, dueTone: tone, dueAt: row.dueAt,
       priorityLabel: row.priority, priorityLevel: row.priorityLevel ?? 0,
       projectTitle: row.project, projectColor: row.color.flatMap(Color.init(hex:)),
       canDone: row.canDone ?? false, semanticsLabel: row.label ?? row.title,

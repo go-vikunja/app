@@ -75,6 +75,7 @@ final class WidgetDoneTap {
     required this.accountId,
     required this.taskId,
     required this.createdAt,
+    this.shown,
   });
 
   final String id;
@@ -82,14 +83,19 @@ final class WidgetDoneTap {
   final int taskId;
   final DateTime createdAt;
 
+  /// What the tapped row showed: its due date, null for none. Null for a
+  /// tap the widgets wrote before step 40e.
+  final ({DateTime? dueAt})? shown;
+
   @override
   bool operator ==(Object other) =>
       other is WidgetDoneTap &&
       other.id == id &&
       other.accountId == accountId &&
       other.taskId == taskId &&
-      other.createdAt == createdAt;
+      other.createdAt == createdAt &&
+      other.shown == shown;
 
   @override
-  int get hashCode => Object.hash(id, accountId, taskId, createdAt);
+  int get hashCode => Object.hash(id, accountId, taskId, createdAt, shown);
 }

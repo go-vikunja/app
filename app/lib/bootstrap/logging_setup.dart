@@ -1,23 +1,33 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui' show ErrorCallback;
 
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
+import 'package:vikunja_mobile/core/logging/diagnostics_log.dart';
 import 'package:vikunja_mobile/core/logging/redaction.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 
 var _configured = false;
 StreamSubscription<LogRecord>? _consoleSink;
+StreamSubscription<LogRecord>? _diagnosticsSink;
 FlutterExceptionHandler? _flutterErrorBefore;
 ErrorCallback? _uncaughtErrorBefore;
 
 final _flutterLog = Logger('Flutter');
 final _uncaughtLog = Logger('Uncaught');
 
-/// Debug builds print redacted records to the console. Release builds keep
-/// no log sink until the diagnostics ring buffer exists. Uncaught errors go
-/// through the same loggers in every build, redacted. Once per isolate:
-/// a background task may run in the app's own isolate.
-void configureLogging({bool printToConsole = kDebugMode}) {
+/// Debug builds print redacted records to the console; release builds print
+/// nothing. In every build the records from WARNING up go to the
+/// diagnostics log of [part], which the support details show. Uncaught
+/// errors go through the same loggers in every build, redacted. Once per
+/// isolate: a background task may run in the app's own isolate.
+void configureLogging({
+  required AppPart part,
+  bool printToConsole = kDebugMode,
+  Future<Directory?> Function() diagnosticsDirectory =
+      defaultDiagnosticsDirectory,
+}) {
   if (_configured) return;
   _configured = true;
   _flutterErrorBefore = FlutterError.onError;
@@ -26,7 +36,14 @@ void configureLogging({bool printToConsole = kDebugMode}) {
   // unredacted, in release builds too.
   FlutterError.onError = _onFlutterError;
   PlatformDispatcher.instance.onError = _onUncaughtError;
-  Logger.root.level = printToConsole ? Level.ALL : Level.OFF;
+  Logger.root.level = printToConsole ? Level.ALL : Level.WARNING;
+  final diagnostics = DiagnosticsLog(
+    part: part,
+    directory: diagnosticsDirectory,
+  );
+  useDiagnosticsLog(diagnostics);
+  _diagnosticsSink = Logger.root.onRecord.listen(diagnostics.add);
+  unawaited(diagnostics.start());
   if (!printToConsole) return;
   _consoleSink = Logger.root.onRecord.listen((record) {
     final error = record.error;
@@ -52,7 +69,10 @@ void resetLoggingForTest() {
     PlatformDispatcher.instance.onError = _uncaughtErrorBefore;
   }
   unawaited(_consoleSink?.cancel());
+  unawaited(_diagnosticsSink?.cancel());
   _consoleSink = null;
+  _diagnosticsSink = null;
+  useDiagnosticsLog(null);
   _flutterErrorBefore = null;
   _uncaughtErrorBefore = null;
   _configured = false;
@@ -64,6 +84,7 @@ void _onFlutterError(FlutterErrorDetails details) => _logUncaught(
   details.exception,
   details.stack,
   details.exceptionAsString,
+  library: details.library,
 );
 
 // True even when logging fails: false, or a throw, makes the engine print
@@ -77,8 +98,9 @@ void _logUncaught(
   Logger log,
   Object error,
   StackTrace? stack,
-  String Function() describe,
-) {
+  String Function() describe, {
+  String? library,
+}) {
   try {
     String text;
     try {
@@ -86,7 +108,15 @@ void _logUncaught(
     } on Object {
       text = '${error.runtimeType}';
     }
-    log.severe(redactSecrets(text), null, stack);
+    log.severe(
+      UncaughtErrorReport(
+        type: error.runtimeType,
+        text: redactSecrets(text),
+        library: library,
+      ),
+      null,
+      stack,
+    );
   } on Object {
     // Nothing left to report it through.
   }

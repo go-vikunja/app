@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart' show AppLifecycleListener;
@@ -26,11 +27,18 @@ part 'notification_providers.g.dart';
 
 final _log = Logger('Notifications');
 
-/// How many of the soonest notifications the OS is given: iOS drops the
-/// oldest beyond 64 pending, so some slack stays for the test notification
-/// and a snooze; Android has room for more but gains nothing from it.
-int notificationWindow([TargetPlatform? platform]) =>
-    (platform ?? defaultTargetPlatform) == TargetPlatform.iOS ? 60 : 100;
+/// How many of an account's soonest notifications the OS is given. iOS
+/// keeps 64 pending for the whole app and drops what goes beyond, so the
+/// [accounts] signed in share 60 evenly, leaving slack for the test
+/// notification and a snooze. Each share keeps one for the account's
+/// reminder to open the app before its session ends (`SessionReminders`),
+/// which is pending too. An even share needs nothing from the other
+/// accounts' schedulers, which a headless isolate does not run. Android
+/// keeps 100 per account; it has room for more but gains nothing from it.
+int notificationWindow({TargetPlatform? platform, int accounts = 1}) =>
+    (platform ?? defaultTargetPlatform) == TargetPlatform.iOS
+    ? math.max(1, 60 ~/ math.max(1, accounts) - 1)
+    : 100;
 
 @Riverpod(keepAlive: true)
 NotificationPreferencesStore notificationPreferencesStore(Ref ref) {
@@ -48,9 +56,11 @@ NotificationPreferencesStore notificationPreferencesStore(Ref ref) {
 /// content, the app lock or the app's language changes; a content that
 /// shows less also withdraws what the account has in the tray. Built
 /// again, and so reconciling at once, when a refreshed `/info` moves the
-/// server to one whose reminders follow the subscriptions (D80). Null once
-/// the account is gone. Disposed with the account's database on sign-out,
-/// after which [NotificationSchedulers] still holds it for the wipe.
+/// server to one whose reminders follow the subscriptions (D80), and on iOS
+/// when the number of accounts changes their share of the window. Null
+/// once the account is gone. Disposed with the account's database on
+/// sign-out, after which [NotificationSchedulers] still holds it for the
+/// wipe.
 @Riverpod(keepAlive: true)
 NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
   final user = ref.watch(
@@ -61,6 +71,12 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
     }),
   );
   if (user == null) return null;
+  final window = ref.watch(
+    accountsProvider.select(
+      (accounts) =>
+          notificationWindow(accounts: accounts.value?.accounts.length ?? 1),
+    ),
+  );
   final gateway = ref.watch(notificationGatewayProvider);
   final scheduler = NotificationScheduler(
     accountId: accountId,
@@ -73,7 +89,7 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
       final privacy = await _currentPrivacy(ref);
       return _presentation(ref.read(deviceAppLocalizationsProvider), privacy);
     },
-    window: notificationWindow(),
+    window: window,
     linkKey: () => readWidgetLinkKey(ref.read(preferencesStoreProvider)),
     now: ref.watch(clockProvider),
   );

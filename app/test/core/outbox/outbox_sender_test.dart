@@ -46,7 +46,11 @@ void main() {
     ),
   ];
 
-  OutboxSender sender({DateTime Function()? clock, int? userId}) {
+  OutboxSender sender({
+    DateTime Function()? clock,
+    int? userId,
+    int? processId,
+  }) {
     final sender = OutboxSender(
       db: db,
       writeClient: write,
@@ -56,6 +60,7 @@ void main() {
       createTimer: timers.create,
       random: ZeroRandom(),
       currentUserId: () => userId,
+      processId: processId,
     );
     addTearDown(sender.dispose);
     return sender;
@@ -415,6 +420,50 @@ void main() {
       expect(await db.outboxDao.count(), 0);
     });
 
+    test('ops a dead process left in flight go at the first drain after the '
+        'restart; those of the same process wait', () async {
+      // The process before: its sender ran, then it claimed both and died.
+      await sender(processId: 1).drain();
+      await queue(1, done);
+      final id = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'Buy milk'),
+        now: now,
+      );
+      for (final op in await ops()) {
+        await db.outboxDao.markSending(op.id, at: now);
+      }
+      final sameProcess = sender(processId: 1);
+      await sameProcess.drain();
+      expect(sameProcess.state, OutboxSenderState.waiting);
+      expect(write.requests, isEmpty);
+
+      await sender(processId: 2).drain();
+
+      expect(write.requests, ['update 1', 'create Buy milk']);
+      // The create may have reached the server: looked for first.
+      expect(read.requests, hasLength(1));
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test(
+      'a database without a process stored keeps the age rule once',
+      () async {
+        await queue(1, done);
+        await db.outboxDao.markSending((await ops()).single.id, at: now);
+
+        final outbox = sender(processId: 2);
+        await outbox.drain();
+
+        expect(write.requests, isEmpty);
+        expect(outbox.state, OutboxSenderState.waiting);
+        expect(
+          (await db.syncStateDao.readAll())[OutboxDao.sendingProcessKey],
+          '2',
+        );
+      },
+    );
+
     test('a second sender leaves a create the first has in flight alone '
         'and waits for it', () async {
       final id = await db.outboxDao.queueCreate(
@@ -571,13 +620,14 @@ void main() {
     });
 
     test('the backoff tops out at 15 minutes', () async {
-      write.beforeRequest = (_) => fail(const ServerFailure(503));
+      write.beforeRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.unreachable));
       await queue(1, done);
       final op = (await ops()).single;
       await db.outboxDao.scheduleRetry(
         op.id,
         attempts: 20,
-        failure: const ServerFailure(503),
+        failure: const NetworkFailure(NetworkProblem.unreachable),
         nextAttemptAt: now,
       );
 
@@ -695,9 +745,7 @@ void main() {
     });
 
     for (final failure in <VikunjaFailure>[
-      const UnexpectedResponse(200, message: 'captive portal'),
       const UnexpectedResponse(302),
-      const UnexpectedResponse(null, message: 'empty body'),
       const NotFound(),
     ]) {
       test('$failure is not a Vikunja answer: retried with backoff', () async {
@@ -713,6 +761,151 @@ void main() {
         expect(await db.outboxDao.loadProblems(), isEmpty);
       });
     }
+
+    Future<void> retryWhenDue() async {
+      now = now.add(timers.pendingWait);
+      timers.fireNext();
+      await pumpEventQueue();
+    }
+
+    test('an answer that keeps being a 5xx becomes a problem after the '
+        'limit, one to two hours on, and the queue goes on', () async {
+      write.beforeRequest = (request) => request == 'update 1'
+          ? fail(const ServerFailure(502))
+          : Future.value();
+      await queue(1, done);
+      await queue(2, favorite);
+      final start = now;
+      final outbox = sender();
+      await outbox.drain();
+
+      for (
+        var failed = 1;
+        failed < OutboxSender.maxFailedAnswersInARow;
+        failed++
+      ) {
+        expect((await ops()).first.attempts, failed);
+        expect(outbox.state, OutboxSenderState.waiting);
+        await retryWhenDue();
+      }
+
+      expect(write.requests, [
+        ...List.filled(OutboxSender.maxFailedAnswersInARow, 'update 1'),
+        'update 2',
+      ]);
+      // The waits before the 16th attempt, none shortened (ZeroRandom).
+      expect(now.difference(start), const Duration(seconds: 6422));
+      final problem = (await db.outboxDao.loadProblems()).single;
+      expect(problem.taskId, 1);
+      expect(problem.failure, isA<ServerFailure>());
+      expect((await db.tasksDao.find(1))!.done, isTrue);
+      expect(write.serverTasks[2]!.isFavorite, isTrue);
+      expect(await db.outboxDao.count(), 1);
+      expect(outbox.state, OutboxSenderState.idle);
+      expect(timers.active, isEmpty);
+
+      write.beforeRequest = null;
+      await outbox.retry(problem.operationId);
+
+      expect(write.serverTasks[1]!.done, isTrue);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('only answers in a row count: a day offline before a 5xx uses up '
+        'none of them, and a 429 or a network failure never does', () async {
+      await queue(1, done);
+      final op = (await ops()).single;
+      await db.outboxDao.scheduleRetry(
+        op.id,
+        attempts: 200,
+        failure: const NetworkFailure(NetworkProblem.unreachable),
+        nextAttemptAt: now,
+      );
+      write.beforeRequest = (_) => fail(const ServerFailure(503));
+      final outbox = sender();
+
+      await outbox.drain();
+
+      expect((await ops()).single.attempts, 1);
+      expect(timers.pendingWait, OutboxSender.initialBackoff);
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+
+      for (final failure in const <VikunjaFailure>[
+        RateLimited(),
+        NetworkFailure(NetworkProblem.timeout),
+      ]) {
+        await db.outboxDao.scheduleRetry(
+          op.id,
+          attempts: 200,
+          failure: failure,
+          nextAttemptAt: now,
+        );
+        write.beforeRequest = (_) => fail(failure);
+        await outbox.sendNow();
+
+        expect((await ops()).single.attempts, 201);
+        expect(await db.outboxDao.loadProblems(), isEmpty);
+      }
+    });
+
+    for (final (what, failure) in [
+      (
+        'a 2xx whose body cannot be read',
+        const UnexpectedResponse(200, message: 'task without id'),
+      ),
+      (
+        'a 2xx whose JSON cannot be parsed',
+        const UnexpectedResponse(null, message: 'FormatException'),
+      ),
+    ]) {
+      test('$what is final for an update: a problem at once, and the queue '
+          'goes on', () async {
+        write.afterRequest = (request) =>
+            request == 'update 1' ? fail(failure) : Future.value();
+        await queue(1, done);
+        await queue(2, favorite);
+        final outbox = sender();
+
+        await outbox.drain();
+
+        expect(write.requests, ['update 1', 'update 2']);
+        final problem = (await db.outboxDao.loadProblems()).single;
+        expect(problem.taskId, 1);
+        expect(problem.failure, isA<UnexpectedResponse>());
+        expect(problem.failure.message, failure.message);
+        expect(timers.active, isEmpty);
+        expect(outbox.state, OutboxSenderState.idle);
+      });
+    }
+
+    test('an exception without an answer is final for an update and a '
+        'delete', () async {
+      write.beforeRequest = (request) => request == 'update 2'
+          ? Future.value()
+          : Future.error(StateError('a bug'));
+      await queue(1, done);
+      await queueDelete(3);
+      await queue(2, favorite);
+      final outbox = sender();
+
+      await outbox.drain();
+
+      expect(write.requests, ['update 1', 'delete 3', 'update 2']);
+      final problems = await db.outboxDao.loadProblems();
+      expect(problems.map((p) => p.kind), [
+        OutboxOperationKind.updateTask,
+        OutboxOperationKind.deleteTask,
+      ]);
+      expect(
+        problems.map((p) => p.failure),
+        everyElement(
+          isA<UnexpectedResponse>()
+              .having((f) => f.statusCode, 'statusCode', isNull)
+              .having((f) => f.message, 'message', 'StateError'),
+        ),
+      );
+      expect(timers.active, isEmpty);
+    });
 
     test('a Retry-After of 0 falls back to the backoff', () async {
       write.beforeRequest = (_) =>
@@ -1474,6 +1667,79 @@ void main() {
       await outbox.sendNow();
 
       expect(write.requests, ['create Buy milk']);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    for (final (what, answer) in [
+      (
+        'a 2xx whose body cannot be read',
+        () => fail(const UnexpectedResponse(201, message: 'task without id')),
+      ),
+      ('an exception after the request', () => throw StateError('a bug')),
+    ]) {
+      test('$what may have left the task on the server: the create is looked '
+          'up, not sent again', () async {
+        final id = await create();
+        write.afterRequest = (_) async => answer();
+        final outbox = sender();
+
+        await outbox.drain();
+
+        final op = (await ops()).single;
+        expect(op.state, OutboxState.pending.name);
+        expect(op.sentAt, now);
+        expect(op.attempts, 1);
+        expect(outbox.state, OutboxSenderState.waiting);
+        expect(await db.outboxDao.loadProblems(), isEmpty);
+
+        mirrorServer();
+        write.afterRequest = null;
+        now = now.add(timers.pendingWait);
+        timers.fireNext();
+        await pumpEventQueue();
+
+        expect(write.requests, ['create Buy milk']);
+        expect(read.requests, hasLength(1));
+        expect(await db.tasksDao.resolveId(id), 100);
+        expect(await db.outboxDao.count(), 0);
+      });
+    }
+
+    test('a create the sender gives up on keeps its mark: an edit and a delete '
+        'wait behind it, and its Retry looks first', () async {
+      final id = await create();
+      write.beforeRequest = (_) => fail(const ServerFailure(502));
+      final outbox = sender();
+      final firstAttempt = now;
+      await outbox.drain();
+      for (var i = 1; i < OutboxSender.maxFailedAnswersInARow; i++) {
+        now = now.add(timers.pendingWait);
+        timers.fireNext();
+        await pumpEventQueue();
+      }
+
+      final problem = (await db.outboxDao.loadProblems()).single;
+      expect(problem.kind, OutboxOperationKind.createTask);
+      expect(problem.failure, isA<ServerFailure>());
+      expect((await ops()).single.sentAt, firstAttempt);
+
+      await queue(id, const TaskChanges(title: 'Buy oat milk'));
+      expect(decodeNewTask((await ops()).first.payload).title, 'Buy milk');
+      expect(await ops(), hasLength(2));
+      expect(await db.outboxDao.queueDelete(id, now: now), TaskDeletion.queued);
+      expect(await db.tasksDao.findRow(id), isNotNull);
+
+      write.beforeRequest = null;
+      read.requests.clear();
+      await outbox.retry(problem.operationId);
+
+      expect(read.requests, hasLength(1));
+      expect(write.requests.skip(OutboxSender.maxFailedAnswersInARow), [
+        'create Buy milk',
+        'update 100',
+        'delete 100',
+      ]);
+      expect(await db.tasksDao.findRow(id), isNull);
       expect(await db.outboxDao.count(), 0);
     });
 

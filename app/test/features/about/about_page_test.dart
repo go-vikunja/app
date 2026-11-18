@@ -127,7 +127,10 @@ void main() {
     expect(find.byType(SupportDetailsPage), findsOneWidget);
     expect(
       tester.widget<Text>(detailsText()).data,
-      endsWith('\nAccounts: none'),
+      endsWith(
+        '\nAccounts: none\n\n'
+        'Log: warnings and errors of the last 7 days: none',
+      ),
     );
     await tester.tap(find.byType(CloseButton));
     await tester.pumpAndSettle();

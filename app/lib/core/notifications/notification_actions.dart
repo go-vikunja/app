@@ -22,6 +22,7 @@ final class NotificationPayload {
     required this.taskId,
     required this.key,
     this.linkKey,
+    this.occurrence,
   });
 
   factory fromJson(String json) {
@@ -40,9 +41,23 @@ final class NotificationPayload {
           final String linkKey when linkKey.isNotEmpty => linkKey,
           _ => null,
         },
+        occurrence: switch (fields['at']) {
+          final int at => DateTime.fromMillisecondsSinceEpoch(at, isUtc: true),
+          _ => null,
+        },
       );
     }
     throw FormatException('not a notification payload', json);
+  }
+
+  /// Null for anything that is not a payload, a missing one included.
+  static NotificationPayload? tryParse(String? json) {
+    if (json == null) return null;
+    try {
+      return NotificationPayload.fromJson(json);
+    } on FormatException {
+      return null;
+    }
   }
 
   final String accountId;
@@ -53,10 +68,17 @@ final class NotificationPayload {
 
   final String? linkKey;
 
+  /// The task's own instant this notification stands for, its reminder or
+  /// due date before any snooze (`at`, epoch milliseconds), so that a Done
+  /// tapped after the task moved on is told apart. Null in what was
+  /// scheduled before step 40e.
+  final DateTime? occurrence;
+
   String toJson() => jsonEncode({
     'account': accountId,
     'task': taskId,
     'key': key,
     'k': ?linkKey,
+    'at': ?occurrence?.millisecondsSinceEpoch,
   });
 }

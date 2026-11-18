@@ -151,22 +151,43 @@ internal data class HostSettings(
     }
 }
 
-internal data class WidgetAction(val id: String, val accountId: String, val taskId: Long, val createdAt: Long) {
+// What the tapped row showed, so that the app ignores a Done the task has
+// moved past; dueAt is null for a row without a due date.
+internal data class TappedRow(val dueAt: Long?)
+
+// A tap without shown was written before version 2.
+internal data class WidgetAction(
+    val id: String,
+    val accountId: String,
+    val taskId: Long,
+    val createdAt: Long,
+    val shown: TappedRow? = null,
+) {
     fun toJson(): String = JSONObject()
-        .put("version", 1)
+        .put("version", if (shown == null) 1 else SHOWS_ROW)
         .put("id", id)
         .put("accountId", accountId)
         .put("taskId", taskId)
         .put("createdAt", createdAt)
+        .apply { shown?.dueAt?.let { put("dueAt", it) } }
         .toString()
 
     companion object {
+        private const val SHOWS_ROW = 2
+
         fun parse(text: String): WidgetAction? = parseOrNull { of(JSONObject(text)) }
 
         fun of(json: JSONObject): WidgetAction? {
             val id = json.string("id")?.takeIf { it.isNotEmpty() } ?: return null
             val accountId = json.string("accountId")?.takeIf { it.isNotEmpty() } ?: return null
-            return WidgetAction(id, accountId, json.long("taskId") ?: return null, json.long("createdAt") ?: return null)
+            val shown = if ((json.long("version") ?: 1) >= SHOWS_ROW) TappedRow(json.long("dueAt")) else null
+            return WidgetAction(
+                id,
+                accountId,
+                json.long("taskId") ?: return null,
+                json.long("createdAt") ?: return null,
+                shown,
+            )
         }
     }
 }

@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
+import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -1139,6 +1140,38 @@ void main() {
     expect(sheet, findsNothing);
     expect(location(tester), AppRoutes.account);
     expect(find.byType(ReauthBanner), findsOneWidget);
+    expect(find.text(en.notificationTestReceived), findsNothing);
+  });
+
+  testWidgets('a reminder to open the app before a session ends only opens '
+      'it: no switch, the sheet and the tab stay', (tester) async {
+    final accounts = ThreeAccounts();
+    _withLinkKey(accounts.auth);
+    await accounts.seed();
+    accounts.aliceData.tasks.all = data.tasks.all;
+    await accounts.pump(tester, notifications: notifications);
+    notifications.taps.tap(payload(accountId: accounts.alice.id));
+    await tester.pumpAndSettle();
+    expect(sheet, findsOneWidget);
+    final before = location(tester);
+
+    for (final linkKey in [_linkKey, null]) {
+      for (final accountId in [accounts.alice.id, accounts.bob.id]) {
+        notifications.taps.tap(
+          payload(
+            accountId: accountId,
+            taskId: 0,
+            key: SessionReminders.key(accountId),
+            linkKey: linkKey,
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+    }
+
+    expect(activeAccountId(tester), accounts.alice.id);
+    expect(sheet, findsOneWidget);
+    expect(location(tester), before);
     expect(find.text(en.notificationTestReceived), findsNothing);
   });
 

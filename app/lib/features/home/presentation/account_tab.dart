@@ -36,6 +36,7 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connecti
 import 'package:vikunja_mobile/features/privacy/presentation/privacy_section.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
+import 'package:vikunja_mobile/features/session/presentation/background_sync_warning.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
@@ -43,7 +44,8 @@ import 'package:vikunja_mobile/features/widgets/presentation/widgets_section.dar
 
 /// Who is signed in with the way to the account's settings on the server,
 /// a session that needs a new sign-in, the account's labels and teams, the
-/// other accounts, the sync state and the changes still waiting for it,
+/// other accounts, the sync state with a note when the device limits the
+/// background sync and the changes still waiting for it,
 /// what is set on this device only (the home-screen widgets,
 /// notifications, privacy), the appearance, the server with its connection
 /// settings, sign-out and the app's version, which opens the About page. A
@@ -194,6 +196,7 @@ class AccountTab extends ConsumerWidget {
                 title: l10n.accountSyncHeading,
                 children: [
                   SyncStatusSection(entry: entry, signingOut: signingOut),
+                  const BackgroundSyncWarning(),
                   PendingChangesLine(
                     entry: entry,
                     canSend: !signingOut && !entry.account.needsReauth,

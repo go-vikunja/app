@@ -96,6 +96,7 @@ final class PluginWidgetHost implements WidgetHost {
         accountId: action.accountId,
         taskId: action.taskId,
         createdAt: action.createdAt,
+        shown: action.shown,
       ),
   ];
 

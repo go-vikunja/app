@@ -82,6 +82,9 @@ void main() {
   Future<List<ScheduledNotificationRow>> rows() =>
       db.scheduledNotificationsDao.all();
 
+  /// What a run that changes nothing asks the gateway.
+  const idle = ['capabilities', 'pendingIds', 'delivered'];
+
   test("the payloads carry the install's link key", () async {
     await scheduler(linkKey: 'link-key-marker').reconcile();
 
@@ -124,9 +127,37 @@ void main() {
       gateway.calls.clear();
       await notifications.reconcile();
 
-      expect(gateway.calls, ['capabilities', 'pendingIds']);
+      expect(gateway.calls, idle);
     },
   );
+
+  test('the payloads carry the instant of the occurrence, the snooze '
+      "leaving it at the task's own", () async {
+    final notifications = scheduler();
+    await notifications.reconcile();
+
+    expect(
+      gateway.scheduled.map(
+        (n) => NotificationPayload.fromJson(n.payload).occurrence,
+      ),
+      [reminderAt, dueAt],
+    );
+
+    now = reminderAt.add(const Duration(minutes: 1));
+    gateway.fire(reminderId);
+    await notifications.snooze(
+      key: '1:reminder:0',
+      taskId: 1,
+      duration: const Duration(minutes: 10),
+    );
+
+    final snoozed = gateway.pending[reminderId]!;
+    expect(snoozed.fireAt, now.add(const Duration(minutes: 10)));
+    expect(
+      NotificationPayload.fromJson(snoozed.payload).occurrence,
+      reminderAt,
+    );
+  });
 
   test('without exact alarms the notifications are inexact', () async {
     gateway.current = const NotificationCapabilities(
@@ -156,14 +187,7 @@ void main() {
 
     await notifications.reconcile();
 
-    expect(gateway.calls, [
-      'capabilities',
-      'pendingIds',
-      'cancel $reminderId',
-      'cancel $dueId',
-      'schedule $reminderId',
-      'schedule $dueId',
-    ]);
+    expect(gateway.calls, [...idle, 'schedule $reminderId', 'schedule $dueId']);
     expect(gateway.pending.values.every((n) => n.exact), isTrue);
     expect((await rows()).map((r) => r.exact), [true, true]);
   });
@@ -191,8 +215,8 @@ void main() {
     expect((await rows()).map((r) => r.exact), [false, false]);
   });
 
-  test('a changed time is rescheduled under the same id, a gone reminder '
-      'is cancelled, a new task takes its own id', () async {
+  test('a changed time is rescheduled under the same id without a cancel, '
+      'a gone due date is cancelled, a new task takes its own id', () async {
     final notifications = scheduler();
     await notifications.reconcile();
     gateway.calls.clear();
@@ -212,9 +236,7 @@ void main() {
 
     final secondId = notificationOsIdFor(accountId, '2:due');
     expect(gateway.calls, [
-      'capabilities',
-      'pendingIds',
-      'cancel $reminderId',
+      ...idle,
       'cancel $dueId',
       'schedule $reminderId',
       'schedule $secondId',
@@ -307,7 +329,7 @@ void main() {
 
     await notifications.reconcile();
 
-    expect(gateway.calls, ['capabilities', 'pendingIds', 'schedule $dueId']);
+    expect(gateway.calls, [...idle, 'schedule $dueId']);
   });
 
   test('a snooze brings a fired reminder back at the snoozed time, under '
@@ -326,11 +348,7 @@ void main() {
 
     await notifications.reconcile();
 
-    expect(gateway.calls, [
-      'capabilities',
-      'pendingIds',
-      'schedule $reminderId',
-    ]);
+    expect(gateway.calls, [...idle, 'schedule $reminderId']);
     expect(gateway.pending[reminderId]!.fireAt, until);
     final stored = (await rows()).first;
     expect(stored.key, '1:reminder:0');
@@ -407,8 +425,8 @@ void main() {
       },
     );
 
-    test('a forced run cancels what is pending and schedules it again '
-        'under the same ids; the table and its snoozes stay', () async {
+    test('a forced run schedules what is pending again under the same ids, '
+        'without a cancel; the table and its snoozes stay', () async {
       await scheduler().reconcile();
       now = reminderAt.add(const Duration(minutes: 1));
       gateway.fire(reminderId);
@@ -426,10 +444,7 @@ void main() {
       final notifications = scheduler(privacy: hidden);
       await notifications.reconcile(force: true);
 
-      expect(
-        gateway.calls.where((c) => c.startsWith('cancel')),
-        unorderedEquals(['cancel $reminderId', 'cancel $dueId']),
-      );
+      expect(gateway.calls.where((c) => c.startsWith('cancel')), isEmpty);
       expect(
         gateway.calls.where((c) => c.startsWith('schedule')),
         unorderedEquals(['schedule $reminderId', 'schedule $dueId']),
@@ -446,7 +461,34 @@ void main() {
 
       gateway.calls.clear();
       await notifications.reconcile();
-      expect(gateway.calls, ['capabilities', 'pendingIds']);
+      expect(gateway.calls, idle);
+    });
+
+    test('a forced run leaves the tray alone: a fired reminder stays, and '
+        'so does what is shown under an id it schedules again', () async {
+      await scheduler().reconcile();
+      now = reminderAt.add(const Duration(minutes: 1));
+      final shownReminder = gateway.pending[reminderId]!.payload;
+      gateway
+        ..fire(reminderId)
+        ..tray[reminderId] = shownReminder
+        // An earlier due date of the task, shown by a build before step
+        // 40e, under the id its pending one has.
+        ..tray[dueId] = const NotificationPayload(
+          accountId: accountId,
+          taskId: 1,
+          key: '1:due',
+        ).toJson();
+      gateway.calls.clear();
+
+      await scheduler(privacy: hidden).reconcile(force: true);
+
+      expect(gateway.cancelled, isEmpty);
+      expect(gateway.calls.where((c) => c.startsWith('schedule')), [
+        'schedule $dueId',
+      ]);
+      expect(gateway.pending[dueId]!.privacy, hidden);
+      expect(gateway.tray.keys, unorderedEquals([reminderId, dueId]));
     });
 
     test('the table records it, so a later run schedules again what an '
@@ -457,9 +499,10 @@ void main() {
       final notifications = scheduler(privacy: hidden);
       await notifications.reconcile();
 
+      expect(gateway.calls.where((c) => c.startsWith('cancel')), isEmpty);
       expect(
-        gateway.calls.where((c) => c.startsWith('cancel')),
-        unorderedEquals(['cancel $reminderId', 'cancel $dueId']),
+        gateway.calls.where((c) => c.startsWith('schedule')),
+        unorderedEquals(['schedule $reminderId', 'schedule $dueId']),
       );
       expect(gateway.pending.values.map((n) => n.privacy), [hidden, hidden]);
       expect(
@@ -468,7 +511,7 @@ void main() {
       );
       gateway.calls.clear();
       await notifications.reconcile();
-      expect(gateway.calls, ['capabilities', 'pendingIds']);
+      expect(gateway.calls, idle);
     });
 
     test('a snooze from an isolate with older settings is scheduled again '
@@ -492,25 +535,11 @@ void main() {
       expect(gateway.pending[reminderId]!.privacy, hidden);
     });
 
-    test('a fired notification in the tray is not cancelled by a forced '
-        'run', () async {
-      final notifications = scheduler();
-      await notifications.reconcile();
-      now = reminderAt.add(const Duration(minutes: 1));
-      gateway.fire(reminderId);
-      gateway.calls.clear();
-
-      await notifications.reconcile(force: true);
-
-      expect(gateway.cancelled, [dueId]);
-      expect(gateway.pending.keys, [dueId]);
-    });
-
     test('a forced run that fails leaves the force to the next run', () async {
       final notifications = scheduler();
       await notifications.reconcile();
       gateway.beforeCall = (call) async {
-        if (call == 'cancel $reminderId') throw StateError('plugin');
+        if (call == 'schedule $reminderId') throw StateError('plugin');
       };
 
       await expectLater(notifications.reconcile(force: true), throwsStateError);
@@ -590,7 +619,7 @@ void main() {
 
       gateway.calls.clear();
       await notifications.reconcile();
-      expect(gateway.calls, ['capabilities', 'pendingIds']);
+      expect(gateway.calls, idle);
     });
 
     test('cancels nothing that is still wanted, so a notification shown '
@@ -858,5 +887,244 @@ void main() {
 
     expect(gateway.cancelled, unorderedEquals([reminderId, dueId]));
     expect(gateway.pending, isEmpty);
+  });
+
+  group('the tray', () {
+    /// Both fired and are shown with the payloads they were scheduled with.
+    Future<NotificationScheduler> bothShown() async {
+      final notifications = scheduler();
+      await notifications.reconcile();
+      now = dueAt.add(const Duration(minutes: 1));
+      final reminder = gateway.pending[reminderId]!.payload;
+      final due = gateway.pending[dueId]!.payload;
+      gateway
+        ..fire(reminderId)
+        ..fire(dueId)
+        ..tray.addAll({reminderId: reminder, dueId: due});
+      return notifications;
+    }
+
+    test(
+      'a task done in the app or by a sync takes its notifications out '
+      "of the tray, not the account's activity or another account's",
+      () async {
+        final notifications = await bothShown();
+        final activityId = notificationOsIdFor(accountId, 'activity:3');
+        final othersId = notificationOsIdFor('other', '1:due');
+        gateway.tray.addAll({
+          activityId: const NotificationPayload(
+            accountId: accountId,
+            taskId: 1,
+            key: 'activity:3',
+          ).toJson(),
+          othersId: NotificationPayload(
+            accountId: 'other',
+            taskId: 1,
+            key: '1:due',
+            occurrence: dueAt,
+          ).toJson(),
+        });
+
+        await db.tasksDao.upsertAll([
+          water().copyWith(done: true),
+        ], syncRunId: 'run');
+        await notifications.reconcile();
+
+        expect(gateway.tray.keys, unorderedEquals([activityId, othersId]));
+      },
+    );
+
+    test('a repeating task that moved on takes what it showed out of the '
+        'tray before its next occurrence goes under the same id', () async {
+      final notifications = await bothShown();
+      final next =
+          water(
+            reminders: [
+              TaskReminder(reminder: reminderAt.add(const Duration(days: 1))),
+            ],
+          ).copyWith(
+            dueDate: dueAt.add(const Duration(days: 1)),
+            repeatAfter: const Duration(days: 1),
+          );
+      await db.tasksDao.upsertAll([next], syncRunId: 'run');
+      gateway.calls.clear();
+
+      await notifications.reconcile();
+
+      expect(gateway.tray, isEmpty);
+      expect(
+        gateway.calls.indexOf('cancel $dueId'),
+        lessThan(gateway.calls.indexOf('schedule $dueId')),
+      );
+      expect(gateway.pending.keys, unorderedEquals([reminderId, dueId]));
+      expect(gateway.pending[dueId]!.fireAt, next.dueDate);
+    });
+
+    test('what still applies stays, also over later runs', () async {
+      final notifications = await bothShown();
+
+      await notifications.reconcile();
+      await notifications.reconcile();
+
+      expect(gateway.tray.keys, unorderedEquals([reminderId, dueId]));
+      expect(gateway.cancelled, isEmpty);
+    });
+
+    test('a payload scheduled before step 40e, without its instant, stays '
+        'while its task is open, moved or not, and goes with it', () async {
+      final notifications = scheduler();
+      await notifications.reconcile();
+      now = dueAt.add(const Duration(minutes: 1));
+      gateway
+        ..fire(dueId)
+        ..tray[dueId] = const NotificationPayload(
+          accountId: accountId,
+          taskId: 1,
+          key: '1:due',
+        ).toJson();
+      await db.tasksDao.upsertAll([
+        water().copyWith(dueDate: dueAt.add(const Duration(days: 1))),
+      ], syncRunId: 'run');
+
+      await notifications.reconcile();
+      expect(gateway.tray.keys, [dueId]);
+
+      await db.tasksDao.upsertAll([
+        water().copyWith(done: true),
+      ], syncRunId: 'run');
+      await notifications.reconcile();
+      expect(gateway.tray, isEmpty);
+    });
+
+    test('a temporary id is followed to the server id', () async {
+      final notifications = await bothShown();
+      gateway.tray[reminderId] = NotificationPayload(
+        accountId: accountId,
+        taskId: -5,
+        key: '-5:reminder:0',
+        occurrence: reminderAt,
+      ).toJson();
+      await db
+          .into(db.taskIdRemaps)
+          .insert(TaskIdRemapRow(localId: -5, serverId: 1, at: now));
+
+      await notifications.reconcile();
+      expect(gateway.tray.keys, unorderedEquals([reminderId, dueId]));
+
+      await db.tasksDao.upsertAll([
+        water().copyWith(done: true),
+      ], syncRunId: 'run');
+      await notifications.reconcile();
+      expect(gateway.tray, isEmpty);
+    });
+
+    test('a tray the gateway cannot list fails nothing', () async {
+      final notifications = await bothShown();
+      gateway.beforeCall = (call) async {
+        if (call == 'delivered') throw StateError('plugin');
+      };
+      await db.tasksDao.upsertAll([
+        water().copyWith(done: true),
+      ], syncRunId: 'run');
+
+      await notifications.reconcile();
+
+      expect(await rows(), isEmpty);
+      expect(gateway.tray.keys, unorderedEquals([reminderId, dueId]));
+    });
+  });
+
+  group('an alarm Android deferred past its time', () {
+    setUp(() {
+      gateway.current = const NotificationCapabilities(
+        permission: NotificationPermission.granted,
+        exactAlarms: false,
+      );
+    });
+
+    /// Both scheduled; the reminder's time has passed, but the OS has not
+    /// shown it yet.
+    Future<NotificationScheduler> deferred() async {
+      final notifications = scheduler();
+      await notifications.reconcile();
+      now = reminderAt.add(const Duration(minutes: 20));
+      gateway.calls.clear();
+      return notifications;
+    }
+
+    test('stays pending while its task and its time do', () async {
+      final notifications = await deferred();
+
+      await notifications.reconcile();
+
+      expect(gateway.calls, idle);
+      expect(gateway.pending.keys, unorderedEquals([reminderId, dueId]));
+      expect((await rows()).map((r) => r.key), ['1:reminder:0', '1:due']);
+    });
+
+    test('a forced run shows it at once, under its id, with what it now '
+        'says', () async {
+      final notifications = await deferred();
+
+      await notifications.reconcile(force: true);
+
+      final again = gateway.scheduled.where((n) => n.osId == reminderId).last;
+      expect(again.fireAt, reminderAt);
+      expect(gateway.cancelled, isEmpty);
+    });
+
+    test('is cancelled once its task is done', () async {
+      final notifications = await deferred();
+      await db.tasksDao.upsertAll([
+        water().copyWith(done: true),
+      ], syncRunId: 'run');
+
+      await notifications.reconcile();
+
+      expect(gateway.cancelled, unorderedEquals([reminderId, dueId]));
+      expect(gateway.pending, isEmpty);
+    });
+
+    test('is cancelled once its time changed, also to another past one, '
+        'and never scheduled anew at a time that has passed', () async {
+      final notifications = await deferred();
+      await db.tasksDao.upsertAll([
+        water(
+          reminders: [
+            TaskReminder(reminder: reminderAt.add(const Duration(minutes: 5))),
+          ],
+        ),
+      ], syncRunId: 'run');
+
+      await notifications.reconcile();
+
+      expect(gateway.cancelled, [reminderId]);
+      expect(gateway.calls.where((c) => c.startsWith('schedule')), isEmpty);
+      expect(gateway.pending.keys, [dueId]);
+      expect((await rows()).map((r) => r.key), ['1:due']);
+    });
+
+    test('is cancelled once it is more than the limit late', () async {
+      final notifications = await deferred();
+      now = reminderAt.add(
+        NotificationScheduler.lateLimit + const Duration(minutes: 1),
+      );
+      gateway.fire(dueId);
+
+      await notifications.reconcile();
+
+      expect(gateway.cancelled, [reminderId]);
+      expect(await rows(), isEmpty);
+    });
+
+    test('one that fired is not scheduled again', () async {
+      final notifications = await deferred();
+      gateway.fire(reminderId);
+
+      await notifications.reconcile();
+
+      expect(gateway.calls, idle);
+      expect((await rows()).map((r) => r.key), ['1:due']);
+    });
   });
 }

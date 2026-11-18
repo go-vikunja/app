@@ -684,6 +684,28 @@ void main() {
       },
     );
 
+    test('ops claimed under another process go back to pending at once; '
+        'the first process stored only takes over', () async {
+      Future<int> reset(int process) => db.outboxDao.resetSending(
+        now: now,
+        olderThan: const Duration(minutes: 5),
+        process: process,
+      );
+      await queue(1, done);
+      await db.outboxDao.markSending((await ops()).single.id, at: now);
+
+      expect(await reset(1), 0);
+      expect(await reset(1), 0);
+      expect((await ops()).single.state, OutboxState.sending.name);
+
+      expect(await reset(2), 1);
+      expect((await ops()).single.state, OutboxState.pending.name);
+      expect(
+        (await db.syncStateDao.readAll())[OutboxDao.sendingProcessKey],
+        '2',
+      );
+    });
+
     test('ops left in flight by a killed app go back to pending', () async {
       await queue(1, done);
       await db.outboxDao.markSending((await ops()).single.id, at: now);
@@ -1269,6 +1291,39 @@ void main() {
       await db.outboxDao.markFailed(op.id, const NotFound(code: 3001));
 
       expect((await createOp(id)).sentAt, isNull);
+    });
+
+    test('a create the sender gave up on keeps its mark, and an edit and a '
+        'delete queue behind it, as the server may have the task', () async {
+      final id = await create();
+      final op = await createOp(id);
+      await db.outboxDao.markUncertain(op.id, sentAt: now);
+
+      await db.outboxDao.markGivenUp(op.id, const ServerFailure(502));
+
+      final failed = await createOp(id);
+      expect(failed.state, OutboxState.failed.name);
+      expect(failed.sentAt, now);
+      expect(decodeFailure(failed.lastError!), isA<ServerFailure>());
+      expect(
+        (await db.outboxDao.loadProblems()).single.kind,
+        OutboxOperationKind.createTask,
+      );
+
+      expect(await queue(id, const TaskChanges(title: 'Buy oat milk')), isTrue);
+      expect(decodeNewTask((await createOp(id)).payload).title, 'Buy milk');
+      expect(await db.outboxDao.queueDelete(id, now: now), TaskDeletion.queued);
+      expect((await ops()).map((op) => op.kind), [
+        'createTask',
+        'updateTask',
+        'deleteTask',
+      ]);
+
+      // A refusal on its Retry clears the mark: the server said no.
+      await db.outboxDao.retry(op.id);
+      await db.outboxDao.markFailed(op.id, const NotFound(code: 3001));
+      expect(await db.outboxDao.count(), 0);
+      expect(await db.tasksDao.findRow(id), isNull);
     });
 
     test(

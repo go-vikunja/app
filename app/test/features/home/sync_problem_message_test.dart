@@ -104,8 +104,27 @@ void main() {
       endsWith(en.syncProblemUnexpected),
     );
     expect(
-      describe(const ServerFailure(500)),
+      describe(const UnexpectedResponse(200, message: 'task without id')),
       endsWith(en.syncProblemUnexpected),
+    );
+  });
+
+  test('an op the outbox gave up on says the server kept failing, or that a '
+      "web server's 404 was unexpected", () {
+    expect(
+      describeSyncProblem(en, problem(const ServerFailure(502))),
+      '${en.syncProblemUpdateFailed} ${en.syncProblemServerKeptFailing}',
+    );
+    expect(
+      describeSyncProblem(
+        en,
+        problem(const ServerFailure(500), kind: OutboxOperationKind.createTask),
+      ),
+      '${en.syncProblemCreateFailed} ${en.syncProblemServerKeptFailing}',
+    );
+    expect(
+      describeSyncProblem(en, problem(const NotFound())),
+      '${en.syncProblemUpdateFailed} ${en.syncProblemUnexpected}',
     );
   });
 
@@ -273,7 +292,7 @@ void main() {
     );
     expect(
       describe(const ServerFailure(500)),
-      '$what ${en.syncProblemUnexpected}',
+      '$what ${en.syncProblemServerKeptFailing}',
     );
     expect(
       describe(const NetworkFailure(NetworkProblem.timeout)),

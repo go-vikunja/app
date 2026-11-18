@@ -257,7 +257,7 @@ private fun TaskRow(shown: ShownRow, content: ListContent.Shown, wide: Boolean) 
             CheckBox(
                 checked = false,
                 onCheckedChange = actionRunCallback<MarkDoneAction>(
-                    MarkDoneAction.parameters(accountId, row.taskId, content.generatedAt),
+                    MarkDoneAction.parameters(accountId, row.taskId, content.generatedAt, row.dueAt),
                 ),
                 modifier = GlanceModifier.size(touchTarget).semantics { contentDescription = row.doneLabel },
                 colors = if (LocalSystemPalette.current) {

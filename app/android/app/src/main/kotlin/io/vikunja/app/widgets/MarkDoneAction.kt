@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
-import androidx.glance.action.actionParametersOf
+import androidx.glance.action.mutableActionParametersOf
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.ToggleableStateKey
 import androidx.glance.appwidget.updateAll
@@ -21,7 +21,13 @@ class MarkDoneAction : ActionCallback {
         val accountId = parameters[accountKey] ?: return
         val taskId = parameters[taskKey] ?: return
         val generatedAt = parameters[generatedAtKey] ?: return
-        val action = WidgetAction(UUID.randomUUID().toString(), accountId, taskId, System.currentTimeMillis())
+        val action = WidgetAction(
+            UUID.randomUUID().toString(),
+            accountId,
+            taskId,
+            System.currentTimeMillis(),
+            shownOf(parameters),
+        )
         val queued = try {
             withContext(Dispatchers.IO) { WidgetActionQueue(WidgetFiles.of(context)).add(action, generatedAt) }
         } catch (error: IOException) {
@@ -39,7 +45,19 @@ class MarkDoneAction : ActionCallback {
         private val taskKey = ActionParameters.Key<Long>("task")
         private val generatedAtKey = ActionParameters.Key<Long>("generatedAt")
 
-        fun parameters(accountId: String, taskId: Long, snapshotGeneratedAt: Long): ActionParameters =
-            actionParametersOf(accountKey to accountId, taskKey to taskId, generatedAtKey to snapshotGeneratedAt)
+        // A checkbox drawn before the rows said what they showed lacks it.
+        private val showsRowKey = ActionParameters.Key<Boolean>("showsRow")
+        private val dueAtKey = ActionParameters.Key<Long>("dueAt")
+
+        fun parameters(accountId: String, taskId: Long, snapshotGeneratedAt: Long, dueAt: Long?): ActionParameters =
+            mutableActionParametersOf(
+                accountKey to accountId,
+                taskKey to taskId,
+                generatedAtKey to snapshotGeneratedAt,
+                showsRowKey to true,
+            ).apply { if (dueAt != null) set(dueAtKey, dueAt) }
+
+        fun shownOf(parameters: ActionParameters): TappedRow? =
+            if (parameters[showsRowKey] == true) TappedRow(parameters[dueAtKey]) else null
     }
 }

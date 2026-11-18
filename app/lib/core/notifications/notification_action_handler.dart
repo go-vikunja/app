@@ -99,8 +99,10 @@ final class NotificationActionHandler {
 
   /// Done is [ExternalDone.markDone]: through the outbox, the task's other
   /// notifications cancelled, the drain awaited up to [drainTimeout], then
-  /// a reconcile; a snooze moves the notification to now plus 10 min or
-  /// 1 h ([NotificationScheduler.snooze]). A payload or account that is not
+  /// a reconcile; ignored for a task done or moved past the occurrence the
+  /// payload names. A snooze moves the notification to now plus 10 min or
+  /// 1 h ([NotificationScheduler.snooze]), unless the key's instant is no
+  /// longer the one the payload names. A payload or account that is not
   /// understood is ignored. Errors are logged, never thrown.
   Future<void> handle(NotificationResponse response) async {
     try {
@@ -141,10 +143,17 @@ final class NotificationActionHandler {
     }
     switch (actionId) {
       case NotificationActionIds.markDone:
-        await ExternalDone(
-          _container,
-          drainTimeout: drainTimeout,
-        ).markDone(payload.accountId, payload.taskId);
+        await ExternalDone(_container, drainTimeout: drainTimeout).markDone(
+          payload.accountId,
+          payload.taskId,
+          shown: switch (payload.occurrence) {
+            final at? => TappedOccurrence.notification(
+              key: payload.key,
+              at: at,
+            ),
+            null => null,
+          },
+        );
       case NotificationActionIds.snooze10Minutes:
         await _snooze(payload, const Duration(minutes: 10));
       case NotificationActionIds.snooze1Hour:
@@ -158,8 +167,11 @@ final class NotificationActionHandler {
       _container.read(notificationSchedulerProvider(payload.accountId));
 
   Future<void> _snooze(NotificationPayload payload, Duration duration) =>
-      _scheduler(
-        payload,
-      )?.snooze(key: payload.key, taskId: payload.taskId, duration: duration) ??
+      _scheduler(payload)?.snooze(
+        key: payload.key,
+        taskId: payload.taskId,
+        duration: duration,
+        shown: payload.occurrence,
+      ) ??
       Future.value();
 }

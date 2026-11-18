@@ -31,7 +31,8 @@ final class FakeNotificationGateway implements NotificationGateway {
 
   /// `initialize`, `capabilities`, `requestPermission`,
   /// `openExactAlarmSettings`, `openNotificationSettings`,
-  /// `schedule <osId>`, `cancel <osId>`, `pendingIds`, `showNow <osId>`.
+  /// `schedule <osId>`, `cancel <osId>`, `pendingIds`, `showNow <osId>`,
+  /// `scheduleActivity <osId>`.
   final List<String> calls = [];
 
   /// Called before every call with its description; throwing fails it,
@@ -133,6 +134,39 @@ final class FakeNotificationGateway implements NotificationGateway {
 
   /// What the tray holds: shown activity notifications until cancelled.
   final Map<int, String?> tray = {};
+
+  /// Scheduled on the activity channel: the session reminders.
+  final List<
+    ({int osId, DateTime fireAt, String title, String body, String payload})
+  >
+  scheduledActivities = [];
+
+  @override
+  Future<void> scheduleActivity({
+    required int osId,
+    required DateTime fireAt,
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    await _call('scheduleActivity $osId');
+    scheduledActivities.add((
+      osId: osId,
+      fireAt: fireAt,
+      title: title,
+      body: body,
+      payload: payload,
+    ));
+    pending[osId] = ScheduledNotification(
+      osId: osId,
+      fireAt: fireAt,
+      title: title,
+      body: body,
+      payload: payload,
+      exact: false,
+    );
+    alarms.add(osId);
+  }
 
   @override
   Future<List<DeliveredNotification>> delivered() async {

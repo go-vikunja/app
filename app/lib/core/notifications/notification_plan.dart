@@ -23,7 +23,8 @@ final class DesiredNotification {
   final int taskId;
   final ScheduledNotificationKind kind;
 
-  /// UTC instant, always after `now`.
+  /// UTC instant, after `now` unless the entry is late (see
+  /// [planNotifications]).
   final DateTime fireAt;
   final String title;
   final String body;
@@ -31,6 +32,9 @@ final class DesiredNotification {
   /// The snooze that moved [fireAt] away from the task's own instant, so
   /// the stored row keeps it for the next plan.
   final Snooze? snooze;
+
+  /// The task's own instant, which a snooze leaves alone.
+  DateTime get occurrence => snooze?.originalFireAt.toUtc() ?? fireAt;
 }
 
 /// A snooze the user asked for from a notification: that key fires at
@@ -78,6 +82,21 @@ parseNotificationKey(String key) {
   };
 }
 
+/// The task's own instant for a key's [kind] and [ordinal]: its due date
+/// or the reminder at that position; null when it has none there.
+DateTime? notificationInstantOf(
+  Task task,
+  ScheduledNotificationKind kind,
+  int ordinal,
+) => switch (kind) {
+  ScheduledNotificationKind.dueDate => task.dueDate,
+  ScheduledNotificationKind.reminder =>
+    ordinal < task.reminders.length ? task.reminders[ordinal].reminder : null,
+};
+
+bool sameInstant(DateTime? a, DateTime? b) =>
+    a?.millisecondsSinceEpoch == b?.millisecondsSinceEpoch;
+
 /// The notifications an account should have, from its local data alone:
 /// undone tasks, not queued for deletion, where [userId] is the creator or
 /// an assignee (D17; a task created here under a temporary id has no
@@ -91,6 +110,12 @@ parseNotificationKey(String key) {
 /// still ahead moves the entry there, which is how a notification that has
 /// fired comes back. Titles and bodies are built by [describe] (localised
 /// by the caller). Sorted by [DesiredNotification.fireAt], then by key.
+///
+/// With [late], entries whose instant passed at most that long ago are
+/// planned too: [diffSchedule] keeps such a late entry only while the OS
+/// still holds it at that instant, as an inexact alarm Android deferred.
+/// A snooze stays applied in that window too, unless its own instant is
+/// still ahead.
 List<DesiredNotification> planNotifications({
   required List<Task> tasks,
   required int userId,
@@ -103,8 +128,10 @@ List<DesiredNotification> planNotifications({
   )
   describe,
   SubscribedTasks? subscribed,
+  Duration late = Duration.zero,
 }) {
   if (!preferences.anyEnabled) return const [];
+  final since = now.subtract(late);
   final snoozeByKey = {for (final snooze in snoozes) snooze.key: snooze};
   final desired = <DesiredNotification>[];
 
@@ -119,9 +146,9 @@ List<DesiredNotification> planNotifications({
     final applies =
         snooze != null &&
         snooze.originalFireAt.toUtc() == instant &&
-        snooze.until.isAfter(now);
+        snooze.until.isAfter(instant.isAfter(now) ? now : since);
     final fireAt = applies ? snooze.until.toUtc() : instant;
-    if (!fireAt.isAfter(now)) return null;
+    if (!fireAt.isAfter(since)) return null;
     final (:title, :body) = describe(task, kind);
     return DesiredNotification(
       key: key,
@@ -186,13 +213,23 @@ int _byFireAtThenKey(DesiredNotification a, DesiredNotification b) {
   return byTime != 0 ? byTime : a.key.compareTo(b.key);
 }
 
-/// What to cancel and what to schedule so that the OS holds the first
-/// [window] of [desired] and nothing else of this account: an entry
-/// already scheduled with the same key, instant, title and body, as
-/// [exact] and with the same [privacy] as this run schedules, is left
-/// alone, unless [force] has every entry cancelled and scheduled again.
-/// Cancels come in [scheduled] order, schedules in [desired] order.
-({List<int> cancelOsIds, List<DesiredNotification> schedule}) diffSchedule({
+/// What to cancel and what to schedule so that the OS holds the [window]
+/// and nothing else of this account. The window is the first [window]
+/// count of [desired], leaving out a late entry (not after [now]) unless
+/// [scheduled] holds its key at that very instant: the OS has not shown it
+/// yet, and scheduling it anew would show one that has fired once more.
+///
+/// Only what left the window is cancelled. A key still wanted is scheduled
+/// again under its id, which replaces it, when anything differs (instant,
+/// title, body, [exact], [privacy]) or with [everything]; a cancel first
+/// would, on Android, also take what the tray shows under that id. Cancels
+/// come in [scheduled] order, schedules in [desired] order.
+({
+  List<int> cancelOsIds,
+  List<DesiredNotification> schedule,
+  List<DesiredNotification> window,
+})
+diffSchedule({
   required List<DesiredNotification> desired,
   required List<
     ({
@@ -209,24 +246,32 @@ int _byFireAtThenKey(DesiredNotification a, DesiredNotification b) {
   required int window,
   required bool exact,
   required NotificationPrivacy privacy,
-  bool force = false,
+  required DateTime now,
+  bool everything = false,
 }) {
-  final wanted = desired.take(window < 0 ? 0 : window).toList();
+  final scheduledByKey = {for (final entry in scheduled) entry.key: entry};
+  final wanted = desired
+      .where(
+        (entry) =>
+            entry.fireAt.isAfter(now) ||
+            scheduledByKey[entry.key]?.fireAt.toUtc() == entry.fireAt,
+      )
+      .take(window < 0 ? 0 : window)
+      .toList();
   final wantedByKey = {for (final entry in wanted) entry.key: entry};
   final unchangedKeys = <String>{};
   final cancelOsIds = <int>[];
   for (final entry in scheduled) {
     final want = wantedByKey[entry.key];
-    if (!force &&
-        want != null &&
+    if (want == null) {
+      cancelOsIds.add(entry.osId);
+    } else if (!everything &&
         want.fireAt == entry.fireAt.toUtc() &&
         want.title == entry.title &&
         want.body == entry.body &&
         entry.exact == exact &&
         entry.privacy == privacy) {
       unchangedKeys.add(entry.key);
-    } else {
-      cancelOsIds.add(entry.osId);
     }
   }
   return (
@@ -235,5 +280,6 @@ int _byFireAtThenKey(DesiredNotification a, DesiredNotification b) {
       for (final entry in wanted)
         if (!unchangedKeys.contains(entry.key)) entry,
     ],
+    window: wanted,
   );
 }

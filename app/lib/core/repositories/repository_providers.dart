@@ -32,6 +32,7 @@ import 'package:vikunja_mobile/core/network/request_log_interceptor.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_schedulers.dart';
+import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_label_repository.dart';
@@ -541,13 +542,14 @@ UserRepository? userRepository(Ref ref) {
 
 /// The last step of a sign-out: makes a background run in another isolate
 /// let go of the account, drops its avatars and attachment images from
-/// memory, cancels the account's notifications (scheduled and in the
-/// tray) and forgets their preferences, the background notes, the last
-/// session end, the sign-in page on another host it confirmed, the unsent
-/// comments and the description draft, replaces its home-screen widgets'
-/// content with "Account removed", stops its outbox sender and sync
-/// engine, closes its database and deletes the files: the database, the
-/// stored copies of queued uploads and the downloaded attachments.
+/// memory, cancels the account's notifications (scheduled, the session
+/// reminder included, and in the tray) and forgets their preferences, the
+/// background notes, the last session end, the sign-in page on another
+/// host it confirmed, the unsent comments and the description draft,
+/// replaces its home-screen widgets' content with "Account removed", stops
+/// its outbox sender and sync engine, closes its database and deletes the
+/// files: the database, the stored copies of queued uploads and the
+/// downloaded attachments.
 @Riverpod(keepAlive: true)
 AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
   BackgroundRunnerChannel.release(accountId);
@@ -582,6 +584,11 @@ AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
     'Notification scheduler',
     accountId,
     () => ref.read(notificationSchedulersProvider).cancelAll(accountId),
+  );
+  await _disposeQuietly(
+    'Session reminder',
+    accountId,
+    () => ref.read(sessionRemindersProvider).cancel(accountId),
   );
   await _disposeQuietly(
     'Delivered notifications',

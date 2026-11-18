@@ -50,4 +50,4 @@ final class SupportSnapshotProvider
   }
 }
 
-String _$supportSnapshotHash() => r'e3584670b507e1d848fb311fab57077140cc3ce0';
+String _$supportSnapshotHash() => r'866c6f19b6dad4ccf931318c3a8c36b23a27fbb4';

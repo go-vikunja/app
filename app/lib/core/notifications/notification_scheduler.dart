@@ -46,6 +46,11 @@ typedef CreateTimer = Timer Function(
 /// schedules through the gateway and writes the table. That list is the
 /// system's on iOS; on Android it is the plugin's own record, which keeps
 /// the ids of the alarms a force stop drops (see [reconcile]'s `rearm`).
+/// An entry whose time passed less than [lateLimit] ago and that the OS
+/// still lists, an inexact alarm Android deferred, stays while its task and
+/// its instant do. Each run also withdraws the account's reminders and due
+/// dates from the tray once their task is done or gone, or has moved to
+/// another instant than the one they showed.
 /// It runs after every change to the tasks, reminders, assignees or
 /// projects (debounced), after a change of this account's preferences, and
 /// whenever the caller asks. Without the notification permission, or with
@@ -81,6 +86,10 @@ final class NotificationScheduler {
       if (change.$1 == accountId) reconcileQuietly();
     });
   }
+
+  /// Android defers an inexact alarm by up to an hour past its time, more
+  /// for an app in a rare standby bucket.
+  static const lateLimit = Duration(hours: 3);
 
   final String accountId;
   final Duration debounce;
@@ -122,12 +131,12 @@ final class NotificationScheduler {
   /// Brings the OS in step with the database; a call during a run makes
   /// that run look once more before the returned future completes. Nothing
   /// after [dispose]. Gateway and database errors propagate; the next run
-  /// starts from the table as it is. With [force], every pending
-  /// notification of the account is cancelled and scheduled again, and a
-  /// run that fails leaves that to the next one; the snoozes in the table
-  /// stay. [rearm] schedules every entry again without cancelling the
-  /// unchanged ones, so what the tray shows under their ids stays; a failed
-  /// run leaves it to the next one too.
+  /// starts from the table as it is. With [force] or [rearm], every entry
+  /// of the window is scheduled again under its id, unchanged ones too, and
+  /// a run that fails leaves that to the next one; the snoozes in the table
+  /// stay. No run cancels an entry it still wants: scheduling an id again
+  /// replaces it, while on Android a cancel would also take what the tray
+  /// shows under that id.
   Future<void> reconcile({bool force = false, bool rearm = false}) {
     if (_disposed) return Future.value();
     _requested = true;
@@ -158,12 +167,21 @@ final class NotificationScheduler {
   /// Without a row (a reconcile drops a fired entry) the instant is taken
   /// from the task itself; a task that is gone or done, an instant that is
   /// unset or still ahead (the task's time changed since the notification
-  /// fired) or a key that is not one make the snooze a no-op.
+  /// fired) or a key that is not one make the snooze a no-op. With
+  /// [shown], the instant the notification stood for, a key whose instant
+  /// has changed since is only reconciled, which withdraws the outdated
+  /// notification: its row may hold the next occurrence by now.
   Future<void> snooze({
     required String key,
     required int taskId,
     required Duration duration,
+    DateTime? shown,
   }) async {
+    if (shown != null && !await _stillAt(key, taskId, shown)) {
+      _log.info('Ignored a snooze of task $taskId: its time has changed since');
+      await reconcile();
+      return;
+    }
     final now = _now();
     final until = now.add(duration).toUtc();
     final capabilities = await _gateway.capabilities();
@@ -195,6 +213,7 @@ final class NotificationScheduler {
             taskId: row.taskId,
             key: row.key,
             linkKey: linkKey,
+            occurrence: row.snoozeOriginalFireAt,
           ).toJson(),
           exact: capabilities.exactAlarms,
           privacy: presentation.privacy,
@@ -203,6 +222,17 @@ final class NotificationScheduler {
     }
     _log.fine('Snoozed a notification of task $taskId by $duration');
     await reconcile();
+  }
+
+  Future<bool> _stillAt(String key, int taskId, DateTime shown) async {
+    final parsed = parseNotificationKey(key);
+    if (parsed == null) return true;
+    final task = await _db.tasksDao.find(await _db.tasksDao.resolveId(taskId));
+    return task != null &&
+        sameInstant(
+          notificationInstantOf(task, parsed.kind, parsed.ordinal),
+          shown,
+        );
   }
 
   Future<ScheduledNotificationRow?> _snoozedRow(
@@ -243,13 +273,7 @@ final class NotificationScheduler {
     }
     final task = await _db.tasksDao.find(resolvedId);
     if (task == null || task.done) return null;
-    final instant = switch (parsed.kind) {
-      ScheduledNotificationKind.dueDate => task.dueDate,
-      ScheduledNotificationKind.reminder =>
-        parsed.ordinal < task.reminders.length
-            ? task.reminders[parsed.ordinal].reminder
-            : null,
-    };
+    final instant = notificationInstantOf(task, parsed.kind, parsed.ordinal);
     if (instant == null || instant.isAfter(now)) return null;
     final projects = await _db.projectsDao.loadAll();
     final (:title, :body) = describe(
@@ -349,11 +373,19 @@ final class NotificationScheduler {
     }
     final (:describe, :privacy) = await _presentation();
     final linkKey = await _linkKey();
+    final now = _now();
     final rows = await _db.scheduledNotificationsDao.all();
     final held = await _pendingIds();
+    final openTasks = await _db.tasksDao.loadOpenTasks();
+    final outdated = await _outdatedInTray({
+      for (final task in openTasks) task.id: task,
+    });
     final scheduled = [
       for (final row in rows)
-        if (held == null || held.contains(row.osId))
+        // A past entry counts as pending only when the gateway says so, and
+        // one withdrawn now is scheduled again if it is still wanted.
+        if ((held?.contains(row.osId) ?? row.fireAt.isAfter(now)) &&
+            !outdated.contains(row.osId))
           (
             key: row.key,
             osId: row.osId,
@@ -381,10 +413,11 @@ final class NotificationScheduler {
         project.id: project,
     };
     final desired = planNotifications(
-      tasks: await _db.tasksDao.loadOpenTasks(),
+      tasks: openTasks,
       userId: _userId,
       preferences: preferences,
-      now: _now(),
+      now: now,
+      late: lateLimit,
       snoozes: snoozes,
       describe: (task, kind) => describe(task, kind, projects[task.projectId]),
       subscribed: _followSubscriptions
@@ -398,21 +431,21 @@ final class NotificationScheduler {
           : null,
     );
     if (_disposed) return;
-    final (:cancelOsIds, schedule: changed) = diffSchedule(
+    final (:cancelOsIds, :schedule, :window) = diffSchedule(
       desired: desired,
       scheduled: scheduled,
       window: _window,
       exact: capabilities.exactAlarms,
       privacy: privacy,
-      force: force,
+      now: now,
+      everything: force || rearm,
     );
-    final window = desired.take(_window).toList();
-    // Scheduling an id again replaces its alarm; a cancel first would also
-    // take what is shown under that id out of the tray.
-    final schedule = rearm ? window : changed;
     final osIds = _assignOsIds(window, rows);
 
-    for (final osId in cancelOsIds) {
+    // Before the schedules: an outdated one may share its id with the
+    // task's next occurrence.
+    final cancels = {...outdated, ...cancelOsIds};
+    for (final osId in cancels) {
       await _gateway.cancel(osId);
     }
     for (final entry in schedule) {
@@ -427,6 +460,7 @@ final class NotificationScheduler {
             taskId: entry.taskId,
             key: entry.key,
             linkKey: linkKey,
+            occurrence: entry.occurrence,
           ).toJson(),
           exact: capabilities.exactAlarms,
           privacy: privacy,
@@ -466,9 +500,45 @@ final class NotificationScheduler {
     }
     _log.fine(
       'Reconciled the notifications of account $accountId: '
-      '${cancelOsIds.length} cancelled, ${schedule.length} scheduled, '
-      '${window.length} of ${desired.length} pending',
+      '${outdated.length} withdrawn, ${cancelOsIds.length} cancelled, '
+      '${schedule.length} scheduled, ${window.length} of ${desired.length} '
+      'pending',
     );
+  }
+
+  /// The ids of this account's reminders and due dates in the tray that no
+  /// longer apply: their task is done or gone, or its instant for the key
+  /// is another than the one they showed. One shown without that instant
+  /// (scheduled before step 40e) goes only with its task. Empty when the
+  /// gateway cannot say.
+  Future<Set<int>> _outdatedInTray(Map<int, Task> openTasks) async {
+    final List<DeliveredNotification> delivered;
+    try {
+      delivered = await _gateway.delivered();
+    } on Object catch (error) {
+      _log.info(
+        'Could not list the notifications in the tray: ${error.runtimeType}',
+      );
+      return const {};
+    }
+    final outdated = <int>{};
+    for (final notification in delivered) {
+      final payload = NotificationPayload.tryParse(notification.payload);
+      if (payload == null || payload.accountId != accountId) continue;
+      final key = parseNotificationKey(payload.key);
+      if (key == null) continue;
+      final task = openTasks[await _db.tasksDao.resolveId(key.taskId)];
+      final moved = switch ((task, payload.occurrence)) {
+        (null, _) => true,
+        (final task?, final shown?) => !sameInstant(
+          notificationInstantOf(task, key.kind, key.ordinal),
+          shown,
+        ),
+        _ => false,
+      };
+      if (moved) outdated.add(notification.osId);
+    }
+    return outdated;
   }
 
   /// Null when the gateway cannot say, which leaves the table as the only

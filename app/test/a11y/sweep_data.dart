@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/platform/app_language_settings.dart';
+import 'package:vikunja_mobile/core/platform/background_permissions.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -216,3 +218,16 @@ void goTo(WidgetTester tester, String location) =>
 
 void pushTo(WidgetTester tester, String location, {Object? extra}) =>
     unawaited(routerOf(tester).push<Object?>(location, extra: extra));
+
+/// The device limits the background sync, in the way of the platform the
+/// scenario runs on: the note in the Account tab and the notification setup.
+final Override limitedBackgroundSync = backgroundPermissionsProvider
+    .overrideWithValue(_LimitedBackground());
+
+final class _LimitedBackground implements BackgroundPermissions {
+  @override
+  Future<BackgroundState> read() async =>
+      defaultTargetPlatform == TargetPlatform.iOS
+      ? const BackgroundState(backgroundRefresh: 'denied')
+      : const BackgroundState(backgroundRestricted: true);
+}

@@ -1,6 +1,7 @@
 import 'dart:ui' show DartPluginRegistrant;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show WidgetsFlutterBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:logging/logging.dart';
@@ -24,8 +25,11 @@ import 'package:workmanager/workmanager.dart';
 /// handle.
 @pragma('vm:entry-point')
 void callbackDispatcher() {
+  // Before the diagnostics log asks the platform for its folder;
+  // executeTask would bind it only later.
+  WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
-  configureLogging();
+  configureLogging(part: AppPart.backgroundRun);
   Workmanager().executeTask(
     (task, _) async {
       await runBackgroundTask(task);

@@ -3,9 +3,11 @@ import 'dart:convert';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/logging/diagnostics_log.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
@@ -55,6 +57,7 @@ DeviceSupport _android({
 );
 
 AccountSupport _account({
+  String id = 'a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1',
   String server = 'https://tasks.example.org/vikunja',
   bool guest = false,
   bool active = true,
@@ -65,6 +68,7 @@ AccountSupport _account({
   Collected<String> sendingInSession = const Collected('idle'),
   Collected<SessionEndRecord>? lastSessionEnd,
 }) => AccountSupport(
+  id: id,
   isGuest: guest,
   active: active,
   needsSignIn: needsSignIn,
@@ -93,6 +97,7 @@ String _render(
   List<AccountSupport>? accounts, {
   DeviceSupport? device,
   bool showServers = false,
+  Collected<List<DiagnosticsEntry>> log = const Collected([]),
 }) => renderSupportDetails(
   SupportSnapshot(
     createdAt: _created,
@@ -100,9 +105,35 @@ String _render(
     accounts: accounts == null
         ? const Collected.unknown()
         : Collected(accounts),
+    log: log,
   ),
   showServers: showServers,
   appLanguage: 'de',
+);
+
+const _noLog = 'Log: warnings and errors of the last 7 days: none\n';
+const _rowFrame =
+    'package:vikunja_mobile/features/tasks/task_row.dart:120:7 '
+    '_TaskRowState.build';
+
+DiagnosticsEntry _entry(
+  String message, {
+  DateTime? at,
+  String part = 'app',
+  String level = 'WARNING',
+  String logger = 'Probe',
+  String? error,
+  List<String> frames = const [],
+  int count = 1,
+}) => DiagnosticsEntry(
+  at: at ?? DateTime.utc(2026, 11, 12, 13, 59, 7),
+  part: part,
+  level: level,
+  logger: logger,
+  message: message,
+  error: error,
+  frames: frames,
+  count: count,
 );
 
 String _failure(VikunjaFailure failure) => encodeFailure(failure);
@@ -161,8 +192,20 @@ Last background run: completed, 2026-11-12 13:50 UTC
   ]);
 
   group('renderSupportDetails', () {
-    test('signed out: the device, and no accounts', () {
-      expect(_render(const []), '$deviceLines\nAccounts: none\n');
+    test('signed out: the device, no accounts and an empty log', () {
+      expect(_render(const []), '$deviceLines\nAccounts: none\n\n$_noLog');
+    });
+
+    test('without accounts, or with them unknown, the log still hides '
+        'addresses unless they are shown', () {
+      final log = Collected([_entry('Opened https://gone.example.org/x')]);
+
+      expect(_render(const [], log: log), contains('https://<server>/x'));
+      expect(_render(null, log: log), contains('https://<server>/x'));
+      expect(
+        _render(const [], log: log, showServers: true),
+        contains('https://gone.example.org/x'),
+      );
     });
 
     test('one user, line by line', () {
@@ -201,7 +244,8 @@ Unsent changes: 3 (updateTask 2, createTask 1)
   oldest: 2026-11-12 12:00 UTC
 Notifications: reminders on, due dates on, activity off
 Last session end: expired, background run, 2026-11-10 08:12 UTC
-''');
+
+$_noLog''');
       expect(text, isNot(contains('MARKER')));
     });
 
@@ -349,7 +393,114 @@ Last session end: expired, background run, 2026-11-10 08:12 UTC
       expect(text, contains('Sending in this session: unknown\n'));
       expect(text, isNot(contains('Sync in this session')));
       expect(text, contains('Last session end: unknown\n'));
-      expect(_render(null), endsWith('\nAccounts: unknown\n'));
+      expect(_render(null), endsWith('\nAccounts: unknown\n\n$_noLog'));
+      expect(
+        _render([], log: const Collected.unknown()),
+        endsWith('\nLog: warnings and errors of the last 7 days: unknown\n'),
+      );
+    });
+
+    test('the log comes last: a record a line, its error type and frames '
+        'indented, a repeat counted', () {
+      final text = _render(
+        [],
+        log: Collected([
+          _entry(
+            'Sync run 3 failed at tasks: NetworkFailure',
+            logger: 'SyncEngine',
+            part: 'backgroundRun',
+            count: 4,
+          ),
+          _entry(
+            'Uncaught error (widgets library)',
+            at: DateTime.utc(2026, 11, 12, 14, 0, 1),
+            level: 'SEVERE',
+            logger: 'Flutter',
+            error: 'StateError',
+            frames: const [_rowFrame],
+          ),
+        ]),
+      );
+
+      expect(
+        text,
+        endsWith('''
+Accounts: none
+
+Log: warnings and errors of the last 7 days: 2
+2026-11-12 13:59:07 UTC [background run] WARNING SyncEngine: Sync run 3 failed at tasks: NetworkFailure (4 times)
+2026-11-12 14:00:01 UTC [app] SEVERE Flutter: Uncaught error (widgets library)
+  error: StateError
+  at package:vikunja_mobile/features/tasks/task_row.dart:120:7 _TaskRowState.build
+'''),
+      );
+    });
+
+    test('the log names accounts by their number and, unless the addresses '
+        'are shown, servers by theirs', () {
+      const alice = 'd4d4d4d4d4d4d4d4d4d4d4d4d4d4d4d4';
+      const bob = 'b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2';
+      const gone = 'c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3c3';
+      final accounts = [
+        _account(id: alice),
+        _account(id: bob, server: 'https://other.example.net', active: false),
+      ];
+      final log = Collected([
+        _entry('Session of account $alice ended: SessionEnded(expired)'),
+        _entry('Could not flag account $bob'),
+        _entry('Account $gone has no tokens'),
+        _entry('Reached tasks.example.org and other.example.net:8443'),
+        _entry('Opened https://unknown.example.com/x and ftp://files.local'),
+      ]);
+
+      final hidden = _render(accounts, log: log);
+      final shown = _render(accounts, log: log, showServers: true);
+
+      final logPart = hidden.substring(hidden.indexOf('Log:'));
+      expect(logPart, contains('account <account-1> ended'));
+      expect(logPart, contains('flag account <account-2>\n'));
+      expect(logPart, contains('Account <account> has no tokens'));
+      expect(logPart, contains('Reached <server-1> and <server-2>:8443'));
+      expect(
+        logPart,
+        contains('Opened https://<server>/x and ftp://<server>\n'),
+      );
+      for (final marker in [alice, bob, gone, 'example', 'files.local']) {
+        expect(hidden, isNot(contains(marker)), reason: marker);
+      }
+      final shownLog = shown.substring(shown.indexOf('Log:'));
+      expect(shownLog, contains('account <account-1> ended'));
+      expect(
+        shownLog,
+        contains('Reached tasks.example.org and other.example.net:8443'),
+      );
+      expect(shownLog, contains('Opened https://unknown.example.com/x'));
+      expect(shown, isNot(contains(alice)));
+    });
+
+    test("a server's host is replaced only where it stands as a host, not "
+        "inside a longer one or the app's own frames", () {
+      final text = _render(
+        [_account(server: 'http://vikunja:3456')],
+        log: Collected([
+          _entry(
+            'Reached vikunja, vikunja:3456 and vikunja.example.org for '
+            'vikunja_mobile',
+            logger: 'vikunja-sync',
+            frames: const [_rowFrame],
+          ),
+        ]),
+      );
+
+      final logPart = text.substring(text.indexOf('Log:'));
+      expect(
+        logPart,
+        contains(
+          'vikunja-sync: Reached <server-1>, <server-1>:3456 and '
+          'vikunja.example.org for vikunja_mobile',
+        ),
+      );
+      expect(logPart, contains('  at $_rowFrame\n'));
     });
   });
 
@@ -461,10 +612,12 @@ Last session end: expired, background run, 2026-11-10 08:12 UTC
     ProviderContainer container({
       BackgroundState? background,
       NotificationGateway? gateway,
+      DiagnosticsLog? log,
     }) {
       final container = ProviderContainer(
         overrides: [
           ...auth.overrides,
+          diagnosticsLogProvider.overrideWithValue(log),
           clockProvider.overrideWithValue(() => _created),
           clientIdentityProvider.overrideWithValue(
             const ClientIdentity(
@@ -586,9 +739,101 @@ Last session end: expired, background run, 2026-11-10 08:12 UTC
 
       expect(
         renderSupportDetails(snapshot, showServers: true, appLanguage: 'en'),
-        endsWith('\nAccounts: none\n'),
+        endsWith('\nAccounts: none\n\n$_noLog'),
       );
     });
+
+    test("collects this isolate's diagnostics log, the account by its "
+        'number', () async {
+      final alice = await auth.seedAccount(
+        fullServer280(),
+        tokens: issueTokens(issuedAt: _created),
+      );
+      databases[alice.id] = testDatabase();
+      final log =
+          DiagnosticsLog(
+            part: AppPart.backgroundRun,
+            directory: () async => null,
+            now: () => _created,
+          )..add(
+            LogRecord(
+              Level.WARNING,
+              'Could not read the tokens of account ${alice.id}: StateError',
+              'AccountsWithoutTokens',
+            ),
+          );
+
+      final snapshot = await container(log: log)
+          .read(supportSnapshotProvider.future);
+      final text = renderSupportDetails(
+        snapshot,
+        showServers: false,
+        appLanguage: 'en',
+      );
+
+      expect(
+        text,
+        endsWith(
+          'Log: warnings and errors of the last 7 days: 1\n'
+          '2026-11-12 14:03:00 UTC [background run] WARNING '
+          'AccountsWithoutTokens: Could not read the tokens of account '
+          '<account-1>: StateError\n',
+        ),
+      );
+      expect(text, isNot(contains(alice.id)));
+    });
+
+    test('the copy of the release error widget is the text the page shows '
+        'with the servers hidden', () async {
+      await auth.seedAccount(
+        fullServer280(),
+        tokens: issueTokens(issuedAt: _created),
+      );
+      final log = DiagnosticsLog(
+        part: AppPart.app,
+        directory: () async => null,
+        now: () => _created,
+      )..add(LogRecord(Level.SEVERE, 'Probe failed', 'Probe'));
+      final providers = container(log: log);
+
+      final copied = await copyableSupportDetails(providers, appLanguage: 'en');
+
+      expect(
+        copied,
+        renderSupportDetails(
+          await providers.read(supportSnapshotProvider.future),
+          showServers: false,
+          appLanguage: 'en',
+        ),
+      );
+      expect(copied, contains('Server: <server-1>\n'));
+      expect(copied, contains('SEVERE Probe: Probe failed\n'));
+    });
+  });
+
+  test('without a container, the copy holds the platform and the log of '
+      'this isolate', () async {
+    final log = DiagnosticsLog(
+      part: AppPart.app,
+      directory: () async => null,
+      now: () => _created,
+    )..add(LogRecord(Level.SEVERE, 'Probe failed', 'Probe'));
+    useDiagnosticsLog(log);
+    addTearDown(() => useDiagnosticsLog(null));
+
+    final copied = await copyableSupportDetails(null, appLanguage: 'de');
+
+    expect(copied, startsWith('Support details\nCreated: '));
+    expect(copied, contains('\nApp: unknown\n'));
+    expect(copied, contains('\nLanguage: app de, device unknown\n'));
+    expect(copied, contains('\nAccounts: unknown\n'));
+    expect(
+      copied,
+      endsWith(
+        'Log: warnings and errors of the last 7 days: 1\n'
+        '2026-11-12 14:03:00 UTC [app] SEVERE Probe: Probe failed\n',
+      ),
+    );
   });
 
   test('a failure label holds its kind, problem or reason, code and status, '

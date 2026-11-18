@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/features/notifications/application/notification_providers.dart'
     as ui;
 import 'package:vikunja_mobile/features/notifications/application/notification_taps.dart';
+import 'package:vikunja_mobile/features/session/application/session_reminder_updates.dart';
 
 /// The OS as the screens see it: [current] is what it allows, every call
 /// is logged, and [beforeCall] can hold a call or change the answer.
@@ -86,6 +87,25 @@ final class FakeNotificationOs implements NotificationGateway {
   activities = [];
 
   @override
+  Future<void> scheduleActivity({
+    required int osId,
+    required DateTime fireAt,
+    required String title,
+    required String body,
+    required String payload,
+  }) async {
+    await _call('scheduleActivity $osId');
+    pending[osId] = ScheduledNotification(
+      osId: osId,
+      fireAt: fireAt,
+      title: title,
+      body: body,
+      payload: payload,
+      exact: false,
+    );
+  }
+
+  @override
   Future<List<DeliveredNotification>> delivered() async {
     await _call('delivered');
     return const [];
@@ -158,6 +178,7 @@ final class NotificationFakes {
     NotificationCapabilities? capabilities,
     this.scheduledCount = 0,
     this.schedulers = false,
+    this.sessionReminders = false,
   }) {
     if (capabilities != null) gateway.current = capabilities;
   }
@@ -166,6 +187,9 @@ final class NotificationFakes {
   final preferences = FakeNotificationPreferences();
   final taps = FakeNotificationTapSource();
   final bool schedulers;
+
+  /// Whether the shell plans the session reminders.
+  final bool sessionReminders;
 
   /// What the account's `scheduled_notifications` table holds.
   int scheduledCount;
@@ -189,5 +213,7 @@ final class NotificationFakes {
         (ref, accountId) => Stream.value(scheduledCount),
       ),
     ],
+    if (!sessionReminders)
+      sessionReminderUpdatesProvider.overrideWithValue(const {}),
   ];
 }

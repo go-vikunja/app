@@ -6,11 +6,14 @@ import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PersistableBundle
 import android.os.PowerManager
+import android.provider.Settings
 import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
@@ -50,6 +53,7 @@ internal class DeviceChannel(
                 setBackMovesTaskToBack(call.argument<Boolean>("enabled"), result)
             "canOpenAppLocaleSettings" -> result.success(canOpenAppLocaleSettings())
             "openAppLocaleSettings" -> result.success(openAppLocaleSettings())
+            "openAppSettings" -> result.success(openAppSettings())
             "removeLocation" -> removeLocation(call.argument<String>("path"), result)
             "backgroundState" -> result.success(backgroundState())
             "previousAppTraces" -> offMain(result) { PreviousApp.traces(context) }
@@ -154,6 +158,22 @@ internal class DeviceChannel(
         if (!AppLocaleSettings.supported(Build.VERSION.SDK_INT)) return false
         return try {
             activity.startActivity(AppLocaleSettings.intent(activity.packageName))
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        }
+    }
+
+    // App info, the way to the app's battery use, where a background
+    // restriction is lifted.
+    private fun openAppSettings(): Boolean {
+        val activity = activity ?: return false
+        val intent = Intent(
+            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+            Uri.fromParts("package", activity.packageName, null),
+        )
+        return try {
+            activity.startActivity(intent)
             true
         } catch (_: ActivityNotFoundException) {
             false

@@ -76,6 +76,10 @@ class _SupportDetailsPageState extends ConsumerState<SupportDetailsPage> {
                     icon: Icons.info_outline,
                     text: l10n.supportDetailsIntro,
                   ),
+                  SettingsNote(
+                    icon: Icons.history,
+                    text: l10n.supportDetailsLogNote,
+                  ),
                   SwitchListTile.adaptive(
                     secondary: const Icon(Icons.dns_outlined),
                     title: Text(l10n.supportDetailsShowServers),

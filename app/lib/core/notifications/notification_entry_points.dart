@@ -4,6 +4,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     show NotificationResponse;
 import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
 import 'package:vikunja_mobile/core/notifications/notification_action_handler.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 
 var _loggingConfigured = false;
 
@@ -15,7 +16,7 @@ var _loggingConfigured = false;
 @pragma('vm:entry-point')
 void onNotificationActionInBackground(NotificationResponse response) {
   if (!_loggingConfigured) {
-    configureLogging();
+    configureLogging(part: AppPart.notificationAction);
     _loggingConfigured = true;
   }
   unawaited(handleNotificationAction(response));

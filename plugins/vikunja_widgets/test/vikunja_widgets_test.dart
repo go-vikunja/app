@@ -405,6 +405,28 @@ void main() {
       expect(taken.map((action) => action.id), ['a', 'b']);
     });
 
+    test('a rewrite after an ack keeps what the other rows showed', () async {
+      final shown = jsonEncode({
+        'version': 2,
+        'id': 'b',
+        'accountId': _account,
+        'taskId': 4,
+        'createdAt': 1000,
+        'dueAt': 5000,
+      });
+      queue().writeAsStringSync('${action('a')}\n$shown\n');
+      final widgets = VikunjaWidgets();
+      await widgets.takeActions();
+
+      await widgets.ackActions(['a']);
+
+      final left = await widgets.takeActions();
+      expect(left.single.id, 'b');
+      expect(left.single.shown, (
+        dueAt: DateTime.fromMillisecondsSinceEpoch(5000, isUtc: true),
+      ));
+    });
+
     test(
       'deleteForAccount drops only that account and keeps configs',
       () async {
@@ -567,6 +589,68 @@ void main() {
         original,
       );
       expect(original.toJson()['version'], 1);
+    });
+
+    test('says what the row showed from version 2 on, a due date or none', () {
+      final dueAt = DateTime.utc(2026, 10, 27, 9, 30);
+      final withDue = WidgetAction(
+        id: 'a',
+        accountId: _account,
+        taskId: 3,
+        createdAt: DateTime.utc(2026, 10, 26, 12),
+        shown: (dueAt: dueAt),
+      );
+      final withoutDue = WidgetAction(
+        id: 'b',
+        accountId: _account,
+        taskId: 3,
+        createdAt: DateTime.utc(2026, 10, 26, 12),
+        shown: (dueAt: null),
+      );
+
+      expect(withDue.toJson()['version'], 2);
+      expect(withDue.toJson()['dueAt'], dueAt.millisecondsSinceEpoch);
+      expect(withoutDue.toJson()['version'], 2);
+      expect(withoutDue.toJson().containsKey('dueAt'), isFalse);
+      for (final action in [withDue, withoutDue]) {
+        expect(
+          WidgetAction.fromJson(
+            jsonDecode(jsonEncode(action.toJson())) as Map<String, Object?>,
+          ),
+          action,
+        );
+      }
+      expect(
+        WidgetAction.fromJson(const {
+          'version': 2,
+          'id': 'c',
+          'accountId': _account,
+          'taskId': 3,
+          'createdAt': 1,
+          'dueAt': 1793055664207.465,
+        }).shown,
+        (
+          dueAt: DateTime.fromMillisecondsSinceEpoch(
+            1793055664207,
+            isUtc: true,
+          ),
+        ),
+      );
+    });
+
+    test('an entry of version 1 says nothing about its row, a due date '
+        'included', () {
+      final action = WidgetAction.fromJson(const {
+        'version': 1,
+        'id': 'a',
+        'accountId': _account,
+        'taskId': 3,
+        'createdAt': 1,
+        'dueAt': 5,
+      });
+
+      expect(action.shown, isNull);
+      expect(action.toJson().containsKey('dueAt'), isFalse);
     });
 
     test('reads fractional milliseconds as Foundation writes them', () {

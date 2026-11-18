@@ -250,7 +250,7 @@ private struct DoneButton: View {
   var accountId: String
 
   var body: some View {
-    Button(intent: MarkDoneIntent(accountId: accountId, taskId: row.id)) {
+    Button(intent: MarkDoneIntent(accountId: accountId, taskId: row.id, dueAt: row.dueAt)) {
       Image(systemName: "square").font(.body).foregroundStyle(.secondary)
     }
     .buttonStyle(.plain)

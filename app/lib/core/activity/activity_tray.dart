@@ -1,6 +1,7 @@
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
+import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 
 /// The activity notifications of an account in the system's tray. Their
 /// ids follow from the account and the payload key, so one can be
@@ -54,10 +55,13 @@ final class ActivityTray {
 
   /// What notifications show became more private: the account's reminders
   /// and activity notifications go from the tray. The "Sign in again"
-  /// notification holds no task data and stays.
+  /// notification and the reminder to open the app before the session
+  /// ends hold no task data and stay.
   Future<void> withdrawTaskNotifications(String accountId) async {
     for (final (osId, payload) in await _delivered()) {
-      if (payload.accountId == accountId && !isSessionKey(payload.key)) {
+      if (payload.accountId == accountId &&
+          !isSessionKey(payload.key) &&
+          !SessionReminders.isKey(payload.key)) {
         await _gateway.cancel(osId);
       }
     }
@@ -81,16 +85,8 @@ final class ActivityTray {
 
   Future<List<(int, NotificationPayload)>> _delivered() async => [
     for (final notification in await _gateway.delivered())
-      if (_payloadOf(notification.payload) case final payload?)
+      if (NotificationPayload.tryParse(notification.payload)
+          case final payload?)
         (notification.osId, payload),
   ];
-
-  static NotificationPayload? _payloadOf(String? json) {
-    if (json == null) return null;
-    try {
-      return NotificationPayload.fromJson(json);
-    } on FormatException {
-      return null;
-    }
-  }
 }

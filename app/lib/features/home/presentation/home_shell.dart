@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
+import 'package:vikunja_mobile/features/session/application/session_reminder_updates.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
 import 'package:vikunja_mobile/features/sync/application/foreground_sync_scheduler_providers.dart';
@@ -37,8 +38,9 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dar
 /// offline banner, the session check when the app opens or resumes,
 /// the quiet sync when it opens, the scheduler that keeps syncing while it
 /// is in front, the socket that brings the server's notifications at once,
-/// the other accounts' outboxes, the notification schedulers
-/// of every signed-in account, and the switch from one account to another.
+/// the other accounts' outboxes, the notification schedulers and session
+/// reminders of every signed-in account, and the switch from one account
+/// to another.
 class HomeShell extends ConsumerStatefulWidget {
   const new({required this.navigationShell, super.key});
 
@@ -106,6 +108,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
       ..listenManual(realtimeConnectionProvider, (_, _) {})
       ..listenManual(inactiveOutboxesProvider, (_, _) {})
       ..listenManual(accountNotificationSchedulersProvider, (_, _) {})
+      ..listenManual(sessionReminderUpdatesProvider, (_, _) {})
       ..listenManual(accountWidgetPublishersProvider, (_, _) {})
       ..listenManual(widgetTapImporterProvider, (_, _) {})
       ..listenManual(widgetHostSettingsProvider, (_, _) {});

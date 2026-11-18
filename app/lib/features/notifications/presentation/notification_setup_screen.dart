@@ -11,13 +11,15 @@ import 'package:vikunja_mobile/core/notifications/subscriber_reminders.dart';
 import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
 import 'package:vikunja_mobile/features/notifications/application/os_notification_capabilities.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
+import 'package:vikunja_mobile/features/session/presentation/background_sync_warning.dart';
 
 final _log = Logger('NotificationSetup');
 
 /// Asks for the notification permission once per device, after the first
-/// account's first sync; on Android 14+ a second step asks for exact
-/// alarms. Marking the setup done is what moves the router on to the
-/// shell, so "Not now" and "Skip" are the same step without the request.
+/// account's first sync, noting when the device limits the background
+/// sync; on Android 14+ a second step asks for exact alarms. Marking the
+/// setup done is what moves the router on to the shell, so "Not now" and
+/// "Skip" are the same step without the request.
 class NotificationSetupScreen extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -177,6 +179,7 @@ class _NotificationSetupScreenState
                           ? l10n.notificationSetupFollowed
                           : l10n.notificationSetupOnlyYours,
                     ),
+                    const BackgroundSyncWarning(framed: true),
                   ],
                   const SizedBox(height: 32),
                   switch (_step) {

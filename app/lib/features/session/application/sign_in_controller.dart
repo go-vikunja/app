@@ -9,7 +9,6 @@ import 'package:vikunja_mobile/core/auth/browser_sign_in.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
-import 'package:vikunja_mobile/core/logging/redaction.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
@@ -216,7 +215,7 @@ class SignInController extends _$SignInController {
       _log.info('Sign-in failed: $error');
     } else {
       _log.severe(
-        'Unexpected sign-in failure: ${redactSecrets('$error')}',
+        'Unexpected sign-in failure: ${error.runtimeType}',
         null,
         stackTrace,
       );
