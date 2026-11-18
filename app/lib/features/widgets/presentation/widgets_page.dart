@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
+import 'package:vikunja_mobile/core/widgets/widget_refresher.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
@@ -106,12 +107,24 @@ class _WidgetsPageState extends ConsumerState<WidgetsPage> {
           appWidgetId: id,
           config: configs[id],
           title: switch (configs[id]) {
-            final config? => (await refresher.preview(config))?.title,
+            final config? => await _previewTitle(refresher, config),
             null => null,
           },
           ofPreviousApp: previousApp.contains(id),
         ),
     ];
+  }
+
+  static Future<String?> _previewTitle(
+    WidgetRefresher refresher,
+    WidgetConfig config,
+  ) async {
+    try {
+      return (await refresher.preview(config))?.title;
+    } on Object catch (error) {
+      _log.warning('Could not preview a placed widget: ${error.runtimeType}');
+      return null;
+    }
   }
 
   Future<void> _add(WidgetKind kind) async {
@@ -284,7 +297,8 @@ final class _PlacedWidget {
   /// Today unless it is [ofPreviousApp]: then it asks to be set up.
   final WidgetConfig? config;
 
-  /// What its header says; null for an account that is gone.
+  /// What its header says; null for an account that is gone or a preview
+  /// that failed.
   final String? title;
   final bool ofPreviousApp;
 }

@@ -292,6 +292,65 @@ void main() {
       expect(repository().changes, isEmpty);
     });
 
+    testWidgets('a name on its way to the server leaves without asking', (
+      tester,
+    ) async {
+      final saved = Completer<void>();
+      repository().beforeCall = (call) async {
+        if (call.startsWith('update')) await saved.future;
+      };
+      await pumpPage(tester);
+      await tester.enterText(
+        find.widgetWithText(TextField, en.accountSettingsName),
+        'Someone else',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+
+      await tester.pageBack();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text(en.accountSettingsNameDiscardBody), findsNothing);
+      expect(find.byType(AccountSettingsPage), findsNothing);
+      saved.complete();
+      await tester.pumpAndSettle();
+      expect(repository().changes, [
+        const UserSettingsChanges(name: 'Someone else'),
+      ]);
+    });
+
+    testWidgets('an unsaved name asks before leaving while another setting '
+        'is being saved', (tester) async {
+      final saved = Completer<void>();
+      repository().beforeCall = (call) async {
+        if (call.startsWith('update')) await saved.future;
+      };
+      await pumpPage(tester);
+      await tester.enterText(
+        find.widgetWithText(TextField, en.accountSettingsName),
+        'Someone else',
+      );
+      await tester.pump();
+      final control = find.widgetWithText(
+        SwitchListTile,
+        en.accountSettingsDiscoverableByName,
+      );
+      await scrollTo(tester, control);
+      await tester.tap(control);
+      await tester.pump();
+
+      // The progress bar runs until the save is answered.
+      await tester.pageBack();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(find.text(en.accountSettingsNameDiscardBody), findsOneWidget);
+      expect(find.byType(AccountSettingsPage), findsOneWidget);
+      saved.complete();
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('the default project, none included, archived ones left out', (
       tester,
     ) async {

@@ -6,10 +6,13 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_form_page.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_screen.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_html.dart';
 
+import '../../helpers/editor_bridge_fakes.dart';
 import '../../helpers/label_user_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
@@ -47,6 +50,7 @@ void main() {
     WidgetTester tester,
     String location, {
     bool settle = true,
+    FakeEditorBridges? bridges,
   }) async {
     await pumpSignedInApp(
       tester,
@@ -55,6 +59,7 @@ void main() {
       overrides: [
         labelRepositoryProvider.overrideWithValue(FakeLabelRepository()),
         userRepositoryProvider.overrideWithValue(FakeUserRepository()),
+        ?bridges?.override,
       ],
     );
     final router = containerOf(tester).read(appRouterProvider);
@@ -303,7 +308,13 @@ void main() {
 
       expect(find.byType(SavedFilterFormPage), findsOneWidget);
       expect(fieldText(tester, en.projectTitleLabel), 'Urgent');
-      expect(fieldText(tester, en.savedFilterDescriptionLabel), 'What burns');
+      expect(
+        find.descendant(
+          of: find.byType(SavedFilterFormPage),
+          matching: find.textContaining('What burns'),
+        ),
+        findsOneWidget,
+      );
       expect(
         fieldText(tester, en.filterLabel),
         'done = false && priority >= 4',
@@ -336,8 +347,8 @@ void main() {
       expect(find.text(en.savedFilterSaved), findsOneWidget);
     });
 
-    testWidgets("the web's rich-text description shows as text and goes back "
-        'as stored unless it is edited', (tester) async {
+    testWidgets("the web's rich-text description shows with its formatting "
+        'and goes back as stored', (tester) async {
       const rich = SavedFilterRef(
         projectId: -2,
         title: 'Urgent',
@@ -349,28 +360,80 @@ void main() {
       data.projects.savedFilters = [rich];
       await pumpAt(tester, AppRoutes.savedFilterEdit(rich.projectId));
 
-      expect(
-        fieldText(tester, en.savedFilterDescriptionLabel),
-        'What burns & smokes',
-      );
+      expect(formField(en.savedFilterDescriptionLabel), findsNothing);
+      expect(find.byType(RichHtml), findsOneWidget);
+      expect(find.text(en.savedFilterEditDescription), findsOneWidget);
       await tester.enterText(formField(en.projectTitleLabel), 'On fire');
       await tester.pump();
       await tester.tap(appBarButton(en.projectSave));
       await tester.pumpAndSettle();
-      expect(data.savedFilters.drafts.last.description, rich.description);
 
-      await pumpAt(tester, AppRoutes.savedFilterEdit(rich.projectId));
-      await tester.enterText(
-        formField(en.savedFilterDescriptionLabel),
-        'Fire <now> & "smoke"\nlater',
+      expect(data.savedFilters.drafts.last.description, rich.description);
+    });
+
+    testWidgets('the description is edited in the description editor, which '
+        "saves it with its formatting; the form's Save keeps it", (
+      tester,
+    ) async {
+      const rich = SavedFilterRef(
+        projectId: -2,
+        title: 'Urgent',
+        description: '<p>What <strong>burns</strong></p>',
+        definition: SavedFilterDefinition(
+          filter: ViewFilter(filter: 'done = false'),
+        ),
       );
+      data.projects.savedFilters = [rich];
+      final bridges = FakeEditorBridges();
+      await pumpAt(
+        tester,
+        AppRoutes.savedFilterEdit(rich.projectId),
+        bridges: bridges,
+      );
+      await tester.enterText(formField(en.projectTitleLabel), 'On fire');
       await tester.pump();
+
+      await tester.tap(find.text(en.savedFilterEditDescription));
+      await tester.pumpAndSettle();
+      expect(find.byType(DescriptionEditorPage), findsOneWidget);
+      expect(bridges.last.init!.html, rich.description);
+      bridges.last.edit('<p>What <strong>burns</strong> <em>now</em></p>');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(TextButton, en.taskEditSave));
+      await tester.pumpAndSettle();
+
+      expect(data.savedFilters.calls, ['updateDescription -2']);
+      expect(data.savedFilters.descriptions, [
+        '<p>What <strong>burns</strong> <em>now</em></p>',
+      ]);
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+      expect(find.text(en.descriptionEditorSaved), findsOneWidget);
+      expect(fieldText(tester, en.projectTitleLabel), 'On fire');
+
       await tester.tap(appBarButton(en.projectSave));
       await tester.pumpAndSettle();
       expect(
         data.savedFilters.drafts.last.description,
-        '<p>Fire &lt;now&gt; &amp; &quot;smoke&quot;</p><p>later</p>',
+        '<p>What <strong>burns</strong> <em>now</em></p>',
       );
+    });
+
+    testWidgets('a saved filter without a description offers to add one', (
+      tester,
+    ) async {
+      data.projects.savedFilters = const [
+        SavedFilterRef(
+          projectId: -2,
+          title: 'Urgent',
+          definition: SavedFilterDefinition(
+            filter: ViewFilter(filter: 'done = false'),
+          ),
+        ),
+      ];
+      await pumpAt(tester, AppRoutes.savedFilterEdit(-2));
+
+      expect(find.text(en.savedFilterAddDescription), findsOneWidget);
+      expect(find.byType(RichHtml), findsNothing);
     });
 
     testWidgets('a definition this device does not know is read first', (

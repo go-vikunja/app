@@ -580,6 +580,16 @@
       }
     }
   },
+  "accountSignOutFailed": "Signing out of {name} did not work. Try again.",
+  "@accountSignOutFailed": {
+    "description": "Snackbar when signing out of an account failed on this device, for example because its stored data could not be changed; name is the account's name, for example Bob.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Bob"
+      }
+    }
+  },
   "addAccountTagline": "Sign in with another account, on one of your servers or a new one.",
   "addAccountYourServers": "Your servers",
   "addAccountAlreadyAdded": "You're already signed in to this account — switched to it",
@@ -1457,6 +1467,10 @@
   },
   "taskDeleteDialogCancel": "Cancel",
   "taskDeleteDialogConfirm": "Delete",
+  "taskDeleteGone": "This task is no longer on this device.",
+  "@taskDeleteGone": {
+    "description": "Snackbar in the task sheet when Delete task was confirmed but the task had gone meanwhile: a sync removed it (deleted elsewhere) or its delete was already queued. Nothing was deleted."
+  },
   "taskDeleted": "Task deleted",
   "@taskDeleted": {
     "description": "Snackbar after a task was deleted: on servers that don't support the trash, and on servers that support it for a task whose create never reached the server or was refused. There it comes with Undo while the delete is still queued."
@@ -1516,6 +1530,10 @@
   "syncProblemColumnMissing": "The column no longer exists.",
   "syncProblemListNotReorderable": "This list can't be reordered.",
   "syncProblemListMissing": "The list no longer exists.",
+  "syncProblemRepeatTooLong": "The repeat interval is too long: the server takes at most 10 years.",
+  "@syncProblemRepeatTooLong": {
+    "description": "Entry in the Sync problems section of the Account tab, after the sentence that says what could not be saved: the task repeats less often than the longest interval the server takes, 10 years (error 4029); the user shortens the repeat and tries again, or discards the change."
+  },
   "syncProblemRejected": "The server rejected the change.",
   "syncProblemUnexpected": "The server answered in an unexpected way.",
   "syncProblemServerKeptFailing": "The server kept answering with an error; try again later.",
@@ -1534,6 +1552,14 @@
   },
   "syncProblemFailedJustNow": "Failed just now",
   "syncProblemDiscard": "Discard",
+  "syncProblemsRetryAll": "Try all again",
+  "@syncProblemsRetryAll": {
+    "description": "Button beside the Sync problems heading in the Account tab, shown while two or more problems offer Try again: sends every one of them again at once, as each problem's own Try again button does."
+  },
+  "localChangeFailed": "The change could not be saved on this device.",
+  "@localChangeFailed": {
+    "description": "Snackbar when a change could not even be stored on this device (the device's storage is full or failed), so it was neither kept nor queued for the server; for example marking a task as done, saving the edit page, moving a card or Try again in the Sync problems. It names the device so it does not read as one more refusal of the server, whose failures the Sync problems start with “The change could not be saved.”"
+  },
   "syncProblemCreateFailed": "The task could not be created.",
   "@syncProblemCreateFailed": {
     "description": "Entry in the Sync problems section of the Account tab: a task created on this device could not be created on the server."
@@ -1622,6 +1648,16 @@
   "repeatModeFromCompletion": "From completion",
   "repeatAmountLabel": "Every",
   "repeatAmountInvalid": "Enter more than 0.",
+  "repeatAmountTooLarge": "Enter at most {max}.",
+  "@repeatAmountTooLarge": {
+    "description": "Error under the amount field of the repeat editor (task edit page, new-task sheet) when the interval is longer than the server takes, 10 years; a field error like “Enter more than 0.”, and the field is narrow (it must fit in five lines on a 320 dp phone at 200 % text), so keep it short. max is the largest amount in the chosen unit, 10 years in it (87600 hours, 3650 days or 521 weeks).",
+    "placeholders": {
+      "max": {
+        "type": "int",
+        "example": "3650"
+      }
+    }
+  },
   "repeatUnitHours": "Hours",
   "repeatUnitDays": "Days",
   "repeatUnitWeeks": "Weeks",
@@ -1815,6 +1851,16 @@
       "project": {
         "type": "String",
         "example": "Hme"
+      }
+    }
+  },
+  "quickAddProjectReadOnly": "Project “{project}” is read-only",
+  "@quickAddProjectReadOnly": {
+    "description": "Warning chip for a +project that names only projects the user may read but not add tasks to; the text stays in the title. Read-only is hyphenated after “is”, as in “This project is read-only”; “Read only” is the permission's name.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Team plans"
       }
     }
   },
@@ -4036,6 +4082,10 @@
   "@projectParentLabel": {
     "description": "Row of the project forms that picks the parent, and the title of the picker."
   },
+  "projectParentAdminOnly": "Only project admins can change the parent project.",
+  "@projectParentAdminOnly": {
+    "description": "Under the locked Parent project row of the project edit page, when the user is not an admin of the project: the server lets only admins move a project under another one or out to the top level."
+  },
   "projectParentTopLevel": "None (top level)",
   "@projectParentTopLevel": {
     "description": "Parent choice that puts the project at the top level."
@@ -4404,6 +4454,14 @@
   "savedFilterNew": "New saved filter",
   "savedFilterEditTitle": "Edit saved filter",
   "savedFilterDescriptionLabel": "Description",
+  "savedFilterEditDescription": "Edit description",
+  "@savedFilterEditDescription": {
+    "description": "Button in the form of an existing saved filter that opens its description in the rich-text editor, which saves it on its own. Shown when the saved filter has a description."
+  },
+  "savedFilterAddDescription": "Add description",
+  "@savedFilterAddDescription": {
+    "description": "Button in the form of an existing saved filter that opens the rich-text editor to write its description, which saves it on its own. Shown when the saved filter has no description yet."
+  },
   "savedFilterIncludeNulls": "Include tasks without a value",
   "savedFilterIncludeNullsHint": "Also lists tasks that have no value where the filter compares one, such as tasks without a due date.",
   "savedFilterFavourite": "Favorite",
@@ -6977,6 +7035,16 @@
   "guestRemoved": "Guest access to {name} removed",
   "@guestRemoved": {
     "description": "Snackbar after removing a link-share guest access; name is the share's name or the shared project's title, for example Garden.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Garden"
+      }
+    }
+  },
+  "guestRemoveFailed": "Removing the guest access to {name} did not work. Try again.",
+  "@guestRemoveFailed": {
+    "description": "Snackbar when removing a link-share guest access failed on this device; name is the share's name or the shared project's title, for example Garden.",
     "placeholders": {
       "name": {
         "type": "String",

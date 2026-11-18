@@ -83,7 +83,7 @@ final class SavedFilterDraft {
   /// 1 to 250 characters.
   final String title;
 
-  /// Plain text; the server stores it as it is sent.
+  /// The web's rich text (HTML); the server stores it as it is sent.
   final String description;
 
   /// The server refuses a filter that has neither filter text, search,

@@ -145,7 +145,7 @@ void main() {
       await tester.tap(menuItem(en.teamMakeAdmin));
       await tester.pumpAndSettle();
 
-      expect(harness.teams.calls, contains('toggleAdmin 5 kim'));
+      expect(harness.teams.calls, contains('setAdmin 5 kim admin'));
       expect(find.text(en.teamMadeAdmin('Kim Lee')), findsOneWidget);
       expect(
         find.descendant(
@@ -159,6 +159,33 @@ void main() {
       await tester.tap(menuItem(en.teamMakeMember));
       await tester.pumpAndSettle();
       expect(find.text(en.teamMadeMember('Kim Lee')), findsOneWidget);
+    });
+
+    testWidgets('Make admin on a page another admin got ahead of keeps the '
+        'member admin', (tester) async {
+      await openTeam(tester);
+      harness.teams.teams = [
+        design(
+          members: const [
+            TeamMember(user: alice, admin: true),
+            TeamMember(user: kim, admin: true),
+          ],
+        ),
+      ];
+
+      await openMemberMenu(tester, 'Kim Lee');
+      await tester.tap(menuItem(en.teamMakeAdmin));
+      await tester.pumpAndSettle();
+
+      expect(harness.teams.calls, contains('setAdmin 5 kim admin'));
+      expect(find.text(en.teamMadeAdmin('Kim Lee')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: memberRow('Kim Lee'),
+          matching: find.text(en.teamRoleAdmin),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('removes a member after a question that lists what the '
@@ -403,7 +430,7 @@ void main() {
     testWidgets('a toggle for someone no longer in the team says so', (
       tester,
     ) async {
-      harness.teams.failures['toggleAdmin'] = const TeamMemberMissing();
+      harness.teams.failures['setAdmin'] = const TeamMemberMissing();
       await openTeam(tester);
 
       await openMemberMenu(tester, 'Kim Lee');
@@ -549,7 +576,7 @@ void main() {
             find.widgetWithText(TextField, en.sharePeopleSearchField),
           )
           .enabled,
-      isTrue,
+      isNot(isFalse),
     );
     expect(find.text(en.sharePeopleSearchOffline), findsNothing);
   });

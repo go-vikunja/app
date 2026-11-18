@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cupertino_ui/cupertino_ui.dart' hide RepeatMode;
 import 'package:flutter_test/flutter_test.dart';
@@ -192,6 +193,36 @@ void main() {
   });
 
   group('unsaved changes', () {
+    testWidgets('a save the device cannot store stays on the page: it says '
+        'so, Save works again and back still asks', (tester) async {
+      await openEditPage(tester, 1);
+      await tester.enterText(titleField(), 'Quarterly report Q4');
+      await tester.pumpAndSettle();
+      data.tasks.beforeWrite = () async =>
+          throw const FileSystemException('No space left on device');
+
+      await save(tester);
+
+      expect(find.byType(TaskEditPage), findsOneWidget);
+      expect(find.text(en.localChangeFailed), findsOneWidget);
+      expect(find.text(en.taskEditSaved), findsNothing);
+      expect(saveEnabled(tester), isTrue);
+      expect(tester.takeException(), isNull);
+
+      await pressBack(tester);
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+
+      data.tasks.beforeWrite = null;
+      await save(tester);
+
+      expect(find.byType(TaskEditPage), findsNothing);
+      expect(find.text('Quarterly report Q4'), findsOneWidget);
+      expect(find.text(en.taskEditSaved), findsOneWidget);
+      expect(find.text(en.localChangeFailed), findsNothing);
+    });
+
     testWidgets('back leaves at once while nothing changed', (tester) async {
       await openEditPage(tester, 1);
 

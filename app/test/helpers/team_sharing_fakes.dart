@@ -41,10 +41,10 @@ mixin _Calls {
 /// with `includePublic` adds. [people] are the users a member can be added
 /// by, by username. The server's answers and the real repository's checks
 /// apply: a blank or too long name and the user's own row for a removal or
-/// an admin toggle are `ArgumentError`s; [leave] follows `TeamGuards`;
+/// a role change are `ArgumentError`s; [leave] follows `TeamGuards`;
 /// adding an unknown user is a `NotFound` code 1005, a member a
 /// `DomainError` code 6005; removing from an external team code 6010, the
-/// last member code 6006; toggling one who is not in the team a
+/// last member code 6006; a role change for one who is not in the team a
 /// `TeamMemberMissing`; a team the user is not in is `Forbidden`. A leave
 /// or delete asks [sync] for a quiet run, as the real one does.
 final class FakeTeamRepository with _Calls implements TeamRepository {
@@ -184,8 +184,12 @@ final class FakeTeamRepository with _Calls implements TeamRepository {
   }
 
   @override
-  Future<bool> toggleAdmin(int teamId, String username) async {
-    await _call('toggleAdmin', '$teamId $username');
+  Future<bool> setAdmin(
+    int teamId,
+    String username, {
+    required bool admin,
+  }) async {
+    await _call('setAdmin', '$teamId $username ${admin ? 'admin' : 'member'}');
     if (username == me.username) throw ArgumentError.value(username);
     final team = _adminOf(teamId);
     final member = team.members
@@ -198,13 +202,13 @@ final class FakeTeamRepository with _Calls implements TeamRepository {
         members: [
           for (final each in team.members)
             if (each == member)
-              TeamMember(user: each.user, admin: !each.admin)
+              TeamMember(user: each.user, admin: admin)
             else
               each,
         ],
       ),
     );
-    return !member.admin;
+    return admin;
   }
 
   @override

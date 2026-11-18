@@ -553,19 +553,20 @@ void main() {
       expect(sessions.map((session) => session.id), ['a', 'b', 'c']);
     });
 
-    test('stops after 20 pages and on an empty page', () async {
+    test('reads every page the server reports, past 20, and stops on an '
+        'empty page', () async {
       var page = 0;
       final dio = Dio()
         ..httpClientAdapter = FakeHttpAdapter({
           for (var i = 1; i <= 25; i++)
             '$_v2/user/sessions?page=$i&per_page=2': (request) {
               page = i;
-              return json(envelope(['s$i'], 99))(request);
+              return json(envelope(['s$i'], 25))(request);
             },
         });
 
-      expect(await _port(dio, 'v2', perPage: 2).sessions(), hasLength(20));
-      expect(page, 20);
+      expect(await _port(dio, 'v2', perPage: 2).sessions(), hasLength(25));
+      expect(page, 25);
 
       final empty = fakeDio({
         '$_v2/user/sessions?page=1&per_page=2': json(envelope([], 5)),

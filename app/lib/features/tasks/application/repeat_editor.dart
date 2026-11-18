@@ -80,8 +80,20 @@ final class RepeatSetting {
   bool get usesAmount =>
       mode == RepeatEditorMode.every || mode == RepeatEditorMode.fromCompletion;
 
+  /// The longest interval the server takes (Vikunja's
+  /// `MaxTaskRepeatAfterSeconds`); a longer one is refused with code 4029.
+  static const maxRepeatAfter = Duration(days: 3650);
+
+  /// The largest [amount] of [unit] within [maxRepeatAfter].
+  static int maxAmount(RepeatUnit unit) =>
+      maxRepeatAfter.inSeconds ~/ unit.length.inSeconds;
+
+  /// More than the server takes; compared as amounts, which a very large
+  /// one cannot overflow.
+  bool get tooLong => usesAmount && amount > maxAmount(unit);
+
   /// The web saves nothing for an amount of 0 in the modes that use one.
-  bool get isValid => !usesAmount || amount > 0;
+  bool get isValid => !usesAmount || (amount > 0 && !tooLong);
 
   RepeatSetting copyWith({
     RepeatEditorMode? mode,

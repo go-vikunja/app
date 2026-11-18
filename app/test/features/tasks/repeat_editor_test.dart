@@ -111,5 +111,40 @@ void main() {
       expect(every.copyWith(mode: RepeatEditorMode.none).isValid, isTrue);
       expect(every.copyWith(amount: 1).isValid, isTrue);
     });
+
+    test('more than the server takes, 10 years, is invalid, also an amount '
+        'so large its seconds would overflow', () {
+      const days = RepeatSetting(
+        mode: RepeatEditorMode.every,
+        amount: 3650,
+        unit: RepeatUnit.days,
+      );
+      expect(days.isValid, isTrue);
+      expect(days.repeatAfter.inSeconds, 315360000);
+      expect(days.copyWith(amount: 3651).isValid, isFalse);
+      expect(days.copyWith(amount: 3651).tooLong, isTrue);
+      expect(
+        days.copyWith(amount: 87600, unit: RepeatUnit.hours).isValid,
+        true,
+      );
+      expect(
+        days.copyWith(amount: 87601, unit: RepeatUnit.hours).tooLong,
+        true,
+      );
+      expect(days.copyWith(amount: 521, unit: RepeatUnit.weeks).isValid, true);
+      expect(days.copyWith(amount: 522, unit: RepeatUnit.weeks).tooLong, true);
+      expect(
+        days.copyWith(amount: 9223372036854775807, unit: RepeatUnit.weeks),
+        isA<RepeatSetting>().having((s) => s.isValid, 'valid', isFalse),
+      );
+      expect(
+        days.copyWith(amount: 4000, mode: RepeatEditorMode.monthly).isValid,
+        isTrue,
+      );
+      expect(
+        days.copyWith(amount: 4000, mode: RepeatEditorMode.fromCompletion),
+        isA<RepeatSetting>().having((s) => s.tooLong, 'too long', isTrue),
+      );
+    });
   });
 }

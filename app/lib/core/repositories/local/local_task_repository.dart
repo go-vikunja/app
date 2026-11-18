@@ -762,6 +762,10 @@ final class LocalTaskRepository
       _outbox.retry(operationId);
 
   @override
+  Future<void> retrySyncProblems(Iterable<String> operationIds) =>
+      _outbox.retryAll(operationIds);
+
+  @override
   Future<void> discardSyncProblem(String operationId) =>
       _outbox.discard(operationId);
 

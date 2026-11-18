@@ -103,7 +103,13 @@ class _RepeatSectionState extends State<RepeatSection> {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: InputDecoration(
                     labelText: l10n.repeatAmountLabel,
-                    errorText: value.isValid ? null : l10n.repeatAmountInvalid,
+                    errorText: value.tooLong
+                        ? l10n.repeatAmountTooLarge(
+                            RepeatSetting.maxAmount(value.unit),
+                          )
+                        : value.isValid
+                        ? null
+                        : l10n.repeatAmountInvalid,
                     errorMaxLines: 5,
                   ),
                   onChanged: (text) => widget.onChanged(

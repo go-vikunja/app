@@ -195,6 +195,34 @@ void main() {
       expect(read.requests, ['notifications 1', 'notifications 2']);
       expect(await db.serverNotificationsDao.unreadCount(), 0);
     });
+
+    test('pull-to-refresh during a run that stops at the stored ones runs '
+        'once more after it', () async {
+      sync = syncWith(perPage: 2);
+      read.serverNotifications = server([1, 2, 3, 4]);
+      await sync.run();
+      final gate = RequestGate()..pattern = 'notifications';
+      read
+        ..requests.clear()
+        ..serverNotifications = server([1, 2, 3, 4], read: {1, 2, 3, 4})
+        ..beforeRequest = gate.call;
+
+      final timed = sync.run();
+      await pumpEventQueue();
+      final pulled = [sync.run(wholeWindow: true), sync.run(wholeWindow: true)];
+      gate
+        ..pattern = null
+        ..release();
+      await timed;
+      await Future.wait(pulled);
+
+      expect(read.requests, [
+        'notifications 1',
+        'notifications 1',
+        'notifications 2',
+      ]);
+      expect(await db.serverNotificationsDao.unreadCount(), 0);
+    });
   });
 
   test('a failed pull throws and keeps what is stored', () async {

@@ -361,7 +361,10 @@ void main() {
 
         await handler.handle(doneOf(accountId, '1:due', dueAt));
 
-        expect(write.updates, [(1, const TaskChanges(done: true))]);
+        // With the occurrence shown, against a Done made on the web.
+        expect(write.updates, [
+          (1, TaskChanges(done: true, doneBase: DoneBase(dueDate: dueAt))),
+        ]);
       });
 
       test('a task done meanwhile, in the app or on the web, ignores it, '
@@ -400,7 +403,9 @@ void main() {
 
         await handler.handle(doneOf(accountId, '1:due', null));
 
-        expect(write.updates, [(1, const TaskChanges(done: true))]);
+        expect(write.updates, [
+          (1, TaskChanges(done: true, doneBase: DoneBase(dueDate: nextDue))),
+        ]);
       });
     });
   });

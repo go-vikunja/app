@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/features/quick_add/application/quick_add_lines.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart';
 
@@ -194,8 +195,33 @@ void main() {
     );
     expect(magicLines(text), [
       (offset: 0, text: 'Buy *milk'),
-      (offset: 11, text: '  - Call Sam tomorrow'),
+      (offset: 15, text: 'Call Sam tomorrow'),
     ]);
+  });
+
+  test('lines are split and cut as the save splits them: at every line '
+      'break, a single line as typed, of several each without its indent '
+      'and list marker, and no line for a marker alone', () {
+    const crlf = 'Buy *milk\r\n+ Call Sam\rWash +Home';
+    final lines = magicLines(crlf);
+    expect(lines, [
+      (offset: 0, text: 'Buy *milk'),
+      (offset: 13, text: 'Call Sam'),
+      (offset: 22, text: 'Wash +Home'),
+    ]);
+    expect([for (final line in lines) line.text], splitQuickAddLines(crlf));
+    for (final line in lines) {
+      expect(
+        crlf.substring(line.offset, line.offset + line.text.length),
+        line.text,
+      );
+    }
+
+    expect(magicLines('  - [ ] Alone'), [(offset: 0, text: '  - [ ] Alone')]);
+    const withMarkerOnly = 'Trip\n- \n  - Pack';
+    expect([
+      for (final line in magicLines(withMarkerOnly)) line.text,
+    ], splitQuickAddLines(withMarkerOnly));
   });
 
   test('prefixed tokens follow the web grammar', () {

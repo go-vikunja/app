@@ -90,7 +90,8 @@ void main() {
 
     await PluginAttachmentPicker(excursions: excursions).takePhoto();
 
-    expect(seen.single, endsWith(' true'));
+    // The look for an earlier pick's leftovers stays in the app.
+    expect(seen, ['retrieve false', 'pickImage true']);
     expect(excursions.active, isFalse);
   });
 

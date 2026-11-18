@@ -15,7 +15,7 @@ abstract interface class SyncEngine {
 
   /// Pulls what changed since the last run. Throws the `VikunjaFailure` of
   /// the first request that failed; data from before the run stays readable.
-  Future<void> refresh();
+  Future<SyncOutcome> refresh();
 
   /// [refresh] in a run that starts after this call, for a write the app
   /// has just made: a run that has already started may have read the
@@ -28,4 +28,13 @@ abstract interface class SyncEngine {
   Future<void> fullResync();
 
   Future<void> dispose();
+}
+
+enum SyncOutcome {
+  synced,
+
+  /// The run ended without syncing: a headless engine gave way to a run
+  /// another isolate holds, another run took the lease, or the engine was
+  /// disposed.
+  skipped,
 }

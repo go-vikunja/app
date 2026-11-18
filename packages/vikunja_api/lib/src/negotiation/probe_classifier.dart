@@ -111,6 +111,9 @@ CandidateFailed _failed(
   for (final answer in answers) {
     final proxy = _loginProxy(root, answer);
     if (proxy != null) return CandidateFailed(proxy);
+    if (isClientCertificateAnswer(answer.statusCode, answer.body)) {
+      return CandidateFailed(TlsFailure(root, clientCertificateRefused: true));
+    }
   }
 
   final transportFailures = [

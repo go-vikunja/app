@@ -357,9 +357,11 @@ const guestActionInventory = <String, GuestActionEntry>{
       '/home/project/:id/description',
       '/home/labels/:id/description',
       '/home/teams/:id/description',
+      '/home/filters/:id/description',
     ]),
     uses: {
       'labelRepositoryProvider',
+      'savedFilterRepositoryProvider',
       'teamRepositoryProvider',
       'updateDescription',
     },

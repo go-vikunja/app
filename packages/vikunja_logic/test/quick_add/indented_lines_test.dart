@@ -383,4 +383,23 @@ void main() {
       });
     }
   });
+
+  test('subtaskLineText is the end of the line the parser keeps', () {
+    for (final line in [
+      '  - [ ] Pack the tent',
+      '\t* Pack',
+      '+ Call +Work',
+      '[ ] Book',
+      'Plain',
+    ]) {
+      final text = subtaskLineText(line);
+      expect(line.endsWith(text), isTrue, reason: line);
+      expect(
+        parseSubtasksViaIndention('Trip\n$line').last.text,
+        text,
+        reason: line,
+      );
+    }
+    expect(subtaskLineText('  - [ ] Pack the tent'), 'Pack the tent');
+  });
 }

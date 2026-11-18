@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -236,6 +238,20 @@ void main() {
         [for (final (name, _) in columnChoices(tester)) name],
         ['To-Do', 'Done'],
       );
+    });
+
+    testWidgets('a move the device cannot store says so instead of where '
+        'the card went', (tester) async {
+      await pumpPhone(tester);
+      await openCard(tester, 'Call Anna');
+      data.tasks.beforeWrite = () async =>
+          throw const FileSystemException('No space left on device');
+
+      await moveTo(tester, 'Doing');
+
+      expect(inDetail(find.text(en.localChangeFailed)), findsOneWidget);
+      expect(inDetail(find.text(en.boardMovedTo('Doing'))), findsNothing);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets("on iOS too the card's sheet knows its board", (tester) async {

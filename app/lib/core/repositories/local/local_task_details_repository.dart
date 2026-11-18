@@ -76,8 +76,8 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
   @override
   Future<void> markRead(int taskId) async {
     final id = await _serverId(taskId);
-    await _db.tasksDao.storeCommentState(id, isUnread: false);
     await _write.tasks.markRead(id);
+    await _db.tasksDao.storeCommentState(id, isUnread: false);
   }
 
   @override

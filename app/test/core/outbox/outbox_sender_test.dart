@@ -878,6 +878,49 @@ void main() {
       });
     }
 
+    test("a captive portal's page in the server's place waits like being "
+        'offline: no update becomes a problem and no delete counts as '
+        'sent', () async {
+      const portal = NotJsonResponse(200, message: 'text/html');
+      write.beforeRequest = (_) => fail(portal);
+      await queue(1, done);
+      await queueDelete(2);
+      final outbox = sender();
+
+      await outbox.drain();
+
+      expect(write.requests, ['update 1']);
+      expect(outbox.state, OutboxSenderState.waiting);
+      expect(outbox.blockedBy, isA<NotJsonResponse>());
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      final first = (await ops()).first;
+      expect(first.state, OutboxState.pending.name);
+      expect(decodeFailure(first.lastError!), isA<NotJsonResponse>());
+
+      // The delete meets the portal once the update got through.
+      write.beforeRequest = (request) =>
+          request == 'delete 2' ? fail(portal) : Future.value();
+      now = now.add(timers.pendingWait);
+      timers.fireNext();
+      await pumpEventQueue();
+
+      expect(write.requests, ['update 1', 'update 1', 'delete 2']);
+      expect(write.deletes, isEmpty);
+      expect(await db.tasksDao.findRow(2), isNotNull);
+      expect((await ops()).single.kind, OutboxOperationKind.deleteTask.name);
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      expect(outbox.state, OutboxSenderState.waiting);
+
+      // A sync that gets through means the portal is gone.
+      write.beforeRequest = null;
+      sync.emit(SyncIdle(lastSyncedAt: now));
+      await pumpEventQueue();
+
+      expect(write.deletes, [2]);
+      expect(await db.tasksDao.findRow(2), isNull);
+      expect(await db.outboxDao.count(), 0);
+    });
+
     test('an exception without an answer is final for an update and a '
         'delete', () async {
       write.beforeRequest = (request) => request == 'update 2'
@@ -1195,6 +1238,110 @@ void main() {
       });
     });
 
+    group('made on the web for the occurrence shown here, before the device '
+        'synced it', () {
+      final webDone = DateTime.utc(2026, 10, 10, 8);
+
+      setUp(() {
+        write.serverTasks[3] = copyTask(
+          write.serverTasks[3]!,
+          dueDate: tuesday,
+          doneAt: webDone,
+        );
+      });
+
+      test('is not applied again: the device takes the next '
+          'occurrence', () async {
+        await queue(3, done);
+        expect(
+          decodeTaskChanges((await ops()).single.payload).doneBase,
+          DoneBase(dueDate: monday),
+        );
+
+        await sender().drain();
+
+        expect(read.requests, ['task 3']);
+        expect(write.requests, isEmpty);
+        expect(write.serverTasks[3]!.dueDate, tuesday);
+        final daily = (await db.tasksDao.find(3))!;
+        expect(daily.dueDate, tuesday);
+        expect(daily.done, isFalse);
+        expect(daily.doneAt, webDone);
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test('leaves out only the Done: an edit queued with it goes', () async {
+        await queue(3, done);
+        await queue(3, favorite);
+        expect(await ops(), hasLength(1));
+
+        await sender().drain();
+
+        expect(write.updates, [(3, favorite)]);
+        final server = write.serverTasks[3]!;
+        expect(server.dueDate, tuesday);
+        expect(server.isFavorite, isTrue);
+        final daily = (await db.tasksDao.find(3))!;
+        expect(daily.dueDate, tuesday);
+        expect(daily.isFavorite, isTrue);
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test('Done, Undo and Done again keep it: the Undo takes the shown '
+          'occurrence back with its Done', () async {
+        await queue(3, done);
+        await queue(
+          3,
+          TaskChanges(done: false, dueDate: DateChange.set(monday)),
+        );
+        expect(
+          decodeTaskChanges((await ops()).single.payload).doneBase,
+          isNull,
+        );
+        await queue(3, done);
+
+        await sender().drain();
+
+        expect(write.serverTasks[3]!.dueDate, tuesday);
+        expect((await db.tasksDao.find(3))!.dueDate, tuesday);
+        expect(await db.outboxDao.count(), 0);
+      });
+
+      test('is sent when the row showed a change of its own: the shown '
+          "occurrence was not the server's", () async {
+        await queue(3, favorite);
+        await queue(3, done);
+        expect(
+          decodeTaskChanges((await ops()).single.payload).doneBase,
+          isNull,
+        );
+
+        await sender().drain();
+
+        expect(write.updates.single.$2.done, isTrue);
+        expect(
+          write.serverTasks[3]!.dueDate,
+          tuesday.add(const Duration(days: 1)),
+        );
+      });
+    });
+
+    test('is sent when only a date was edited on the web before the device '
+        'synced it', () async {
+      final thursday = monday.add(const Duration(days: 3));
+      write.serverTasks[3] = copyTask(write.serverTasks[3]!, dueDate: thursday);
+      await queue(3, done);
+
+      await sender().drain();
+
+      expect(write.requests, ['update 3']);
+      expect(
+        write.serverTasks[3]!.dueDate,
+        thursday.add(const Duration(days: 1)),
+      );
+      expect(await db.outboxDao.count(), 0);
+    });
+
     test('of a task that does not repeat costs no read', () async {
       await queue(1, done);
 
@@ -1311,6 +1458,46 @@ void main() {
       });
     }
 
+    test('Retry all puts every failed op of the list back and sends them in '
+        'one drain; an op no longer failed is left alone', () async {
+      write.beforeRequest = (request) => request == 'update 3'
+          ? fail(const NetworkFailure(NetworkProblem.unreachable))
+          : fail(const Forbidden(code: 7003));
+      await queue(1, done);
+      await queue(2, favorite);
+      final outbox = sender();
+      await outbox.drain();
+      final problems = await db.outboxDao.loadProblems();
+      expect(problems, hasLength(2));
+      await queue(3, favorite);
+      await outbox.drain();
+      final waiting = (await ops()).last;
+      expect(waiting.state, OutboxState.pending.name);
+      write.beforeRequest = (request) => request == 'update 3'
+          ? fail(const NetworkFailure(NetworkProblem.unreachable))
+          : Future.value();
+
+      await outbox.retryAll([
+        for (final problem in problems) problem.operationId,
+        waiting.id,
+      ]);
+
+      expect(await db.outboxDao.loadProblems(), isEmpty);
+      expect(write.requests, [
+        'update 1',
+        'update 2',
+        'update 3',
+        'update 1',
+        'update 2',
+      ]);
+      expect(write.serverTasks[1]!.done, isTrue);
+      expect(write.serverTasks[2]!.isFavorite, isTrue);
+      final left = (await ops()).single;
+      expect(left.id, waiting.id);
+      expect(left.attempts, waiting.attempts);
+      expect(left.nextAttemptAt, waiting.nextAttemptAt);
+    });
+
     test('retry puts the op back in the queue and sends it', () async {
       write.beforeRequest = (_) => fail(const Forbidden(code: 7003));
       await queue(1, done);
@@ -1383,6 +1570,24 @@ void main() {
         expect(await db.outboxDao.count(), 0);
       },
     );
+
+    test('discarding an op of a task the server no longer has takes its '
+        'other ops with it', () async {
+      write.beforeRequest = (_) => fail(const NotFound(code: 4002));
+      await queue(1, done);
+      final outbox = sender();
+      await outbox.drain();
+      final problem = (await db.outboxDao.loadProblems()).single;
+      await queueDelete(1);
+      read.allTasks = tasks.skip(1).toList();
+
+      await outbox.discard(problem.operationId);
+      await pumpEventQueue();
+
+      expect(await db.tasksDao.findRow(1), isNull);
+      expect(await db.outboxDao.count(), 0);
+      expect(write.requests, ['update 1']);
+    });
 
     test('discarding an op the server forbids removes the task: its '
         'project left the user', () async {
@@ -1733,12 +1938,9 @@ void main() {
       read.requests.clear();
       await outbox.retry(problem.operationId);
 
+      // The lookup found nothing, so the deleted task never reaches it.
       expect(read.requests, hasLength(1));
-      expect(write.requests.skip(OutboxSender.maxFailedAnswersInARow), [
-        'create Buy milk',
-        'update 100',
-        'delete 100',
-      ]);
+      expect(write.requests.skip(OutboxSender.maxFailedAnswersInARow), isEmpty);
       expect(await db.tasksDao.findRow(id), isNull);
       expect(await db.outboxDao.count(), 0);
     });
@@ -1830,6 +2032,35 @@ void main() {
       expect(await db.outboxDao.count(), 0);
     });
 
+    test('discarding a rejected create sends at once what of another task '
+        'waited for it', () async {
+      final id = await create();
+      write.beforeRequest = (request) => request.startsWith('create')
+          ? fail(const ValidationFailed(code: 4001, message: 'title'))
+          : Future.value();
+      final outbox = sender();
+      await outbox.drain();
+      await queue(
+        1,
+        TaskChanges(
+          isFavorite: true,
+          relations: RelationChange(
+            added: {TaskRelationRef(TaskRelationKind.related, id)},
+          ),
+        ),
+      );
+      await outbox.drain();
+      expect(write.requests, ['create Buy milk']);
+      final problem = (await db.outboxDao.loadProblems()).single;
+
+      await outbox.discard(problem.operationId);
+      await pumpEventQueue();
+
+      expect(write.requests, ['create Buy milk', 'update 1']);
+      expect(write.updates.single, (1, favorite));
+      expect(await db.outboxDao.count(), 0);
+    });
+
     test('a create and its delete before the send cost no request', () async {
       final id = await create();
       await queue(id, done);
@@ -1876,20 +2107,42 @@ void main() {
     });
 
     test('a delete behind a create that may have reached the server waits '
-        'for the lookup, then goes', () async {
+        'for the lookup; when it finds nothing, both go without a '
+        'request', () async {
+      final id = await create();
+      await db.outboxDao.markUncertain(
+        (await ops()).single.id,
+        sentAt: now.subtract(const Duration(minutes: 1)),
+      );
+      await queue(id, const TaskChanges(labels: IdSetChange(added: {5})));
+      await queueDelete(id);
+
+      await sender().drain();
+
+      expect(read.requests, hasLength(1));
+      expect(write.requests, isEmpty);
+      expect(write.serverTasks.keys, isNot(contains(100)));
+      expect(await db.tasksDao.findRow(id), isNull);
+      expect(await db.outboxDao.count(), 0);
+      expect(sync.refreshCalls, 0);
+    });
+
+    test('a lookup that finds nothing still sends the create when its delete '
+        'was taken back', () async {
       final id = await create();
       await db.outboxDao.markUncertain(
         (await ops()).single.id,
         sentAt: now.subtract(const Duration(minutes: 1)),
       );
       await queueDelete(id);
+      read.beforeRequest = (_) async {
+        expect(await db.outboxDao.unqueueDelete(id), DeleteUnqueue.cancelled);
+      };
 
       await sender().drain();
 
-      expect(read.requests, hasLength(1));
-      expect(write.requests, ['create Buy milk', 'delete 100']);
-      expect(write.serverTasks.containsKey(100), isFalse);
-      expect(await db.tasksDao.findRow(id), isNull);
+      expect(write.requests, ['create Buy milk']);
+      expect((await db.tasksDao.find(100))!.title, 'Buy milk');
       expect(await db.outboxDao.count(), 0);
     });
 

@@ -60,9 +60,10 @@ final class ForegroundSyncScheduler {
   }
 
   /// The app came back to the front: a run when the last one is older than
-  /// [interval], otherwise the timer continues where the pause left it. A
-  /// resume without a pause before it (a dialog, the notification shade)
-  /// changes nothing, so the wait after a failure holds.
+  /// [interval], or seems to lie ahead because the clock was set back,
+  /// otherwise the timer continues where the pause left it. A resume
+  /// without a pause before it (a dialog, the notification shade) changes
+  /// nothing, so the wait after a failure holds.
   void onResume() {
     if (_disposed || _active) return;
     _active = true;
@@ -72,7 +73,9 @@ final class ForegroundSyncScheduler {
       final endedAt? => _clock().difference(endedAt),
       null => null,
     };
-    if (sinceLastRun == null || sinceLastRun >= interval) {
+    if (sinceLastRun == null ||
+        sinceLastRun.isNegative ||
+        sinceLastRun >= interval) {
       _log.fine('Syncing on resume');
       _runNow();
     } else {

@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_scheduler.dart';
 import 'package:vikunja_mobile/core/notifications/notification_schedulers.dart';
@@ -9,6 +11,7 @@ import 'package:vikunja_mobile/l10n/generated/app_localizations_en.dart';
 
 import '../../helpers/fake_timers.dart';
 import '../../helpers/notification_fakes.dart';
+import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
 
 void main() {
@@ -23,8 +26,8 @@ void main() {
     registry = NotificationSchedulers();
   });
 
-  NotificationScheduler scheduler(String accountId) {
-    final db = testDatabase();
+  NotificationScheduler scheduler(String accountId, {AppDatabase? database}) {
+    final db = database ?? testDatabase();
     final scheduler = NotificationScheduler(
       accountId: accountId,
       userId: 7,
@@ -105,5 +108,44 @@ void main() {
 
     expect(registry.find('a1'), isNull);
     expect(reconciles(), 0);
+  });
+
+  test('cancelAll during a run lets it stop and cancels what it scheduled, '
+      'so nothing of the account is left planned', () async {
+    final monday = DateTime.utc(2026, 10, 12, 9);
+    final db = testDatabase();
+    await db.projectsDao.upsertAll([sampleProject(id: 7, title: 'Work')]);
+    await db.tasksDao.upsertAll([
+      sampleTask(
+        id: 1,
+        title: 'Water the plants',
+        projectId: 7,
+        due: monday.add(const Duration(hours: 2)),
+        reminders: [
+          TaskReminder(reminder: monday.add(const Duration(hours: 1))),
+        ],
+      ).copyWith(createdBy: const User(id: 7, username: 'alice')),
+    ], syncRunId: 'run');
+    final a1 = scheduler('a1', database: db);
+    registry.register(a1);
+    final scheduling = Completer<void>();
+    final release = Completer<void>();
+    gateway.beforeCall = (call) async {
+      if (!call.startsWith('schedule ')) return;
+      if (!scheduling.isCompleted) scheduling.complete();
+      await release.future;
+    };
+    final running = a1.reconcile();
+    await scheduling.future;
+
+    final cancelling = registry.cancelAll('a1');
+    await pumpEventQueue();
+    release.complete();
+    await running;
+    await cancelling;
+
+    expect(gateway.scheduled, hasLength(1));
+    expect(gateway.pending, isEmpty);
+    expect(registry.find('a1'), isNull);
   });
 }

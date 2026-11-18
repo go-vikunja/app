@@ -21,8 +21,9 @@ abstract interface class TaskDetailsRepository {
     bool newestFirst = false,
   });
 
-  /// Clears the unread flag of the row at once, then on the server.
-  /// Idempotent; callers ignore the failure.
+  /// Clears the unread flag on the server, then that of the row, so a
+  /// failed mark leaves the row unread. Idempotent; callers ignore the
+  /// failure.
   Future<void> markRead(int taskId);
 
   /// The comment as stored; the row's comment count goes up by one. A

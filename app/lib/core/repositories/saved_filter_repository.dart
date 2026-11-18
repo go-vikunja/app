@@ -20,6 +20,11 @@ abstract interface class SavedFilterRepository {
   /// fails like [create].
   Future<void> update(int pseudoProjectId, SavedFilterDraft draft);
 
+  /// Replaces only the description, the web's rich text: the saved filter
+  /// is read from the server first and written back with it, so a change
+  /// another device made to the rest survives. Fails like [update].
+  Future<void> updateDescription(int pseudoProjectId, String description);
+
   /// A saved filter that is gone already counts as deleted. Its list
   /// download goes too; when the Overview showed it, the Overview falls
   /// back to every open task.

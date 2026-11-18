@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/server_connections.dart';
@@ -47,6 +49,31 @@ RegisteredAccount _guest(
   ),
   connection: connection,
 );
+
+/// Another isolate's view of the same storage, whose next read takes the
+/// stored value at once but hands it over only once [hold] completes.
+final class _HeldRead implements PreferencesStore {
+  new(this._stored);
+
+  final PreferencesStore _stored;
+  Completer<void>? hold;
+
+  @override
+  Future<String?> getString(String key) async {
+    final value = await _stored.getString(key);
+    final gate = hold;
+    hold = null;
+    await gate?.future;
+    return value;
+  }
+
+  @override
+  Future<void> setString(String key, String value) =>
+      _stored.setString(key, value);
+
+  @override
+  Future<void> remove(String key) => _stored.remove(key);
+}
 
 /// Connections in the app always come from a parsed /info document.
 ServerConnection _fromFixture(
@@ -313,6 +340,114 @@ void main() {
       'b2',
       'c3',
     ]);
+  });
+
+  test('a write from another isolate never brings back an account removed '
+      'meanwhile', () async {
+    await registry.upsert(_entry('a1', fullServer270()));
+    await registry.upsert(_entry('b2', oauthServer230()));
+    final elsewhere = _HeldRead(preferences);
+    final read = Completer<void>();
+    elsewhere.hold = read;
+    // A background run marks a1 from what it has just read.
+    final marking = AccountRegistry(elsewhere).markNeedsReauth('a1');
+    await pumpEventQueue();
+
+    final removing = registry.remove('a1');
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    read.complete();
+    await marking;
+    await removing;
+
+    final state = await AccountRegistry(preferences).load();
+    expect(state.accounts.map((entry) => entry.id), ['b2']);
+    expect(await registry.accountsToDelete(), ['a1']);
+  });
+
+  group('accounts to delete', () {
+    test('removing lists the account in the same write, and its deleted '
+        'data takes it off', () async {
+      await registry.upsert(_entry('a1', fullServer270()));
+      await registry.upsert(_entry('b2', oauthServer230()));
+
+      await registry.remove('a1');
+
+      final json = jsonDecode(
+        preferences.values[AccountRegistry.storageKey]!,
+      ) as Map<String, Object?>;
+      expect(json['accounts_to_delete'], ['a1']);
+      expect(await AccountRegistry(preferences).accountsToDelete(), ['a1']);
+
+      await registry.dataDeleted('a1');
+
+      expect(await registry.accountsToDelete(), isEmpty);
+      expect(
+        preferences.values[AccountRegistry.storageKey],
+        isNot(contains('accounts_to_delete')),
+      );
+      expect((await registry.load()).accounts.map((entry) => entry.id), ['b2']);
+    });
+
+    test('in the order they were removed, each once', () async {
+      for (final id in ['a1', 'b2', 'a1']) {
+        await registry.remove(id);
+      }
+
+      expect(await registry.accountsToDelete(), ['b2', 'a1']);
+    });
+
+    test('survive the writes of other instances', () async {
+      await registry.upsert(_entry('a1', fullServer270()));
+      await registry.upsert(_entry('b2', oauthServer230()));
+      await registry.remove('a1');
+
+      final other = AccountRegistry(preferences);
+      await other.markNeedsReauth('b2');
+      await other.updateDisplayName('b2', 'Bob');
+      await other.setActive('b2');
+
+      expect(await registry.accountsToDelete(), ['a1']);
+    });
+
+    test('signing the account in again takes it off: its data is the new '
+        "session's", () async {
+      await registry.upsert(_entry('a1', fullServer270()));
+      await registry.remove('a1');
+
+      await registry.upsert(_entry('a1', fullServer270()));
+
+      expect(await registry.accountsToDelete(), isEmpty);
+      expect(
+        preferences.values[AccountRegistry.storageKey],
+        isNot(contains('accounts_to_delete')),
+      );
+    });
+
+    test('never lists a registered account', () async {
+      await registry.upsert(_entry('a1', fullServer270()));
+      final json = jsonDecode(
+        preferences.values[AccountRegistry.storageKey]!,
+      ) as Map<String, Object?>;
+      preferences.values[AccountRegistry.storageKey] = jsonEncode({
+        ...json,
+        'accounts_to_delete': ['a1', 'b2', 3],
+      });
+
+      expect(await registry.accountsToDelete(), ['b2']);
+    });
+
+    test('a stored value that is not a list reads as none', () async {
+      await registry.upsert(_entry('a1', fullServer270()));
+      final json = jsonDecode(
+        preferences.values[AccountRegistry.storageKey]!,
+      ) as Map<String, Object?>;
+      preferences.values[AccountRegistry.storageKey] = jsonEncode({
+        ...json,
+        'accounts_to_delete': 'b2',
+      });
+
+      expect(await registry.accountsToDelete(), isEmpty);
+    });
   });
 
   test('leaves unreadable entries out and keeps the rest', () async {

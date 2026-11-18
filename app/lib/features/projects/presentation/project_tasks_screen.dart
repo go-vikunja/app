@@ -22,6 +22,7 @@ import 'package:vikunja_mobile/core/time/today_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
+import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
@@ -837,16 +838,18 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
             leavingIds: leaving.keys.toSet(),
             onReorder: reorderView == null || repository == null
                 ? null
-                : (positions) => unawaited(() async {
-                    for (final MapEntry(key: taskId, value: position)
-                        in positions.entries) {
-                      await repository.positionTask(
-                        taskId,
-                        viewId: reorderView.id,
-                        position: position,
-                      );
-                    }
-                  }()),
+                : (positions) => unawaited(
+                    saveLocalChange(context, () async {
+                      for (final MapEntry(key: taskId, value: position)
+                          in positions.entries) {
+                        await repository.positionTask(
+                          taskId,
+                          viewId: reorderView.id,
+                          position: position,
+                        );
+                      }
+                    }, action: 'Reordering a list'),
+                  ),
           );
         },
       ),

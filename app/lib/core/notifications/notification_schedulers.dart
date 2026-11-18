@@ -36,15 +36,14 @@ final class NotificationSchedulers {
     }
   }
 
-  /// Sign-out: cancels what the account holds and forgets its scheduler.
+  /// Sign-out: forgets the account's scheduler, lets a run under way stop,
+  /// then cancels what the account holds, so nothing is planned after it.
   Future<void> cancelAll(String accountId) async {
     final scheduler = _schedulers.remove(accountId);
     if (scheduler == null) return;
-    try {
-      await scheduler.cancelAll();
-    } finally {
-      await scheduler.dispose();
-    }
+    await scheduler.dispose();
+    await scheduler.idle;
+    await scheduler.cancelAll();
   }
 }
 

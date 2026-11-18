@@ -41,7 +41,7 @@ final class WriteTransport {
     bool acceptNotModified = false,
   }) async {
     try {
-      return await _dio.requestUri<Object?>(
+      final response = await _dio.requestUri<Object?>(
         _base.replace(path: '${_base.path}$path', queryParameters: query),
         data: body == null ? null : _withoutNul(body),
         options: Options(
@@ -52,6 +52,8 @@ final class WriteTransport {
           validateStatus: acceptNotModified ? _okOrNotModified : null,
         ),
       );
+      rejectNotJson(response);
+      return response;
     } on DioException catch (error) {
       if (error.type == DioExceptionType.cancel) rethrow;
       throw normalizeError(error);
@@ -69,7 +71,7 @@ final class WriteTransport {
     CancelToken? cancel,
   }) async {
     try {
-      return await _dio.requestUri<Object?>(
+      final response = await _dio.requestUri<Object?>(
         _base.replace(path: '${_base.path}$path'),
         data: form,
         cancelToken: cancel,
@@ -82,6 +84,8 @@ final class WriteTransport {
           extra: {AuthInterceptor.bodyReadOnceKey: true},
         ),
       );
+      rejectNotJson(response);
+      return response;
     } on DioException catch (error) {
       if (error.type == DioExceptionType.cancel) rethrow;
       throw normalizeError(error);

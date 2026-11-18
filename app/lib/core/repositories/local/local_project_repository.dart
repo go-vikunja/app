@@ -38,23 +38,15 @@ final class LocalProjectRepository implements ProjectRepository {
   final SyncEngine _sync;
   final VikunjaWriteClient _write;
   final TrashPort? _trash;
-  List<Project> _latest = const [];
 
   @override
-  Stream<List<Project>> watchAll() =>
-      _db.projectsDao.watchAll().map((projects) => _latest = projects);
+  Stream<List<Project>> watchAll() => _db.projectsDao.watchAll();
 
   @override
   Future<void> refresh() => _sync.refresh();
 
-  /// From the last list a subscriber received; null before the first one.
   @override
-  Project? find(int id) {
-    for (final project in _latest) {
-      if (project.id == id) return project;
-    }
-    return null;
-  }
+  Future<Project?> find(int id) => _db.projectsDao.loadProject(id);
 
   @override
   Stream<List<SavedFilterRef>> watchSavedFilters() => _db.syncStateDao

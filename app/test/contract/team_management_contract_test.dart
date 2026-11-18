@@ -140,20 +140,27 @@ void main() {
           );
           await expectLater(teams.leave(id), throwsArgumentError);
 
-          expect(await teams.toggleAdmin(id, ben.username), isTrue);
+          expect(await teams.setAdmin(id, ben.username, admin: true), isTrue);
           await _pace();
           expect((await teams.read(id)).members.map((member) => member.admin), [
             true,
             true,
           ]);
-          expect(await teams.toggleAdmin(id, ben.username), isFalse);
+          // Asked again, as from a page that had not seen the change.
+          expect(await teams.setAdmin(id, ben.username, admin: true), isTrue);
+          await _pace();
+          expect((await teams.read(id)).members.map((member) => member.admin), [
+            true,
+            true,
+          ]);
+          expect(await teams.setAdmin(id, ben.username, admin: false), isFalse);
           await _pace();
           await teams.removeMember(id, ben.username);
           await _pace();
           team = await teams.read(id);
           expect(team.members.map((member) => member.user.id), [alice.id]);
           await expectLater(
-            teams.toggleAdmin(id, ben.username),
+            teams.setAdmin(id, ben.username, admin: true),
             throwsA(isA<TeamMemberMissing>()),
           );
           await expectLater(teams.leave(id), throwsArgumentError);

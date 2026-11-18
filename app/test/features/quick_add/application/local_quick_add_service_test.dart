@@ -203,6 +203,37 @@ void main() {
         expect(plan.project, inbox);
       });
 
+      test('projects the user may only read are not matched, and the plan '
+          'says so', () {
+        final projects = [
+          inbox,
+          garage.copyWith(maxPermission: Permission.read),
+          work,
+        ];
+
+        final readOnly = service(projects: projects).plan('Oil +Garage');
+        expect(readOnly.unmatchedProject, 'Garage');
+        expect(readOnly.unmatchedProjectReadOnly, isTrue);
+        expect(readOnly.title, 'Oil +Garage');
+        expect(readOnly.project, inbox);
+
+        final nowhere = service(projects: projects).plan('Oil +nowhere');
+        expect(nowhere.unmatchedProjectReadOnly, isFalse);
+
+        final shared = service(
+          projects: [
+            inbox,
+            sampleProject(
+              id: 8,
+              title: 'Garage',
+            ).copyWith(maxPermission: Permission.read),
+            garage,
+          ],
+        ).plan('Oil +Garage');
+        expect(shared.project, garage);
+        expect(shared.projectAmbiguous, isFalse);
+      });
+
       test('only the first project counts, as on the web; a later one '
           'stays text also when the first matched nothing', () {
         final matched = service().plan('x +Garage +Work');
@@ -1115,6 +1146,31 @@ void main() {
             .having((f) => f.createdTaskIds, 'created', [-1, -2])
             .having((f) => f.remainingText, 'remaining', 'C\n  D\nE\n  F'),
       );
+    });
+
+    test('a line whose parent was created before a failure keeps the '
+        "parent's project, now its own, for another try", () async {
+      tasks.beforeWrite = () async {
+        if (tasks.creates.length == 2) throw StateError('database');
+      };
+
+      final failure = await service()
+          .submit('Car +Garage\n  Tyres\n    Valves\n  Oil +Work\n  Wash')
+          .then<Object?>((_) => null, onError: (Object error) => error);
+
+      final remaining = (failure! as QuickAddPartlyFailed).remainingText;
+      expect(remaining, 'Tyres +Garage\n  Valves\nOil +Work\nWash +Garage');
+
+      tasks
+        ..beforeWrite = null
+        ..creates.clear();
+      await service().submit(remaining, fallbackProjectId: 4);
+      expect(tasks.creates.map((task) => (task.title, task.projectId)), [
+        ('Tyres', 3),
+        ('Valves', 3),
+        ('Oil', 5),
+        ('Wash', 3),
+      ]);
     });
 
     test('a single indented line is one task as typed', () async {

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -361,6 +362,20 @@ void main() {
 
       expect(data.tasks.updates, [(2, const TaskChanges(priority: 0))]);
       expect(said(tester), [en.prioritySemantics(en.priorityUnset)]);
+    });
+
+    testWidgets('a pick the device cannot store is not said as set: the '
+        'message says so', (tester) async {
+      await pumpApp(tester);
+      await open(tester, 2);
+      data.tasks.beforeWrite = () async =>
+          throw const FileSystemException('No space left on device');
+
+      await tapIn(tester, find.byType(BottomSheet), en.priorityUnset);
+
+      expect(said(tester), isEmpty);
+      expect(find.text(en.localChangeFailed), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('the current level writes nothing', (tester) async {

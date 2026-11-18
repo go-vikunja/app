@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/sharing/presentation/link_share_form_sheet.dart';
 import 'package:vikunja_mobile/features/sharing/presentation/link_share_sheet.dart';
@@ -532,6 +533,107 @@ void main() {
 
       expect(find.text(en.shareFailureForbidden), findsOneWidget);
     });
+
+    testWidgets('a change whose answer did not come in time reads the list '
+        'again, which shows whether it was made', (tester) async {
+      await pumpSharePage(tester);
+      // The server made the change; its answer was lost.
+      data.sharing
+        ..beforeCall = (call) async {
+          if (call.startsWith('setUserPermission')) {
+            data.sharing.sharesOf(1).users = [
+              const ProjectUserShare(user: me, permission: Permission.admin),
+              const ProjectUserShare(user: ben, permission: Permission.write),
+            ];
+          }
+        }
+        ..failures['setUserPermission'] = const NetworkFailure(
+          NetworkProblem.timeout,
+        );
+      final reads = data.sharing.calls.where((c) => c == 'userShares 1').length;
+
+      await tester.tap(find.text('Ben Brown'));
+      await tester.pumpAndSettle();
+      await tester.tap(sheetText(en.sharePermissionWrite));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.shareFailureUnconfirmed), findsOneWidget);
+      expect(
+        data.sharing.calls.where((c) => c == 'userShares 1').length,
+        reads + 1,
+      );
+      expect(
+        find.descendant(
+          of: find.ancestor(
+            of: find.text('Ben Brown'),
+            matching: find.byType(ListTile),
+          ),
+          matching: find.text(en.sharePermissionWrite),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a link whose answer did not come in time closes the form '
+        'and reads the list again, so it is not created twice', (tester) async {
+      await pumpSharePage(tester);
+      data.sharing
+        ..beforeCall = (call) async {
+          if (call.startsWith('createLinkShare')) {
+            data.sharing
+                .sharesOf(1)
+                .links
+                .add(
+                  LinkShare(
+                    id: 6,
+                    hash: fakeLinkShareHash(6),
+                    permission: Permission.read,
+                    name: 'Guests',
+                    sharedBy: me,
+                  ),
+                );
+          }
+        }
+        ..failures['createLinkShare'] = const NetworkFailure(
+          NetworkProblem.timeout,
+        );
+
+      await scrollTo(tester, find.text(en.linkShareCreate));
+      await tester.tap(find.text(en.linkShareCreate));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, en.linkShareFormName),
+        'Guests',
+      );
+      await tester.tap(sheetText(en.linkShareFormSubmit));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LinkShareFormSheet), findsNothing);
+      expect(find.text(en.shareFailureUnconfirmed), findsOneWidget);
+      expect(
+        data.sharing.calls.where((c) => c == 'linkShares 1'),
+        hasLength(2),
+      );
+      await scrollTo(tester, find.text('Guests'));
+      expect(find.text('Guests'), findsOneWidget);
+    });
+
+    testWidgets('a session that ended is said so, not that it did not work', (
+      tester,
+    ) async {
+      await pumpSharePage(tester);
+      data.sharing.failures['setUserPermission'] = const SessionEnded(
+        SessionEndReason.expired,
+        code: 16003,
+      );
+
+      await tester.tap(find.text('Ben Brown'));
+      await tester.pumpAndSettle();
+      await tester.tap(sheetText(en.sharePermissionWrite));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.actionFailureSessionEnded), findsOneWidget);
+    });
   });
 
   group('someone who is not admin', () {
@@ -562,6 +664,81 @@ void main() {
 
     expect(find.byType(OfflineNotice), findsNothing);
     expect(find.text('Ben Brown'), findsOneWidget);
+  });
+
+  testWidgets('after a read that found no connection, the people search '
+      'still searches and finds people once the connection is back', (
+    tester,
+  ) async {
+    await pumpSharePage(tester);
+    data.sharing.failure = const NetworkFailure(NetworkProblem.unreachable);
+    await pullToRefresh(tester, find.byType(ListView).last);
+    expect(find.byType(OfflineNotice), findsOneWidget);
+    data.sharing.failure = null;
+
+    await tester.tap(find.text(en.shareAddPerson));
+    await tester.pumpAndSettle();
+    expect(sheetText(en.sharePeopleSearchOffline), findsOneWidget);
+    final field = find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.byType(TextField),
+    );
+    expect(tester.widget<TextField>(field).enabled, isNot(isFalse));
+
+    await tester.enterText(field, 'kim');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(sheetText('Kim Kowalski'), findsOneWidget);
+    expect(sheetText(en.sharePeopleSearchOffline), findsNothing);
+  });
+
+  testWidgets('the people search follows a sync that loses the connection '
+      'after the page read the shares, and one that gets through again', (
+    tester,
+  ) async {
+    await pumpSharePage(tester);
+    await tester.tap(find.text(en.shareAddPerson));
+    await tester.pumpAndSettle();
+    expect(sheetText(en.sharePeopleSearchOffline), findsNothing);
+
+    data.engine.emit(
+      SyncFailed(
+        failure: const NetworkFailure(NetworkProblem.unreachable),
+        lastSyncedAt: now,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(sheetText(en.sharePeopleSearchOffline), findsOneWidget);
+
+    data.engine.emit(SyncIdle(lastSyncedAt: now));
+    await tester.pumpAndSettle();
+    expect(sheetText(en.sharePeopleSearchOffline), findsNothing);
+  });
+
+  testWidgets('the people search says when a search found no connection', (
+    tester,
+  ) async {
+    await pumpSharePage(tester);
+    await tester.tap(find.text(en.shareAddPerson));
+    await tester.pumpAndSettle();
+    data.users.searchFailure = const NetworkFailure(NetworkProblem.unreachable);
+    final field = find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.byType(TextField),
+    );
+
+    await tester.enterText(field, 'kim');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(sheetText(en.sharePeopleSearchOffline), findsOneWidget);
+
+    data.users.searchFailure = null;
+    await tester.enterText(field, 'kim k');
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(sheetText(en.sharePeopleSearchOffline), findsNothing);
+    expect(sheetText('Kim Kowalski'), findsOneWidget);
   });
 
   testWidgets('the project menu opens the share page', (tester) async {

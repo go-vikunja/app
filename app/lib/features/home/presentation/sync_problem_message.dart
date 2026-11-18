@@ -37,6 +37,7 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
     DomainError(code: 10004) => l10n.syncProblemColumnFull,
     DomainError(code: 4023) => l10n.syncProblemRelationCycle,
     DomainError(code: 4010) => l10n.syncProblemRelationToItself,
+    DomainError(code: 4029) => l10n.syncProblemRepeatTooLong,
     DomainError(code: 4007) => l10n.syncProblemRejected,
     ValidationFailed() => l10n.syncProblemRejected,
     DescriptionConflict() => l10n.syncProblemDescriptionConflict,

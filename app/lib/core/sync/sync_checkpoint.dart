@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
@@ -55,9 +57,9 @@ abstract final class SyncStateKeys {
   /// stored notifications that are unread here, ISO 8601 UTC.
   static const activityWindowCheckedAt = 'activity_window_checked_at';
 
-  /// The sync run that holds the account, `{"owner", "until"}` with
-  /// `until` ISO 8601 UTC; absent while none does. Every isolate's engine
-  /// takes it before a run and renews it while the run makes progress.
+  /// The sync run that holds the account, see [SyncLease]; absent while
+  /// none does. Every isolate's engine takes it before a run and renews it
+  /// while the run makes progress.
   static const syncLease = 'sync_lease';
 
   static const runId = 'run_id';
@@ -210,4 +212,47 @@ final class SyncCheckpoint {
       'SyncCheckpoint($runId, ${phase.name}, done: $done/$total, '
       'lastId: $lastId, ${doneFilter.name}, archived: $archivedProjectId, '
       'newest updated at start: $newestUpdatedAtStart)';
+}
+
+/// The value of [SyncStateKeys.syncLease], `{"owner", "until", "run"}` with
+/// `until` ISO 8601 UTC. [run] is the id of the run that holds it, absent
+/// until the run has started: a task that a write other than the sync
+/// stores meanwhile is marked as stored during that run
+/// (`TasksDao.upsertAll`), and the run's purges leave it.
+@immutable
+final class SyncLease {
+  const new({required this.owner, required this.until, this.run});
+
+  final String owner;
+  final DateTime until;
+  final String? run;
+
+  static SyncLease? parse(String? raw) {
+    if (raw == null) return null;
+    try {
+      if (jsonDecode(raw)
+          case {'owner': final String owner, 'until': final String until} &&
+              final Map<String, Object?> json) {
+        final at = DateTime.tryParse(until);
+        if (at == null) return null;
+        return SyncLease(
+          owner: owner,
+          until: at.toUtc(),
+          run: switch (json['run']) {
+            final String run => run,
+            _ => null,
+          },
+        );
+      }
+    } on FormatException {
+      // Falls through: an unreadable lease holds nothing.
+    }
+    return null;
+  }
+
+  String encode() => jsonEncode({
+    'owner': owner,
+    'until': until.toIso8601String(),
+    'run': ?run,
+  });
 }

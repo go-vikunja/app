@@ -36,6 +36,22 @@ final class _MemoryPreferences implements PreferencesStore {
   Future<void> remove(String key) async => values.remove(key);
 }
 
+/// A preferences file the platform cannot read or write, as a broken
+/// DataStore file on Android.
+final class _BrokenPreferences implements PreferencesStore {
+  @override
+  Future<String?> getString(String key) async =>
+      throw Exception('Unable to parse preferences');
+
+  @override
+  Future<void> setString(String key, String value) async =>
+      throw Exception('Unable to parse preferences');
+
+  @override
+  Future<void> remove(String key) async =>
+      throw Exception('Unable to parse preferences');
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   final now = DateTime.utc(2026, 10, 12, 20);
@@ -971,6 +987,26 @@ void main() {
         );
       },
     );
+
+    test('preferences that cannot be written still give the locales '
+        'reported, and ones that cannot be read English', () async {
+      final broken = _BrokenPreferences();
+
+      expect(
+        (await loadDeviceAppLocalizations(
+          broken,
+          locales: const [Locale('de', 'DE')],
+        )).localeName,
+        'de_DE',
+      );
+      expect(
+        (await loadDeviceAppLocalizations(
+          broken,
+          locales: const [],
+        )).localeName,
+        'en',
+      );
+    });
   });
 
   group('responses', () {

@@ -376,6 +376,25 @@ void main() {
       expect(find.text(en.overviewFilterNotDownloadedTitle), findsNothing);
     });
 
+    testWidgets('a task of an archived project it lists has its Done and '
+        'star off, as the server refuses changes to it', (tester) async {
+      data.projects.all = [
+        work,
+        sampleProject(id: 2, title: 'Home', archived: true),
+      ];
+      data.tasks
+        ..overviewFilter = filter
+        ..overviewMatches = {1, 2};
+      await pumpOverview(tester);
+
+      TaskRow row(String title) =>
+          tester.widget<TaskRow>(find.widgetWithText(TaskRow, title));
+      expect(row('Call mum').onDoneChanged, isNull);
+      expect(row('Call mum').onFavoriteChanged, isNull);
+      expect(row('Pay the bill').onDoneChanged, isNotNull);
+      expect(row('Pay the bill').onFavoriteChanged, isNotNull);
+    });
+
     testWidgets('a download that finished after the last tick reads as now', (
       tester,
     ) async {

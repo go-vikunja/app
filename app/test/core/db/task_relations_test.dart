@@ -594,7 +594,7 @@ void main() {
         TaskChanges(relations: remove(TaskRelationKind.blocked, 2)),
       );
 
-      expect(await db.tasksDao.purgeInProjectExcept(7, {1}), 1);
+      expect(await db.tasksDao.purgeInProjectExcept(7, {1}, runId: 'run'), 1);
 
       final left = await ops();
       expect([for (final op in left) op.taskId], [1]);

@@ -21,6 +21,7 @@ import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
+import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/form_parts.dart';
@@ -190,6 +191,10 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
     final archived = isArchivedInTree(widget.projectId, {
       for (final project in all) project.id: project,
     });
+    final access = switch (project ?? original) {
+      final project? => ProjectAccess.of(project),
+      null => ProjectAccess.unknown,
+    };
 
     return PopScope(
       canPop: _saved || (!_dirty && !_saving),
@@ -233,6 +238,9 @@ class _ProjectEditPageState extends ConsumerState<ProjectEditPage> {
                   setState(() => _identifierError = null),
               onColorChanged: (hex) => setState(() => _hexColor = hex),
               onPickParent: () => unawaited(_pickParent()),
+              parentLockedNote: access.canChangeParent
+                  ? null
+                  : l10n.projectParentAdminOnly,
             ),
           (_, true) => CenteredScrollView(
             maxWidth: ReadableWidth.form,
@@ -268,6 +276,7 @@ class _Form extends StatelessWidget {
     required this.onIdentifierChanged,
     required this.onColorChanged,
     required this.onPickParent,
+    required this.parentLockedNote,
   });
 
   final TextEditingController titleController;
@@ -286,6 +295,7 @@ class _Form extends StatelessWidget {
   final VoidCallback onIdentifierChanged;
   final ValueChanged<String> onColorChanged;
   final VoidCallback onPickParent;
+  final String? parentLockedNote;
 
   @override
   Widget build(BuildContext context) {
@@ -354,6 +364,7 @@ class _Form extends StatelessWidget {
           ParentProjectTile(
             label: parentLabel,
             onTap: enabled ? onPickParent : null,
+            lockedNote: parentLockedNote,
           ),
           FormSectionTitle(l10n.taskEditColour),
           Padding(

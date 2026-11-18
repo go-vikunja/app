@@ -61,4 +61,45 @@ void main() {
       );
     });
   }
+
+  testWidgets('an interval over 10 years names the largest amount of its '
+      'unit, within the field on a 320 dp phone at 200 %', (tester) async {
+    if (!robotoLoaded) {
+      markTestSkipped("the Flutter SDK's Roboto is needed to measure");
+      return;
+    }
+    usePhoneSurface(tester, logicalSize: const Size(320, 740));
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light(),
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appSupportedLocales,
+        home: Scaffold(
+          body: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              RepeatSection(
+                value: const RepeatSetting(
+                  mode: RepeatEditorMode.every,
+                  amount: 522,
+                  unit: RepeatUnit.weeks,
+                ),
+                onChanged: (_) {},
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final error = tester.renderObject<RenderParagraph>(
+      find.text(en.repeatAmountTooLarge(521)),
+    );
+    expect(error.didExceedMaxLines, isFalse);
+    expect(find.text(en.repeatAmountInvalid), findsNothing);
+  });
 }

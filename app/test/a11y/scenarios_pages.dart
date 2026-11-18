@@ -350,6 +350,12 @@ final List<SweepScenario> pageRouteScenarios = [
     AppRoutes.savedFilterEdit(urgentFilterId),
     SavedFilterFormPage,
   ),
+  _page(
+    '${AppRoutes.home}/filters/:id/description',
+    AppRoutes.savedFilterDescription(urgentFilterId),
+    DescriptionEditorPage,
+    editor: true,
+  ),
   SweepScenario.route(
     AppRoutes.widgets,
     setUp: (tester, _) async {

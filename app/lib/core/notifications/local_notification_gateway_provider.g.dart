@@ -275,7 +275,7 @@ final class DeviceAppLocalizationsProvider
 }
 
 String _$deviceAppLocalizationsHash() =>
-    r'ce542f98bd466720dd0de28b82a40d081b060e01';
+    r'0e0b428e3514553284a2600408ff33536df867f7';
 
 /// The app's strings for what the OS shows outside the widget tree:
 /// notifications and their channels, widgets and the app lock prompt.

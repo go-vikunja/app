@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
@@ -635,6 +636,24 @@ void main() {
       expect(tester.takeAnnouncements(), [
         isAccessibilityAnnouncement(en.boardMovedTo('Doing')),
       ]);
+    });
+
+    testWidgets('a drop the device cannot store says so, and never that the '
+        'card moved', (tester) async {
+      await pumpBoard(tester);
+      data.tasks.beforeWrite = () async =>
+          throw const FileSystemException('No space left on device');
+
+      await dragCard(
+        tester,
+        'Call Anna',
+        gapBelow(tester, 'Fix bike', below: 'Read book'),
+      );
+
+      expect(tester.takeAnnouncements(), isEmpty);
+      expect(find.text(en.localChangeFailed), findsOneWidget);
+      expect(cardsIn(tester, 'Doing'), ['Fix bike', 'Read book']);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('a drop into one of two columns of the same title names it '

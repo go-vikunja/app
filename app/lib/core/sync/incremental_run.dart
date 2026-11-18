@@ -398,7 +398,11 @@ final class IncrementalRun {
       seen.addAll(items.map((task) => task.id));
       if (items.length < page.perPage && !page.hasMore) break;
     }
-    final purged = await _db.tasksDao.purgeInProjectExcept(projectId, seen);
+    final purged = await _db.tasksDao.purgeInProjectExcept(
+      projectId,
+      seen,
+      runId: runId,
+    );
     _log.info(
       'Sync run $runId: project $projectId reconciled, ${seen.length} tasks, '
       '$purged purged',

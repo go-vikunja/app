@@ -361,10 +361,16 @@ void main() {
     });
 
     test('purging except keeps the given ids and other projects', () async {
-      expect(await db.tasksDao.purgeInProjectExcept(5, {1, 3, 4}), 1);
+      expect(
+        await db.tasksDao.purgeInProjectExcept(5, {1, 3, 4}, runId: 'run'),
+        1,
+      );
       expect(await db.tasksDao.idsInProject(5), [1, 3]);
       expect(await db.tasksDao.idsInProject(6), [4]);
-      expect(await db.tasksDao.purgeInProjectExcept(5, {1, 3}), 0);
+      expect(
+        await db.tasksDao.purgeInProjectExcept(5, {1, 3}, runId: 'run'),
+        0,
+      );
     });
   });
 
@@ -423,7 +429,7 @@ void main() {
 
       await db.tasksDao.purgeNotInRun('other-run');
       await db.tasksDao.purgeInProjects([5]);
-      await db.tasksDao.purgeInProjectExcept(5, {});
+      await db.tasksDao.purgeInProjectExcept(5, {}, runId: 'run');
 
       expect((await db.tasksDao.find(id))!.title, 'Created here');
       expect(await db.tasksDao.count(), 0);

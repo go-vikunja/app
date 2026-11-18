@@ -115,8 +115,7 @@ const notificationLocaleKey = 'notifications.locale';
 @Riverpod(keepAlive: true)
 class DeviceAppLocalizations extends _$DeviceAppLocalizations {
   @override
-  AppLocalizations build() =>
-      _resolveAppLocalizations(PlatformDispatcher.instance.locales);
+  AppLocalizations build() => deviceAppLocalizationsWithoutNote();
 
   /// Switches to the locale [locales] resolve to, as
   /// [loadDeviceAppLocalizations] resolves them, and notes it for the
@@ -176,7 +175,8 @@ final class _LocalesObserver with WidgetsBindingObserver {
 /// them ([appLocaleFor]) when the engine reports any, else the tag noted
 /// under [notificationLocaleKey] (the headless engine the plugin starts on
 /// iOS has no view to take them from) resolved the same way, else English.
-/// A language resolved from [locales] is noted for that case.
+/// A language resolved from [locales] is noted for that case. Preferences
+/// that cannot be read or written cost only the note, logged.
 Future<AppLocalizations> loadDeviceAppLocalizations(
   PreferencesStore preferences, {
   Iterable<Locale>? locales,
@@ -184,12 +184,27 @@ Future<AppLocalizations> loadDeviceAppLocalizations(
   final reported = locales ?? PlatformDispatcher.instance.locales;
   if (reported.isNotEmpty) {
     final l10n = _resolveAppLocalizations(reported);
-    await _noteLocale(preferences, l10n);
+    try {
+      await _noteLocale(preferences, l10n);
+    } on Object catch (error) {
+      _log.warning('Could not note the device language: ${error.runtimeType}');
+    }
     return l10n;
   }
-  final noted = await preferences.getString(notificationLocaleKey);
+  String? noted;
+  try {
+    noted = await preferences.getString(notificationLocaleKey);
+  } on Object catch (error) {
+    _log.warning(
+      'Could not read the noted device language: ${error.runtimeType}',
+    );
+  }
   return _resolveAppLocalizations([if (noted != null) localeOfTag(noted)]);
 }
+
+/// What [loadDeviceAppLocalizations] resolves without the preferences.
+AppLocalizations deviceAppLocalizationsWithoutNote() =>
+    _resolveAppLocalizations(PlatformDispatcher.instance.locales);
 
 AppLocalizations _resolveAppLocalizations(Iterable<Locale> locales) =>
     appLocalizationsFor(appLocaleFor(locales));

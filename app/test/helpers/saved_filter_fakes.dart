@@ -13,8 +13,10 @@ import 'sync_fakes.dart';
 /// included, like the database would.
 ///
 /// Every call is recorded in [calls] first: `create Title`,
-/// `update -3 Title`, `delete -3`, `setFavorite -3 true`, `read -3`; the
-/// drafts of creates and updates in [drafts]. [beforeCall] can hold one;
+/// `update -3 Title`, `updateDescription -3`, `delete -3`,
+/// `setFavorite -3 true`, `read -3`; the drafts of creates and updates in
+/// [drafts], the descriptions [updateDescription] wrote in
+/// [descriptions]. [beforeCall] can hold one;
 /// [failure], or the entry of [failures] for the method name (`create`, …),
 /// is thrown instead while set, and nothing changes. Then the real
 /// repository's checks: a blank title is an `ArgumentError`; a saved filter
@@ -27,6 +29,7 @@ final class FakeSavedFilterRepository implements SavedFilterRepository {
   final FakeProjectRepository projects;
   final List<String> calls = [];
   final List<SavedFilterDraft> drafts = [];
+  final List<String> descriptions = [];
   Exception? failure;
   final Map<String, Exception> failures = {};
   Future<void> Function(String call)? beforeCall;
@@ -59,6 +62,27 @@ final class FakeSavedFilterRepository implements SavedFilterRepository {
     final title = _checkedTitle(draft.title);
     _listed(pseudoProjectId);
     _replace(pseudoProjectId, (_) => _refOf(pseudoProjectId, draft, title));
+  }
+
+  @override
+  Future<void> updateDescription(
+    int pseudoProjectId,
+    String description,
+  ) async {
+    descriptions.add(description);
+    await _call('updateDescription', '$pseudoProjectId');
+    _listed(pseudoProjectId);
+    _replace(
+      pseudoProjectId,
+      (filter) => SavedFilterRef(
+        projectId: filter.projectId,
+        title: filter.title,
+        isFavorite: filter.isFavorite,
+        description: description,
+        updated: filter.updated,
+        definition: filter.definition,
+      ),
+    );
   }
 
   @override

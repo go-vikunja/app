@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
@@ -500,6 +501,22 @@ void main() {
 
     expect(readOf(entry.id).requests, contains('notifications 1'));
     expect(gateway.activities, hasLength(1));
+    expect(
+      await BackgroundRunLog(auth.preferences).lastRunAt(entry.id),
+      isNull,
+    );
+  });
+
+  test('a sync that gave way to another run of the account is not noted as '
+      'synced; the activity still comes', () async {
+    final entry = await signedIn(1, syncedAt: monday);
+    engineOf(entry.id).refreshOutcome = SyncOutcome.skipped;
+    readOf(entry.id).serverNotifications = [sampleNotification(id: 3)];
+
+    expect(await runner().run(), BackgroundRunOutcome.completed);
+
+    expect(engineOf(entry.id).refreshCalls, 1);
+    expect(readOf(entry.id).requests, contains('notifications 1'));
     expect(
       await BackgroundRunLog(auth.preferences).lastRunAt(entry.id),
       isNull,

@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_message.dart';
+import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/home/presentation/description_conflict_sheet.dart';
 import 'package:vikunja_mobile/features/home/presentation/sync_problem_message.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
@@ -19,7 +20,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 
 /// The changes the server refused for good, each with Retry and Discard;
 /// a description also changed on the web with a comparison of both
-/// versions, which offers to keep either. Nothing while there are none.
+/// versions, which offers to keep either. Retry all beside the heading
+/// while two or more offer Retry. Nothing while there are none.
 class SyncProblemsSection extends ConsumerWidget {
   const new({required this.entry, super.key});
 
@@ -34,20 +36,35 @@ class SyncProblemsSection extends ConsumerWidget {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final now = ref.watch(clockTickProvider);
+    final retryable = [
+      for (final problem in problems)
+        if (_retryable(problem)) problem.operationId,
+    ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Semantics(
-            header: true,
-            headingLevel: 2,
-            child: Text(
-              l10n.accountSyncProblems,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: theme.colorScheme.error,
+          // The button goes below the heading when large text leaves no
+          // room.
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            children: [
+              Semantics(
+                header: true,
+                headingLevel: 2,
+                child: Text(
+                  l10n.accountSyncProblems,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.error,
+                  ),
+                ),
               ),
-            ),
+              if (retryable.length > 1)
+                _RetryAllButton(operationIds: retryable),
+            ],
           ),
           for (final problem in problems)
             Padding(
@@ -63,6 +80,44 @@ class SyncProblemsSection extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _RetryAllButton extends ConsumerStatefulWidget {
+  const new({required this.operationIds});
+
+  final List<String> operationIds;
+
+  @override
+  ConsumerState<_RetryAllButton> createState() => _RetryAllButtonState();
+}
+
+class _RetryAllButtonState extends ConsumerState<_RetryAllButton> {
+  bool _busy = false;
+
+  /// The outbox reports the outcome through the problems and the count.
+  Future<void> _retryAll() async {
+    final repository = ref.read(taskRepositoryProvider);
+    if (repository == null) return;
+    setState(() => _busy = true);
+    try {
+      await saveLocalChange(
+        context,
+        () => repository.retrySyncProblems(widget.operationIds),
+        action: 'Retrying every sync problem',
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+    onPressed: !_busy && ref.watch(taskRepositoryProvider) != null
+        ? () => unawaited(_retryAll())
+        : null,
+    icon: const Icon(Icons.refresh),
+    label: Text(context.l10n.syncProblemsRetryAll),
+  );
 }
 
 class _ProblemCard extends ConsumerStatefulWidget {
@@ -99,11 +154,21 @@ class _ProblemCardState extends ConsumerState<_ProblemCard> {
   ) async {
     final repository = ref.read(taskRepositoryProvider);
     if (repository == null) return;
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _busy = true);
     try {
-      await action(repository);
-    } on Object catch (error) {
-      if (mounted) _showReadFailure(error);
+      await saveLocalChange(
+        context,
+        () async {
+          try {
+            await action(repository);
+          } on VikunjaFailure catch (failure) {
+            if (mounted) _showReadFailure(failure);
+          }
+        },
+        action: 'Resolving a sync problem',
+        messenger: messenger,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -174,7 +239,11 @@ class _ProblemCardState extends ConsumerState<_ProblemCard> {
     if (repository == null) return;
     setState(() => _busy = true);
     try {
-      await action(repository);
+      await saveLocalChange(
+        context,
+        () => action(repository),
+        action: 'Sending a sync problem again',
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -234,7 +303,10 @@ class _ProblemCardState extends ConsumerState<_ProblemCard> {
   }
 }
 
-/// An upload whose stored copy is gone fails again at once.
+/// An upload whose stored copy is gone fails again at once; a description
+/// conflict is resolved by choosing a version.
 bool _retryable(SyncProblem problem) =>
-    problem.kind != OutboxOperationKind.uploadAttachment ||
-    uploadProblemReason(problem.failure) != UploadProblemReason.fileMissing;
+    problem.failure is! DescriptionConflict &&
+    (problem.kind != OutboxOperationKind.uploadAttachment ||
+        uploadProblemReason(problem.failure) !=
+            UploadProblemReason.fileMissing);

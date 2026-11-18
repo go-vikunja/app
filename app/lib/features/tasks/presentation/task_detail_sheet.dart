@@ -31,6 +31,7 @@ import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/share_web_link.dart';
@@ -829,6 +830,15 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       ..showSnackBar(SnackBar(content: Text(text)));
   }
 
+  /// [write] stored on this device, else said in the sheet that it was not.
+  Future<bool> _save(String action, Future<void> Function() write) =>
+      saveLocalChange(
+        context,
+        write,
+        action: action,
+        messenger: _messenger.currentState,
+      );
+
   /// A done shows the lists' "Marked as done · Undo" in the sheet; its Undo
   /// gives a repeating [task] its dates and reminders back. Reopening the
   /// task whose Undo is up makes that Undo moot. A sheet closed while it is
@@ -840,18 +850,33 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     required bool done,
   }) async {
     final messenger = _messenger.currentState;
+    final l10n = context.l10n;
     if (!done) {
       if (_undoTaskId == task.id) {
         _undoTaskId = null;
         _handOverUndo = null;
         messenger?.hideCurrentSnackBar();
       }
-      await writeTaskDone(repository, task, done: false);
+      await _save(
+        'Reopening a task',
+        () => writeTaskDone(repository, task, done: false),
+      );
       return;
     }
-    await writeTaskDone(repository, task, done: true);
-    if (!mounted || messenger == null) return;
-    void undo() => unawaited(writeTaskUndo(repository, task));
+    final saved = await _save(
+      'Marking a task done',
+      () => writeTaskDone(repository, task, done: true),
+    );
+    if (!saved || !mounted || messenger == null) return;
+    // The sheet may have gone by the time Undo is tapped below it.
+    void undo() => unawaited(
+      saveLocalChangeIn(
+        messenger,
+        l10n,
+        () => writeTaskUndo(repository, task),
+        action: 'Undoing a done',
+      ),
+    );
     _undoTaskId = task.id;
     _handOverUndo = widget.pane == null ? _undoBelow(undo) : null;
     await showMarkedDoneSnackBar(context, messenger: messenger, onUndo: undo);
@@ -894,6 +919,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       } on Object catch (error) {
         _log.warning('Reading a subtask failed: ${error.runtimeType}');
       }
+      if (!mounted) return;
     }
     await _setDone(repository, task, done: done);
   }
@@ -917,10 +943,19 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       unsent: task.id < 0,
     );
     if (!confirmed || !mounted) return;
-    final deletion = await repository.deleteTask(task.id);
-    if (!mounted) return;
+    late final TaskDeletion deletion;
+    final deleted = await _save('Deleting a task', () async {
+      deletion = await repository.deleteTask(task.id);
+    });
+    if (!deleted || !mounted) return;
     // A done of the deleted task has nothing left to undo.
     _handOverUndo = null;
+    // Gone while the dialog was up: a sync removed it, or its delete was
+    // queued already. Nothing was deleted, so nothing is said to be.
+    if (deletion == TaskDeletion.none) {
+      _showMessage(l10n.taskDeleteGone);
+      return;
+    }
     final ScaffoldMessengerState messenger;
     if (widget.pane case final pane?) {
       pane.deleted(task.id);
@@ -1062,6 +1097,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       );
     } on Object catch (error) {
       _log.warning('Ticking a checklist item failed: ${error.runtimeType}');
+      if (mounted) _showMessage(l10n.localChangeFailed);
       return;
     }
     if (!toggled || !mounted) return;
@@ -1168,10 +1204,13 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
 
   Future<void> _addRelation(TaskRepository repository, Task task) async {
     final relation = await pickRelation(context, task: task);
-    if (relation == null) return;
-    await repository.updateTask(
-      task.id,
-      TaskChanges(relations: RelationChange(added: {relation})),
+    if (relation == null || !mounted) return;
+    await _save(
+      'Adding a relation',
+      () => repository.updateTask(
+        task.id,
+        TaskChanges(relations: RelationChange(added: {relation})),
+      ),
     );
   }
 
@@ -1190,11 +1229,14 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       confirmLabel: l10n.taskRelationRemoveConfirm,
       destructive: true,
     );
-    if (!confirmed) return;
-    await repository.updateTask(
-      task.id,
-      TaskChanges(
-        relations: RelationChange(removed: {TaskRelationRef(kind, other.id)}),
+    if (!confirmed || !mounted) return;
+    await _save(
+      'Removing a relation',
+      () => repository.updateTask(
+        task.id,
+        TaskChanges(
+          relations: RelationChange(removed: {TaskRelationRef(kind, other.id)}),
+        ),
       ),
     );
   }
@@ -1308,11 +1350,11 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   (details == null ? null : _writable(details));
               final readOnly = writable == false;
               // Every task write in a read-only or archived project would
-              // end as a sync problem.
+              // end as a sync problem; one for a task without a row (a sync
+              // removed it, or it is read from the server only) would be
+              // dropped.
               final locked = readOnly || archived;
-              final changer = locked ? null : repository;
-              // A change for a task without a row would be dropped.
-              final editor = rowMissing ? null : changer;
+              final changer = locked || rowMissing ? null : repository;
               // A subtask may live in another project.
               bool subtaskReadOnly(Task subtask) =>
                   subtask.projectId == task.projectId
@@ -1335,7 +1377,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
               _moveChoice = moveChoice;
               VoidCallback? inPlace(
                 Future<void> Function(TaskRepository editor) edit,
-              ) => switch (editor) {
+              ) => switch (changer) {
                 final editor? => () => unawaited(
                   _editInPlace(() => edit(editor)),
                 ),
@@ -1693,9 +1735,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     children: [
                       if (!locked)
                         IconButton(
-                          onPressed: repository == null
-                              ? null
-                              : () => _edit(task),
+                          onPressed: changer == null ? null : () => _edit(task),
                           tooltip: l10n.taskEdit,
                           icon: const Icon(Icons.edit_outlined),
                         ),
@@ -1713,10 +1753,13 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                           onChanged: changer == null
                               ? null
                               : (favorite) => unawaited(
-                                  writeTaskFavorite(
-                                    changer,
-                                    task,
-                                    favorite: favorite,
+                                  _save(
+                                    'Changing a favorite',
+                                    () => writeTaskFavorite(
+                                      changer,
+                                      task,
+                                      favorite: favorite,
+                                    ),
                                   ),
                                 ),
                         ),
@@ -1817,10 +1860,10 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     _Inset(
                       child: _DoneButton(
                         done: task.done,
-                        onPressed: repository == null
+                        onPressed: changer == null
                             ? null
                             : () => unawaited(
-                                _setDone(repository, task, done: !task.done),
+                                _setDone(changer, task, done: !task.done),
                               ),
                       ),
                     ),

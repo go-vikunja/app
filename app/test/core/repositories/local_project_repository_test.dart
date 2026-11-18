@@ -39,14 +39,22 @@ void main() {
     await pumpEventQueue();
 
     expect(seen.last, [work, home]);
-    expect(repository.find(2), home);
-    expect(repository.find(3), isNull);
+    expect(await repository.find(2), home);
+    expect(await repository.find(3), isNull);
   });
 
-  test('find knows nothing before the first emission', () async {
+  test('find reads the database, whether a list is watched or not', () async {
+    final subscription = repository.watchAll().listen((_) {});
+    await pumpEventQueue();
+    subscription.pause();
     await db.projectsDao.upsertAll([work]);
 
-    expect(repository.find(1), isNull);
+    expect(await repository.find(1), work);
+
+    await subscription.cancel();
+    await db.projectsDao.upsertAll([home]);
+
+    expect(await repository.find(2), home);
   });
 
   test('a refresh is a sync run, and its failure passes through', () async {
@@ -65,7 +73,7 @@ void main() {
     expect(sync.refreshCalls, 2);
     expect(errors, isEmpty);
     expect(seen, hasLength(1));
-    expect(repository.find(1), work);
+    expect(await repository.find(1), work);
   });
 
   group('moving a project', () {

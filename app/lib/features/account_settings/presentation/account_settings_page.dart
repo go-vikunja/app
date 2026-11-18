@@ -386,9 +386,10 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     final signingIn = ref.watch(signInControllerProvider) is SignInInProgress;
 
     return PopScope(
-      canPop: !_nameDirty || saving,
+      // The name's own save is on its way; another one keeps it unsaved.
+      canPop: !_nameDirty || _saving == AccountSettingsField.name,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop && !saving) unawaited(_leaveIfConfirmed());
+        if (!didPop) unawaited(_leaveIfConfirmed());
       },
       child: Scaffold(
         appBar: AppBar(

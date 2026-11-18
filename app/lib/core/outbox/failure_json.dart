@@ -29,6 +29,7 @@ Map<String, Object?> failureToJson(VikunjaFailure failure) => {
     FileTooLarge() => 'file_too_large',
     DomainError() => 'domain_error',
     DescriptionConflict() => 'description_conflict',
+    NotJsonResponse() => 'not_json_response',
     UnexpectedResponse() => 'unexpected_response',
   },
   'code': ?failure.code,
@@ -103,6 +104,7 @@ VikunjaFailure failureFromJson(Map<String, Object?> json) {
       message: message,
     ),
     'description_conflict' => const DescriptionConflict(),
+    'not_json_response' => NotJsonResponse(statusCode ?? 200, message: message),
     _ => UnexpectedResponse(statusCode, message: message),
   };
 }

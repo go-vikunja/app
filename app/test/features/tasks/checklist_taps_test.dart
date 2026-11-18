@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -140,6 +142,24 @@ void main() {
     expect(unchecked(), findsOneWidget);
     expect(haptics, isEmpty);
     expect(tester.takeAnnouncements(), isEmpty);
+  });
+
+  testWidgets('a tick the device cannot store says so and changes '
+      'nothing', (tester) async {
+    final haptics = recordHaptics(tester);
+    data.tasks.beforeWrite = () async =>
+        throw const FileSystemException('No space left on device');
+    await openSheet(tester, 'Shopping');
+
+    await tester.tap(unchecked());
+    await tester.pumpAndSettle();
+
+    expect(inSheet(find.text(en.localChangeFailed)), findsOneWidget);
+    expect(data.tasks.find(1)!.description, _checklist);
+    expect(unchecked(), findsOneWidget);
+    expect(haptics, isEmpty);
+    expect(tester.takeAnnouncements(), isEmpty);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('an item that cannot be toggled in place stays read-only', (

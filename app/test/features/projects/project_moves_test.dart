@@ -131,6 +131,76 @@ void main() {
       );
     });
 
+    test('a project the user may only read, anywhere', () {
+      final readOnly = movesOf([
+        for (final project in projects)
+          if (project.id == 2)
+            project.copyWith(maxPermission: Permission.read)
+          else
+            project,
+      ]);
+
+      expect(
+        readOnly.plan(2, parentId: 0, index: 2),
+        const ProjectMoveRefused(),
+      );
+      expect(
+        readOnly.plan(2, parentId: 1, index: 0),
+        const ProjectMoveRefused(),
+      );
+    });
+
+    test('another parent for a project the user may only write, as only '
+        'admins may change it; its place among its siblings it may', () {
+      final writable = movesOf([
+        for (final project in projects)
+          switch (project.id) {
+            2 || 3 || 8 => project.copyWith(maxPermission: Permission.write),
+            _ => project,
+          },
+      ]);
+
+      expect(
+        writable.plan(2, parentId: 1, index: 0),
+        const ProjectMoveRefused(adminOnly: true),
+      );
+      expect(
+        writable.plan(3, parentId: 0, index: 3),
+        const ProjectMoveRefused(adminOnly: true),
+      );
+      expect(
+        writable.plan(2, parentId: 0, index: 2),
+        const MoveProject(projectId: 2, position: 250, parentProjectId: 0),
+      );
+      expect(
+        writable.plan(3, parentId: 1, index: 0),
+        const MoveProject(projectId: 3, position: 5, parentProjectId: 1),
+      );
+      expect(
+        writable.plan(8, parentId: 0, index: 0),
+        const MoveProject(projectId: 8, position: 50, parentProjectId: 99),
+      );
+    });
+
+    test('under a parent the user may only read', () {
+      final readOnlyParent = movesOf([
+        for (final project in projects)
+          if (project.id == 1)
+            project.copyWith(maxPermission: Permission.read)
+          else
+            project.copyWith(maxPermission: Permission.admin),
+      ]);
+
+      expect(
+        readOnlyParent.plan(2, parentId: 1, index: 0),
+        const ProjectMoveRefused(),
+      );
+      expect(
+        readOnlyParent.plan(4, parentId: 0, index: 0),
+        const MoveProject(projectId: 4, position: 50, parentProjectId: 0),
+      );
+    });
+
     test('between neighbours sharing a position unless the title sorts '
         'between theirs', () {
       final tied = movesOf([
@@ -146,5 +216,21 @@ void main() {
       );
       expect(tied.plan(4, parentId: 0, index: 1), const ProjectMoveRefused());
     });
+  });
+
+  test('a move shown before the server took it keeps what else the project '
+      'has, its permission included', () {
+    final project = sampleProject(id: 2, title: 'Home', position: 100).copyWith(
+      maxPermission: Permission.write,
+      owner: const User(id: 1, username: 'alice'),
+    );
+    const move = MoveProject(projectId: 2, position: 250, parentProjectId: 1);
+
+    expect(
+      move.applyTo(project),
+      project.copyWith(position: 250, parentProjectId: 1),
+    );
+    expect(move.applyTo(project).maxPermission, Permission.write);
+    expect(move.applyTo(projects.first), same(projects.first));
   });
 }

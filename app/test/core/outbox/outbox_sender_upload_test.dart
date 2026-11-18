@@ -707,6 +707,27 @@ void main() {
     );
   });
 
+  test('discarding a problem of a task the server no longer has takes its '
+      'uploads and their copies with it', () async {
+    await db.outboxDao.queueUpdate(
+      1,
+      const TaskChanges(title: 'Renamed'),
+      now: now,
+    );
+    write.beforeRequest = (_) async => throw const NotFound(code: 4002);
+    final outbox = sender();
+    await outbox.drain();
+    final problem = (await db.outboxDao.loadProblems()).single;
+    await queueUpload(1);
+    read.allTasks = [tasks[1]];
+
+    await outbox.discard(problem.operationId);
+
+    expect(await db.tasksDao.findRow(1), isNull);
+    expect(await db.outboxDao.count(), 0);
+    expect(await storedCopies(), isEmpty);
+  });
+
   group('a queued delete', () {
     test('holds the uploads of its task back; their copies go once the '
         'delete is applied', () async {
@@ -776,19 +797,16 @@ void main() {
         const NewTask(title: 'New', projectId: 7),
         now: now,
       );
-      await db.outboxDao.markUncertain(
-        (await db.outboxDao.all()).single.id,
-        sentAt: now,
-      );
       await queueUpload(id);
       await db.outboxDao.queueUpdate(
         id,
         const TaskChanges(done: true),
         now: now,
       );
-      await db.outboxDao.queueDelete(id, now: now);
       write.beforeRequest = (request) async {
         if (request.startsWith('create')) {
+          // Deleted while the create is on its way.
+          await db.outboxDao.queueDelete(id, now: now);
           throw const DomainError(400, code: 4001);
         }
       };

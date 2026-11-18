@@ -184,18 +184,48 @@ void main() {
     });
 
     test('member changes go to the server, never on the own row', () async {
+      port.team = _team(
+        members: const [
+          TeamMember(user: _me, admin: true),
+          TeamMember(user: _ben),
+        ],
+      );
       await repository.addMember(5, 'ben', admin: true);
-      expect(await repository.toggleAdmin(5, 'ben'), isTrue);
+      expect(await repository.setAdmin(5, 'Ben', admin: true), isTrue);
       await repository.removeMember(5, 'ben');
       await expectLater(repository.removeMember(5, 'me'), throwsArgumentError);
-      await expectLater(repository.toggleAdmin(5, 'ME'), throwsArgumentError);
+      await expectLater(
+        repository.setAdmin(5, 'ME', admin: false),
+        throwsArgumentError,
+      );
 
       expect(port.calls, [
         'addMember 5 ben true',
-        'toggleAdmin 5 ben',
+        'read 5',
+        'toggleAdmin 5 Ben',
         'removeMember 5 ben',
       ]);
       expect(sync.refreshAfterWriteCalls, 0);
+    });
+
+    test('a role change reads the team first and leaves a member another '
+        'admin changed meanwhile as they are', () async {
+      port.team = _team(
+        members: const [
+          TeamMember(user: _me, admin: true),
+          TeamMember(user: _ben, admin: true),
+          TeamMember(user: _cleo),
+        ],
+      );
+
+      expect(await repository.setAdmin(5, 'ben', admin: true), isTrue);
+      expect(await repository.setAdmin(5, 'cleo', admin: false), isFalse);
+      await expectLater(
+        repository.setAdmin(5, 'dora', admin: true),
+        throwsA(isA<TeamMemberMissing>()),
+      );
+
+      expect(port.calls, ['read 5', 'read 5', 'read 5']);
     });
 
     test('a delete syncs quietly after it', () async {

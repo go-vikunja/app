@@ -79,9 +79,25 @@ Future<void> removeAccount(
   final message = entry.account.isLinkShare
       ? l10n.guestRemoved(name)
       : l10n.accountSignedOutOf(name);
-  await ref
-      .read(signOutControllerProvider.notifier)
-      .signOut(entry.id, forgetConnectionSettings: forgetConnectionSettings);
+  try {
+    await ref
+        .read(signOutControllerProvider.notifier)
+        .signOut(entry.id, forgetConnectionSettings: forgetConnectionSettings);
+  } on Object catch (error) {
+    _log.warning('Could not sign out: ${error.runtimeType}');
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            entry.account.isLinkShare
+                ? l10n.guestRemoveFailed(name)
+                : l10n.accountSignOutFailed(name),
+          ),
+        ),
+      );
+    return;
+  }
   if (others.isEmpty) {
     // What is still up or queued, like the Undo of a delete, would act on
     // the account just signed out of.

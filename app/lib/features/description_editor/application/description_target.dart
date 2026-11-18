@@ -31,6 +31,14 @@ final class LabelDescriptionTarget extends DescriptionTarget {
   final int labelId;
 }
 
+/// One of the user's saved filters, saved online like its other fields.
+/// Only its owner can change it, so nothing is compared.
+final class SavedFilterDescriptionTarget extends DescriptionTarget {
+  const new(this.pseudoProjectId);
+
+  final int pseudoProjectId;
+}
+
 /// A team's description, which the device does not store: the edit starts
 /// from [description] as the team page read it and is saved online. Only
 /// team admins edit it, and nothing is compared, as on the web.

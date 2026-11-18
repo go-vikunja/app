@@ -39,10 +39,10 @@ final class ClearDate extends DateChange {
   int get hashCode => 0;
 }
 
-/// A repeating task's dates and done time on the server right before an
-/// update's Done was first sent. A later attempt that finds both moved, or
-/// only `done_at` when the task has no dates, knows the Done had reached
-/// the server: the server moved the dates and stamped `done_at`.
+/// A repeating task's dates and done time: the occurrence a Done is for.
+/// A server that has both moved since, or only `done_at` when the task has
+/// no dates, had a Done after it: the server moves the dates and stamps
+/// `done_at` for each.
 @immutable
 final class DoneBase {
   const new({this.dueDate, this.startDate, this.endDate, this.doneAt});
@@ -158,8 +158,9 @@ final class TaskChanges {
   /// clear it (400 code 4020).
   final int? coverImageAttachmentId;
 
-  /// The server's state before [done] was first sent, never sent itself;
-  /// null until the op's first attempt (see `OutboxSender`).
+  /// Never sent itself: the occurrence the device showed when [done] was
+  /// queued, and from the op's first attempt on the server's state right
+  /// before it (see `OutboxSender`); null when neither is known.
   final DoneBase? doneBase;
 
   bool get isEmpty =>

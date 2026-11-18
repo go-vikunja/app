@@ -196,6 +196,8 @@ final class DescriptionDrafts {
     TaskDescriptionTarget(:final taskId) => '$_taskPrefix$taskId',
     ProjectDescriptionTarget(:final projectId) => 'project:$projectId',
     LabelDescriptionTarget(:final labelId) => 'label:$labelId',
+    SavedFilterDescriptionTarget(:final pseudoProjectId) =>
+      'filter:$pseudoProjectId',
     TeamDescriptionTarget(:final teamId) => 'team:$teamId',
     CommentTarget(:final taskId, :final comment) =>
       'comment:$taskId:${comment.id}',

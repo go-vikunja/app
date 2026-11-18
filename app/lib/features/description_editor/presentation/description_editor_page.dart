@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/saved_filter_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
@@ -40,6 +41,8 @@ import 'package:vikunja_mobile/features/labels/presentation/label_change_failure
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_change_failure.dart';
+import 'package:vikunja_mobile/features/smart_lists/application/smart_list_providers.dart';
+import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_failure.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/label_providers.dart';
@@ -254,6 +257,15 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         }
         return null;
       }),
+    SavedFilterDescriptionTarget(:final pseudoProjectId) =>
+      ref.watch(savedFiltersProvider).whenData((filters) {
+        for (final filter in filters) {
+          if (filter.projectId == pseudoProjectId) {
+            return (description: filter.description, projectId: null);
+          }
+        }
+        return null;
+      }),
     TeamDescriptionTarget(:final description) => AsyncValue.data((
       description: description,
       projectId: null,
@@ -269,13 +281,18 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       ref.read(taskByIdProvider(taskId)).value?.description,
     ProjectDescriptionTarget(:final projectId) =>
       ref.read(projectByIdProvider(projectId))?.description,
-    // Only their creator or a team admin changes these; nothing to compare.
-    LabelDescriptionTarget() || TeamDescriptionTarget() => null,
+    // Only their creator, owner or a team admin changes these; nothing to
+    // compare.
+    LabelDescriptionTarget() ||
+    SavedFilterDescriptionTarget() ||
+    TeamDescriptionTarget() => null,
     CommentTarget(:final comment) => comment.html,
   };
 
   bool get _projectPeople => switch (widget.target) {
-    LabelDescriptionTarget() || TeamDescriptionTarget() => false,
+    LabelDescriptionTarget() ||
+    SavedFilterDescriptionTarget() ||
+    TeamDescriptionTarget() => false,
     _ => true,
   };
 
@@ -853,6 +870,10 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
           final repository = ref.read(labelRepositoryProvider);
           if (repository == null) return const _Refused();
           await repository.update(labelId, LabelChanges(description: html));
+        case SavedFilterDescriptionTarget(:final pseudoProjectId):
+          final repository = ref.read(savedFilterRepositoryProvider);
+          if (repository == null) return const _Refused();
+          await repository.updateDescription(pseudoProjectId, html);
         case TeamDescriptionTarget(:final teamId):
           final repository = ref.read(teamRepositoryProvider);
           if (repository == null) return const _Refused();
@@ -891,6 +912,11 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
             l10n,
             error,
             LabelChange.edit,
+          ),
+          SavedFilterDescriptionTarget() => savedFilterFailureText(
+            l10n,
+            error,
+            fromForm: true,
           ),
           TeamDescriptionTarget() => teamFailureText(
             l10n,
@@ -1092,6 +1118,11 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
                     icon: Icons.label_off_outlined,
                     title: l10n.labelsGoneTitle,
                     body: l10n.labelsGoneBody,
+                  ),
+                  SavedFilterDescriptionTarget() => EmptyState(
+                    icon: Icons.filter_list_off,
+                    title: l10n.smartListFilterGoneTitle,
+                    body: l10n.smartListFilterGoneBody,
                   ),
                   // Never gone: the page holds the comment or team's text.
                   TeamDescriptionTarget() ||

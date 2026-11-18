@@ -914,6 +914,28 @@ void main() {
       });
     }
 
+    test("a captive portal's page is not JSON, whatever the shape a read "
+        'expects', () async {
+      final portal = html('<html><title>Sign in to the Wi-Fi</title>');
+      final dio = fakeDio({
+        '$_v2/tasks/1': portal,
+        '$_v1/projects/7/tasks?page=1': portal,
+      });
+
+      await expectLater(
+        _client(dio).tasks.read(1),
+        throwsA(
+          isA<NotJsonResponse>()
+              .having((f) => f.statusCode, 'statusCode', 200)
+              .having((f) => f.message, 'message', 'text/html'),
+        ),
+      );
+      await expectLater(
+        _client(dio, hasV2: false).tasks.listInProject(7, const TaskQuery()),
+        throwsA(isA<NotJsonResponse>()),
+      );
+    });
+
     test('v1 and v2 produce equal tasks from the same entity JSON', () async {
       final body = _task(
         1,

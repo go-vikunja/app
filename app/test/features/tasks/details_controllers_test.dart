@@ -109,6 +109,24 @@ void main() {
       await failing;
       expect(shown().attachments, [photo, pdf]);
     });
+
+    test('a failed refresh that overtook the first read is the state, so '
+        'Retry shows', () async {
+      const offline = NetworkFailure(NetworkProblem.unreachable);
+      final reads = <Completer<TaskDetails>>[];
+      final controller = TaskDetailsController(
+        read: (_) => (reads..add(Completer())).last.future,
+        markRead: (_) async {},
+      );
+      addTearDown(controller.dispose);
+
+      unawaited(controller.load(1).catchError((_) => const TaskDetails()));
+      final refreshed = controller.refresh();
+      reads[1].completeError(offline);
+      await refreshed;
+
+      expect((controller.value as TaskDetailsFailed).failure, offline);
+    });
   });
 
   group('TaskDetailsController changes', () {

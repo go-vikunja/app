@@ -1,5 +1,6 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 
 String permissionLabel(AppLocalizations l10n, Permission permission) =>
     switch (permission) {
@@ -25,30 +26,36 @@ String shareFailureText(
   AppLocalizations l10n,
   Object error,
   ShareChange change,
-) => switch (error) {
-  // The server may have made the change before the answer was lost.
-  NetworkFailure(problem: NetworkProblem.timeout) =>
-    l10n.shareFailureUnconfirmed,
-  NetworkFailure() => l10n.shareFailureOffline,
-  // Without link sharing the server has no such routes.
-  NotFound(routeAbsent: true) when change.concernsLinks =>
-    l10n.shareFailureLinkSharingOff,
-  VikunjaFailure(code: 7002) => l10n.shareFailureAlreadyShared,
-  VikunjaFailure(code: 1005) => l10n.shareFailureUnknownUser,
-  VikunjaFailure(code: 7003 || 6007 || 3006) => l10n.shareFailureGone,
-  VikunjaFailure(code: 6004) => l10n.shareFailureTeamAlreadyShared,
-  VikunjaFailure(code: 6002) => l10n.shareFailureUnknownTeam,
-  NotFound(projectGone: true) => l10n.projectGone,
-  Forbidden() => l10n.shareFailureForbidden,
-  ValidationFailed() ||
-  VikunjaFailure(code: 2002 || 2004) => l10n.shareFailureInvalid,
-  _ => l10n.shareFailureGeneric,
-};
+) {
+  final shared = actionFailureText(l10n, error);
+  return switch (error) {
+    // The server may have made the change before the answer was lost.
+    NetworkFailure(problem: NetworkProblem.timeout) =>
+      l10n.shareFailureUnconfirmed,
+    NetworkFailure() => l10n.shareFailureOffline,
+    _ when shared != null => shared,
+    // Without link sharing the server has no such routes.
+    NotFound(routeAbsent: true) when change.concernsLinks =>
+      l10n.shareFailureLinkSharingOff,
+    VikunjaFailure(code: 7002) => l10n.shareFailureAlreadyShared,
+    VikunjaFailure(code: 1005) => l10n.shareFailureUnknownUser,
+    VikunjaFailure(code: 7003 || 6007 || 3006) => l10n.shareFailureGone,
+    VikunjaFailure(code: 6004) => l10n.shareFailureTeamAlreadyShared,
+    VikunjaFailure(code: 6002) => l10n.shareFailureUnknownTeam,
+    NotFound(projectGone: true) => l10n.projectGone,
+    Forbidden() => l10n.shareFailureForbidden,
+    ValidationFailed() ||
+    VikunjaFailure(code: 2002 || 2004) => l10n.shareFailureInvalid,
+    _ => l10n.shareFailureGeneric,
+  };
+}
 
 /// Whether the share list on screen is out of date after [error]: a share
-/// that is gone, or rights that changed meanwhile.
+/// that is gone, rights that changed meanwhile, or a change the server may
+/// have made before its answer was lost.
 bool shareListOutdatedBy(Object error) => switch (error) {
   Forbidden() || NotFound() => true,
+  NetworkFailure(problem: NetworkProblem.timeout) => true,
   VikunjaFailure(code: 7002 || 6004) => true,
   _ => false,
 };

@@ -92,6 +92,10 @@ void main() {
       endsWith(en.syncProblemRelationToItself),
     );
     expect(
+      describe(const DomainError(400, code: 4029)),
+      endsWith(en.syncProblemRepeatTooLong),
+    );
+    expect(
       describe(const DomainError(400, code: 4007)),
       endsWith(en.syncProblemRejected),
     );

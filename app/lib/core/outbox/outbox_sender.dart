@@ -54,17 +54,17 @@ enum OutboxSenderState {
 /// later ops never overtake it. An answer that is neither success nor the
 /// server's last word counts, and the op becomes a `SyncProblem` after
 /// [maxFailedAnswersInARow] of them in a row (an upload after
-/// [maxFailedUploadAnswersInARow]); a network failure, a 429 or a rejected
-/// token never does, as nothing else could go meanwhile either. A session
-/// that ended pauses the sender with the op still queued. Everything else
-/// is final, an exception without an answer and a 2xx whose body cannot be
-/// read too, except for a create or an upload, which count, as the server
-/// may have stored them: the op becomes a `SyncProblem` until it is
-/// retried or discarded. After a drain that sent
-/// something the sync engine refreshes, so server-computed fields arrive,
-/// unless its caller syncs itself ([sendNow]); and a sync that reaches the
-/// server while an op waits out a network failure sends at once, because
-/// the network is evidently back.
+/// [maxFailedUploadAnswersInARow]); a network failure, a captive portal's
+/// page, a 429 or a rejected token never does, as nothing else could go
+/// meanwhile either. A session that ended pauses the sender with the op
+/// still queued. Everything else is final, an exception without an answer
+/// and a 2xx whose JSON cannot be read too, except for a create or an
+/// upload, which count, as the server may have stored them: the op
+/// becomes a `SyncProblem` until it is retried or discarded. After a drain
+/// that sent something the sync engine refreshes, so server-computed
+/// fields arrive, unless its caller syncs itself ([sendNow]); and a sync
+/// that reaches the server while an op waits out a network failure or a
+/// captive portal sends at once, because the network is evidently back.
 ///
 /// A repeating task's Done is not applied twice when an answer was lost:
 /// the server moves the dates on every Done it gets. Before the first
@@ -72,6 +72,10 @@ enum OutboxSenderState {
 /// its dates and `done_at` with the op; every later attempt reads it again,
 /// and when both moved the Done had landed, so only what has requests of
 /// its own (labels, assignees, relations, placements, positions) goes.
+/// Nor is a Done made on the web for the occurrence the device showed: the
+/// first attempt compares that occurrence, kept with the op when it was
+/// queued, with the task it reads, and sends everything but the Done when
+/// the server has moved on.
 ///
 /// A description change that knows the description it started from is
 /// checked against the server's right before it is written, so a change
@@ -88,8 +92,9 @@ enum OutboxSenderState {
 /// created since [lostResponseWindow] before that attempt and adopts it.
 /// One that becomes a sync problem that way keeps that mark, so its Retry
 /// looks first too.
-/// A create never sent whose task was deleted meanwhile goes with the
-/// delete and the row, without a request.
+/// A create whose task was deleted meanwhile goes with the delete and the
+/// row, without a request, when it was never sent or the lookup found
+/// nothing.
 ///
 /// Senders of the same account may run in several isolates (the app, a
 /// background run, a notification action) on the shared database. The
@@ -330,13 +335,21 @@ final class OutboxSender {
     await drain();
   }
 
+  /// [retry] for each of [operationIds] that is still failed, then one
+  /// drain.
+  Future<void> retryAll(Iterable<String> operationIds) async {
+    await _db.outboxDao.retryFailed(operationIds);
+    await drain();
+  }
+
   /// Drops the op and restores the task from the server, with the inverse
   /// edges of its discarded relation changes on the other tasks; a task the
-  /// server no longer has, or no longer shows this user, is removed here.
-  /// Throws the `VikunjaFailure` of the read and changes nothing then, so
-  /// the user can try again later. An op that went meanwhile (a retry that
-  /// succeeded, a delete that was sent) leaves the row as it is. A
-  /// rejected create is dropped with its row: the server never had it.
+  /// server no longer has, or no longer shows this user, is removed here
+  /// with every op and upload of it. Throws the `VikunjaFailure` of the
+  /// read and changes nothing then, so the user can try again later. An op
+  /// that went meanwhile (a retry that succeeded, a delete that was sent)
+  /// leaves the row as it is. A rejected create is dropped with its row:
+  /// the server never had it. What waited for the dropped ops is sent.
   Future<void> discard(String operationId) async {
     final op = await _db.outboxDao.find(operationId);
     if (op == null) return;
@@ -349,22 +362,30 @@ final class OutboxSender {
       await _db.outboxDao.cancelCreate(op.taskId);
       await sweepUploads();
       _log.info('Discarded the create of task ${op.taskId}');
+      // An update of another task that named it in a relation waited.
+      _drainInBackground();
       return;
     }
     final fresh = await _readOrGone(op.taskId);
-    await _db.transaction(() async {
-      if (await _db.outboxDao.find(operationId) == null) return;
-      await _db.outboxDao.remove(op.id);
+    final gone = await _db.transaction(() async {
+      if (await _db.outboxDao.find(operationId) == null) return false;
       if (fresh == null) {
+        await _db.outboxDao.removeAllOf(op.taskId);
         await _db.tasksDao.deleteRow(op.taskId);
-        return;
+        return true;
       }
+      await _db.outboxDao.remove(op.id);
       if (op.kind == OutboxOperationKind.deleteTask.name) {
         await _db.outboxDao.clearPendingDelete(op.taskId);
       }
       await _db.tasksDao.upsertAll([fresh]);
+      return false;
     });
     _log.info('Discarded ${op.kind} for task ${op.taskId}');
+    if (gone) {
+      await sweepUploads();
+      _drainInBackground();
+    }
   }
 
   /// The description the server has now for the task of [operationId],
@@ -468,9 +489,13 @@ final class OutboxSender {
   }
 
   /// A sync that reached the server while an op waits out a network
-  /// failure: the network is back, so the backoff is dropped.
+  /// failure or a captive portal: the network is back, so the backoff is
+  /// dropped.
   void _onSyncStatus(SyncStatus status) {
-    if (status is! SyncIdle || blockedBy is! NetworkFailure) return;
+    if (status is! SyncIdle ||
+        (blockedBy is! NetworkFailure && blockedBy is! NotJsonResponse)) {
+      return;
+    }
     _log.fine('A sync got through; sending the waiting ops now');
     unawaited(
       sendNow().then<void>(
@@ -653,9 +678,7 @@ final class OutboxSender {
     }
     if (kind == OutboxOperationKind.createTask &&
         op.sentAt == null &&
-        await _db.outboxDao.cancelDeletedCreate(op.id)) {
-      await sweepUploads();
-      _log.info('Task ${op.taskId} was deleted before its create was sent');
+        await _dropDeletedCreate(op)) {
       return false;
     }
     TaskChanges? changes;
@@ -673,9 +696,13 @@ final class OutboxSender {
       switch (kind) {
         case OutboxOperationKind.createTask:
           final newTask = decodeNewTask(op.payload);
-          task =
-              await _recoverCreate(op, newTask) ??
-              await _write.tasks.create(newTask);
+          final found = await _recoverCreate(op, newTask);
+          if (found == null &&
+              op.sentAt != null &&
+              await _dropDeletedCreate(op, lookedUp: true)) {
+            return false;
+          }
+          task = found ?? await _write.tasks.create(newTask);
         case OutboxOperationKind.updateTask:
           final (sent, answer) = await _updateOnce(op, changes!);
           changes = sent;
@@ -718,11 +745,26 @@ final class OutboxSender {
     return true;
   }
 
+  /// The create of [op] goes with the task's queued delete and its row,
+  /// without a request, when it never left the device or, [lookedUp], an
+  /// earlier attempt's task was not found on the server.
+  Future<bool> _dropDeletedCreate(OutboxRow op, {bool lookedUp = false}) async {
+    if (!await _db.outboxDao.cancelDeletedCreate(op.id, lookedUp: lookedUp)) {
+      return false;
+    }
+    await sweepUploads();
+    _log.info('Task ${op.taskId} was deleted before the server had it');
+    return true;
+  }
+
   /// [changes] sent as an update of [op], unless they carry a repeating
   /// task's Done that already reached the server on an earlier attempt:
   /// then only what has requests of its own goes ([withoutBody]), and
-  /// nothing when that is empty. Returns what was sent and the server's
-  /// task.
+  /// nothing when that is empty. Before the first attempt the base is the
+  /// occurrence the device showed, when it was the server's (see
+  /// `OutboxDao.queueUpdate`): a Done the server got meanwhile, made on the
+  /// web, was for that occurrence, so everything but the Done goes
+  /// ([withoutDone]). Returns what was sent and the server's task.
   Future<(TaskChanges, Task)> _updateOnce(
     OutboxRow op,
     TaskChanges changes,
@@ -733,6 +775,15 @@ final class OutboxSender {
       if ((await _db.tasksDao.find(op.taskId))?.repeats ?? false) {
         final fresh = await _readOrGone(op.taskId);
         if (fresh != null && fresh.repeats && !fresh.done) {
+          if (base != null && _doneLanded(fresh, base)) {
+            _log.info(
+              'Task ${op.taskId} was marked done elsewhere for the occurrence '
+              'shown here; that done is not sent again',
+            );
+            final rest = withoutDone(changes);
+            if (rest.isEmpty) return (rest, fresh);
+            return (rest, await _update(op, rest));
+          }
           await _db.outboxDao.markDoneAttempt(
             op.id,
             base: DoneBase.of(fresh),
@@ -1216,15 +1267,18 @@ final class OutboxSender {
 
   /// A token the server rejects after the interceptor's own refresh means
   /// a session that was replaced or a server that will accept the next
-  /// token; the session that ended for good arrives as `SessionEnded`. An
-  /// answer without a Vikunja error code (a proxy's redirect, a web
-  /// server's 404 during a deploy) is not the server's last word. A 2xx
-  /// whose body cannot be read, or an exception without a status, is final
-  /// (a retry would only repeat it), except for a create or an upload: the
-  /// server may have stored it, and the next attempt looks for it first.
+  /// token; the session that ended for good arrives as `SessionEnded`. A
+  /// 2xx whose body is no JSON at all is a captive portal's page on a
+  /// cleartext network, which waits like being offline. An answer without
+  /// a Vikunja error code (a proxy's redirect, a web server's 404 during a
+  /// deploy) is not the server's last word. A 2xx whose JSON cannot be
+  /// read, or an exception without a status, is final (a retry would only
+  /// repeat it), except for a create or an upload: the server may have
+  /// stored it, and the next attempt looks for it first.
   static _Retry _retryOf(OutboxRow op, VikunjaFailure failure) =>
       switch (failure) {
         NetworkFailure() ||
+        NotJsonResponse() ||
         RateLimited() ||
         RefreshRaceLost() ||
         TokenRejected() => _Retry.waits,
@@ -1302,6 +1356,14 @@ final class OutboxSender {
       (_) {},
       onError: (Object error) =>
           _log.warning('Drain after backoff failed: ${error.runtimeType}'),
+    ),
+  );
+
+  void _drainInBackground() => unawaited(
+    drain().then<void>(
+      (_) {},
+      onError: (Object error) =>
+          _log.warning('Drain after a discard failed: ${error.runtimeType}'),
     ),
   );
 

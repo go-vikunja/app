@@ -41,6 +41,20 @@ Map<String, FakeRoute> _webAppAt(List<String> roots) => {
   for (final root in roots) ..._both(root, html(_vikunjaWebApp)),
 };
 
+// nginx's own pages for its 496 and 495, which it answers as a 400.
+const _nginxNoCertificate =
+    '<html>\r\n'
+    '<head><title>400 No required SSL certificate was sent</title></head>\r\n'
+    '<body>\r\n<center><h1>400 Bad Request</h1></center>\r\n'
+    '<center>No required SSL certificate was sent</center>\r\n'
+    '<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n';
+const _nginxCertificateError =
+    '<html>\r\n'
+    '<head><title>400 The SSL certificate error</title></head>\r\n'
+    '<body>\r\n<center><h1>400 Bad Request</h1></center>\r\n'
+    '<center>The SSL certificate error</center>\r\n'
+    '<hr><center>nginx/1.27.3</center>\r\n</body>\r\n</html>\r\n';
+
 HandshakeException _certificateRejected() => const HandshakeException(
   'Handshake error in client (OS Error: '
   'CERTIFICATE_VERIFY_FAILED: self signed certificate)',
@@ -698,6 +712,14 @@ void main() {
             uri: Uri.parse('https://example.com/api/v2/info'),
           ),
         ),
+      ),
+      (
+        'as the page nginx answers without one',
+        html(_nginxNoCertificate, status: 400),
+      ),
+      (
+        'as the page nginx answers for one it cannot verify',
+        html(_nginxCertificateError, status: 400),
       ),
     ]) {
       test('a refused client certificate, $description, probes no other '

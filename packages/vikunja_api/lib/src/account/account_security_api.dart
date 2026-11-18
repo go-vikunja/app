@@ -1,11 +1,10 @@
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/account/account_security_port.dart';
 import 'package:vikunja_api/src/dto/account_security_codec.dart';
-import 'package:vikunja_api/src/dto/json_values.dart';
+import 'package:vikunja_api/src/transport/all_pages.dart';
 import 'package:vikunja_api/src/write/write_transport.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-const _maxPages = 20;
 const _totpNotSetUp = 1016;
 const _sessionMissing = 16001;
 const _apiTokenMissing = 14017;
@@ -113,51 +112,14 @@ final class AccountSecurityApi implements AccountSecurityPort {
         (json) => parseUserDataExport(_nullText(json) ? null : json),
       );
 
-  /// v2 pages come in an envelope, v1 as an array with pagination headers;
-  /// the v1 CalDAV list has neither page parameters nor headers. Ids seen on
-  /// an earlier page are skipped: a refresh between two pages reorders the
-  /// sessions.
+  /// The v1 CalDAV list has neither page parameters nor headers, so it is
+  /// one page. Ids seen on an earlier page are skipped: a refresh between
+  /// two pages reorders the sessions.
   Future<List<T>> _allPages<T>(
     String path,
     T Function(Object?) parse, {
     required Object Function(T item) idOf,
-  }) async {
-    final byId = <Object, T>{};
-    for (var page = 1; page <= _maxPages; page++) {
-      final response = await _transport.send(
-        'GET',
-        path,
-        query: {'page': '$page', 'per_page': '$_perPage'},
-      );
-      final (:items, :totalPages) = _transport.decode(
-        response,
-        (json) => _pageOf(json, response.headers, page, parse),
-      );
-      for (final item in items) {
-        byId.putIfAbsent(idOf(item), () => item);
-      }
-      if (items.isEmpty || page >= totalPages) break;
-    }
-    return List.unmodifiable(byId.values);
-  }
-
-  static ({List<T> items, int totalPages}) _pageOf<T>(
-    Object? json,
-    Headers headers,
-    int page,
-    T Function(Object?) parse,
-  ) => switch (json) {
-    {'items': final List<Object?>? items, 'total_pages': final int pages} => (
-      items: [...?items?.map(parse)],
-      totalPages: pages,
-    ),
-    final List<Object?> items => (
-      items: [...items.map(parse)],
-      totalPages:
-          int.tryParse(headers.value('x-pagination-total-pages') ?? '') ?? page,
-    ),
-    _ => throw const MalformedJson('not a page'),
-  };
+  }) => readAllPages(_transport, path, parse, idOf: idOf, perPage: _perPage);
 
   static bool _nullText(Object? json) =>
       json is String && json.trim() == 'null';

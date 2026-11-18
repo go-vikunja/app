@@ -92,6 +92,28 @@ TaskChanges withoutBody(TaskChanges changes) => TaskChanges(
   positions: changes.positions,
 );
 
+/// [changes] without their Done and its base: the server had a Done for
+/// that occurrence from elsewhere.
+TaskChanges withoutDone(TaskChanges changes) => _rebuilt(
+  changes,
+  labels: changes.labels,
+  relations: changes.relations,
+  kanban: changes.kanban,
+  positions: changes.positions,
+  dropDone: true,
+);
+
+/// [changes] without their done base: the Done it was taken for was taken
+/// back.
+TaskChanges withoutDoneBase(TaskChanges changes) => _rebuilt(
+  changes,
+  labels: changes.labels,
+  relations: changes.relations,
+  kanban: changes.kanban,
+  positions: changes.positions,
+  dropDoneBase: true,
+);
+
 /// [changes] without any change to the labels in [labelIds].
 TaskChanges withoutLabels(TaskChanges changes, Set<int> labelIds) {
   final labels = switch (changes.labels) {
@@ -177,7 +199,8 @@ TaskChanges withoutDescription(TaskChanges changes) => _rebuilt(
 );
 
 /// A [description] of null keeps the description, its base and its taps;
-/// a [doneBase] of null keeps the one of [changes].
+/// a [doneBase] of null keeps the one of [changes] unless [dropDone] or
+/// [dropDoneBase].
 TaskChanges _rebuilt(
   TaskChanges changes, {
   required IdSetChange? labels,
@@ -186,6 +209,8 @@ TaskChanges _rebuilt(
   required Map<int, double>? positions,
   ({String? html, String? base, List<ChecklistToggle>? toggles})? description,
   DoneBase? doneBase,
+  bool dropDone = false,
+  bool dropDoneBase = false,
 }) => TaskChanges(
   title: changes.title,
   description: description == null ? changes.description : description.html,
@@ -195,7 +220,7 @@ TaskChanges _rebuilt(
   checklistToggles: description == null
       ? changes.checklistToggles
       : description.toggles,
-  done: changes.done,
+  done: dropDone ? null : changes.done,
   isFavorite: changes.isFavorite,
   priority: changes.priority,
   percentDone: changes.percentDone,
@@ -213,7 +238,7 @@ TaskChanges _rebuilt(
   kanban: kanban,
   positions: positions,
   coverImageAttachmentId: changes.coverImageAttachmentId,
-  doneBase: doneBase ?? changes.doneBase,
+  doneBase: dropDone || dropDoneBase ? null : doneBase ?? changes.doneBase,
 );
 
 bool changesDates(TaskChanges changes) =>

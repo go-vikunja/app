@@ -202,7 +202,13 @@ void main() {
 
       expect(write.updates, [
         (1, const TaskChanges(done: true)),
-        (2, const TaskChanges(done: true)),
+        (
+          2,
+          TaskChanges(
+            done: true,
+            doneBase: DoneBase(dueDate: repeating.dueDate!.toUtc()),
+          ),
+        ),
       ]);
       expect(host.actions, isEmpty, reason: 'the unknown account dropped');
       expect(host.calls.skipWhile((call) => call != 'ackActions a,b,c'), [

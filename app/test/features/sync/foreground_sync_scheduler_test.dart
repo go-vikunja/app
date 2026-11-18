@@ -210,6 +210,20 @@ void main() {
       expect(pendingWait(), const Duration(seconds: 15));
     });
 
+    test('after the clock was set back past the last run, syncs instead of '
+        'waiting out the jump', () async {
+      final scheduler = buildScheduler(
+        status: SyncIdle(lastSyncedAt: start.add(const Duration(hours: 2))),
+      );
+      await pumpEventQueue();
+
+      scheduler.onResume();
+      await pumpEventQueue();
+
+      expect(engine.refreshCalls, 1);
+      expect(pendingWait(), minute);
+    });
+
     test('during a run leaves it alone; its end starts the wait', () async {
       final scheduler = buildScheduler(
         status: const SyncRunning(

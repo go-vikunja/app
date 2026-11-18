@@ -141,10 +141,14 @@ final class FakeSyncEngine implements SyncEngine {
     return _run(initial: true, handler: onEnsureInitialSync);
   }
 
+  /// What [refresh] reports once its run completes.
+  SyncOutcome refreshOutcome = SyncOutcome.synced;
+
   @override
-  Future<void> refresh() {
+  Future<SyncOutcome> refresh() async {
     refreshCalls++;
-    return _run(initial: _initial, handler: onRefresh);
+    await _run(initial: _initial, handler: onRefresh);
+    return refreshOutcome;
   }
 
   /// A run of [onRefresh] after the one under way, if any.
@@ -235,7 +239,9 @@ final class FakeProjectRepository implements ProjectRepository {
   Future<void> refresh() => _engine.refresh();
 
   @override
-  Project? find(int id) {
+  Future<Project?> find(int id) async => byId(id);
+
+  Project? byId(int id) {
     for (final project in _all) {
       if (project.id == id) return project;
     }
@@ -377,7 +383,7 @@ final class FakeProjectRepository implements ProjectRepository {
   Future<void> updateProject(int projectId, ProjectChanges changes) async {
     updates.add((projectId, changes));
     await _call('updateProject', '$projectId $changes');
-    final project = find(projectId);
+    final project = byId(projectId);
     if (project == null) throw const NotFound(code: 3001);
     final title = switch (changes.title) {
       final title? => _checkedTitle(title),
@@ -392,7 +398,7 @@ final class FakeProjectRepository implements ProjectRepository {
       throw const DomainError(412, code: 3013);
     }
     if (archived == false &&
-        (find(project.parentProjectId)?.isArchived ?? false)) {
+        (byId(project.parentProjectId)?.isArchived ?? false)) {
       throw const DomainError(412, code: 3016);
     }
     final cascade = archived == null || archived == project.isArchived
@@ -546,7 +552,7 @@ final class FakeProjectRepository implements ProjectRepository {
       '$projectId under $parentProjectId shares $copyShares',
     );
     if (projectId < 1) throw ArgumentError.value(projectId, 'projectId');
-    final source = find(projectId);
+    final source = byId(projectId);
     if (source == null) throw const NotFound(code: 3001);
     final id = nextProjectId++;
     all = [
@@ -1274,7 +1280,8 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   /// `updateDescription 1`, `toggle 1 at 42 true`, `setDone 1 true`,
   /// `undoDone 1`, `setFavorite 2 false`, `delete 3`, `restore 3`,
   /// `place …` (see [placements]), `position …` (see [positions]),
-  /// `retry <op>`, `discard <op>`, `keepMine <op> over <html>`,
+  /// `retry <op>`, `retryAll <op>,<op>`, `discard <op>`,
+  /// `keepMine <op> over <html>`,
   /// `useWebs <op>`, `queueUpload 3 photo.png` (see [uploadRequests]),
   /// `cancelUpload <op>` or `sendPending`. A write applies to the task at
   /// once, like the local database; what counts as pending is the test's to
@@ -1753,9 +1760,22 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   @override
   Future<void> retrySyncProblem(String operationId) async {
     writes.add('retry $operationId');
+    await beforeWrite?.call();
     syncProblems = [
       for (final problem in _problemList)
         if (problem.operationId != operationId) problem,
+    ];
+  }
+
+  /// [writes] has `retryAll <op>,<op>`; the problems leave [syncProblems].
+  @override
+  Future<void> retrySyncProblems(Iterable<String> operationIds) async {
+    final ids = operationIds.toSet();
+    writes.add('retryAll ${ids.join(',')}');
+    await beforeWrite?.call();
+    syncProblems = [
+      for (final problem in _problemList)
+        if (!ids.contains(problem.operationId)) problem,
     ];
   }
 

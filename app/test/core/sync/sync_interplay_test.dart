@@ -429,5 +429,62 @@ void main() {
         expect(await db.outboxDao.count(), 0);
       },
     );
+
+    /// The create's answer arrives while the request matching [during]
+    /// is out: the server made the task after that request read its
+    /// tasks, so the run never sees it.
+    Future<void> answerCreateDuring(
+      bool Function(String request) during,
+    ) async {
+      await db.outboxDao.queueCreate(draft, now: now);
+      final op = (await db.outboxDao.all()).single;
+      var answered = false;
+      client.beforeRequest = (request) async {
+        if (answered || !during(request)) return;
+        answered = true;
+        await db.outboxDao.completeCreate(
+          op.id,
+          sampleTask(id: 100, title: 'Created offline', updated: edited),
+          at: now,
+        );
+      };
+    }
+
+    test('answered after the catch-up pass of a full run, survives that '
+        "run's purge, not the next run's", () async {
+      await answerCreateDuring((request) => request.contains('updated >='));
+
+      await engine().fullResync();
+
+      expect((await db.tasksDao.find(100))!.title, 'Created offline');
+      expect(await db.tasksDao.count(), 5);
+
+      // The server never had it after all: the next run purges it.
+      await engine().fullResync();
+
+      expect(await db.tasksDao.find(100), isNull);
+      expect(await db.tasksDao.count(), 4);
+    });
+
+    test('answered while a project is reconciled, survives the reconcile; '
+        'the task deleted on the server goes', () async {
+      client.allTasks = [
+        for (final task in client.allTasks)
+          if (task.id != 3) task,
+      ];
+      await answerCreateDuring(
+        (request) =>
+            request.startsWith('project 1 tasks') && request.contains('id >'),
+      );
+
+      await engine().refresh();
+
+      expect(
+        client.requests.where((r) => r.startsWith('project 1 tasks id >')),
+        isNotEmpty,
+      );
+      expect((await db.tasksDao.find(100))!.title, 'Created offline');
+      expect(await db.tasksDao.find(3), isNull);
+    });
   });
 }

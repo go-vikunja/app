@@ -303,7 +303,7 @@ void main() {
       ]);
       expect(
         [
-          for (final id in [1, 3, 4]) data.projects.find(id)!.isArchived,
+          for (final id in [1, 3, 4]) data.projects.byId(id)!.isArchived,
         ],
         [true, true, true],
       );
@@ -364,8 +364,8 @@ void main() {
       await tester.tap(find.text(en.projectUnarchive).last);
       await tester.pumpAndSettle();
 
-      expect(data.projects.find(5)!.isArchived, isFalse);
-      expect(data.projects.find(6)!.isArchived, isFalse);
+      expect(data.projects.byId(5)!.isArchived, isFalse);
+      expect(data.projects.byId(6)!.isArchived, isFalse);
       expect(find.text(en.projectUnarchivedDone), findsOneWidget);
       expect(find.text(en.projectArchivedNote), findsNothing);
     });

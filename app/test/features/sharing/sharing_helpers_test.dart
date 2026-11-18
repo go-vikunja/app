@@ -223,6 +223,37 @@ void main() {
       }
     });
 
+    test('for failures any action can meet, the shared words', () {
+      final cases = <(Object, String)>[
+        (
+          const SessionEnded(SessionEndReason.expired, code: 16003),
+          en.actionFailureSessionEnded,
+        ),
+        (const TokenRejected(), en.actionFailureSessionEnded),
+        (const RateLimited(), en.actionFailureRateLimited),
+        (const ServerFailure(500), en.actionFailureServerError),
+      ];
+      for (final (error, text) in cases) {
+        for (final change in ShareChange.values) {
+          expect(shareFailureText(en, error, change), text, reason: '$error');
+        }
+      }
+    });
+
+    test('a lost answer or a refusal on a stale list reads the list again', () {
+      expect(
+        shareListOutdatedBy(const NetworkFailure(NetworkProblem.timeout)),
+        isTrue,
+      );
+      expect(shareListOutdatedBy(const Forbidden()), isTrue);
+      expect(shareListOutdatedBy(const DomainError(409, code: 7002)), isTrue);
+      expect(
+        shareListOutdatedBy(const NetworkFailure(NetworkProblem.unreachable)),
+        isFalse,
+      );
+      expect(shareListOutdatedBy(const ValidationFailed()), isFalse);
+    });
+
     test('for removing access, with the cleanup list from 2.7 on', () {
       expect(
         accessRemovalBody(en, loss: 'Gone.', self: false, listsCleanup: false),

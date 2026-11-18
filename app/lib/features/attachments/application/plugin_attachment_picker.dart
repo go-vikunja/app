@@ -3,12 +3,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart' hide PickedFile;
 import 'package:intl/intl.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:vikunja_mobile/core/platform/app_round_trips.dart';
 import 'package:vikunja_mobile/core/platform/location_removal.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/attachments/application/channel_document_picker.dart';
+
+final _log = Logger('AttachmentPicker');
 
 /// [AttachmentPicker] through file_selector (the document picker; on
 /// Android the app's own [documents] instead) and image_picker (the photo
@@ -123,14 +126,26 @@ final class PluginAttachmentPicker implements AttachmentPicker {
   Future<T> _away<T>(
     Future<T> Function() pick, {
     Future<T> Function()? recover,
-  }) =>
-      excursions?.roundTrip(
-        pick,
-        recover: defaultTargetPlatform == TargetPlatform.android
-            ? recover
-            : null,
-      ) ??
-      pick();
+  }) async {
+    final android = defaultTargetPlatform == TargetPlatform.android;
+    if (android && recover != null) await _dropLeftoverPick();
+    return await (excursions?.roundTrip(
+          pick,
+          recover: android ? recover : null,
+        ) ??
+        pick());
+  }
+
+  // A pick counted as cancelled after lostPickWait leaves its copies in
+  // image_picker's cache, where the next relaunched pick would find them as
+  // its own; reading them takes them out.
+  static Future<void> _dropLeftoverPick() async {
+    try {
+      await ImagePicker().retrieveLostData();
+    } on Object catch (error) {
+      _log.fine('Could not look for a leftover pick: ${error.runtimeType}');
+    }
+  }
 
   // image_picker never answers a pick across an activity relaunch; it keeps
   // what was picked for retrieveLostData once its background work (for the

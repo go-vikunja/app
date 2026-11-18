@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
@@ -84,10 +85,12 @@ void main() {
     final before = await state();
     final client = server();
 
-    await engine(client, headless: true).refresh();
+    expect(await engine(client, headless: true).refresh(), SyncOutcome.skipped);
 
     expect(client.requests, isEmpty);
     expect(await state(), before);
+    await leaseTo('elsewhere', now.subtract(const Duration(minutes: 1)));
+    expect(await engine(client, headless: true).refresh(), SyncOutcome.synced);
   });
 
   test('the first sync another engine completed meanwhile is not run '

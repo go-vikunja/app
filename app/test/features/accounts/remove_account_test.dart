@@ -163,6 +163,33 @@ void main() {
     expect(accounts.data.files.deleted, isEmpty);
   });
 
+  testWidgets('a removal that fails on the device says so and keeps the '
+      'account', (tester) async {
+    await accounts.seed(withCarol: false);
+    accounts.auth.secureStore.beforeDelete = (_) async =>
+        throw Exception('Keychain locked');
+    await accounts.pump(tester);
+    await openTab(tester, en.tabAccount);
+
+    await openRemoveDialog(tester, 'Bob');
+    await tester.tap(
+      find.widgetWithText(TextButton, en.removeAccountDialogConfirm),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.accountSignOutFailed('Bob')), findsOneWidget);
+    expect(find.text(en.accountSignedOutOf('Bob')), findsNothing);
+    expect(
+      containerOf(tester)
+          .read(accountsProvider)
+          .value!
+          .accounts
+          .map((entry) => entry.id),
+      contains(accounts.bob.id),
+    );
+    expect(accounts.data.files.deleted, isEmpty);
+  });
+
   testWidgets('signing out of the active account switches to the most '
       'recently active other one', (tester) async {
     await accounts.seed();

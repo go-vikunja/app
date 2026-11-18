@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
@@ -83,6 +84,24 @@ Future<void> _withLatest(
   }
 }
 
+/// Queues a task's changes as [action]; when the device cannot store them,
+/// says so where [context] opened the picker. Takes what it needs from
+/// [context] at once, as the choice is written also after the screen went.
+Future<bool> Function(int taskId, TaskChanges changes) _writer(
+  BuildContext context,
+  TaskRepository repository, {
+  required String action,
+}) {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final l10n = context.l10n;
+  return (taskId, changes) => saveLocalChangeIn(
+    messenger,
+    l10n,
+    () => repository.updateTask(taskId, changes),
+    action: action,
+  );
+}
+
 /// Sets [task]'s due date from Today, Tomorrow and Next week, each at the
 /// time it already has (else the next breakpoint after [now]), from the
 /// date picker, or clears it.
@@ -95,6 +114,7 @@ Future<void> editDueDate(
 }) => _withLatest(context, task, (latest) async {
   final l10n = context.l10n;
   final announcer = Announcer.of(context);
+  final write = _writer(context, repository, action: 'Changing a due date');
   final formatter = MomentFormatter.of(context, display);
   final due = task.dueDate?.toLocal();
   final dueDay = due == null ? null : DateTime(due.year, due.month, due.day);
@@ -142,12 +162,13 @@ Future<void> editDueDate(
   final row = latest();
   final utc = moment?.toUtc();
   if (row == null || utc == _toTheMinute(row.dueDate)?.toUtc()) return;
-  await repository.updateTask(
+  final queued = await write(
     row.id,
     TaskChanges(
       dueDate: utc == null ? const DateChange.clear() : DateChange.set(utc),
     ),
   );
+  if (!queued) return;
   announcer.say(
     moment == null
         ? l10n.taskDetailDueDateRemoved
@@ -163,6 +184,7 @@ Future<void> editPriority(
 }) => _withLatest(context, task, (latest) async {
   final l10n = context.l10n;
   final announcer = Announcer.of(context);
+  final write = _writer(context, repository, action: 'Changing a priority');
   final picked = await showOptionSheet<TaskPriority>(
     context,
     title: l10n.taskDetailPriority,
@@ -177,7 +199,7 @@ Future<void> editPriority(
   );
   final row = latest();
   if (picked == null || row == null || picked == row.priority) return;
-  await repository.updateTask(row.id, TaskChanges(priority: picked.value));
+  if (!await write(row.id, TaskChanges(priority: picked.value))) return;
   announcer.say(l10n.prioritySemantics(priorityLabel(l10n, picked)));
 });
 
@@ -190,6 +212,7 @@ Future<void> editLabels(
 }) => _withLatest(context, task, (latest) async {
   final l10n = context.l10n;
   final announcer = Announcer.of(context);
+  final write = _writer(context, repository, action: 'Changing labels');
   final before = {for (final label in task.labels) label.id};
   final picked = await pickLabels(context, selected: task.labels);
   final row = latest();
@@ -200,7 +223,7 @@ Future<void> editLabels(
     removed: before.difference(after),
   );
   if (change.isEmpty) return;
-  await repository.updateTask(row.id, TaskChanges(labels: change));
+  if (!await write(row.id, TaskChanges(labels: change))) return;
   announcer.say(l10n.taskDetailLabelsChanged);
 });
 
@@ -215,6 +238,7 @@ Future<void> addReminder(
 }) => _withLatest(context, task, (latest) async {
   final l10n = context.l10n;
   final announcer = Announcer.of(context);
+  final write = _writer(context, repository, action: 'Adding a reminder');
   final picked = await pickReminder(
     context,
     dates: _datesOf(task),
@@ -233,7 +257,7 @@ Future<void> addReminder(
     },
   );
   if (reminders == null) return;
-  await repository.updateTask(row.id, TaskChanges(reminders: reminders));
+  if (!await write(row.id, TaskChanges(reminders: reminders))) return;
   announcer.say(l10n.taskDetailReminderAdded);
 });
 
@@ -330,11 +354,15 @@ class _TaskRemindersSheetState extends ConsumerState<TaskRemindersSheet> {
     required String said,
   }) async {
     final announcer = Announcer.of(context);
-    await widget.repository.updateTask(
-      latest.id,
-      TaskChanges(reminders: reminders),
+    final queued = await saveLocalChange(
+      context,
+      () => widget.repository.updateTask(
+        latest.id,
+        TaskChanges(reminders: reminders),
+      ),
+      action: 'Changing reminders',
     );
-    if (!mounted) return;
+    if (!queued || !mounted) return;
     setState(() => _refusal = null);
     announcer.say(said);
   }

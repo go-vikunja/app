@@ -84,6 +84,34 @@ void main() {
     expect(sync.refreshAfterWriteCalls, 1);
   });
 
+  test("a description is written onto the server's filter as read just "
+      'before, so a change made elsewhere survives', () async {
+    server.serverSavedFilters[13] = SavedFilter(
+      id: 13,
+      title: 'Changed on the web',
+      filter: const ViewFilter(filter: 'priority >= 4', search: 'kept'),
+      isFavorite: true,
+      updated: listed,
+    );
+
+    await repository.updateDescription(-14, '<p>What <em>burns</em></p>');
+    await pumpEventQueue();
+
+    expect(server.requests, [
+      'read filter 13',
+      'update filter 13 Changed on the web',
+    ]);
+    final written = server.serverSavedFilters[13]!;
+    expect(written.description, '<p>What <em>burns</em></p>');
+    expect(written.filter.filter, 'priority >= 4');
+    expect(written.filter.search, 'kept');
+    expect(written.isFavorite, isTrue);
+    final filter = (await stored()).single;
+    expect(filter.description, '<p>What <em>burns</em></p>');
+    expect(filter.title, 'Changed on the web');
+    expect(sync.refreshAfterWriteCalls, 1);
+  });
+
   test('the favourite changes only the flag', () async {
     await repository.setFavorite(-14, favorite: true);
 

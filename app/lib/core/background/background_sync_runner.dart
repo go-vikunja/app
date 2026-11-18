@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_taps.dart';
 
@@ -390,11 +391,17 @@ final class _Run {
     if (!syncing) {
       await _network(account, 'drain', _drain);
     } else if (queueSent != _Step.unreachable) {
-      synced = await _network(
-        account,
-        'sync',
-        (_) => container.read(syncEngineProvider(account.id)).refresh(),
-      );
+      var outcome = SyncOutcome.synced;
+      synced = await _network(account, 'sync', (_) async {
+        outcome = await container
+            .read(syncEngineProvider(account.id))
+            .refresh();
+      });
+      // Another run holds the account: this turn neither synced it nor
+      // notes it as synced.
+      if (synced == _Step.done && outcome == SyncOutcome.skipped) {
+        synced = _Step.skipped;
+      }
       // The server keeps no activity for a guest and answers 403.
       if (synced != _Step.sessionEnded &&
           synced != _Step.unreachable &&

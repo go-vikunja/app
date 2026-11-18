@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dar
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
@@ -203,13 +204,18 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
         _refuseFullColumn();
       case MarkCardDone() || PlaceCard():
         unawaited(HapticFeedback.selectionClick());
-        announce(context, moved);
-        await queueCardMove(
-          repository,
-          task.id,
-          viewId: widget.view.id,
-          move: move,
+        final announcer = Announcer.of(context);
+        final queued = await saveLocalChange(
+          context,
+          () => queueCardMove(
+            repository,
+            task.id,
+            viewId: widget.view.id,
+            move: move,
+          ),
+          action: 'Moving a card',
         );
+        if (queued) announcer.say(moved);
     }
   }
 

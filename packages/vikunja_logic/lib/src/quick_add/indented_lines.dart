@@ -58,10 +58,9 @@ List<IndentedLine> parseSubtasksViaIndention(
   final lines = <({int indent, String text})>[];
   for (final line in text.split(_lineBreaks)) {
     if (line.trim().isEmpty) continue;
-    final indent = _leadingIndent.stringMatch(line)!;
     lines.add((
-      indent: _width(indent),
-      text: line.substring(indent.length).replaceFirst(_listMarker, ''),
+      indent: _width(_leadingIndent.stringMatch(line)!),
+      text: subtaskLineText(line),
     ));
   }
   if (lines.isEmpty) return const [];
@@ -98,6 +97,12 @@ List<IndentedLine> parseSubtasksViaIndention(
   }
   return List.unmodifiable(result);
 }
+
+/// [line] without its indent and list marker: the text
+/// [parseSubtasksViaIndention] gives its task, an end of [line].
+String subtaskLineText(String line) => line
+    .substring(_leadingIndent.stringMatch(line)!.length)
+    .replaceFirst(_listMarker, '');
 
 const _tabWidth = 4;
 final _lineBreaks = RegExp(r'[\r\n]+');

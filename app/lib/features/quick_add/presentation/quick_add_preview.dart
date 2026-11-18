@@ -133,7 +133,9 @@ class QuickAddPreview extends ConsumerWidget {
         _PartChip(
           kind: MagicSpanKind.unmatchedProject,
           icon: const Icon(Icons.warning_amber),
-          label: l10n.quickAddProjectNotFound(name),
+          label: plan.unmatchedProjectReadOnly
+              ? l10n.quickAddProjectReadOnly(name)
+              : l10n.quickAddProjectNotFound(name),
           warning: true,
           onRemove: () => onRemove(MagicSpanKind.unmatchedProject),
         )

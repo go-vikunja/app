@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
@@ -56,6 +58,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Open 2'), findsNothing);
     expect(find.byType(TaskRow), findsNWidgets(2));
+  });
+
+  testWidgets('a done the device cannot store says so, and the row stays '
+      'open', (tester) async {
+    await pumpProject(tester);
+    data.tasks.beforeWrite = () async =>
+        throw const FileSystemException('No space left on device');
+
+    await tester.tap(inRow('Open 2', find.byTooltip(en.taskMarkDone)));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.localChangeFailed), findsOneWidget);
+    expect(find.text(en.taskMarkedDone), findsNothing);
+    expect(decorationOf(tester, 'Open 2'), isNot(TextDecoration.lineThrough));
+    expect(inRow('Open 2', find.byTooltip(en.taskMarkDone)), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    // Done on the web later: the row leaves like any other, as no copy of
+    // the failed tap holds it.
+    data.tasks.all = [
+      for (final task in data.tasks.all)
+        if (task.id == 2) task.copyWith(done: true) else task,
+    ];
+    await tester.pumpAndSettle();
+    expect(find.text('Open 2'), findsNothing);
   });
 
   testWidgets(

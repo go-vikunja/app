@@ -81,8 +81,10 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
   }
 
   /// Reads the details again while the current ones stay in [value]; a
-  /// failure keeps them. Unread again means a comment came in while the
-  /// sheet was open, in front of the user, so it is marked read too.
+  /// failure keeps them, and is the state while none have arrived (the
+  /// refresh overtook the first read), so Retry shows. Unread again means a
+  /// comment came in while the sheet was open, in front of the user, so it
+  /// is marked read too.
   Future<void> refresh() async {
     final taskId = _id;
     if (taskId == null) return;
@@ -98,6 +100,9 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
       if (details.isUnread) unawaited(_markReadQuietly(taskId));
     } on Object catch (error) {
       _log.fine('Refreshing task details failed: ${error.runtimeType}');
+      if (generation == _generation && value is! TaskDetailsLoaded) {
+        _set(TaskDetailsFailed(error));
+      }
     } finally {
       if (_refreshing == generation) _refreshing = null;
     }

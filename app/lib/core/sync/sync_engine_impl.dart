@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math';
 
 import 'package:logging/logging.dart';
@@ -49,7 +48,9 @@ typedef _CurrentUser = ({
 /// notification action) share the database, so a run first takes the
 /// account's lease in `sync_state` and renews it as it goes: a full run
 /// purges every task it did not mark, and would otherwise delete the ones
-/// another run marked meanwhile. The app's engine waits for a lease
+/// another run marked meanwhile. The lease names the run, so a task that
+/// another write (a create's answer, a duplicate, a restore) stores while
+/// it goes is not purged by it either. The app's engine waits for a lease
 /// another isolate holds, a [headless] one ends its run without syncing;
 /// the winner adopts the stored state the other run left. A run that finds
 /// its lease taken (it stalled past [leaseDuration]) stops quietly, and
@@ -126,7 +127,8 @@ final class DefaultSyncEngine implements SyncEngine {
   DateTime? _lastFullSyncAt;
   DateTime? _watermark;
   SyncCheckpoint? _checkpoint;
-  Future<void>? _current;
+  String? _runId;
+  Future<SyncOutcome>? _current;
   var _currentIsFull = false;
   var _currentStarted = false;
   var _disposed = false;
@@ -149,9 +151,11 @@ final class DefaultSyncEngine implements SyncEngine {
   Future<void> ensureInitialSync() async {
     await _ensureRestored();
     if (_lastSyncedAt != null) return;
-    return await _join(
+    await _join(
       () => _leased(
-        () async => _lastSyncedAt == null ? await _runFull(resume: true) : null,
+        () async => _lastSyncedAt == null
+            ? await _runFull(resume: true)
+            : SyncOutcome.synced,
       ),
       full: true,
     );
@@ -160,12 +164,12 @@ final class DefaultSyncEngine implements SyncEngine {
   /// What a run stored in another isolate meanwhile is adopted with the
   /// lease; a full pull that became due while waiting for it runs instead.
   @override
-  Future<void> refresh() => _refresh(afterWrite: false);
+  Future<SyncOutcome> refresh() => _refresh(afterWrite: false);
 
   @override
   Future<void> refreshAfterWrite() => _refresh(afterWrite: true);
 
-  Future<void> _refresh({required bool afterWrite}) async {
+  Future<SyncOutcome> _refresh({required bool afterWrite}) async {
     await _ensureRestored();
     final full = !_canRunIncrementally;
     return await _join(
@@ -182,10 +186,7 @@ final class DefaultSyncEngine implements SyncEngine {
   @override
   Future<void> fullResync() async {
     await _ensureRestored();
-    return await _join(
-      () => _leased(() => _runFull(resume: false)),
-      full: true,
-    );
+    await _join(() => _leased(() => _runFull(resume: false)), full: true);
   }
 
   @override
@@ -204,15 +205,16 @@ final class DefaultSyncEngine implements SyncEngine {
     return headless || _now().toUtc().difference(lastFull) < fullResyncInterval;
   }
 
-  Future<void> _leased(Future<void> Function() run) async {
+  Future<SyncOutcome> _leased(Future<SyncOutcome> Function() run) async {
     try {
-      if (!await _acquireLease()) return;
+      if (!await _acquireLease()) return SyncOutcome.skipped;
     } on _Disposed {
-      return;
+      return SyncOutcome.skipped;
     }
     try {
-      await run();
+      return await run();
     } finally {
+      _runId = null;
       await _releaseLease();
     }
   }
@@ -252,7 +254,7 @@ final class DefaultSyncEngine implements SyncEngine {
     try {
       await _db.transaction(() async {
         final state = await _db.syncStateDao.readAll();
-        if (_SyncLease.parse(state[SyncStateKeys.syncLease])?.owner !=
+        if (SyncLease.parse(state[SyncStateKeys.syncLease])?.owner !=
             _leaseOwner) {
           return;
         }
@@ -267,7 +269,7 @@ final class DefaultSyncEngine implements SyncEngine {
   /// A lease further ahead than one [leaseDuration] was written by a clock
   /// that has gone back since, and counts as run out.
   bool _heldElsewhere(Map<String, String> state) {
-    final lease = _SyncLease.parse(state[SyncStateKeys.syncLease]);
+    final lease = SyncLease.parse(state[SyncStateKeys.syncLease]);
     if (lease == null || lease.owner == _leaseOwner) return false;
     final now = _now().toUtc();
     return lease.until.isAfter(now) &&
@@ -275,9 +277,10 @@ final class DefaultSyncEngine implements SyncEngine {
   }
 
   Map<String, String> _leaseState() => {
-    SyncStateKeys.syncLease: _SyncLease(
+    SyncStateKeys.syncLease: SyncLease(
       owner: _leaseOwner,
       until: _now().toUtc().add(leaseDuration),
+      run: _runId,
     ).encode(),
   };
 
@@ -293,8 +296,8 @@ final class DefaultSyncEngine implements SyncEngine {
   /// resolve without the full pull, so it waits for that run instead,
   /// whatever its outcome. [afterWrite] joins only a run that has not
   /// started yet.
-  Future<void> _join(
-    Future<void> Function() start, {
+  Future<SyncOutcome> _join(
+    Future<SyncOutcome> Function() start, {
     required bool full,
     bool afterWrite = false,
   }) {
@@ -303,7 +306,7 @@ final class DefaultSyncEngine implements SyncEngine {
       return running;
     }
     final previous = _current;
-    late final Future<void> run;
+    late final Future<SyncOutcome> run;
     run = (previous ?? Future<void>.value())
         .then<void>((_) {}, onError: (Object _) {})
         .then((_) {
@@ -375,8 +378,8 @@ final class DefaultSyncEngine implements SyncEngine {
   static DateTime? _stored(Map<String, String> state, String key) =>
       DateTime.tryParse(state[key] ?? '')?.toUtc();
 
-  Future<void> _runIncremental() async {
-    final runId = _newRunId();
+  Future<SyncOutcome> _runIncremental() async {
+    final runId = _runId = _newRunId();
     final run = IncrementalRun(
       db: _db,
       client: _client,
@@ -392,7 +395,7 @@ final class DefaultSyncEngine implements SyncEngine {
       newestUpdated: _newestUpdatedTracker(),
     );
     _log.info('Starting incremental sync run $runId from ${_watermark!}');
-    await _guarded(runId, () => run.phase.name, () async {
+    return await _guarded(runId, () => run.phase.name, () async {
       if (_currentUser != null) {
         _emit(
           const SyncRunning(phase: SyncPhase.account, done: 0, initial: false),
@@ -418,15 +421,16 @@ final class DefaultSyncEngine implements SyncEngine {
     });
   }
 
-  Future<void> _runFull({required bool resume}) async {
+  Future<SyncOutcome> _runFull({required bool resume}) async {
     var checkpoint =
         (resume ? _checkpoint : null) ??
         SyncCheckpoint(runId: _newRunId(), phase: SyncPhase.account);
+    final runId = _runId = checkpoint.runId;
     _log.info(
       '${resume && _checkpoint != null ? 'Resuming' : 'Starting'} '
-      'sync run ${checkpoint.runId} at ${checkpoint.phase.name}',
+      'sync run $runId at ${checkpoint.phase.name}',
     );
-    await _guarded(checkpoint.runId, () => checkpoint.phase.name, () async {
+    return await _guarded(runId, () => checkpoint.phase.name, () async {
       await _save(checkpoint);
       if (checkpoint.phase == SyncPhase.account) {
         checkpoint = await _syncAccount(checkpoint);
@@ -447,22 +451,23 @@ final class DefaultSyncEngine implements SyncEngine {
     });
   }
 
-  Future<void> _guarded(
+  Future<SyncOutcome> _guarded(
     String runId,
     String Function() phaseName,
     Future<void> Function() body,
   ) async {
     try {
       await body();
+      return SyncOutcome.synced;
     } on _Disposed {
-      return;
+      return SyncOutcome.skipped;
     } on _LeaseLost {
       _log.info('Sync run $runId stopped: another run took over');
       _emit(switch (_lastSyncedAt) {
         final at? => SyncIdle(lastSyncedAt: at),
         null => const SyncNeverRun(),
       });
-      return;
+      return SyncOutcome.skipped;
     } on VikunjaFailure catch (failure) {
       _fail(failure, runId, phaseName());
       rethrow;
@@ -864,30 +869,4 @@ final class _Disposed implements Exception {
 /// Ends a run quietly whose lease another run took.
 final class _LeaseLost implements Exception {
   const new();
-}
-
-final class _SyncLease {
-  const new({required this.owner, required this.until});
-
-  final String owner;
-  final DateTime until;
-
-  static _SyncLease? parse(String? raw) {
-    if (raw == null) return null;
-    try {
-      if (jsonDecode(raw) case {
-        'owner': final String owner,
-        'until': final String until,
-      }) {
-        final at = DateTime.tryParse(until);
-        if (at != null) return _SyncLease(owner: owner, until: at.toUtc());
-      }
-    } on FormatException {
-      // Falls through: an unreadable lease holds nothing.
-    }
-    return null;
-  }
-
-  String encode() =>
-      jsonEncode({'owner': owner, 'until': until.toIso8601String()});
 }

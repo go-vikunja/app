@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
+import 'package:vikunja_mobile/core/storage/process_lock.dart';
 
 final _log = Logger('AccountRegistry');
 
@@ -92,15 +93,21 @@ AccountRegistryState _ordered({
 
 /// Accounts and the active account id, without secrets. Storage is the
 /// source of truth (other isolates may write it), so every operation reads
-/// it again; writes within this isolate run one at a time.
+/// it again; writes run one at a time across the isolates of the process,
+/// so that none writes back what another removed meanwhile.
 ///
 /// Entries this version cannot read are left out of the state but written
 /// back unchanged and in their place, so a write never erases an account
 /// (whose tokens are still stored) just because a field changed shape.
+///
+/// Beside the accounts it keeps those signed out whose local data is still
+/// to delete ([accountsToDelete]): [remove] lists the account in the same
+/// write that drops it, so a crash before the wipe leaves it listed.
 final class AccountRegistry {
-  new(this._store);
+  new(this._store, {ProcessLock? lock}) : _lock = lock ?? ProcessLock(lockName);
 
   static const storageKey = 'auth.account_registry';
+  static const lockName = 'vikunja.account-registry';
 
   /// Where a registry that could not be read at all is copied before the
   /// first write replaces it.
@@ -108,6 +115,7 @@ final class AccountRegistry {
   static const _schemaVersion = 1;
 
   final PreferencesStore _store;
+  final ProcessLock _lock;
   final _changes = StreamController<AccountRegistryState>.broadcast();
   AccountRegistryState? _announced;
   Future<void> _queue = Future.value();
@@ -123,6 +131,8 @@ final class AccountRegistry {
   Future<RegisteredAccount?> find(String accountId) async =>
       (await load()).find(accountId);
 
+  /// A sign-in of an account still listed in [accountsToDelete] takes it
+  /// off the list: what is stored from now on is the new session's.
   Future<AccountRegistryState> upsert(
     RegisteredAccount entry, {
     bool activate = false,
@@ -138,10 +148,12 @@ final class AccountRegistry {
           : state.activeAccountId,
       recentAccountIds: state.recentAccountIds,
     ),
+    toDelete: _without(entry.id),
   );
 
   /// Removing the active account activates the most recently active one of
-  /// the rest.
+  /// the rest. The account is listed in [accountsToDelete] until
+  /// [dataDeleted].
   Future<AccountRegistryState> remove(String accountId) => _update((state) {
     final rest = _ordered(
       accounts: [
@@ -159,7 +171,27 @@ final class AccountRegistry {
       activeAccountId: rest.recentAccountIds.firstOrNull,
       recentAccountIds: rest.recentAccountIds,
     );
+  }, toDelete: (ids) => [..._without(accountId)(ids), accountId]);
+
+  /// Accounts signed out whose local data has not been deleted yet, the
+  /// oldest sign-out first; never a registered one.
+  Future<List<String>> accountsToDelete() => _serialized(() async {
+    final stored = await _read();
+    return [
+      for (final id in stored.toDelete)
+        if (stored.state.find(id) == null) id,
+    ];
   });
+
+  /// The local data of [accountId] is gone: it leaves [accountsToDelete].
+  Future<void> dataDeleted(String accountId) =>
+      _update((_) => null, toDelete: _without(accountId));
+
+  static List<String> Function(List<String> ids) _without(String accountId) =>
+      (ids) => [
+        for (final id in ids)
+          if (id != accountId) id,
+      ];
 
   Future<AccountRegistryState> setActive(String accountId) => _update(
     (state) => state.find(accountId) == null
@@ -303,20 +335,38 @@ final class AccountRegistry {
 
   Future<void> dispose() => _changes.close();
 
-  /// A change that returns null leaves storage as it is, and announces the
-  /// stored state only when [announceUnchanged] says so.
+  /// A change that returns null leaves the accounts as they are, and
+  /// announces the stored state only when [announceUnchanged] says so;
+  /// storage is written only when the accounts or [toDelete] change.
   Future<AccountRegistryState> _update(
     AccountRegistryState? Function(AccountRegistryState state) change, {
     bool Function(AccountRegistryState stored)? announceUnchanged,
-  }) => _serialized(() async {
-    final stored = await _read();
-    final next = change(stored.state);
-    if (next == null) {
-      if (announceUnchanged?.call(stored.state) ?? false) {
-        _announce(stored.state);
+    List<String> Function(List<String> stored)? toDelete,
+  }) => _serialized(
+    () => _lock.run(() async {
+      final stored = await _read();
+      final next = change(stored.state);
+      final deleting = toDelete?.call(stored.toDelete) ?? stored.toDelete;
+      if (next == null) {
+        if (!listEquals(deleting, stored.toDelete)) {
+          await _write(stored, stored.state, deleting);
+        }
+        if (announceUnchanged?.call(stored.state) ?? false) {
+          _announce(stored.state);
+        }
+        return stored.state;
       }
-      return stored.state;
-    }
+      await _write(stored, next, deleting);
+      _announce(next);
+      return next;
+    }),
+  );
+
+  Future<void> _write(
+    _StoredRegistry stored,
+    AccountRegistryState next,
+    List<String> toDelete,
+  ) async {
     if (stored.unreadableRegistry case final raw?) {
       await _store.setString(unreadableStorageKey, raw);
     }
@@ -340,10 +390,9 @@ final class AccountRegistry {
           if (keptIds.contains(id)) (index, id),
       ],
     );
+    if (toDelete.isNotEmpty) json[_toDeleteKey] = toDelete;
     await _store.setString(storageKey, jsonEncode(json));
-    _announce(next);
-    return next;
-  });
+  }
 
   void _announce(AccountRegistryState state) {
     _announced = state;
@@ -375,10 +424,12 @@ final class _StoredRegistry {
     this.state = const AccountRegistryState(),
     this.unreadableEntries = const [],
     this.storedRecentIds = const [],
+    this.toDelete = const [],
     this.unreadableRegistry,
   });
 
   final AccountRegistryState state;
+  final List<String> toDelete;
 
   /// With their index in the stored list, where a write puts them back.
   final List<(int, Map<String, Object?>)> unreadableEntries;
@@ -397,6 +448,8 @@ List<Object?> _insertKept(List<Object?> written, List<(int, Object?)> kept) {
   }
   return result;
 }
+
+const _toDeleteKey = 'accounts_to_delete';
 
 @visibleForTesting
 Map<String, Object?> encodeRegistry(AccountRegistryState state) => {
@@ -460,6 +513,13 @@ _StoredRegistry _decodeRegistry(Object? json) {
     ),
     unreadableEntries: unreadable,
     storedRecentIds: storedRecent,
+    toDelete: switch (json[_toDeleteKey]) {
+      final List<Object?> ids => [
+        for (final id in ids)
+          if (id is String) id,
+      ],
+      _ => const [],
+    },
   );
 }
 

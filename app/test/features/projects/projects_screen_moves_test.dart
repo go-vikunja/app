@@ -368,6 +368,60 @@ void main() {
       expect(tester.takeAnnouncements(), isEmpty);
     });
 
+    testWidgets('by the stored permission: a read-only project is not '
+        'lifted; one the user may write moves among its siblings, but '
+        'dropped into another project it is refused as only admins may, '
+        'without a request', (tester) async {
+      final haptics = recordHaptics(tester);
+      data.projects.all = [
+        for (final project in tree())
+          switch (project.id) {
+            2 => project.copyWith(maxPermission: Permission.read),
+            7 => project.copyWith(maxPermission: Permission.write),
+            _ => project,
+          },
+      ];
+      await pumpProjects(tester);
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(rowOf('Home')),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byType(LiftedRows), findsNothing);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(haptics, ['HapticFeedbackType.heavyImpact']);
+
+      haptics.clear();
+      await dragProject(tester, 'Garden', tester.getCenter(rowOf('Work')));
+      expect(data.projects.moves, isEmpty);
+      expect(haptics, contains('HapticFeedbackType.heavyImpact'));
+      expect(find.text(en.projectMoveAdminOnly), findsOneWidget);
+
+      await dragProject(tester, 'Garden', nearTop(tester, 'Work'));
+      expect(data.projects.moves, [
+        (projectId: 7, position: 150.0, parentProjectId: 0),
+      ]);
+    });
+
+    testWidgets('a project the user may only read takes none', (tester) async {
+      final haptics = recordHaptics(tester);
+      data.projects.all = [
+        for (final project in tree())
+          if (project.id == 1)
+            project.copyWith(maxPermission: Permission.read)
+          else
+            project,
+      ];
+      await pumpProjects(tester);
+
+      await dragProject(tester, 'Garden', tester.getCenter(rowOf('Work')));
+
+      expect(data.projects.moves, isEmpty);
+      expect(haptics, contains('HapticFeedbackType.heavyImpact'));
+      expect(find.text(en.projectMoveAdminOnly), findsNothing);
+    });
+
     testWidgets('a place whose position would fall below 0.1 is not offered', (
       tester,
     ) async {
@@ -597,6 +651,25 @@ void main() {
 
       expect(actionsOf(tester, 'Old'), isEmpty);
       expect(actionsOf(tester, 'Garden'), unorderedEquals([en.moveUp]));
+    });
+
+    testWidgets('by the stored permission: a read-only project offers none, '
+        'one the user may write only its place among its siblings', (
+      tester,
+    ) async {
+      data.projects.all = [
+        for (final project in tree())
+          switch (project.id) {
+            2 => project.copyWith(maxPermission: Permission.read),
+            3 || 7 => project.copyWith(maxPermission: Permission.write),
+            _ => project,
+          },
+      ];
+      await pumpProjects(tester);
+
+      expect(actionsOf(tester, 'Home'), isEmpty);
+      expect(actionsOf(tester, 'Garden'), unorderedEquals([en.moveUp]));
+      expect(actionsOf(tester, 'Reports'), unorderedEquals([en.moveUp]));
     });
 
     testWidgets('are in German', (tester) async {

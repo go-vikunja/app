@@ -35,11 +35,13 @@ abstract interface class TeamRepository {
   /// (`DomainError` code 6010).
   Future<void> removeMember(int teamId, String username);
 
-  /// Makes a member admin or an admin a plain member, and returns whether
-  /// they are admin now. Never the user's own (an `ArgumentError`): the
-  /// server would let the only admin demote themselves. One who is not in
-  /// the team is a [TeamMemberMissing].
-  Future<bool> toggleAdmin(int teamId, String username);
+  /// Makes a member admin ([admin]) or a plain member, and returns whether
+  /// they are admin now. The team is read again first, because the server
+  /// only toggles: a member another admin changed meanwhile is left as they
+  /// are. Never the user's own (an `ArgumentError`): the server would let
+  /// the only admin demote themselves. One who is not in the team is a
+  /// [TeamMemberMissing].
+  Future<bool> setAdmin(int teamId, String username, {required bool admin});
 
   /// Takes the user out of the team, read again first: refused with an
   /// `ArgumentError` unless `TeamGuards.leave` allows it, so that the only

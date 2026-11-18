@@ -141,10 +141,11 @@ void main() {
       });
     });
 
+    /// Nothing is left from an earlier pick.
     void answerPicks(Object? Function(MethodCall call) answer) {
       messenger.setMockMethodCallHandler(
         _imagePicker,
-        (call) async => answer(call),
+        (call) async => call.method == 'retrieve' ? null : answer(call),
       );
       addTearDown(() => messenger.setMockMethodCallHandler(_imagePicker, null));
     }
@@ -400,20 +401,26 @@ void main() {
     late AppExcursions excursions;
     late List<String> calls;
 
-    /// Never answers a pick; [lost] answers the n-th look into the lost
-    /// picks.
+    /// Never answers a pick. image_picker's cache holds [leftover], an
+    /// earlier pick's, until a look takes it out; after that [lost] answers
+    /// the n-th look of the pick into the lost picks.
     PluginAttachmentPicker setUpPicker(
       WidgetTester tester, {
       Map<String, Object?>? Function(int look)? lost,
+      Map<String, Object?>? leftover,
     }) {
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       excursions = AppExcursions(now: () => DateTime.utc(2026, 10, 20, 14));
       addTearDown(excursions.dispose);
       calls = [];
       var looks = 0;
+      var cache = leftover;
       messenger.setMockMethodCallHandler(_imagePicker, (call) {
         calls.add(call.method);
         if (call.method != 'retrieve') return Completer<Object?>().future;
+        final cached = cache;
+        cache = null;
+        if (cached != null || calls.length == 1) return Future.value(cached);
         return Future.value(lost?.call(++looks));
       });
       addTearDown(() => messenger.setMockMethodCallHandler(_imagePicker, null));
@@ -429,7 +436,9 @@ void main() {
       'pathList': paths,
     };
 
-    int retrieves() => calls.where((method) => method == 'retrieve').length;
+    /// The looks after the pick started.
+    int retrieves() =>
+        calls.skip(1).where((method) => method == 'retrieve').length;
 
     testWidgets('recovers a camera shot, named and typed like any other', (
       tester,
@@ -441,7 +450,7 @@ void main() {
       PickedFile? photo;
       unawaited(picker.takePhoto().then((value) => photo = value));
       await tester.pump();
-      expect(calls, ['pickImage']);
+      expect(calls, ['retrieve', 'pickImage']);
 
       excursions.abandon();
       await tester.pump(PluginAttachmentPicker.lostPickPoll);
@@ -474,6 +483,50 @@ void main() {
         ('a.jpg', 'image/jpeg'),
         ('b.mp4', 'video/mp4'),
       ]);
+    });
+
+    testWidgets('takes out what an earlier pick left first, so that pick '
+        'is never taken for this one', (tester) async {
+      var arrived = false;
+      final picker = setUpPicker(
+        tester,
+        leftover: lostImages(['/data/cache/earlier.jpg']),
+        lost: (_) => arrived ? lostImages(['/data/cache/this.jpg']) : null,
+      );
+      List<PickedFile>? files;
+      unawaited(picker.pickPhotos().then((value) => files = value));
+      await tester.pump();
+      expect(calls, ['retrieve', 'pickMedia']);
+
+      excursions.abandon();
+      await tester.pump();
+      expect(files, isNull);
+      arrived = true;
+      await tester.pump(PluginAttachmentPicker.lostPickPoll);
+
+      expect(files?.map((file) => file.path), ['/data/cache/this.jpg']);
+    });
+
+    testWidgets('a pick goes on when the earlier one cannot be looked for', (
+      tester,
+    ) async {
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final methods = <String>[];
+      messenger.setMockMethodCallHandler(_imagePicker, (call) async {
+        methods.add(call.method);
+        if (call.method == 'retrieve') {
+          throw PlatformException(code: 'no_activity');
+        }
+        return '/data/cache/shot.jpg';
+      });
+      addTearDown(() => messenger.setMockMethodCallHandler(_imagePicker, null));
+
+      final photo = await PluginAttachmentPicker(
+        excursions: AppExcursions(now: () => DateTime.utc(2026, 10, 20, 14)),
+      ).takePhoto();
+
+      expect(methods, ['retrieve', 'pickImage']);
+      expect(photo?.path, '/data/cache/shot.jpg');
     });
 
     testWidgets('stops looking after the first lost pick', (tester) async {

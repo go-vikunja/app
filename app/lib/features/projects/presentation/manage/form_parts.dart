@@ -14,24 +14,49 @@ void showFailureAfterClose(ScaffoldMessengerState messenger, String text) =>
       ..showSnackBar(SnackBar(content: Text(text)));
 
 class ParentProjectTile extends StatelessWidget {
-  const new({required this.label, required this.onTap, super.key});
+  const new({
+    required this.label,
+    required this.onTap,
+    this.lockedNote,
+    super.key,
+  });
 
   final String label;
 
-  /// Null while the form is being saved.
+  /// Null while the form is being saved; not called with [lockedNote].
   final VoidCallback? onTap;
+
+  /// Why the parent cannot be changed, under it.
+  final String? lockedNote;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final note = lockedNote;
     return ListTile(
-      enabled: onTap != null,
+      enabled: onTap != null && note == null,
       leading: Icon(Icons.folder_outlined, color: colors.onSurfaceVariant),
       title: Text(l10n.projectParentLabel),
-      subtitle: Text(label),
-      trailing: const Icon(Icons.arrow_drop_down),
-      onTap: onTap,
+      subtitle: note == null
+          ? Text(label)
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label),
+                const SizedBox(height: 2),
+                // A disabled tile would draw it too faint to read.
+                Text(
+                  note,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+      trailing: note == null ? const Icon(Icons.arrow_drop_down) : null,
+      onTap: note == null ? onTap : null,
     );
   }
 }

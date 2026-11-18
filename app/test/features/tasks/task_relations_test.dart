@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -462,6 +464,27 @@ void main() {
       expect(rowOf('Renew passport'), findsNothing);
       expect(inSheet(find.text(en.taskRelationRelated)), findsNothing);
       expect(data.tasks.find(4)!.relatedTasks, isEmpty);
+    });
+
+    testWidgets('a removal the device cannot store keeps the relation and '
+        'says so', (tester) async {
+      await openDetail(tester, 'Plan the trip');
+      data.tasks.beforeWrite = () async =>
+          throw const FileSystemException('No space left on device');
+
+      await tapVisible(
+        tester,
+        find.descendant(
+          of: rowOf('Renew passport'),
+          matching: find.byTooltip(en.taskRelationRemove),
+        ),
+      );
+      await tester.tap(find.text(en.taskRelationRemoveConfirm));
+      await tester.pumpAndSettle();
+
+      expect(inSheet(find.text(en.localChangeFailed)), findsOneWidget);
+      expect(rowOf('Renew passport'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('cancelling the removal keeps the relation', (tester) async {

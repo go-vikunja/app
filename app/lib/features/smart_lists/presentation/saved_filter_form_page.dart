@@ -6,9 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/saved_filter_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
@@ -24,6 +26,9 @@ import 'package:vikunja_mobile/features/projects/presentation/manage/form_parts.
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
 import 'package:vikunja_mobile/features/smart_lists/application/smart_list_providers.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_failure.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_html.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_link_actions.dart';
 
 final _log = Logger('SavedFilterForm');
 
@@ -49,7 +54,9 @@ const _newFilter = ViewFilter(
 /// description, the filter with the builder, whether tasks without a value
 /// count, and the favourite. Save waits for the server and stays open with
 /// the reason when it refuses; a new one opens once created. The stored
-/// search and sort, which the form does not show, stay as they are.
+/// search and sort, which the form does not show, stay as they are. A new
+/// one's description is plain text; an existing one's is the web's rich
+/// text, edited in the description editor, which saves it on its own.
 class SavedFilterFormPage extends ConsumerStatefulWidget {
   const new({this.pseudoProjectId, super.key});
 
@@ -116,15 +123,27 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
     });
   }
 
-  /// The web edits the description as rich text; the form shows its text.
   static String _plainDescription(_Start start) =>
       htmlToPlainText(start.description);
+
+  /// An existing saved filter's description as stored now, which the
+  /// description editor may have changed since the form opened.
+  String _storedDescription(_Start start) {
+    final pseudoProjectId = widget.pseudoProjectId;
+    if (pseudoProjectId == null) return start.description;
+    final listed = ref
+        .read(savedFiltersProvider)
+        .value
+        ?.where((filter) => filter.projectId == pseudoProjectId)
+        .firstOrNull;
+    return listed?.description ?? start.description;
+  }
 
   bool get _dirty {
     final start = _start;
     if (start == null) return false;
     return _title.text != start.title ||
-        _description.text != _plainDescription(start) ||
+        (_isNew && _description.text != _plainDescription(start)) ||
         _filter.apiText != start.filter.filter.trim() ||
         _includeNulls != start.filter.includeNulls ||
         _favourite != start.isFavorite;
@@ -142,9 +161,8 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
 
   SavedFilterDraft _draft(_Start start) => SavedFilterDraft(
     title: _title.text.trim(),
-    // Untouched, the stored rich text goes back as it was.
-    description: _description.text == _plainDescription(start)
-        ? start.description
+    description: !_isNew || _description.text == _plainDescription(start)
+        ? _storedDescription(start)
         : plainTextToHtml(_description.text.trim()),
     filter: ViewFilter(
       filter: _filter.apiText.trim(),
@@ -213,6 +231,37 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
         ..showSnackBar(SnackBar(content: Text(text)));
     }
   }
+
+  Future<void> _editDescription(int pseudoProjectId) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = context.l10n;
+    final saved = await context.pushPage<bool>(
+      AppRoutes.savedFilterDescription(pseudoProjectId),
+    );
+    if (saved ?? false) {
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l10n.descriptionEditorSaved)));
+    }
+  }
+
+  void _openLink(String href) => unawaited(
+    openRichTextLink(
+      ref,
+      href,
+      openTask: _openTask,
+      showMessage: (text) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(text(context.l10n))));
+      },
+    ),
+  );
+
+  void _openTask(int taskId) => unawaited(
+    ref.read(taskOpenerProvider).openInActiveAccount(TaskById(taskId)),
+  );
 
   Future<void> _leaveIfConfirmed() async {
     final router = GoRouter.of(context);
@@ -387,21 +436,31 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _description,
-              enabled: enabled,
-              minLines: 2,
-              maxLines: null,
-              keyboardType: TextInputType.multiline,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                labelText: l10n.savedFilterDescriptionLabel,
+          if (widget.pseudoProjectId case final pseudoProjectId?)
+            _RichDescription(
+              html: _storedDescription(start),
+              onEdit: enabled
+                  ? () => unawaited(_editDescription(pseudoProjectId))
+                  : null,
+              onLink: _openLink,
+              onTaskLink: _openTask,
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _description,
+                enabled: enabled,
+                minLines: 2,
+                maxLines: null,
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: l10n.savedFilterDescriptionLabel,
+                ),
+                onChanged: (_) => setState(() {}),
               ),
-              onChanged: (_) => setState(() {}),
             ),
-          ),
           const SizedBox(height: 16),
           FilterField(
             initialFilter: start.filter.filter,
@@ -435,6 +494,62 @@ class _SavedFilterFormPageState extends ConsumerState<SavedFilterFormPage> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// An existing saved filter's description as the web wrote it, and the way
+/// into the description editor.
+class _RichDescription extends StatelessWidget {
+  const new({
+    required this.html,
+    required this.onEdit,
+    required this.onLink,
+    required this.onTaskLink,
+  });
+
+  final String html;
+
+  /// Null while the form is being saved.
+  final VoidCallback? onEdit;
+  final ValueChanged<String> onLink;
+  final ValueChanged<int> onTaskLink;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final hasDescription = htmlToPlainText(html).trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        FormSectionTitle(l10n.savedFilterDescriptionLabel),
+        if (hasDescription)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SelectionArea(
+              child: RichHtml(
+                html: html,
+                onLink: onLink,
+                onTaskLink: onTaskLink,
+              ),
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 4, 16, 0),
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: onEdit,
+              icon: Icon(hasDescription ? Icons.edit_outlined : Icons.add),
+              label: Text(
+                hasDescription
+                    ? l10n.savedFilterEditDescription
+                    : l10n.savedFilterAddDescription,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

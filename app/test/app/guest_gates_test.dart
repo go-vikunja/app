@@ -58,6 +58,7 @@ const closedToGuests = <String, String>{
   '/home/trash': 'the server shows a guest no bin',
   '/home/filters/new': _needsUser,
   '/home/filters/:id/edit': _needsUser,
+  '/home/filters/:id/description': _needsUser,
   '/home/account-settings': _needsUser,
   '/home/account-settings/avatar': _needsUser,
   '/home/account-settings/sessions': _needsUser,

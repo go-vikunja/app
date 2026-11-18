@@ -149,6 +149,16 @@ final class NotificationScheduler {
   /// scheduler was disposed first; its successor takes it over.
   bool get rearmPending => _rearmPending;
 
+  /// Completes once no run is under way; a run's error is left to its
+  /// caller. After [dispose] a run schedules nothing more.
+  Future<void> get idle async {
+    try {
+      await _running;
+    } on Object {
+      // Reported by reconcile.
+    }
+  }
+
   /// [reconcile] for the triggers, which have nobody to report to: an error
   /// is logged and the next trigger starts afresh.
   void reconcileQuietly({bool force = false, bool rearm = false}) => unawaited(
@@ -302,18 +312,18 @@ final class NotificationScheduler {
 
   /// Cancels every notification the account holds and empties the table.
   /// Works after [dispose] and after the database has closed, from the ids
-  /// of the last run; sign-out needs that, because the registry change
-  /// disposes the providers before the wipe runs.
+  /// of the last run and those a run scheduled since; sign-out needs that,
+  /// because the registry change disposes the providers before the wipe
+  /// runs.
   Future<void> cancelAll() async {
-    Set<int> osIds;
+    var osIds = _heldOsIds;
     try {
-      osIds = await _db.scheduledNotificationsDao.osIds();
+      osIds = {...osIds, ...await _db.scheduledNotificationsDao.osIds()};
     } on Object catch (error) {
       _log.fine(
         'Cancelling the notifications of account $accountId from memory: '
         '${error.runtimeType}',
       );
-      osIds = _heldOsIds;
     }
     for (final osId in osIds) {
       await _gateway.cancel(osId);
@@ -448,7 +458,11 @@ final class NotificationScheduler {
     for (final osId in cancels) {
       await _gateway.cancel(osId);
     }
+    // Known before they reach the OS, so that a sign-out meanwhile cancels
+    // them too.
+    _heldOsIds = {..._heldOsIds, ...osIds.values};
     for (final entry in schedule) {
+      if (_disposed) return;
       await _gateway.schedule(
         ScheduledNotification(
           osId: osIds[entry.key]!,

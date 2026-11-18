@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -192,6 +194,74 @@ void main() {
     expect(find.text(en.taskMarkedDone), findsNothing);
   });
 
+  group('a change the device cannot store', () {
+    setUp(() {
+      data.tasks.beforeWrite = () async =>
+          throw const FileSystemException('No space left on device');
+    });
+
+    testWidgets('Mark as done says so in the sheet, without Marked as '
+        'done', (tester) async {
+      await openDetail(tester, 'Bare task');
+
+      await tester.tap(
+        inSheet(find.widgetWithText(FilledButton, en.taskDetailMarkDone)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.writes, ['setDone 2 true']);
+      expect(inSheet(find.text(en.localChangeFailed)), findsOneWidget);
+      expect(find.text(en.taskMarkedDone), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Undo says so in the sheet and leaves the task done', (
+      tester,
+    ) async {
+      final failure = data.tasks.beforeWrite;
+      data.tasks.beforeWrite = null;
+      await openDetail(tester, 'Bare task');
+      await tester.tap(
+        inSheet(find.widgetWithText(FilledButton, en.taskDetailMarkDone)),
+      );
+      await tester.pumpAndSettle();
+      data.tasks.beforeWrite = failure;
+
+      await tester.tap(inSheet(find.text(en.undo)));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.writes, ['setDone 2 true', 'undoDone 2']);
+      expect(data.tasks.find(2)!.done, isTrue);
+      expect(inSheet(find.text(en.localChangeFailed)), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('Delete keeps the sheet open and says so', (tester) async {
+      await openDetail(tester, 'Bare task');
+
+      await openMenu(tester, en.moreActions);
+      await tester.tap(find.text(en.taskDelete));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.taskDeleteDialogConfirm));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TaskDetailSheet), findsOneWidget);
+      expect(inSheet(find.text(en.localChangeFailed)), findsOneWidget);
+      expect(find.text(en.taskDeleted), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the star says so', (tester) async {
+      await openDetail(tester, 'Bare task');
+
+      await tester.tap(inSheet(find.byTooltip(en.taskAddFavourite)));
+      await tester.pumpAndSettle();
+
+      expect(inSheet(find.text(en.localChangeFailed)), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  });
+
   testWidgets('the star toggles the favourite from the sheet', (tester) async {
     await openDetail(tester, 'Bare task');
 
@@ -240,6 +310,53 @@ void main() {
     expect(find.byType(TaskDetailSheet), findsOneWidget);
     expect(data.tasks.writes, isEmpty);
     expect(find.text(en.taskDeleted), findsNothing);
+  });
+
+  testWidgets('a task a sync removed while the sheet is open offers no '
+      'change: Done, Edit, the star, relations and Delete are off', (
+    tester,
+  ) async {
+    await openDetail(tester, 'Quarterly report');
+    data.tasks.all = [sampleTask(id: 2, title: 'Bare task')];
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TaskDetailSheet), findsOneWidget);
+    final done = inSheet(
+      find.widgetWithText(FilledButton, en.taskDetailMarkDone),
+    );
+    expect(tester.widget<FilledButton>(done).onPressed, isNull);
+    IconButton button(String tooltip) => tester.widget<IconButton>(
+      find.ancestor(
+        of: inSheet(find.byTooltip(tooltip)),
+        matching: find.byType(IconButton),
+      ),
+    );
+    expect(button(en.taskEdit).onPressed, isNull);
+    expect(button(en.taskRemoveFavourite).onPressed, isNull);
+    expect(inSheet(find.text(en.taskDetailAddRelation)), findsNothing);
+    if (inSheet(find.byTooltip(en.moreActions)).evaluate().isNotEmpty) {
+      await openMenu(tester, en.moreActions);
+    }
+    expect(find.text(en.taskDelete), findsNothing);
+    expect(find.text(en.taskDuplicate), findsNothing);
+    expect(data.tasks.writes, isEmpty);
+  });
+
+  testWidgets('a delete confirmed after the task went says so, keeps the '
+      'sheet and claims no delete', (tester) async {
+    await openDetail(tester, 'Bare task');
+    await openMenu(tester, en.moreActions);
+    await tester.tap(find.text(en.taskDelete));
+    await tester.pumpAndSettle();
+    data.tasks.deletion = TaskDeletion.none;
+
+    await tester.tap(find.text(en.taskDeleteDialogConfirm));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TaskDetailSheet), findsOneWidget);
+    expect(inSheet(find.text(en.taskDeleteGone)), findsOneWidget);
+    expect(find.text(en.taskDeleted), findsNothing);
+    expect(find.text(en.undo), findsNothing);
   });
 
   testWidgets('the delete dialog marks the destructive action on Android', (

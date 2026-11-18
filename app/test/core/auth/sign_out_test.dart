@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
@@ -16,6 +17,7 @@ void main() {
   late AuthFakes fakes;
   late SessionManagers sessions;
   late LinkShareSessions linkShares;
+  late AccountDeletions deletions;
   late SignOut signOut;
   late List<String> wiped;
   late Future<void> Function(String accountId) wipeAccountData;
@@ -41,6 +43,10 @@ void main() {
       markNeedsReauth: fakes.registry.markNeedsReauth,
       clock: () => now,
     );
+    deletions = AccountDeletions(
+      registry: fakes.registry,
+      wipe: (accountId) => wipeAccountData(accountId),
+    );
     signOut = SignOut(
       registry: fakes.registry,
       tokenStore: fakes.tokenStore,
@@ -49,7 +55,7 @@ void main() {
       sessions: sessions,
       linkShares: linkShares,
       accountGateway: fakes.accountGateway,
-      wipeAccountData: (accountId) => wipeAccountData(accountId),
+      deletions: deletions,
       logoutTimeout: const Duration(milliseconds: 50),
     );
   });
@@ -92,7 +98,8 @@ void main() {
     },
   );
 
-  test('a wipe that fails does not fail the sign-out', () async {
+  test('a wipe that fails does not fail the sign-out, and leaves the '
+      'account to delete for the next start', () async {
     final alice = await fakes.seedAccount(
       fullServer270(),
       tokens: issueTokens(issuedAt: now),
@@ -103,6 +110,132 @@ void main() {
 
     expect(fakes.secureStore.values, isEmpty);
     expect((await fakes.registry.load()).accounts, isEmpty);
+    expect(await fakes.registry.accountsToDelete(), [alice.id]);
+
+    wipeAccountData = (accountId) async => wiped.add(accountId);
+    expect(await deletions.finishAll(), isTrue);
+
+    expect(wiped, [alice.id]);
+    expect(await fakes.registry.accountsToDelete(), isEmpty);
+  });
+
+  test('a wiped account is no longer listed to delete', () async {
+    final alice = await fakes.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: now),
+    );
+
+    await signOut(alice.id);
+
+    expect(wiped, [alice.id]);
+    expect(await fakes.registry.accountsToDelete(), isEmpty);
+  });
+
+  group('the next start', () {
+    test('deletes the data of an account whose sign-out stopped after the '
+        'registry forgot it', () async {
+      final alice = await fakes.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now),
+      );
+      final bob = await fakes.seedAccount(
+        oauthServer230(),
+        tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
+        activate: false,
+      );
+      // The app died right after this write.
+      await fakes.registry.remove(alice.id);
+
+      expect(await deletions.finishAll(), isTrue);
+
+      expect(wiped, [alice.id]);
+      expect(await fakes.registry.accountsToDelete(), isEmpty);
+      expect((await fakes.registry.load()).accounts.map((e) => e.id), [bob.id]);
+    });
+
+    test('keeps an account listed while its wipe keeps failing, and tries '
+        'the others', () async {
+      for (final id in ['a1', 'b2']) {
+        await fakes.registry.remove(id);
+      }
+      wipeAccountData = (accountId) async {
+        if (accountId == 'a1') throw StateError('disk');
+        wiped.add(accountId);
+      };
+
+      expect(await deletions.finishAll(), isFalse);
+
+      expect(wiped, ['b2']);
+      expect(await fakes.registry.accountsToDelete(), ['a1']);
+    });
+
+    group('leaves alone an account signed in again since the start read '
+        "the list: its files and notifications are the new session's", () {
+      late RegisteredAccount alice;
+      late List<String> cancelled;
+      late Future<void> Function(String accountId) onCancel;
+
+      setUp(() async {
+        alice = await fakes.seedAccount(
+          fullServer270(),
+          tokens: issueTokens(issuedAt: now),
+        );
+        cancelled = [];
+        onCancel = (_) async {};
+        deletions = AccountDeletions(
+          registry: fakes.registry,
+          wipe: (accountId) => wipeAccountData(accountId),
+          cancelScheduled: (accountId) async {
+            cancelled.add(accountId);
+            await onCancel(accountId);
+          },
+        );
+      });
+
+      test('while its notifications were cancelled', () async {
+        await fakes.registry.remove(alice.id);
+        onCancel = (_) => fakes.registry.upsert(alice);
+
+        expect(await deletions.finishAll(), isTrue);
+
+        expect(wiped, isEmpty);
+        expect(await fakes.registry.find(alice.id), isNotNull);
+      });
+
+      test('while another account was wiped', () async {
+        await fakes.registry.remove('a1');
+        await fakes.registry.remove(alice.id);
+        wipeAccountData = (accountId) async {
+          wiped.add(accountId);
+          await fakes.registry.upsert(alice);
+        };
+
+        expect(await deletions.finishAll(), isTrue);
+
+        expect(cancelled, ['a1']);
+        expect(wiped, ['a1']);
+        expect(await fakes.registry.accountsToDelete(), isEmpty);
+      });
+    });
+
+    test('runs one wipe per account at a time', () async {
+      await fakes.registry.remove('a1');
+      final wiping = Completer<void>();
+      var wipes = 0;
+      wipeAccountData = (_) async {
+        wipes++;
+        await wiping.future;
+      };
+
+      final first = deletions.finish('a1');
+      final second = deletions.finish('a1');
+      await pumpEventQueue();
+      wiping.complete();
+
+      expect(await first, isTrue);
+      expect(await second, isTrue);
+      expect(wipes, 1);
+    });
   });
 
   test('refreshes first when the access token is about to expire', () async {

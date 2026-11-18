@@ -246,6 +246,10 @@ abstract interface class TaskRepository {
 
   Future<void> retrySyncProblem(String operationId);
 
+  /// [retrySyncProblem] for each of [operationIds] still failed, with one
+  /// drain.
+  Future<void> retrySyncProblems(Iterable<String> operationIds);
+
   /// Drops the queued change and restores the row from the server. Throws
   /// the `VikunjaFailure` of that read and changes nothing then.
   Future<void> discardSyncProblem(String operationId);

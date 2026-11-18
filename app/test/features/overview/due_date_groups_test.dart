@@ -43,6 +43,23 @@ void main() {
     );
   });
 
+  test('a task marked done here stays overdue while its Undo is offered, '
+      'though it was due earlier today', () {
+    final dueThisMorning = sampleTask(
+      id: 1,
+      title: 'this morning',
+      due: DateTime(2026, 10, 10, 9),
+    );
+
+    for (final task in [dueThisMorning, dueThisMorning.copyWith(done: true)]) {
+      expect(
+        groupTasksByDueDate([task], now).single.group,
+        DueGroup.overdue,
+        reason: 'done: ${task.done}',
+      );
+    }
+  });
+
   test('leaves out empty sections and keeps the section order', () {
     final sections = groupTasksByDueDate([
       sampleTask(id: 1, title: 'a'),

@@ -190,7 +190,7 @@ void main() {
     await tester.pump();
     await submit(tester, en.projectSave);
 
-    final original = data.projects.find(1)!.views.first;
+    final original = data.projects.byId(1)!.views.first;
     expect(data.views.drafts.single.title, 'Open');
     expect(data.views.drafts.single.filter, same(original.filter));
   });

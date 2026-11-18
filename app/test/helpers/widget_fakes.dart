@@ -176,13 +176,14 @@ final class FakeWidgetHost implements WidgetHost {
 }
 
 /// Records what the app asked of the widgets; [previews] answers
-/// [preview].
+/// [preview], which fails for the configs in [failingPreviews].
 final class FakeWidgetRefresher implements WidgetRefresher {
   final refreshed = <String>[];
   int refreshedAll = 0;
   final published = <WidgetConfig>[];
   final previewed = <WidgetConfig>[];
   final previews = <WidgetConfig, WidgetSnapshot>{};
+  final failingPreviews = <WidgetConfig>{};
 
   @override
   Future<void> refresh(String accountId) async => refreshed.add(accountId);
@@ -196,6 +197,7 @@ final class FakeWidgetRefresher implements WidgetRefresher {
   @override
   Future<WidgetSnapshot?> preview(WidgetConfig config) async {
     previewed.add(config);
+    if (failingPreviews.contains(config)) throw StateError('no preview');
     return previews[config];
   }
 }

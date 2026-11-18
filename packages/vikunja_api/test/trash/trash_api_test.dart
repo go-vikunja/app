@@ -103,7 +103,7 @@ void main() {
       expect(trashed.map((t) => t.task.id), [4, 3, 2]);
     });
 
-    test('at most 20 pages', () async {
+    test('every page the server reports, past 20', () async {
       final listed =
           (_body('v2_tasks_deleted')['items']! as List<Object?>).first!
               as Map<String, Object?>;
@@ -122,8 +122,8 @@ void main() {
 
       final trashed = await _port(dio, perPage: 1).tasks();
 
-      expect(trashed, hasLength(20));
-      expect(adapterOf(dio).requests, hasLength(20));
+      expect(trashed, hasLength(25));
+      expect(adapterOf(dio).requests, hasLength(25));
     });
 
     test('an empty trash, and one a reader sees', () async {

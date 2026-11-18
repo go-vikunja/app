@@ -1,5 +1,12 @@
 // Text comparisons as SQLite does them: `=` and `<` on bytes, `LIKE` with
 // `%`/`_` wildcards (never escaped by the server) and ASCII-only case folding.
+//
+// The server leaves them to its database, which no answer names: filters
+// send a plain `LIKE` and `=`, the `s` search an `ILIKE` on PostgreSQL. So
+// on PostgreSQL a filter's `like` minds case and the search ignores it
+// beyond ASCII; on MySQL and MariaDB a `_ci` collation ignores case (often
+// accents) in `=`, `<` and `like`. SQLite is the server's default database
+// and the one the engine was checked against.
 
 /// Only A–Z become lowercase, as SQLite's `LIKE` folds case.
 String asciiLowerCase(String text) {

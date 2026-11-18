@@ -25,6 +25,7 @@ import 'package:vikunja_mobile/features/common/presentation/list_section_header.
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
+import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/project_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -657,8 +658,15 @@ class _SectionsState extends ConsumerState<_Sections> {
             expand: drop is _Into ? drop.projectId : null,
           ),
         );
-      case (drop: _, plan: ProjectMoveRefused()):
+      case (drop: _, plan: ProjectMoveRefused(:final adminOnly)):
         unawaited(HapticFeedback.heavyImpact());
+        if (adminOnly) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(content: Text(context.l10n.projectMoveAdminOnly)),
+            );
+        }
       case _:
         break;
     }
@@ -690,7 +698,8 @@ class _SectionsState extends ConsumerState<_Sections> {
     final project = row.node.project;
     final preferences = widget.preferences;
     final archived = _moves.isArchived(project.id);
-    final liftable = !archived && _sending == null;
+    final liftable =
+        !archived && ProjectAccess.of(project).canReorder && _sending == null;
     final target = _target;
     final drop = target != null && target.plan is MoveProject
         ? target.drop
@@ -723,8 +732,8 @@ class _SectionsState extends ConsumerState<_Sections> {
         _ => null,
       },
       dropsInto: drop is _Into && drop.rowIndex == index,
-      // The server refuses to move an archived project, and a move waits
-      // for the one before.
+      // The server refuses to move an archived project or one the user may
+      // only read, and a move waits for the one before.
       child: GestureDetector(
         onLongPress: liftable
             ? null

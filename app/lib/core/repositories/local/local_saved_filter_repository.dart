@@ -39,6 +39,26 @@ final class LocalSavedFilterRepository implements SavedFilterRepository {
   }
 
   @override
+  Future<void> updateDescription(
+    int pseudoProjectId,
+    String description,
+  ) async {
+    final id = _filterId(pseudoProjectId);
+    final current = await _write.savedFilters.read(id);
+    final updated = await _write.savedFilters.update(
+      id,
+      SavedFilterDraft(
+        title: current.title,
+        description: description,
+        filter: current.filter,
+        isFavorite: current.isFavorite,
+      ),
+    );
+    await storeSavedFilterAnswer(_db, updated);
+    _settle('Updated the description of saved filter ${updated.id}');
+  }
+
+  @override
   Future<void> delete(int pseudoProjectId) async {
     final id = _filterId(pseudoProjectId);
     await _write.savedFilters.delete(id);

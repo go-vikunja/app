@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' show CertificateException, TlsException;
 
 import 'package:dio/dio.dart';
@@ -76,6 +77,31 @@ NetworkProblem _problemOf(ServerConnectionFailure failure) => switch (failure) {
 /// the same markers as [transportFailure].
 bool mentionsClientCertificateRefusal(String errorText) =>
     _clientCertificateMarkers.hasMatch(errorText.toLowerCase());
+
+/// Whether an HTTP answer is nginx's own page for a client certificate it
+/// asked for and did not get (`ssl_verify_client on`, its 496) or could not
+/// verify (its 495). nginx finishes the handshake either way and answers
+/// both with a 400, so no TLS error names them.
+bool isClientCertificateAnswer(int status, Object? body) {
+  if (status != 400) return false;
+  final text = switch (body) {
+    final String text => text,
+    final List<int> bytes => utf8.decode(
+      bytes.take(_nginxPageBytes).toList(),
+      allowMalformed: true,
+    ),
+    _ => null,
+  };
+  return text != null && _nginxClientCertificatePage.hasMatch(text);
+}
+
+// nginx's error pages are below 300 bytes.
+const _nginxPageBytes = 1024;
+
+final _nginxClientCertificatePage = RegExp(
+  '<title>400 (No required SSL certificate was sent|'
+  'The SSL certificate error)</title>',
+);
 
 /// Whether nothing answered at the address, so another port or scheme may
 /// still reach Vikunja. A rejected certificate, server or client, means a

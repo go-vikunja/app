@@ -60,8 +60,18 @@ final class OnlineTeamRepository implements TeamRepository {
   }
 
   @override
-  Future<bool> toggleAdmin(int teamId, String username) async {
+  Future<bool> setAdmin(
+    int teamId,
+    String username, {
+    required bool admin,
+  }) async {
     _refuseOwn(username);
+    final wanted = username.toLowerCase();
+    final member = (await _port.read(teamId)).members
+        .where((member) => member.user.username.toLowerCase() == wanted)
+        .firstOrNull;
+    if (member == null) throw const TeamMemberMissing();
+    if (member.admin == admin) return admin;
     return await _port.toggleAdmin(teamId, username);
   }
 

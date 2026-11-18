@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_message.dart';
+import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 
 /// How many changes still wait for the server, with a button that sends
@@ -32,12 +34,18 @@ class _PendingChangesLineState extends ConsumerState<PendingChangesLine> {
     if (repository == null) return;
     setState(() => _sending = true);
     try {
-      final blockedBy = await repository.sendPendingChanges();
-      if (blockedBy == null || !mounted) return;
+      VikunjaFailure? blockedBy;
+      await saveLocalChange(
+        context,
+        () async => blockedBy = await repository.sendPendingChanges(),
+        action: 'Send now',
+      );
+      final failure = blockedBy;
+      if (failure == null || !mounted) return;
       final l10n = context.l10n;
       final message = describeDataFailure(
         l10n,
-        blockedBy,
+        failure,
         serverRoot: widget.entry.connection.rootUri,
         platform: Theme.of(context).platform,
         stale: true,

@@ -21,28 +21,35 @@ Future<void> createLinkShare(
   BuildContext context, {
   required int projectId,
   required ValueChanged<LinkShare> onCreated,
+  required VoidCallback onListOutdated,
 }) => showPickerSheet<void>(
   context,
   builder: (context, scrollController) => LinkShareFormSheet(
     projectId: projectId,
     onCreated: onCreated,
+    onListOutdated: onListOutdated,
     scrollController: scrollController,
   ),
 );
 
 /// Create waits for the server, closes and calls [onCreated] with the new
 /// link, also when the sheet was dragged shut meanwhile; a refusal stays
-/// in the sheet.
+/// in the sheet. A failure after which the page's list is out of date
+/// closes it too and calls [onListOutdated]: an answer that did not come
+/// in time may have created the link, and the list shows whether it did
+/// before Create is tried again.
 class LinkShareFormSheet extends ConsumerStatefulWidget {
   const new({
     required this.projectId,
     required this.onCreated,
+    required this.onListOutdated,
     this.scrollController,
     super.key,
   });
 
   final int projectId;
   final ValueChanged<LinkShare> onCreated;
+  final VoidCallback onListOutdated;
   final ScrollController? scrollController;
 
   @override
@@ -88,6 +95,7 @@ class _LinkShareFormSheetState extends ConsumerState<LinkShareFormSheet> {
     final name = _name.text.trim();
     final password = _password.text;
     final onCreated = widget.onCreated;
+    final onListOutdated = widget.onListOutdated;
     final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _creating = true;
@@ -108,8 +116,11 @@ class _LinkShareFormSheetState extends ConsumerState<LinkShareFormSheet> {
       _log.warning('Creating a link share failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
       final text = shareFailureText(l10n, error, ShareChange.createLink);
-      if (!mounted) {
+      final outdated = shareListOutdatedBy(error);
+      if (!mounted || outdated) {
+        if (mounted) Navigator.of(context).pop();
         showFailureAfterClose(messenger, text);
+        if (outdated) onListOutdated();
         return;
       }
       setState(() {

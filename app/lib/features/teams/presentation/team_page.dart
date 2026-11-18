@@ -157,9 +157,10 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
       _MemberBusy(member.user.id),
       change: TeamChange.toggleAdmin,
       send: () async {
-        final admin = await repository.toggleAdmin(
+        final admin = await repository.setAdmin(
           widget.teamId,
           member.user.username,
+          admin: !member.admin,
         );
         return admin ? l10n.teamMadeAdmin(name) : l10n.teamMadeMember(name);
       },

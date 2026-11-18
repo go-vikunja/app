@@ -12,13 +12,16 @@ import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 
 /// The refresh of a list screen: one at a time, its failure a notice above
 /// the stale list or the whole screen while there is no data, and both
-/// forgotten when the repository is replaced, i.e. on an account switch. A
-/// server that cannot be reached, by a refresh or by a sync, is the shell's
-/// offline banner; only a list on a page over the shell, where the banner
-/// does not show, puts the offline notice above the saved data.
+/// forgotten when the repository is replaced, i.e. on an account switch,
+/// or when the subclass says the list it showed went away: a refresh
+/// still running then ends unheard. A server that cannot be reached, by a
+/// refresh or by a sync, is the shell's offline banner; only a list on a
+/// page over the shell, where the banner does not show, puts the offline
+/// notice above the saved data.
 mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   Object? _refreshFailure;
   bool _refreshing = false;
+  int _generation = 0;
 
   bool get refreshing => _refreshing;
 
@@ -30,12 +33,13 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
 
   /// Also resets what the subclass keeps about one account's data.
   @mustCallSuper
-  void onRepositoryReplaced() => _refreshFailure = null;
+  void onRepositoryReplaced() => clearRefreshFailure();
 
   /// Fails silently: the failure becomes the notice.
   Future<void> refresh() async {
     final load = startRefresh();
     if (load == null) return;
+    final generation = ++_generation;
     setState(() {
       _refreshing = true;
       _refreshFailure = null;
@@ -43,14 +47,23 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
     try {
       await load;
     } on Object catch (error) {
-      if (mounted) setState(() => _refreshFailure = error);
+      if (mounted && generation == _generation) {
+        setState(() => _refreshFailure = error);
+      }
     } finally {
-      if (mounted) setState(() => _refreshing = false);
+      if (mounted && generation == _generation) {
+        setState(() => _refreshing = false);
+      }
     }
   }
 
-  /// For the subclass's own `setState`, when the list it showed goes away.
-  void clearRefreshFailure() => _refreshFailure = null;
+  /// For the subclass's own `setState`, when the list it showed goes away:
+  /// a refresh of that list still running is no longer this screen's.
+  void clearRefreshFailure() {
+    _refreshFailure = null;
+    _refreshing = false;
+    _generation++;
+  }
 
   /// The failure of the last refresh the user started, while its notice
   /// shows.

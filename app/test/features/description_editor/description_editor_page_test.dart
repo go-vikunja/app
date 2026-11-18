@@ -1401,7 +1401,7 @@ void main() {
       expect(data.projects.updates, [
         (1, const ProjectChanges(description: '<p>About work, edited</p>')),
       ]);
-      expect(data.projects.find(1)!.description, '<p>About work, edited</p>');
+      expect(data.projects.byId(1)!.description, '<p>About work, edited</p>');
       expect(result, [isTrue]);
     });
 
@@ -1416,7 +1416,7 @@ void main() {
 
       expect(find.byType(DescriptionEditorPage), findsOneWidget);
       expect(find.byType(SnackBar), findsOneWidget);
-      expect(data.projects.find(1)!.description, '<p>About work</p>');
+      expect(data.projects.byId(1)!.description, '<p>About work</p>');
     });
 
     testWidgets('changed on the web meanwhile asks first; Overwrite saves '
@@ -1437,7 +1437,7 @@ void main() {
         '<p>About work</p>',
         '<p>From the web</p>',
       ]);
-      expect(data.projects.find(1)!.description, '<p>Mine</p>');
+      expect(data.projects.byId(1)!.description, '<p>Mine</p>');
       expect(find.byType(DescriptionEditorPage), findsNothing);
     });
 

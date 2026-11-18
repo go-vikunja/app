@@ -11,7 +11,7 @@ abstract interface class ProjectRepository {
   Future<void> refresh();
 
   /// From the local state, without a network call.
-  Project? find(int id);
+  Future<Project?> find(int id);
 
   /// The saved filters the last project sync saw, by title.
   Stream<List<SavedFilterRef>> watchSavedFilters();

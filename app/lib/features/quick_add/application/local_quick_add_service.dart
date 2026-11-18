@@ -104,6 +104,9 @@ final class LocalQuickAddService implements QuickAddService {
     };
     final project = named.firstOrNull;
     final unmatchedProject = project == null ? parsed.project : null;
+    final unmatchedReadOnly =
+        unmatchedProject != null &&
+        projectsNamed(unmatchedProject, _unarchivedProjects).isNotEmpty;
     if (unmatchedProject != null) {
       parsed = _parsedKeepingProject(line, parsed, now, mode, prefixes.project);
     }
@@ -140,6 +143,7 @@ final class LocalQuickAddService implements QuickAddService {
       title: _withoutAssignees(parsed.text, resolvedNames, prefixes.assignee),
       project: project ?? fallback,
       unmatchedProject: unmatchedProject,
+      unmatchedProjectReadOnly: unmatchedReadOnly,
       projectAmbiguous: named.length > 1,
       labels: labels,
       newLabels: newLabels,
@@ -323,11 +327,36 @@ final class LocalQuickAddService implements QuickAddService {
 
   /// The lines from [from] on, for another try: a line stays indented
   /// under the remaining lines it is a subtask of, while one whose parent
-  /// was created already starts a tree of its own.
-  static String _remainingText(List<IndentedLine> lines, int from) => [
+  /// was created already starts a tree of its own, which names the project
+  /// it took from that parent.
+  String _remainingText(List<IndentedLine> lines, int from) => [
     for (final (index, line) in lines.indexed.skip(from))
-      '${'  ' * _depthWithin(lines, index, from)}${line.text}',
+      '  ' * _depthWithin(lines, index, from) +
+          _withInheritedProject(line, from),
   ].join('\n');
+
+  /// [line]'s text with the project it took from a parent created before
+  /// [from] as its own token; unchanged when the token would not be read
+  /// as the line's project, as in a line quoted whole.
+  String _withInheritedProject(IndentedLine line, int from) {
+    final project = line.inheritedProject;
+    final parent = line.parentIndex;
+    final mode = _snapshot.settings.quickAddMagicMode;
+    final prefix = _grammar.prefixes(mode)?.project;
+    if (project == null || parent == null || parent >= from || prefix == null) {
+      return line.text;
+    }
+    final quoted = !project.contains(RegExp(r'\s'))
+        ? project
+        : project.contains('"')
+        ? "'$project'"
+        : '"$project"';
+    final named = '${line.text} $prefix$quoted';
+    final parsed = _grammar.parse(named, now: _now().toLocal(), mode: mode);
+    return parsed.project?.toLowerCase() == project.toLowerCase()
+        ? named
+        : line.text;
+  }
 
   static int _depthWithin(List<IndentedLine> lines, int index, int from) {
     var depth = 0;
@@ -465,8 +494,14 @@ final class LocalQuickAddService implements QuickAddService {
         (title.contains(' ') ? '$prefix"$title"' : '$prefix$title');
   }
 
-  // Archived projects would refuse the task.
+  // Archived projects and those the user may only read would refuse the
+  // task.
   List<Project> get _selectableProjects => [
+    for (final row in selectableProjects(writableProjects(_snapshot.projects)))
+      row.node.project,
+  ];
+
+  List<Project> get _unarchivedProjects => [
     for (final row in selectableProjects(_snapshot.projects)) row.node.project,
   ];
 

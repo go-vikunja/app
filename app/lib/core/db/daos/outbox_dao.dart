@@ -163,9 +163,11 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// task's id on the server, stay queued behind it; a project move drops
   /// the placements and positions queued before it. A temporary id whose
   /// create was answered meanwhile is followed to the server id, the task's
-  /// own and those its relations name. False when the task is unknown here
-  /// or queued for deletion, or its description is not [ifDescription]
-  /// when that is given.
+  /// own and those its relations name. A repeating task's Done queued
+  /// while nothing else of the task is carries the occurrence the row shows
+  /// as its done base. False when the task is unknown here or queued for
+  /// deletion, or its description is not [ifDescription] when that is
+  /// given.
   Future<bool> queueUpdate(
     int localOrServerId,
     TaskChanges requested, {
@@ -179,7 +181,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     if (ifDescription != null && row.description != ifDescription) {
       return false;
     }
-    var queued = changes;
+    var queued = _withShownOccurrence(row, changes);
     var pending = _pendingOf(row);
     if (taskId < 0) {
       final create = await _createOf(taskId);
@@ -202,7 +204,12 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     if (!queued.isEmpty) {
       final existing = await _unsentUpdate(taskId);
       if (existing != null) {
-        final merged = decodeTaskChanges(existing.payload).merge(queued);
+        var earlier = decodeTaskChanges(existing.payload);
+        // The Undo takes its Done's base back too: kept, a later Done after
+        // one on the web would send only the dates the Undo restored and
+        // rewind the task.
+        if (queued.done == false) earlier = withoutDoneBase(earlier);
+        final merged = earlier.merge(queued);
         await _write(existing.id, _retaken(encodeTaskChanges(merged)));
       } else {
         await _insert(
@@ -223,6 +230,32 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     await attachedDatabase.tasksDao.applyChildChanges(applied, changes);
     return true;
   });
+
+  /// A Done of a repeating task carries the occurrence the row shows as its
+  /// done base, so the sender can tell a Done made on the web meanwhile.
+  /// Only while nothing of the task is queued: then the row is the server's
+  /// task as last seen, not a local edit.
+  static TaskChanges _withShownOccurrence(TaskRow row, TaskChanges changes) {
+    final repeats =
+        row.repeatAfter > 0 || row.repeatMode == RepeatMode.monthly.value;
+    if (row.id < 0 ||
+        changes.done != true ||
+        changes.doneBase != null ||
+        row.done ||
+        !repeats ||
+        row.pendingChanges != null) {
+      return changes;
+    }
+    return withDoneBase(
+      changes,
+      DoneBase(
+        dueDate: row.dueDate,
+        startDate: row.startDate,
+        endDate: row.endDate,
+        doneAt: row.doneAt,
+      ),
+    );
+  }
 
   /// Hides the row and queues the delete behind the task's other ops,
   /// which stay with the row's `pending_changes`; the delete is sent once
@@ -293,21 +326,24 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   }
 
   /// Drops the create of [createOperationId] with its row and every op of
-  /// the task, when it was never sent and a delete of the task is queued:
-  /// the server is never asked. False, with nothing changed, otherwise,
-  /// also when the delete was taken back first.
-  Future<bool> cancelDeletedCreate(String createOperationId) =>
-      transaction(() async {
-        final create = await find(createOperationId);
-        if (create == null ||
-            create.kind != OutboxOperationKind.createTask.name ||
-            create.sentAt != null ||
-            !await hasQueuedDelete(create.taskId)) {
-          return false;
-        }
-        await cancelCreate(create.taskId);
-        return true;
-      });
+  /// the task, when it was never sent, or [lookedUp] its earlier attempt
+  /// left no task on the server, and a delete of the task is queued: the
+  /// server is never asked (again). False, with nothing changed,
+  /// otherwise, also when the delete was taken back first.
+  Future<bool> cancelDeletedCreate(
+    String createOperationId, {
+    bool lookedUp = false,
+  }) => transaction(() async {
+    final create = await find(createOperationId);
+    if (create == null ||
+        create.kind != OutboxOperationKind.createTask.name ||
+        (create.sentAt != null && !lookedUp) ||
+        !await hasQueuedDelete(create.taskId)) {
+      return false;
+    }
+    await cancelCreate(create.taskId);
+    return true;
+  });
 
   /// The head of the queue: the oldest op that has not failed, whatever
   /// its `next_attempt_at`; the sender waits for that itself. Uploads are
@@ -803,6 +839,21 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       lastError: const Value(null),
     ),
   );
+
+  /// [retry] for each op of [ids] that is still failed; one that went
+  /// meanwhile, or is on its way again, is left alone. Returns how many.
+  Future<int> retryFailed(Iterable<String> ids) =>
+      (update(outbox)..where(
+            (o) => o.id.isIn(ids) & o.state.equals(OutboxState.failed.name),
+          ))
+          .write(
+            OutboxCompanion(
+              state: Value(OutboxState.pending.name),
+              attempts: const Value(0),
+              nextAttemptAt: const Value(null),
+              lastError: const Value(null),
+            ),
+          );
 
   /// The task's failed ops the server refused because the task or its
   /// project was gone or in its trash go back to the queue, as with

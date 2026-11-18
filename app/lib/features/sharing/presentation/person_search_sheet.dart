@@ -50,7 +50,7 @@ class PersonSearchSheet extends ConsumerStatefulWidget {
   final Set<int> excludedUserIds;
 
   /// Whether the page below last reached the server; null when the last
-  /// sync decides. A search that gets an answer settles it.
+  /// sync decides. A search settles it, and so does the next sync outcome.
   final bool? reachable;
   final ScrollController? scrollController;
 
@@ -126,6 +126,9 @@ class _PersonSearchSheetState extends ConsumerState<PersonSearchSheet> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    ref.listen(offlineProvider, (_, _) {
+      if (mounted) setState(() => _reachable = null);
+    });
     final offline = switch (_reachable) {
       null => ref.watch(offlineProvider) != null,
       final reachable => !reachable,
@@ -154,9 +157,10 @@ class _PersonSearchSheetState extends ConsumerState<PersonSearchSheet> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                // Never off while offline: only a search finds out when the
+                // connection is back.
                 child: TextField(
                   controller: _query,
-                  enabled: !offline,
                   autofocus: !offline,
                   autocorrect: false,
                   enableSuggestions: false,

@@ -318,7 +318,22 @@ void main() {
         throwsA(
           isA<UnexpectedResponse>()
               .having((f) => f.statusCode, 'statusCode', 200)
-              .having((f) => f.message, 'message', 'task without id'),
+              .having((f) => f.message, 'message', 'task without id')
+              .having((f) => f is NotJsonResponse, 'not JSON', isFalse),
+        ),
+      );
+    });
+
+    test('a page that is not JSON is told from a task of the wrong '
+        'shape', () async {
+      final dio = fakeDio({
+        '$_v2/tasks/42': html('<html><title>Sign in to the Wi-Fi</title>'),
+      });
+
+      await expectLater(
+        _client(dio).tasks.update(42, const TaskChanges(done: true)),
+        throwsA(
+          isA<NotJsonResponse>().having((f) => f.statusCode, 'statusCode', 200),
         ),
       );
     });
@@ -1022,6 +1037,22 @@ void main() {
       });
 
       await expectLater(_client(dio).tasks.delete(42), completes);
+    });
+
+    test("a captive portal's page in the server's place is no "
+        'success', () async {
+      final dio = fakeDio({
+        '$_v1/tasks/42': html('<html><title>Sign in to the Wi-Fi</title>'),
+      });
+
+      await expectLater(
+        _client(dio, hasV2: false).tasks.delete(42),
+        throwsA(
+          isA<NotJsonResponse>()
+              .having((f) => f.statusCode, 'statusCode', 200)
+              .having((f) => f.message, 'message', 'text/html'),
+        ),
+      );
     });
 
     test('other 404s are failures', () async {

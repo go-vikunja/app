@@ -547,6 +547,45 @@ void main() {
       );
     });
 
+    test("nginx's page for a client certificate it did not get or could not "
+        'verify is a refused client certificate', () async {
+      for (final title in [
+        '400 No required SSL certificate was sent',
+        '400 The SSL certificate error',
+      ]) {
+        final page =
+            '<html>\r\n<head><title>$title</title></head>\r\n<body>\r\n'
+            '<center><h1>400 Bad Request</h1></center>\r\n'
+            '<hr><center>nginx</center>\r\n</body>\r\n</html>\r\n';
+        for (final responseType in [ResponseType.json, ResponseType.bytes]) {
+          expect(
+            await _failureFor(
+              html(page, status: 400),
+              responseType: responseType,
+            ),
+            isA<NetworkFailure>().having(
+              (f) => f.problem,
+              'problem',
+              NetworkProblem.clientCertificate,
+            ),
+            reason: '$title, $responseType',
+          );
+        }
+      }
+    });
+
+    test('another 400 page stays unexpected', () async {
+      expect(
+        await _failureFor(
+          html(
+            '<html><head><title>400 Bad Request</title></head></html>',
+            status: 400,
+          ),
+        ),
+        isA<UnexpectedResponse>().having((f) => f.statusCode, 'status', 400),
+      );
+    });
+
     test('429 without any rate limit header has no retryAfter', () async {
       expect(
         await _failureFor(body(429, {'message': 'Too Many Requests'})),

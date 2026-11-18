@@ -43,9 +43,10 @@ final class RecordingSyncEngine implements SyncEngine {
   }
 
   @override
-  Future<void> refresh() {
+  Future<SyncOutcome> refresh() async {
     refreshCalls++;
-    return _call();
+    await _call();
+    return SyncOutcome.synced;
   }
 
   /// [onRefreshAfterWrite] stands for what the run stores.

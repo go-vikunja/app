@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -257,6 +258,38 @@ void main() {
     expect(data.projects.updates, [
       (1, const ProjectChanges(parentProjectId: 2)),
     ]);
+  });
+
+  testWidgets('without admin on the project the parent is locked and says '
+      'why; the rest still saves', (tester) async {
+    data.projects.all = [
+      for (final project in data.projects.all)
+        if (project.id == 1)
+          project.copyWith(maxPermission: Permission.write)
+        else
+          project,
+    ];
+    await pumpEdit(tester, 1);
+
+    final tile = tester.widget<ListTile>(
+      find.widgetWithText(ListTile, en.projectParentLabel),
+    );
+    expect(tile.enabled, isFalse);
+    expect(tile.trailing, isNull);
+    final note = find.text(en.projectParentAdminOnly);
+    expect(note, findsOneWidget);
+    expect(
+      tester.renderObject<RenderParagraph>(note).text.style?.color,
+      Theme.of(tester.element(note)).colorScheme.onSurfaceVariant,
+    );
+    await tester.tap(find.text(en.projectParentLabel));
+    await tester.pumpAndSettle();
+    expect(find.text(en.projectParentTopLevel), findsOneWidget);
+
+    await tester.enterText(field(en.projectTitleLabel), 'Office');
+    await tester.pump();
+    await save(tester);
+    expect(data.projects.updates, [(1, const ProjectChanges(title: 'Office'))]);
   });
 
   testWidgets('a colour from outside the palette stays chosen and can be '

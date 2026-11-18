@@ -140,6 +140,22 @@ void main() {
     expect(gateway.calls.last, 'cancel $reminderId');
   });
 
+  test('a sign-out in another isolate whose cancel came before this '
+      "isolate's schedule does not leave it behind", () async {
+    gateway.beforeCall = (call) async {
+      if (!call.startsWith('scheduleActivity')) return;
+      // The other isolate removes the account and cancels the reminder
+      // while this one is about to schedule it.
+      accounts.remove('a');
+      await gateway.cancel(reminderId);
+    };
+
+    await reminders.update('a');
+
+    expect(gateway.pending, isEmpty);
+    expect(gateway.calls.last, 'cancel $reminderId');
+  });
+
   test('never for a link-share guest', () async {
     accounts['g'] = Account.linkShare(
       id: 'g',

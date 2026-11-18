@@ -13,6 +13,7 @@ final class QuickAddPlan {
     required this.title,
     required this.project,
     this.unmatchedProject,
+    this.unmatchedProjectReadOnly = false,
     this.projectAmbiguous = false,
     this.labels = const [],
     this.newLabels = const [],
@@ -39,8 +40,11 @@ final class QuickAddPlan {
   /// Null without any project.
   final Project? project;
 
-  /// A `+project` that matched no project.
+  /// A `+project` that matched no project a task can go to.
   final String? unmatchedProject;
+
+  /// [unmatchedProject] names projects the user may only read.
+  final bool unmatchedProjectReadOnly;
 
   /// The `+project` names several projects, and [project] is the first.
   final bool projectAmbiguous;

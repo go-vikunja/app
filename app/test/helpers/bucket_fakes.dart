@@ -262,7 +262,7 @@ final class FakeBucketRepository implements BucketRepository {
       return;
     }
     final view = projects
-        ?.find(projectId)
+        ?.byId(projectId)
         ?.views
         .where((view) => view.id == viewId)
         .firstOrNull;
@@ -272,7 +272,7 @@ final class FakeBucketRepository implements BucketRepository {
   void _replaceProjectView(ProjectView view) {
     final projects = this.projects;
     if (projects == null) return;
-    final project = projects.find(view.projectId);
+    final project = projects.byId(view.projectId);
     if (project == null) return;
     projects.all = [
       for (final candidate in projects.all)

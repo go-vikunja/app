@@ -37,9 +37,11 @@ final class ProjectAccess {
 
   bool get canArchive => canWrite;
 
-  /// Moving it under another parent; reordering among its siblings needs
-  /// [canWrite] only.
+  /// Moving it under another parent, or out to the top level.
   bool get canChangeParent => isAdmin;
+
+  /// Its place among its siblings.
+  bool get canReorder => canWrite;
 
   bool get canDelete => isAdmin;
 

@@ -267,3 +267,14 @@ final class UnexpectedResponse extends VikunjaFailure {
   @override
   String toString() => 'UnexpectedResponse($statusCode)';
 }
+
+/// A success status whose body is not JSON at all, such as a page a
+/// captive portal answers in the server's place on a cleartext network;
+/// Vikunja answers every API request with JSON or nothing. [message] is
+/// the media type.
+final class NotJsonResponse extends UnexpectedResponse {
+  const new(int super.statusCode, {super.message});
+
+  @override
+  String toString() => 'NotJsonResponse($statusCode)';
+}

@@ -371,6 +371,38 @@ void main() {
     expect(data.engine.refreshCalls, 2);
   });
 
+  testWidgets('a refresh that fails after the user switched views says '
+      'nothing in the other view', (tester) async {
+    await pumpProject(tester);
+    final held = Completer<void>();
+    data.tasks.onRefreshProjectList = (_, viewId) async {
+      if (viewId == 11) await held.future;
+    };
+
+    await openMenu(tester);
+    await tester.tap(find.text(en.refresh));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await selectView(tester, 'Everything');
+    held.completeError(const Forbidden(code: 3004));
+    await tester.pumpAndSettle();
+
+    expect(selectedView(tester), 'Everything');
+    expect(find.byType(DataFailureCard), findsNothing);
+    expect(
+      find.text(en.dataFailureForbidden('tasks.example.org')),
+      findsNothing,
+    );
+    await openMenu(tester);
+    final refreshItem = tester.widget<PopupMenuItem<Object?>>(
+      find.ancestor(
+        of: find.text(en.refresh),
+        matching: find.byWidgetPredicate((widget) => widget is PopupMenuItem),
+      ),
+    );
+    expect(refreshItem.enabled, isTrue);
+  });
+
   testWidgets('offline, the saved tasks stay under the banner', (tester) async {
     await pumpProject(tester);
     data.engine.onRefresh = () async =>

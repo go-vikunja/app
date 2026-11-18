@@ -512,6 +512,7 @@ void main() {
       const DescriptionConflict(),
       const UnexpectedResponse(418, message: 'teapot'),
       const UnexpectedResponse(null),
+      const NotJsonResponse(200, message: 'text/html'),
     ];
 
     for (final failure in failures) {

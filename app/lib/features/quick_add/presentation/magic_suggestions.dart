@@ -159,7 +159,8 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
   List<Widget> _projectChips(String query) {
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final candidates = [
-      for (final row in selectableProjects(projects)) row.node.project,
+      for (final row in selectableProjects(writableProjects(projects)))
+        row.node.project,
     ];
     final needle = foldForSearch(query.trim());
     return [

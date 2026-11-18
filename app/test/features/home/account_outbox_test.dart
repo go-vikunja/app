@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -234,6 +235,117 @@ void main() {
     expect(find.text(en.accountSyncProblems), findsNothing);
     expect(find.text(en.accountPendingChanges(1)), findsOneWidget);
   });
+
+  testWidgets('two or more problems with Retry get Retry all beside the '
+      'heading, which sends them in one go', (tester) async {
+    final semantics = tester.ensureSemantics();
+    data.tasks.syncProblems = [
+      problem(
+        id: 'op-1',
+        title: 'Pay the bill',
+        failure: const Forbidden(code: 7003),
+        ago: const Duration(minutes: 5),
+      ),
+      problem(
+        id: 'op-2',
+        title: 'Call mum',
+        failure: const DescriptionConflict(),
+        ago: const Duration(minutes: 4),
+        taskId: 2,
+      ),
+      problem(
+        id: 'op-3',
+        title: 'Water the plants',
+        failure: const ServerFailure(502),
+        ago: const Duration(minutes: 3),
+        taskId: 3,
+      ),
+    ];
+    await pumpAccountTab(tester);
+
+    final retryAll = find.widgetWithText(TextButton, en.syncProblemsRetryAll);
+    expect(retryAll, findsOneWidget);
+    expect(
+      tester.getSemantics(find.text(en.accountSyncProblems)),
+      matchesSemantics(label: en.accountSyncProblems, isHeader: true),
+    );
+    // With the test's wide square font it goes below the heading.
+    expect(
+      tester.getTopLeft(retryAll).dy,
+      lessThan(tester.getTopLeft(find.byType(StatusCard).first).dy),
+    );
+
+    await tester.tap(retryAll);
+    await tester.pumpAndSettle();
+
+    // The description conflict is resolved by choosing a version.
+    expect(data.tasks.writes, ['retryAll op-1,op-3']);
+    expect(find.text('Call mum'), findsOneWidget);
+    expect(find.byType(StatusCard), findsOneWidget);
+    expect(retryAll, findsNothing);
+    semantics.dispose();
+  });
+
+  testWidgets('one problem with Retry needs no Retry all', (tester) async {
+    data.tasks.syncProblems = [
+      problem(
+        id: 'op-1',
+        title: 'Pay the bill',
+        failure: const Forbidden(code: 7003),
+        ago: const Duration(minutes: 5),
+      ),
+      problem(
+        id: 'op-2',
+        title: 'photo.png',
+        failure: const UnexpectedResponse(
+          null,
+          message: uploadFileMissingMessage,
+        ),
+        ago: const Duration(minutes: 5),
+        kind: OutboxOperationKind.uploadAttachment,
+        taskId: 2,
+      ),
+    ];
+    await pumpAccountTab(tester);
+
+    expect(find.text(en.syncProblemsRetryAll), findsNothing);
+  });
+
+  for (final (what, label) in [
+    ('Retry', en.retry),
+    ('Retry all', en.syncProblemsRetryAll),
+    ('Send now', en.accountSendNow),
+  ]) {
+    testWidgets('$what that the device cannot store says so and can be '
+        'tapped again', (tester) async {
+      data.tasks.pendingChanges = 3;
+      data.tasks.syncProblems = [
+        for (final id in ['op-1', 'op-2'])
+          problem(
+            id: id,
+            title: 'Task $id',
+            failure: const Forbidden(code: 7003),
+            ago: const Duration(minutes: 5),
+          ),
+      ];
+      data.tasks.beforeWrite = () async =>
+          throw const FileSystemException('No space left on device');
+      await pumpAccountTab(tester);
+
+      await tester.tap(find.text(label).first);
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.localChangeFailed), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      expect(
+        tester
+            .widget<TextButton>(find.widgetWithText(TextButton, label).first)
+            .onPressed,
+        isNotNull,
+      );
+      expect(find.byType(StatusCard), findsNWidgets(2));
+    });
+  }
 
   testWidgets('an upload whose stored copy is gone offers only Discard', (
     tester,

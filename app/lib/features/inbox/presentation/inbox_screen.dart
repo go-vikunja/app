@@ -114,7 +114,8 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
   Future<void> _openProject(int? projectId) async {
     final project = projectId == null
         ? null
-        : ref.read(projectRepositoryProvider)?.find(projectId);
+        : await ref.read(projectRepositoryProvider)?.find(projectId);
+    if (!mounted) return;
     if (project == null) {
       _showSnackBar(context.l10n.inboxProjectNotLocal);
       return;

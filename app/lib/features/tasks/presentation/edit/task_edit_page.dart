@@ -19,6 +19,7 @@ import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
+import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
@@ -174,10 +175,22 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     final messenger = ScaffoldMessenger.of(context);
     final router = GoRouter.of(context);
     setState(() => _saving = true);
-    await repository.updateTask(current.id, draft.diff(original));
+    final saved = await saveLocalChange(
+      context,
+      () => repository.updateTask(current.id, draft.diff(original)),
+      action: 'Saving the edit page',
+      messenger: messenger,
+    );
     if (!mounted) return;
+    // Back asks again and the edit can be saved once more.
+    if (!saved) {
+      setState(() => _saving = false);
+      return;
+    }
     router.pop();
-    messenger.showSnackBar(SnackBar(content: Text(l10n.taskEditSaved)));
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l10n.taskEditSaved)));
   }
 
   Future<void> _leaveIfConfirmed() async {

@@ -10,24 +10,21 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
-import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
-import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/overview/application/due_date_groups.dart';
 import 'package:vikunja_mobile/features/overview/application/overview_tasks_provider.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_header.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/smart_lists/presentation/due_sections_list.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
-import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 /// The open tasks across all projects, or those of the saved filter picked
 /// for the Overview on the web, grouped by due date. The filter is
@@ -199,81 +196,34 @@ class _TaskSections extends StatelessWidget {
         if (notes != null) ...[const SizedBox(height: 16), notes],
       ],
     );
-    if (sections.isEmpty) {
-      return CenteredScrollView(
-        header: header,
-        maxWidth: ReadableWidth.list,
-        child: switch (filter) {
-          _? when !local && loadedAt == null => EmptyState(
-            icon: Icons.cloud_download_outlined,
-            title: offline
-                ? l10n.overviewFilterNotLoadedTitle
-                : l10n.overviewFilterNotDownloadedTitle,
-            body: l10n.overviewFilterNotLoadedBody(filterTitle),
-          ),
-          _? => EmptyState(
-            icon: Icons.task_alt,
-            title: l10n.overviewEmptyTitle,
-            body: l10n.overviewFilterEmptyBody(filterTitle),
-          ),
-          null => EmptyState(
-            icon: Icons.task_alt,
-            title: l10n.overviewEmptyTitle,
-            body: l10n.overviewEmptyBody,
-          ),
-        },
-      );
-    }
-    return CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      slivers: [
-        SliverReadableWidth.group(
-          maxWidth: ReadableWidth.list,
-          slivers: [
-            NoticeSliver(notice: header),
-            for (final section in sections)
-              SliverSectionCard(
-                title: _sectionTitle(l10n, section.group),
-                count: section.tasks.length,
-                titleColor: section.group == DueGroup.overdue
-                    ? Theme.of(context).colorScheme.error
-                    : null,
-                itemCount: section.tasks.length,
-                itemBuilder: (context, index) {
-                  final task = section.tasks[index];
-                  final project = projectsById[task.projectId];
-                  return TaskRow(
-                    key: ValueKey(task.id),
-                    task: task,
-                    now: now,
-                    minimumPriority: minimumPriority,
-                    projectTitle: project?.displayTitle(l10n),
-                    projectHexColor: project?.hexColor,
-                    pending: pendingIds.contains(task.id),
-                    onTap: () => openTaskDetail(context, task: task),
-                    onDoneChanged: (done) => onDoneChanged(task, done: done),
-                    onFavoriteChanged: (favorite) =>
-                        onFavoriteChanged(task, favorite: favorite),
-                  );
-                },
-              ),
-            // Room for the floating action button below the last row.
-            const SliverSafeArea(
-              top: false,
-              sliver: SliverToBoxAdapter(child: SizedBox(height: 88)),
-            ),
-          ],
+    return DueSectionsList(
+      sections: sections,
+      projectsById: projectsById,
+      pendingIds: pendingIds,
+      now: now,
+      minimumPriority: minimumPriority,
+      header: header,
+      emptyState: switch (filter) {
+        _? when !local && loadedAt == null => EmptyState(
+          icon: Icons.cloud_download_outlined,
+          title: offline
+              ? l10n.overviewFilterNotLoadedTitle
+              : l10n.overviewFilterNotDownloadedTitle,
+          body: l10n.overviewFilterNotLoadedBody(filterTitle),
         ),
-      ],
+        _? => EmptyState(
+          icon: Icons.task_alt,
+          title: l10n.overviewEmptyTitle,
+          body: l10n.overviewFilterEmptyBody(filterTitle),
+        ),
+        null => EmptyState(
+          icon: Icons.task_alt,
+          title: l10n.overviewEmptyTitle,
+          body: l10n.overviewEmptyBody,
+        ),
+      },
+      onDoneChanged: onDoneChanged,
+      onFavoriteChanged: onFavoriteChanged,
     );
   }
-
-  String _sectionTitle(AppLocalizations l10n, DueGroup group) =>
-      switch (group) {
-        DueGroup.overdue => l10n.sectionOverdue,
-        DueGroup.today => l10n.sectionToday,
-        DueGroup.nextSevenDays => l10n.sectionNextSevenDays,
-        DueGroup.later => l10n.sectionLater,
-        DueGroup.noDueDate => l10n.sectionNoDueDate,
-      };
 }

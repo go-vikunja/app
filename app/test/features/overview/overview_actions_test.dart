@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -95,6 +97,57 @@ void main() {
     expect(find.text('Write report'), findsNothing);
     expect(find.text(en.taskMarkedDone), findsNothing);
     expect(find.byType(TaskRow), findsNWidgets(2));
+  });
+
+  testWidgets('a done the device cannot store says so; the row stays open '
+      'without Undo', (tester) async {
+    await pumpOverview(tester);
+    data.tasks.beforeWrite = () async =>
+        throw const FileSystemException('No space left on device');
+
+    await tester.tap(markDone('Write report'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.localChangeFailed), findsOneWidget);
+    expect(find.text(en.taskMarkedDone), findsNothing);
+    expect(markDone('Write report'), findsOneWidget);
+    expect(
+      decorationOf(tester, 'Write report'),
+      isNot(TextDecoration.lineThrough),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a favourite the device cannot store says so', (tester) async {
+    await pumpOverview(tester);
+    data.tasks.beforeWrite = () async =>
+        throw const FileSystemException('No space left on device');
+
+    await tester.tap(
+      inRow('Write report', find.byTooltip(en.taskAddFavourite)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.localChangeFailed), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('an Undo the device cannot store says so; the task stays done '
+      'and its row goes', (tester) async {
+    await pumpOverview(tester);
+    await tester.tap(markDone('Write report'));
+    await tester.pumpAndSettle();
+    data.tasks.beforeWrite = () async =>
+        throw const FileSystemException('No space left on device');
+
+    await tester.tap(find.text(en.undo));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.localChangeFailed), findsOneWidget);
+    expect(data.tasks.find(3)?.done, isTrue);
+    expect(find.text('Write report'), findsNothing);
+    expect(find.byType(TaskRow), findsNWidgets(2));
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Undo reopens the task in place', (tester) async {

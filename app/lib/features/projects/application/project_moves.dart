@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/text/title_order.dart';
+import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 
 /// Below it the server renumbers every sibling of the project, at the top
@@ -40,21 +41,7 @@ final class MoveProject extends ProjectMovePlan {
   /// [project], when it is the one moved, as it is once moved.
   Project applyTo(Project project) => project.id != projectId
       ? project
-      : Project(
-          id: project.id,
-          title: project.title,
-          description: project.description,
-          identifier: project.identifier,
-          hexColor: project.hexColor,
-          parentProjectId: parentProjectId,
-          isArchived: project.isArchived,
-          isFavorite: project.isFavorite,
-          position: position,
-          owner: project.owner,
-          views: project.views,
-          created: project.created,
-          updated: project.updated,
-        );
+      : project.copyWith(parentProjectId: parentProjectId, position: position);
 
   @override
   String toString() =>
@@ -75,19 +62,25 @@ final class ProjectStays extends ProjectMovePlan {
 }
 
 /// Not allowed: into itself or below itself, an archived project moved or
-/// taking it, or a place whose position would fall below
-/// [minProjectPosition] or not sort between its neighbours.
+/// taking it, a project the user may only read moved, a parent the user
+/// may only read taking it, a place whose position would fall below
+/// [minProjectPosition] or not sort between its neighbours, or, [adminOnly],
+/// another parent for a project the user is no admin of.
 final class ProjectMoveRefused extends ProjectMovePlan {
-  const new();
+  const new({this.adminOnly = false});
+
+  final bool adminOnly;
 
   @override
-  bool operator ==(Object other) => other is ProjectMoveRefused;
+  bool operator ==(Object other) =>
+      other is ProjectMoveRefused && other.adminOnly == adminOnly;
 
   @override
-  int get hashCode => (ProjectMoveRefused).hashCode;
+  int get hashCode => Object.hash(ProjectMoveRefused, adminOnly);
 
   @override
-  String toString() => 'ProjectMoveRefused';
+  String toString() =>
+      adminOnly ? 'ProjectMoveRefused(admin only)' : 'ProjectMoveRefused';
 }
 
 /// The project tree as the Projects tab shows it, for moving projects in
@@ -144,14 +137,18 @@ final class ProjectTreeMoves {
   /// position lies between the new neighbours as the web computes it, or
   /// is a neighbour's own when both share it and the title sorts between
   /// theirs. An orphan put among the top-level projects keeps its parent,
-  /// as the web does: its user may lack the right to detach it.
+  /// as the web does: its user may lack the right to detach it. The stored
+  /// permissions decide as the server would ([ProjectAccess]).
   ProjectMovePlan plan(
     int projectId, {
     required int parentId,
     required int index,
   }) {
     final moved = _all[projectId];
-    if (moved == null || !shows(projectId) || isArchived(projectId)) {
+    if (moved == null ||
+        !shows(projectId) ||
+        isArchived(projectId) ||
+        !ProjectAccess.of(moved).canReorder) {
       return const ProjectMoveRefused();
     }
     if (parentId != 0 &&
@@ -162,6 +159,18 @@ final class ProjectTreeMoves {
     }
     final shown = childrenOf(parentId);
     final current = shown.indexWhere((project) => project.id == projectId);
+    final parentProjectId = parentId == 0 && current >= 0
+        ? moved.parentProjectId
+        : parentId;
+    if (parentProjectId != moved.parentProjectId) {
+      if (!ProjectAccess.of(moved).canChangeParent) {
+        return const ProjectMoveRefused(adminOnly: true);
+      }
+      if (_all[parentProjectId] case final parent?
+          when !ProjectAccess.of(parent).canCreateChild) {
+        return const ProjectMoveRefused();
+      }
+    }
     final others = [
       for (final project in shown)
         if (project.id != projectId) project,
@@ -188,9 +197,7 @@ final class ProjectTreeMoves {
     return MoveProject(
       projectId: projectId,
       position: position,
-      parentProjectId: parentId == 0 && current >= 0
-          ? moved.parentProjectId
-          : parentId,
+      parentProjectId: parentProjectId,
     );
   }
 }

@@ -359,6 +359,23 @@ void main() {
       expect(suggestion('Work'), findsOneWidget);
     });
 
+    testWidgets('never projects the user may only read; naming one warns '
+        'that it is read only', (tester) async {
+      harness.data.projects.all = [
+        work,
+        inbox,
+        garageSale.copyWith(maxPermission: Permission.read),
+      ];
+      await harness.open(tester);
+      await typeLine(tester, 'Sell +gar');
+
+      expect(suggestion('Garage Sale'), findsNothing);
+
+      await typeLine(tester, 'Sell +"Garage Sale"');
+      expect(chip(en.quickAddProjectReadOnly('Garage Sale')), findsOneWidget);
+      expect(chip(en.quickAddProjectNotFound('Garage Sale')), findsNothing);
+    });
+
     testWidgets('labels, projects and people ignore accents', (tester) async {
       await harness.open(tester);
 

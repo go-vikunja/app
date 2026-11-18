@@ -44,20 +44,33 @@ final class MagicSpan {
 
 typedef MagicLine = ({int offset, String text});
 
-/// The lines quick add turns into tasks: the non-blank ones, with where
-/// each starts in [text].
+/// The lines quick add turns into tasks, each as the text its task is
+/// planned from and where that starts in [text], split and cut as
+/// `quickAddTaskLines` does: a single line as typed; of several, each
+/// without its indent and list marker, and none for a line that is only a
+/// marker.
 List<MagicLine> magicLines(String text) {
   final lines = <MagicLine>[];
   var start = 0;
-  while (start <= text.length) {
-    var end = text.indexOf('\n', start);
-    if (end < 0) end = text.length;
+  void add(int end) {
     final line = text.substring(start, end);
     if (line.trim().isNotEmpty) lines.add((offset: start, text: line));
-    start = end + 1;
   }
-  return lines;
+
+  for (final lineBreak in _lineBreaks.allMatches(text)) {
+    add(lineBreak.start);
+    start = lineBreak.end;
+  }
+  add(text.length);
+  if (lines.length < 2) return lines;
+  return [
+    for (final (:offset, :text) in lines)
+      if (subtaskLineText(text) case final task when task.trim().isNotEmpty)
+        (offset: offset + text.length - task.length, text: task),
+  ];
 }
+
+final _lineBreaks = RegExp(r'\r\n|\r|\n');
 
 /// A prefix followed by an item, quoted or up to the next space, where
 /// Quick Add Magic looks for one: at the start or after a space.

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/security/device_authenticator.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/features/about/presentation/about_page.dart';
@@ -177,6 +178,47 @@ final List<SweepScenario> accountStateScenarios = [
       );
     },
     expectScreen: (l10n) => find.text(l10n.backgroundSyncLimitedTitle),
+  ),
+  SweepScenario(
+    kind: SweepKind.state,
+    name: '${AppRoutes.account} sync problems',
+    route: AppRoutes.account,
+    setUp: (tester, _) async {
+      final data = sweepData();
+      data.tasks
+        ..pendingChanges = 3
+        ..syncProblems = [
+          for (final (id, failure) in const <(int, VikunjaFailure)>[
+            (1, Forbidden(code: 7003)),
+            (2, ServerFailure(502)),
+            (3, DescriptionConflict()),
+          ])
+            SyncProblem(
+              operationId: 'op-$id',
+              kind: OutboxOperationKind.updateTask,
+              taskId: id,
+              taskTitle: 'Task $id',
+              failure: failure,
+              failedAt: sweepNow.subtract(Duration(minutes: id)),
+            ),
+        ];
+      await pumpSweepApp(tester, data: data);
+    },
+    navigate: (tester, l10n) async {
+      goTo(tester, AppRoutes.account);
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text(l10n.syncProblemsRetryAll),
+        300,
+        scrollable: find
+            .descendant(
+              of: find.byType(AccountTab),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+    },
+    expectScreen: (l10n) => find.text(l10n.syncProblemsRetryAll),
   ),
   _sessions(
     'empty',

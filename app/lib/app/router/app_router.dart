@@ -160,6 +160,8 @@ abstract final class AppRoutes {
   static const savedFilterNew = '$home/filters/new';
   static String savedFilterEdit(int pseudoProjectId) =>
       '$home/filters/$pseudoProjectId/edit';
+  static String savedFilterDescription(int pseudoProjectId) =>
+      '$home/filters/$pseudoProjectId/description';
 
   /// Over the shell, from the Account tab's profile header; the server's
   /// settings of the account, not the device's.
@@ -531,6 +533,17 @@ GoRouter appRouter(Ref ref) {
             _idParam(state) == null ? AppRoutes.projects : null,
         builder: (context, state) => AccountBoundScreen(
           child: SavedFilterFormPage(pseudoProjectId: _idParam(state)),
+        ),
+      ),
+      GoRoute(
+        path: '${AppRoutes.home}/filters/:id/description',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) =>
+            _idParam(state) == null ? AppRoutes.projects : null,
+        builder: (context, state) => AccountBoundScreen(
+          child: DescriptionEditorPage(
+            target: SavedFilterDescriptionTarget(_idParam(state)!),
+          ),
         ),
       ),
       GoRoute(

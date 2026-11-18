@@ -9,12 +9,13 @@ import 'package:vikunja_mobile/app/widgets/release_error_widget.dart';
 import 'package:vikunja_mobile/bootstrap/appearance_start.dart';
 import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
 import 'package:vikunja_mobile/bootstrap/previous_app_start.dart';
+import 'package:vikunja_mobile/bootstrap/start_values.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/background/background_entry_point.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/legal/app_licenses.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
-import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_entry_points.dart';
@@ -23,7 +24,6 @@ import 'package:vikunja_mobile/core/platform/backup_exclusion.dart';
 import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/security/screen_protection.dart';
-import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
 import 'package:workmanager/workmanager.dart';
@@ -35,8 +35,7 @@ Future<void> bootstrap() async {
   configureLogging(part: AppPart.app);
   installErrorWidget();
   registerAppLicenses();
-  final clientIdentity = await ClientIdentity.load();
-  final deviceL10n = await loadDeviceAppLocalizations(SharedPreferencesStore());
+  final (:clientIdentity, :deviceL10n) = await loadStartValues();
   final container = ProviderContainer(
     overrides: [
       clientIdentityProvider.overrideWithValue(clientIdentity),
@@ -84,6 +83,7 @@ Future<void> bootstrap() async {
   container.listen(screenProtectionProvider, (_, _) {});
   unawaited(_initializeNotifications(container));
   unawaited(_initializeBackground(container));
+  unawaited(_finishSignOuts(container));
   if (defaultTargetPlatform == TargetPlatform.iOS) {
     unawaited(_excludeFromBackup());
   }
@@ -94,6 +94,13 @@ Future<void> bootstrap() async {
 Future<void> _excludeFromBackup() async {
   await WidgetsBinding.instance.endOfFrame;
   await excludeAppDataFromBackup();
+}
+
+/// After the first frame: deletes the data of accounts whose sign-out a
+/// crash or a failed wipe left unfinished. Never throws.
+Future<void> _finishSignOuts(ProviderContainer container) async {
+  await WidgetsBinding.instance.endOfFrame;
+  await container.read(accountDeletionsProvider).finishAll();
 }
 
 /// Before the registry's first read sets the install marker, which tells

@@ -203,6 +203,13 @@ final class SessionReminders {
           linkKey: await _linkKey(),
         ).toJson(),
       );
+      // A sign-out in another isolate cancels the reminder only after it
+      // removed the account, so one removed by now may have missed this.
+      if (await _account(accountId) == null) {
+        await _gateway.cancel(osId);
+        _decided[accountId] = null;
+        return;
+      }
       _log.fine('Session reminder of account $accountId at $fireAt');
     }
     _decided[accountId] = fireAt;

@@ -407,6 +407,9 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
           unawaited(_load());
           unawaited(_openLink(share, project, views, created: true));
         },
+        onListOutdated: () {
+          if (mounted) unawaited(_load());
+        },
       );
 
   Future<void> _openLink(

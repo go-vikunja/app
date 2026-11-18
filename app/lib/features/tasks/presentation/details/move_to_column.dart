@@ -7,6 +7,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 
@@ -78,8 +79,9 @@ final class ColumnMoves {
 /// limit first, then the done column's rules. [choice] is the board as the
 /// caller knows it at each call, read when the list opens and again once a
 /// column is picked, null once the card may no longer move. [showMessage]
-/// says where it went, or that the column is full; once [context] is gone,
-/// as the pane's when the window narrows, the move is made without a word.
+/// says where it went once that is queued, that the column is full, or
+/// that the device could not store the move; once [context] is gone, as
+/// the pane's when the window narrows, the move is made without a word.
 Future<void> moveToColumn(
   BuildContext context, {
   required TaskRepository repository,
@@ -129,15 +131,23 @@ Future<void> moveToColumn(
       unawaited(HapticFeedback.heavyImpact());
       showMessage(l10n.boardColumnLimitReached);
     case MarkCardDone() || PlaceCard():
-      if (context.mounted) {
-        unawaited(HapticFeedback.selectionClick());
-        showMessage(l10n.boardMovedTo(columnNamesOf(current.columns)[picked]!));
-      }
-      await queueCardMove(
-        repository,
-        task.id,
-        viewId: current.view.id,
-        move: move,
+      if (context.mounted) unawaited(HapticFeedback.selectionClick());
+      final queued = await saveLocalChangeIn(
+        null,
+        l10n,
+        () => queueCardMove(
+          repository,
+          task.id,
+          viewId: current.view.id,
+          move: move,
+        ),
+        action: 'Moving a card to a column',
+      );
+      if (!context.mounted) return;
+      showMessage(
+        queued
+            ? l10n.boardMovedTo(columnNamesOf(current.columns)[picked]!)
+            : l10n.localChangeFailed,
       );
   }
 }

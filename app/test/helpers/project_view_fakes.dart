@@ -121,7 +121,7 @@ final class FakeProjectViewRepository implements ProjectViewRepository {
   }
 
   Project _project(int projectId) =>
-      projects.find(projectId) ?? (throw const NotFound(code: 3001));
+      projects.byId(projectId) ?? (throw const NotFound(code: 3001));
 
   static ProjectView _view(Project project, int viewId) =>
       project.views.where((view) => view.id == viewId).firstOrNull ??

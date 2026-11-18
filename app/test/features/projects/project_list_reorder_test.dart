@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -179,6 +181,18 @@ void main() {
       expect(tester.takeAnnouncements(), [
         isAccessibilityAnnouncement(en.movedDown),
       ]);
+    });
+
+    testWidgets('a drop the device cannot store says so', (tester) async {
+      await pumpProject(tester);
+      data.tasks.beforeWrite = () async =>
+          throw const FileSystemException('No space left on device');
+
+      await dragRow(tester, 'Alpha', between(tester, 'Charlie', 'Delta'));
+
+      expect(data.tasks.positions, [(1, 11, 350)]);
+      expect(find.text(en.localChangeFailed), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('the held rows hang above the finger, clear of the drop '

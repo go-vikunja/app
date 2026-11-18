@@ -23,6 +23,7 @@ import 'package:vikunja_mobile/core/outbox/task_relation_inverse.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/archived_projects.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 
 part 'tasks_dao.g.dart';
 
@@ -980,19 +981,23 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
             ),
           );
 
-  /// Removes the tasks of [projectId] whose id is not in [keep]. The ids to
-  /// delete are picked locally, so the statements stay small whatever the
-  /// size of [keep].
-  Future<int> purgeInProjectExcept(int projectId, Set<int> keep) =>
-      transaction(() async {
-        final candidates = await _ids(
-          tasks.projectId.equals(projectId) & _purgeable,
-        );
-        return await _purge([
-          for (final id in candidates)
-            if (!keep.contains(id)) id,
-        ]);
-      });
+  /// Removes the tasks of [projectId] whose id is not in [keep], except
+  /// those another write stored while [runId] went, see [upsertAll]. The
+  /// ids to delete are picked locally, so the statements stay small
+  /// whatever the size of [keep].
+  Future<int> purgeInProjectExcept(
+    int projectId,
+    Set<int> keep, {
+    required String runId,
+  }) => transaction(() async {
+    final candidates = await _ids(
+      tasks.projectId.equals(projectId) & _purgeable & _notStoredDuring(runId),
+    );
+    return await _purge([
+      for (final id in candidates)
+        if (!keep.contains(id)) id,
+    ]);
+  });
 
   /// Deletes the rows [gone], whose labels, assignees, reminders and
   /// relations go with them, and drops the queued edges other tasks have
@@ -1013,7 +1018,11 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
 
   /// Upserts the tasks with the users and labels they carry, replacing their
   /// labels, assignees, reminders and relations; marks them seen in
-  /// [syncRunId], or leaves the run a row has when null. The comment count
+  /// [syncRunId]. Without one (a write's answer, a task read online) they
+  /// are marked as stored during the run that holds the account's lease,
+  /// whose purges leave them: the server had them when the answer came,
+  /// maybe after the run's read had passed them. With no run going a row
+  /// keeps the run it has. The comment count
   /// and unread flag are taken only [withCommentState], from a read that
   /// expanded both; otherwise the stored ones stay. The user's own
   /// subscription is never taken: no list or write answer carries it, so
@@ -1033,6 +1042,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     String? syncRunId,
     bool withCommentState = false,
   }) => transaction(() async {
+    final runStamp = syncRunId ?? await _storedDuringRunningSync();
     final ids = [for (final task in all) task.id];
     final queued = await _queuedRows(ids);
     final queuedRelations = await _queuedRelationChanges();
@@ -1060,14 +1070,14 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     final assigneeRows = <TaskAssigneeRow>[];
     final reminders = <TaskReminderRow>[];
     for (final task in all) {
-      var stored = taskRow(task, syncRunId: syncRunId);
+      var stored = taskRow(task, syncRunId: runStamp);
       if (queued[task.id] case final local?) {
         stored = _keepQueued(stored, local);
       }
       var companion = stored
           .toCompanion(false)
           .copyWith(ownSubscription: const Value.absent());
-      if (syncRunId == null) {
+      if (runStamp == null) {
         companion = companion.copyWith(syncRunId: const Value.absent());
       }
       if (!withCommentState) {
@@ -1431,15 +1441,38 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     return {for (final row in await query.get()) row.read(tasks.id)!};
   }
 
-  /// Removes every task that [syncRunId] did not return, see [_purge].
+  /// Removes every task that [syncRunId] did not return and no other write
+  /// stored while it went (see [upsertAll]), see [_purge].
   Future<int> purgeNotInRun(String syncRunId) => transaction(
     () async => await _purge(
       await _ids(
-        (tasks.syncRunId.isNull() | tasks.syncRunId.equals(syncRunId).not()) &
+        (tasks.syncRunId.isNull() |
+                tasks.syncRunId.isNotIn([
+                  syncRunId,
+                  _storedDuring(syncRunId),
+                ])) &
             _purgeable,
       ),
     ),
   );
+
+  Expression<bool> _notStoredDuring(String runId) =>
+      tasks.syncRunId.isNull() |
+      tasks.syncRunId.equals(_storedDuring(runId)).not();
+
+  /// Apart from the run's own mark, so that a project reconcile still
+  /// purges what the run's delta stored and the server deleted since.
+  static String _storedDuring(String runId) => '$runId+';
+
+  Future<String?> _storedDuringRunningSync() async {
+    final lease = await (select(
+      attachedDatabase.syncState,
+    )..where((s) => s.key.equals(SyncStateKeys.syncLease))).getSingleOrNull();
+    return switch (SyncLease.parse(lease?.value)?.run) {
+      final run? => _storedDuring(run),
+      null => null,
+    };
+  }
 
   Future<void> deleteRow(int id) =>
       (delete(tasks)..where((t) => t.id.equals(id))).go();

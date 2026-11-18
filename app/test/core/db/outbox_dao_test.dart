@@ -58,6 +58,37 @@ void main() {
       expect(await db.outboxDao.loadPendingTaskIds(), {1});
     });
 
+    test("a repeating task's Done carries the occurrence the row shows as "
+        'its base, only while nothing else of the task is queued', () async {
+      final lastDone = DateTime.utc(2026, 10, 5, 8);
+      Task daily(int id) => sampleTask(
+        id: id,
+        title: 'Daily $id',
+        projectId: 7,
+        due: monday,
+        repeatAfter: const Duration(days: 1),
+      ).copyWith(doneAt: lastDone);
+      await db.tasksDao.upsertAll([daily(4), daily(5)], syncRunId: 'run');
+
+      await queue(4, done);
+      await queue(4, favorite);
+      await queue(5, favorite);
+      await queue(5, done);
+      await queue(1, done);
+
+      final [four, five, one] = await ops();
+      expect(
+        decodeTaskChanges(four.payload),
+        TaskChanges(
+          done: true,
+          isFavorite: true,
+          doneBase: DoneBase(dueDate: monday, doneAt: lastDone),
+        ),
+      );
+      expect(decodeTaskChanges(five.payload).doneBase, isNull);
+      expect(decodeTaskChanges(one.payload).doneBase, isNull);
+    });
+
     test('undoing clears done_at', () async {
       await queue(1, done);
       await queue(1, const TaskChanges(done: false));

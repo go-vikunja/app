@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/dto/trash_codec.dart';
 import 'package:vikunja_api/src/errors/error_body.dart';
@@ -55,6 +57,32 @@ VikunjaFailure _fromDioException(DioException exception) {
   }
 }
 
+/// Throws [NotJsonResponse] for a success answer to a JSON request whose
+/// body is no JSON at all: a captive portal's page, never Vikunja's
+/// answer. dio hands over a body of another media type as text, which
+/// Vikunja uses for some JSON too (v2's `null` for no data export).
+void rejectNotJson(Response<Object?> response) {
+  final status = response.statusCode;
+  final body = response.data;
+  if (status == null ||
+      status < 200 ||
+      status >= 300 ||
+      response.requestOptions.responseType != ResponseType.json ||
+      body is! String ||
+      body.trim().isEmpty) {
+    return;
+  }
+  try {
+    jsonDecode(body);
+  } on FormatException {
+    final contentType = response.headers.value(Headers.contentTypeHeader);
+    throw NotJsonResponse(
+      status,
+      message: (contentType ?? '').split(';').first.trim().toLowerCase(),
+    );
+  }
+}
+
 /// Maps an HTTP error response of any API version to a [VikunjaFailure].
 VikunjaFailure failureFromResponse(Response<Object?> response) {
   final status = response.statusCode!;
@@ -89,6 +117,10 @@ VikunjaFailure failureFromResponse(Response<Object?> response) {
     if (status == 401 && code == _invalidToken) {
       return TokenRejected(message: message);
     }
+  }
+
+  if (code == null && isClientCertificateAnswer(status, response.data)) {
+    return const NetworkFailure(NetworkProblem.clientCertificate);
   }
 
   final fieldErrors = body?.fieldErrors;

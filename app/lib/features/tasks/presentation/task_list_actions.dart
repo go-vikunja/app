@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_edits.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 
@@ -81,20 +83,37 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
     final repository = ref.read(taskRepositoryProvider);
     if (repository == null) return;
     final now = ref.read(clockProvider)();
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final l10n = context.l10n;
     _leaveTimers.remove(task.id)?.cancel();
     if (!done) {
       setState(() => _leaving.remove(task.id));
       // Reopened from the row: the Undo of the done it undoes is moot.
-      if (_undoTaskId == task.id) {
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      }
-      await writeTaskDone(repository, task, done: false);
+      if (_undoTaskId == task.id) messenger?.hideCurrentSnackBar();
+      await saveLocalChangeIn(
+        messenger,
+        l10n,
+        () => writeTaskDone(repository, task, done: false),
+        action: 'Reopening a task',
+      );
       return;
     }
     final copy = withDone(task, done: true, now: now);
     setState(() => _leaving[task.id] = copy);
-    await writeTaskDone(repository, task, done: true);
+    final saved = await saveLocalChangeIn(
+      messenger,
+      l10n,
+      () => writeTaskDone(repository, task, done: true),
+      action: 'Marking a task done',
+    );
     if (!mounted) return;
+    if (!saved) {
+      // The task was never marked done; the row shows it as the list has it.
+      if (identical(_leaving[task.id], copy)) {
+        setState(() => _leaving.remove(task.id));
+      }
+      return;
+    }
 
     void leave() {
       if (mounted && identical(_leaving[task.id], copy)) {
@@ -113,12 +132,21 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
     final reason = await showMarkedDoneSnackBar(
       context,
       onUndo: () {
-        if (mounted) {
-          setState(
-            () => _leaving[task.id] = withDone(task, done: false, now: now),
-          );
-        }
-        unawaited(writeTaskUndo(repository, task));
+        final reopened = withDone(task, done: false, now: now);
+        if (mounted) setState(() => _leaving[task.id] = reopened);
+        unawaited(
+          saveLocalChangeIn(
+            messenger,
+            l10n,
+            () => writeTaskUndo(repository, task),
+            action: 'Undoing a done',
+          ).then((saved) {
+            // The task stays done; the row shows it as the list has it.
+            if (!saved && mounted && identical(_leaving[task.id], reopened)) {
+              setState(() => _leaving.remove(task.id));
+            }
+          }),
+        );
       },
     );
     if (_undoTaskId == task.id) _undoTaskId = null;
@@ -141,6 +169,10 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   Future<void> setTaskFavorite(Task task, {required bool favorite}) async {
     final repository = ref.read(taskRepositoryProvider);
     if (repository == null) return;
-    await writeTaskFavorite(repository, task, favorite: favorite);
+    await saveLocalChange(
+      context,
+      () => writeTaskFavorite(repository, task, favorite: favorite),
+      action: 'Changing a favorite',
+    );
   }
 }

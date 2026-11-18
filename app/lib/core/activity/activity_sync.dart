@@ -43,6 +43,8 @@ final class ActivitySync {
   /// that what was read on the web or another device is read here too.
   final Duration windowCheckInterval;
   Future<List<ServerNotification>>? _running;
+  var _runningWholeWindow = false;
+  Future<List<ServerNotification>>? _wholeWindowNext;
 
   /// Pulls the newest pages until one holds a stored notification (or
   /// [maxPages]), stores them, sends the pending read marks and returns the
@@ -59,9 +61,24 @@ final class ActivitySync {
   /// The pull comes first, so a "mark all read" is only sent as one
   /// request when nothing unread arrived since the user saw the list.
   /// Throws the `VikunjaFailure` of the pull; a failed mark stays pending.
-  Future<List<ServerNotification>> run({bool wholeWindow = false}) =>
-      _running ??= _run(wholeWindow: wholeWindow)
-          .whenComplete(() => _running = null);
+  ///
+  /// A call during a run joins it, except that [wholeWindow] during a run
+  /// without it starts one more run once that one ends, which such calls
+  /// share.
+  Future<List<ServerNotification>> run({bool wholeWindow = false}) {
+    if (_running case final running?) {
+      if (!wholeWindow || _runningWholeWindow) return running;
+      return _wholeWindowNext ??= running
+          .then<void>((_) {}, onError: (Object _) {})
+          .then((_) {
+            _wholeWindowNext = null;
+            return run(wholeWindow: true);
+          });
+    }
+    _runningWholeWindow = wholeWindow;
+    return _running = _run(wholeWindow: wholeWindow)
+        .whenComplete(() => _running = null);
+  }
 
   Future<List<ServerNotification>> _run({required bool wholeWindow}) async {
     final dao = _db.serverNotificationsDao;

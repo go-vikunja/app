@@ -18,6 +18,7 @@ import 'package:vikunja_api/src/dto/user_codec.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
 import 'package:vikunja_api/src/read/read_ports.dart';
 import 'package:vikunja_api/src/read/task_query_params.dart';
+import 'package:vikunja_api/src/transport/all_pages.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// Reads over `/api/v2` or `/api/v1`, chosen by
@@ -440,6 +441,7 @@ final class _ProjectsApi implements ProjectsPort {
       _transport.allPages(
         (page) => list(page: page, includeArchived: includeArchived),
         idOf: (project) => project.id,
+        what: '/projects',
       );
 
   @override
@@ -486,6 +488,7 @@ final class _LabelsApi implements LabelsPort {
   Future<List<Label>> listAll() => _transport.allPages(
     (page) => list(page: page),
     idOf: (label) => label.id,
+    what: '/labels',
   );
 
   // The server takes a search with a comma-separated part that is a
@@ -662,7 +665,7 @@ final class _ReadTransport {
     bool allowTemporaryRedirect = false,
   }) async {
     try {
-      return await _dio.get<Object?>(
+      final response = await _dio.get<Object?>(
         _base.replace(path: '${_base.path}$path').toString(),
         queryParameters: query,
         options: Options(
@@ -672,6 +675,8 @@ final class _ReadTransport {
           validateStatus: allowTemporaryRedirect ? _successOr307 : null,
         ),
       );
+      rejectNotJson(response);
+      return response;
     } on DioException catch (error) {
       if (error.type == DioExceptionType.cancel) rethrow;
       throw normalizeError(error);
@@ -926,17 +931,15 @@ final class _ReadTransport {
   Future<List<T>> allPages<T>(
     Future<Page<T>> Function(int page) fetch, {
     required int Function(T item) idOf,
-  }) async {
-    // Pseudo projects repeat on every page.
-    final byId = <int, T>{};
-    for (var page = 1; ; page++) {
+    required String what,
+  }) => collectAllPages(
+    (page) async {
       final current = await fetch(page);
-      for (final item in current.items) {
-        byId.putIfAbsent(idOf(item), () => item);
-      }
-      if (!current.hasMore) return List.unmodifiable(byId.values);
-    }
-  }
+      return (items: current.items, totalPages: current.totalPages);
+    },
+    idOf: idOf,
+    what: what,
+  );
 
   static List<T> _parseAll<T>(List<Object?> items, T Function(Object?) parse) =>
       List.unmodifiable(items.map(parse));

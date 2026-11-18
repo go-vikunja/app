@@ -186,6 +186,38 @@ void main() {
     expect(find.text(en.widgetConfigureSave), findsOneWidget);
   });
 
+  testWidgets('a widget whose preview fails shows its kind, and the other '
+      'placed widgets still show', (tester) async {
+    await harness.pump(tester);
+    final account = harness.activeAccountId(tester);
+    final project = WidgetConfig(
+      accountId: account,
+      kind: const ProjectTasksKind(3),
+    );
+    final broken = WidgetConfig(accountId: account, kind: const OverdueKind());
+    harness.host.placed
+      ..[12] = project
+      ..[13] = broken;
+    harness.refresher
+      ..previews[project] = samplePreview(project, title: 'Garage Sale')
+      ..failingPreviews.add(broken);
+    unawaited(harness.routerOf(tester).push(AppRoutes.widgets));
+    await tester.pumpAndSettle();
+
+    final brokenTile = find.byWidgetPredicate(
+      (widget) => widget is ListTile && widget.key == const ValueKey(13),
+    );
+    await scrollTo(tester, brokenTile);
+    expect(find.text('Garage Sale'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: brokenTile,
+        matching: find.text(en.widgetKindOverdue),
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('a widget of the previous app that is not set up says so, not '
       'that it shows the active account, and opens its setup', (tester) async {
     await harness.pump(tester);

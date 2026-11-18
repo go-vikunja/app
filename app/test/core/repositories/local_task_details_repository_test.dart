@@ -170,8 +170,8 @@ void main() {
     expect(last.hasMore, isFalse);
   });
 
-  test('marking read clears the flag of the row at once, then on the '
-      'server', () async {
+  test('marking read clears the flag on the server, then that of the '
+      'row', () async {
     await db.tasksDao.storeCommentState(1, commentCount: 2, isUnread: true);
     final flags = <bool?>[];
     write.beforeRequest = (_) async =>
@@ -180,19 +180,20 @@ void main() {
     await repository.markRead(1);
 
     expect(write.requests, ['markRead 1']);
-    expect(flags, [false]);
+    expect(flags, [true]);
+    expect((await db.tasksDao.find(1))!.isUnread, isFalse);
     expect((await db.tasksDao.find(1))!.commentCount, 2);
   });
 
-  test('a failed mark read leaves the row read: the next details read '
-      'says otherwise', () async {
+  test('a failed mark read leaves the row unread, so the next opening tries '
+      'again', () async {
     await db.tasksDao.storeCommentState(1, isUnread: true);
     write.beforeRequest = (_) async =>
         throw const NetworkFailure(NetworkProblem.unreachable);
 
     await expectLater(repository.markRead(1), throwsA(isA<NetworkFailure>()));
 
-    expect((await db.tasksDao.find(1))!.isUnread, isFalse);
+    expect((await db.tasksDao.find(1))!.isUnread, isTrue);
   });
 
   test('a task created here goes by its server id once its create was '
