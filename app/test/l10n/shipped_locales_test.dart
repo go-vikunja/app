@@ -159,6 +159,74 @@ void main() {
     }
   });
 
+  test("the app's locale is the shipped language in the region of the "
+      "device's locale of that language", () {
+    const cases = [
+      (<Locale>[], Locale('en')),
+      ([Locale('en', 'GB')], Locale('en', 'GB')),
+      ([Locale('en', 'US')], Locale('en', 'US')),
+      ([Locale('de', 'CH')], Locale('de', 'CH')),
+      ([Locale('fr', 'FR')], Locale('en')),
+      ([Locale('fr', 'CH'), Locale('de', 'AT')], Locale('de', 'AT')),
+      ([Locale('fr'), Locale('de', 'AT'), Locale('en')], Locale('en')),
+      // A per-app language without a region, before the device's locales.
+      ([Locale('en'), Locale('en', 'GB')], Locale('en', 'GB')),
+      ([Locale('de'), Locale('en', 'GB')], Locale('de')),
+      (
+        [
+          Locale.fromSubtags(
+            languageCode: 'en',
+            scriptCode: 'Latn',
+            countryCode: 'IN',
+          ),
+        ],
+        Locale('en', 'IN'),
+      ),
+    ];
+    for (final (device, app) in cases) {
+      expect(appLocaleFor(device), app, reason: '$device');
+      expect(
+        appLocaleFor(device).languageCode,
+        shippedLocaleFor(device).languageCode,
+        reason: '$device',
+      );
+    }
+  });
+
+  test('every shipped language keeps the region in the locale name its '
+      'dates and numbers are formatted with', () {
+    for (final language in shippedLocales) {
+      final regional = Locale(language.languageCode, 'CH');
+
+      final l10n = appLocalizationsFor(regional);
+
+      expect(l10n.localeName, '${language.languageCode}_CH');
+      expect(
+        l10n.runtimeType,
+        lookupAppLocalizations(language).runtimeType,
+        reason: '$language',
+      );
+    }
+  });
+
+  test('a noted tag or a locale name gives its locale back', () {
+    expect(localeOfTag('en'), const Locale('en'));
+    expect(localeOfTag('en-GB'), const Locale('en', 'GB'));
+    expect(localeOfTag('de_CH'), const Locale('de', 'CH'));
+    expect(
+      localeOfTag('zh-Hant'),
+      const Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+    );
+    expect(
+      localeOfTag('zh-Hant-TW'),
+      const Locale.fromSubtags(
+        languageCode: 'zh',
+        scriptCode: 'Hant',
+        countryCode: 'TW',
+      ),
+    );
+  });
+
   test('French is not shipped', () {
     expect(
       shippedLocales.map((locale) => locale.languageCode),

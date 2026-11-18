@@ -41,15 +41,18 @@ String taskOpenFailureText(AppLocalizations l10n, Object error) =>
 
 /// Opens a task from outside the screens (a notification, a deep link, a
 /// home-screen widget, the inbox) the same way: once the router shows the
-/// shell, in the task's account, which becomes active first (the edit page
-/// asks before it goes), with the detail in the Overview's pane where the
-/// window has room for one, else in a sheet over the Overview or over a
-/// page that covers the shell (the edit page keeps its unsaved changes).
+/// shell (About or Connection over it goes first), in the task's account,
+/// which becomes active first (the edit page asks before it goes), with the
+/// detail in the Overview's pane where the window has room for one, else in
+/// a sheet over the Overview or over a page that covers the shell (the edit
+/// page keeps its unsaved changes).
 /// A detail that opens a task itself shows the next one over or in place of
 /// itself and only uses [resolve].
 final class TaskOpener {
   new(this._ref) : _router = _ref.read(appRouterProvider) {
-    _router.routerDelegate.addListener(_runWhenReady);
+    _router.routerDelegate
+      ..addListener(_forgetKeptPage)
+      ..addListener(_runWhenReady);
   }
 
   final Ref _ref;
@@ -58,35 +61,101 @@ final class TaskOpener {
   var _running = false;
   var _disposed = false;
   ProviderSubscription<bool>? _unlocks;
+  var _leaving = false;
+  var _keptOutsideHome = false;
+  final _afterLeaving = <VoidCallback>{};
 
   /// How long a switch's registry change may take to reach the providers.
   static const _switchTimeout = Duration(seconds: 10);
 
+  static const Set<String> _startRoutes = {
+    AppRoutes.splash,
+    AppRoutes.firstSync,
+    AppRoutes.notificationsSetup,
+  };
+
   GoRouter get router => _router;
 
   /// Runs [open] once the router has left the splash, the first sync and
-  /// the notification setup, and the app lock is open. One runs at a time;
-  /// of the ones that wait, only the last runs. Signed out it is dropped.
+  /// the notification setup, and the app lock is open; see [reachHome] for
+  /// a page outside `/home`. One runs at a time; of the ones that wait,
+  /// only the last runs. Signed out it is dropped.
   void request(Future<void> Function() open) {
     _pending = open;
     _runWhenReady();
   }
 
+  /// Whether the router has not left the splash, the first sync or the
+  /// notification setup yet; a page over one of them is outside `/home`
+  /// without the shell under it, for which [reachHome] waits.
+  bool get starting {
+    final delegate = _router.routerDelegate;
+    return delegate.currentConfiguration.isEmpty ||
+        _startRoutes.contains(delegate.state.matchedLocation);
+  }
+
+  /// By the registry: About and Connection are outside `/home` either way.
+  bool get signedIn => _ref.read(accountsProvider).value?.activeAccount != null;
+
+  /// Whether a route under `/home` shows, for a request or a share of a
+  /// signed-in user. Pages outside `/home` over the shell (About,
+  /// Connection) go first as if the user went back, and [retry] runs once
+  /// they went; when one stays, this is false until the user is back under
+  /// `/home`. Without the shell under them, nothing goes.
+  bool reachHome(VoidCallback retry) {
+    if (_leaving) {
+      _afterLeaving.add(retry);
+      return false;
+    }
+    if (_showsHome) return true;
+    final overShell = _router.routerDelegate.currentConfiguration.uri.path
+        .startsWith(AppRoutes.home);
+    if (_keptOutsideHome || !overShell) return false;
+    _afterLeaving.add(retry);
+    unawaited(_leaveOutsideHome());
+    return false;
+  }
+
+  Future<void> _leaveOutsideHome() async {
+    _leaving = true;
+    try {
+      await popPagesOutsideHome(_router);
+    } on Object catch (error) {
+      _log.warning('Could not leave a page: ${error.runtimeType}');
+    } finally {
+      _leaving = false;
+    }
+    if (_disposed) return;
+    _keptOutsideHome = !_showsHome;
+    final waiting = [..._afterLeaving];
+    _afterLeaving.clear();
+    for (final retry in waiting) {
+      retry();
+    }
+  }
+
+  bool get _showsHome {
+    final delegate = _router.routerDelegate;
+    return delegate.currentConfiguration.isNotEmpty &&
+        delegate.state.matchedLocation.startsWith(AppRoutes.home);
+  }
+
+  /// Also when nothing waits, so that a later request leaves again.
+  void _forgetKeptPage() {
+    if (_showsHome) _keptOutsideHome = false;
+  }
+
   void _runWhenReady() {
     if (_disposed || _pending == null) return;
     if (_lockedNow()) return;
-    final delegate = _router.routerDelegate;
-    if (delegate.currentConfiguration.isEmpty) return;
-    final location = delegate.state.matchedLocation;
-    if (location == AppRoutes.splash ||
-        location == AppRoutes.firstSync ||
-        location == AppRoutes.notificationsSetup) {
+    if (starting || _running) return;
+    if (!signedIn) {
+      _pending = null;
       return;
     }
-    if (_running) return;
+    if (!reachHome(_runWhenReady)) return;
     final open = _pending!;
     _pending = null;
-    if (!location.startsWith(AppRoutes.home)) return;
     _running = true;
     unawaited(
       open()
@@ -496,8 +565,11 @@ final class TaskOpener {
   void dispose() {
     _disposed = true;
     _pending = null;
+    _afterLeaving.clear();
     _unlocks?.close();
-    _router.routerDelegate.removeListener(_runWhenReady);
+    _router.routerDelegate
+      ..removeListener(_forgetKeptPage)
+      ..removeListener(_runWhenReady);
   }
 }
 

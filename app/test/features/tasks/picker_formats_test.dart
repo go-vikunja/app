@@ -38,6 +38,7 @@ void main() {
         locale: locale,
         localizationsDelegates: appLocalizationsDelegates,
         supportedLocales: appSupportedLocales,
+        localeListResolutionCallback: appLocaleResolution,
         home: Scaffold(
           body: Builder(
             builder: (context) => TextButton(
@@ -157,6 +158,120 @@ void main() {
     });
   });
 
+  group("the device's region in the Material date picker", () {
+    Future<DateTime? Function()> openDatePicker(
+      WidgetTester tester, {
+      required Locale locale,
+      DisplaySettings display = const DisplaySettings(),
+    }) async {
+      DateTime? picked;
+      await pumpOpener(
+        tester,
+        locale: locale,
+        onOpen: (context) async => picked = await pickDateTime(
+          context,
+          current: DateTime(2026, 10, 19, 9, 30),
+          now: now,
+          display: display,
+        ),
+      );
+      return () => picked;
+    }
+
+    MaterialLocalizations dialogTexts(WidgetTester tester) =>
+        MaterialLocalizations.of(tester.element(find.byType(DatePickerDialog)));
+
+    Future<void> switchToInput(WidgetTester tester) async {
+      await tester.tap(
+        find.byTooltip(dialogTexts(tester).inputDateModeButtonLabel),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    /// Confirms [typed], and the time picker after it if it opens.
+    Future<void> typeDate(WidgetTester tester, String typed) async {
+      final ok = dialogTexts(tester).okButtonLabel;
+      await tester.enterText(find.byType(TextField), typed);
+      await tester.tap(find.text(ok));
+      await tester.pumpAndSettle();
+      if (find.byType(TimePickerDialog).evaluate().isNotEmpty) {
+        await tester.tap(find.text(ok));
+        await tester.pumpAndSettle();
+      }
+    }
+
+    testWidgets('a British device types the day first and starts the week '
+        'on Monday', (tester) async {
+      final picked = await openDatePicker(
+        tester,
+        locale: const Locale('en', 'GB'),
+      );
+
+      expect(firstDayOfWeekInPicker(tester), 1);
+      expect(weekdayHeader(tester), ['M', 'T', 'W', 'T', 'F', 'S', 'S']);
+
+      await switchToInput(tester);
+      expect(find.text('dd/mm/yyyy'), findsOneWidget);
+      await typeDate(tester, '13/10/2026');
+
+      expect(picked(), DateTime(2026, 10, 13, 9, 30));
+    });
+
+    testWidgets("the account's week start and clock still win, and the "
+        'British input still takes the day first', (tester) async {
+      final picked = await openDatePicker(
+        tester,
+        locale: const Locale('en', 'GB'),
+        display: const DisplaySettings(
+          weekStart: 3,
+          timeFormat: TimeFormat.twelveHour,
+        ),
+      );
+
+      expect(firstDayOfWeekInPicker(tester), 3);
+
+      await switchToInput(tester);
+      expect(find.text('dd/mm/yyyy'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), '13/10/2026');
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.text('AM'), findsOneWidget);
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(picked(), DateTime(2026, 10, 13, 9, 30));
+    });
+
+    testWidgets('a US device keeps the month first and Sunday', (tester) async {
+      final picked = await openDatePicker(
+        tester,
+        locale: const Locale('en', 'US'),
+      );
+
+      expect(firstDayOfWeekInPicker(tester), 0);
+
+      await switchToInput(tester);
+      expect(find.text('mm/dd/yyyy'), findsOneWidget);
+      await typeDate(tester, '13/10/2026');
+      expect(find.text('Invalid format.'), findsOneWidget);
+      await typeDate(tester, '10/13/2026');
+
+      expect(picked(), DateTime(2026, 10, 13, 9, 30));
+    });
+
+    testWidgets('a Swiss device keeps the German picker', (tester) async {
+      await openDateTime(
+        tester,
+        display: const DisplaySettings(weekStart: 6),
+        locale: const Locale('de', 'CH'),
+      );
+
+      expect(firstDayOfWeekInPicker(tester), 6);
+      expect(find.text('Abbrechen'), findsOneWidget);
+      expect(find.text('ABBRECHEN'), findsNothing);
+    });
+  });
+
   group('the clock of the Material time picker', () {
     Future<void> toTimePicker(WidgetTester tester) async {
       await tester.tap(find.text('OK'));
@@ -195,6 +310,28 @@ void main() {
 
       expect(find.text('AM'), findsOneWidget);
     });
+
+    for (final (device24Hour, account, amPm) in [
+      (false, null, findsOneWidget),
+      (true, null, findsNothing),
+      (false, TimeFormat.twentyFourHour, findsNothing),
+      (true, TimeFormat.twelveHour, findsOneWidget),
+    ]) {
+      testWidgets('on a British device with the 24-hour switch '
+          "${device24Hour ? 'on' : 'off'}, ${account?.name ?? 'never set'}", (
+        tester,
+      ) async {
+        await openDateTime(
+          tester,
+          display: DisplaySettings(timeFormat: account),
+          locale: const Locale('en', 'GB'),
+          device24Hour: device24Hour,
+        );
+        await toTimePicker(tester);
+
+        expect(find.text('AM'), amPm);
+      });
+    }
 
     testWidgets('picking in 12 hours returns the right instant', (
       tester,
@@ -291,14 +428,19 @@ void main() {
   });
 
   testWidgets('every shipped language keeps the week start and the clock '
-      'the user picked', (tester) async {
-    for (final locale in shippedLocales) {
+      'the user picked, and its own texts in a region', (tester) async {
+    for (final locale in [
+      ...shippedLocales,
+      for (final shipped in shippedLocales) Locale(shipped.languageCode, 'CH'),
+    ]) {
       late MaterialLocalizations picker;
+      late Locale shown;
       await tester.pumpWidget(
         MaterialApp(
           locale: locale,
           localizationsDelegates: appLocalizationsDelegates,
           supportedLocales: appSupportedLocales,
+          localeListResolutionCallback: appLocaleResolution,
           home: Builder(
             builder: (context) =>
                 pickerFormatsBuilder(
@@ -309,6 +451,7 @@ void main() {
                   Builder(
                     builder: (context) {
                       picker = MaterialLocalizations.of(context);
+                      shown = Localizations.localeOf(context);
                       return const SizedBox.shrink();
                     },
                   ),
@@ -316,8 +459,11 @@ void main() {
           ),
         ),
       );
-      final material = await GlobalMaterialLocalizations.delegate.load(locale);
+      final material = await GlobalMaterialLocalizations.delegate.load(
+        Locale(locale.languageCode),
+      );
 
+      expect(shown, locale);
       expect(picker.firstDayOfWeekIndex, 3, reason: '$locale');
       expect(
         picker.timeOfDayFormat(),

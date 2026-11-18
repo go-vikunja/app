@@ -6,13 +6,13 @@ import 'package:flutter/widgets.dart'
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
-import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
 part 'local_notification_gateway_provider.g.dart';
 
@@ -118,10 +118,11 @@ class DeviceAppLocalizations extends _$DeviceAppLocalizations {
   AppLocalizations build() =>
       _resolveAppLocalizations(PlatformDispatcher.instance.locales);
 
-  /// Switches to the language [locales] resolve to, as
+  /// Switches to the locale [locales] resolve to, as
   /// [loadDeviceAppLocalizations] resolves them, and notes it for the
   /// headless isolates; nothing when that is the current one or when no
-  /// locale is reported.
+  /// locale is reported. A new region counts, as the widgets' dates follow
+  /// it.
   Future<void> follow(Iterable<Locale> locales) async {
     if (locales.isEmpty) return;
     final l10n = _resolveAppLocalizations(locales);
@@ -171,8 +172,8 @@ final class _LocalesObserver with WidgetsBindingObserver {
   void didChangeLocales(List<Locale>? locales) => _onChange(locales);
 }
 
-/// The language [locales] resolve to as MaterialApp resolves them
-/// ([shippedLocaleFor]) when the engine reports any, else the tag noted
+/// The texts for the locale [locales] resolve to as MaterialApp resolves
+/// them ([appLocaleFor]) when the engine reports any, else the tag noted
 /// under [notificationLocaleKey] (the headless engine the plugin starts on
 /// iOS has no view to take them from) resolved the same way, else English.
 /// A language resolved from [locales] is noted for that case.
@@ -187,22 +188,11 @@ Future<AppLocalizations> loadDeviceAppLocalizations(
     return l10n;
   }
   final noted = await preferences.getString(notificationLocaleKey);
-  return _resolveAppLocalizations([if (noted != null) _localeOfTag(noted)]);
+  return _resolveAppLocalizations([if (noted != null) localeOfTag(noted)]);
 }
 
 AppLocalizations _resolveAppLocalizations(Iterable<Locale> locales) =>
-    lookupAppLocalizations(shippedLocaleFor(locales));
-
-/// The locale of a tag [_noteLocale] wrote, like `pt-BR` or `zh-Hant`.
-Locale _localeOfTag(String tag) {
-  final subtags = tag.split('-');
-  final script = subtags.elementAtOrNull(1)?.length == 4 ? subtags[1] : null;
-  return Locale.fromSubtags(
-    languageCode: subtags.first,
-    scriptCode: script,
-    countryCode: subtags.elementAtOrNull(script == null ? 1 : 2),
-  );
-}
+    appLocalizationsFor(appLocaleFor(locales));
 
 Future<void> _noteLocale(PreferencesStore preferences, AppLocalizations l10n) =>
     preferences.setString(

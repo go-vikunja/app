@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -28,19 +27,6 @@ class TaskById extends _$TaskById {
   bool updateShouldNotify(AsyncValue<Task?> previous, AsyncValue<Task?> next) {
     if (previous != next) return true;
     final (before, after) = (previous.value, next.value);
-    if (before == null || after == null) return false;
-    return !listEquals(before.labels, after.labels) ||
-        !listEquals(before.assignees, after.assignees) ||
-        !listEquals(before.reminders, after.reminders) ||
-        before.repeatAfter != after.repeatAfter ||
-        before.repeatMode != after.repeatMode ||
-        !_sameRelations(before.relatedTasks, after.relatedTasks);
+    return before != null && after != null && !deepTaskEquals(before, after);
   }
-
-  static bool _sameRelations(
-    Map<TaskRelationKind, List<Task>> a,
-    Map<TaskRelationKind, List<Task>> b,
-  ) =>
-      a.length == b.length &&
-      a.entries.every((entry) => listEquals(entry.value, b[entry.key]));
 }

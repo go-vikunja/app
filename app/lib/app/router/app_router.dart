@@ -81,6 +81,13 @@ abstract final class AppRoutes {
         queryParameters: {'origin': '$origin', 'edit': ?editor?.name},
       ).toString();
 
+  /// The editor a [connectionFor] location opens; null for the connection
+  /// screen itself and for any other location.
+  static ConnectionEditor? connectionEditorIn(Uri location) =>
+      location.path == connection
+      ? ConnectionEditor.values.asNameMap()[location.queryParameters['edit']]
+      : null;
+
   /// The licence, the source code and the notices, for users and guests,
   /// signed in or not; outside [home] like [connection].
   static const about = '/about';
@@ -320,7 +327,7 @@ GoRouter appRouter(Ref ref) {
           final query = state.uri.queryParameters;
           return ConnectionPage(
             origin: OriginKey.tryParse(query['origin'] ?? ''),
-            editor: ConnectionEditor.values.asNameMap()[query['edit']],
+            editor: AppRoutes.connectionEditorIn(state.uri),
           );
         },
       ),

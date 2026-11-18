@@ -2,6 +2,8 @@ import 'package:intl/intl.dart' as intl;
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
+import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
@@ -24,8 +26,8 @@ final class WidgetTexts {
     required bool alwaysUse24HourFormat,
   }) async => WidgetTexts(
     l10n: l10n,
-    material: await GlobalMaterialLocalizations.delegate.load(
-      Locale(l10n.localeName.split('_').first),
+    material: await appMaterialLocalizationsDelegate.load(
+      localeOfTag(l10n.localeName),
     ),
     alwaysUse24HourFormat: alwaysUse24HourFormat,
   );

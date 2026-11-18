@@ -253,3 +253,44 @@ final class Task {
   @override
   String toString() => 'Task($id, $displayIdentifier)';
 }
+
+/// `Task ==` and what it leaves out: the labels, assignees and reminders,
+/// the repeat, the related tasks (compared the same way), the creator, the
+/// creation time and the bucket. Neither a label renamed nor a change made
+/// here touches [Task.updated].
+bool deepTaskEquals(Task a, Task b) =>
+    a == b &&
+    a.repeatAfter == b.repeatAfter &&
+    a.repeatMode == b.repeatMode &&
+    a.bucketId == b.bucketId &&
+    a.createdBy == b.createdBy &&
+    a.created == b.created &&
+    _sameItems(a.labels, b.labels) &&
+    _sameItems(a.assignees, b.assignees) &&
+    _sameItems(a.reminders, b.reminders) &&
+    a.relatedTasks.length == b.relatedTasks.length &&
+    a.relatedTasks.entries.every(
+      (entry) => switch (b.relatedTasks[entry.key]) {
+        final other? => deepTaskListEquals(entry.value, other),
+        null => false,
+      },
+    );
+
+/// [deepTaskEquals] for each task, in order.
+bool deepTaskListEquals(List<Task> a, List<Task> b) =>
+    _sameItems(a, b, deepTaskEquals);
+
+bool _sameItems<T>(
+  List<T> a,
+  List<T> b, [
+  bool Function(T a, T b) equals = _equal,
+]) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (!equals(a[i], b[i])) return false;
+  }
+  return true;
+}
+
+bool _equal(Object? a, Object? b) => a == b;

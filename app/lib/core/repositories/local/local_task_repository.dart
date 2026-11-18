@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -138,7 +137,8 @@ final class LocalTaskRepository
         );
         return await _db.tasksDao.loadOpenTasksAmong(ids ?? const {});
       }, alsoOn: changesWithTime(definition.filter) ? _clockTicks : null)
-      .distinct(listEquals);
+      // A tick that changes nothing stays quiet.
+      .distinct(deepTaskListEquals);
 
   @override
   Stream<List<Task>> watchOpenTasks() => _db.tasksDao.watchOpenTasks();

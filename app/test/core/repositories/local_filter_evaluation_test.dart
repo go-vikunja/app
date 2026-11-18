@@ -481,6 +481,90 @@ void main() {
     });
   });
 
+  // None of these touches the task's `updated`, which `Task ==` compares.
+  group('a smart list, a label list and the Overview with a filter show', () {
+    late List<Task> Function() urgentReports;
+
+    setUp(() async {
+      await storeFilter('priority >= 3');
+      await settings(const UserSettings(filterIdUsedOnOverview: -14));
+      final smartList = <SavedFilterTasks>[];
+      final labelList = <List<Task>>[];
+      final overview = <OverviewTasks>[];
+      for (final subscription in [
+        repository.watchSavedFilterTasks(-14).listen(smartList.add),
+        repository.watchLabelTasks(urgent.id).listen(labelList.add),
+        repository.watchOverviewTasks().listen(overview.add),
+      ]) {
+        addTearDown(subscription.cancel);
+      }
+      await pumpEventQueue();
+      expect(overview.last.filterEvaluation, FilterEvaluation.local);
+      urgentReports = () => [
+        for (final tasks in [
+          smartList.last.tasks,
+          labelList.last,
+          overview.last.tasks,
+        ])
+          tasks.singleWhere((task) => task.id == 1),
+      ];
+    });
+
+    test('a label renamed or recoloured', () async {
+      await db.labelsDao.upsertAll([
+        Label(id: urgent.id, title: 'Very urgent'),
+      ]);
+      await pumpEventQueue();
+      expect(
+        [for (final task in urgentReports()) task.labels.single.title],
+        ['Very urgent', 'Very urgent', 'Very urgent'],
+      );
+
+      await db.labelsDao.upsertAll([
+        Label(id: urgent.id, title: 'Very urgent', hexColor: 'e8445a'),
+      ]);
+      await pumpEventQueue();
+      expect(
+        [for (final task in urgentReports()) task.labels.single.hexColor],
+        ['e8445a', 'e8445a', 'e8445a'],
+      );
+    });
+
+    test('an assignee and a repeat changed offline', () async {
+      write.beforeRequest = (_) =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+
+      await repository.updateTask(
+        1,
+        TaskChanges(assignees: IdSetChange(added: {alice.id})),
+      );
+      await pumpEventQueue();
+      expect(
+        [for (final task in urgentReports()) task.assignees],
+        [
+          [alice],
+          [alice],
+          [alice],
+        ],
+      );
+
+      await repository.updateTask(
+        1,
+        const TaskChanges(repeatAfter: Duration(days: 7)),
+      );
+      await pumpEventQueue();
+      expect(
+        [for (final task in urgentReports()) task.repeatAfter],
+        [
+          const Duration(days: 7),
+          const Duration(days: 7),
+          const Duration(days: 7),
+        ],
+      );
+      expect(await db.outboxDao.count(), isPositive);
+    });
+  });
+
   group('a saved filter for open tasks', () {
     test('reads only the open candidates when asked to', () async {
       final filters = LocalFilters(db, now: () => now);

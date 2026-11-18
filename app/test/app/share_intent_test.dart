@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/about/presentation/about_page.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
@@ -194,6 +195,40 @@ void main() {
     expect(sheet, findsNothing);
     expect(find.text(en.shareSignedOut), findsOneWidget);
     expect(data.shareSource.calls, ['pending', 'clear']);
+  });
+
+  testWidgets('on About, which lies outside /home, the share counts as '
+      'signed in: About goes and the sheet opens', (tester) async {
+    await pumpSignedInApp(tester, sync: data);
+    unawaited(
+      containerOf(tester).read(appRouterProvider).push(AppRoutes.about),
+    );
+    await tester.pumpAndSettle();
+
+    data.shareSource.push(const IncomingShare(text: 'Note'));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.shareSignedOut), findsNothing);
+    expect(find.byType(AboutPage), findsNothing);
+    expect(sheet, findsOneWidget);
+    expect(fieldText(tester, en.taskEditTitleLabel), 'Note');
+  });
+
+  testWidgets('signed out on About it says so, drops the share and About '
+      'stays', (tester) async {
+    await pumpVikunjaApp(tester, sync: data);
+    unawaited(
+      containerOf(tester).read(appRouterProvider).push(AppRoutes.about),
+    );
+    await tester.pumpAndSettle();
+
+    data.shareSource.push(const IncomingShare(text: 'Note'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AboutPage), findsOneWidget);
+    expect(sheet, findsNothing);
+    expect(find.text(en.shareSignedOut), findsOneWidget);
+    expect(data.shareSource.calls.last, 'clear');
   });
 
   testWidgets('Cancel writes nothing and deletes the inbox copies', (

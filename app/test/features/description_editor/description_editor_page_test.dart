@@ -121,7 +121,8 @@ void main() {
       expect(init.placeholder, en.descriptionEditorPlaceholder);
       expect(init.label, en.descriptionEditorTitle);
       expect(init.imageLabel, en.descriptionEditorImage);
-      expect(init.locale, 'en');
+      // The test binding's device locale, region included.
+      expect(init.locale, 'en-US');
       expect(init.theme, editorThemeOf(context));
       expect(init.theme.dark, isFalse);
       expect(init.theme.fontScale, 1);

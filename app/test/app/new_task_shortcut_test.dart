@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/platform/app_shortcuts.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/about/presentation/about_page.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
@@ -110,6 +111,19 @@ void main() {
     expect(find.byType(NewTaskSheet), findsOneWidget);
     expect(location(tester), AppRoutes.addAccount);
     expect(find.byType(ConnectServerScreen), findsOneWidget);
+  });
+
+  testWidgets('leaves About and opens over the overview', (tester) async {
+    await harness.pumpApp(tester);
+    unawaited(routerOf(tester).push(AppRoutes.about));
+    await tester.pumpAndSettle();
+
+    harness.shortcuts.trigger(newTaskShortcutType);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AboutPage), findsNothing);
+    expect(find.byType(NewTaskSheet), findsOneWidget);
+    expect(location(tester), AppRoutes.overview);
   });
 
   testWidgets('other shortcut types are ignored', (tester) async {

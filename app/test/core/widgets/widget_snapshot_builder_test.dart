@@ -589,6 +589,50 @@ void main() {
       expect(label(DateTime(2027, 1, 4, 9)), 'Jan 4, 2027');
     });
 
+    test("a week ahead and beyond show the date in the device's "
+        'region', () async {
+      final british = await WidgetTexts.load(
+        appLocalizationsFor(const Locale('en', 'GB')),
+        alwaysUse24HourFormat: false,
+      );
+      final formatter = british.formatter(const DisplaySettings());
+      String label(DateTime due) =>
+          british.dueLabel(due, now: now, formatter: formatter);
+
+      expect(label(DateTime(2026, 11, 2, 9)), '2 Nov');
+      expect(label(DateTime(2027, 1, 4, 9)), '4 Jan 2027');
+    });
+
+    test("in the device's region the clock still follows its 24-hour switch, "
+        'unless the account sets one', () async {
+      final afternoon = DateTime(2026, 10, 26, 15);
+      Future<String> label({
+        required bool device24Hour,
+        TimeFormat? account,
+      }) async {
+        final british = await WidgetTexts.load(
+          appLocalizationsFor(const Locale('en', 'GB')),
+          alwaysUse24HourFormat: device24Hour,
+        );
+        return british.dueLabel(
+          afternoon,
+          now: now,
+          formatter: british.formatter(DisplaySettings(timeFormat: account)),
+        );
+      }
+
+      expect(await label(device24Hour: false), 'Today, 3:00 PM');
+      expect(await label(device24Hour: true), 'Today, 15:00');
+      expect(
+        await label(device24Hour: false, account: TimeFormat.twentyFourHour),
+        'Today, 15:00',
+      );
+      expect(
+        await label(device24Hour: true, account: TimeFormat.twelveHour),
+        'Today, 3:00 PM',
+      );
+    });
+
     test('count calendar days across the end of daylight saving', () {
       final saturdayNoon = DateTime(2026, 10, 24, 12);
       final mondayNoon = DateTime(2026, 10, 26, 12);

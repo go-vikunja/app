@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
+import 'package:vikunja_mobile/features/about/presentation/about_page.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
@@ -117,6 +118,23 @@ void main() {
       expect(location(tester), AppRoutes.overview);
       expect(inSheet('Water the plants'), findsOneWidget);
       expect(find.byType(AccountPickerSheet), findsNothing);
+    });
+
+    testWidgets('a row leaves About and opens its task over the overview', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      unawaited(routerOf(tester).push(AppRoutes.about));
+      await tester.pumpAndSettle();
+
+      await push(
+        tester,
+        WidgetTaskLink(accountId: activeAccountId(tester), taskId: 7),
+      );
+
+      expect(find.byType(AboutPage), findsNothing);
+      expect(location(tester), AppRoutes.overview);
+      expect(inSheet('Water the plants'), findsOneWidget);
     });
 
     testWidgets('a task that is gone says so', (tester) async {

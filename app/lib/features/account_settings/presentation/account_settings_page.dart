@@ -1151,8 +1151,11 @@ String _timeFormatLabel(
   DateTime now,
 ) {
   final sample = DateTime(now.year, now.month, now.day, 14, 30);
-  String example(String pattern) =>
-      intl.DateFormat(pattern, l10n.localeName).format(sample);
+  // The language's AM/PM, as MomentFormatter shows it, not en_GB's am/pm.
+  String example(String pattern) => intl.DateFormat(
+    pattern,
+    intl.Intl.shortLocale(l10n.localeName),
+  ).format(sample);
   return switch (format) {
     null => l10n.accountSettingsTimeFormatDevice,
     TimeFormat.twelveHour =>

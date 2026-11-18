@@ -10,11 +10,17 @@ import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/about/presentation/about_page.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_navigation.dart';
+import 'package:vikunja_mobile/features/connection/presentation/connection_page.dart';
+import 'package:vikunja_mobile/features/connection/presentation/headers_page.dart';
+import 'package:vikunja_mobile/features/connection/presentation/secret_text_field.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
@@ -76,6 +82,50 @@ void main() {
   ).toJson();
 
   final sheet = find.byType(TaskDetailSheet);
+
+  BuildContext rootContext(WidgetTester tester) =>
+      routerOf(tester).routerDelegate.navigatorKey.currentContext!;
+
+  /// A sheet whose typed note is asked about before it goes.
+  void showNoteSheet(WidgetTester tester, {VoidCallback? onAsk}) =>
+      showModalBottomSheet<void>(
+        context: rootContext(tester),
+        builder: (sheet) => PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, _) async {
+            if (didPop) return;
+            onAsk?.call();
+            final drop = await showDialog<bool>(
+              context: sheet,
+              builder: (dialog) => AlertDialog(
+                title: const Text('Drop the note?'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialog, false),
+                    child: const Text('Keep the note'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialog, true),
+                    child: const Text('Drop it'),
+                  ),
+                ],
+              ),
+            );
+            if ((drop ?? false) && sheet.mounted) Navigator.pop(sheet);
+          },
+          child: const Padding(
+            padding: EdgeInsets.all(16),
+            child: TextField(key: Key('note')),
+          ),
+        ),
+      );
+
+  Future<void> typeNote(WidgetTester tester, {VoidCallback? onAsk}) async {
+    showNoteSheet(tester, onAsk: onAsk);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('note')), 'Half a thought');
+    await tester.pumpAndSettle();
+  }
 
   testWidgets('a tap opens the task over the overview', (tester) async {
     await pumpSignedInApp(
@@ -202,6 +252,268 @@ void main() {
 
     expect(location(tester), AppRoutes.overview);
     expect(sheet, findsOneWidget);
+  });
+
+  group('a tap over a page outside /home', () {
+    final origin = OriginKey.of(Uri.parse('https://vikunja.example.com'));
+
+    Finder plantsTask() =>
+        find.descendant(of: sheet, matching: find.text('Water the plants'));
+
+    Future<void> push(WidgetTester tester, String page) async {
+      unawaited(routerOf(tester).push(page));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('leaves About and opens the task over the overview', (
+      tester,
+    ) async {
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+      );
+      await push(tester, AppRoutes.about);
+
+      notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AboutPage), findsNothing);
+      expect(location(tester), AppRoutes.overview);
+      expect(plantsTask(), findsOneWidget);
+    });
+
+    testWidgets("another account's tap leaves About, then switches and "
+        'opens the task', (tester) async {
+      final accounts = ThreeAccounts();
+      _withLinkKey(accounts.auth);
+      await accounts.seed();
+      accounts.bobData.projects.all = [sampleProject(id: 3, title: 'Garden')];
+      accounts.bobData.tasks.all = [
+        sampleTask(id: 31, title: 'Mow the lawn', projectId: 3),
+      ];
+      await accounts.pump(tester, notifications: notifications);
+      await push(tester, AppRoutes.about);
+
+      notifications.taps.tap(payload(accountId: accounts.bob.id, taskId: 31));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AboutPage), findsNothing);
+      expect(activeAccountId(tester), accounts.bob.id);
+      expect(location(tester), AppRoutes.overview);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Mow the lawn')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('leaves only Connection: the edit page under it keeps its '
+        'unsaved changes under the sheet', (tester) async {
+      usePhoneSurface(tester, logicalSize: const Size(360, 2200));
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+        overrides: [
+          labelRepositoryProvider.overrideWithValue(FakeLabelRepository()),
+          userRepositoryProvider.overrideWithValue(FakeUserRepository()),
+        ],
+      );
+      await push(tester, AppRoutes.taskEdit(7));
+      await tester.enterText(
+        find.widgetWithText(TextField, en.taskEditTitleLabel),
+        'Changed',
+      );
+      await tester.pumpAndSettle();
+      await push(tester, AppRoutes.connectionFor(origin));
+      expect(find.byType(ConnectionPage), findsOneWidget);
+
+      notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConnectionPage), findsNothing);
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(location(tester), AppRoutes.taskEdit(7));
+      expect(find.widgetWithText(TextField, 'Changed'), findsOneWidget);
+      expect(plantsTask(), findsOneWidget);
+    });
+
+    testWidgets('a Connection editor stays with what was typed, as it '
+        'would not ask; the task opens once the user is back under /home', (
+      tester,
+    ) async {
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+      );
+      await push(tester, AppRoutes.connectionFor(origin));
+      await push(
+        tester,
+        AppRoutes.connectionFor(origin, editor: ConnectionEditor.headers),
+      );
+      const typed = 'dummy-client-secret';
+      await tester.enterText(
+        find
+            .descendant(
+              of: find.byType(SecretTextField).last,
+              matching: find.byType(TextField),
+            )
+            .first,
+        typed,
+      );
+      await tester.pumpAndSettle();
+
+      notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HeadersPage), findsOneWidget);
+      expect(find.widgetWithText(TextField, typed), findsOneWidget);
+      expect(sheet, findsNothing);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(HeadersPage), findsNothing);
+      expect(find.byType(ConnectionPage), findsOneWidget);
+      expect(sheet, findsNothing);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(location(tester), AppRoutes.overview);
+      expect(plantsTask(), findsOneWidget);
+    });
+
+    testWidgets('a sheet over Connection asks; keeping it keeps the tap '
+        'until the user is back under /home, then the task opens', (
+      tester,
+    ) async {
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+      );
+      await push(tester, AppRoutes.connectionFor(origin));
+      await typeNote(tester);
+
+      notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+      await tester.pumpAndSettle();
+      expect(find.text('Drop the note?'), findsOneWidget);
+      await tester.tap(find.text('Keep the note'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Drop the note?'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Half a thought'), findsOneWidget);
+      expect(location(tester), AppRoutes.connection);
+      expect(sheet, findsNothing);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Drop it'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ConnectionPage), findsOneWidget);
+      expect(sheet, findsNothing);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(location(tester), AppRoutes.overview);
+      expect(plantsTask(), findsOneWidget);
+
+      // Kept only until then: a later tap leaves a page again.
+      await push(tester, AppRoutes.about);
+      notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+      await tester.pumpAndSettle();
+      expect(find.byType(AboutPage), findsNothing);
+      expect(plantsTask(), findsOneWidget);
+    });
+
+    testWidgets('a second tap during the question asks nothing more; the '
+        'last tap opens once the page is left', (tester) async {
+      data.tasks.all = [
+        sampleTask(id: 7, title: 'Water the plants'),
+        sampleTask(id: 8, title: 'Buy milk'),
+      ];
+      var asked = 0;
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+      );
+      await push(tester, AppRoutes.connectionFor(origin));
+      await typeNote(tester, onAsk: () => asked++);
+
+      notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+      await tester.pumpAndSettle();
+      notifications.taps.tap(
+        payload(accountId: activeAccountId(tester), taskId: 8, key: '8:due'),
+      );
+      await tester.pumpAndSettle();
+      expect(asked, 1);
+
+      await tester.tap(find.text('Drop it'));
+      await tester.pumpAndSettle();
+
+      expect(asked, 1);
+      expect(find.byType(ConnectionPage), findsNothing);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Buy milk')),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('over the first sync the tap waits for the shell and '
+        'Connection stays meanwhile', (tester) async {
+      final entry = await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      final sync = SyncFakes(status: const SyncNeverRun());
+      sync.projects.all = data.projects.all;
+      sync.tasks.all = data.tasks.all;
+      final firstSync = Completer<void>();
+      sync.engine.onEnsureInitialSync = () => firstSync.future;
+      await pumpVikunjaApp(
+        tester,
+        auth: auth,
+        sync: sync,
+        notifications: notifications,
+        settle: false,
+      );
+      await pumpUntil(tester, find.byType(FirstSyncScreen));
+      unawaited(routerOf(tester).push(AppRoutes.connectionFor(origin)));
+      await pumpFrames(tester, 10);
+      expect(find.byType(ConnectionPage), findsOneWidget);
+
+      notifications.taps.tap(payload(accountId: entry.id));
+      await pumpFrames(tester, 10);
+      expect(find.byType(ConnectionPage), findsOneWidget);
+      expect(sheet, findsNothing);
+
+      firstSync.complete();
+      await tester.pumpAndSettle();
+
+      expect(location(tester), AppRoutes.overview);
+      expect(plantsTask(), findsOneWidget);
+    });
+
+    testWidgets('signed out the tap is dropped and About stays', (
+      tester,
+    ) async {
+      await pumpVikunjaApp(tester, notifications: notifications);
+      await push(tester, AppRoutes.about);
+
+      notifications.taps.tap(payload(accountId: 'someone'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AboutPage), findsOneWidget);
+      expect(sheet, findsNothing);
+    });
   });
 
   testWidgets('a tap for another account switches to it first', (tester) async {
@@ -460,48 +772,6 @@ void main() {
       expect(location(tester), AppRoutes.overview);
       expect(bobsTask(), findsOneWidget);
     });
-
-    BuildContext rootContext(WidgetTester tester) =>
-        routerOf(tester).routerDelegate.navigatorKey.currentContext!;
-
-    /// A sheet whose typed note is asked about before it goes.
-    void showNoteSheet(WidgetTester tester) => showModalBottomSheet<void>(
-      context: rootContext(tester),
-      builder: (sheet) => PopScope(
-        canPop: false,
-        onPopInvokedWithResult: (didPop, _) async {
-          if (didPop) return;
-          final drop = await showDialog<bool>(
-            context: sheet,
-            builder: (dialog) => AlertDialog(
-              title: const Text('Drop the note?'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialog, false),
-                  child: const Text('Keep the note'),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(dialog, true),
-                  child: const Text('Drop it'),
-                ),
-              ],
-            ),
-          );
-          if ((drop ?? false) && sheet.mounted) Navigator.pop(sheet);
-        },
-        child: const Padding(
-          padding: EdgeInsets.all(16),
-          child: TextField(key: Key('note')),
-        ),
-      ),
-    );
-
-    Future<void> typeNote(WidgetTester tester) async {
-      showNoteSheet(tester);
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byKey(const Key('note')), 'Half a thought');
-      await tester.pumpAndSettle();
-    }
 
     testWidgets('a sheet over the page asks through its PopScope; keeping it '
         'refuses the switch with the sheet, its text and the page kept', (

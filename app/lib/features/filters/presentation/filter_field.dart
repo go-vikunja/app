@@ -584,8 +584,12 @@ class _FilterFieldState extends ConsumerState<FilterField>
                   avatar: _dot(parseHexColor(label.hexColor)),
                   label: label.title,
                   onPressed: () {
-                    // A title a value cannot hold goes as its id.
-                    if (canBeFilterValue(label.title, list: list)) {
+                    // A title a value cannot hold, or another label's
+                    // too, goes as its id.
+                    if (canBeFilterValue(label.title, list: list) &&
+                        _titleIsUnique(label.title, [
+                          for (final other in labels) other.title,
+                        ])) {
                       insertValue(label.title);
                       return;
                     }
@@ -604,7 +608,10 @@ class _FilterFieldState extends ConsumerState<FilterField>
                   label: project.title,
                   onPressed: () {
                     if (canBeFilterValue(project.title, list: list) &&
-                        _titleIsUnique(project, projects)) {
+                        _titleIsUnique(project.title, [
+                          for (final other in projects)
+                            if (!other.isPseudo) other.title,
+                        ])) {
                       insertValue(project.title);
                       return;
                     }
@@ -644,16 +651,11 @@ class _FilterFieldState extends ConsumerState<FilterField>
       if (!project.isPseudo && project.isArchived) project,
   ];
 
-  /// The web turns a title into the first project of that title, ignoring
-  /// case; another one of the same title goes as its id.
-  static bool _titleIsUnique(Project project, List<Project> projects) {
-    final title = project.title.toLowerCase();
-    return !projects.any(
-      (other) =>
-          other.id != project.id &&
-          !other.isPseudo &&
-          other.title.toLowerCase() == title,
-    );
+  /// The web turns a title into the first label or project of that title,
+  /// ignoring case, so one that shares its title goes as its id.
+  static bool _titleIsUnique(String title, List<String> titles) {
+    final wanted = title.toLowerCase();
+    return titles.where((other) => other.toLowerCase() == wanted).length < 2;
   }
 
   Widget _dot(Color? color) {

@@ -149,6 +149,95 @@ void main() {
   });
 
   _copyWithTests();
+  _deepEqualityTests();
+}
+
+void _deepEqualityTests() {
+  final monday = DateTime.utc(2026, 10, 12, 9);
+  const urgent = Label(id: 3, title: 'Urgent', hexColor: 'e8445a');
+  const alice = User(id: 7, username: 'alice');
+  const subtask = Task(id: 4, title: 's', projectId: 2, labels: [urgent]);
+  final task = Task(
+    id: 1,
+    title: 't',
+    projectId: 2,
+    labels: const [urgent],
+    assignees: const [alice],
+    reminders: [TaskReminder(reminder: monday)],
+    relatedTasks: const {
+      TaskRelationKind.subtask: [subtask],
+    },
+    createdBy: alice,
+    created: monday,
+  );
+
+  group('deep equality', () {
+    test('holds for a copy with new lists of the same items', () {
+      final copy = task.copyWith(
+        labels: [...task.labels],
+        assignees: [...task.assignees],
+        reminders: [...task.reminders],
+        relatedTasks: {
+          TaskRelationKind.subtask: [subtask.copyWith()],
+        },
+      );
+
+      expect(deepTaskEquals(copy, task), isTrue);
+      expect(deepTaskListEquals([copy, subtask], [task, subtask]), isTrue);
+    });
+
+    test('sees every field that `==` leaves out', () {
+      final changed = {
+        'a label renamed': task.copyWith(
+          labels: const [Label(id: 3, title: 'Later', hexColor: 'e8445a')],
+        ),
+        'a label recoloured': task.copyWith(
+          labels: const [Label(id: 3, title: 'Urgent', hexColor: '1973ff')],
+        ),
+        'an assignee': task.copyWith(assignees: const []),
+        'a reminder': task.copyWith(
+          reminders: [
+            TaskReminder(reminder: monday.add(const Duration(hours: 1))),
+          ],
+        ),
+        'the repeat interval': task.copyWith(
+          repeatAfter: const Duration(days: 7),
+        ),
+        'the repeat mode': task.copyWith(repeatMode: RepeatMode.monthly),
+        "a related task's label": task.copyWith(
+          relatedTasks: {
+            TaskRelationKind.subtask: [subtask.copyWith(labels: const [])],
+          },
+        ),
+        'the kind of a relation': task.copyWith(
+          relatedTasks: {
+            TaskRelationKind.parentTask: [subtask],
+          },
+        ),
+        'the bucket': task.copyWith(bucketId: 5),
+        'the creator': task.copyWith(createdBy: null),
+        'the creation time': task.copyWith(created: null),
+      };
+
+      for (final MapEntry(key: what, value: other) in changed.entries) {
+        expect(other, task, reason: '`==` leaves out $what');
+        expect(deepTaskEquals(other, task), isFalse, reason: what);
+      }
+    });
+
+    test('sees what `==` sees', () {
+      expect(deepTaskEquals(task.copyWith(title: 'u'), task), isFalse);
+    });
+
+    test('of lists compares the tasks in order', () {
+      expect(deepTaskListEquals([task, subtask], [subtask, task]), isFalse);
+      expect(deepTaskListEquals([task], [task, subtask]), isFalse);
+      expect(
+        deepTaskListEquals([task], [task.copyWith(assignees: const [])]),
+        isFalse,
+      );
+    });
+  });
 }
 
 void _copyWithTests() {

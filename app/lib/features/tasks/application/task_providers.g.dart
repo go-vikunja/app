@@ -104,7 +104,7 @@ final class TaskByIdProvider extends $StreamNotifierProvider<TaskById, Task?> {
   }
 }
 
-String _$taskByIdHash() => r'bb7c540fb0f6008cfe65176d60cb5235c9329996';
+String _$taskByIdHash() => r'71cdb1bced04c1b6609eca6322bd71a1305b219f';
 
 /// One task as the local row knows it, following a queued create across
 /// its id change; null once the row is gone. Stays loading without an

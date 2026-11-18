@@ -120,13 +120,17 @@ final class MomentFormatter {
   }
 
   /// The web's clocks: `HH:mm`, and in 12 hours `hh:mm A` after a numeric
-  /// date but `h:mm a` after a written one; AM/PM in German too.
+  /// date but `h:mm a` after a written one; AM/PM in German too, and in
+  /// regions whose own is am/pm, such as en_GB.
   String _time(DateTime local, {required bool padded}) {
     final pattern = uses24HourFormat
         ? 'HH:mm'
         : padded
         ? 'hh:mm a'
         : 'h:mm a';
-    return intl.DateFormat(pattern, l10n.localeName).format(local);
+    return intl.DateFormat(
+      pattern,
+      intl.Intl.shortLocale(l10n.localeName),
+    ).format(local);
   }
 }

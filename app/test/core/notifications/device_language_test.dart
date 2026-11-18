@@ -9,6 +9,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -23,7 +24,6 @@ import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
-import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
 import '../../helpers/app_lock_fakes.dart';
 import '../../helpers/auth_fakes.dart';
@@ -35,8 +35,9 @@ import '../../helpers/widget_fakes.dart';
 
 const _channel = MethodChannel('dexterous.com/flutter/local_notifications');
 
-final AppLocalizations en = lookupAppLocalizations(const Locale('en'));
-final AppLocalizations de = lookupAppLocalizations(const Locale('de'));
+// As the test binding's default locale and the German device below resolve.
+final AppLocalizations en = appLocalizationsFor(const Locale('en', 'US'));
+final AppLocalizations de = appLocalizationsFor(const Locale('de', 'DE'));
 
 // The app's container as bootstrap builds it, with the notification plugin
 // on a mocked channel, a fake widget host and a fake device prompt; the
@@ -180,7 +181,7 @@ void main() {
   test('switching from English to German while the app runs renames the '
       'channels, schedules everything again, republishes the widgets and '
       'words the activity notifications and the lock prompt in German, '
-      'noting "de" for the headless isolates', () async {
+      'noting "de-DE" for the headless isolates', () async {
     final account = await started(en);
     expect(callsOf('zonedSchedule'), hasLength(1));
     expect(actionTitles(callsOf('zonedSchedule').single), [
@@ -198,8 +199,8 @@ void main() {
     binding.platformDispatcher.localesTestValue = const [Locale('de', 'DE')];
     await pumpEventQueue();
 
-    expect(container.read(deviceAppLocalizationsProvider).localeName, 'de');
-    expect(auth.preferences.values[notificationLocaleKey], 'de');
+    expect(container.read(deviceAppLocalizationsProvider).localeName, 'de_DE');
+    expect(auth.preferences.values[notificationLocaleKey], 'de-DE');
     final channels = {
       for (final call in callsOf('createNotificationChannel'))
         argumentsOf(call)['id']: argumentsOf(call),
@@ -265,8 +266,8 @@ void main() {
 
     final account = await started(en);
 
-    expect(container.read(deviceAppLocalizationsProvider).localeName, 'de');
-    expect(auth.preferences.values[notificationLocaleKey], 'de');
+    expect(container.read(deviceAppLocalizationsProvider).localeName, 'de_DE');
+    expect(auth.preferences.values[notificationLocaleKey], 'de-DE');
     final reminders = callsOf('createNotificationChannel')
         .map(argumentsOf)
         .lastWhere(
@@ -329,7 +330,7 @@ void main() {
       ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     await pumpEventQueue();
 
-    expect(container.read(deviceAppLocalizationsProvider).localeName, 'en');
+    expect(container.read(deviceAppLocalizationsProvider).localeName, 'en_US');
     expect(auth.preferences.values.containsKey(notificationLocaleKey), isFalse);
     expect(callsOf('createNotificationChannel'), isEmpty);
     expect(callsOf('zonedSchedule'), isEmpty);

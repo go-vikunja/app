@@ -226,6 +226,50 @@ void main() {
     expect(filterText(tester), 'labels = 3 ');
   });
 
+  testWidgets('a label or project whose title another one has too, ignoring '
+      'case, goes as its id', (tester) async {
+    labels = FakeLabelRepository(
+      labels: [
+        sampleLabel(id: 12, title: 'Bug'),
+        sampleLabel(id: 40, title: 'bug'),
+        sampleLabel(id: 2, title: 'Home'),
+      ],
+    );
+    data.projects.all = [
+      ...data.projects.all,
+      sampleProject(id: 3, title: 'GARDEN'),
+    ];
+    await openNewSavedFilter(tester);
+
+    await type(tester, 'labels in ');
+    await choose(tester, 'bug');
+    expect(filterText(tester), 'labels in 40 ');
+    await type(tester, 'labels in 40, ho');
+    await choose(tester, 'Home');
+    expect(filterText(tester), 'labels in 40, Home ');
+    await type(tester, 'labels in 40, Home && labels = b');
+    await choose(tester, 'Bug');
+    expect(filterText(tester), 'labels in 40, Home && labels = 12 ');
+
+    await type(tester, 'labels in 40, Home && labels = 12 && project = ');
+    await choose(tester, 'GARDEN');
+    expect(
+      filterText(tester),
+      'labels in 40, Home && labels = 12 && project = 3 ',
+    );
+    await type(
+      tester,
+      'labels in 40, Home && labels = 12 && project = 3 || project = of',
+    );
+    await choose(tester, 'Office');
+    await create(tester);
+
+    expect(
+      data.savedFilters.drafts.single.filter.filter,
+      'labels in 40, 2 && labels = 12 && project = 3 || project = 1',
+    );
+  });
+
   testWidgets('projects by title saved as ids, people by username', (
     tester,
   ) async {

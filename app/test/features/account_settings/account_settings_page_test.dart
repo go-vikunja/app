@@ -1009,6 +1009,23 @@ void main() {
     expect(find.byType(AvatarPage), findsOneWidget);
   });
 
+  testWidgets("on a British device the time format's examples show AM/PM as "
+      'on the web', (tester) async {
+    useLocale(tester, const Locale('en', 'GB'));
+    await pumpPage(tester);
+
+    await tapRow(tester, en.accountSettingsTimeFormat);
+
+    expect(
+      find.text('${en.accountSettingsTimeFormat12} · 2:30 PM'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('${en.accountSettingsTimeFormat24} · 14:30'),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('is in German', (tester) async {
     useLocale(tester, const Locale('de'));
     await pumpPage(tester);

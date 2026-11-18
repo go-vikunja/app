@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
@@ -388,6 +390,64 @@ void main() {
       ).semanticsLabel(moments[2]),
       'Donnerstag, 31. Dezember 2026 um 12:30 AM',
     );
+  });
+
+  group('a British device', () {
+    late MaterialLocalizations materialGb;
+
+    setUpAll(() async {
+      materialGb = await appMaterialLocalizationsDelegate.load(
+        const Locale('en', 'GB'),
+      );
+    });
+
+    MomentFormatter british({
+      DateDisplay? display,
+      TimeFormat? time,
+      bool device24Hour = false,
+    }) => MomentFormatter(
+      l10n: appLocalizationsFor(const Locale('en', 'GB')),
+      material: materialGb,
+      settings: DisplaySettings(dateDisplay: display, timeFormat: time),
+      alwaysUse24HourFormat: device24Hour,
+    );
+
+    test("puts the day first, in English, with the device's clock", () {
+      const display = DateDisplay.dayMonthYear;
+
+      expect(
+        british(display: display).absolute(moments[0]),
+        en.momentDateAtTime('19 October 2026', '2:05 PM'),
+      );
+      expect(
+        british(display: display, device24Hour: true).absolute(moments[0]),
+        en.momentDateAtTime('19 October 2026', '14:05'),
+      );
+      expect(
+        british(display: display).semanticsLabel(moments[0]),
+        en.momentDateAtTime('Monday, 19 October 2026', '2:05 PM'),
+      );
+      expect(british().absolute(moments[0]), '19 Oct 2026 2:05 PM');
+    });
+
+    test("the web's clock wins, with AM/PM as the web shows it", () {
+      expect(
+        british(
+          display: DateDisplay.dayMonthYearSlashed,
+          time: TimeFormat.twelveHour,
+          device24Hour: true,
+        ).absolute(moments[0]),
+        '19/10/2026 02:05 PM',
+      );
+      expect(
+        british(time: TimeFormat.twelveHour).timeOfDay(moments[1]),
+        '9:07 AM',
+      );
+      expect(
+        british(time: TimeFormat.twentyFourHour).timeOfDay(moments[0]),
+        '14:05',
+      );
+    });
   });
 
   test("week start: only 1–6 replace the locale's first day", () {

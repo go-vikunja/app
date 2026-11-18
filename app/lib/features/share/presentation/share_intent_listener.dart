@@ -22,10 +22,11 @@ final _log = Logger('ShareIntent');
 /// Takes what other apps share into this app, the share that started the app
 /// and the ones that arrive while it runs: once the app is past the splash
 /// and the first sync and the app lock is open (the platform keeps the
-/// share meanwhile), with several accounts the user picks one first (a
-/// switch follows, before which an edit page asks; when it stays, the
-/// share is dropped with a note), then the share sheet opens over the
-/// current screen. Signed out it says so. A shared project's link is
+/// share meanwhile) and, signed in, About or Connection over the shell has
+/// gone as for [TaskOpener.reachHome]; with several accounts the user picks
+/// one first (a switch follows, before which an edit page asks; when it
+/// stays, the share is dropped with a note), then the share sheet opens
+/// over the current screen. Signed out it says so. A shared project's link is
 /// offered to open as a guest and an admin's invite goes to its check,
 /// signed in or out, both on the connect screen. Whatever happens, the
 /// share is cleared at the end, which deletes the inbox copies that did not
@@ -99,19 +100,14 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     final share = _waiting;
     if (share == null || _handling != null || !mounted) return;
     if (ref.read(appLockControllerProvider.notifier).isLockedNow()) return;
-    final delegate = _router.routerDelegate;
-    if (delegate.currentConfiguration.isEmpty) return;
-    final location = delegate.state.matchedLocation;
-    if (location == AppRoutes.splash ||
-        location == AppRoutes.firstSync ||
-        location == AppRoutes.notificationsSetup) {
-      return;
-    }
+    if (_opener.starting) return;
+    final signedIn = _opener.signedIn;
+    if (signedIn && !_opener.reachHome(_runWhenReady)) return;
     _waiting = null;
     _handling = share;
     final generation = _generation;
     unawaited(
-      _handle(share, generation, signedIn: location.startsWith(AppRoutes.home))
+      _handle(share, generation, signedIn: signedIn)
           .catchError((Object error) {
             _log.warning('Handling a share failed: ${error.runtimeType}');
           })

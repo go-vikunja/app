@@ -36,6 +36,7 @@ class VikunjaApp extends ConsumerWidget {
       themeMode: ref.watch(themeModeProvider),
       localizationsDelegates: appLocalizationsDelegates,
       supportedLocales: appSupportedLocales,
+      localeListResolutionCallback: appLocaleResolution,
       routerConfig: ref.watch(appRouterProvider),
       builder: (context, child) => _SystemBarFallback(
         child: _LargeWindowDialogs(

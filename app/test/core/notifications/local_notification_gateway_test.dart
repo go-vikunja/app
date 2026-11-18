@@ -670,13 +670,14 @@ void main() {
         ? 'every language with an ARB file ships'
         : null;
 
-    test("the engine's locales resolve as MaterialApp resolves them, and "
-        'the result is noted', () async {
+    test("the engine's locales resolve as MaterialApp resolves them, with "
+        'the region, and the result is noted', () async {
       // MaterialApp takes the exact en over the language match of de_AT
       // below the first locale.
-      for (final (locales, resolved) in [
-        (const [Locale('fr'), Locale('de', 'AT')], 'de'),
-        (const [Locale('fr'), Locale('de', 'AT'), Locale('en')], 'en'),
+      for (final (locales, resolved, noted) in [
+        (const [Locale('fr'), Locale('de', 'AT')], 'de_AT', 'de-AT'),
+        (const [Locale('fr'), Locale('de', 'AT'), Locale('en')], 'en', 'en'),
+        (const [Locale('en', 'GB')], 'en_GB', 'en-GB'),
       ]) {
         final l10n = await loadDeviceAppLocalizations(
           preferences,
@@ -684,7 +685,7 @@ void main() {
         );
 
         expect(l10n.localeName, resolved, reason: '$locales');
-        expect(preferences.values[notificationLocaleKey], resolved);
+        expect(preferences.values[notificationLocaleKey], noted);
       }
     });
 
@@ -755,11 +756,11 @@ void main() {
 
         await notifier().follow(const [Locale('fr'), Locale('de', 'AT')]);
 
-        expect(changes, ['de']);
-        expect(preferences.values[notificationLocaleKey], 'de');
+        expect(changes, ['de_AT']);
+        expect(preferences.values[notificationLocaleKey], 'de-AT');
       });
 
-      test('the same language, or no locale at all, changes and notes '
+      test('the same locale, or no locale at all, changes and notes '
           'nothing', () async {
         final changes = <String>[];
         container.listen(
@@ -767,11 +768,25 @@ void main() {
           (_, next) => changes.add(next.localeName),
         );
 
-        await notifier().follow(const [Locale('en', 'GB')]);
+        await notifier().follow(const [Locale('en')]);
         await notifier().follow(const []);
 
         expect(changes, isEmpty);
         expect(preferences.values, isEmpty);
+      });
+
+      test("another region of the language switches, as the widgets' "
+          'dates follow it', () async {
+        final changes = <String>[];
+        container.listen(
+          deviceAppLocalizationsProvider,
+          (_, next) => changes.add(next.localeName),
+        );
+
+        await notifier().follow(const [Locale('en', 'GB')]);
+
+        expect(changes, ['en_GB']);
+        expect(preferences.values[notificationLocaleKey], 'en-GB');
       });
     });
 
@@ -792,7 +807,7 @@ void main() {
             preferences,
             locales: const [],
           )).localeName,
-          'de',
+          'de_DE',
         );
 
         preferences.values[notificationLocaleKey] = 'fr';
