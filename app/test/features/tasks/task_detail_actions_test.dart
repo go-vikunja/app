@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -53,8 +54,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Mark as done marks the task done and the sheet follows the '
-      'row, without a snackbar; Mark as not done reopens it', (tester) async {
+  testWidgets('Mark as done marks the task done, the sheet follows the row '
+      'and offers Undo; Mark as not done reopens it and takes the Undo '
+      'away', (tester) async {
     await openDetail(tester, 'Bare task');
     Finder markDone() =>
         inSheet(find.widgetWithText(FilledButton, en.taskDetailMarkDone));
@@ -94,17 +96,100 @@ void main() {
       inSheet(find.textContaining(en.taskDetailDoneWhen(''))),
       findsOneWidget,
     );
-    expect(find.text(en.undo), findsNothing);
+    // In the sheet's own messenger: the screen's sits behind the sheet.
+    expect(inSheet(find.text(en.taskMarkedDone)), findsOneWidget);
+    expect(inSheet(find.text(en.undo)), findsOneWidget);
 
     await tester.tap(markNotDone());
     await tester.pumpAndSettle();
-    expect(data.tasks.writes.last, 'setDone 2 false');
+    expect(data.tasks.writes, ['setDone 2 true', 'setDone 2 false']);
     expect(markDone(), findsOneWidget);
     expect(inSheet(find.text(en.taskDetailStatusOpen)), findsOneWidget);
     expect(
       inSheet(find.textContaining(en.taskDetailDoneWhen(''))),
       findsNothing,
     );
+    expect(find.text(en.taskMarkedDone), findsNothing);
+  });
+
+  testWidgets('Undo in the sheet gives a repeating task the dates and '
+      'reminders it had before the server moved them on', (tester) async {
+    final due = DateTime.utc(2026, 10, 10, 18);
+    final reminder = TaskReminder(reminder: DateTime.utc(2026, 10, 10, 17));
+    data.tasks.all = [
+      ...data.tasks.all,
+      sampleTask(
+        id: 3,
+        title: 'Water the plants',
+        due: due,
+        reminders: [reminder],
+        repeatAfter: const Duration(days: 1),
+      ),
+    ];
+    await openDetail(tester, 'Water the plants');
+
+    await tester.tap(
+      inSheet(find.widgetWithText(FilledButton, en.taskDetailMarkDone)),
+    );
+    await tester.pumpAndSettle();
+    expect(inSheet(find.text(en.taskMarkedDone)), findsOneWidget);
+    // The server's answer: the next occurrence, open again.
+    data.tasks.all = [
+      for (final task in data.tasks.all)
+        if (task.id == 3)
+          task.copyWith(
+            done: false,
+            doneAt: null,
+            dueDate: due.add(const Duration(days: 1)),
+            reminders: [TaskReminder(reminder: DateTime.utc(2026, 10, 11, 17))],
+          )
+        else
+          task,
+    ];
+    await tester.pump();
+
+    await tester.tap(inSheet(find.text(en.undo)));
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.writes, ['setDone 3 true', 'undoDone 3']);
+    final undone = data.tasks.find(3)!;
+    expect(undone.done, isFalse);
+    expect(undone.dueDate, due);
+    expect(undone.reminders, [reminder]);
+    expect(find.text(en.taskMarkedDone), findsNothing);
+  });
+
+  testWidgets('a sheet closed while its Undo is up hands the Undo to the '
+      'screen below; one closed after it went shows none', (tester) async {
+    await openDetail(tester, 'Bare task');
+    Future<void> markDoneAndClose({Duration wait = Duration.zero}) async {
+      await tester.tap(
+        inSheet(find.widgetWithText(FilledButton, en.taskDetailMarkDone)),
+      );
+      await tester.pumpAndSettle();
+      expect(inSheet(find.text(en.taskMarkedDone)), findsOneWidget);
+      await tester.pump(wait);
+      await tester.pumpAndSettle();
+      await tester.tap(inSheet(find.byTooltip(en.taskDetailClose)));
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailSheet), findsNothing);
+    }
+
+    await markDoneAndClose(wait: const Duration(seconds: 1));
+
+    expect(find.text(en.taskMarkedDone), findsOneWidget);
+    await tester.tap(find.text(en.undo));
+    await tester.pumpAndSettle();
+    expect(data.tasks.writes, ['setDone 2 true', 'undoDone 2']);
+    expect(data.tasks.find(2)!.done, isFalse);
+
+    await tester.pump(markedDoneSnackBarDuration);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Bare task'));
+    await tester.pumpAndSettle();
+    await markDoneAndClose(wait: markedDoneSnackBarDuration);
+
+    expect(find.text(en.taskMarkedDone), findsNothing);
   });
 
   testWidgets('the star toggles the favourite from the sheet', (tester) async {

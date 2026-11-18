@@ -8,12 +8,14 @@ import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 /// and follow every save, like the database's.
 final class FakeListPreferences implements ListPreferences {
   final Map<String, ViewPreferences> views = {};
+  final Map<int, int> lastViews = {};
+  bool newTaskKeepOpen = false;
   UpcomingPreferences upcoming = const UpcomingPreferences();
   ProjectTreePreferences projectTree = const ProjectTreePreferences();
   Set<TableColumn> tableColumns = TableColumn.defaults;
 
-  /// Every save, in order: `view <listKey>`, `upcoming`, `projectTree` or
-  /// `tableColumns`.
+  /// Every save, in order: `view <listKey>`, `lastView <projectId>`,
+  /// `newTaskKeepOpen`, `upcoming`, `projectTree` or `tableColumns`.
   final List<String> saves = [];
 
   final _changes = StreamController<void>.broadcast();
@@ -26,6 +28,32 @@ final class FakeListPreferences implements ListPreferences {
   Future<void> saveView(String listKey, ViewPreferences preferences) async {
     saves.add('view $listKey');
     views[listKey] = preferences;
+    _changes.add(null);
+  }
+
+  /// Holds back every [watchLastView] until it completes, like a slow read.
+  Future<void>? lastViewsHeld;
+
+  @override
+  Stream<int?> watchLastView(int projectId) async* {
+    if (lastViewsHeld case final held?) await held;
+    yield* _watch(() => lastViews[projectId]);
+  }
+
+  @override
+  Future<void> saveLastView(int projectId, int viewId) async {
+    saves.add('lastView $projectId');
+    lastViews[projectId] = viewId;
+    _changes.add(null);
+  }
+
+  @override
+  Stream<bool> watchNewTaskKeepOpen() => _watch(() => newTaskKeepOpen);
+
+  @override
+  Future<void> saveNewTaskKeepOpen({required bool keepOpen}) async {
+    saves.add('newTaskKeepOpen');
+    newTaskKeepOpen = keepOpen;
     _changes.add(null);
   }
 

@@ -6,10 +6,19 @@ enum NotificationPermission { granted, denied, notAsked }
 /// (always true on iOS).
 @immutable
 final class NotificationCapabilities {
-  const new({required this.permission, required this.exactAlarms});
+  const new({
+    required this.permission,
+    required this.exactAlarms,
+    this.remindersChannelOff = false,
+  });
 
   final NotificationPermission permission;
   final bool exactAlarms;
+
+  /// Android: the user turned the Reminders channel off in the system
+  /// settings, so reminders and due dates stay hidden although the
+  /// permission is granted. Never true on iOS.
+  final bool remindersChannelOff;
 }
 
 enum ScheduledNotificationKind { reminder, dueDate }

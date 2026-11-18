@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/attachments/upload_files.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
+import 'package:vikunja_mobile/core/db/daos/tasks_dao.dart' show CappedTasks;
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
@@ -39,11 +40,13 @@ final _log = Logger('AccountData');
 /// Filters are evaluated here on every change of the tasks, with the
 /// server's rules ([LocalFilters]): a view's filter and search over its
 /// project, a saved filter's over the tasks outside archived projects and
-/// the favourite ones. A filter the engine refuses, one that names
-/// `bucket_id`, and a saved filter whose definition is unknown here keep
-/// the server's answer from the last download. A filter with a relative
-/// date (`due_date < now/d+1d`) is evaluated again on every event of
-/// `clockTicks`, a broadcast stream, as the time alone changes its tasks.
+/// the favourite ones, done ones included unless its text leaves them out
+/// (the Overview lists only the open ones). A filter the engine refuses,
+/// one that names `bucket_id`, and a saved filter whose definition is
+/// unknown here keep the server's answer from the last download. A filter
+/// with a relative date (`due_date < now/d+1d`) is evaluated again on
+/// every event of `clockTicks`, a broadcast stream, as the time alone
+/// changes its tasks.
 ///
 /// A file to upload is stored in the account's uploads folder (`uploads`)
 /// under a random name before its op is queued, so the upload survives the
@@ -114,31 +117,48 @@ final class LocalTaskRepository
       )
       .distinct();
 
-  /// The open tasks of [filter]'s evaluation here, as the Overview orders
-  /// them; null when the device cannot evaluate it.
-  Stream<List<Task>>? _openTasksOfSavedFilter(
+  /// The tasks of [filter]'s evaluation here, the done ones only without
+  /// [openOnly]; null when the device cannot evaluate it.
+  Stream<CappedTasks>? _tasksOfSavedFilter(
     SavedFilterRef filter, {
     required String timezone,
+    required bool openOnly,
   }) {
     final definition = filter.definition;
     if (definition == null || !evaluatesLocally(definition)) return null;
-    return _openTasksMatching(definition, timezone: timezone);
+    return _tasksMatching(definition, timezone: timezone, openOnly: openOnly);
   }
 
-  Stream<List<Task>> _openTasksMatching(
+  Stream<CappedTasks> _tasksMatching(
     SavedFilterDefinition definition, {
     String timezone = '',
+    bool openOnly = true,
   }) => _db
       .watchTables(_db.tasksDao.savedFilterTables, () async {
-        final ids = await _filters.matchingForSavedFilter(
-          definition,
-          timezoneSetting: timezone,
-          openOnly: true,
-        );
-        return await _db.tasksDao.loadOpenTasksAmong(ids ?? const {});
+        final ids =
+            await _filters.matchingForSavedFilter(
+              definition,
+              timezoneSetting: timezone,
+              openOnly: openOnly,
+            ) ??
+            const {};
+        return openOnly
+            ? (
+                tasks: await _db.tasksDao.loadOpenTasksAmong(ids),
+                loadedAt: null,
+                omitsDoneTasks: false,
+              )
+            : await _db.tasksDao.loadTasksAmong(
+                ids,
+                doneLimit: SavedFilterTasks.doneLimit,
+              );
       }, alsoOn: changesWithTime(definition.filter) ? _clockTicks : null)
       // A tick that changes nothing stays quiet.
-      .distinct(deepTaskListEquals);
+      .distinct(
+        (a, b) =>
+            a.omitsDoneTasks == b.omitsDoneTasks &&
+            deepTaskListEquals(a.tasks, b.tasks),
+      );
 
   @override
   Stream<List<Task>> watchOpenTasks() => _db.tasksDao.watchOpenTasks();
@@ -159,14 +179,16 @@ final class LocalTaskRepository
             (tasks) => OverviewTasks(tasks: tasks),
           );
         }
-        final local = _openTasksOfSavedFilter(
+        // Open only, as the web's Home asks for its saved filter.
+        final local = _tasksOfSavedFilter(
           filter,
           timezone: selection.timezone,
+          openOnly: true,
         );
         if (local != null) {
           return local.map(
-            (tasks) => OverviewTasks(
-              tasks: tasks,
+            (matches) => OverviewTasks(
+              tasks: matches.tasks,
               filter: filter,
               filterEvaluation: FilterEvaluation.local,
             ),
@@ -337,44 +359,60 @@ final class LocalTaskRepository
       _db.tasksDao.watchOpenTaskCounts();
 
   @override
-  Stream<SavedFilterTasks> watchSavedFilterTasks(int pseudoProjectId) =>
-      switchLatest(
-        _savedFilterSelection(
-          (state) => _storedSavedFilter(state, pseudoProjectId),
+  Stream<SavedFilterTasks> watchSavedFilterTasks(
+    int pseudoProjectId,
+  ) => switchLatest(
+    _savedFilterSelection(
+      (state) => _storedSavedFilter(state, pseudoProjectId),
+    ),
+    (selection) {
+      final includesDone = !listsOnlyOpenTasks(selection.filter?.definition);
+      final local = switch (selection.filter) {
+        final filter? => _tasksOfSavedFilter(
+          filter,
+          timezone: selection.timezone,
+          openOnly: false,
         ),
-        (selection) {
-          final local = switch (selection.filter) {
-            final filter? => _openTasksOfSavedFilter(
-              filter,
-              timezone: selection.timezone,
-            ),
-            null => null,
-          };
-          if (local != null) {
-            return local.map(
-              (tasks) => SavedFilterTasks(
-                tasks: tasks,
-                evaluation: FilterEvaluation.local,
-              ),
+        null => null,
+      };
+      if (local != null) {
+        return local.map(
+          (matches) => SavedFilterTasks(
+            tasks: matches.tasks,
+            evaluation: FilterEvaluation.local,
+            includesDone: includesDone,
+            omitsDoneTasks: matches.omitsDoneTasks,
+          ),
+        );
+      }
+      final key = savedFilterSnapshotKey(pseudoProjectId);
+      if (!includesDone) {
+        return _db.tasksDao
+            .watchOpenTasksInList(key)
+            .map(
+              (list) =>
+                  SavedFilterTasks(tasks: list.tasks, loadedAt: list.loadedAt),
             );
-          }
-          return _db.tasksDao
-              .watchOpenTasksInList(savedFilterSnapshotKey(pseudoProjectId))
-              .map(
-                (list) => SavedFilterTasks(
-                  tasks: list.tasks,
-                  loadedAt: list.loadedAt,
-                ),
-              );
-        },
-      );
+      }
+      return _db.tasksDao
+          .watchTasksInList(key, doneLimit: SavedFilterTasks.doneLimit)
+          .map(
+            (list) => SavedFilterTasks(
+              tasks: list.tasks,
+              loadedAt: list.loadedAt,
+              includesDone: true,
+              omitsDoneTasks: list.omitsDoneTasks,
+            ),
+          );
+    },
+  );
 
   @override
-  Stream<List<Task>> watchLabelTasks(int labelId) => _openTasksMatching(
+  Stream<List<Task>> watchLabelTasks(int labelId) => _tasksMatching(
     SavedFilterDefinition(
       filter: ViewFilter(filter: 'done = false && labels in $labelId'),
     ),
-  );
+  ).map((matches) => matches.tasks);
 
   static SavedFilterRef? _storedSavedFilter(
     Map<String, String> state,

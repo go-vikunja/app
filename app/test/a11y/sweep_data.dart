@@ -64,7 +64,7 @@ SyncFakes sweepData({SyncStatus? status}) {
       title: 'Urgent',
       isFavorite: true,
       definition: SavedFilterDefinition(
-        filter: ViewFilter(filter: 'done = false && priority >= 3'),
+        filter: ViewFilter(filter: 'priority >= 3 || done_at > now-1d'),
       ),
     ),
   ];
@@ -137,7 +137,8 @@ SyncFakes sweepData({SyncStatus? status}) {
       identifier: 'WORK-7',
     ),
   ];
-  data.tasks.setSavedFilterMatches(urgentFilterId, {1, 2});
+  data.tasks.savedFiltersWithDone.add(urgentFilterId);
+  data.tasks.setSavedFilterMatches(urgentFilterId, {1, 2, 7});
   data.tasks.setBoard(
     data.projects.all.first.views.firstWhere((view) => view.id == kanbanViewId),
     buckets: const [

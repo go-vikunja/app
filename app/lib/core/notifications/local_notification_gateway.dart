@@ -227,7 +227,30 @@ final class LocalNotificationGateway implements NotificationGateway {
     return NotificationCapabilities(
       permission: permission,
       exactAlarms: exactAlarms,
+      remindersChannelOff: switch (_android) {
+        final android? when enabled => await _remindersChannelOff(android),
+        _ => false,
+      },
     );
+  }
+
+  /// A channel the user turned off reports the importance none; a channel
+  /// that cannot be read counts as on.
+  Future<bool> _remindersChannelOff(
+    AndroidFlutterLocalNotificationsPlugin android,
+  ) async {
+    try {
+      final channels = await android.getNotificationChannels() ?? const [];
+      return channels.any(
+        (channel) =>
+            channel.id == channelId && channel.importance == Importance.none,
+      );
+    } on Object catch (error) {
+      _log.info(
+        'Could not read the notification channels: ${error.runtimeType}',
+      );
+      return false;
+    }
   }
 
   @override

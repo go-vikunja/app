@@ -12,7 +12,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 /// A list that is no project, grouped by due date like the Overview, each
-/// row with its project; [emptyState] without tasks.
+/// row with its project, and [doneTasks] in a Done section below, with
+/// [doneNote] under it; [emptyState] without tasks.
 class DueSectionsList extends StatelessWidget {
   const new({
     required this.sections,
@@ -24,10 +25,14 @@ class DueSectionsList extends StatelessWidget {
     required this.emptyState,
     required this.onDoneChanged,
     required this.onFavoriteChanged,
+    this.doneTasks = const [],
+    this.doneNote,
     super.key,
   });
 
   final List<DueSection> sections;
+  final List<Task> doneTasks;
+  final String? doneNote;
   final Map<int, Project> projectsById;
   final Set<int> pendingIds;
   final DateTime now;
@@ -37,10 +42,34 @@ class DueSectionsList extends StatelessWidget {
   final void Function(Task task, {required bool done}) onDoneChanged;
   final void Function(Task task, {required bool favorite}) onFavoriteChanged;
 
+  Widget _row(BuildContext context, Task task) {
+    final l10n = context.l10n;
+    final project = projectsById[task.projectId];
+    // The server refuses changes to the tasks of an archived project, which
+    // a saved filter can list.
+    final archived = isArchivedInTree(task.projectId, projectsById);
+    return TaskRow(
+      key: ValueKey(task.id),
+      task: task,
+      now: now,
+      minimumPriority: minimumPriority,
+      projectTitle: project?.displayTitle(l10n),
+      projectHexColor: project?.hexColor,
+      pending: pendingIds.contains(task.id),
+      onTap: () => openTaskDetail(context, task: task),
+      onDoneChanged: archived
+          ? null
+          : (done) => onDoneChanged(task, done: done),
+      onFavoriteChanged: archived
+          ? null
+          : (favorite) => onFavoriteChanged(task, favorite: favorite),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    if (sections.isEmpty) {
+    if (sections.isEmpty && doneTasks.isEmpty) {
       return CenteredScrollView(
         header: header,
         maxWidth: ReadableWidth.list,
@@ -62,33 +91,28 @@ class DueSectionsList extends StatelessWidget {
                     ? Theme.of(context).colorScheme.error
                     : null,
                 itemCount: section.tasks.length,
-                itemBuilder: (context, index) {
-                  final task = section.tasks[index];
-                  final project = projectsById[task.projectId];
-                  // The server refuses changes to the tasks of an archived
-                  // project, which a saved filter can list.
-                  final archived = isArchivedInTree(
-                    task.projectId,
-                    projectsById,
-                  );
-                  return TaskRow(
-                    key: ValueKey(task.id),
-                    task: task,
-                    now: now,
-                    minimumPriority: minimumPriority,
-                    projectTitle: project?.displayTitle(l10n),
-                    projectHexColor: project?.hexColor,
-                    pending: pendingIds.contains(task.id),
-                    onTap: () => openTaskDetail(context, task: task),
-                    onDoneChanged: archived
-                        ? null
-                        : (done) => onDoneChanged(task, done: done),
-                    onFavoriteChanged: archived
-                        ? null
-                        : (favorite) =>
-                              onFavoriteChanged(task, favorite: favorite),
-                  );
-                },
+                itemBuilder: (context, index) =>
+                    _row(context, section.tasks[index]),
+              ),
+            if (doneTasks.isNotEmpty)
+              SliverSectionCard(
+                title: l10n.projectTasksDoneSection,
+                count: doneTasks.length,
+                itemCount: doneTasks.length,
+                itemBuilder: (context, index) =>
+                    _row(context, doneTasks[index]),
+              ),
+            if (doneNote case final note? when doneTasks.isNotEmpty)
+              SliverPadding(
+                padding: const EdgeInsetsDirectional.fromSTEB(20, 8, 20, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    note,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
               ),
             // Room for the floating action button below the last row.
             const SliverSafeArea(

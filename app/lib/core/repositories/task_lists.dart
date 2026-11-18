@@ -86,24 +86,39 @@ enum FilterEvaluation {
   snapshot,
 }
 
-/// A saved filter's open tasks: evaluated here ([FilterEvaluation.local]),
-/// or as of its last download ([loadedAt] null: never downloaded, and
-/// [tasks] stays empty until the first one) with this device's changes on
-/// top: a task done or deleted here leaves at once.
+/// A saved filter's tasks: evaluated here ([FilterEvaluation.local]), or
+/// as of its last download ([loadedAt] null: never downloaded, and [tasks]
+/// stays empty until the first one) with this device's changes on top: a
+/// task deleted here leaves at once, and one done here too unless the list
+/// [includesDone].
 @immutable
 final class SavedFilterTasks {
   const new({
     this.tasks = const [],
     this.loadedAt,
     this.evaluation = FilterEvaluation.snapshot,
+    this.includesDone = false,
+    this.omitsDoneTasks = false,
   });
 
-  /// Nearest due date first (none last), then newest first.
+  /// How many done tasks are listed at most: a saved filter can match an
+  /// account's whole history.
+  static const doneLimit = 100;
+
+  /// The open ones first, nearest due date first (none last), then newest
+  /// first; then the done ones, most recently done first.
   final List<Task> tasks;
 
   /// Null under [FilterEvaluation.local].
   final DateTime? loadedAt;
   final FilterEvaluation evaluation;
+
+  /// The done tasks the filter matches are listed too: its text does not
+  /// leave them out with `done = false`, as on the web.
+  final bool includesDone;
+
+  /// More than [doneLimit] done tasks match; the older ones are left out.
+  final bool omitsDoneTasks;
 }
 
 @immutable

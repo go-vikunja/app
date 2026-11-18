@@ -299,6 +299,30 @@ void main() {
     expect(notifications.calls('openExactAlarmSettings'), 1);
   });
 
+  testWidgets('the Reminders channel off in the system settings: off, with '
+      'the settings, and no test notification, which would not show', (
+    tester,
+  ) async {
+    notifications.gateway.current = const NotificationCapabilities(
+      permission: NotificationPermission.granted,
+      exactAlarms: false,
+      remindersChannelOff: true,
+    );
+    await pumpSection(tester);
+
+    expect(inSection(en.notificationsRemindersChannelOff), findsOneWidget);
+    expect(find.text(en.notificationsOff), findsNothing);
+    expect(find.text(en.notificationsMayBeLate), findsNothing);
+    final testRow = tester.widget<ListTile>(
+      find.widgetWithText(ListTile, en.notificationsSendTest),
+    );
+    expect(testRow.enabled, isFalse);
+
+    await tester.tap(find.text(en.notificationsOpenSettings));
+    await tester.pumpAndSettle();
+    expect(notifications.calls('openNotificationSettings'), 1);
+  });
+
   testWidgets('re-reads what the OS allows when the app resumes', (
     tester,
   ) async {

@@ -42,10 +42,12 @@ enum _Action { edit, favourite, delete }
 
 /// A list that is no project, grouped by due date like the Overview: the
 /// open favourite tasks from the local database (Favorites, -1), or a saved
-/// filter's open tasks (-2 and below), evaluated here from its stored
+/// filter's tasks (-2 and below), evaluated here from its stored
 /// definition, or as of its last download where the device cannot (the
-/// definition is unknown, the engine refuses it, or it needs a board). A
-/// saved filter's menu edits, favourites and deletes it online.
+/// definition is unknown, the engine refuses it, or it needs a board). The
+/// done tasks a saved filter matches follow in a Done section unless its
+/// text leaves them out. A saved filter's menu edits, favourites and
+/// deletes it online.
 class SmartListScreen extends ConsumerStatefulWidget {
   const new({required this.pseudoProjectId, super.key});
 
@@ -170,6 +172,29 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
   /// are still loading.
   bool _isGone(List<SavedFilterRef>? filters) =>
       filters != null && _filterIn(filters) == null;
+
+  /// The due sections and the Done section. A task marked done here keeps
+  /// its place among the open ones while its Undo is offered.
+  (List<DueSection>, List<Task>) _sections(
+    SavedFilterTasks list,
+    DateTime now,
+  ) {
+    if (!list.includesDone) {
+      return (groupTasksByDueDate(withLeavingTasks(list.tasks), now), const []);
+    }
+    final open = withLeavingTasks([
+      for (final task in list.tasks)
+        if (!task.done) task,
+    ]);
+    final shown = {for (final task in open) task.id};
+    return (
+      groupTasksByDueDate(open, now),
+      [
+        for (final task in list.tasks)
+          if (task.done && !shown.contains(task.id)) task,
+      ],
+    );
+  }
 
   String _title(AppLocalizations l10n, List<SavedFilterRef>? filters) {
     if (_isFavorites) return l10n.projectFavouritesTitle;
@@ -343,8 +368,24 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
         builder: (value, notice) {
           final loadedAt = value.loadedAt;
           final local = value.evaluation == FilterEvaluation.local;
+          final (sections, doneTasks) = _sections(value, now);
+          final nothingMatches = value.includesDone
+              ? EmptyState(
+                  icon: Icons.filter_alt_outlined,
+                  title: l10n.savedFilterNoMatchesTitle,
+                  body: l10n.savedFilterNoMatchesBody(title),
+                )
+              : EmptyState(
+                  icon: Icons.task_alt,
+                  title: l10n.overviewEmptyTitle,
+                  body: l10n.overviewFilterEmptyBody(title),
+                );
           return DueSectionsList(
-            sections: groupTasksByDueDate(withLeavingTasks(value.tasks), now),
+            sections: sections,
+            doneTasks: doneTasks,
+            doneNote: value.omitsDoneTasks
+                ? l10n.savedFilterDoneLimited(SavedFilterTasks.doneLimit)
+                : null,
             projectsById: projectsById,
             pendingIds: pendingIds,
             now: now,
@@ -370,11 +411,7 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
                 title: l10n.favoritesEmptyTitle,
                 body: l10n.favoritesEmptyBody,
               ),
-              _ when local => EmptyState(
-                icon: Icons.task_alt,
-                title: l10n.overviewEmptyTitle,
-                body: l10n.overviewFilterEmptyBody(title),
-              ),
+              _ when local => nothingMatches,
               (false, null) when gone => EmptyState(
                 icon: Icons.filter_list_off,
                 title: l10n.smartListFilterGoneTitle,
@@ -398,11 +435,7 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
                 title: l10n.smartListFilterDownloadingTitle,
                 body: l10n.smartListFilterDownloadingBody(title),
               ),
-              (false, _) => EmptyState(
-                icon: Icons.task_alt,
-                title: l10n.overviewEmptyTitle,
-                body: l10n.overviewFilterEmptyBody(title),
-              ),
+              (false, _) => nothingMatches,
             },
             onDoneChanged: (task, {required done}) =>
                 unawaited(setTaskDone(task, done: done)),

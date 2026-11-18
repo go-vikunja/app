@@ -220,6 +220,11 @@ const guestActionInventory = <String, GuestActionEntry>{
     uses: {'accountSettingsProvider'},
   ),
   'features/account_settings/presentation/account_settings_page.dart '
+      '_AccountSettingsPageState._onResume': (
+    _accountSettings,
+    uses: {'accountSettingsProvider'},
+  ),
+  'features/account_settings/presentation/account_settings_page.dart '
       '_AccountSettingsPageState._refresh': (
     _accountSettings,
     uses: {'accountSettingsRepositoryProvider'},

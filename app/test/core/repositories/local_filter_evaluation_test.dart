@@ -285,15 +285,103 @@ void main() {
   });
 
   group('a saved filter', () {
-    test('with a known definition lists its open matches outside archived '
-        'projects, favourites included, by due date', () async {
+    test('with a known definition lists its matches outside archived '
+        'projects, favourites included: the open ones by due date, then the '
+        'done ones', () async {
       await storeFilter('priority >= 3');
 
       final list = await repository.watchSavedFilterTasks(-14).first;
 
       expect(list.evaluation, FilterEvaluation.local);
       expect(list.loadedAt, isNull);
+      expect(list.includesDone, isTrue);
+      expect(ids(list.tasks), [5, 6, 1, 3]);
+    });
+
+    test('that says done = false lists only the open ones', () async {
+      await storeFilter('done = false && priority >= 3');
+
+      final list = await repository.watchSavedFilterTasks(-14).first;
+
+      expect(list.includesDone, isFalse);
       expect(ids(list.tasks), [5, 6, 1]);
+    });
+
+    test('done this week lists the tasks done in the last seven days, most '
+        'recently done first', () async {
+      await db.tasksDao.upsertAll([
+        sampleTask(
+          id: 31,
+          title: 'Done on Monday',
+          projectId: 9,
+          done: true,
+          doneAt: monday,
+        ),
+        sampleTask(
+          id: 32,
+          title: 'Done this morning',
+          projectId: 9,
+          done: true,
+          doneAt: now.subtract(const Duration(hours: 1)),
+        ),
+        sampleTask(
+          id: 33,
+          title: 'Done a month ago',
+          projectId: 9,
+          done: true,
+          doneAt: now.subtract(const Duration(days: 30)),
+        ),
+      ], syncRunId: 'run');
+      await storeFilter('done = true && done_at > now-7d');
+
+      final list = await repository.watchSavedFilterTasks(-14).first;
+
+      expect(list.evaluation, FilterEvaluation.local);
+      expect(list.includesDone, isTrue);
+      expect(ids(list.tasks), [32, 31]);
+      expect(list.omitsDoneTasks, isFalse);
+    });
+
+    test('lists only the most recently done of its done matches, across '
+        'hundreds of them, and says when more match', () async {
+      const doneLimit = SavedFilterTasks.doneLimit;
+      Future<void> storeDone(Iterable<int> ids) => db.tasksDao.upsertAll([
+        for (final id in ids)
+          sampleTask(
+            id: id,
+            title: 'Done $id',
+            projectId: 9,
+            priority: TaskPriority.high,
+            done: true,
+            doneAt: monday.add(Duration(minutes: id)),
+          ),
+      ], syncRunId: 'run');
+      // With task 3, done without a time, as many as are listed.
+      await storeDone([for (var id = 1001; id < 1000 + doneLimit; id++) id]);
+      await storeFilter('priority >= 3');
+
+      var list = await repository.watchSavedFilterTasks(-14).first;
+
+      expect(list.omitsDoneTasks, isFalse);
+      expect(ids(list.tasks), [
+        5,
+        6,
+        1,
+        for (var id = 999 + doneLimit; id > 1000; id--) id,
+        3,
+      ]);
+
+      // More done matches than the IN lists' chunks, the most recent last.
+      await storeDone([for (var id = 1101; id <= 1700; id++) id]);
+      list = await repository.watchSavedFilterTasks(-14).first;
+
+      expect(list.omitsDoneTasks, isTrue);
+      expect(ids(list.tasks), [
+        5,
+        6,
+        1,
+        for (var id = 1700; id > 1700 - doneLimit; id--) id,
+      ]);
     });
 
     test('by username and label id', () async {
@@ -379,7 +467,7 @@ void main() {
     });
 
     test('follows a change of its definition and of the tasks', () async {
-      await storeFilter('priority >= 3');
+      await storeFilter('done = false && priority >= 3');
       final seen = <SavedFilterTasks>[];
       final subscription = repository
           .watchSavedFilterTasks(-14)
@@ -391,6 +479,16 @@ void main() {
       await repository.setDone(5, done: true);
       await pumpEventQueue();
       expect(ids(seen.last.tasks), [6, 1]);
+
+      await storeFilter('priority >= 3');
+      await pumpEventQueue();
+      expect(seen.last.includesDone, isTrue);
+      expect(ids(seen.last.tasks), [6, 1, 5, 3]);
+
+      clock = now.add(const Duration(minutes: 1));
+      await repository.setDone(1, done: true);
+      await pumpEventQueue();
+      expect(ids(seen.last.tasks), [6, 1, 5, 3]);
 
       await storeFilter('priority = 1');
       await pumpEventQueue();
@@ -427,7 +525,8 @@ void main() {
   });
 
   group('the Overview', () {
-    test("evaluates the saved filter's definition here", () async {
+    test("evaluates the saved filter's definition here, open tasks only as "
+        "the web's Home asks for them", () async {
       await storeFilter('priority >= 3');
       await settings(const UserSettings(filterIdUsedOnOverview: -14));
 

@@ -14,13 +14,11 @@ final class LocalListPreferences implements ListPreferences {
   final AppDatabase _db;
 
   static String viewKey(String listKey) => 'list:$listKey';
+  static String lastViewKey(int projectId) => 'last_view:$projectId';
+  static const newTaskKey = 'new_task';
   static const upcomingKey = 'upcoming';
   static const projectTreeKey = 'projects';
   static const tableColumnsKey = 'table_columns';
-
-  /// Written by versions that reopened a project on the view it showed
-  /// last; nothing reads it now, [forget] still removes it.
-  static String lastViewKey(int projectId) => 'last_view:$projectId';
 
   @override
   Stream<ViewPreferences> watchView(String listKey) => _db.listPreferencesDao
@@ -32,6 +30,33 @@ final class LocalListPreferences implements ListPreferences {
   Future<void> saveView(String listKey, ViewPreferences preferences) => _db
       .listPreferencesDao
       .write(viewKey(listKey), encodeViewPreferences(preferences));
+
+  // The format the versions before D75 wrote, so their rows count again.
+  @override
+  Stream<int?> watchLastView(int projectId) => _db.listPreferencesDao
+      .watchValue(lastViewKey(projectId))
+      .map(
+        (stored) => switch (_decode(stored)) {
+          {'view_id': final int viewId} => viewId,
+          _ => null,
+        },
+      )
+      .distinct();
+
+  @override
+  Future<void> saveLastView(int projectId, int viewId) => _db.listPreferencesDao
+      .write(lastViewKey(projectId), jsonEncode({'view_id': viewId}));
+
+  @override
+  Stream<bool> watchNewTaskKeepOpen() => _db.listPreferencesDao
+      .watchValue(newTaskKey)
+      .map((stored) => _decode(stored)['keep_open'] == true)
+      .distinct();
+
+  @override
+  Future<void> saveNewTaskKeepOpen({required bool keepOpen}) => _db
+      .listPreferencesDao
+      .write(newTaskKey, jsonEncode({'keep_open': keepOpen}));
 
   @override
   Stream<UpcomingPreferences> watchUpcoming() => _db.listPreferencesDao
@@ -67,8 +92,8 @@ final class LocalListPreferences implements ListPreferences {
       .write(tableColumnsKey, encodeTableColumns(columns));
 
   /// Drops what is kept for deleted projects and views: their lists' sort
-  /// and done preferences, a table's sort, a timeline's range and zoom, an
-  /// old version's last view and the collapsed state.
+  /// and done preferences, a table's sort, a timeline's range and zoom, the
+  /// view last left in and the collapsed state.
   Future<void> forget({
     Set<int> projectIds = const {},
     Set<int> viewIds = const {},

@@ -263,6 +263,21 @@ void main() {
 
       expect(find.byType(TaskRow), findsNothing);
       expect(columnTitles(tester), ['To-Do', 'Doing', 'Done']);
+      expect(data.listPreferences.saves, ['lastView 1']);
+      expect(data.listPreferences.lastViews, {1: 14});
+    });
+
+    testWidgets('the board last left in opens again, before default_view '
+        'list', (tester) async {
+      openViewId = null;
+      data.shared.settings = const UserSettings(
+        defaultViewKind: ProjectViewKind.list,
+      );
+      data.listPreferences.lastViews[1] = 14;
+      await pumpBoard(tester);
+
+      expect(columnTitles(tester), ['To-Do', 'Doing', 'Done']);
+      expect(find.byType(TaskRow), findsNothing);
       expect(data.listPreferences.saves, isEmpty);
     });
 
@@ -1191,6 +1206,31 @@ void main() {
         (-1, 14, const BucketPlacement(bucketId: 22, position: 500), null),
       ]);
       expect(cardsIn(tester, 'Doing').first, 'Buy milk');
+    });
+
+    testWidgets('with the sheet kept open, each task goes on top of the one '
+        'added before it', (tester) async {
+      data.listPreferences.newTaskKeepOpen = true;
+      await pumpBoard(tester);
+
+      await addFrom(tester, 'Doing', en.boardAddAnotherTask);
+      expect(find.byType(NewTaskSheet), findsOneWidget);
+      await tester.enterText(
+        find.descendant(
+          of: find.byType(NewTaskSheet),
+          matching: find.byType(TextField),
+        ),
+        'Buy eggs',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, en.newTaskAdd));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.placements, [
+        (-1, 14, const BucketPlacement(bucketId: 22, position: 500), null),
+        (-2, 14, const BucketPlacement(bucketId: 22, position: 250), null),
+      ]);
+      expect(cardsIn(tester, 'Doing').take(2), ['Buy eggs', 'Buy milk']);
     });
 
     testWidgets('in the done column it is created done', (tester) async {

@@ -545,9 +545,9 @@ void main() {
             }
           });
 
-          test("a saved filter made here lists the server's open tasks, in the "
-              "user's zone, at once and after a sync; edits, the favourite and "
-              'the delete round-trip', () async {
+          test("a saved filter made here lists the server's tasks, the done "
+              "ones too, in the user's zone, at once and after a sync; edits, "
+              'the favourite and the delete round-trip', () async {
             final urgent = labels['urgent'];
             final pseudoId = await savedFilters.create(
               SavedFilterDraft(
@@ -558,29 +558,64 @@ void main() {
             );
             final filterId = SavedFilter.idOfPseudoProject(pseudoId)!;
 
-            Future<void> expectServerList() async {
+            Future<List<Task>> serverList(TaskQuery query) async {
+              final listed = <Task>[];
+              for (var page = 1; ; page++) {
+                final result = await reads.tasks.listInProject(
+                  pseudoId,
+                  query.copyWith(page: page),
+                );
+                listed.addAll(result.items);
+                if (!result.hasMore) return listed;
+              }
+            }
+
+            // The open tasks in the Overview's order, then the most
+            // recently done ones up to the cap.
+            Future<List<int>> expectServerList() async {
               final list = await taskRepository
                   .watchSavedFilterTasks(pseudoId)
                   .first;
               expect(list.evaluation, FilterEvaluation.local);
-              final server = <int>[];
-              for (var page = 1; ; page++) {
-                final result = await reads.tasks.listInProject(
-                  pseudoId,
-                  TaskQuery(
+              expect(list.includesDone, isTrue);
+              final open = [
+                for (final task in await serverList(
+                  const TaskQuery(
                     filter: 'done = false',
                     sort: TaskQuery.dueDateSort,
-                    page: page,
                     perPage: 50,
                   ),
-                );
-                server.addAll(result.items.map((task) => task.id));
-                if (!result.hasMore) break;
-              }
-              expect([for (final task in list.tasks) task.id], server);
+                ))
+                  task.id,
+              ];
+              final all = await serverList(
+                const TaskQuery(
+                  sort: [
+                    TaskSort(TaskSortField.done),
+                    TaskSort(TaskSortField.doneAt, descending: true),
+                    TaskSort(TaskSortField.id, descending: true),
+                  ],
+                  perPage: 50,
+                ),
+              );
+              final done = [
+                for (final task in all)
+                  if (task.done) task.id,
+              ];
+              expect([
+                for (final task in all)
+                  if (!task.done) task.id,
+              ], unorderedEquals(open));
+              expect(
+                list.omitsDoneTasks,
+                done.length > SavedFilterTasks.doneLimit,
+              );
+              final ids = [for (final task in list.tasks) task.id];
+              expect(ids, [...open, ...done.take(SavedFilterTasks.doneLimit)]);
+              return ids;
             }
 
-            await expectServerList();
+            expect(await expectServerList(), contains(tasks['t5']));
             await engine.refresh();
             await expectServerList();
 

@@ -705,6 +705,8 @@ List<String> _deviceLines(DeviceSupport device, {required String appLanguage}) {
   final permission = _known(
     device.notifications,
     (capabilities) => switch (capabilities.permission) {
+      NotificationPermission.granted when capabilities.remindersChannelOff =>
+        'allowed, reminders channel off',
       NotificationPermission.granted => 'allowed',
       NotificationPermission.denied => 'denied',
       NotificationPermission.notAsked => 'not asked yet',

@@ -1645,11 +1645,15 @@
   "@newTaskFewerOptions": {
     "description": "Button on the new-task sheet while the further fields (description, labels, reminders, repeat) are shown; it hides them again. In place of newTaskMoreOptions."
   },
+  "newTaskKeepOpen": "Keep open after adding",
+  "@newTaskKeepOpen": {
+    "description": "Tooltip and screen-reader name of the pin toggle beside the new-task sheet's headline. While it is on, Add and the keyboard's action add the task, empty the title for the next one and keep the sheet open; the choice is remembered."
+  },
   "newTaskPickDate": "Pick date…",
   "newTaskNoProject": "No project",
   "newTaskCreated": "Added “{title}”",
   "@newTaskCreated": {
-    "description": "Snackbar after adding a task; title is the task's title, for example Buy milk.",
+    "description": "Snackbar after adding a task, or the note under the new-task sheet's title field while the sheet stays open for the next task (newTaskKeepOpen); title is the task's title, for example Buy milk.",
     "placeholders": {
       "title": {
         "type": "String",
@@ -1669,7 +1673,7 @@
   },
   "newTaskCreatedMany": "{count, plural, one{Added {count} task} other{Added {count} tasks}}",
   "@newTaskCreatedMany": {
-    "description": "Snackbar after adding several tasks at once from pasted lines; count is how many, for example 3.",
+    "description": "Snackbar after adding several tasks at once from pasted lines, or the note under the new-task sheet's title field while the sheet stays open (newTaskKeepOpen); count is how many, for example 3.",
     "placeholders": {
       "count": {
         "type": "int",
@@ -2402,6 +2406,10 @@
   "notificationsOff": "Notifications are off",
   "notificationsOpenSettings": "Open settings",
   "notificationsTurnOn": "Turn on",
+  "notificationsRemindersChannelOff": "Reminders and due dates are off in the system settings",
+  "@notificationsRemindersChannelOff": {
+    "description": "Status line in the Notifications section of the Account tab on Android, beside the button notificationsOpenSettings: the app may notify, but the user turned off its notification category Reminders (notificationChannelReminders), which carries reminders and due dates, in the system settings. The button opens the app's notification settings, where that category is listed."
+  },
   "notificationsMayBeLate": "Reminders may be late",
   "notificationsAllowExactAlarms": "Allow exact alarms",
   "notificationsScheduled": "{count, plural, =0{Nothing scheduled} one{{count} scheduled} other{{count} scheduled}}",
@@ -2985,11 +2993,35 @@
   },
   "overviewFilterEmptyBody": "The saved filter “{title}” has no open tasks.",
   "@overviewFilterEmptyBody": {
-    "description": "Empty-state text of a saved filter without open tasks, on its page, the Overview and a home-screen widget; title is the saved filter's title, for example My Open Tasks.",
+    "description": "Empty-state text of a saved filter without open tasks, on its page when its filter says “done = false”, the Overview and a home-screen widget; title is the saved filter's title, for example My Open Tasks.",
     "placeholders": {
       "title": {
         "type": "String",
         "example": "My Open Tasks"
+      }
+    }
+  },
+  "savedFilterNoMatchesTitle": "No matching tasks",
+  "@savedFilterNoMatchesTitle": {
+    "description": "Title of a saved filter's empty page when its filter lists done tasks too (it does not say “done = false”) and no task, open or done, matches it."
+  },
+  "savedFilterNoMatchesBody": "No task matches the saved filter “{title}”.",
+  "@savedFilterNoMatchesBody": {
+    "description": "Body of a saved filter's empty page under savedFilterNoMatchesTitle; title is the saved filter's title, for example Done this week.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Done this week"
+      }
+    }
+  },
+  "savedFilterDoneLimited": "{count, plural, one{Showing the {count} most recently done task.} other{Showing the {count} most recently done tasks.}}",
+  "@savedFilterDoneLimited": {
+    "description": "Note below the Done section (projectTasksDoneSection) of a saved filter's list when more done tasks match the filter than the list shows; count is how many done tasks it shows, the most recently done ones, for example 100.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "100"
       }
     }
   },
@@ -3081,6 +3113,9 @@
     "description": "Sort option of a project's List and Table views, also shown on the sort chip: by when a task was last changed, oldest first."
   },
   "projectTasksDoneSection": "Done",
+  "@projectTasksDoneSection": {
+    "description": "Heads the part of a list with its done tasks, below the open ones: in a project's List view and in a saved filter's list."
+  },
   "projectTasksEmptyDoneTitle": "No done tasks",
   "projectTasksEmptyDoneBody": "Nothing in this view is done yet.",
   "projectViewFilterNotice": "The server applies this view's filter “{filter}”. Shown as of {when}; changes made elsewhere appear after the next download.",
@@ -4531,6 +4566,16 @@
   "editorLinkEditTitle": "Edit link",
   "editorLinkAddress": "Web address",
   "editorLinkApply": "Apply",
+  "editorLinkSchemeRefused": "Enter a web address. Links can't start with “{scheme}:”.",
+  "@editorLinkSchemeRefused": {
+    "description": "Error under the address field of the link sheet in the description and comment editor when the address starts with a scheme the editor does not keep as a link, which the web would drop. It starts with what to do, as field errors do, then says why. scheme is the part before the colon in lower case, for example javascript or file. A web address is one like https://example.com.",
+    "placeholders": {
+      "scheme": {
+        "type": "String",
+        "example": "javascript"
+      }
+    }
+  },
   "editorLinkRemove": "Remove link",
   "editorMentions": "People to mention",
   "editorMentionsSearching": "Searching…",

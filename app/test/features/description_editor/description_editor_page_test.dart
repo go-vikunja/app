@@ -389,6 +389,46 @@ void main() {
       expect(bridge.focusCalls, 2);
     });
 
+    testWidgets('an address without a scheme gets https://, not a link '
+        'relative to the server', (tester) async {
+      await openEditor(tester);
+      final bridge = bridges.last;
+
+      await tapTool(tester, en.editorLink);
+      await tester.enterText(find.byType(TextField), 'www.example.com/docs');
+      await tester.pump();
+      await tester.tap(find.text(en.editorLinkApply));
+      await tester.pumpAndSettle();
+
+      expect(bridge.commands, [
+        EditorCommand.setLink('https://www.example.com/docs'),
+      ]);
+    });
+
+    testWidgets('a scheme the editor would drop stays in the sheet with the '
+        'reason, which goes once the address changes', (tester) async {
+      await openEditor(tester);
+      final bridge = bridges.last;
+      final refused = en.editorLinkSchemeRefused('javascript');
+
+      await tapTool(tester, en.editorLink);
+      await tester.enterText(find.byType(TextField), 'javascript:alert(1)');
+      await tester.pump();
+      await tester.tap(find.text(en.editorLinkApply));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.editorLinkAddTitle), findsOneWidget);
+      expect(find.text(refused), findsOneWidget);
+      expect(bridge.commands, isEmpty);
+
+      await tester.enterText(find.byType(TextField), 'example.org');
+      await tester.pump();
+      expect(find.text(refused), findsNothing);
+      await tester.tap(find.text(en.editorLinkApply));
+      await tester.pumpAndSettle();
+      expect(bridge.commands, [EditorCommand.setLink('https://example.org')]);
+    });
+
     testWidgets('on a link the sheet opens with its address: Apply keeps the '
         'link, Remove link removes it', (tester) async {
       await openEditor(tester);

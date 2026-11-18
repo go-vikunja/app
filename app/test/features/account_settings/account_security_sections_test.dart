@@ -260,6 +260,8 @@ void main() {
     ) async {
       await harness.pump(tester);
 
+      // Sooner, a resume reads nothing at all.
+      harness.clock = DateTime.now().add(AccountSettingsPage.resumeReadAfter);
       resumeApp(tester);
       await tester.pumpAndSettle();
       await tapRow(tester, en.accountSettingsSessions);

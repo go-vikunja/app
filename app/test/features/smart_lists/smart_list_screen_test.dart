@@ -225,6 +225,154 @@ void main() {
       );
       expect(find.text(en.smartListFilterDownloadingTitle), findsNothing);
     });
+
+    group('that lists done tasks too', () {
+      setUp(() {
+        data.tasks.savedFiltersWithDone.add(filter.projectId);
+        data.tasks.all = [
+          ...data.tasks.all,
+          sampleTask(
+            id: 7,
+            title: 'Done today',
+            done: true,
+            doneAt: now.subtract(const Duration(hours: 1)),
+          ),
+          sampleTask(
+            id: 8,
+            title: 'Done on Monday',
+            projectId: 2,
+            done: true,
+            doneAt: now.subtract(const Duration(days: 4)),
+          ),
+        ];
+      });
+
+      testWidgets('shows them below the open ones in a Done section, most '
+          'recently done first', (tester) async {
+        data.tasks.setSavedFilterMatches(filter.projectId, {2, 4, 7, 8});
+        await openList(tester, filter.projectId);
+
+        expect(headings(tester), [
+          en.sectionToday,
+          en.sectionNoDueDate,
+          en.projectTasksDoneSection,
+        ]);
+        expect(rowTitles(tester), [
+          'Inbox star',
+          'Plain',
+          'Done today',
+          'Done on Monday',
+        ]);
+      });
+
+      testWidgets('only done ones show without an empty state', (tester) async {
+        data.tasks.setSavedFilterMatches(filter.projectId, {7, 8});
+        await openList(tester, filter.projectId);
+
+        expect(headings(tester), [en.projectTasksDoneSection]);
+        expect(rowTitles(tester), ['Done today', 'Done on Monday']);
+        expect(find.text(en.overviewEmptyTitle), findsNothing);
+        expect(
+          find.text(en.savedFilterDoneLimited(SavedFilterTasks.doneLimit)),
+          findsNothing,
+        );
+      });
+
+      for (final (extra, noted) in [(0, false), (1, true)]) {
+        testWidgets('${noted ? 'more' : 'no more'} than the most recently '
+            'done ones it lists ${noted ? 'says so' : 'needs no note'} at the '
+            'end of the Done section', (tester) async {
+          const doneLimit = SavedFilterTasks.doneLimit;
+          final done = [
+            for (var id = 100; id < 100 + doneLimit + extra; id++)
+              sampleTask(
+                id: id,
+                title: 'Done $id',
+                done: true,
+                doneAt: now.subtract(Duration(minutes: id)),
+              ),
+          ];
+          data.tasks.all = [...data.tasks.all, ...done];
+          data.tasks.setSavedFilterMatches(filter.projectId, {
+            4,
+            for (final task in done) task.id,
+          });
+          await openList(tester, filter.projectId);
+          final note = find.text(en.savedFilterDoneLimited(doneLimit));
+          final lastShown = find.widgetWithText(TaskRow, 'Done 199');
+
+          await tester.scrollUntilVisible(
+            lastShown,
+            400,
+            scrollable: find.byType(Scrollable).last,
+          );
+          await tester.pumpAndSettle();
+
+          expect(find.widgetWithText(TaskRow, 'Done 200'), findsNothing);
+          if (!noted) {
+            expect(note, findsNothing);
+            return;
+          }
+          await tester.scrollUntilVisible(
+            note,
+            400,
+            scrollable: find.byType(Scrollable).last,
+          );
+          expect(
+            tester.getTopLeft(note).dy,
+            greaterThan(tester.getBottomLeft(lastShown).dy),
+          );
+        });
+      }
+
+      testWidgets('a task marked done here keeps its place while its Undo is '
+          'offered, then joins the done ones', (tester) async {
+        data.tasks.setSavedFilterMatches(filter.projectId, {2, 4, 7});
+        await openList(tester, filter.projectId);
+
+        await tester.tap(
+          find.descendant(
+            of: find.widgetWithText(TaskRow, 'Plain'),
+            matching: find.byTooltip(en.taskMarkDone),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(data.tasks.writes, ['setDone 4 true']);
+        expect(headings(tester), [
+          en.sectionToday,
+          en.sectionNoDueDate,
+          en.projectTasksDoneSection,
+        ]);
+        expect(rowTitles(tester), ['Inbox star', 'Plain', 'Done today']);
+
+        await tester.pump(markedDoneSnackBarDuration);
+        await tester.pumpAndSettle();
+        expect(headings(tester), [en.sectionToday, en.projectTasksDoneSection]);
+        expect(rowTitles(tester), ['Inbox star', 'Plain', 'Done today']);
+        expect(
+          tester.widget<TaskRow>(find.widgetWithText(TaskRow, 'Plain')).task,
+          isA<Task>().having((task) => task.done, 'done', isTrue),
+        );
+      });
+
+      testWidgets('nothing matching says so, not that all is done', (
+        tester,
+      ) async {
+        data.tasks.setSavedFilterMatches(filter.projectId, {});
+        await openList(tester, filter.projectId);
+
+        expect(find.text(en.savedFilterNoMatchesTitle), findsOneWidget);
+        expect(
+          find.text(en.savedFilterNoMatchesBody('Due this week')),
+          findsOneWidget,
+        );
+        expect(find.text(en.overviewEmptyTitle), findsNothing);
+        expect(
+          find.text(en.overviewFilterEmptyBody('Due this week')),
+          findsNothing,
+        );
+      });
+    });
   });
 
   group('saved filter', () {
@@ -482,6 +630,35 @@ void main() {
         find.text(en.overviewFilterEmptyBody('Due this week')),
         findsOneWidget,
       );
+    });
+
+    testWidgets('downloaded, listing done tasks too, shows them in a Done '
+        'section, and empty says that no task matches', (tester) async {
+      data.tasks.savedFiltersWithDone.add(filter.projectId);
+      data.tasks.setSavedFilterSnapshot(
+        filter.projectId,
+        ListSnapshot(positions: const {4: 0, 5: 1}, loadedAt: now),
+      );
+      await openList(tester, filter.projectId);
+
+      expect(headings(tester), [
+        en.sectionNoDueDate,
+        en.projectTasksDoneSection,
+      ]);
+      expect(rowTitles(tester), ['Plain', 'Done star']);
+
+      data.tasks.setSavedFilterSnapshot(
+        filter.projectId,
+        ListSnapshot(loadedAt: now),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.savedFilterNoMatchesTitle), findsOneWidget);
+      expect(
+        find.text(en.savedFilterNoMatchesBody('Due this week')),
+        findsOneWidget,
+      );
+      expect(find.text(en.overviewEmptyTitle), findsNothing);
     });
 
     testWidgets('the default filter has its name in the user language; one '

@@ -101,7 +101,8 @@ abstract interface class TaskRepository {
   Stream<Map<int, int>> watchOpenTaskCounts();
 
   /// A saved filter's list ([pseudoProjectId] is -2 or lower): evaluated
-  /// here from its stored definition, else its last download.
+  /// here from its stored definition, else its last download; the done
+  /// tasks it matches too unless its text leaves them out.
   Stream<SavedFilterTasks> watchSavedFilterTasks(int pseudoProjectId);
 
   /// The open tasks with the label [labelId], as a saved filter

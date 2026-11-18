@@ -1132,7 +1132,8 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
       });
 
   /// Each saved filter's last download, by pseudo project id; its tasks
-  /// that are in [all] and open show, like the local database's.
+  /// that are in [all] and open show (done ones too for
+  /// [savedFiltersWithDone]), like the local database's.
   Map<int, ListSnapshot> get savedFilterSnapshots =>
       Map.unmodifiable(_savedFilterSnapshots);
   final Map<int, ListSnapshot> _savedFilterSnapshots = {};
@@ -1149,8 +1150,9 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   }
 
   /// The tasks each saved filter matches when evaluated here, by pseudo
-  /// project id: its list shows those of [all] that are open, under
-  /// `FilterEvaluation.local`, instead of its snapshot's.
+  /// project id: its list shows those of [all] that are open (done ones too
+  /// for [savedFiltersWithDone]), under `FilterEvaluation.local`, instead
+  /// of its snapshot's.
   Map<int, Set<int>> get savedFilterMatches =>
       Map.unmodifiable(_savedFilterMatches);
   final Map<int, Set<int>> _savedFilterMatches = {};
@@ -1164,25 +1166,59 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     _notify();
   }
 
+  /// The saved filters whose text does not say `done = false`, by pseudo
+  /// project id: their lists show the done tasks they match too, after the
+  /// open ones, the `SavedFilterTasks.doneLimit` most recently done first.
+  final Set<int> savedFiltersWithDone = {};
+
   SavedFilterTasks savedFilterTasks(int pseudoProjectId) {
-    if (_savedFilterMatches[pseudoProjectId] case final matches?) {
+    final includesDone = savedFiltersWithDone.contains(pseudoProjectId);
+    List<Task> open(bool Function(Task task) matches) => [
+      for (final task in _all)
+        if (!task.done && matches(task)) task,
+    ]..sort(_byDueThenNewest);
+    List<Task> done(bool Function(Task task) matches) => [
+      if (includesDone)
+        for (final task in _all)
+          if (task.done && matches(task)) task,
+    ]..sort(_byDoneThenNewest);
+    SavedFilterTasks list(
+      bool Function(Task task) matches, {
+      FilterEvaluation evaluation = FilterEvaluation.snapshot,
+      DateTime? loadedAt,
+    }) {
+      final allDone = done(matches);
       return SavedFilterTasks(
-        tasks: [
-          for (final task in _all)
-            if (!task.done && matches.contains(task.id)) task,
-        ]..sort(_byDueThenNewest),
+        tasks: [...open(matches), ...allDone.take(SavedFilterTasks.doneLimit)],
+        evaluation: evaluation,
+        loadedAt: loadedAt,
+        includesDone: includesDone,
+        omitsDoneTasks: allDone.length > SavedFilterTasks.doneLimit,
+      );
+    }
+
+    if (_savedFilterMatches[pseudoProjectId] case final matches?) {
+      return list(
+        (task) => matches.contains(task.id),
         evaluation: FilterEvaluation.local,
       );
     }
     final snapshot =
         _savedFilterSnapshots[pseudoProjectId] ?? const ListSnapshot();
-    return SavedFilterTasks(
-      tasks: [
-        for (final task in _all)
-          if (!task.done && snapshot.positions.containsKey(task.id)) task,
-      ]..sort(_byDueThenNewest),
+    return list(
+      (task) => snapshot.positions.containsKey(task.id),
       loadedAt: snapshot.loadedAt,
     );
+  }
+
+  static int _byDoneThenNewest(Task a, Task b) {
+    final byDone = switch ((a.doneAt, b.doneAt)) {
+      (null, null) => 0,
+      (null, _) => 1,
+      (_, null) => -1,
+      (final a?, final b?) => b.compareTo(a),
+    };
+    return byDone != 0 ? byDone : _newestFirst(a, b);
   }
 
   /// Every `watchSavedFilterTasks`, by pseudo project id.

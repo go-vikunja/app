@@ -361,14 +361,80 @@ void main() {
     });
   });
 
-  test("a forgotten project's last view from an older version goes", () async {
-    await db.listPreferencesDao.write('last_view:7', '{"view_id":70}');
-    await db.listPreferencesDao.write('last_view:8', '{"view_id":80}');
+  group('the view last left in', () {
+    test(
+      'is none until saved, then per project, streamed on change only',
+      () async {
+        final seen = <int?>[];
+        final subscription = preferences.watchLastView(7).listen(seen.add);
+        addTearDown(subscription.cancel);
+        await pumpEventQueue();
 
-    await preferences.forget(projectIds: {7});
+        await preferences.saveLastView(7, 70);
+        await preferences.saveLastView(8, 80);
+        await preferences.saveLastView(7, 70);
+        await preferences.saveLastView(7, 71);
+        await pumpEventQueue();
 
-    expect(await db.listPreferencesDao.read('last_view:7'), isNull);
-    expect(await db.listPreferencesDao.read('last_view:8'), '{"view_id":80}');
+        expect(seen, [null, 70, 71]);
+        expect(await preferences.watchLastView(8).first, 80);
+        expect(await preferences.watchLastView(9).first, isNull);
+      },
+    );
+
+    test('reads the rows of the versions before D75, and nothing it cannot '
+        'read', () async {
+      for (final (stored, expected) in [
+        ('{"view_id":70}', 70),
+        ('{"view_id":"70"}', null),
+        ('[70]', null),
+        ('not json', null),
+      ]) {
+        await db.listPreferencesDao.write('last_view:7', stored);
+        expect(
+          await preferences.watchLastView(7).first,
+          expected,
+          reason: stored,
+        );
+      }
+    });
+
+    test("goes with a forgotten project, the others' stay", () async {
+      await preferences.saveLastView(7, 70);
+      await preferences.saveLastView(8, 80);
+
+      await preferences.forget(projectIds: {7});
+
+      expect(await db.listPreferencesDao.read('last_view:7'), isNull);
+      expect(await preferences.watchLastView(8).first, 80);
+    });
+  });
+
+  group('the new-task sheet', () {
+    test('closes after adding until kept open, which is streamed', () async {
+      final seen = <bool>[];
+      final subscription = preferences.watchNewTaskKeepOpen().listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      await preferences.saveNewTaskKeepOpen(keepOpen: true);
+      await pumpEventQueue();
+      await preferences.saveNewTaskKeepOpen(keepOpen: false);
+      await pumpEventQueue();
+
+      expect(seen, [false, true, false]);
+    });
+
+    test('an unreadable value closes it', () async {
+      for (final stored in ['{"keep_open":"yes"}', '[true]', 'not json']) {
+        await db.listPreferencesDao.write('new_task', stored);
+        expect(
+          await preferences.watchNewTaskKeepOpen().first,
+          isFalse,
+          reason: stored,
+        );
+      }
+    });
   });
 
   group('Upcoming', () {

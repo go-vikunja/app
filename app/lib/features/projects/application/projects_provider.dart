@@ -94,6 +94,12 @@ Stream<ViewPreferences> viewPreferences(Ref ref, String listKey) =>
     ref.watch(listPreferencesProvider)?.watchView(listKey) ??
     Stream.value(const ViewPreferences());
 
+/// The view [projectId] was last left in; none while nobody is signed in.
+@riverpod
+Stream<int?> lastView(Ref ref, int projectId) =>
+    ref.watch(listPreferencesProvider)?.watchLastView(projectId) ??
+    Stream.value(null);
+
 /// The columns of every table view; the defaults while nobody is signed
 /// in.
 @riverpod

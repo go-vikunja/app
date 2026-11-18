@@ -95,12 +95,23 @@ class NotificationsSection extends ConsumerWidget {
         const NotificationPreferences();
     final capabilities = ref.watch(osNotificationCapabilitiesProvider).value;
     final granted = capabilities?.permission == NotificationPermission.granted;
+    final remindersShown =
+        granted && !(capabilities?.remindersChannelOff ?? false);
     final scheduled = ref
         .watch(scheduledNotificationCountProvider(entry.id))
         .unwrapPrevious()
         .value;
     final secondary = theme.textTheme.bodyMedium?.copyWith(
       color: colors.onSurfaceVariant,
+    );
+    final openSettings = TextButton(
+      onPressed: () => unawaited(
+        _quietly(
+          ref.read(notificationGatewayProvider).openNotificationSettings,
+          'open the notification settings',
+        ),
+      ),
+      child: Text(l10n.notificationsOpenSettings),
     );
 
     return SettingsSection(
@@ -162,18 +173,16 @@ class NotificationsSection extends ConsumerWidget {
                 ),
                 child: Text(l10n.notificationsTurnOn),
               ),
-              _ => TextButton(
-                onPressed: () => unawaited(
-                  _quietly(
-                    ref
-                        .read(notificationGatewayProvider)
-                        .openNotificationSettings,
-                    'open the notification settings',
-                  ),
-                ),
-                child: Text(l10n.notificationsOpenSettings),
-              ),
+              _ => openSettings,
             },
+          )
+        else if (capabilities case NotificationCapabilities(
+          remindersChannelOff: true,
+        ))
+          _StatusLine(
+            icon: Icons.notifications_off_outlined,
+            text: l10n.notificationsRemindersChannelOff,
+            action: openSettings,
           )
         else if (capabilities case NotificationCapabilities(exactAlarms: false))
           _StatusLine(
@@ -195,7 +204,8 @@ class NotificationsSection extends ConsumerWidget {
           subtitle: scheduled == null
               ? null
               : Text(l10n.notificationsScheduled(scheduled)),
-          enabled: granted,
+          // It goes through the Reminders channel.
+          enabled: remindersShown,
           onTap: () => unawaited(_sendTest(ref, l10n)),
         ),
       ],

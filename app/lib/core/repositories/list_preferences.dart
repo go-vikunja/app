@@ -1,12 +1,22 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
-/// How the user last left each list, per account: the web keeps the same
-/// per view in its local storage.
+/// How the user last left each list and the new-task sheet, per account:
+/// the web keeps the same per view in its local storage.
 abstract interface class ListPreferences {
   /// [listKey] comes from [listKeyFor].
   Stream<ViewPreferences> watchView(String listKey);
   Future<void> saveView(String listKey, ViewPreferences preferences);
+
+  /// The view the project was last left in, which it opens on again while
+  /// it has it; null until the user picks one.
+  Stream<int?> watchLastView(int projectId);
+  Future<void> saveLastView(int projectId, int viewId);
+
+  /// Whether the new-task sheet stays open after adding, for several tasks
+  /// in a row; off until turned on.
+  Stream<bool> watchNewTaskKeepOpen();
+  Future<void> saveNewTaskKeepOpen({required bool keepOpen});
 
   Stream<UpcomingPreferences> watchUpcoming();
   Future<void> saveUpcoming(UpcomingPreferences preferences);

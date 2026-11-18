@@ -8,7 +8,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/auth/link_share_account_id.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
+import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_landing.dart';
@@ -161,6 +163,22 @@ void main() {
 
       await controller().acceptInsecureConnection();
 
+      expect(invites.checkedTokens, [fakeInviteToken]);
+      expect(state(), isA<ConnectServerInviteFound>());
+    });
+
+    test('on a plain http server the user already accepted is checked at '
+        'once', () async {
+      final insecure = insecureServer();
+      connector.handler = (_) async => insecure;
+      invites.onCheck = (_) async => InvitePreview(name: 'Lab');
+      await container
+          .read(networkProfilesProvider)
+          .consentToCleartext(OriginKey.of(insecure.rootUri));
+
+      await controller().connect(inviteLink(base: 'http://192.168.1.20:3456/'));
+
+      expect(states.whereType<ConnectServerAwaitingInsecureConsent>(), isEmpty);
       expect(invites.checkedTokens, [fakeInviteToken]);
       expect(state(), isA<ConnectServerInviteFound>());
     });
@@ -522,6 +540,22 @@ void main() {
 
       await controller().acceptInsecureConnection();
 
+      expect(auth.linkShareGateway.authentications, hasLength(1));
+      expect(state(), isA<ConnectServerGuestSignedIn>());
+    });
+
+    test('on a plain http server the user already accepted, authenticates '
+        'without asking again', () async {
+      final insecure = insecureServer();
+      connector.handler = (_) async => insecure;
+      auth.linkShareGateway.serve(token);
+      await container
+          .read(networkProfilesProvider)
+          .consentToCleartext(OriginKey.of(insecure.rootUri));
+
+      await controller().connect(shareLink(base: 'http://192.168.1.20:3456/'));
+
+      expect(states.whereType<ConnectServerAwaitingInsecureConsent>(), isEmpty);
       expect(auth.linkShareGateway.authentications, hasLength(1));
       expect(state(), isA<ConnectServerGuestSignedIn>());
     });

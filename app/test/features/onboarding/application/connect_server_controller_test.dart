@@ -10,7 +10,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/link_share_account_id.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
+import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
@@ -116,6 +118,43 @@ void main() {
 
       expect(state(), isA<ConnectServerIdle>());
       expect(currentServer(), isNull);
+    });
+
+    test('a server already accepted is not asked about again', () async {
+      await controller().acceptInsecureConnection();
+      controller().reset();
+      states.clear();
+
+      await controller().connect('192.168.1.20:3456');
+
+      expect(states, [
+        isA<ConnectServerConnecting>(),
+        isA<ConnectServerConnected>(),
+      ]);
+      expect(currentServer(), same(connection));
+    });
+
+    test('a consent revoked in the connection settings asks again', () async {
+      await controller().acceptInsecureConnection();
+      await container
+          .read(networkProfilesProvider)
+          .revokeCleartext(OriginKey.of(connection.rootUri));
+      controller().reset();
+
+      await controller().connect('192.168.1.20:3456');
+
+      expect(state(), isA<ConnectServerAwaitingInsecureConsent>());
+    });
+
+    test('another port of the host is another server, asked about', () async {
+      await controller().acceptInsecureConnection();
+      controller().reset();
+      connector.handler = (_) async =>
+          insecureServer(root: 'http://192.168.1.20:8080');
+
+      await controller().connect('192.168.1.20:8080');
+
+      expect(state(), isA<ConnectServerAwaitingInsecureConsent>());
     });
   });
 

@@ -676,6 +676,84 @@ final class ViewPreferencesFamily extends $Family
   String toString() => r'viewPreferencesProvider';
 }
 
+/// The view [projectId] was last left in; none while nobody is signed in.
+
+@ProviderFor(lastView)
+final lastViewProvider = LastViewFamily._();
+
+/// The view [projectId] was last left in; none while nobody is signed in.
+
+final class LastViewProvider
+    extends $FunctionalProvider<AsyncValue<int?>, int?, Stream<int?>>
+    with $FutureModifier<int?>, $StreamProvider<int?> {
+  /// The view [projectId] was last left in; none while nobody is signed in.
+  LastViewProvider._({
+    required LastViewFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'lastViewProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$lastViewHash();
+
+  @override
+  String toString() {
+    return r'lastViewProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<int?> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<int?> create(Ref ref) {
+    final argument = this.argument as int;
+    return lastView(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is LastViewProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$lastViewHash() => r'6a0985a973502c70cbd6ebc70aac8a49f6fc7da1';
+
+/// The view [projectId] was last left in; none while nobody is signed in.
+
+final class LastViewFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<int?>, int> {
+  LastViewFamily._()
+    : super(
+        retry: null,
+        name: r'lastViewProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// The view [projectId] was last left in; none while nobody is signed in.
+
+  LastViewProvider call(int projectId) =>
+      LastViewProvider._(argument: projectId, from: this);
+
+  @override
+  String toString() => r'lastViewProvider';
+}
+
 /// The columns of every table view; the defaults while nobody is signed
 /// in.
 

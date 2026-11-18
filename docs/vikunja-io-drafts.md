@@ -174,6 +174,15 @@ To keep task titles off the lock screen, open **App lock and privacy** on the **
 
 The app uses your device's language when it has a translation, and English otherwise. To use another language for the app alone, tap **App language** under **Appearance** on the **Account** tab (on Android 13 or newer, and on iPhone and iPad), which opens your system's setting for it. The Vikunja community translates the app on [Crowdin](https://crowdin.com/project/vikunja); a language comes into the app once at least half of it is translated.
 
+## Known limits
+
+- The **Gantt** view is read-only. To change a task's dates, open the task.
+- The app has no time tracking yet.
+- Changing your password or email address, two-factor authentication, exporting your data and deleting your account happen on your server's web pages, which the app opens.
+- There are no keyboard shortcuts yet.
+- Vikunja sends no push notifications, so a reminder you add on the web reaches your device with the next sync.
+- Comments, reactions and a task's attachments load only with a connection.
+
 ## Troubleshooting
 
 - **The app cannot reach your server:** open the address in your phone's browser. If the browser warns about the certificate, set up the server's certificate under **Connection options**. If the server answers only over unencrypted HTTP, the app asks before it uses it.

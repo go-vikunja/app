@@ -8,11 +8,13 @@ final _log = Logger('SyncEngine');
 /// fetched, where a set diff would take it for removed, so a walk whose
 /// server counts (`total` on v2, the page count on v1) change between two
 /// pages starts over. One that keeps changing is an [UnexpectedResponse].
+/// [enough] ends the walk after the page that satisfies it.
 Future<Map<int, T>> collectPages<T>({
   required Future<Page<T>> Function(int page) fetch,
   required int Function(T item) idOf,
   bool Function(T item)? skip,
   void Function(Map<int, T> collected, Page<T> page)? onPage,
+  bool Function(Map<int, T> collected)? enough,
 }) async {
   const walks = 3;
   for (var walk = 1; ; walk++) {
@@ -28,7 +30,7 @@ Future<Map<int, T>> collectPages<T>({
         byId.putIfAbsent(idOf(item), () => item);
       }
       onPage?.call(byId, result);
-      if (!result.hasMore) return byId;
+      if (!result.hasMore || (enough?.call(byId) ?? false)) return byId;
     }
     if (walk == walks) {
       throw const UnexpectedResponse(

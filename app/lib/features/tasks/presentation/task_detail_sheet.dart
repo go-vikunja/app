@@ -36,6 +36,7 @@ import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/share_web_link.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
+import 'package:vikunja_mobile/features/inbox/application/local_task_lookup.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/project_access.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
@@ -296,6 +297,10 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   final _pendingCommentReactions = <int, Set<String>>{};
   bool _duplicating = false;
   bool _openingLinkedTask = false;
+  int? _undoTaskId;
+
+  /// Shows the Undo that is up below the sheet once the sheet goes.
+  VoidCallback? _handOverUndo;
   CommentsState _commentsBefore = const CommentsState();
   StreamSubscription<TaskAttachment>? _uploaded;
   StreamSubscription<DateTime>? _serverChanges;
@@ -359,6 +364,10 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     unawaited(_serverChanges?.cancel());
     _highlightEnd?.cancel();
     if (_draftWrite != null) unawaited(_keepDraft());
+    if (_handOverUndo case final handOver?) {
+      // The tree is locked while it unmounts the sheet.
+      WidgetsBinding.instance.addPostFrameCallback((_) => handOver());
+    }
     _follow.dispose();
     _details.dispose();
     _comments.dispose();
@@ -556,8 +565,12 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       _keptDraft = null;
       _composer.clear();
       _details.countComments(1);
+      // In a long thread this reads the pages up to its end.
       await _comments.add(comment, wasEmpty: wasEmpty);
-      if (!mounted) return;
+      if (!mounted) {
+        showBelow(l10n.commentPosted);
+        return;
+      }
       announce(context, l10n.commentPosted);
       unawaited(_details.refresh());
       if (_comments.find(comment.id) != null) {
@@ -816,6 +829,75 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       ..showSnackBar(SnackBar(content: Text(text)));
   }
 
+  /// A done shows the lists' "Marked as done · Undo" in the sheet; its Undo
+  /// gives a repeating [task] its dates and reminders back. Reopening the
+  /// task whose Undo is up makes that Undo moot. A sheet closed while it is
+  /// up hands it to what is below, as the row may have left the list there;
+  /// the pane keeps it in its own messenger.
+  Future<void> _setDone(
+    TaskRepository repository,
+    Task task, {
+    required bool done,
+  }) async {
+    final messenger = _messenger.currentState;
+    if (!done) {
+      if (_undoTaskId == task.id) {
+        _undoTaskId = null;
+        _handOverUndo = null;
+        messenger?.hideCurrentSnackBar();
+      }
+      await writeTaskDone(repository, task, done: false);
+      return;
+    }
+    await writeTaskDone(repository, task, done: true);
+    if (!mounted || messenger == null) return;
+    void undo() => unawaited(writeTaskUndo(repository, task));
+    _undoTaskId = task.id;
+    _handOverUndo = widget.pane == null ? _undoBelow(undo) : null;
+    await showMarkedDoneSnackBar(context, messenger: messenger, onUndo: undo);
+    if (_undoTaskId == task.id) {
+      _undoTaskId = null;
+      _handOverUndo = null;
+    }
+  }
+
+  VoidCallback _undoBelow(VoidCallback onUndo) {
+    final below = widget.messengerBelow;
+    final screenMessenger = ScaffoldMessenger.maybeOf(context);
+    final l10n = context.l10n;
+    final persist = MediaQuery.accessibleNavigationOf(context);
+    return () {
+      final messenger = below?.currentState ?? screenMessenger;
+      if (messenger == null || !messenger.mounted) return;
+      unawaited(
+        showMarkedDoneSnackBarIn(
+          messenger,
+          l10n: l10n,
+          persist: persist,
+          onUndo: onUndo,
+        ),
+      );
+    };
+  }
+
+  /// A subtask comes without its reminders, which the Undo of a repeating
+  /// one puts back, so the stored task is what a done undoes.
+  Future<void> _setSubtaskDone(
+    TaskRepository repository,
+    Task subtask, {
+    required bool done,
+  }) async {
+    var task = subtask;
+    if (done) {
+      try {
+        task = await findLocalTask(repository, subtask.id) ?? subtask;
+      } on Object catch (error) {
+        _log.warning('Reading a subtask failed: ${error.runtimeType}');
+      }
+    }
+    await _setDone(repository, task, done: done);
+  }
+
   /// The sheet closes, so its "Task deleted" lands on what is below it; in
   /// the pane it shows on the screen beside it. On a server with the bin a
   /// queued delete can be undone from there; a task with a temporary id
@@ -837,6 +919,8 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     if (!confirmed || !mounted) return;
     final deletion = await repository.deleteTask(task.id);
     if (!mounted) return;
+    // A done of the deleted task has nothing left to undo.
+    _handOverUndo = null;
     final ScaffoldMessengerState messenger;
     if (widget.pane case final pane?) {
       pane.deleted(task.id);
@@ -1736,11 +1820,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                         onPressed: repository == null
                             ? null
                             : () => unawaited(
-                                writeTaskDone(
-                                  repository,
-                                  task,
-                                  done: !task.done,
-                                ),
+                                _setDone(repository, task, done: !task.done),
                               ),
                       ),
                     ),
@@ -1775,7 +1855,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       onDoneChanged: repository == null
                           ? null
                           : (subtask, {required done}) => unawaited(
-                              writeTaskDone(repository, subtask, done: done),
+                              _setSubtaskDone(repository, subtask, done: done),
                             ),
                       isReadOnly: subtaskReadOnly,
                       onRemove: changer == null

@@ -91,18 +91,27 @@ final class WorkmanagerBackgroundScheduler implements BackgroundScheduler {
 
   bool get _iOS => _platform == TargetPlatform.iOS;
 
-  /// Android: every 30 min when a network is there, the same job updated
-  /// rather than duplicated or restarted. iOS ignores the frequency: the
-  /// initial delay becomes the request's `earliestBeginDate`, and every run
-  /// submits the next request with the same delay; when it runs is the
-  /// system's choice.
+  /// Android: every 30 min when a network is there and the battery is not
+  /// low, the same job updated rather than duplicated or restarted. iOS
+  /// ignores the frequency: the initial delay becomes the request's
+  /// `earliestBeginDate`, and every run submits the next request with the
+  /// same delay; when it runs is the system's choice.
+  ///
+  /// A low battery only defers runs until it charges or recovers: a
+  /// session ends after 72 h without one (D22), and the reminder to open
+  /// the app 12 h before is an alarm, which no job constraint holds back.
   @override
   Future<void> registerPeriodicSync() => _client.registerPeriodicTask(
     BackgroundTasks.sync,
     BackgroundTasks.sync,
     frequency: syncInterval,
     initialDelay: _iOS ? syncInterval : null,
-    constraints: _iOS ? null : Constraints(networkType: NetworkType.connected),
+    constraints: _iOS
+        ? null
+        : Constraints(
+            networkType: NetworkType.connected,
+            requiresBatteryNotLow: true,
+          ),
     existingWorkPolicy: ExistingPeriodicWorkPolicy.update,
   );
 

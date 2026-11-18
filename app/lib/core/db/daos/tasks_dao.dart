@@ -28,6 +28,17 @@ part 'tasks_dao.g.dart';
 
 typedef _TaskRows = ({TaskRow task, UserRow? createdBy});
 
+/// [TaskRow.doneAt] in epoch milliseconds, as the column stores it.
+typedef _DoneRow = ({int id, int? doneAt});
+
+/// A list's tasks with only its most recently done ones; `omitsDoneTasks`
+/// when more done ones match. `loadedAt` is its last download's, if any.
+typedef CappedTasks = ({
+  List<Task> tasks,
+  DateTime? loadedAt,
+  bool omitsDoneTasks,
+});
+
 /// A task row with what the filter language reads from its relations: the
 /// creator's username (empty when unknown), label ids, assignee usernames
 /// and the reminder instants.
@@ -166,28 +177,66 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// [watchOpenTasks] orders them; one done or deleted here leaves at once.
   Stream<({List<Task> tasks, DateTime? loadedAt})> watchOpenTasksInList(
     String listKey,
-  ) => watchTables({
+  ) => watchTables(_inListTables, () => loadOpenTasksInList(listKey));
+
+  Set<ResultSetImplementation<dynamic, dynamic>> get _inListTables => {
     ..._readTables,
     listSnapshots,
     listSnapshotTasks,
-  }, () => loadOpenTasksInList(listKey));
+  };
 
   Future<({List<Task> tasks, DateTime? loadedAt})> loadOpenTasksInList(
     String listKey,
   ) async {
-    final header = await (select(
-      listSnapshots,
-    )..where((s) => s.listKey.equals(listKey))).getSingleOrNull();
+    final header = await _snapshotHeader(listKey);
     if (header == null) return (tasks: const <Task>[], loadedAt: null);
     final open = await _load(
-      where:
-          tasks.id.isInQuery(_snapshotTaskIds(listKey)) &
-          tasks.done.equals(false) &
-          _visible,
+      where: _inList(listKey) & tasks.done.equals(false),
       orderBy: _byDueDate,
     );
     return (tasks: open, loadedAt: header.loadedAt);
   }
+
+  /// The tasks among a list's last download ([listKey]) as
+  /// [loadTasksAmong] picks and orders them; one deleted here leaves at
+  /// once.
+  Stream<CappedTasks> watchTasksInList(
+    String listKey, {
+    required int doneLimit,
+  }) => watchTables(
+    _inListTables,
+    () => loadTasksInList(listKey, doneLimit: doneLimit),
+  );
+
+  Future<CappedTasks> loadTasksInList(
+    String listKey, {
+    required int doneLimit,
+  }) async {
+    final header = await _snapshotHeader(listKey);
+    if (header == null) {
+      return (tasks: const <Task>[], loadedAt: null, omitsDoneTasks: false);
+    }
+    final listed = _inList(listKey);
+    final done = await _recentlyDone(listed, limit: doneLimit + 1);
+    return (
+      tasks: [
+        ...await _load(
+          where: listed & tasks.done.equals(false),
+          orderBy: _byDueDate,
+        ),
+        ...await _loadRecentlyDone(done.take(doneLimit)),
+      ],
+      loadedAt: header.loadedAt,
+      omitsDoneTasks: done.length > doneLimit,
+    );
+  }
+
+  Future<ListSnapshotRow?> _snapshotHeader(String listKey) => (select(
+    listSnapshots,
+  )..where((s) => s.listKey.equals(listKey))).getSingleOrNull();
+
+  Expression<bool> _inList(String listKey) =>
+      tasks.id.isInQuery(_snapshotTaskIds(listKey)) & _visible;
 
   /// What a project's list view is built from: the project's tasks (done
   /// ones only with [includeDone] or when the view's last download has
@@ -374,6 +423,79 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// The tasks with [ids] that are open, as [watchOpenTasks] orders them.
   Future<List<Task>> loadOpenTasksAmong(Set<int> ids) async =>
       (await _loadIds(ids, openOnly: true))..sort(_compareByDueDate);
+
+  /// The tasks with [ids]: the open ones first, as [watchOpenTasks] orders
+  /// them, then the [doneLimit] most recently done ones; the rest of the
+  /// done ones are never hydrated, as an account's history can hold
+  /// thousands.
+  Future<CappedTasks> loadTasksAmong(
+    Set<int> ids, {
+    required int doneLimit,
+  }) async {
+    final all = ids.toList();
+    final open = <Task>[];
+    final done = <_DoneRow>[];
+    for (var start = 0; start < all.length; start += _chunkSize) {
+      final chunk =
+          tasks.id.isIn(
+            all.sublist(start, (start + _chunkSize).clamp(0, all.length)),
+          ) &
+          _visible;
+      open.addAll(
+        await _load(where: chunk & tasks.done.equals(false), orderBy: const []),
+      );
+      done.addAll(await _recentlyDone(chunk, limit: doneLimit + 1));
+    }
+    done.sort(_compareRecentlyDone);
+    return (
+      tasks: [
+        ...open..sort(_compareByDueDate),
+        ...await _loadRecentlyDone(done.take(doneLimit)),
+      ],
+      loadedAt: null,
+      omitsDoneTasks: done.length > doneLimit,
+    );
+  }
+
+  /// The ids of the done tasks [where] picks, most recently done first, at
+  /// most [limit] of them.
+  Future<List<_DoneRow>> _recentlyDone(
+    Expression<bool> where, {
+    required int limit,
+  }) async {
+    final query = selectOnly(tasks)
+      ..addColumns([tasks.id, tasks.doneAt])
+      ..where(where & tasks.done.equals(true))
+      ..orderBy([
+        OrderingTerm.desc(tasks.doneAt, nulls: NullsOrder.last),
+        ..._newestFirst,
+      ])
+      ..limit(limit);
+    return [
+      for (final row in await query.get())
+        (id: row.read(tasks.id)!, doneAt: row.read(tasks.doneAt)),
+    ];
+  }
+
+  Future<List<Task>> _loadRecentlyDone(Iterable<_DoneRow> rows) async =>
+      (await _loadIds({for (final row in rows) row.id}))..sort(
+        (a, b) => _compareRecentlyDone(
+          (id: a.id, doneAt: a.doneAt?.millisecondsSinceEpoch),
+          (id: b.id, doneAt: b.doneAt?.millisecondsSinceEpoch),
+        ),
+      );
+
+  static int _compareRecentlyDone(_DoneRow a, _DoneRow b) {
+    final byDoneAt = switch ((a.doneAt, b.doneAt)) {
+      (null, null) => 0,
+      (null, _) => 1,
+      (_, null) => -1,
+      (final a?, final b?) => b.compareTo(a),
+    };
+    if (byDoneAt != 0) return byDoneAt;
+    if ((a.id < 0) != (b.id < 0)) return a.id < 0 ? -1 : 1;
+    return b.id.abs().compareTo(a.id.abs());
+  }
 
   static int _compareByDueDate(Task a, Task b) {
     final byDue = switch ((a.dueDate, b.dueDate)) {

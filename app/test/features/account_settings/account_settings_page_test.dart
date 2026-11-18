@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/avatar_page.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
@@ -996,6 +997,102 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(auth.tokenGateway.refreshedTokens, isEmpty);
+    });
+
+    testWidgets('a resume without a web page reads the server only once the '
+        'last read is minutes old', (tester) async {
+      var now = DateTime.now();
+      await pumpPage(
+        tester,
+        overrides: [clockProvider.overrideWithValue(() => now)],
+      );
+      int reads() => repository().calls.where((c) => c == 'refresh').length;
+      int securityReads() => data.accountSecurity.calls.length;
+      final settingsBefore = reads();
+      final securityBefore = securityReads();
+
+      now = now.add(
+        AccountSettingsPage.resumeReadAfter - const Duration(seconds: 1),
+      );
+      resume(tester);
+      await tester.pumpAndSettle();
+      expect(reads(), settingsBefore);
+      expect(securityReads(), securityBefore);
+
+      now = now.add(const Duration(seconds: 1));
+      resume(tester);
+      await tester.pumpAndSettle();
+      expect(reads(), settingsBefore + 1);
+      expect(securityReads(), greaterThan(securityBefore));
+    });
+
+    testWidgets('back from a web page soon after the last read, the server is '
+        'read again', (tester) async {
+      final now = DateTime.now();
+      await pumpPage(
+        tester,
+        overrides: [clockProvider.overrideWithValue(() => now)],
+      );
+      final before = repository().calls.length;
+
+      await tapRow(tester, en.accountSettingsChangeEmail);
+      resume(tester);
+      await tester.pumpAndSettle();
+      expect(repository().calls.sublist(before), ['refresh']);
+
+      resume(tester);
+      await tester.pumpAndSettle();
+      expect(repository().calls.sublist(before), ['refresh']);
+    });
+
+    testWidgets('while an email change waits for its confirmation, every '
+        'resume reads, so the confirmed address shows at once', (tester) async {
+      final now = DateTime.now();
+      await pumpPage(
+        tester,
+        state: fakeAccountSettingsState(pendingEmail: 'new@example.org'),
+        overrides: [clockProvider.overrideWithValue(() => now)],
+      );
+      final pending = find.text(
+        en.accountSettingsPendingEmail('new@example.org'),
+      );
+      expect(pending, findsOneWidget);
+      final before = repository().calls.length;
+
+      repository().online = fakeAccountSettingsState();
+      resume(tester);
+      await tester.pumpAndSettle();
+
+      expect(repository().calls.sublist(before), ['refresh']);
+      expect(pending, findsNothing);
+
+      resume(tester);
+      await tester.pumpAndSettle();
+      expect(repository().calls.sublist(before), ['refresh']);
+    });
+
+    testWidgets('a security part that could not be read is read again on the '
+        'next resume, however recent the settings are', (tester) async {
+      final now = DateTime.now();
+      data.accountSecurity.failures['sessions'] = const NetworkFailure(
+        NetworkProblem.unreachable,
+      );
+      await pumpPage(
+        tester,
+        overrides: [clockProvider.overrideWithValue(() => now)],
+      );
+      int sessionReads() =>
+          data.accountSecurity.calls.where((c) => c == 'sessions').length;
+      final before = sessionReads();
+
+      data.accountSecurity.failures.clear();
+      resume(tester);
+      await tester.pumpAndSettle();
+      expect(sessionReads(), before + 1);
+
+      resume(tester);
+      await tester.pumpAndSettle();
+      expect(sessionReads(), before + 1);
     });
   });
 

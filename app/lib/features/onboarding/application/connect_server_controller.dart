@@ -144,7 +144,7 @@ class ConnectServerController extends _$ConnectServerController {
       final connection = await ref
           .read(serverConnectorProvider)
           .connect(input, cancelToken: cancelToken);
-      return connection.isInsecure
+      return connection.isInsecure && !await _hasCleartextConsent(connection)
           ? ConnectServerAwaitingInsecureConsent(connection)
           : ConnectServerConnected(connection);
     } on ServerConnectionFailure catch (failure) {
@@ -245,12 +245,29 @@ class ConnectServerController extends _$ConnectServerController {
       if (!cancelToken.isCancelled) _logUnexpected(error, stackTrace);
       return ConnectServerFailed(input: serverAddress ?? share.base.toString());
     }
+    final needsConsent =
+        connection.isInsecure && !await _hasCleartextConsent(connection);
     if (cancelToken.isCancelled) return const ConnectServerIdle();
-    if (connection.isInsecure) {
+    if (needsConsent) {
       _afterConsent = (connection) => _signInAsGuest(connection, share);
       return ConnectServerAwaitingInsecureConsent(connection);
     }
     return await _signInAsGuest(connection, share);
+  }
+
+  /// The user accepted http for the server's origin before, on this
+  /// device (D8): it is asked once per origin, until revoked. A consent
+  /// that cannot be read asks again.
+  Future<bool> _hasCleartextConsent(ServerConnection connection) async {
+    try {
+      final profile = await ref
+          .read(networkProfilesProvider)
+          .metadataFor(OriginKey.of(connection.rootUri));
+      return profile?.hasCleartextConsent ?? false;
+    } on Object catch (error) {
+      _log.info('Reading the consent failed: ${error.runtimeType}');
+      return false;
+    }
   }
 
   Future<Uri?> _serverClaiming(ParsedLinkShareUrl share) async {

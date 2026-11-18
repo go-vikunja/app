@@ -359,21 +359,63 @@ void main() {
       expect(calls.last, '5 2 newest');
     });
 
-    test('oldest first it goes last once every page is shown, and waits '
-        'for its page before that', () async {
+    test('oldest first it goes last, after the pages not read yet, which '
+        'are read for it', () async {
+      all = [for (var id = 1; id <= 5; id++) sampleComment(id: id)];
       final controller = create()..forTask(5);
       await controller.show();
-
-      all = [...all, sampleComment(id: 4)];
-      await controller.add(all.last, wasEmpty: false);
       expect(ids(controller), [1, 2]);
 
-      await controller.loadMore();
-      expect(ids(controller), [1, 2, 3, 4]);
-
-      all = [...all, sampleComment(id: 5)];
+      all = [...all, sampleComment(id: 6)];
       await controller.add(all.last, wasEmpty: false);
-      expect(ids(controller), [1, 2, 3, 4, 5]);
+      expect(ids(controller), [1, 2, 3, 4, 5, 6]);
+      expect(calls, ['5 1 oldest', '5 2 oldest', '5 3 oldest']);
+      expect(controller.value.hasMore, isFalse);
+      expect(controller.value.loadedPages, 3);
+      expect(controller.value.loading, isFalse);
+
+      calls.clear();
+      all = [...all, sampleComment(id: 7)];
+      await controller.add(all.last, wasEmpty: false);
+      expect(ids(controller), [1, 2, 3, 4, 5, 6, 7]);
+      expect(calls, isEmpty);
+    });
+
+    test('oldest first after a deletion, reading on to a comment written '
+        'here skips nothing', () async {
+      all = [for (var id = 1; id <= 5; id++) sampleComment(id: id)];
+      final controller = create()..forTask(5);
+      await controller.show();
+      all = all.where((comment) => comment.id != 1).toList();
+      controller.remove(1);
+
+      all = [...all, sampleComment(id: 6)];
+      await controller.add(all.last, wasEmpty: false);
+
+      expect(ids(controller), [2, 3, 4, 5, 6]);
+      expect(calls, ['5 1 oldest', '5 1 oldest', '5 2 oldest', '5 3 oldest']);
+    });
+
+    test('a page that comes back empty while the server still says there '
+        'are more ends the reading', () async {
+      final controller = CommentsController(
+        read: (taskId, {required page, required newestFirst}) async {
+          calls.add('$page');
+          return Page(
+            items: page == 1 ? [sampleComment(id: 1)] : const [],
+            page: page,
+            perPage: 1,
+            totalPages: 99,
+          );
+        },
+      )..forTask(5);
+      addTearDown(controller.dispose);
+      await controller.show();
+
+      await controller.add(sampleComment(id: 2), wasEmpty: false);
+
+      expect(calls, ['1', '2']);
+      expect(controller.value.loading, isFalse);
     });
 
     test('oldest first, a comment that opens a page stays through a '
@@ -394,7 +436,7 @@ void main() {
     });
 
     test('not shown yet: the first comment of an empty thread shows without '
-        'a read, else the first page is read', () async {
+        'a read, else the thread is read up to it', () async {
       final empty = create()..forTask(5);
       await empty.add(sampleComment(id: 9), wasEmpty: true);
       expect(empty.value.shown, isTrue);
@@ -403,8 +445,17 @@ void main() {
 
       final filled = create()..forTask(6);
       await filled.add(sampleComment(id: 4), wasEmpty: false);
-      expect(calls, ['6 1 oldest']);
+      expect(calls, ['6 1 oldest', '6 2 oldest']);
       expect(filled.value.shown, isTrue);
+      expect(ids(filled), [1, 2, 3]);
+
+      calls.clear();
+      final newestFirst = create()
+        ..forTask(7)
+        ..useDefaultOrder(newestFirst: true);
+      await newestFirst.add(sampleComment(id: 4), wasEmpty: false);
+      expect(calls, ['7 1 newest']);
+      expect(ids(newestFirst), [3, 2]);
     });
 
     test('an edit changes the text and the time, nothing else', () async {

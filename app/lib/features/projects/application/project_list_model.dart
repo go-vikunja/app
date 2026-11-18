@@ -24,9 +24,9 @@ List<ProjectView> shownViewsOf(Project? project) =>
       return byPosition != 0 ? byPosition : a.id.compareTo(b.id);
     });
 
-/// The view a project opens on: the first of the user's default kind (null:
-/// the first by position), else the first; 0 without views. Fed the views
-/// the app shows.
+/// The view a project opens on when it has none the user last left it in:
+/// the first of the user's default kind (null: the first by position), else
+/// the first; 0 without views. Fed the views the app shows.
 int resolveViewId(List<ProjectView> views, {ProjectViewKind? defaultKind}) {
   final ofDefaultKind = defaultKind == null
       ? null

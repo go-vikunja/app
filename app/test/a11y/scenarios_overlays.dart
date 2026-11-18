@@ -50,6 +50,7 @@ const overlayRegistry = <String>[
   'detail sheet',
   'new-task sheet',
   'new-task sheet, more options',
+  'new-task sheet, kept open after an add',
   'account switcher',
   'date-time picker',
   'time picker',
@@ -131,6 +132,23 @@ final List<SweepScenario> overlayScenarios = [
       await tester.tap(find.text(l10n.newTaskMoreOptions));
     },
     expectScreen: (l10n) => find.text(l10n.newTaskFewerOptions),
+  ),
+  _overlay(
+    'new-task sheet, kept open after an add',
+    show: (context, _) =>
+        unawaited(showNewTaskSheet(context, projectId: workProjectId)),
+    after: (tester, l10n) async {
+      await tester.tap(find.byTooltip(l10n.newTaskKeepOpen));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, 'Plan trip');
+      await tester.pumpAndSettle();
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+    },
+    // The snackbar of a sheet that closed says the same.
+    expectScreen: (l10n) => find.descendant(
+      of: find.byType(NewTaskSheet),
+      matching: find.text(l10n.newTaskCreated('Plan trip')),
+    ),
   ),
   _overlay(
     'account switcher',

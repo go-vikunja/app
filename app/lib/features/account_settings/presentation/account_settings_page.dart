@@ -65,6 +65,13 @@ final _log = Logger('AccountSettingsPage');
 class AccountSettingsPage extends ConsumerStatefulWidget {
   const new({super.key});
 
+  /// A resume reads the server again only after this, after one of the
+  /// web's pages was opened from here, while an email change waits for its
+  /// confirmation, or after a read that failed: what another device changes
+  /// meanwhile can wait that long, and a short trip to another app sends
+  /// nothing.
+  static const resumeReadAfter = Duration(minutes: 5);
+
   @override
   ConsumerState<AccountSettingsPage> createState() =>
       _AccountSettingsPageState();
@@ -86,19 +93,18 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   // Up to 2.6 and during a setup, the two-factor status comes with its
   // secret, so it is read when the page opens and after its web page only.
   bool _totpPageOpened = false;
+  bool _webPageOpened = false;
+
+  /// When the last read the server answered began.
+  DateTime? _readAt;
+
+  /// When the last security read whose every part was answered began.
+  DateTime? _securityReadAt;
 
   @override
   void initState() {
     super.initState();
-    // Back from the web's email or two-factor page, a pending change shows
-    // at once.
-    _lifecycle = AppLifecycleListener(
-      onResume: () {
-        unawaited(_refresh());
-        unawaited(_refreshSecurity(totp: _totpPageOpened));
-        _totpPageOpened = false;
-      },
-    );
+    _lifecycle = AppLifecycleListener(onResume: _onResume);
     ref.listenManual(
       accountSettingsProvider,
       (_, next) => _adoptName(next.value?.settings.name),
@@ -117,6 +123,28 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     super.dispose();
   }
 
+  /// Back from the web's email or two-factor page, a pending change shows
+  /// at once.
+  void _onResume() {
+    final now = ref.read(clockProvider)();
+    bool fresh(DateTime? readAt) =>
+        readAt != null &&
+        now.difference(readAt) < AccountSettingsPage.resumeReadAfter;
+    // The link in the confirmation mail is opened outside the app.
+    final pendingEmail =
+        ref.read(accountSettingsProvider).value?.profile?.pendingEmail ?? '';
+    if (fresh(_readAt) &&
+        fresh(_securityReadAt) &&
+        !_webPageOpened &&
+        pendingEmail.isEmpty) {
+      return;
+    }
+    unawaited(_refresh());
+    unawaited(_refreshSecurity(totp: _totpPageOpened));
+    _webPageOpened = false;
+    _totpPageOpened = false;
+  }
+
   /// Follows the stored name while the field holds it unchanged.
   void _adoptName(String? name) {
     if (name == null || name == _storedName) return;
@@ -131,8 +159,10 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   Future<void> _refresh() async {
     final repository = ref.read(accountSettingsRepositoryProvider);
     if (repository == null) return;
+    final startedAt = ref.read(clockProvider)();
     try {
       await repository.refresh();
+      _readAt = startedAt;
       if (mounted) setState(() => _reachable = true);
     } on NetworkFailure {
       if (mounted) setState(() => _reachable = false);
@@ -147,6 +177,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
     final repository = ref.read(accountSecurityRepositoryProvider);
     final entry = ref.read(accountsProvider).value?.activeAccount;
     if (repository == null || entry == null) return;
+    final startedAt = ref.read(clockProvider)();
     final UserProfile? profile;
     try {
       profile = (await ref.read(accountSettingsProvider.future)).profile;
@@ -155,7 +186,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
       return;
     }
     if (!mounted) return;
-    Future<void> read<T>(
+    Future<bool> read<T>(
       String part,
       Future<T> Function() load,
       SecurityOverview Function(T value) apply, {
@@ -164,15 +195,17 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
       try {
         final value = await load();
         if (mounted) setState(() => _security = apply(value));
+        return true;
       } on Object catch (error) {
         _log.info('Reading the $part failed: ${error.runtimeType}');
         if (mounted && onError != null) {
           setState(() => _security = onError(error));
         }
+        return false;
       }
     }
 
-    await [
+    final answered = await [
       if (totp &&
           entry.connection.capabilities.has(Capability.totp) &&
           (profile?.isLocalUser ?? true) &&
@@ -202,6 +235,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
         (export) => _security.withExport(export),
       ),
     ].wait;
+    if (answered.every((ok) => ok)) _securityReadAt = startedAt;
   }
 
   Future<void> _openPage(String location, {Object? extra}) async {
@@ -305,6 +339,7 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
   }
 
   Future<void> _openWebPage(RegisteredAccount entry, WebSettingsPage page) {
+    _webPageOpened = true;
     if (page == WebSettingsPage.totp) _totpPageOpened = true;
     return openWebSettingsPage(context, ref, entry, page);
   }

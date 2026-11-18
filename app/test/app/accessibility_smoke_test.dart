@@ -983,6 +983,14 @@ void main() {
       await tester.tap(find.byTooltip(l10n.editorLink));
       await tester.pumpAndSettle();
       expect(find.text(l10n.editorLinkRemove), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'javascript:alert(1)');
+      await tester.pump();
+      await tester.tap(find.text(l10n.editorLinkApply));
+      await tester.pumpAndSettle();
+      expect(
+        find.text(l10n.editorLinkSchemeRefused('javascript')),
+        findsOneWidget,
+      );
       await tester.tapAt(const Offset(4, 4));
       await tester.pumpAndSettle();
 

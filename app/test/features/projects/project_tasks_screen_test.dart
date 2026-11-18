@@ -388,7 +388,7 @@ void main() {
   });
 
   testWidgets('the tabs offer the list and kanban views and keep the one '
-      'picked without saving it', (tester) async {
+      'picked, saved for the project', (tester) async {
     await pumpProject(tester);
 
     expect(find.byType(Tab), findsNWidgets(4));
@@ -398,7 +398,8 @@ void main() {
 
     await selectView(tester, 'Everything');
 
-    expect(data.listPreferences.saves, isEmpty);
+    expect(data.listPreferences.saves, ['lastView 1']);
+    expect(data.listPreferences.lastViews, {1: 12});
     expect(selectedView(tester), 'Everything');
     // Without a filter the done tasks show below, the open child of the
     // done parent under it.
@@ -450,21 +451,89 @@ void main() {
     expect(rows(tester).first, ('Seven', 0));
   });
 
-  testWidgets('opened again, a project starts on its first view', (
-    tester,
-  ) async {
+  testWidgets('opened again, a project starts on the view it was last left '
+      'in, and only that one downloads', (tester) async {
     await pumpProject(tester);
     await selectView(tester, 'Everything');
 
     containerOf(tester).read(appRouterProvider).go(AppRoutes.projects);
     await tester.pumpAndSettle();
+    // A stale default view would download if it showed for a moment.
+    data.tasks.setSnapshot(
+      'view:11',
+      ListSnapshot(
+        positions: const {7: 1},
+        loadedAt: now.subtract(const Duration(days: 1)),
+      ),
+    );
+    data.tasks.projectListRefreshes.clear();
     containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
     await tester.pumpAndSettle();
+
+    expect(selectedView(tester), 'Everything');
+    expect(sectionTitles(tester), [en.projectTasksDoneSection]);
+    expect(data.tasks.projectListRefreshes, [(1, 12)]);
+    expect(data.listPreferences.saves, ['lastView 1']);
+  });
+
+  testWidgets('until the view last left in is read, no other view shows or '
+      'downloads', (tester) async {
+    final held = Completer<void>();
+    data.listPreferences
+      ..lastViews[1] = 12
+      ..lastViewsHeld = held.future;
+    data.tasks.setSnapshot(
+      'view:11',
+      ListSnapshot(
+        positions: const {7: 1},
+        loadedAt: now.subtract(const Duration(days: 1)),
+      ),
+    );
+    usePhoneSurface(tester, logicalSize: const Size(400, 2400));
+    await pumpSignedInApp(tester, sync: data, now: now);
+    containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.byType(TaskRow), findsNothing);
+    expect(data.tasks.projectListRefreshes, isEmpty);
+
+    held.complete();
+    await tester.pumpAndSettle();
+    expect(selectedView(tester), 'Everything');
+    expect(data.tasks.projectListRefreshes, [(1, 12)]);
+  });
+
+  testWidgets('a view last left in that was deleted opens the default view', (
+    tester,
+  ) async {
+    data.listPreferences.lastViews[1] = 99;
+    await pumpProject(tester);
+
+    expect(selectedView(tester), en.projectViewList);
+    expect(rows(tester).first, ('Seven', 0));
+  });
+
+  testWidgets('another project opens on its own default view', (tester) async {
+    data.projects.all = [
+      ...data.projects.all,
+      sampleProject(
+        id: 3,
+        title: 'Garden',
+        views: [
+          sampleListView(id: 31, projectId: 3),
+          sampleListView(id: 32, projectId: 3, title: 'All', position: 200),
+        ],
+      ),
+    ];
+    data.listPreferences.lastViews[1] = 12;
+    await pumpProject(tester, id: 3);
 
     expect(selectedView(tester), en.projectViewList);
   });
 
   testWidgets('opens on the view the route names', (tester) async {
+    data.listPreferences.lastViews[1] = 13;
     await pumpProject(tester, viewId: 12);
 
     // Only the view shown downloads.
@@ -472,6 +541,7 @@ void main() {
 
     expect(selectedView(tester), 'Everything');
     expect(sectionTitles(tester), [en.projectTasksDoneSection]);
+    expect(data.listPreferences.saves, isEmpty);
   });
 
   testWidgets('a view the project lacks opens its first view', (tester) async {
@@ -479,6 +549,15 @@ void main() {
 
     expect(selectedView(tester), en.projectViewList);
     expect(rows(tester).first, ('Seven', 0));
+  });
+
+  testWidgets('a route view the project lacks opens the view last left in', (
+    tester,
+  ) async {
+    data.listPreferences.lastViews[1] = 13;
+    await pumpProject(tester, viewId: 99);
+
+    expect(selectedView(tester), 'Urgent');
   });
 
   testWidgets('a view whose filter the device evaluates lists its matches '

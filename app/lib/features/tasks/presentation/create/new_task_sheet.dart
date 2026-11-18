@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
@@ -30,6 +31,7 @@ import 'package:vikunja_mobile/features/share/application/share_text.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/default_project.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
+import 'package:vikunja_mobile/features/tasks/application/new_task_keep_open_provider.dart';
 import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
 import 'package:vikunja_mobile/features/tasks/application/repeat_editor.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
@@ -51,7 +53,8 @@ final _log = Logger('NewTaskSheet');
 /// and a priority for lines without their own, and under "More options" a
 /// description, labels, reminders and a repeat for every task. [projectId]
 /// preselects the list's own project; with [column] the tasks that go to
-/// it are placed on top of that board column.
+/// it are placed on top of that board column. With its pin on, the sheet
+/// stays open after each add for the next task.
 Future<void> showNewTaskSheet(
   BuildContext context, {
   int? projectId,
@@ -142,6 +145,10 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   bool _adding = false;
   String? _error;
 
+  /// What the last add made, under the emptied title while the sheet stays
+  /// open, until the next title is typed.
+  String? _added;
+
   // After a partly failed add the sheet stays open for the rest, which
   // goes above what was placed and into the room that is left.
   late double? _columnTop = widget.column?.topPosition;
@@ -172,7 +179,10 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     super.dispose();
   }
 
-  void _onTextChanged() => setState(() => _error = null);
+  void _onTextChanged() => setState(() {
+    _error = null;
+    if (_text.text.isNotEmpty) _added = null;
+  });
 
   void _usePlanner({
     required QuickAddService? service,
@@ -371,6 +381,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   Future<void> _add() async {
     final service = _service;
     final text = _text.text;
+    final description = _description.text;
     final lines = splitQuickAddLines(text, mode: _mode);
     if (_adding || service == null || lines.isEmpty) return;
     if (!_repeat.isValid) {
@@ -386,6 +397,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     }
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
+    final announcer = Announcer.of(context);
     final repository = ref.read(taskRepositoryProvider);
     final prefixes = _prefixes;
     setState(() {
@@ -438,8 +450,11 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     }
     final left = await _placeInColumn(repository, result.createdTaskIds);
     if (!mounted) return;
-    navigator.pop();
 
+    final created = result.createdTaskIds;
+    final confirmation = created.length == 1
+        ? l10n.newTaskCreated(_createdTitle(plans.first, result, prefixes))
+        : l10n.newTaskCreatedMany(created.length);
     final warnings = [
       ?_leftInDefaultColumn(l10n, left),
       if (result.labelsNotCreated.isNotEmpty)
@@ -454,7 +469,16 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           ].join(', '),
         ),
     ];
-    final created = result.createdTaskIds;
+    if (ref.read(newTaskKeepOpenProvider).value ?? false) {
+      _keepOpenForNext(
+        [confirmation, ...warnings].join('\n'),
+        announcer,
+        added: text,
+        addedDescription: description,
+      );
+      return;
+    }
+    navigator.pop();
     messenger.showSnackBar(
       SnackBar(
         duration: Duration(seconds: warnings.isEmpty ? 4 : 8),
@@ -462,18 +486,33 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              created.length == 1
-                  ? l10n.newTaskCreated(
-                      _createdTitle(plans.first, result, prefixes),
-                    )
-                  : l10n.newTaskCreatedMany(created.length),
-            ),
+            Text(confirmation),
             for (final warning in warnings) Text(warning),
           ],
         ),
       ),
     );
+  }
+
+  /// Takes the [added] title and [addedDescription] out of their fields for
+  /// the next task, keeping what was typed during the add; the project,
+  /// the due date, the priority, the labels, the reminders and the repeat
+  /// stay, as they would for several pasted lines. The confirmation shows
+  /// under the title, since the sheet covers the snackbar.
+  void _keepOpenForNext(
+    String confirmation,
+    Announcer announcer, {
+    required String added,
+    required String addedDescription,
+  }) {
+    _text.value = _withoutAdded(_text.value, added);
+    _description.value = _withoutAdded(_description.value, addedDescription);
+    setState(() {
+      _adding = false;
+      _added = confirmation;
+    });
+    _focus.requestFocus();
+    announcer.say(confirmation);
   }
 
   /// Queues the board placement of the [created] tasks that went to the
@@ -690,16 +729,48 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         : projectLabel(project, projects, titleOf: titleOf);
     final formatter = MomentFormatter.watch(context, ref);
 
+    final keepOpen = ref.watch(newTaskKeepOpenProvider).value ?? false;
+
     final content = Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // The pin is here and not beside Add: in German the two buttons
+        // already take most of a 360 dp row, and stacking them would push
+        // the chip rows out from above the keyboard.
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Semantics(
-            header: true,
-            headingLevel: 1,
-            child: Text(l10n.newTask, style: theme.textTheme.headlineSmall),
+          padding: const EdgeInsets.fromLTRB(16, 0, 4, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  headingLevel: 1,
+                  child: Text(
+                    l10n.newTask,
+                    style: theme.textTheme.headlineSmall,
+                  ),
+                ),
+              ),
+              // One node: the button's own node would otherwise sit below
+              // the flag.
+              MergeSemantics(
+                child: Semantics(
+                  toggled: keepOpen,
+                  child: IconButton(
+                    onPressed: () => unawaited(
+                      ref
+                          .read(listPreferencesProvider)
+                          ?.saveNewTaskKeepOpen(keepOpen: !keepOpen),
+                    ),
+                    tooltip: l10n.newTaskKeepOpen,
+                    isSelected: keepOpen,
+                    icon: const Icon(Icons.push_pin_outlined),
+                    selectedIcon: const Icon(Icons.push_pin),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         Padding(
@@ -743,6 +814,18 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             onSubmitted: (_) => unawaited(_add()),
           ),
         ),
+        // Not the field's helper text, which cuts lines off: a warning ends
+        // with the names it is about.
+        if (_added case final added? when errorText == null)
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(28, 4, 28, 0),
+            child: Text(
+              added,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         if (plan != null)
           QuickAddPreview(
             plan: plan,
@@ -1042,5 +1125,28 @@ class _ChipRow extends StatelessWidget {
         for (final child in children) ...[child, const SizedBox(width: 8)],
       ],
     ),
+  );
+}
+
+/// [value] without the [added] text it still starts with, and the spaces
+/// after it; anything else typed while the add ran stays, with the caret
+/// where it was.
+TextEditingValue _withoutAdded(TextEditingValue value, String added) {
+  if (added.isEmpty || !value.text.startsWith(added)) return value;
+  final rest = value.text.substring(added.length);
+  final removed = value.text.length - rest.trimLeft().length;
+  int shift(int offset) => offset < 0 ? offset : math.max(0, offset - removed);
+  return TextEditingValue(
+    text: value.text.substring(removed),
+    selection: value.selection.copyWith(
+      baseOffset: shift(value.selection.baseOffset),
+      extentOffset: shift(value.selection.extentOffset),
+    ),
+    composing: value.composing.isValid
+        ? TextRange(
+            start: shift(value.composing.start),
+            end: shift(value.composing.end),
+          )
+        : TextRange.empty,
   );
 }

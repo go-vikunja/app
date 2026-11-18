@@ -17,6 +17,7 @@ export 'src/links/incoming_links.dart';
 export 'src/links/link_share_url.dart';
 export 'src/links/task_links.dart';
 export 'src/links/task_reference.dart';
+export 'src/links/typed_link_address.dart';
 export 'src/lists/table_sort.dart';
 export 'src/lists/task_list_sort.dart';
 export 'src/lists/task_tree.dart';

@@ -698,6 +698,74 @@ void main() {
       expect(capabilities.permission, NotificationPermission.denied);
     });
 
+    group('Android: the Reminders channel', () {
+      // As the plugin's getNotificationChannels sends a channel.
+      Map<String, Object?> channel(String id, Importance importance) => {
+        'id': id,
+        'name': id,
+        'description': null,
+        'groupId': null,
+        'showBadge': true,
+        'importance': importance.value,
+        'bypassDnd': false,
+        'playSound': true,
+        'enableVibration': true,
+        'vibrationPattern': null,
+        'enableLights': false,
+        'ledColor': 0,
+        'audioAttributesUsage': 5,
+      };
+
+      setUp(() {
+        answers['areNotificationsEnabled'] = true;
+        answers['canScheduleExactNotifications'] = true;
+      });
+
+      test('turned off in the system settings: off although granted', () async {
+        answers['getNotificationChannels'] = [
+          channel(LocalNotificationGateway.channelId, Importance.none),
+          channel(LocalNotificationGateway.activityChannelId, Importance.high),
+        ];
+
+        final capabilities = await gateway().capabilities();
+
+        expect(capabilities.permission, NotificationPermission.granted);
+        expect(capabilities.remindersChannelOff, isTrue);
+      });
+
+      test('on, or only the activity channel off: on', () async {
+        answers['getNotificationChannels'] = [
+          channel(LocalNotificationGateway.channelId, Importance.low),
+          channel(LocalNotificationGateway.activityChannelId, Importance.none),
+        ];
+
+        expect((await gateway().capabilities()).remindersChannelOff, isFalse);
+      });
+
+      test('channels that cannot be read count as on', () async {
+        throwing = (call) => call.method == 'getNotificationChannels'
+            ? PlatformException(code: 'getNotificationChannelsError')
+            : null;
+
+        final capabilities = await gateway().capabilities();
+
+        expect(capabilities.permission, NotificationPermission.granted);
+        expect(capabilities.remindersChannelOff, isFalse);
+      });
+
+      test('not read without the permission', () async {
+        answers['areNotificationsEnabled'] = false;
+
+        final capabilities = await gateway().capabilities();
+
+        expect(capabilities.remindersChannelOff, isFalse);
+        expect(
+          calls.map((c) => c.method),
+          isNot(contains('getNotificationChannels')),
+        );
+      });
+    });
+
     test('iOS: from checkPermissions, exact alarms always', () async {
       answers['checkPermissions'] = {'isEnabled': true};
       answers['requestPermissions'] = true;
@@ -706,6 +774,7 @@ void main() {
       final capabilities = await gateway0.capabilities();
       expect(capabilities.permission, NotificationPermission.granted);
       expect(capabilities.exactAlarms, isTrue);
+      expect(capabilities.remindersChannelOff, isFalse);
 
       await gateway0.requestPermission();
       final request = args(call('requestPermissions'));

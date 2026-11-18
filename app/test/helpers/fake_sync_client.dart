@@ -386,6 +386,13 @@ final class FakeTasksPort implements TasksPort {
             (_, null) => sort.descending ? 1 : -1,
             (final a?, final b?) => a.compareTo(b),
           },
+          TaskSortField.done => (a.done ? 1 : 0).compareTo(b.done ? 1 : 0),
+          TaskSortField.doneAt => switch ((a.doneAt, b.doneAt)) {
+            (null, null) => 0,
+            (null, _) => sort.descending ? -1 : 1,
+            (_, null) => sort.descending ? 1 : -1,
+            (final a?, final b?) => a.compareTo(b),
+          },
           _ => throw StateError('unsupported task sort: ${sort.field}'),
         };
         if (order != 0) return sort.descending ? -order : order;

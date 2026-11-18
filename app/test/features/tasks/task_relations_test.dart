@@ -145,6 +145,72 @@ void main() {
       );
 
       expect(data.tasks.writes, ['setDone 2 true']);
+      expect(inSheet(find.text(en.taskMarkedDone)), findsOneWidget);
+      expect(inSheet(find.text(en.undo)), findsOneWidget);
+    });
+
+    testWidgets('Undo of a repeating subtask gives back the dates and '
+        'reminders of the stored task, which its row lacks', (tester) async {
+      final due = DateTime.utc(2026, 10, 11, 9);
+      final reminder = TaskReminder(reminder: DateTime.utc(2026, 10, 11, 8));
+      final flights = data.tasks
+          .find(2)!
+          .copyWith(
+            dueDate: due,
+            reminders: [reminder],
+            repeatAfter: const Duration(days: 7),
+          );
+      final trip = data.tasks.find(1)!;
+      data.tasks.all = [
+        for (final task in data.tasks.all)
+          if (task.id == 1)
+            trip.copyWith(
+              relatedTasks: {
+                ...trip.relatedTasks,
+                // As the database gives a related task: without reminders.
+                TaskRelationKind.subtask: [
+                  bare(flights).copyWith(reminders: const []),
+                  data.tasks.find(3)!,
+                ],
+              },
+            )
+          else if (task.id == 2)
+            flights
+          else
+            task,
+      ];
+      await openDetail(tester, 'Plan the trip');
+
+      await tapVisible(
+        tester,
+        find.descendant(
+          of: rowOf('Book flights'),
+          matching: find.byTooltip(en.taskMarkDone),
+        ),
+      );
+      // The server's answer: the next occurrence, open again.
+      data.tasks.all = [
+        for (final task in data.tasks.all)
+          if (task.id == 2)
+            task.copyWith(
+              done: false,
+              doneAt: null,
+              dueDate: due.add(const Duration(days: 7)),
+              reminders: [
+                TaskReminder(reminder: DateTime.utc(2026, 10, 18, 8)),
+              ],
+            )
+          else
+            task,
+      ];
+      await tester.pump();
+      await tester.tap(inSheet(find.text(en.undo)));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.writes, ['setDone 2 true', 'undoDone 2']);
+      final undone = data.tasks.find(2)!;
+      expect(undone.dueDate, due);
+      expect(undone.reminders, [reminder]);
     });
 
     testWidgets('a tap opens the subtask over the sheet, which comes back', (

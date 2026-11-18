@@ -187,12 +187,13 @@ final class CommentsController extends ValueNotifier<CommentsState> {
   }
 
   /// A comment written here, where the server's order puts it: first when
-  /// newest first, last when oldest first once no page is left (a later
-  /// page brings it otherwise). While the thread is not shown it starts
-  /// with the comment when it [wasEmpty], else its first page is read.
+  /// newest first, last when oldest first, after the pages not read yet,
+  /// which are read for it. While the thread is not shown it starts with
+  /// the comment when it [wasEmpty], else it is read: its first page when
+  /// newest first, every page when oldest first.
   Future<void> add(TaskComment comment, {required bool wasEmpty}) async {
     if (!value.shown) {
-      if (!wasEmpty) return await show();
+      if (!wasEmpty) return await _load(1, 1, toEnd: !value.newestFirst);
       _generation++;
       _set(
         CommentsState(
@@ -213,7 +214,9 @@ final class CommentsController extends ValueNotifier<CommentsState> {
           failure: value.failure,
         ),
       );
-    } else if (!value.hasMore) {
+    } else if (value.hasMore) {
+      await _loadNext(toEnd: true);
+    } else {
       final comments = [...value.comments, comment];
       _set(
         value.copyWith(
@@ -278,10 +281,10 @@ final class CommentsController extends ValueNotifier<CommentsState> {
     );
   }
 
-  Future<void> _loadNext() {
+  Future<void> _loadNext({bool toEnd = false}) {
     final next = value.loadedPages + 1;
     final behind = (_removed + _perPage - 1) ~/ _perPage;
-    return _load(math.max(1, next - behind), next);
+    return _load(math.max(1, next - behind), next, toEnd: toEnd);
   }
 
   void _restart() {
@@ -303,10 +306,10 @@ final class CommentsController extends ValueNotifier<CommentsState> {
     unawaited(refreshLoaded());
   }
 
-  /// Pages [from] to [to], appending what is not shown yet; [from] is below
-  /// [to] only after deletions, to pick up what moved onto loaded pages.
-  /// What changed here meanwhile stays as it is.
-  Future<void> _load(int from, int to) async {
+  /// Pages [from] to [to], [toEnd] on to the last, appending what is not
+  /// shown yet; [from] is below [to] only after deletions, to pick up what
+  /// moved onto loaded pages. What changed here meanwhile stays as it is.
+  Future<void> _load(int from, int to, {bool toEnd = false}) async {
     final taskId = _taskId;
     if (taskId == null) return;
     final generation = ++_generation;
@@ -315,7 +318,8 @@ final class CommentsController extends ValueNotifier<CommentsState> {
     try {
       final read = <TaskComment>[];
       var hasMore = value.hasMore;
-      for (var page = from; page <= to; page++) {
+      var last = to;
+      for (var page = from; page <= last; page++) {
         final result = await _read(
           taskId,
           page: page,
@@ -325,6 +329,9 @@ final class CommentsController extends ValueNotifier<CommentsState> {
         _perPage = result.perPage;
         read.addAll(result.items);
         hasMore = result.hasMore;
+        if (toEnd && page == last && hasMore && result.items.isNotEmpty) {
+          last++;
+        }
       }
       _removed -= removedBefore;
       final known = {for (final comment in value.comments) comment.id};
@@ -337,7 +344,7 @@ final class CommentsController extends ValueNotifier<CommentsState> {
                 comment,
           ],
           shown: true,
-          loadedPages: to,
+          loadedPages: last,
           hasMore: hasMore,
           loading: false,
         ),

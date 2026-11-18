@@ -12,6 +12,8 @@ import 'package:vikunja_mobile/core/repositories/local/local_project_repository.
 import 'package:vikunja_mobile/core/repositories/local/local_task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
+import 'package:vikunja_mobile/core/sync/list_downloads.dart';
+import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 
@@ -29,8 +31,11 @@ void main() {
     late TestUser user;
     late Seeder seeder;
     late int soonPseudoId;
+    late int mineAllPseudoId;
     late int myOpenTasksPseudoId;
     late List<int> mineOpen;
+    // The most recently done first, the one without a done_at last.
+    late List<int> mineDone;
     late int notMine;
     late int archivedFavorite;
 
@@ -57,6 +62,14 @@ void main() {
         'filter_timezone': _zone,
         'sort_by': ['due_date', 'id'],
         'order_by': ['asc', 'desc'],
+        'per_page': '50',
+      }))
+        item['id']! as int,
+    ];
+
+    Future<List<int>> serverTasks(int projectId) async => [
+      for (final item in await v2Items('/projects/$projectId/tasks', {
+        'filter_timezone': _zone,
         'per_page': '50',
       }))
         item['id']! as int,
@@ -105,16 +118,24 @@ void main() {
       });
       final undated = await task(smartId, 'Mine undated');
       final done = await task(smartId, 'Mine done', {'done': true});
+      final doneFirst = await task(smartId, 'Mine done first');
+      final doneLast = await task(smartId, 'Mine done last');
       await task(smartId, 'In 10 days', {
         'due_date': due(const Duration(days: 10)),
       });
       notMine = await task(smartId, 'Not mine', {
         'due_date': due(const Duration(hours: 1)),
       });
-      for (final id in [soon, later, undated, done]) {
+      for (final id in [soon, later, undated, done, doneFirst, doneLast]) {
         await assignMe(id);
       }
+      // Marked done by an update, a second apart, so they have a done_at
+      // (one created done has none).
+      await paced(() => seeder.patch('/tasks/$doneFirst', {'done': true}));
+      await Future<void>.delayed(const Duration(milliseconds: 1500));
+      await paced(() => seeder.patch('/tasks/$doneLast', {'done': true}));
       mineOpen = [soon, later, undated];
+      mineDone = [doneLast, doneFirst, done];
       archivedFavorite = await task(archiveId, 'Archived favourite', {
         'is_favorite': true,
       });
@@ -133,6 +154,16 @@ void main() {
         }),
       );
       soonPseudoId = -filterId - 1;
+      final mineAllId = await paced(
+        () => seeder.create('/filters', {
+          'title': 'Mine, done ones too',
+          'filters': {
+            'filter': 'assignees in ${user.username}',
+            'filter_include_nulls': false,
+          },
+        }),
+      );
+      mineAllPseudoId = -mineAllId - 1;
       final projects = await v2Items('/projects', {'per_page': '50'});
       myOpenTasksPseudoId = projects
           .where((project) => project['title'] == 'My Open Tasks')
@@ -158,6 +189,7 @@ void main() {
     for (final apiVersion in ApiVersion.values) {
       group('synced over ${apiVersion.pathSegment}', () {
         late AppDatabase db;
+        late VikunjaReadClient reads;
         late DefaultSyncEngine engine;
         late OutboxSender sender;
         late LocalTaskRepository tasks;
@@ -170,7 +202,7 @@ void main() {
             connection: only,
             tokens: StaticJwt(user.jwt),
           );
-          final reads = createReadClient(dio: authenticated, connection: only);
+          reads = createReadClient(dio: authenticated, connection: only);
           final writes = createWriteClient(
             dio: authenticated,
             connection: only,
@@ -225,11 +257,11 @@ void main() {
 
           expect(
             [for (final filter in filters) filter.projectId],
-            [soonPseudoId, myOpenTasksPseudoId],
+            [soonPseudoId, mineAllPseudoId, myOpenTasksPseudoId],
           );
           expect(
             [for (final filter in filters) filter.isFavorite],
-            [true, false],
+            [true, false, false],
           );
         });
 
@@ -247,6 +279,46 @@ void main() {
             expect(_ids(list.tasks), await serverOpenTasks(pseudoId));
             expect(_ids(list.tasks), expected);
           }
+        });
+
+        test('a saved filter without done = false lists the done tasks it '
+            "matches, as the server's list of it does", () async {
+          await tasks.refreshSavedFilter(mineAllPseudoId);
+          final list = await tasks.watchSavedFilterTasks(mineAllPseudoId).first;
+
+          expect(list.evaluation, FilterEvaluation.local);
+          expect(list.includesDone, isTrue);
+          expect(list.omitsDoneTasks, isFalse);
+          final server = await serverTasks(mineAllPseudoId);
+          expect(server, containsAll(mineDone));
+          expect(_ids(list.tasks), unorderedEquals(server));
+          expect(_ids(list.tasks), [...mineOpen, ...mineDone]);
+        });
+
+        test("a saved filter's download, as the app asks for it, comes open "
+            'tasks first, then the most recently done, across pages; the '
+            'list built from it orders them like the evaluation', () async {
+          await downloadSavedFilter(
+            db: db,
+            client: reads,
+            perPage: 2,
+            pseudoProjectId: mineAllPseudoId,
+            now: DateTime.now,
+          );
+          final key = savedFilterSnapshotKey(mineAllPseudoId);
+          final downloaded = (await db.listSnapshotsDao.load(key))
+              .positions
+              .keys
+              .toList();
+
+          expect(downloaded.take(mineOpen.length), unorderedEquals(mineOpen));
+          expect(downloaded.skip(mineOpen.length), mineDone);
+          final listed = await db.tasksDao.loadTasksInList(
+            key,
+            doneLimit: SavedFilterTasks.doneLimit,
+          );
+          expect(_ids(listed.tasks), [...mineOpen, ...mineDone]);
+          expect(listed.omitsDoneTasks, isFalse);
         });
 
         test('a task marked as favourite here is a favourite on the server '

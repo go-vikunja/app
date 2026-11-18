@@ -93,8 +93,8 @@ class ProjectTasksScreen extends ConsumerStatefulWidget {
 
   final int projectId;
 
-  /// The view to open on while the project has it, in place of the
-  /// default.
+  /// The view to open on while the project has it, in place of the one
+  /// last left in or the default.
   final int? viewId;
 
   @override
@@ -276,6 +276,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
 
   void _selectView(int viewId) {
     if (viewId == _viewId) return;
+    unawaited(
+      ref.read(listPreferencesProvider)?.saveLastView(widget.projectId, viewId),
+    );
     setState(() {
       _chosenViewId = viewId;
       clearRefreshFailure();
@@ -425,9 +428,14 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         (settings) => settings.value?.defaultViewKind,
       ),
     );
+    final lastViewValue = ref.watch(lastViewProvider(widget.projectId));
+    bool shown(int? viewId) => views.any((view) => view.id == viewId);
     final chosenViewId = _chosenViewId;
-    final viewId = _viewId = views.any((view) => view.id == chosenViewId)
+    final lastViewId = lastViewValue.value;
+    final viewId = _viewId = shown(chosenViewId)
         ? chosenViewId!
+        : shown(lastViewId)
+        ? lastViewId!
         : resolveViewId(views, defaultKind: defaultKind);
     final view = views.where((view) => view.id == viewId).firstOrNull;
     final viewKind = _viewKind = view?.kind ?? ProjectViewKind.list;
@@ -514,6 +522,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     // Until then the view shown may still change.
     final ready =
         !(projects.isLoading && !projects.hasValue) &&
+        !(lastViewValue.isLoading && !lastViewValue.hasValue) &&
         !(preferencesValue.isLoading && !preferencesValue.hasValue) &&
         !(columnsValue.isLoading && !columnsValue.hasValue);
     final current = ready ? source : const AsyncLoading<Object>();

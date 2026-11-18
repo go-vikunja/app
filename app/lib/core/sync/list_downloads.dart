@@ -75,11 +75,15 @@ Future<void> downloadOverviewFilter({
   _log.info('Sync run $runId: Overview filter, ${tasks.length} tasks');
 }
 
-/// A saved filter's open tasks, all pages, into its snapshot: the
-/// Overview's request, with relative dates in the filter rounded in the
-/// user's time zone setting as the web asks for them. Always rewritten, so
-/// its `loadedAt` says when the list was last checked. Throws the
-/// download's `VikunjaFailure`; the previous snapshot stays then.
+/// A saved filter's tasks into its snapshot: the Overview's request
+/// without its `done = false`, so the done tasks come too unless the filter
+/// leaves them out itself, as in the web's list of it; relative dates in
+/// the filter rounded in the user's time zone setting as the web asks for
+/// them. The open ones come first, all of them; the done ones, most
+/// recently done first, only until more than [SavedFilterTasks.doneLimit]
+/// are in, as the list shows no more. Always rewritten, so its `loadedAt`
+/// says when the list was last checked. Throws the download's
+/// `VikunjaFailure`; the previous snapshot stays then.
 Future<void> downloadSavedFilter({
   required AppDatabase db,
   required VikunjaReadClient client,
@@ -92,20 +96,29 @@ Future<void> downloadSavedFilter({
     fetch: (page) => client.tasks.listInProject(
       pseudoProjectId,
       TaskQuery(
-        filter: 'done = false',
-        sort: TaskQuery.dueDateSort,
+        sort: _openThenRecentlyDone,
         page: page,
         perPage: perPage,
         filterTimezone: zone,
       ),
     ),
     idOf: (task) => task.id,
+    enough: (collected) =>
+        collected.values.where((task) => task.done).length >
+        SavedFilterTasks.doneLimit,
   );
   await db.listSnapshotsDao.replace(savedFilterSnapshotKey(pseudoProjectId), {
     for (final (index, id) in tasks.keys.indexed) id: index.toDouble(),
   }, loadedAt: now().toUtc());
   _log.fine('Saved filter $pseudoProjectId: ${tasks.length} tasks');
 }
+
+// The lists order the open ones by due date themselves.
+const _openThenRecentlyDone = [
+  TaskSort(TaskSortField.done),
+  TaskSort(TaskSortField.doneAt, descending: true),
+  TaskSort(TaskSortField.id, descending: true),
+];
 
 /// A view's tasks with their positions in it, all pages, sorted by
 /// position like the web's List view, into the view's snapshot. Relative

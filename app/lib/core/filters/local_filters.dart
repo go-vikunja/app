@@ -306,6 +306,17 @@ bool downloadsSnapshot(ProjectView view) => switch (view.kind) {
   ProjectViewKind.kanban => false,
 };
 
+/// Whether a saved filter with [definition] leaves the done tasks out by
+/// its own text (a `done = false` the whole filter depends on), which is
+/// how the web keeps "Show done tasks" off. False while the definition is
+/// unknown or the engine refuses it: the server's answer then decides.
+bool listsOnlyOpenTasks(SavedFilterDefinition? definition) =>
+    definition != null &&
+    switch (parseTaskFilter(definition.filter.filter)) {
+      final FilterExpression expression => expression.matchesOnlyOpenTasks,
+      FilterError() => false,
+    };
+
 /// Whether the device can evaluate a saved filter with [definition]
 /// itself: known and accepted by the engine.
 bool evaluatesLocally(SavedFilterDefinition? definition) =>

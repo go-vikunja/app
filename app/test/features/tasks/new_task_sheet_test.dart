@@ -1,3 +1,7 @@
+import 'dart:async';
+
+import 'package:flutter/rendering.dart' show RenderParagraph;
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -726,6 +730,310 @@ void main() {
       QuickAddExtras(labels: [roadTrip], newLabels: const ['Errands']),
     );
     expect(harness.labels.created, isEmpty);
+  });
+
+  group('kept open', () {
+    Finder pin() => find.ancestor(
+      of: find.byTooltip(en.newTaskKeepOpen),
+      matching: find.byType(IconButton),
+    );
+
+    bool pinned(WidgetTester tester) =>
+        tester.widget<IconButton>(pin()).isSelected!;
+
+    Future<void> tapPin(WidgetTester tester) async {
+      await tester.tap(pin());
+      await tester.pumpAndSettle();
+    }
+
+    bool titleFocused(WidgetTester tester) => tester
+        .widget<EditableText>(
+          find.descendant(
+            of: composerField(),
+            matching: find.byType(EditableText),
+          ),
+        )
+        .focusNode
+        .hasFocus;
+
+    Future<void> add(WidgetTester tester) async {
+      await tester.ensureVisible(addButton());
+      await tester.pumpAndSettle();
+      await tester.tap(addButton());
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('with the pin on, Add empties the title for the next task '
+        'and keeps the sheet, the focus, the project, the due date and the '
+        'priority; the add is confirmed under the title and announced', (
+      tester,
+    ) async {
+      await harness.open(tester, projectId: 3);
+      expect(pinned(tester), isFalse);
+      await tapPin(tester);
+      expect(pinned(tester), isTrue);
+      expect(harness.data.listPreferences.saves, ['newTaskKeepOpen']);
+
+      await typeLine(tester, 'Buy milk');
+      await tapInSheet(tester, en.shortcutTomorrow);
+      await tapInSheet(tester, en.priorityHigh);
+      tester.takeAnnouncements();
+      await tester.tap(addButton());
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NewTaskSheet), findsOneWidget);
+      expect(composerText(tester), isEmpty);
+      expect(titleFocused(tester), isTrue);
+      expect(addEnabled(tester), isFalse);
+      expect(inSheet(en.newTaskCreated('Buy milk')), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+      expect(tester.takeAnnouncements(), [
+        isAccessibilityAnnouncement(en.newTaskCreated('Buy milk')),
+      ]);
+      expect(projectField('Garage Sale'), findsOneWidget);
+      expect(
+        tester.widget<ChoiceChip>(choiceChip(en.shortcutTomorrow)).selected,
+        isTrue,
+      );
+      expect(
+        tester.widget<ChoiceChip>(choiceChip(en.priorityHigh)).selected,
+        isTrue,
+      );
+
+      await typeLine(tester, 'Buy eggs');
+      expect(inSheet(en.newTaskCreated('Buy milk')), findsNothing);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      expect(harness.service.submits, [
+        for (final text in ['Buy milk', 'Buy eggs'])
+          (
+            text: text,
+            fallbackProjectId: 3,
+            fallbackDueDate: DateTime(2026, 10, 11, 12).toUtc(),
+            fallbackPriority: TaskPriority.high.value,
+            extras: const QuickAddExtras(),
+          ),
+      ]);
+      expect(find.byType(NewTaskSheet), findsOneWidget);
+      expect(inSheet(en.newTaskCreated('Buy eggs')), findsOneWidget);
+      expect(titleFocused(tester), isTrue);
+    });
+
+    testWidgets('Add pressed from a keyboard puts the focus back in the '
+        'title, not on the control focused before', (tester) async {
+      harness.data.listPreferences.newTaskKeepOpen = true;
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+      void focusOn(Finder control, String label) => Focus.of(
+        tester.element(
+          find.descendant(of: control, matching: find.text(label)),
+        ),
+      ).requestFocus();
+      focusOn(choiceChip(en.priorityHigh), en.priorityHigh);
+      await tester.pump();
+      focusOn(addButton(), en.newTaskAdd);
+      await tester.pump();
+      expect(titleFocused(tester), isFalse);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(harness.service.submits.single.text, 'Buy milk');
+      expect(find.byType(NewTaskSheet), findsOneWidget);
+      expect(titleFocused(tester), isTrue);
+    });
+
+    testWidgets('the description empties, while the labels and the repeat '
+        'stay for the next task', (tester) async {
+      harness.data.listPreferences.newTaskKeepOpen = true;
+      await harness.open(tester);
+      await typeLine(tester, 'Plan trip');
+      await tapInSheet(tester, en.newTaskMoreOptions);
+      await tester.enterText(descriptionField(), 'Pack bags');
+      await tapInSheet(tester, en.taskEditAddLabel);
+      await tester.tap(find.widgetWithText(CheckboxListTile, 'Road trip'));
+      await tester.pump();
+      await tester.tap(find.text(en.pickerDone));
+      await tester.pumpAndSettle();
+      await tapInSheet(tester, en.repeatPresetWeekly);
+      await add(tester);
+
+      expect(
+        tester.widget<TextField>(descriptionField()).controller!.text,
+        isEmpty,
+      );
+      expect(inSheet('Road trip'), findsOneWidget);
+      await typeLine(tester, 'Book hotel');
+      await add(tester);
+
+      expect(harness.service.submits.map((submit) => submit.extras), [
+        QuickAddExtras(
+          description: '<p>Pack bags</p>',
+          labels: [roadTrip],
+          repeatAfter: const Duration(days: 7),
+        ),
+        QuickAddExtras(
+          labels: [roadTrip],
+          repeatAfter: const Duration(days: 7),
+        ),
+      ]);
+      expect(find.byType(NewTaskSheet), findsOneWidget);
+    });
+
+    testWidgets('what is typed while an add runs stays for the next task; '
+        'only what was added leaves the title and the description', (
+      tester,
+    ) async {
+      harness.data.listPreferences.newTaskKeepOpen = true;
+      var held = Completer<void>();
+      harness.service.beforeSubmit = () => held.future;
+      Future<void> startAdd() async {
+        await tester.ensureVisible(addButton());
+        await tester.pumpAndSettle();
+        await tester.tap(addButton());
+        await tester.pump();
+      }
+
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+      await tapInSheet(tester, en.newTaskMoreOptions);
+      await tester.enterText(descriptionField(), 'Whole');
+      await startAdd();
+      expect(harness.service.submits.single.text, 'Buy milk');
+
+      await tester.enterText(composerField(), 'Buy eggs');
+      await tester.enterText(descriptionField(), 'Free range');
+      await tester.pump();
+      held.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NewTaskSheet), findsOneWidget);
+      expect(inSheet(en.newTaskCreated('Buy milk')), findsOneWidget);
+      expect(composerText(tester), 'Buy eggs');
+      expect(
+        tester.widget<TextField>(descriptionField()).controller!.text,
+        'Free range',
+      );
+
+      held = Completer<void>();
+      await tester.enterText(descriptionField(), '');
+      await startAdd();
+      expect(harness.service.submits.last.text, 'Buy eggs');
+      await setComposerText(tester, 'Buy eggs Buy bread');
+      held.complete();
+      await tester.pumpAndSettle();
+
+      final title = composerController(tester).value;
+      expect(title.text, 'Buy bread');
+      expect(title.selection, const TextSelection.collapsed(offset: 9));
+    });
+
+    testWidgets('the warnings of an add show under the title too', (
+      tester,
+    ) async {
+      harness.data.listPreferences.newTaskKeepOpen = true;
+      harness.service.result = const QuickAddResult(
+        createdTaskIds: [-1],
+        labelsNotCreated: ['Errands'],
+      );
+      await harness.open(tester);
+      await typeLine(tester, 'Plan trip');
+      tester.takeAnnouncements();
+      await add(tester);
+
+      final confirmation = [
+        en.newTaskCreated('Plan trip'),
+        en.newTaskLabelsNotCreated('Errands'),
+      ].join('\n');
+      expect(inSheet(confirmation), findsOneWidget);
+      expect(tester.takeAnnouncements(), [
+        isAccessibilityAnnouncement(confirmation),
+      ]);
+    });
+
+    testWidgets('at 200 % text on a phone the warning under the title shows '
+        'whole, the names at its end included', (tester) async {
+      usePhoneSurface(tester);
+      useAccessibilityExtremes(tester);
+      harness.data.listPreferences.newTaskKeepOpen = true;
+      harness.service.result = const QuickAddResult(
+        createdTaskIds: [-1],
+        labelsNotCreated: ['Errands', 'Groceries'],
+      );
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk at the farm shop');
+      await add(tester);
+
+      final confirmation = [
+        en.newTaskCreated('Buy milk at the farm shop'),
+        en.newTaskLabelsNotCreated('Errands, Groceries'),
+      ].join('\n');
+      expect(inSheet(confirmation), findsOneWidget);
+      expect(
+        tester.renderObject<RenderParagraph>(inSheet(confirmation)),
+        isA<RenderParagraph>().having(
+          (paragraph) => paragraph.didExceedMaxLines,
+          'didExceedMaxLines',
+          isFalse,
+        ),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('the pin is remembered for the next sheet, and turned off '
+        'Add closes the sheet again', (tester) async {
+      await harness.open(tester);
+      await tapPin(tester);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(NewTaskSheet), findsNothing);
+
+      await openSheet(tester);
+      expect(pinned(tester), isTrue);
+      await tapPin(tester);
+      expect(pinned(tester), isFalse);
+      expect(harness.data.listPreferences.newTaskKeepOpen, isFalse);
+      await typeLine(tester, 'Buy milk');
+      await add(tester);
+
+      expect(find.byType(NewTaskSheet), findsNothing);
+      expect(find.text(en.newTaskCreated('Buy milk')), findsOneWidget);
+    });
+
+    testWidgets('the pin is a toggle named for what it does, beside the '
+        'headline', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await harness.open(tester);
+
+      expect(
+        tester.getSemantics(pin()),
+        isSemantics(
+          tooltip: en.newTaskKeepOpen,
+          isButton: true,
+          hasToggledState: true,
+          isToggled: false,
+        ),
+      );
+      await tapPin(tester);
+      expect(
+        tester.getSemantics(pin()),
+        isSemantics(hasToggledState: true, isToggled: true),
+      );
+      final heading = tester.getSemantics(inSheet(en.newTask));
+      expect(heading, isSemantics(isHeader: true));
+      expect(heading.getSemanticsData().headingLevel, 1);
+      final headline = tester.getRect(inSheet(en.newTask));
+      expect(
+        tester.getRect(pin()).center.dy,
+        moreOrLessEquals(headline.center.dy, epsilon: 1),
+      );
+      expect(
+        tester.getRect(pin()).bottom,
+        lessThanOrEqualTo(tester.getRect(composerField()).top),
+      );
+      semantics.dispose();
+    });
   });
 
   testWidgets('is in German', (tester) async {

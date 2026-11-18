@@ -830,6 +830,75 @@ void main() {
       expect(inSheet(find.text('Three')), findsOneWidget);
     });
 
+    testWidgets('a comment sent in a long thread sorted oldest first shows at '
+        'its end, which the sheet scrolls to', (tester) async {
+      seedComments([
+        for (var id = 1; id <= 7; id++)
+          sampleComment(
+            id: id,
+            html: '<p>Earlier $id</p>',
+            created: DateTime.utc(2026, 10, 1, id),
+          ),
+      ], perPage: 5);
+      await openDetail(tester, size: const Size(400, 800));
+      await tester.scrollUntilVisible(
+        inSheet(find.text(en.taskDetailShowComments)),
+        200,
+        scrollable: inSheet(find.byType(Scrollable)).first,
+      );
+      await showComments(tester);
+      expect(data.details.calls, isNot(contains('comments 4 page 2 oldest')));
+
+      await type(tester, 'Latest word');
+      await send(tester);
+
+      expect(
+        data.details.calls,
+        containsAllInOrder(['addComment 4', 'comments 4 page 2 oldest']),
+      );
+      final posted = inSheet(find.text('Latest word'));
+      expect(posted, findsOneWidget);
+      final viewport = tester.getRect(
+        find.descendant(of: sheet(), matching: find.byType(ListView)),
+      );
+      expect(viewport.contains(tester.getCenter(posted)), isTrue);
+    });
+
+    testWidgets('a sheet closed while the rest of a long thread is read '
+        'after a send still says the comment went, below it', (tester) async {
+      seedComments([
+        for (var id = 1; id <= 7; id++)
+          sampleComment(
+            id: id,
+            html: '<p>Earlier $id</p>',
+            created: DateTime.utc(2026, 10, 1, id),
+          ),
+      ], perPage: 5);
+      await openDetail(tester, size: const Size(400, 800));
+      await tester.scrollUntilVisible(
+        inSheet(find.text(en.taskDetailShowComments)),
+        200,
+        scrollable: inSheet(find.byType(Scrollable)).first,
+      );
+      await showComments(tester);
+      final hold = Completer<void>();
+      data.details.beforeCall = (call) async {
+        if (call == 'comments 4 page 2 oldest') await hold.future;
+      };
+      await type(tester, 'Latest word');
+
+      await tester.tap(sendButton());
+      await tester.pump();
+      expect(data.details.calls.last, 'comments 4 page 2 oldest');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailSheet), findsNothing);
+      hold.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.commentPosted), findsOneWidget);
+    });
+
     testWidgets('a deletion the server refuses keeps the comment and says '
         'why', (tester) async {
       seedComments([sampleComment(id: 1, author: _me, html: '<p>One</p>')]);

@@ -31,6 +31,7 @@ final class _FakeWorkmanager implements WorkmanagerClient {
       'frequency': frequency,
       'initialDelay': initialDelay,
       'network': constraints?.networkType,
+      'batteryNotLow': constraints?.requiresBatteryNotLow,
       'policy': existingWorkPolicy,
     }),
   );
@@ -46,6 +47,7 @@ final class _FakeWorkmanager implements WorkmanagerClient {
   }) async => registrations.add(
     _Registration('oneOff', uniqueName, taskName, {
       'network': constraints?.networkType,
+      'batteryNotLow': constraints?.requiresBatteryNotLow,
       'policy': existingWorkPolicy,
       'outOfQuota': outOfQuotaPolicy,
       'expedited': expedited,
@@ -64,7 +66,8 @@ void main() {
   WorkmanagerBackgroundScheduler scheduler(TargetPlatform platform) =>
       WorkmanagerBackgroundScheduler(client: workmanager, platform: platform);
 
-  test('Android: every 30 min with a network, updating the job', () async {
+  test('Android: every 30 min with a network and a battery that is not '
+      'low, updating the job', () async {
     await scheduler(TargetPlatform.android).registerPeriodicSync();
 
     final registration = workmanager.registrations.single;
@@ -75,6 +78,7 @@ void main() {
       'frequency': const Duration(minutes: 30),
       'initialDelay': null,
       'network': NetworkType.connected,
+      'batteryNotLow': true,
       'policy': ExistingPeriodicWorkPolicy.update,
     });
   });
@@ -95,9 +99,9 @@ void main() {
     },
   );
 
-  test('Android: a drain is plain one-off work with a network, never '
-      'expedited (which fails below Android 12), chained after a running '
-      'one', () async {
+  test('Android: a drain is plain one-off work with a network at any '
+      'battery level (it sends what the user just did), never expedited '
+      '(which fails below Android 12), chained after a running one', () async {
     await scheduler(TargetPlatform.android).enqueueDrain();
 
     final registration = workmanager.registrations.single;
@@ -106,6 +110,7 @@ void main() {
     expect(registration.taskName, BackgroundTasks.drain);
     expect(registration.arguments, {
       'network': NetworkType.connected,
+      'batteryNotLow': null,
       'policy': ExistingWorkPolicy.append,
       'outOfQuota': null,
       'expedited': false,

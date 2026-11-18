@@ -390,7 +390,7 @@ void main() {
     const urgent = Project(id: -3, title: 'Urgent');
     const mine = Project(id: -14, title: 'My Open Tasks');
     const firstPage =
-        'project -14 tasks done = false sort=id desc per_page=2 page=1';
+        'project -14 tasks (all) sort=done_at desc,id desc per_page=2 page=1';
 
     setUp(() {
       read
@@ -406,8 +406,9 @@ void main() {
       expect(list.loadedAt, isNull);
     });
 
-    test("shows its download's open tasks by due date, then newest, and "
-        'follows done and deletes made here at once', () async {
+    test("shows its download's open tasks by due date, then newest, then "
+        'its done ones; a delete made here leaves at once, a task done here '
+        'joins the done ones', () async {
       await db.listSnapshotsDao.replace(savedFilterSnapshotKey(-14), {
         1: 0,
         2: 1,
@@ -421,18 +422,54 @@ void main() {
       addTearDown(subscription.cancel);
       await pumpEventQueue();
 
-      expect(ids(seen.last.tasks), [4, 2, 1]);
+      expect(ids(seen.last.tasks), [4, 2, 1, 3]);
       expect(seen.last.loadedAt, monday);
+      expect(seen.last.includesDone, isTrue);
 
       await repository.setDone(4, done: true);
       await repository.deleteTask(1);
       await pumpEventQueue();
 
-      expect(ids(seen.last.tasks), [2]);
+      expect(ids(seen.last.tasks), [2, 4, 3]);
     });
 
-    test('a refresh syncs, then downloads the open tasks from every page '
-        'into its own snapshot', () async {
+    test('with a definition that says done = false, which only the server '
+        "can evaluate, shows its download's open tasks; one done here leaves "
+        'at once', () async {
+      await storeSavedFilters(db, [
+        const SavedFilterRef(
+          projectId: -14,
+          title: 'Mine',
+          definition: SavedFilterDefinition(
+            filter: ViewFilter(filter: 'done = false && bucket_id = 1'),
+          ),
+        ),
+      ]);
+      await db.listSnapshotsDao.replace(savedFilterSnapshotKey(-14), {
+        1: 0,
+        2: 1,
+        3: 2,
+        4: 3,
+      }, loadedAt: monday);
+      final seen = <SavedFilterTasks>[];
+      final subscription = repository
+          .watchSavedFilterTasks(-14)
+          .listen(seen.add);
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+
+      expect(seen.last.evaluation, FilterEvaluation.snapshot);
+      expect(seen.last.includesDone, isFalse);
+      expect(ids(seen.last.tasks), [4, 2, 1]);
+
+      await repository.setDone(4, done: true);
+      await pumpEventQueue();
+
+      expect(ids(seen.last.tasks), [2, 1]);
+    });
+
+    test('a refresh syncs, then downloads what the filter matches, done '
+        'tasks included, from every page into its own snapshot', () async {
       await db.listSnapshotsDao.replace(overviewSnapshotKey(-14), {
         1: 0,
       }, loadedAt: monday);
@@ -443,11 +480,12 @@ void main() {
       expect(read.requests, [
         firstPage,
         firstPage.replaceFirst('page=1', 'page=2'),
+        firstPage.replaceFirst('page=1', 'page=3'),
       ]);
       final snapshot = await db.listSnapshotsDao.load(
         savedFilterSnapshotKey(-14),
       );
-      expect(snapshot.taskIds, [5, 4, 2, 1]);
+      expect(snapshot.taskIds, [5, 4, 2, 1, 3]);
       expect(snapshot.loadedAt, now);
       // What the server matched shows, archived projects included.
       expect(ids((await repository.watchSavedFilterTasks(-14).first).tasks), [
@@ -455,6 +493,7 @@ void main() {
         4,
         2,
         1,
+        3,
       ]);
       expect(
         (await db.listSnapshotsDao.load(overviewSnapshotKey(-14))).taskIds,
@@ -484,7 +523,7 @@ void main() {
       expect(urgentList.loadedAt, later);
       expect(
         (await db.listSnapshotsDao.load(savedFilterSnapshotKey(-14))).taskIds,
-        [5, 4, 2, 1],
+        [5, 4, 2, 1, 3],
       );
     });
 
@@ -501,8 +540,61 @@ void main() {
       await repository.refreshSavedFilter(-3);
       final query = read.tasks.queries.last;
       expect(query.filterTimezone, 'Europe/Berlin');
-      expect(query.filter, 'done = false');
-      expect(query.sort, TaskQuery.dueDateSort);
+      expect(query.filter, isNull);
+    });
+
+    test('a download takes the open tasks from every page, but the done ones '
+        'only until more than the list shows are in', () async {
+      const doneLimit = SavedFilterTasks.doneLimit;
+      final done = [
+        for (var id = 101; id <= 300; id++)
+          sampleTask(
+            id: id,
+            title: 'Done $id',
+            projectId: 7,
+            done: true,
+            doneAt: monday.subtract(Duration(minutes: id)),
+          ),
+      ];
+      await db.tasksDao.upsertAll(done, syncRunId: 'run');
+      read
+        ..allTasks = [...tasks, ...done]
+        ..savedFilterTasks[-14] = {1, 2, 3, 4, 5, for (final t in done) t.id};
+      // 50 tasks a page.
+      final pages = LocalTaskRepository(
+        db,
+        sync,
+        sender,
+        write,
+        read: read,
+        now: () => now,
+      );
+      addTearDown(pages.dispose);
+
+      await pages.refreshSavedFilter(-14);
+
+      // 4 open and 46 done, then 50 done twice: 146 > doneLimit.
+      expect(read.requests, hasLength(3));
+      final snapshot = await db.listSnapshotsDao.load(
+        savedFilterSnapshotKey(-14),
+      );
+      expect(snapshot.taskIds, [
+        5,
+        4,
+        2,
+        1,
+        for (var id = 101; id <= 246; id++) id,
+      ]);
+      final list = await pages.watchSavedFilterTasks(-14).first;
+      expect(list.includesDone, isTrue);
+      expect(list.omitsDoneTasks, isTrue);
+      expect(ids(list.tasks), [
+        5,
+        4,
+        2,
+        1,
+        for (var id = 101; id < 101 + doneLimit; id++) id,
+      ]);
     });
 
     test('a failed sync or download passes through and keeps the previous '

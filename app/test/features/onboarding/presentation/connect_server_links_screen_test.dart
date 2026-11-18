@@ -199,7 +199,7 @@ void main() {
 
       expect(find.byType(ProjectTasksScreen), findsOneWidget);
       expect(
-        data.listPreferences.saves.where((save) => save.startsWith('remember')),
+        data.listPreferences.saves.where((save) => save.startsWith('lastView')),
         isEmpty,
       );
     });

@@ -316,6 +316,30 @@ $_noLog''');
       expect(version, startsWith('v2.8.0-devscriptalert1script'));
     });
 
+    test('Android: a Reminders channel turned off in the system settings is '
+        'named after the permission', () {
+      final text = _render(
+        [],
+        device: const DeviceSupport(
+          platform: 'android',
+          app: Collected((version: '1.0.0', build: '42')),
+          osVersion: Collected('14'),
+          deviceLocale: Collected('de_DE'),
+          notifications: Collected(
+            NotificationCapabilities(
+              permission: NotificationPermission.granted,
+              exactAlarms: true,
+              remindersChannelOff: true,
+            ),
+          ),
+          background: Collected(BackgroundState()),
+          lastBackgroundRun: Collected(null),
+        ),
+      );
+
+      expect(text, contains('Notifications: allowed, reminders channel off\n'));
+    });
+
     test('iOS: Background App Refresh and Low Power Mode instead of the '
         "Android lines, and exact alarms don't apply", () {
       final text = _render(

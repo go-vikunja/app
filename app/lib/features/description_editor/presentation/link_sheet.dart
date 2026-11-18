@@ -1,5 +1,7 @@
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
 /// What the link sheet asks the editor to do.
@@ -19,7 +21,9 @@ final class RemoveLink extends LinkEdit {
 }
 
 /// The address for the link at the cursor, [href] when it has one; null
-/// when dismissed. An emptied address removes the link, as on the web.
+/// when dismissed. An emptied address removes the link, as on the web; a
+/// host gets its scheme ([typedLinkAddress]), and a scheme the editor would
+/// drop is refused at the field.
 Future<LinkEdit?> showLinkSheet(
   BuildContext context, {
   required bool hasLink,
@@ -51,6 +55,7 @@ class LinkSheet extends StatefulWidget {
 
 class _LinkSheetState extends State<LinkSheet> {
   late final _address = TextEditingController(text: widget.href);
+  String? _error;
 
   @override
   void dispose() {
@@ -59,9 +64,16 @@ class _LinkSheetState extends State<LinkSheet> {
   }
 
   void _apply() {
-    final href = _address.text.trim();
-    Navigator.of(context)
-        .pop(href.isEmpty ? const RemoveLink() : SetLink(href));
+    switch (typedLinkAddress(_address.text)) {
+      case null:
+        Navigator.of(context).pop(const RemoveLink());
+      case LinkAddressAccepted(:final href):
+        Navigator.of(context).pop(SetLink(href));
+      case LinkAddressRefused(:final scheme):
+        final error = context.l10n.editorLinkSchemeRefused(scheme);
+        setState(() => _error = error);
+        Announcer.of(context).say(error, onlyIfPlatformAnnounces: true);
+    }
   }
 
   @override
@@ -93,8 +105,10 @@ class _LinkSheetState extends State<LinkSheet> {
               decoration: InputDecoration(
                 labelText: l10n.editorLinkAddress,
                 hintText: 'https://',
+                errorText: _error,
+                errorMaxLines: 4,
               ),
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) => setState(() => _error = null),
               onSubmitted: (_) {
                 if (canApply) _apply();
               },
