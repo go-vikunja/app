@@ -23,7 +23,7 @@ Each entry has a number, a status and the step that took it, and states the deci
 - Third-party widgets built on the legacy libraries may need wrappers.
 
 Limits:
-- The WebView plugin (`webview_flutter` and its Android and WebKit packages) imports the legacy Material library internally ([D52](#d52-descriptions-edited-in-a-locked-down-tiptap-webview-never-silently-overwritten)).
+- Some dependencies import the legacy libraries internally: the WebView plugin (`webview_flutter` and its WebKit package, [D52](#d52-descriptions-edited-in-a-locked-down-tiptap-webview-never-silently-overwritten)) and `flutter_riverpod` the Material library, `webview_flutter` and `flutter_web_auth_2` 5.x the Cupertino library.
 
 ## D3: Riverpod 3 with code generation
 
@@ -150,7 +150,7 @@ Limits:
 - The redirect scheme, `vikunja-io.vikunja.app` since step 38a, starts with `vikunja-` and is neither the desktop app's `vikunja-desktop` nor the old app's `vikunja-flutter` ([D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)).
 
 Limits:
-- OAuth sessions are always short: 72 h without a refresh end them, and there is no 30-day "stay signed in" ([D22](#d22-session-keep-alive-through-background-sync)).
+- OAuth sessions are always short: the server creates every OAuth session without "stay signed in" (`oauth2server/token.go` in 2.8.0), so the server's session lifetime without a refresh ends it, 72 h by default (`service.jwtttl`, which neither `/info` nor the token answer reports), and there is no 30-day "stay signed in" ([D22](#d22-session-keep-alive-through-background-sync)). A long session for OAuth clients needs a server change.
 
 ## D15: App id `io.vikunja.app` and the name Vikunja
 
@@ -195,7 +195,7 @@ Limits:
   - On older servers and for link-share guests: the tasks where the user is the creator or an assignee; tasks visible only through shared projects or subscriptions get none (owner).
 - Reminders fire at their reminder time; a task with a due date also notifies at the exact due time (owner). A reminder at the due time itself rings once, as the due notification, while due dates notify ([D39](#d39-local-notifications-a-scheduler-per-account-with-a-rolling-window)).
 - Android schedules both as exact alarms. The onboarding after the first sign-in asks for the notification permission and for exact-alarm access (`SCHEDULE_EXACT_ALARM`, which the user grants on Android's "Alarms & reminders" page and which is denied by default on Android 14+); iOS asks for the notification permission at the same point (owner).
-- Without exact-alarm access Android falls back to inexact alarms, which can be minutes late; the notification settings say so and link to the system setting ([D39](#d39-local-notifications-a-scheduler-per-account-with-a-rolling-window)). Since step 40e one that Android deferred past its time is kept for up to 3 h instead of being cancelled ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)).
+- Without exact-alarm access Android falls back to inexact alarms, which Android 12 and later may deliver up to an hour late, later still in Doze or battery saver; the notification settings say so and link to the system setting ([D39](#d39-local-notifications-a-scheduler-per-account-with-a-rolling-window)). Since step 40e one that Android deferred past its time is kept for up to 3 h instead of being cancelled ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)).
 - Since step 40e each signed-in user account also gets a reminder to open the app about 12 h before its session would end, while the notification permission is granted ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)).
 - No daily overdue digest for now (owner); one could be added as a setting without changing the scheduler.
 
@@ -269,7 +269,7 @@ Limits:
 - A session that ends puts the account into `needsReauth`: its local data stays, its outbox pauses, and a "Sign in again" notification appears. Its reason, the part of the app and the time are kept for the support details ([D20](#d20-scope-cuts-and-mobile-forms-of-desktop-features)).
 
 Limits:
-- On iOS a session still expires when the app is neither opened nor woken for 72 h, as the OS may run the background job rarely or never ([D40](#d40-background-sync-of-every-account-server-notifications-in-an-inbox)). Since step 40e the app warns while the device keeps the background sync from running (Background App Refresh off or restricted on iOS, a background restriction on Android), and each user account gets a reminder to open the app 12 h before its session would end ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)).
+- On iOS a session still expires when the app is neither opened nor woken for 72 h, as the OS may run the background job rarely or never ([D40](#d40-background-sync-of-every-account-server-notifications-in-an-inbox)). Since step 40e the app warns while the device keeps the background sync from running (Background App Refresh off or restricted on iOS, a background restriction on Android), and each user account gets a reminder to open the app 12 h before its session would end ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)). On Android a force stop drops the background job and that reminder until the app is started again.
 
 ## D23: Browser sign-in through flutter_web_auth_2 in an ephemeral session
 
@@ -293,10 +293,10 @@ Limits:
 
 Limits:
 - Every sign-in shows the Vikunja login form, and OIDC and SSO users sign in at their identity provider again each time.
-- Browsers the plugin treats as lacking ephemeral support (Chrome and Edge before 141, Samsung Internet before 28, Firefox before 143) get a Custom Tab that can share the browser's cookies and reuse a web login. Signing out of the app does not end a web login in the browser.
+- Browsers the plugin treats as lacking ephemeral support (Chrome and Edge before 141, Samsung Internet before 28, Firefox before 143) get a Custom Tab that can share the browser's cookies and reuse a web login; browsers the plugin does not know are taken to support it. Signing out of the app does not end a web login in the browser.
 - The browser leg does not use a server's connection settings (pin, CA, client certificate, access headers); the app says so before it ([D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport)).
 - The mix-up is not closed; that needs a server change (RFC 9207 `iss`, or a consent screen that names the client). A sign-in page on another origin is named before the browser opens, but whether it belongs to the server is left to the user, and a look-alike host reads like the real one. A server whose own `/oauth/authorize` redirects to another host's page is not asked about: only the browser's address bar shows that host. Without a consent screen any app with a `vikunja-…` scheme can get a token for a user signed in to the web in the system browser.
-- The plugin's 5.x line predates its UIScene and built-in Kotlin migrations (6.0 is still alpha): it finds the window through `UIApplication.keyWindow`, and Flutter warns that its Kotlin Gradle setup will stop building in a future release, so the move to 6.0 is due once it is stable. A version that stops working can be replaced by a platform channel of our own behind `WebAuthenticator`, recorded as a new decision.
+- The plugin's 5.x line predates its UIScene and built-in Kotlin migrations (6.0 is still alpha; 6.0.0-alpha.11 of 2026-11-13 is announced as its last): it finds the window through `UIApplication.keyWindow`, and Flutter warns that its Kotlin Gradle setup will stop building in a future release, so the move to 6.0 is due once it is stable. A version that stops working can be replaced by a platform channel of our own behind `WebAuthenticator`, recorded as a new decision.
 - The fallback below iOS 17.4 is checked only by reading the plugin's source; it waits for a device test on iOS 15–17.3.
 - iOS logs that ASWebAuthenticationSession support for `http://` pages is deprecated; servers on plain `http://` may lose browser sign-in in a future iOS release.
 
@@ -320,7 +320,7 @@ Limits:
 Limits:
 - Changing the accessibility class later means rewriting the existing items.
 - An iOS backup brings the tokens back only to the same device, from an encrypted backup ([D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links)); elsewhere the restored accounts need a new sign-in.
-- Deleting the app never logs its sessions out on the server; they end after 72 h without a refresh.
+- Deleting the app never logs its sessions out on the server; they end without a refresh after the server's session lifetime, 72 h by default.
 - Builds of the old app from before February 2026 wrote their entries with flutter_secure_storage 9, which version 11 cannot decrypt: after the update their users get the note without a prefill and sign in again ([D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)). Their entries are only counted, and the wipe deletes them.
 
 ## D25: Account registry in SharedPreferences, without secrets
@@ -395,7 +395,7 @@ Limits:
 
 Limits:
 - Regressions that only show on older servers are caught only by the local run before a release, and only for the previous minor version; no release below 2.7 has run live, down to the 2.3.0 floor (an older image runs the same way through the variable).
-- `tool/contract_tests.sh` starts the servers only when they are not running, so it does not switch a running server to the variable's image, and the version test then fails; `tool/ci/contract.sh` always does. That script stops at the first suite that fails, so on an older release the app's suite may need a run of its own.
+- `tool/contract_tests.sh` starts the servers only when they are not running, so it does not switch a running server to the variable's image, and the version test then fails; `tool/ci/contract.sh` always does. That script stops at the first suite that fails, so on an older release the app's suite may need a run of its own. Step 40h fixes both.
 
 ## D29: Screens read and write through repository interfaces
 
@@ -557,14 +557,14 @@ Limits:
 Limits:
 - Writes are at least once: an op whose answer could not be applied locally, or a kill between the server's apply and the local one, is sent again; a repeating task's Done is checked first (above), within these limits:
   - a task the device does not know as repeating yet (the repeat set on the web and not synced) gets no base, and a re-sent Done moves its dates again;
-  - a server that does not stamp `done_at` makes every attempt send the Done again; the contract tests check 2.8.0;
+  - the check rests on the server stamping `done_at` on each Done, as every version from 2.3.0 to 2.8.0 does; a server that stopped would make every attempt send the Done again;
   - a failed op with `sent_at` that is retried after a newer edit of the task was sent can overwrite that edit's fields of the same name when its own body never arrived, as such ops are no longer folded;
   - a move into a board's done column without `done` in the same op gets no base; the board turns such a move of a repeating task into a plain Done ([D47](#d47-kanban-board-from-per-view-snapshots-moves-through-the-outbox)).
 - Last write wins per field: a field the web changed while the phone's value for it waited loses to the phone; the description is the exception ([D52](#d52-descriptions-edited-in-a-locked-down-tiptap-webview-never-silently-overwritten)).
 - Undo on a repeating task leaves `done_at` stamped and the server's checklist reset in the description in place.
 - A repeating task marked done offline with the "from completion" mode counts from the send, not the tap.
 - A failed update with a delete queued behind it is still dropped, so an Undo brings the task back without that edit, and the row shows the edit until the next sync.
-- Since step 40e a 5xx outage of more than about one to two hours turns the queued ops into sync problems one after another, and on a cleartext server a captive portal that answers 200 turns each queued update into one at once ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)).
+- Since step 40e a 5xx outage of more than about one to two hours turns the queued ops into sync problems one after another, and on a cleartext server a captive portal that answers 200 turns each queued update into one at once ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)). A queued delete that such a portal answers counts as sent: its row goes with every op of the task, and the task comes back with the next sync. Step 40g has such answers wait.
 
 ## D35: Task creates through the outbox under temporary negative ids
 
@@ -591,9 +591,9 @@ Limits:
 - **UI:** a full-screen edit page (`/home/tasks/:id/edit`) edits title, project (the tree without archived projects), the three dates with time, priority, percent done, colour and repeat, plus labels, assignees and reminders ([D36](#d36-labels-assignees-and-reminders-in-the-task-update-label-creation-online)). Save sends only the diff, is disabled while nothing changed or the title is empty, and closes the page with a "Saved" snackbar; back with unsaved changes asks first. The task detail also changes the due date, priority, reminders and labels in place, each choice one change ([D84](#d84-everyday-editing-in-the-task-detail-properties-in-place-task-links-move-to-column)). The New task sheet is [D75](#d75-owners-ui-review-no-task-identifier-coloured-folders-new-task-sheet-account-tab)'s, and the project a new task goes into is [D38](#d38-quick-add-the-webs-grammar-with-fixes-through-the-outbox)'s.
 
 Limits:
-- The lost-response match by title and creator can still adopt the user's own task of the same title that another device or the web created in that project within that hour; the phone's own is then never sent. Description and due date are no tie-break, because the server normalises both.
+- The lost-response match by title and creator can still adopt the user's own task of the same title that another device or the web created in that project within that hour; the phone's own is then never sent. Description and due date are no tie-break, because the server normalises both. The lookup also runs for a create whose first attempt never left the device, as every network failure records `sent_at`.
 - The window has no upper end: a retry after a long time offline reads every task created in the project since `sent_at − 1 h`, page by page, when none matches.
-- `default_due_time` from the web's settings is stored but not applied: a date-only pick always takes the breakpoint time.
+- `default_due_time` from the web's settings is not read: a date-only pick always takes the breakpoint time (step 40f).
 
 ## D36: Labels, assignees and reminders in the task update; label creation online
 
@@ -679,8 +679,8 @@ Limits:
 Limits:
 - A new label needs a connection; offline the task is created without it, and the word stays at the end of the title, not where it was typed: labels are created at Add, after the title was worked out, and keeping the word in place would need a second parse.
 - A doubled prefix inside a line (`Fix **bike`) leaves one `*` in the text, as the web's parser does, so a label kept there reads `Fix * **bike`.
-- A date phrase removed before punctuation leaves a space (`Call back .`).
-- The web's Quick Add keeps a date range such as `31.12.2026 - 01.01.2027` in the title, while the app's parser takes the first date.
+- A date phrase removed before punctuation leaves a space (`Call back .`), as on the web (step 40f).
+- The web's Quick Add keeps a date range such as `31.12.2026 - 01.01.2027` in the title, while the app's parser takes the first date as the due date and leaves `- 01.01.2027` in the title (step 40f).
 
 ## D39: Local notifications: a scheduler per account with a rolling window
 
@@ -704,12 +704,12 @@ Limits:
 - **Platforms:** flutter_local_notifications 22.3.2 and timezone 0.11.2 behind `LocalNotificationGateway`; Android channel `reminders` (high importance, localised name and description); Done and both snoozes as background actions (Android `showsUserInterface: false`, `cancelNotification: true`; iOS categories `task` and, with the app lock on, `task_locked`, without the foreground option). Android declares `POST_NOTIFICATIONS`, `SCHEDULE_EXACT_ALARM` (never `USE_EXACT_ALARM`, which Play reserves for alarm, timer and calendar apps, [D76](#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android)) and `RECEIVE_BOOT_COMPLETED`, with core library desugaring and the llama head as the monochrome icon ([D42](#d42-app-icon-vikunjas-logo-every-variant-derived-by-script)).
 
 Limits:
-- Without exact alarms on Android 14+ a reminder can be minutes late; the setup and the Account tab say so.
+- Without exact alarms (denied by default on Android 14+, or revoked) a reminder can be up to an hour late on Android 12 and later, later still in Doze or battery saver; the setup and the Account tab say so, the setup's text as "minutes late" until step 40f.
 - While the app is closed only the background runs refill the window; a reboot restores only the pending ones.
 - A background Done with an expired token waits for a run that may refresh; a repeating task stays done locally until the server's answer reopens it.
-- No grouping and no custom sounds.
+- Reminders are not grouped (activity notifications are, per account), and the app brings no sounds of its own; Android lets the user set each channel's sound.
 - A due notification snoozed to the exact time of one of the task's reminders rings twice at that moment.
-- After the update from the old app ([D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)): its scheduled reminders and its channels `Vikunja1` and `Vikunja2` are cleared on the first start. Until then the notification plugin re-arms its reminders, and one that fires shows with the app's status bar icon ([D42](#d42-app-icon-vikunjas-logo-every-variant-derived-by-script)) and a Done that does nothing. The old app declared `USE_EXACT_ALARM`; on Android 14 and later the update may leave exact alarms off, as for a fresh install, and nothing is done about it beyond the usual setup step.
+- After the update from the old app ([D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)): its scheduled reminders and its channels `Vikunja1` and `Vikunja2` are cleared on the first start. On Android 16 the update test found none left: Android removed them at the install, as the update revoked the old app's exact-alarm permission. On older versions, untested, the notification plugin may re-arm them until the first start, and one that fires shows with the app's status bar icon ([D42](#d42-app-icon-vikunjas-logo-every-variant-derived-by-script)) and a Done that does nothing. The old app declared `USE_EXACT_ALARM`; on Android 14 and later the update leaves exact alarms off (seen on Android 16), as for a fresh install, and nothing is done about it beyond the usual setup step.
 
 ## D40: Background sync of every account; server notifications in an inbox
 
@@ -744,7 +744,7 @@ Limits:
 - iOS may run the job rarely or never (never after a force-quit, not in Low Power Mode or without Background App Refresh), so its sessions can still end ([D22](#d22-session-keep-alive-through-background-sync)); Doze and standby buckets stretch Android's runs. Since step 40e the app warns while Background App Refresh is off or the app restricted, and reminds the user 12 h before a session would end ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)).
 - A run begun before the app came to the front can still be inside an account the user then removes; the release narrows this, it does not close it.
 - On iOS a server that cannot be reached, with changes queued, can take about 10 s of the 25 s before the first sync starts.
-- Server notifications cannot be deleted in the app.
+- Server notifications cannot be deleted in the app. Vikunja 2.6.0 and later can delete all of a user's notifications at once (`DELETE /notifications`), not one of them.
 
 ## D41: Relations as task-update deltas, duplicate and follow online, indented subtasks
 
@@ -772,7 +772,7 @@ Limits:
 - An update's requests are not atomic: after a permanent failure the earlier ones stay applied, and Retry sends only what is missing.
 - An edge naming a task whose create was rejected waits as long as that create, holding later edits of its task; discarding that create drops the edge.
 - A removed edge to a task in the trash comes back on 2.8.0 when that task is restored.
-- `default_task_relation_type` is not read; "Add relation" starts at `related`.
+- `default_task_relation_type` is not read; "Add relation" starts at `related` (step 40f).
 
 ## D42: App icon: Vikunja's logo, every variant derived by script
 
@@ -812,7 +812,7 @@ Limits:
 - **The row** ([D56](#d56-design-after-the-owners-mockups-blue-scheme-cards-one-task-row)) as on the web: priority only on open tasks from `minimum_priority` (medium when unset), the task's colour, labels de-duplicated and by title, up to three avatars and "+N" (`AvatarsPort`, cached per account, SVG and missing ones as initials, failures retried after 2 min), the due date also when done, description and repeat icons, the checklist count, the percent bar, the project for another project's task, the pending marker; no identifier (owner, [D75](#d75-owners-ui-review-no-task-identifier-coloured-folders-new-task-sheet-account-tab)). One screen-reader node, naming a subtask's parent.
 
 Limits:
-- Tasks created here sit at the top of a manual list until the next download places them; in a view whose filter the engine refuses, or a downloaded Overview filter, they appear only then.
+- In a view whose filter the engine refuses, or a downloaded Overview filter, tasks created here appear only with the next download. In a manual list they sit at the top, where the server puts a new task too.
 - Upcoming uses the phone's zone, so it can differ from the web when the account's timezone setting differs.
 - The tree cannot be collapsed.
 - With "Show done" or in a view without a filter, a done task reached through another project can still show twice, because the open and the done part are built apart.
@@ -881,7 +881,7 @@ Limits:
 - **Transport** in `vikunja_api` on dart:io, without a new dependency: `IoRealtimeConnector` does the upgrade by hand so that a refused one reports its status and `Retry-After`, checks `Sec-WebSocket-Accept`, sends the app's User-Agent and no Origin, gives up after 15 s and pings every 25 s. `realtimeUri` uses the negotiated API version and keeps the sub-path and port. Nothing logs frames or tokens; states, statuses and close codes are logged at FINE.
   - The server address's connection settings apply to every upgrade (`ProfileRealtimeConnector`, [D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport)); where they do not reach, realtime falls back to polling.
 - **Sequence:** upgrade, `auth` with the account's current token, `auth.success` within 10 s, `subscribe notification.created`, live. A catch-up of the inbox runs alongside (why: events while disconnected are lost).
-- **Events:** the socket carries only `notification.created` (no task or project changes, no reads). A pushed notification is stored at once like a polled one, as handled, so the inbox and the bell badge update by themselves; a reminder is stored as the poll stores it, never shown and never counted.
+- **Events:** the socket carries only `notification.created`, the one topic the app subscribes to (the server pushes no task or project changes and no reads; its time-tracking events wait for step 34). A pushed notification is stored at once like a polled one, as handled, so the inbox and the bell badge update by themselves; a reminder is stored as the poll stores it, never shown and never counted.
   - Comments, assignments, mentions, created and deleted tasks and created projects request one incremental sync of the active account, debounced by 2 s and coalesced with a run in progress; team memberships and reminders request nothing.
   - The 60 s sync timer and the inbox poll stay.
 - **Re-auth:** every 20 s the connection reads the account's token and re-authenticates when it changed; a token of another session (a new sign-in) reconnects instead, and a re-auth without `auth.success` within 10 s closes and reconnects (this also covers servers older than 2.7.0).
@@ -894,7 +894,7 @@ Limits:
 - Nothing new on screen: the badge, the inbox and the lists update sooner; the offline banner stays bound to sync runs.
 
 Limits:
-- No sockets for inactive accounts or in the background, no time-tracking events, no switch to turn realtime off; the server's reminders are not shown.
+- No sockets for inactive accounts or in the background, no switch to turn realtime off; the time-tracking events that 2.8.0 also pushes (`timer.*`) wait for step 34, and the server's reminders are not shown.
 - The socket runs on dart:io, which reads no system proxy and on Android ignores user-installed CAs: a server reachable only that way keeps working through polling (trusting its CA in the app fixes the second, [D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport)).
 
 ## D47: Kanban board from per-view snapshots, moves through the outbox
@@ -973,7 +973,7 @@ Limits:
   - Failures have their own words: only admins may move a project under another one, no permission, archived, not possible there, the project is gone, needs a connection, could not be confirmed.
 
 Limits:
-- Not built: ordering favourites and saved filters, dragging in smart lists; Table and Gantt views have no manual order.
+- Not built: ordering favourites, dragging in smart lists; Table and Gantt views have no manual order. Saved filters have no order on the server to set.
 - Reordering projects is not gated by the stored permission ([D60](#d60-labels-teams-and-shares-online-the-stored-project-permission-shapes-every-screen)); a refusal shows as a message.
 - Moving a task or project takes a drag or a screen reader's actions; there is no single-pointer way ([D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep)).
 
@@ -1007,7 +1007,7 @@ Limits:
   - a date equal to a bound matches as written (on SQLite the server is off by one there);
   - filters the server answers with a 500 (`position`, range comparisons on people, business-day rounding) are refused with 4019.
 - Business-day offsets above 10000 in all are refused with 4019 on every server version ([D78](#d78-vikunja-280-trash-codes-as-gone-its-limits-no-nul-info-re-read)).
-- **Timezone:** a saved filter's own, else the user's timezone setting, else the device's zone, through `package:timezone`.
+- **Timezone:** the user's timezone setting, else the device's zone, through `package:timezone`. A saved filter's own would come first, but the server never stores or sends one (`filter_timezone` is a request parameter only).
 - **Where it applies:** list views with any filter (the view's snapshot only orders a manual list), boards, saved filters, the Overview's saved filter and the widgets, each with the server's scope (a project view covers its project, archived tasks included; all tasks and saved filters cover the projects that are not archived plus the user's favourite tasks).
   - Filters that use `now` are evaluated again every minute and on resume, so "due today" turns over at midnight.
   - A filter the engine refuses, one naming `bucket_id`, or a saved filter whose definition is unknown keeps the downloaded list, with its notice; saved filters the device evaluates are not downloaded.
@@ -1077,7 +1077,7 @@ Limits:
 - Attachment lists are not stored offline (why: an upload does not bump the task's `updated`); the details read online stays the source.
 - Files up to 50 MiB are held in memory while they upload (the native HTTP adapter buffers bodies), so there is no real progress bar.
 - Not built: attachments on comments, HEIC conversion, recovering a photo when Android kills the app while the camera is open.
-- image_picker_android drops a lost result that holds only an error, so a photo-picker pick failing after a relaunch ends like a cancel after 15 s; a pick whose copy takes longer than 15 s also counts as a cancel, its copies stay in image_picker's cache, and a pick started meanwhile may receive them; a process that dies during a pick loses it.
+- image_picker_android drops a lost result that holds only an error, so a photo-picker pick failing after a relaunch ends like a cancel after 15 s; a pick whose copy takes longer than 15 s also counts as a cancel, its copies stay in image_picker's cache, and a pick started meanwhile may receive them (step 40g); a process that dies during a pick loses it.
 
 ## D54: Account settings in the app; password and email on the web
 
@@ -1231,8 +1231,8 @@ Limits:
 
 Limits:
 - Not built: offline label creation (deferred by the owner), teams in the global search, share counts in the project menu, a cleanup list per project.
-- Not gated by the permission: reordering and favouriting projects in the Projects tab, and quick add's `+project` naming a read-only project.
-- A tap on the OS notification about a team membership opens the inbox.
+- Not gated by the permission: reordering projects in the Projects tab, and quick add's `+project` naming a read-only project (both step 40g). Favouriting is on the project's page, which gates it.
+- A tap on the OS notification about a team membership opens the inbox, not the team (step 40f).
 - An assignee the server's access cleanup removed stays on the device until the daily full resync, because the removal bumps no `updated`.
 - A team whose create answer is lost can still be created twice; only a failed read after the create is covered.
 
@@ -1275,7 +1275,7 @@ Limits:
 Limits:
 - Table ties go newest first where the server uses the view's positions; they differ in a table view created after its tasks or reordered through the API.
 - Titles sort ignoring case, SQLite by bytes.
-- The timezone a view's own filter may carry on the server is not modelled; with an empty timezone setting the server evaluates in its zone, the app in the device's.
+- A view's filter carries no timezone on the server (`filter_timezone` is a request parameter only); with an empty timezone setting the server evaluates in its zone, the app in the device's.
 - A view whose filter the engine refuses can list slightly other tasks than the server with "Show undated" on.
 - Servers before 2.7 get 2.7's filter and tree rules, unchecked.
 - Saved filters have no Table or Gantt view; a saved filter opens as one list.
@@ -1360,9 +1360,9 @@ Limits:
 Limits:
 - The banner does not tell a needed password from a deleted link; a tap does. While the password sheet is open, its button reads "Waiting for sign-in…".
 - A request already inside the old session when "Open the link again" replaces it can still end as `SessionEnded`, as with user sessions.
-- A guest whose link needs opening again gets one sign-in attempt per app start.
+- A guest whose link needs opening again is not tried again on its own: the attempt that ended its session marks the account, which the session check then skips, and only "Open the link again" tries.
 - The invite token stays in the Connect screen's state while the screen is open.
-- Others see a guest's tasks and comments under the server's English "Link Share" name.
+- Others see a guest's tasks and comments under the name the server gives, fixed and in English: "Link Share", or the share's name followed by "(Link Share)".
 - Share links do not open the app straight from other apps (no App Links for self-hosted domains); they come by paste or the share target.
 - Not probed: an admin link share, a real 72 h expiry, servers before 2.7 (on 2.3 the share endpoints are v1 only), the sign-in sheet surviving a trip to the mail app, and an invite that passes the check.
 - The guest action inventory is a scan of the source text, by name and not type-checked, so an unusual construct may slip through it; review still covers what it does not see. It sees names, not types: a watched repository handed on as a value is listed where its provider is read; a call of another repository's method of a watched name is a use too, so the share sheet's Add to task (the task repository's `updateDescription`) is listed, open, as it offers only tasks the share may change, and the description editor's write is listed behind its closed routes although its task branch runs on the open task route; so is a call of the app's own method of such a name, so the project menu's handler is listed, gated, for calling `ProjectManagementActions`' `duplicateProject` and `deleteProject`; and a gated entry's check only finds that its files ask about guests somewhere. An entry decides names, not each use: another use of a name its `uses` holds, in the same declaration, passes unseen. Calls and raw clients count only under `features/`, a declaration only at the top level or as a type's member (a local function counts as the declaration around it), and its name is read from a line that starts with its modifiers, its type or the name itself, as dart format writes them: a name on a line of its own below a type split over lines counts, a name after the closing bracket of such a type on the same line does not. Two entries are open because a guest never has their data: the project tree's moves (its tree holds only the shared project) and a saved filter's menu (the server lists a link share no saved filters). The trash's port goes into the task and project repositories for their restores only, so the entries of those two providers are open and every restore call is a site of its own: the task sheet's Undo is open to a write guest ([D79](#d79-the-trash-of-vikunja-280-undo-queued-deletes-a-trash-page)), the opener's Restore gated, a project's Undo gated with the project menu's Delete, and the trash page's restores behind its closed route.
@@ -1429,7 +1429,7 @@ Limits:
 - Fixed strings in `en.lproj` and `de.lproj` (`Localizable.strings`); `Localizable.stringsdict` has the plurals `%lld tasks`, for a count without the app's label, and `+%lld more`.
 
 Limits:
-- iOS lists are refreshed while the app is closed only by the background runs; a list configured then shows "Open Vikunja to load this list" until published, and "Tomorrow" can be stale after midnight (overdue switches on time).
+- iOS lists are refreshed while the app is closed only by the background runs; a list configured then shows "Open Vikunja to load this list" until published, and after midnight a list's relative dates and which tasks Today and Upcoming show stay as last published until the next run; only the overdue colour switches on time.
 - Unticking is no undo, and the widget offers no Undo.
 - A widget of the old app's provider that is not set up still counts as showing the active account's Today, so that list is written and the widget redrawn for nothing (step 38b).
 - With Android 12+'s expedited quota used up, the worker runs later as ordinary work; the tap stays queued. Below Android 12 a dark-mode change waits for the next redraw.
@@ -1541,10 +1541,10 @@ Limits:
 
 Limits:
 - The browser legs (sign-in, "Sign in again", "Create account", the web pages the app opens) do not use the settings: a pinned or private-CA server shows the browser's warning at every sign-in, as the browser session is ephemeral ([D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)), and the password typed there is protected only by the user's check; a client-certificate server needs the certificate in the OS for the browser too; an access proxy shows its own login in the browser every time, and a service-token-only one leaves only guests.
-- The hint finds the sign-in page's origin through `webFrontendBase` without converting an internationalised host to punycode, so for such a server with settings it can add a wrong "Sign-in opens host" note and miss the settings of the page's origin; [D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)'s warning compares the punycode form.
+- The hint finds the sign-in page's origin through `webFrontendBase` without converting an internationalised host to punycode, so for such a server with settings it can add a wrong "Sign-in opens host" note and miss the settings of the page's origin; [D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)'s warning compares the punycode form. Step 40h has the hint compare it too.
 - A header-only origin behind a private CA keeps the socket on `dart:io`'s default trust, so on Android realtime polls; trusting the CA in the app fixes it.
 - The socket knows a refused client certificate only by the alert; a server that just closes leaves it retrying.
-- Cronet's and NSURLSession's client-certificate texts are unrecorded and nginx's HTTP 400 after the handshake is not classified; "Connection options" still leads to the settings. On Android the trust page cannot see a user CA that already trusts the certificate.
+- Cronet's and NSURLSession's client-certificate texts are unrecorded and nginx's HTTP 400 after the handshake is not classified (step 40g); "Connection options" still leads to the settings. On Android the trust page cannot see a user CA that already trusts the certificate.
 - A background run in flight during an edit fails once; a hanging settings write blocks its isolate's later writes.
 - After a reset `http` accounts need the consent again, and secrets of origins nobody names stay in secure storage.
 - Not offered: SPKI pins, `Proxy-Authorization`, a list of all stored settings, a client certificate from the OS key store, user CAs for `dart:io`.
@@ -1580,10 +1580,10 @@ Limits:
 - Extensions, widgets and the notification-action isolate never refresh user tokens; a guest token may be renewed there, and a guest is signed in again at most once per container ([D62](#d62-onboarding-through-the-browser-link-share-guests-as-an-account-kind); principle 5 of the [architecture](architecture.md#1-principles)).
 
 Limits:
-- iOS backups still hold the preferences: drafts, the account registry, the confirmed sign-in hosts ([D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)), the connection metadata of [D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport), the privacy settings, the install marker, the widget-link key and each account's last session end ([D20](#d20-scope-cuts-and-mobile-forms-of-desktop-features)). Restored to a new device, accounts need a new sign-in and settings with secrets re-entry; restored to the same device from an encrypted backup, the `ThisDeviceOnly` Keychain items come back too and the databases sync again. Whether the drafts leave the preferences is open with the owner (R21 to R23).
-- The widget host can act as the app through Glance's collection template for the list rows, and it sees the key (R17): accepted for the beta (owner, 2026-11-12), as for every app with a Glance list, and reported to Google; if Glance does not change, the owner chooses before 1.0 between a fixed list with "+N more" and a hand-built scrolling list.
+- iOS backups still hold the preferences: drafts, the account registry, the confirmed sign-in hosts ([D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)), the connection metadata of [D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport), the privacy settings, the install marker, the widget-link key and each account's last session end ([D20](#d20-scope-cuts-and-mobile-forms-of-desktop-features)). Restored to a new device, accounts need a new sign-in and settings with secrets re-entry; restored to the same device from an encrypted backup, the `ThisDeviceOnly` Keychain items come back too and the databases sync again. Step 40h moves the drafts out of the backed-up preferences (R21 to R23).
+- The widget host can act as the app through Glance's collection template for the list rows, and it sees the key (R17): accepted for the beta (owner, 2026-11-12) and for 1.0 (owner, 2026-11-17, [D92](#d92-fixes-from-the-code-review-security)), as for every app with a Glance list, and reported to Google; a fixed list with "+N more" and a hand-built scrolling list stay the choices for a later step.
 - An app that starts `MainActivity` from its own activity without `FLAG_ACTIVITY_NEW_TASK` gets a second UI engine in its task (R33).
-- Keyless links still act in the active account; notifications scheduled before step 35c stay keyless until replaced, and their taps ask or do nothing (R18, R19).
+- Keyless links still act in the active account; notifications scheduled before step 35c, which only development builds have, stay keyless until replaced, and their taps ask or do nothing (R18, R19).
 - Outside the hooks: the drift database isolate, errors before `configureLogging`, plugins' own prints and native logs (R24); they do not reach the diagnostics log either. Since step 40e that log redacts at capture ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)).
 - No automated dependency updates; native code that no lockfile describes (SQLite, the Flutter engine and Dart runtime, Cronet) is followed by hand (R26).
 - Not checked on an iOS device yet: the sensitive clipboard, the key in `host.json` and the extension's links, another account's notification tap ([threat-model.md §8.3](threat-model.md#83-final-ios-phase)).
@@ -1676,7 +1676,7 @@ Limits:
 
 Limits:
 - The manual TalkBack, Switch Access, Accessibility Scanner and VoiceOver pass is still open ([Q19](open-questions.md#q19-device-setup-for-the-manual-talkback-pass), [accessibility checklist](accessibility-checklist.md)): whether TalkBack speaks the live region reliably (right after a dialog closes, while it is speaking, a repeated message), board and list moves, a field error said twice, whether TalkBack enters the editor WebView, and real fonts.
-- Text the Gantt painters draw may not follow iOS Bold Text (unconfirmed).
+- The Gantt chart's titles and day numbers follow Bold Text, but the widths that decide whether a title fits in its bar and whether the weekdays shorten are measured without it (step 40f).
 - The widget setup page's preview is read line by line under its "Preview" heading.
 - Tables in descriptions carry no row and column positions.
 
@@ -1709,7 +1709,7 @@ Limits:
 
 Limits:
 - Windows 600–839 dp wide and 480–899 dp high get no caps: an Android split screen in portrait, the Pixel Tablet's 50/50 split in landscape (about 640 × 800), an iPad's 2/3 split (about 790 × 834). Their forms reach about 760 dp beside the Android rail and 839 pt on iOS, and their iOS sheets fill the window.
-- Snackbars span the content beside the rail, about 1,170 dp at 1280 × 800.
+- Snackbars span the content beside the rail, about 1,170 dp at 1280 × 800 (step 40f).
 - Pages over the shell, such as settings, forms, search and the inbox, cover the rail or the tab bar, with their content centred in the window.
 - The floating action buttons stay at the window's bottom right, beside the band.
 - The description and comment editors have no width of their own, and images in a description decode at the window's width.
@@ -1826,7 +1826,7 @@ Limits:
 Limits:
 - On iOS the row may first open the Apps list of Settings instead of the app's page, and the app's page reportedly shows Language only with more than one preferred language; both wait for the device test ([beta.md](beta.md)).
 - Android 12 and older have no row and follow the system language.
-- A read-only guest is also told to create a project on the Projects tab.
+- A read-only guest is also told, in the New task sheet and the Quick add widget, to create a project on the Projects tab (step 40f).
 - Unmapped codes still show the server's English detail inside a localized sentence.
 - The accent fold treats every language the same. It is not a collation per language, which Swedish, for example, would need.
 
@@ -1913,7 +1913,7 @@ Limits:
 Limits:
 - Some downloads are not pinned by the project:
   - the `android` job and the release build install NDK 28.2.13676358 from Google's SDK repository on every run;
-  - the test server's image is pinned by its tag only ([D28](#d28-contract-tests-against-the-latest-vikunja-release-only)).
+  - the test server's image is pinned by its tag only ([D28](#d28-contract-tests-against-the-latest-vikunja-release-only)); step 40h pins its digest.
 - Anonymous Docker Hub pulls may hit its limits. A read-only token with a `docker login` in `contract.sh` is not built.
 - Not built: Dependabot or Renovate, and Gradle's dependency verification metadata.
 
@@ -1981,8 +1981,8 @@ Limits:
 Limits:
 - Not yet checked on a device or with the Apple account (the device test in [beta.md](beta.md)): signing, and App Store Connect processing a build (the real test of the manifests); the capture cover in a real recording; the camera; BGTaskScheduler; iOS 15 to 17; signed-in online flows; Increase Contrast, Bold Text and Reduce Motion; Universal Clipboard; a restored backup. What else waits for the device test is in the entries concerned ([D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session), [D63](#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios) to [D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links), [D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep), [D69](#d69-large-screens-a-window-layout-helper-readable-widths-capped-dialogs-and-sheets)).
 - Until the import into go-vikunja/app is merged ([D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)) that repository has no such tag, so a real iOS release before it needs `VIKUNJA_APP_SOURCE_CODE_URL` set to a public repository that has the tag at `<repository>/tree/<tag>`.
-- GitHub's job `ios` builds with the image's default Xcode (26.6 on `macos-26`), the owner's releases with the Mac's (27.2).
-- Not built: iOS 27's extra-large portrait widget; drafts out of the backed-up preferences (open with the owner, [D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links)); the app's own TLS through `connectionFactory` stays a reserve of [D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport).
+- GitHub's job `ios` builds with the image's default Xcode (26.6 on `macos-26`), the owner's releases with the Mac's (27.2). GitHub's runner image `xcode-27` is generally available since 2026-10-15; step 40h moves the job to it.
+- Not built: iOS 27's extra-large portrait widget; drafts out of the backed-up preferences (step 40h, [D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links)); the app's own TLS through `connectionFactory` stays a reserve of [D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport).
 
 ## D75: Owner's UI review: no task identifier, coloured folders, new-task sheet, Account tab
 
@@ -2137,10 +2137,9 @@ Limits:
 - Blanked, not removed: outside a JPEG, PNG or WebP written again, the GPS directory and Apple's location items stay with zeros, so an app that reads zeros as a position puts the file at 0° N, 0° E, and AVFoundation lists an empty location for a cleaned QuickTime video.
 - The video check trusts `MediaMetadataRetriever`: an error it throws counts as no location.
 - The public demo is reset at irregular intervals; if it is down or its account changed during a review, the review fails. A reviewer cannot finish deleting the shared account (the confirmation goes to its email), and whether Apple accepts that for 5.1.1(v) is open. The fallback is a review server of the owner's, with a review account seeded by `tool/seed_demo_data.py`.
-- The pages live in another repository, go-vikunja/website: a moved page or a renamed heading ("Mobile app", "Delete your account") or slug (`mobile`) breaks the stores' addresses and the About page's links, and nothing here notices; the drafts ask kolaente to keep them. Until he publishes the drafts, the addresses lead to pages that do not exist yet ([D89](#d89-store-listing-and-web-pages-of-the-official-app)).
-- The release scripts do not check that the privacy policy answers.
+- The pages live in another repository, go-vikunja/website: a moved page or a renamed heading ("Mobile app", "Delete your account") or slug (`mobile`) breaks the stores' addresses and the About page's links, which nothing here notices between releases (the release scripts refuse a release while one of those pages or anchors does not open, [D90](#d90-fixes-from-the-code-review-before-beta1)); the drafts ask kolaente to keep them. Until he publishes the drafts, the addresses lead to pages that do not exist yet ([D89](#d89-store-listing-and-web-pages-of-the-official-app)).
 - Not legal advice: the privacy section and the imprint's scope are for kolaente to confirm, as vikunja.io's policy names Vikunja's controller ([D89](#d89-store-listing-and-web-pages-of-the-official-app)); the privacy section gives no fixed period for deleting support emails or the testers' list; the trader status is a legal judgment.
-- Announced by Google for 2027, both left to the owner after 1.0: from April an app with a sign-in has to restore it on a new device, which would reverse keeping the tokens on their device ([D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links)); from 2027-08-25 an app targeting API 37 needs `ACCESS_LOCAL_NETWORK` and a Play declaration for servers on the local network.
+- Announced by Google for 2027, both left to the owner after 1.0: from April an app with a sign-in has to restore it on a new device, which would reverse keeping the tokens on their device ([D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links)); from 2027-08-25 an app targeting API 37 needs `ACCESS_LOCAL_NETWORK` and a Play declaration for servers on the local network. `targetSdk` follows Flutter's default (`flutter.targetSdkVersion`), so a Flutter update could bring API 37 unnoticed; step 40h sets it explicitly.
 
 ## D77: Beta preparation: new app id, own signing key, public group, testers
 
@@ -2167,8 +2166,8 @@ Limits:
 - **The task detail's attribute card** gives its names one column as wide as the widest name on one line (measured bold when the platform's bold text is on), at least 96 grown with the names' text size; when the longest name leaves its value too little room, every row stacks.
 
 Limits:
-- A leaked app signing key cannot be replaced for existing installs.
-- Not known: whether Play's builds and an RSA-only APK update each other on Android 17 and later. Whether an uploaded app signing key gets hybrid signing and whether Play asks a new personal account to verify a real Android phone no longer matter, as the app ships in Vikunja's account ([D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)).
+- A leaked key of Vikunja's, which signs the bundles and the APK, can move the APK's existing installs to another key only through APK signature rotation (Android 9 and later), which the release scripts do not support.
+- Not known: whether Play signs Vikunja's listing with the upload key's certificate, and so whether Play's installs and the APK update each other ([Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)). Whether an uploaded app signing key gets hybrid signing and whether Play asks a new personal account to verify a real Android phone no longer matter, as the app ships in Vikunja's account ([D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)).
 
 ## D78: Vikunja 2.8.0: trash codes as gone, its limits, no NUL, `/info` re-read
 
@@ -2196,7 +2195,7 @@ Limits:
 
 Limits:
 - A paste over 1000 code points into a single title field is cut without moving the rest.
-- The Quick Add preview and its "Added" message show the uncut line, so submit creates a shorter title than the plan shows.
+- Quick Add's "Added" message shows the uncut line, a longer title than the task got (step 40f).
 - U+0000 stays in multipart uploads, a link share's password and an invitation token.
 - `LocalFilter.compileWithRequest`'s saved-filter branch, which only tests use, gives each filter its own business-day budget.
 
@@ -2238,12 +2237,12 @@ The server's behaviour is in [research/trash.md](research/trash.md): trash route
 - No grouping, sorting or search in the trash.
 
 Limits:
-- A create sent without an answer gets the "won't be in the trash" confirmation, although it may end up there.
-- The opener's Restore offers no retry after a failure.
-- The trash lists stop at 1,000 items without saying so.
+- A create sent without an answer gets the "won't be in the trash" confirmation, although it may end up there (step 40f).
+- The opener's Restore offers no retry after a failure (step 40f).
+- The trash lists stop after 20 pages without saying so, 1,000 items at the server's default page size (step 40g).
 - An action on the trash page answered by a proxy's bare 404 says "This server doesn't support the trash".
 - An item can show "today" for up to an hour after its 30 days, until the server's hourly purge.
-- A Discard of a refused create does not start a drain.
+- A Discard of a refused create does not start a drain (step 40g).
 
 ## D80: Reminders follow subscriptions on Vikunja 2.8.0 and later
 
@@ -2294,9 +2293,9 @@ Limits:
 - An old opt-out read while its project was not followed counts as none: when the project is followed again, the phone rings and the server does not.
 - Inactive accounts on an upgraded server keep [D17](#d17-notification-policy) until they are active once and their `/info` is read again.
 - A task restored from the trash starts unknown again; the restore answer is not recorded.
-- Large followed projects bring many notifications; the window still holds the soonest 100 (Android) or 60 (iOS), on iOS since step 40e shared among the accounts ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)).
+- Large followed projects bring many notifications; the window still holds the soonest 100 (Android) or, on iOS since step 40e, an even share of 60 less one place per account, 59 with one account ([D94](#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions)).
 - Not built: the bell's stored state shown offline, the project menu seeded from the stored state, a hint on a task with reminders the user does not follow.
-- The help page drafted for vikunja.io in step 38f says when reminders reach the device, not which tasks remind ([D89](#d89-store-listing-and-web-pages-of-the-official-app)); the pages on the owner's former website that described the old rule are gone.
+- The help page drafted for vikunja.io in step 38f says when reminders reach the device, not which tasks remind, until step 40f ([D89](#d89-store-listing-and-web-pages-of-the-official-app)); the pages on the owner's former website that described the old rule are gone.
 
 ## D81: Vikunja 2.8.0 details: legal links, Okabe–Ito colours, lockout hints, subtask tree, accents
 
@@ -2346,8 +2345,8 @@ Limits:
 - Relative legal addresses are not shown, although the web shows them; texts are trimmed.
 - The fold covers Latin letters only; Greek, Cyrillic and Vietnamese accents still count. The ș and ț also change how titles with them sort.
 - The searches the server runs (mentions online, the person search when sharing a project, Quick Add's people from the server) mind accents on SQLite and on PostgreSQL without `unaccent`; on MySQL the collation decides. Online, the assignee picker ignores accents only among the project's people its answers have listed, so when the empty query's answer failed, its server search decides.
-- The swatches are read aloud as hex codes; names would need seven new strings.
-- The app learns of a lock only through a failed refresh (401 code 16002) and then asks for a new sign-in, where the web's sign-in page says that the account is locked.
+- The swatches are read aloud as hex codes; names would need seven new strings (step 40f).
+- A lock that reaches the app as 412 code 1040 is named as one, but on 2.8.0 a lock also ends every session, so the app usually learns of it through a failed refresh (401 code 16002) and then only asks for a new sign-in, where the web's sign-in page says that the account is locked.
 
 ## D82: Projects list–detail: the project tree beside the project on wide windows
 
@@ -2384,7 +2383,6 @@ Limits:
 - The tree's column does not keep its scroll offset across the gate, where the page's tree is another one.
 - Two sync bars side by side, the tree's and the project's.
 - Right to left only through the row's mirroring; the app has no right-to-left language yet.
-- Play's tablet screenshots 02-kanban and 04-project-detail predated the tree's column; step 38f retook them ([D89](#d89-store-listing-and-web-pages-of-the-official-app), [store listing](store-listing.md#screenshots)).
 - Not checked yet with real data on a tablet, on iPad, on a foldable or with TalkBack ([checklist](accessibility-checklist.md#25-checks-of-step-36g)).
 - Not built: an option to hide the tree (it may come later, owner); the tree making way while a task is open; dragging a task onto a project in the tree; revealing the open project in a collapsed or scrolled tree; keyboard and Esc between the column, the project and the pane (36d).
 
@@ -2462,8 +2460,8 @@ Open:
   - Move to column… is a single-pointer way to move a card to another column (2.5.7).
 
 Limits:
-- A due date changed in the sheet can put a relative reminder on another reminder's moment; the server then keeps only one. The edit page warns before such a save, the sheet does not. So clearing the due date of a task with two or more reminders relative to it leaves one of them after the next sync.
-- On Android, cancelling the time dialog after "Pick date…" keeps the picked date at the time the dialog started with.
+- A due date changed in the sheet can put a relative reminder on another reminder's moment; the server then keeps only one. The edit page warns before such a save, the sheet does not. So clearing the due date of a task with two or more reminders relative to it leaves one of them after the next sync. Step 40f has the sheet warn too.
+- On Android, cancelling the time dialog after "Pick date…" keeps the picked date at the time the dialog started with (step 40f).
 - In the pane, Move to column… stays after a switch to another view of the same project; it still moves the card on the board it came from.
 - When the pane gives way to a sheet while a list or picker is open, the choice is still written, but "Pick date…" then opens no date picker, and a refused reminder, "Moved to …" and the limit text are not shown.
 - No Undo.
@@ -2542,9 +2540,8 @@ Limits:
 
 Limits:
 - Builds from before February 2026 stored their entries with flutter_secure_storage 9, which version 11 cannot decrypt: their users get the note without a prefill ([D24](#d24-tokens-in-secure-storage-readable-after-the-first-unlock)). Builds of March 2026 stored a `refresh-cookie` instead of a refresh token: their users get the prefill and the note, but no try.
-- That version 11 reads the later builds' version 10 entries is inferred from code (the same file, key prefix, ciphers and Keystore alias); the update test confirmed it (the prefill came from them).
-- Nothing runs at the moment of the update (why: a receiver of the app's own would race the notification plugin's, which re-arms the old reminders). Until the first start an old reminder can fire, with the app's icon and a Done that does nothing ([D39](#d39-local-notifications-a-scheduler-per-account-with-a-rolling-window)).
-- The old app declared `USE_EXACT_ALARM`; on Android 14 and later the update may leave exact alarms off, as for a fresh install, and nothing is done beyond the usual setup step ([D17](#d17-notification-policy)).
+- Nothing runs at the moment of the update (why: a receiver of the app's own would race the notification plugin's, which re-arms the old reminders). On Android 16 the update test found no old reminder left, as Android removed them at the install; on older versions, untested, one can fire until the first start, with the app's icon and a Done that does nothing ([D39](#d39-local-notifications-a-scheduler-per-account-with-a-rolling-window)).
+- The old app declared `USE_EXACT_ALARM`; on Android 14 and later the update leaves exact alarms off (seen on Android 16), as for a fresh install, and nothing is done beyond the usual setup step ([D17](#d17-notification-policy)).
 - The kept account records no confirmed sign-in host, as there was no browser step ([D23](#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)).
 - An install whose first wipe failed, and whose user then saved connection settings before a restart, would count as an update from the old app; that needs a broken Keystore, and the effect is the note.
 - After a Cancel or the limit only the server probe stops on the network. The token refresh and `GET /user` take no cancel, so they run on in the background until their own timeouts (60 s for the token's answer, 20 s for `GET /user`), and a session they bring is logged out best effort within 20 s.
@@ -2643,9 +2640,9 @@ Limits:
 - The hosted images cannot be pinned, so the JDK, the build-tools, the AWS CLI, `gh` and Docker change with GitHub's image updates.
 - The Play path is tested against a fake server only: how Play's API treats a production release while another rollout is in progress, managed publishing, a version code used elsewhere and the upload of a large bundle show with the first real tag. `jarsigner` picks the bundle's signature algorithm from the JDK's defaults for the key.
 - That `secrets.X != ''` and the `secret-scope` expression give the strings `true` or `false` is documented, not yet seen.
-- GitHub keeps one waiting run per concurrency group, so a third tag's `publish` replaces a second one that still waits, for example for its approval.
+- GitHub keeps one waiting run per concurrency group, so a third tag's `publish` replaces a second one that still waits, for example for its approval; step 40h sets `queue: max`, which keeps more.
 - The unsigned files stay an artifact for 14 days, readable by everyone in a public repository; the signed ones are not kept.
-- Not built: an iOS release job ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)), provenance attestations, an R8 mapping upload, a stable "latest APK" link, and Renovate or Dependabot (the old app's `renovate.json` goes with the import, [D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)).
+- Not built: an iOS release job ([D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover)), provenance attestations, a stable "latest APK" link, and Renovate or Dependabot (the old app's `renovate.json` goes with the import, [D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)).
 
 Open:
 - The upload certificate's SHA-256 (Play Console > Test and release > App integrity > Upload key certificate) for `release_certificates.txt`, from Vikunja's maintainers.
@@ -2843,7 +2840,7 @@ Step 38e of [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp). 
 Step 38e changed [D3](#d3-riverpod-3-with-code-generation), [D21](#d21-languages-english-and-german), [D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep), [D71](#d71-english-and-german-us-base-glossary-error-texts-live-language-changes), [D73](#d73-ci-from-local-scripts-versions-from-the-tag-gitlab-until-the-move), [D74](#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover), [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp), [D85](#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept), [D86](#d86-ci-and-releases-on-github-actions) and [D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp) for it.
 
 Limits:
-- Nothing reaches Crowdin before kolaente's part. Until the German upload, `app_de.arb` in the repository is what the upload takes, so German added there before it is kept.
+- Nothing reaches Crowdin before kolaente's part. Until the German upload, `app_de.arb` in the repository is what the upload takes, so German added there before it is kept. On 2026-11-18, 15 texts of steps 40b, 40c and 40e had no German, so the release scripts refuse a release until they are translated, here or on Crowdin.
 - Where the integration puts the source is not documented. The rehearsal's project, like 462614, already had a root `/app_en.arb`, and the integration added `main/app_en.arb` beside it. kolaente still checks it in 462614 before the German upload.
 - The export has Crowdin's own layout, as the rehearsal showed: each translation gets the template's 1217 `@` metadata blocks (`app_de.arb` grew by about 6,700 lines), its keys in Crowdin's order and no final newline. Its values were ours for all 2264 German messages, it had no `@@locale`, and the files had the mapped names: `app_de.arb`, `app_pt_BR.arb`, `app_eo.arb` and the base `app_pt.arb`, exported as `{}` though nothing was translated into pt-PT. The repository's tests accept this layout. So the first Crowdin pull request reformats every ARB file once; later diffs stay small.
 - A changed English text keeps its translations on Crowdin, unapproved, and the export drops them until they are approved again. In the rehearsal a change of `connectTagline` ("phone" to "device") dropped its German and Brazilian Portuguese, and `german_texts_test.dart`, which expects „Gerät“ there, failed: the only failure of 9,362 tests. After the owner re-approved the German and synced, it came back, and the run after the re-approval was green. So after every English change a maintainer re-approves or retranslates its German on Crowdin. Until then Crowdin's next pull request lacks that German, which a release refuses, and it fails where a test pins the text. Feature pull requests stay green, as they leave `app_de.arb` alone.
@@ -2939,7 +2936,7 @@ Limits:
 - Until the old app is gone from every track, Play's Data safety also declares what only the old app collected: the email address, account management as a purpose, and its opt-in crash reports (crash logs, diagnostics and other app performance data, for analytics). Whether Sentry's installation id also makes device or other ids one of the old app's types is not established. [uncertain]
 - Until kolaente's address exists, App Review writes to `hello@vikunja.io`, which need not reach the app's maintainers.
 - The screenshots were retaken on 2026-11-17, with the build of that day (both app and status bar in 24-hour time, as the script sets it); a later change to a motif's screen makes them stale again, and nothing checks it.
-- vikunja.io has no `security.txt` (404 on 2026-11-16); the security contacts are on its security page and in SECURITY.md.
+- vikunja.io has no `/.well-known/security.txt` (404 on 2026-11-18), only one at the root, `/security.txt`; the security contacts are on its security page and in SECURITY.md.
 
 Open:
 - kolaente's items (above), among them the vikunja.io pages, the address for App Review and the testers, and the owner's permissions in the Play Console.
@@ -3061,7 +3058,7 @@ Not done: the Android WebView's renderer crash is not handled natively, so Andro
 Limits:
 - Up to about a second of typing, plus the time the HTML takes to read, can be lost when the app is ended.
 - A page has at most 30 s to go once its question was answered. A Save that takes longer (an online save of a project, label, team or comment can, and so can one that waits for an upload), that fails, or that asks again because the description changed on the web refuses the switch silently once the 30 s are over, unless the page went meanwhile; the page then closes or stays on its own. So a leaving answer whose Save then fails keeps the switch waiting up to 30 s, and if the user leaves the page within that time, the switch still happens.
-- Only a dialog or sheet with a question keeps what was typed in it, and no sheet of the app has one today: their `PopScope`s block only while they are busy. So the New task sheet, a new project or team, a team's edit, a view's form, a link share's form, the share sheet and a guest's password still lose what was typed in them on a switch, now removed at once.
+- Only a dialog or sheet with a question keeps what was typed in it, and no sheet of the app has one today: their `PopScope`s block only while they are busy. So the New task sheet, a new project or team, a team's edit, a view's form, a link share's form, the share sheet and a guest's password still lose what was typed in them on a switch, now removed at once. Step 40f gives the New task sheet a leave question, which also covers a swipe down.
 - A sheet busy creating, duplicating, saving or submitting, and the offer of a draft, now refuse a switch from outside, and a share then shows its note although nothing may be unsaved.
 - A switch from outside while Save waits for an image upload acts as Back: it stops the upload, the description is saved without the image, and the switch is refused, so a share shows its note.
 - A sheet that asked and was left still slides out with its animation while the switch runs; no sheet asks today. Waiting for its route to end before the switch would close the gap.
@@ -3152,7 +3149,7 @@ Step 40d changed [D44](#d44-task-detail-own-rich-text-parser-online-details-app-
 
 Limits:
 - On an Android 16 emulator on 2026-11-18, with the app's language set to en-GB: the Overview's date read "Wednesday 18 November", a due date "18 Nov 2026 19:35", the date picker started its weeks on Monday, and "13/10/2026" typed into its input became 13 October 2026. The contract tests passed against the local Vikunja 2.8.0.
-- The Connection pages (the page and its three editors) have no leave question, so Back from an editor still drops header values or a client certificate's password typed but not saved. A later step could add one, with new strings.
+- The Connection pages (the page and its three editors) have no leave question, so Back from an editor still drops header values or a client certificate's password typed but not saved. Step 40f adds one, with new strings.
 - After Keep editing outside `/home`, newer requests and shares wait without asking again, and only the last one runs once the user is back under `/home`; until then nothing opens.
 - A package's licence page under About lies in Flutter's own navigator, whose Back closes only that page; this counts as staying, so a request waits until the user is back under `/home`, as a switch since step 40b is refused there.
 - For another account About or Connection goes first; if an edit page under `/home` then stays during `activate`, the request is dropped as in step 40b, with About or Connection already gone.
@@ -3167,11 +3164,11 @@ Limits:
 - The description editor's regional tag was not checked in a WebView.
 - `picker_localizations.dart` now holds the app-wide Material delegate; it keeps its name to keep the diff small.
 - Cupertino stays on Flutter's regional classes, so de_CH's has an English "Clear", which only a search field shows; no test covers it.
-- Nothing of the step was tried on a device.
+- Apart from the regional formats above, nothing of the step was tried on a device.
 
 ## D94: Fixes from the code review: outbox, notifications, diagnostics, sessions
 
-*Step 40e, in review.*
+*Accepted 2026-11-18 (step 40e).*
 
 Step 40e takes the last findings of the code review of 2026-11-17 ([D90](#d90-fixes-from-the-code-review-before-beta1)): B5, B6, B7, P3 and N1, and two findings of the review of step 40a about the notification scheduler. The owner reviews the step as a whole; apart from the copy of the support details (below), nothing here is marked as the owner's decision yet.
 
@@ -3239,21 +3236,21 @@ Step 40e takes the last findings of the code review of 2026-11-17 ([D90](#d90-fi
 Step 40e changed [D17](#d17-notification-policy), [D20](#d20-scope-cuts-and-mobile-forms-of-desktop-features), [D22](#d22-session-keep-alive-through-background-sync), [D34](#d34-outbox-local-first-task-writes-one-serial-sender-coalescing-retry-classes), [D35](#d35-task-creates-through-the-outbox-under-temporary-negative-ids), [D39](#d39-local-notifications-a-scheduler-per-account-with-a-rolling-window), [D40](#d40-background-sync-of-every-account-server-notifications-in-an-inbox), [D53](#d53-attachments-uploaded-through-the-outbox-opened-through-the-platform-android-share-target), [D63](#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios), [D66](#d66-threat-model-redacted-errors-no-backups-keyed-widget-and-notification-links), [D80](#d80-reminders-follow-subscriptions-on-vikunja-280-and-later) and [D90](#d90-fixes-from-the-code-review-before-beta1) for it.
 
 Limits:
-- A 5xx outage behind a proxy that lasts longer than about one to two hours turns the queued ops into sync problems one after another, each needing its own Retry; there is no "Retry all". A probe could avoid it in a later step: give up only while a read, such as the project list, succeeds and the write keeps failing.
-- On a cleartext server behind a captive portal that answers 200 with its own page, a drain turns every queued update into a sync problem at once, where before the updates waited. Over HTTPS a portal can only cause a TLS failure, which waits. Telling the page apart would need the API client to mark a body that is not JSON.
+- A 5xx outage behind a proxy that lasts longer than about one to two hours turns the queued ops into sync problems one after another, each needing its own Retry; there is no "Retry all" yet (step 40g). A probe could avoid it in a later step: give up only while a read, such as the project list, succeeds and the write keeps failing.
+- On a cleartext server behind a captive portal that answers 200 with its own page, a drain turns every queued update into a sync problem at once, where before the updates waited. Over HTTPS a portal can only cause a TLS failure, which waits. A queued delete that the portal answers even counts as sent, and the task comes back with the next sync. Step 40g has a 2xx answer whose body is not JSON wait like a network failure.
 - An upload that keeps getting 5xx answers is still sent up to 4 times before it becomes a sync problem.
 - The detection of a dead process assumes that the app runs in one process. A later `android:process`, or an iOS extension that opens the database, would make it return a live claim and send an op twice.
-- A create given up with `sent_at` and a delete queued behind it is still created on Retry when the lookup finds nothing, then deleted: two requests where none were needed.
-- A Done made on the web and not yet synced is still applied once more, as only the data on the device is checked. A later step could compare the occurrence shown with the server's task where the sender reads a repeating task before its Done (`DoneBase`, [D34](#d34-outbox-local-first-task-writes-one-serial-sender-coalescing-retry-classes)), which needs the occurrence carried in `TaskChanges`.
+- A create with `sent_at` (every network failure records it, an offline first attempt too) and a delete queued behind it is still created when the lookup finds nothing, then deleted: two requests where none were needed, and on 2.8.0 a task in the trash for 30 days (step 40g).
+- A Done made on the web and not yet synced is still applied once more, as only the data on the device is checked. Step 40g is to compare the occurrence shown with the server's task where the sender reads a repeating task before its Done (`DoneBase`, [D34](#d34-outbox-local-first-task-writes-one-serial-sender-coalescing-retry-classes)), which needs the occurrence carried in `TaskChanges`.
 - A repeating task without a due date, with reminders only, cannot be told apart in a widget row, which shows no reminder; its notifications can.
 - The iOS share is even, not the globally soonest: an account with few reminders leaves part of its share unused, and right after a sign-in iOS can hold more than 64 for a moment; the next reconcile of an account whose entries iOS dropped schedules them again.
 - Each reconcile and each Done from outside the app lists the tray once; the cost was not profiled.
 - The session reminder takes the last sync as a lower bound of the last refresh: a refresh by the session check or an outbox send alone is not counted, so a reminder can come early. An exact time would need `SessionManager`, which this step did not change, to record each refresh.
-- The reminder and the warning's "3 days" assume the server's default `service.jwtttl` of 72 h; a server set otherwise ends its sessions at another time.
+- The reminder and the warning's "3 days" assume the server's default `service.jwtttl` of 72 h; a server set otherwise ends its sessions at another time. The server reports the lifetime nowhere, neither in `/info` nor in the token answer.
 - Android may deliver the reminder late in Doze; it has at least 12 h of margin.
-- A sign-out in the app while a background run is inside that account can still schedule the reminder after the wipe; reading the registry anew narrows this, as in [D40](#d40-background-sync-of-every-account-server-notifications-in-an-inbox).
+- A sign-out in the app while a background run is inside that account can still schedule the reminder after the wipe; reading the registry anew narrows this, as in [D40](#d40-background-sync-of-every-account-server-notifications-in-an-inbox), and step 40g's crash-safe sign-out is to close it.
 - Task ids, sync run ids and saved filter ids stay in the log's messages and in the export. Account ids stay in the log's files on the device, which only the export numbers. A build with `--obfuscate` or `--split-debug-info`, which the app does not use, would keep no frames.
 - The unexpected failures of the Connect screen and of the sign-in log only their type in debug builds too, so developers lose the redacted text there.
-- Several isolates of one part started in quick succession can delete a running one's file, as a start keeps 3 earlier files per part: entries are lost, nothing is corrupted.
+- Several isolates of one part started in quick succession can delete a running one's file, as a start keeps 3 earlier files per part. The isolate's next record writes its whole file again, so only an isolate that records nothing more loses its entries; nothing is corrupted.
 - The German texts of the new strings come through Crowdin ([D88](#d88-translations-through-vikunjas-crowdin-project)); until then they show in English.
 - On an Android 16 emulator on 2026-11-18 the account's session reminder was armed for 21:00 two evenings ahead, as last contact + 60 h fell at 23:49; with `cmd appops set io.vikunja.app RUN_ANY_IN_BACKGROUND ignore` the Account tab showed "Background sync is limited" with "Open settings", and with `allow` it was gone. The outbox limits, the occurrence checks, the iOS share, the diagnostics log and the error screen ran only in tests; nothing ran on iOS.
