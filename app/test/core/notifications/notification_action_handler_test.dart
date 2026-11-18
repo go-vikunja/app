@@ -166,7 +166,7 @@ void main() {
       expect(write.updates, [(1, const TaskChanges(done: true))]);
       expect((await db.tasksDao.find(1))!.done, isTrue);
       expect(await db.outboxDao.count(), 0);
-      expect(engine.refreshCalls, 1);
+      expect(engine.refreshAfterWriteCalls, 1);
       expect(gateway.cancelled, unorderedEquals([reminderId, dueId]));
       // iOS may suspend the isolate while the send is under way.
       expect(cancelledBeforeSend, unorderedEquals([reminderId, dueId]));

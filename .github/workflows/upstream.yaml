@@ -1,0 +1,26 @@
+name: Upstream versions
+
+# Fails when Flutter's stable release or Google Maven's cronet-bundled is newer
+# than the pins; Dependabot (.github/dependabot.yml) watches the actions.
+on:
+  schedule:
+    - cron: "41 5 * * 1"
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  versions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: tool/ci/upstream.sh

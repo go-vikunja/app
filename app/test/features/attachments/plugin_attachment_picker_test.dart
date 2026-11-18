@@ -213,8 +213,8 @@ void main() {
     );
 
     testWidgets(
-      'stays in a file it could not be removed from, which is still handed '
-      'on; the log names no file',
+      'stays in a file it could not be removed from, which is handed on '
+      'marked for the user to decide on; the log names no file',
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
       (tester) async {
         answerPicks((_) => [_iosPhoto]);
@@ -228,6 +228,7 @@ void main() {
 
         expect(files.single.path, _iosPhoto);
         expect(files.single.name, 'IMG_20261029_091542.jpg');
+        expect(files.single.keptLocation, isTrue);
         final record = records.single;
         expect(record.level, Level.WARNING);
         expect(record.message, contains('PlatformException'));
@@ -252,10 +253,10 @@ void main() {
 
         expect(removal.paths, [_androidPhoto, _androidVideo, _androidShot]);
         expect(removal.removed, [_androidVideo, _androidShot]);
-        expect(files.map((file) => file.path), [
-          _androidPhoto,
-          _androidVideo,
-          _androidShot,
+        expect(files.map((file) => (file.path, file.keptLocation)), [
+          (_androidPhoto, true),
+          (_androidVideo, false),
+          (_androidShot, false),
         ]);
       },
     );
@@ -273,6 +274,7 @@ void main() {
         final files = await picker().pickPhotos();
 
         expect(files.single.path, _androidPhoto);
+        expect(files.single.keptLocation, isTrue);
         expect(
           records.single.message,
           'A file keeps its location: MissingPluginException',
@@ -322,11 +324,30 @@ void main() {
 
         expect(removal.removed.last, _androidShot);
         expect(shot?.path, _androidShot);
+        expect(shot?.keptLocation, isFalse);
       },
     );
 
     testWidgets(
-      'stays in files from the file picker',
+      'stays in a camera shot it could not be removed from, which is handed '
+      'on marked',
+      variant: TargetPlatformVariant.only(TargetPlatform.android),
+      (tester) async {
+        answerPicks((_) => _androidShot);
+        removal.failures[_androidShot] = PlatformException(
+          code: 'remove_location_failed',
+        );
+
+        final shot = await picker().takePhoto();
+
+        expect(shot?.path, _androidShot);
+        expect(shot?.keptLocation, isTrue);
+      },
+    );
+
+    testWidgets(
+      'is removed from pictures from the file picker too (owner, '
+      '2026-11-18), while its other files stay as they are',
       variant: const TargetPlatformVariant({
         TargetPlatform.iOS,
         TargetPlatform.android,
@@ -336,30 +357,70 @@ void main() {
         final channel = android
             ? const MethodChannel(ChannelDocumentPicker.channelName)
             : const MethodChannel('plugins.flutter.io/file_selector');
+        final names = [
+          'IMG_0042.jpg',
+          'scan.png',
+          'notes.pdf',
+          'clip.mp4',
+          'logo.svg',
+          'raw.dng',
+        ];
+        String path(String name) =>
+            android ? '/data/cache/picked/$name' : '/tmp/$name';
         messenger.setMockMethodCallHandler(
           channel,
           (call) async => switch (call.method) {
             'pick' => [
-              {
-                'uri': 'content://media/1',
-                'name': 'IMG_0042.jpg',
-                'size': 10,
-                'mime': 'image/jpeg',
-              },
+              for (final (index, name) in names.indexed)
+                {
+                  'uri': 'content://media/$name',
+                  'name': name,
+                  'size': 10,
+                  'mime': [
+                    'image/jpeg',
+                    'application/octet-stream',
+                    'application/pdf',
+                    'video/mp4',
+                    'image/svg+xml',
+                    null,
+                  ][index],
+                },
             ],
-            'copy' => {'path': '/data/cache/picked/IMG_0042.jpg', 'size': 10},
-            _ => ['/tmp/IMG_0042.jpg'],
+            'copy' => {
+              'path': path(
+                (call.arguments as Map<Object?, Object?>)['uri']
+                    .toString()
+                    .split('/')
+                    .last,
+              ),
+              'size': 10,
+            },
+            _ => [for (final name in names) path(name)],
           },
         );
         addTearDown(() => messenger.setMockMethodCallHandler(channel, null));
+        removal.failures[path('scan.png')] = PlatformException(
+          code: 'remove_location_failed',
+        );
 
         final picked = await PluginAttachmentPicker(
           documents: android ? ChannelDocumentPicker() : null,
           locations: removal,
-        ).pickFiles(maxBytes: 100, imagesOnly: true);
+        ).pickFiles(maxBytes: 100);
 
-        expect(picked.files.single.name, 'IMG_0042.jpg');
-        expect(removal.paths, isEmpty);
+        expect(removal.paths, [
+          path('IMG_0042.jpg'),
+          path('scan.png'),
+          path('raw.dng'),
+        ]);
+        expect(picked.files.map((file) => (file.name, file.keptLocation)), [
+          ('IMG_0042.jpg', false),
+          ('scan.png', true),
+          ('notes.pdf', false),
+          ('clip.mp4', false),
+          ('logo.svg', false),
+          ('raw.dng', false),
+        ]);
       },
     );
 

@@ -91,7 +91,10 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
     final repository = ref.read(taskRepositoryProvider);
     return _isLocal
         ? repository?.refreshOpenTasks()
-        : repository?.refreshSavedFilter(widget.pseudoProjectId);
+        : repository?.refreshSavedFilter(
+            widget.pseudoProjectId,
+            inNewRun: true,
+          );
   }
 
   @override

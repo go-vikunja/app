@@ -15,8 +15,10 @@ import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 import 'package:vikunja_mobile/core/share/share_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
+import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/attachments/application/queue_attachments.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
+import 'package:vikunja_mobile/features/attachments/presentation/location_kept_prompt.dart';
 import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
@@ -206,6 +208,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
 
   /// Leaving is blocked meanwhile, except for a drag, which the material
   /// sheet does not ask about; the work goes on without the sheet then.
+  /// Files whose location stayed go only when the user chooses Upload.
   Future<void> _submit(Project? project) async {
     final repository = ref.read(taskRepositoryProvider);
     if (repository == null || !_canSubmit(project)) return;
@@ -214,10 +217,29 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
       _submitting = true;
       _error = null;
     });
-    final files = [
+    final wanted = await withoutUnwantedLocations(context, [
       for (final (item, copy) in _files.ready)
-        (path: copy.path, name: item.name, mimeType: item.file.mimeType),
+        PickedFile(
+          path: copy.path,
+          name: item.name,
+          mimeType: item.file.mimeType,
+          keptLocation: switch (item.status) {
+            ShareFileReady(:final keptLocation) => keptLocation,
+            _ => false,
+          },
+        ),
+    ]);
+    if (!mounted) return;
+    final files = [
+      for (final file in wanted)
+        (path: file.path, name: file.name, mimeType: file.mimeType),
     ];
+    if (_mode == _Mode.addToTask &&
+        files.isEmpty &&
+        _appended.text.trim().isEmpty) {
+      setState(() => _submitting = false);
+      return;
+    }
     final work = switch (_mode) {
       _Mode.newTask => _createTask(l10n, repository, project!.id, files),
       _Mode.addToTask => _addToTask(l10n, repository, _targetId!, files),
@@ -602,6 +624,10 @@ class _FileRow extends StatelessWidget {
     final colors = Theme.of(context).colorScheme;
     final (status, problem) = switch (item.status) {
       ShareFilePreparing() => (l10n.shareFilePreparing, false),
+      ShareFileReady(:final copy, keptLocation: true) => (
+        l10n.shareFileLocationKept(formatFileSize(l10n, copy.size)),
+        true,
+      ),
       ShareFileReady(:final copy) => (formatFileSize(l10n, copy.size), false),
       ShareFileTooLarge(:final maxBytes) => (
         l10n.shareFileTooLarge(formatFileSize(l10n, maxBytes)),

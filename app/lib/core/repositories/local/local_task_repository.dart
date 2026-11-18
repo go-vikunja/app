@@ -271,8 +271,12 @@ final class LocalTaskRepository
   }
 
   @override
-  Future<void> refreshProjectList(int projectId, {required int viewId}) async {
-    await _sync.refresh();
+  Future<void> refreshProjectList(
+    int projectId, {
+    required int viewId,
+    bool inNewRun = false,
+  }) async {
+    await _syncNow(inNewRun: inNewRun);
     if (viewId == 0) return;
     final view = await _db.projectsDao.loadView(viewId);
     if (view != null && !downloadsSnapshot(view)) return;
@@ -309,8 +313,12 @@ final class LocalTaskRepository
       });
 
   @override
-  Future<void> refreshBoard(int projectId, int viewId) async {
-    await _sync.refresh();
+  Future<void> refreshBoard(
+    int projectId,
+    int viewId, {
+    bool inNewRun = false,
+  }) async {
+    await _syncNow(inNewRun: inNewRun);
     await downloadBoard(
       db: _db,
       client: _readClient('A board download'),
@@ -425,8 +433,11 @@ final class LocalTaskRepository
   /// The sync brings a changed definition; only a saved filter the device
   /// cannot evaluate is downloaded.
   @override
-  Future<void> refreshSavedFilter(int pseudoProjectId) async {
-    await _sync.refresh();
+  Future<void> refreshSavedFilter(
+    int pseudoProjectId, {
+    bool inNewRun = false,
+  }) async {
+    await _syncNow(inNewRun: inNewRun);
     final stored = _storedSavedFilter(
       await _db.syncStateDao.readAll(),
       pseudoProjectId,
@@ -442,7 +453,10 @@ final class LocalTaskRepository
   }
 
   @override
-  Future<void> refreshOpenTasks() => _sync.refresh();
+  Future<void> refreshOpenTasks() => _sync.refreshInNewRun();
+
+  Future<void> _syncNow({required bool inNewRun}) =>
+      inNewRun ? _sync.refreshInNewRun() : _sync.refresh();
 
   @override
   Stream<Task?> watchTask(int taskId) => _db.tasksDao.watchTask(taskId);

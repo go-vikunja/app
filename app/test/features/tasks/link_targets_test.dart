@@ -97,6 +97,119 @@ void main() {
     }
   });
 
+  group('the address a link shows before it opens', () {
+    test('is resolved as it opens, a task link too; nothing for a link '
+        'that opens nothing', () {
+      expect(
+        linkAddressOf(' https://example.com/docs\n', server),
+        uri('https://example.com/docs'),
+      );
+      expect(
+        linkAddressOf('tasks/7', server),
+        uri('https://tasks.example.org/vikunja/tasks/7'),
+      );
+      expect(
+        linkAddressOf('projects/3', withFrontend),
+        uri('https://app.example.org/web/projects/3'),
+      );
+      expect(
+        linkAddressOf('mailto:anna@example.com', server),
+        uri('mailto:anna@example.com'),
+      );
+      expect(linkAddressOf('javascript:alert(1)', server), isNull);
+      expect(linkAddressOf('  ', server), isNull);
+    });
+
+    test('names its host in punycode, none without one', () {
+      expect(
+        linkHostOf(uri('https://Vikunja.Example.com/x')),
+        'vikunja.example.com',
+      );
+      expect(
+        linkHostOf(uri('https://bücher.example/')),
+        'xn--bcher-kva.example',
+      );
+      expect(linkHostOf(uri('mailto:anna@example.com')), isNull);
+    });
+  });
+
+  group("a link's text misleads", () {
+    for (final (text, href) in [
+      ('https://vikunja.example.com/login', 'https://evil.example/login'),
+      ('HTTP://Vikunja.example.com', 'https://evil.example/'),
+      ('www.vikunja.example.com', 'https://evil.example/'),
+      ('https://vikunja.example.com see there', 'https://evil.example/'),
+      // A look-alike: a Cyrillic а in place of the Latin a.
+      ('https://vikunjа.example.com', 'https://vikunja.example.com/'),
+      ('https://vikunja.example.com', 'https://vikunjа.example.com/'),
+      // User info shows a host before the real one.
+      ('https://vikunja.example.com@evil.example', 'https://evil.example/'),
+      ('Docs', 'https://vikunja.example.com@evil.example/'),
+      ('https://', 'https://evil.example/'),
+    ]) {
+      test('$text for $href', () {
+        expect(linkTextMisleads(text, uri(href)), isTrue);
+      });
+    }
+
+    // Invisible before or inside the address the text shows.
+    for (final (name, invisible) in [
+      ('a zero-width space', '\u200B'),
+      ('a zero-width joiner', '\u200D'),
+      ('a word joiner', '\u2060'),
+      ('a soft hyphen', '\u00AD'),
+      ('a byte order mark', '\uFEFF'),
+      ('an invisible separator', '\u2063'),
+    ]) {
+      test('with $name', () {
+        final evil = uri('https://evil.example/');
+        expect(
+          linkTextMisleads('${invisible}https://bank.example', evil),
+          isTrue,
+        );
+        expect(linkTextMisleads(' $invisible www.bank.example', evil), isTrue);
+        expect(
+          linkTextMisleads('https://bank.exa${invisible}mple', evil),
+          isTrue,
+        );
+      });
+    }
+
+    // Each shows "https://bank.example" while the characters read
+    // otherwise.
+    for (final (name, text) in [
+      ('a left-to-right mark', '\u200Ehttps://bank.example'),
+      ('a right-to-left override', '\u202Eelpmaxe.knab//:sptth'),
+      ('right-to-left marks', 'https\u200F//:\u200Fbank.example'),
+      ('a right-to-left isolate', '\u2067elpmaxe.knab//:sptth\u2069'),
+      ('an Arabic letter mark', '\u061Chttps://bank.example'),
+    ]) {
+      test('with $name', () {
+        expect(linkTextMisleads(text, uri('https://evil.example/')), isTrue);
+      });
+    }
+  });
+
+  group("a link's text does not mislead", () {
+    for (final (text, href) in [
+      ('the docs', 'https://evil.example/'),
+      ('vikunja.example.com', 'https://evil.example/'),
+      ('https://vikunja.example.com/login', 'https://vikunja.example.com/x'),
+      ('https://Vikunja.Example.com.', 'https://vikunja.example.com/'),
+      ('https://example.com', 'https://www.example.com/'),
+      ('www.example.com/docs', 'https://example.com/docs'),
+      ('https://bücher.example', 'https://xn--bcher-kva.example/'),
+      ('mailto:anna@example.com', 'mailto:anna@example.com'),
+      ('Call us', 'tel:+4930123456'),
+      ('\u200Bthe docs', 'https://evil.example/'),
+      ('\u200Bhttps://example.com\u200B', 'https://example.com/'),
+    ]) {
+      test('$text for $href', () {
+        expect(linkTextMisleads(text, uri(href)), isFalse);
+      });
+    }
+  });
+
   test('the bases of a connection take only an http(s) frontend', () {
     final connection = fullServer270();
     expect(

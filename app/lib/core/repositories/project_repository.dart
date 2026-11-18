@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 abstract interface class ProjectRepository {
   Stream<List<Project>> watchAll();
 
+  /// A refresh the user started: a sync of its own, after any under way.
   Future<void> refresh();
 
   /// From the local state, without a network call.

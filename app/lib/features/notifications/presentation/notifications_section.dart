@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/notifications/subscriber_reminders.dart';
+import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/notifications/application/account_notification_preferences.dart';
@@ -104,6 +105,10 @@ class NotificationsSection extends ConsumerWidget {
     final secondary = theme.textTheme.bodyMedium?.copyWith(
       color: colors.onSurfaceVariant,
     );
+    final noDone =
+        theme.platform == TargetPlatform.android &&
+        (preferences.reminders || preferences.dueDates) &&
+        (ref.watch(privacySettingsProvider).value?.appLock ?? false);
     final openSettings = TextButton(
       onPressed: () => unawaited(
         _quietly(
@@ -148,6 +153,11 @@ class NotificationsSection extends ConsumerWidget {
           onChanged: (value) =>
               unawaited(_write(ref, preferences.copyWith(dueDates: value))),
         ),
+        if (noDone)
+          SettingsNote(
+            icon: Icons.lock_outline,
+            text: l10n.privacyAppLockNoDone,
+          ),
         if (!entry.account.isLinkShare)
           SwitchListTile.adaptive(
             secondary: const Icon(Icons.forum_outlined),

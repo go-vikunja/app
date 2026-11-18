@@ -147,7 +147,7 @@ void main() {
             final own = (await repository.sessions()).firstWhere(
               (session) => session.id == current,
             );
-            expect(own.deviceInfo, 'Rurana contract tests');
+            expect(own.deviceInfo, 'Vikunja app contract tests');
             expect(own.created, isNotNull);
             expect(own.lastActive, isNotNull);
 
@@ -197,7 +197,7 @@ void main() {
               final created = await despiteWriteRaces(
                 () => repository.createApiToken(
                   NewApiToken(
-                    title: 'Rurana contract ${apiVersion.pathSegment}',
+                    title: 'Vikunja app contract ${apiVersion.pathSegment}',
                     permissions: const {
                       'tasks': ['read_all'],
                       'caldav': ['access'],
@@ -217,7 +217,10 @@ void main() {
               final listed = (await repository.apiTokens()).singleWhere(
                 (token) => token.id == created.token.id,
               );
-              expect(listed.title, 'Rurana contract ${apiVersion.pathSegment}');
+              expect(
+                listed.title,
+                'Vikunja app contract ${apiVersion.pathSegment}',
+              );
               expect(listed.permissions, {
                 'tasks': ['read_all'],
                 'caldav': ['access'],

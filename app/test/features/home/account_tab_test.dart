@@ -333,12 +333,12 @@ void main() {
       await scrollTo(tester, find.text(en.accountSyncNow));
 
       expect(find.text(en.accountLastSynced('1 minute ago')), findsOneWidget);
-      expect(data.engine.refreshCalls, 0);
+      expect(data.engine.refreshInNewRunCalls, 0);
 
       await tester.tap(find.text(en.accountSyncNow));
       await tester.pump();
 
-      expect(data.engine.refreshCalls, 1);
+      expect(data.engine.refreshInNewRunCalls, 1);
       expect(find.text(en.accountSyncing), findsOneWidget);
       expect(find.text(en.syncPhaseAccount), findsOneWidget);
       final button = tester.widget<FilledButton>(
@@ -362,7 +362,7 @@ void main() {
         find.widgetWithText(FilledButton, en.accountSyncNow),
       );
       expect(button.onPressed, isNull);
-      expect(data.engine.refreshCalls, 0);
+      expect(data.engine.refreshInNewRunCalls, 0);
     });
 
     testWidgets('"Full resync" pulls everything again and rests, like '
@@ -492,7 +492,7 @@ void main() {
 
       logout.complete();
       await tester.pumpAndSettle();
-      expect(data.engine.refreshCalls, 0);
+      expect(data.engine.refreshInNewRunCalls, 0);
     });
 
     testWidgets('a failed sync is explained next to the last success', (

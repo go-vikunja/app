@@ -144,9 +144,8 @@ class ConnectServerController extends _$ConnectServerController {
       final connection = await ref
           .read(serverConnectorProvider)
           .connect(input, cancelToken: cancelToken);
-      return connection.isInsecure && !await _hasCleartextConsent(connection)
-          ? ConnectServerAwaitingInsecureConsent(connection)
-          : ConnectServerConnected(connection);
+      return await _needsConsent(connection, input: input) ??
+          ConnectServerConnected(connection);
     } on ServerConnectionFailure catch (failure) {
       return ConnectServerFailed(input: input, failure: failure);
     } on Object catch (error, stackTrace) {
@@ -245,19 +244,37 @@ class ConnectServerController extends _$ConnectServerController {
       if (!cancelToken.isCancelled) _logUnexpected(error, stackTrace);
       return ConnectServerFailed(input: serverAddress ?? share.base.toString());
     }
-    final needsConsent =
-        connection.isInsecure && !await _hasCleartextConsent(connection);
+    final question = await _needsConsent(connection, input: serverAddress);
     if (cancelToken.isCancelled) return const ConnectServerIdle();
-    if (needsConsent) {
+    if (question != null) {
       _afterConsent = (connection) => _signInAsGuest(connection, share);
-      return ConnectServerAwaitingInsecureConsent(connection);
+      return question;
     }
     return await _signInAsGuest(connection, share);
   }
 
-  /// The user accepted http for the server's origin before, on this
-  /// device (D8): it is asked once per origin, until revoked. A consent
-  /// that cannot be read asks again.
+  /// The question before [connection] is used over http, or null when it
+  /// needs none: https, or an http origin the user accepted before on this
+  /// device (D8), until revoked. Reached because https failed for the
+  /// address typed as [input], it is asked every time, as the network may
+  /// be blocking https.
+  Future<ConnectServerAwaitingInsecureConsent?> _needsConsent(
+    ServerConnection connection, {
+    required String? input,
+  }) async {
+    if (!connection.isInsecure) return null;
+    if (input != null && reachedOverHttpFallback(input, connection)) {
+      return ConnectServerAwaitingInsecureConsent(
+        connection,
+        httpsFailed: true,
+      );
+    }
+    return await _hasCleartextConsent(connection)
+        ? null
+        : ConnectServerAwaitingInsecureConsent(connection);
+  }
+
+  /// A consent that cannot be read asks again.
   Future<bool> _hasCleartextConsent(ServerConnection connection) async {
     try {
       final profile = await ref

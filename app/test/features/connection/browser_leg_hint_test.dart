@@ -81,6 +81,34 @@ void main() {
       ]);
     });
 
+    test('an international sign-in page is looked up in punycode, as its '
+        'settings are stored', () async {
+      final profiles = profilesOver(auth);
+      final server = accountPagesServer270(
+        root: 'https://xn--bcher-kva.example',
+        frontendUrl: Uri.parse('https://Bücher.example/'),
+      );
+      await profiles.trustCertificate(OriginKey.of(server.rootUri), selfSigned);
+      final elsewhere = accountPagesServer270(
+        root: 'https://api.example.org',
+        frontendUrl: Uri.parse('https://anmeldung.müller.example/'),
+      );
+      await profiles.trustCertificate(
+        OriginKey.of(Uri.parse('https://anmeldung.xn--mller-kva.example')),
+        selfSigned,
+      );
+
+      final same = await browserLegHint(en, profiles, server);
+      final other = await browserLegHint(en, profiles, elsewhere);
+
+      expect(same?.pinnedFingerprint, selfSigned.sha256Pairs);
+      expect(same?.notes, isEmpty);
+      expect(other?.pinnedFingerprint, selfSigned.sha256Pairs);
+      expect(other?.notes, [
+        en.connectionBrowserHintOtherHost('anmeldung.xn--mller-kva.example'),
+      ]);
+    });
+
     test('a pinned API with its sign-in page elsewhere shows no fingerprint, '
         'only where sign-in opens', () async {
       final profiles = profilesOver(auth);

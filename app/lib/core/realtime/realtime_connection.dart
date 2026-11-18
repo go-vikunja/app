@@ -474,10 +474,14 @@ final class RealtimeConnection {
     _runSync();
   }
 
+  /// Not `refresh()`: the engine reports a run's end before it lets go of
+  /// the run, and a refresh asked for then joins that run.
   void _runSync() {
     _log.fine('Syncing after a notification');
     // The engine's status reports the outcome.
-    unawaited(_engine.refresh().then<void>((_) {}, onError: (Object _) {}));
+    unawaited(
+      _engine.refreshAfterWrite().then<void>((_) {}, onError: (Object _) {}),
+    );
   }
 
   /// [afterLive]: a socket that got to `auth.success` dropped; its attempt

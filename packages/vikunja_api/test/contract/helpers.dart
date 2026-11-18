@@ -18,7 +18,8 @@ final String? contractSkip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
 
 /// The image of test_servers/docker-compose.yaml when
 /// VIKUNJA_APP_TEST_VIKUNJA_IMAGE is unset or empty.
-const defaultTestServerImage = 'vikunja/vikunja:2.8.0';
+const defaultTestServerImage =
+    'vikunja/vikunja:2.8.0@sha256:35d937baf3b5d5803bed6b9e11d007448b7b536df9e4346dc35551e1072636c3';
 
 /// The release the test server runs: the tag of
 /// VIKUNJA_APP_TEST_VIKUNJA_IMAGE, which test_servers/docker-compose.yaml
@@ -54,7 +55,7 @@ Dio contractDio() => Dio(
   BaseOptions(
     connectTimeout: const Duration(seconds: 5),
     receiveTimeout: const Duration(seconds: 20),
-    headers: {'User-Agent': 'Rurana contract tests'},
+    headers: {'User-Agent': 'Vikunja app contract tests'},
   ),
 );
 

@@ -26,7 +26,7 @@ Dio contractDio() => Dio(
   BaseOptions(
     connectTimeout: const Duration(seconds: 5),
     receiveTimeout: const Duration(seconds: 20),
-    headers: {'User-Agent': 'Rurana contract tests'},
+    headers: {'User-Agent': 'Vikunja app contract tests'},
   ),
 );
 

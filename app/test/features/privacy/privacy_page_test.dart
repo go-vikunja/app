@@ -146,6 +146,45 @@ void main() {
     expect(find.text(en.privacyLockAfterRestart), findsOneWidget);
   });
 
+  testWidgets('on Android the lock says that notifications offer no Done '
+      'while it is on, in the notification settings too', (tester) async {
+    usePhoneSurface(tester, logicalSize: const Size(400, 2400));
+    authenticator.result = DeviceAuthResult.success;
+    await pumpPage(tester);
+    expect(find.text(en.privacyAppLockNoDone), findsNothing);
+
+    await tester.tap(lockSwitch());
+    await tester.pumpAndSettle();
+    expect(find.text(en.privacyAppLockNoDone), findsOneWidget);
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    await openTab(tester, en.tabAccount);
+    final note = find.text(en.privacyAppLockNoDone);
+    await tester.scrollUntilVisible(
+      note,
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(AccountTab),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    expect(note, findsOneWidget);
+  });
+
+  testWidgets('on iOS the lock says nothing about Done', (tester) async {
+    await storePrivacySettings(
+      auth.preferences,
+      const PrivacySettings(appLock: true),
+    );
+    await pumpPage(tester);
+
+    expect(switchTile(tester, en.privacyAppLockSwitch).value, isTrue);
+    expect(find.text(en.privacyAppLockNoDone), findsNothing);
+  }, variant: const TargetPlatformVariant({TargetPlatform.iOS}));
+
   testWidgets('the switch stays put while the prompt is up', (tester) async {
     authenticator.holdPrompts = true;
     await pumpPage(tester);

@@ -31,7 +31,7 @@ final class OtherSignInHost {
 /// Where the browser sign-in for [connection] opens, when that is not the
 /// server's own origin; built as the request the browser gets.
 OtherSignInHost? otherSignInHost(ServerConnection connection) {
-  final page = _withAsciiHost(
+  final page = withAsciiHost(
     AuthorizationRequest.create(connection, appOAuthClient).url,
   );
   final pageOrigin = OriginKey.tryOf(page);
@@ -53,18 +53,6 @@ OtherSignInHost? otherSignInHost(ServerConnection connection) {
     signInPage: signInPage,
     origin: pageOrigin,
   );
-}
-
-// Dart's Uri percent-encodes a non-ASCII host, where the server's root has
-// punycode; the browser opens the punycode too.
-Uri _withAsciiHost(Uri uri) {
-  try {
-    final host = Uri.decodeComponent(uri.host);
-    final ascii = punycodeHost(host);
-    return ascii == null || ascii == host ? uri : uri.replace(host: ascii);
-  } on FormatException {
-    return uri;
-  }
 }
 
 // A host name with or without its trailing dot resolves to the same server.

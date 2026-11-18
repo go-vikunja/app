@@ -10,6 +10,7 @@ final class RecordingSyncEngine implements SyncEngine {
   SyncStatus _status;
   final _changes = StreamController<SyncStatus>.broadcast();
   int refreshCalls = 0;
+  int refreshInNewRunCalls = 0;
   int refreshAfterWriteCalls = 0;
   int fullResyncCalls = 0;
   int ensureInitialSyncCalls = 0;
@@ -47,6 +48,12 @@ final class RecordingSyncEngine implements SyncEngine {
     refreshCalls++;
     await _call();
     return SyncOutcome.synced;
+  }
+
+  @override
+  Future<void> refreshInNewRun() async {
+    refreshInNewRunCalls++;
+    await _call();
   }
 
   /// [onRefreshAfterWrite] stands for what the run stores.

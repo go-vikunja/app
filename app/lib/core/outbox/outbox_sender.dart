@@ -1311,11 +1311,12 @@ final class OutboxSender {
   }
 
   /// The sync status reports the outcome; a failed refresh does not fail
-  /// the drain.
+  /// the drain. A run under way may have read a task before its send and
+  /// store that again over the answer, so this one runs after it.
   Future<void> _refreshQuietly() async {
     if (_disposed) return;
     try {
-      await _sync.refresh();
+      await _sync.refreshAfterWrite();
     } on Object catch (error) {
       _log.info('Refresh after the drain failed: ${error.runtimeType}');
     }

@@ -141,6 +141,20 @@
   },
   "insecureDialogCancel": "Cancel",
   "insecureDialogContinue": "Continue anyway",
+  "insecureFallbackDialogTitle": "No encrypted connection",
+  "@insecureFallbackDialogTitle": {
+    "description": "Title of the warning when an address typed without http:// or https:// could not be reached over https and the server answered over plain http instead."
+  },
+  "insecureFallbackDialogBody": "{host} didn't answer over https://, only over unencrypted http://. If it normally uses https://, someone on this network may be blocking it.\n\nOnly continue if you know the server uses http:// and you trust this network: your password and tasks would travel unencrypted.",
+  "@insecureFallbackDialogBody": {
+    "description": "Body of the warning when https could not be reached and the server answered over plain http instead, which is also what blocking https on the network looks like; host is the server's address, for example 192.168.1.20:3456.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "192.168.1.20:3456"
+      }
+    }
+  },
   "overviewTitle": "Server found",
   "overviewVikunjaVersion": "Vikunja {version}",
   "@overviewVikunjaVersion": {
@@ -3615,6 +3629,32 @@
   "@linkCannotOpen": {
     "description": "A link in a task description that no app on the device can open."
   },
+  "linkDetailsTitle": "Link address",
+  "@linkDetailsTitle": {
+    "description": "Title of the dialog that a long press on a link in a description or comment opens, showing the link's full address before it is opened."
+  },
+  "linkDetailsHost": "Opens {host}",
+  "@linkDetailsHost": {
+    "description": "In the link address dialog: the host the link opens, written as the browser looks it up, international names in their xn-- form.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "xn--bcher-kva.example"
+      }
+    }
+  },
+  "linkDetailsMismatch": "This link may not go where its text says. Check the address before you open it.",
+  "@linkDetailsMismatch": {
+    "description": "Warning in the link address dialog when the link's text looks like a web address on another host than the one the link opens, or the address hides its host behind a user name."
+  },
+  "linkDetailsOpen": "Open",
+  "@linkDetailsOpen": {
+    "description": "Button in the link address dialog that opens the link."
+  },
+  "linkDetailsCopy": "Copy address",
+  "@linkDetailsCopy": {
+    "description": "Button in the link address dialog that copies the link's address."
+  },
   "richTextImage": "Image",
   "@richTextImage": {
     "description": "Read by screen readers for an image in a description or comment without a description of its own."
@@ -3698,6 +3738,37 @@
     }
   },
   "attachmentPickFailed": "The files couldn't be opened.",
+  "attachmentLocationKeptTitle": "Upload with location?",
+  "@attachmentLocationKeptTitle": {
+    "description": "Title of the question asked before files are uploaded when the location where a photo or video was taken couldn't be removed from them. Location is the place stored in the file, not the device's."
+  },
+  "attachmentLocationKeptBody": "{count, plural, one{The location couldn't be removed from {count} file. Everyone who can see the task can see where it was taken.} other{The location couldn't be removed from {count} files. Everyone who can see the task can see where they were taken.}}",
+  "@attachmentLocationKeptBody": {
+    "description": "Text of the question titled “Upload with location?”; the names of the files follow on lines of their own.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "attachmentLocationKeptLeftOut": "{count, plural, one{{count} file wasn't attached: its location couldn't be removed, and the task closed before you could choose.} other{{count} files weren't attached: their location couldn't be removed, and the task closed before you could choose.}}",
+  "@attachmentLocationKeptLeftOut": {
+    "description": "Snackbar below a closed task: picked files whose location (where a photo or video was taken) couldn't be removed were left out, because the question “Upload with location?” could no longer be asked; count is how many, for example 2.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "attachmentLocationKeptUpload": "Upload",
+  "@attachmentLocationKeptUpload": {
+    "description": "Button in the question titled “Upload with location?”: uploads the files with their location."
+  },
+  "attachmentLocationKeptSkip": "Skip",
+  "@attachmentLocationKeptSkip": {
+    "description": "Button in the question titled “Upload with location?”: leaves out the files whose location couldn't be removed; the other picked files are uploaded."
+  },
   "attachmentUploading": "Uploading…",
   "attachmentWaiting": "Waiting to upload",
   "@attachmentWaiting": {
@@ -3841,6 +3912,16 @@
     }
   },
   "shareFileUnreadable": "Couldn't be read",
+  "shareFileLocationKept": "{size} · location couldn't be removed",
+  "@shareFileLocationKept": {
+    "description": "Under a file in the sheet for what another app shared, when the location where the photo or video was taken couldn't be removed from it; it is uploaded with it only when the user chooses Upload in the question “Upload with location?” that the sheet asks before it adds the files. size is the file's size.",
+    "placeholders": {
+      "size": {
+        "type": "String",
+        "example": "2.4 MB"
+      }
+    }
+  },
   "shareFilesLeftOut": "This server doesn't take attachments, so the files are left out.",
   "shareTooManyFiles": "Only the first {count} files are added.",
   "@shareTooManyFiles": {
@@ -7686,6 +7767,10 @@
   "@privacyLockAfterRestart": {
     "description": "Under the Lock after setting."
   },
+  "privacyAppLockNoDone": "While the app lock is on, notifications of reminders and due dates offer no Done, so no task is marked done without unlocking. Snooze still works.",
+  "@privacyAppLockNoDone": {
+    "description": "Android only, while the app lock is on: info line under the app lock switch on the privacy page and under the Reminders and Due dates switches in the notification settings. Done and Snooze are the actions of these notifications (notificationActionDone, notificationActionSnooze10Minutes)."
+  },
   "privacyAppSwitcherHidden": "While the lock is on, the app switcher hides Vikunja's content.",
   "@privacyAppSwitcherHidden": {
     "description": "Info line on the privacy page: the app lock also hides the app's content in the app switcher."
@@ -8109,6 +8194,34 @@
         "example": "Oct 27, 2026"
       }
     }
+  },
+  "connectionHttpsAvailable": "This server also answers over HTTPS at {address}. Sign in there to encrypt your connection, then remove the unencrypted account.",
+  "@connectionHttpsAvailable": {
+    "description": "Cleartext section of an http address with an account on it, when the same server answers over HTTPS; address is its https:// address. An account cannot change its address, so the user signs in again there; afterwards the app offers to remove the unencrypted account.",
+    "placeholders": {
+      "address": {
+        "type": "String",
+        "example": "https://192.168.1.20"
+      }
+    }
+  },
+  "httpAccountRemoveTitle": "Remove the unencrypted account?",
+  "@httpAccountRemoveTitle": {
+    "description": "Title of the question the app asks once the same user of a server is signed in over HTTPS too: whether to remove the account that uses plain http. Its buttons are signOutDialogCancel and removeAccountDialogConfirm."
+  },
+  "httpAccountRemoveReason": "You're now also signed in over HTTPS, at {host}. With both accounts, you get every reminder twice.",
+  "@httpAccountRemoveReason": {
+    "description": "Leads the text of httpAccountRemoveTitle's question, before signOutDialogBody about the unencrypted account; host is the HTTPS account's server address.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "192.168.1.20"
+      }
+    }
+  },
+  "connectionUseHttps": "Use HTTPS",
+  "@connectionUseHttps": {
+    "description": "Button beside the note that the server also answers over HTTPS: opens adding an account at the https:// address."
   },
   "connectionCleartextNotAllowed": "Not allowed. Requests to this address fail until you allow them.",
   "@connectionCleartextNotAllowed": {

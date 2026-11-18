@@ -33,7 +33,8 @@ final class PluginAttachmentPicker implements AttachmentPicker {
   final AppExcursions? excursions;
 
   /// Takes the location out of photos and videos from the photo picker and
-  /// the camera; files from the document picker keep theirs.
+  /// the camera, and out of pictures from the document picker (owner,
+  /// 2026-11-18); the document picker's other files keep theirs.
   final LocationRemoval? locations;
   final DateTime Function() _now;
 
@@ -51,20 +52,25 @@ final class PluginAttachmentPicker implements AttachmentPicker {
     bool imagesOnly = false,
     bool multiple = true,
   }) async {
+    final PickedFiles picked;
     if (documents case final documents?) {
-      return await documents.pick(
+      picked = await documents.pick(
         maxBytes: maxBytes,
         imagesOnly: imagesOnly,
         multiple: multiple,
       );
+    } else {
+      final groups = imagesOnly ? const [_images] : const <XTypeGroup>[];
+      final files = await _away(
+        () async => multiple
+            ? await openFiles(acceptedTypeGroups: groups)
+            : [?await openFile(acceptedTypeGroups: groups)],
+      );
+      picked = PickedFiles(files: files.map(_picked).toList());
     }
-    final groups = imagesOnly ? const [_images] : const <XTypeGroup>[];
-    final files = await _away(
-      () async => multiple
-          ? await openFiles(acceptedTypeGroups: groups)
-          : [?await openFile(acceptedTypeGroups: groups)],
+    return picked.withFiles(
+      await _withoutLocations(picked.files, only: _isPicture),
     );
-    return PickedFiles(files: files.map(_picked).toList());
   }
 
   // Without the full metadata the photo picker needs no library permission
@@ -95,11 +101,10 @@ final class PluginAttachmentPicker implements AttachmentPicker {
             for (final file in files) file.name,
           ], pickedAt: _now())
         : [for (final file in files) file.name];
-    await locations?.removeFromAll([for (final file in files) file.path]);
-    return [
+    return await _withoutLocations([
       for (final (index, file) in files.indexed)
         _picked(file, name: names[index]),
-    ];
+    ]);
   }
 
   @override
@@ -113,12 +118,41 @@ final class PluginAttachmentPicker implements AttachmentPicker {
     );
     if (file == null) return null;
     final takenAt = _now();
-    await locations?.removeFromAll([file.path]);
-    return PickedFile(
-      path: file.path,
-      name: cameraFileName(file.path, takenAt: takenAt),
-      mimeType: file.mimeType ?? mediaTypeOf(file.path),
-    );
+    return (await _withoutLocations([
+      PickedFile(
+        path: file.path,
+        name: cameraFileName(file.path, takenAt: takenAt),
+        mimeType: file.mimeType ?? mediaTypeOf(file.path),
+      ),
+    ])).single;
+  }
+
+  /// [files] in their order, each that [only] takes without its location
+  /// or marked as keeping it.
+  Future<List<PickedFile>> _withoutLocations(
+    List<PickedFile> files, {
+    bool Function(PickedFile file)? only,
+  }) async {
+    final locations = this.locations;
+    if (locations == null) return files;
+    final kept = await locations.removeFromAll([
+      for (final file in files)
+        if (only?.call(file) ?? true) file.path,
+    ]);
+    return [
+      for (final file in files)
+        if (kept.contains(file.path)) file.withKeptLocation() else file,
+    ];
+  }
+
+  // By the picker's type, or by the name where it gives a generic one. An
+  // SVG holds no location, and iOS cannot read one as an image.
+  static bool _isPicture(PickedFile file) {
+    final type = switch (file.mimeType) {
+      final String type when type != 'application/octet-stream' => type,
+      _ => mediaTypeOf(file.name) ?? mediaTypeOf(file.path),
+    };
+    return type != null && type.startsWith('image/') && type != 'image/svg+xml';
   }
 
   // image_picker keeps lost picks on Android only, and iOS does not
@@ -233,6 +267,9 @@ String? mediaTypeOf(String path) => switch (p.extension(path).toLowerCase()) {
   '.bmp' => 'image/bmp',
   '.heic' => 'image/heic',
   '.heif' => 'image/heif',
+  '.avif' => 'image/avif',
+  '.tif' || '.tiff' => 'image/tiff',
+  '.dng' => 'image/x-adobe-dng',
   '.mp4' => 'video/mp4',
   '.mov' => 'video/quicktime',
   '.3gp' => 'video/3gpp',

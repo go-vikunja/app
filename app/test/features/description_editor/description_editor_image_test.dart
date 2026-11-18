@@ -115,6 +115,30 @@ void main() {
     ]);
   });
 
+  testWidgets('an image whose location could not be removed is uploaded '
+      'only when the user says so', (tester) async {
+    picker.photos = [
+      const PickedFile(
+        path: '/cache/IMG_2.jpg',
+        name: 'IMG_2.jpg',
+        mimeType: 'image/jpeg',
+        keptLocation: true,
+      ),
+    ];
+    await openEditor(tester);
+
+    await insertFrom(tester, en.attachmentSourcePhotos);
+    expect(find.text(en.attachmentLocationKeptTitle), findsOneWidget);
+    await tester.tap(find.text(en.attachmentLocationKeptSkip));
+    await tester.pumpAndSettle();
+    expect(data.attachments.calls, isEmpty);
+
+    await insertFrom(tester, en.attachmentSourcePhotos);
+    await tester.tap(find.text(en.attachmentLocationKeptUpload));
+    await tester.pumpAndSettle();
+    expect(data.attachments.calls, ['uploadNow 1 IMG_2.jpg']);
+  });
+
   testWidgets('the camera and files give one image each', (tester) async {
     picker
       ..camera = photo

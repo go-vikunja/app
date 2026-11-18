@@ -124,6 +124,18 @@ void main() {
       }
     });
 
+    test('a link with user info is refused, which would show another host '
+        'first', () {
+      for (final text in [
+        'https://vikunja.example.com@evil.example/share/$_hash/auth',
+        'https://user:secret@tasks.example.com/share/$_hash/auth',
+        'https://vikunja.example.com@evil.example/projects/1/2#share-auth-token=$_hash',
+        'Open https://vikunja.example.com@evil.example/share/$_hash/auth',
+      ]) {
+        expect(parseLinkShareUrl(text), isNull, reason: text);
+      }
+    });
+
     test('round trips with linkShareUrl', () {
       for (final (base, viewId) in [
         ('https://tasks.example.com/', null),
@@ -207,6 +219,7 @@ void main() {
         'https://e.com/register#invite-link=a%20b',
         'e.com/register#invite-link=$_token',
         'https://e.com/share/${'a' * 40}/auth',
+        'https://vikunja.example.com@evil.example/register#invite-link=$_token',
       ]) {
         expect(parseInviteLink(text), isNull, reason: text);
       }

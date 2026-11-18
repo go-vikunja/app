@@ -126,7 +126,8 @@ void main() {
 
   /// Alice signed in with a task due in 2036 (the plugin refuses an
   /// instant before the real clock), her scheduler and a Today widget,
-  /// the app lock on, everything settled in [started].
+  /// the app lock on (so Android's reminders have no Done), everything
+  /// settled in [started].
   Future<Account> started(AppLocalizations started) async {
     await storePrivacySettings(
       auth.preferences,
@@ -185,7 +186,6 @@ void main() {
     final account = await started(en);
     expect(callsOf('zonedSchedule'), hasLength(1));
     expect(actionTitles(callsOf('zonedSchedule').single), [
-      en.notificationActionDone,
       en.notificationActionSnooze10Minutes,
       en.notificationActionSnooze1Hour,
     ]);
@@ -234,7 +234,6 @@ void main() {
       de.notificationChannelReminders,
     );
     expect(actionTitles(scheduled), [
-      de.notificationActionDone,
       de.notificationActionSnooze10Minutes,
       de.notificationActionSnooze1Hour,
     ]);

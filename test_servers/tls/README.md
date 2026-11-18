@@ -56,7 +56,7 @@ The committed unit-test fixtures in `app/test/fixtures/tls/` are a separate set 
 
 ```sh
 python3 -I tool/tls_e2e.py reverse             # adb reverse for 34528-34530 (emulator-5554, or ANDROID_SERIAL)
-adb -s emulator-5554 push test_servers/tls/generated/client.p12 /sdcard/Download/rurana-test-client.p12
+adb -s emulator-5554 push test_servers/tls/generated/client.p12 /sdcard/Download/vikunja-app-test-client.p12
 python3 -I tool/tls_e2e.py send-share 34528    # opens the link share in the app as a guest; the URL is never printed
 ```
 

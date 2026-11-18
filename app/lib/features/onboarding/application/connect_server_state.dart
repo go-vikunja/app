@@ -25,9 +25,13 @@ final class ConnectServerConnecting extends ConnectServerState {
 
 /// Found a Vikunja server over plain http; the user has to accept the risk.
 final class ConnectServerAwaitingInsecureConsent extends ConnectServerState {
-  const new(this.connection);
+  const new(this.connection, {this.httpsFailed = false});
 
   final ServerConnection connection;
+
+  /// The address was typed without a scheme and https did not connect, so
+  /// the server answered over http in its place.
+  final bool httpsFailed;
 }
 
 final class ConnectServerFailed extends ConnectServerState {

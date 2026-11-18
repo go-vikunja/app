@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Runs the vikunja_api contract tests against the Docker test servers and
-# starts those servers first unless all of them are already running.
+# Runs the vikunja_api contract tests against the Docker test servers, which
+# `up -d` starts first, or recreates when VIKUNJA_APP_TEST_VIKUNJA_IMAGE names
+# another image than the running one, so the tests always meet the requested
+# release; a server that already runs it is left as it is.
 #
 # Usage: tool/contract_tests.sh [flutter test arguments ...]
 # Example: tool/contract_tests.sh --plain-name '2.8.0'
@@ -18,13 +20,7 @@ else
   exit 2
 fi
 
-expected_services="$("${compose[@]}" config --services | sort)"
-running_services="$("${compose[@]}" ps --status running --services 2>/dev/null | sort || true)"
-if [[ "$expected_services" == "$running_services" ]]; then
-  echo "All test servers are already running."
-else
-  "${compose[@]}" up -d
-fi
+"${compose[@]}" up -d
 
 "${repo_root}/tool/wait_for_test_servers.sh"
 

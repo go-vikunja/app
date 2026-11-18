@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
@@ -49,10 +50,13 @@ Future<BrowserLegHint?> browserLegHint(
   bool sayOtherHost = true,
 }) async {
   final apiOrigin = OriginKey.tryOf(connection.rootUri);
+  // Settings are stored under the punycode host, as the root has it.
   final pageOrigin = OriginKey.tryOf(
-    webFrontendBase(
-      serverRoot: connection.rootUri,
-      frontendUrl: connection.info.frontendUrl,
+    withAsciiHost(
+      webFrontendBase(
+        serverRoot: connection.rootUri,
+        frontendUrl: connection.info.frontendUrl,
+      ),
     ),
   );
   if (apiOrigin == null || pageOrigin == null) return null;

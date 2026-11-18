@@ -1216,6 +1216,38 @@ void main() {
       },
     );
 
+    // Edits, not creates: a create would also show in the count probe.
+    test('an edit stored after the delta in the second it read last, behind '
+        'its cursor, or stamped before it but committed only then, comes '
+        "with the next run, as the server reads a date's second", () async {
+      client.tasks.readsDatesAboveTheirSecond = true;
+      final sync = await synced();
+      replaceTask(7, title: 'Task 7 edited');
+      client.beforeRequest = (request) async {
+        if (request != 'tasks (all) per_page=1 page=1') return;
+        replaceTask(5, title: 'Task 5 in that second');
+        replaceTask(
+          9,
+          title: 'Task 9 committed late',
+          updated: edited.subtract(const Duration(seconds: 30)),
+        );
+      };
+
+      await sync.refresh();
+
+      expect(
+        (await state())[SyncStateKeys.watermark],
+        edited.toIso8601String(),
+      );
+      expect((await db.tasksDao.find(5))!.title, 'Task 5');
+      client.beforeRequest = null;
+
+      await sync.refresh();
+
+      expect((await db.tasksDao.find(5))!.title, 'Task 5 in that second');
+      expect((await db.tasksDao.find(9))!.title, 'Task 9 committed late');
+    });
+
     test("a full resync's watermark is the newest `updated` its task phase "
         'began with, not a row written here after it', () async {
       final sync = await synced(perPage: 1);
@@ -1373,6 +1405,31 @@ void main() {
       gate.release();
       await Future.wait([running, afterWrite, again, joining]);
 
+      expect(requestsFor('projects page'), hasLength(2));
+    });
+
+    test('a refresh the user started follows a run that has read its delta '
+        'and brings an edit made meanwhile; an automatic one joins that run '
+        'and does not', () async {
+      final sync = await synced();
+      final gate = RequestGate()..pattern = 'tasks (all)';
+      client.beforeRequest = gate.call;
+      final running = sync.refresh();
+      while (!gate.isHolding) {
+        await pumpEventQueue();
+      }
+
+      replaceTask(3, title: 'Edited on the web', updated: edited);
+      final automatic = sync.refresh();
+      final pulled = sync.refreshInNewRun();
+      client.beforeRequest = null;
+      gate.release();
+      Future<String> title() async => (await db.tasksDao.find(3))!.title;
+
+      await Future.wait([running, automatic]);
+      expect(await title(), 'Task 3');
+      await pulled;
+      expect(await title(), 'Edited on the web');
       expect(requestsFor('projects page'), hasLength(2));
     });
 

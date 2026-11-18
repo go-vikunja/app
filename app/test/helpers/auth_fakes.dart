@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/storage/draft_files.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 import 'package:vikunja_mobile/features/notifications/application/notifications_onboarding.dart';
@@ -259,6 +260,10 @@ final class AuthFakes {
 
   final secureStore = MemorySecureStore();
   final preferences = MemoryPreferencesStore();
+
+  /// The unsent comments and description edits, which stay out of
+  /// [preferences].
+  final drafts = MemoryPreferencesStore();
   final webAuthenticator = FakeWebAuthenticator();
   final tokenGateway = FakeTokenGateway();
   final accountGateway = FakeAccountGateway();
@@ -271,6 +276,7 @@ final class AuthFakes {
   List<Override> get overrides => [
     secureStoreProvider.overrideWithValue(secureStore),
     preferencesStoreProvider.overrideWithValue(preferences),
+    draftStoreProvider.overrideWithValue(drafts),
     webAuthenticatorProvider.overrideWithValue(webAuthenticator),
     tokenGatewayProvider.overrideWithValue(tokenGateway),
     accountGatewayProvider.overrideWithValue(accountGateway),

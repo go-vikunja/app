@@ -31,7 +31,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: tool/ci/release_build.sh --tag "$GITHUB_REF_NAME"
+      # A patch release's tag that may go without every German text.
+      - env:
+          VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN: ${{ vars.VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN }}
+        run: tool/ci/release_build.sh --tag "$GITHUB_REF_NAME"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: release-unsigned
@@ -68,9 +71,12 @@ jobs:
     environment: release
     permissions:
       contents: write
+    # One tag publishes at a time; without queue: max a third tag's run would
+    # cancel a second one still waiting, for example for its approval.
     concurrency:
       group: release-publish
       cancel-in-progress: false
+      queue: max
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -139,11 +139,11 @@ void main() {
     testWidgets('pulling down syncs', (tester) async {
       harness.labels = FakeLabelRepository(labels: stored);
       await harness.pump(tester, location: AppRoutes.labels);
-      final before = harness.data.engine.refreshCalls;
+      final before = harness.data.engine.refreshInNewRunCalls;
 
       await pullToRefresh(tester, find.byType(ListView).last);
 
-      expect(harness.data.engine.refreshCalls, before + 1);
+      expect(harness.data.engine.refreshInNewRunCalls, before + 1);
     });
   });
 

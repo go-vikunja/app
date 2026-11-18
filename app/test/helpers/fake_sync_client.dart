@@ -246,6 +246,10 @@ final class FakeTasksPort implements TasksPort {
   /// A server that applies the web's position order instead of the sort.
   bool ignoresSort = false;
 
+  /// Like Vikunja, which reads a date in a filter as if it sat just above
+  /// its second: with whole-second timestamps `>=` then means `>`.
+  bool readsDatesAboveTheirSecond = false;
+
   @override
   Future<Page<Task>> list(TaskQuery query) async {
     await _client._request('tasks ${_describe(query)}');
@@ -449,7 +453,7 @@ final class FakeTasksPort implements TasksPort {
             final updated => switch (operator) {
               '>' => updated.isAfter(moment),
               '<=' => !updated.isAfter(moment),
-              _ => !updated.isBefore(moment),
+              _ => _atOrAfter(updated, moment),
             },
           },
         );
@@ -458,7 +462,7 @@ final class FakeTasksPort implements TasksPort {
         tests.add(
           (task) => switch (task.created) {
             null => false,
-            final created => !created.isBefore(moment),
+            final created => _atOrAfter(created, moment),
           },
         );
       } else if (_idClause.firstMatch(clause) case final match?) {
@@ -470,6 +474,10 @@ final class FakeTasksPort implements TasksPort {
     }
     return (task) => tests.every((test) => test(task));
   }
+
+  bool _atOrAfter(DateTime value, DateTime moment) => readsDatesAboveTheirSecond
+      ? value.isAfter(moment)
+      : !value.isBefore(moment);
 
   static int _epoch(DateTime? moment) => moment?.millisecondsSinceEpoch ?? 0;
 

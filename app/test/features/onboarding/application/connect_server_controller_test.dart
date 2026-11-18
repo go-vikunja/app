@@ -106,6 +106,30 @@ void main() {
       expect(currentServer(), isNull);
     });
 
+    test('says whether https failed first: an address without a scheme, '
+        'not a typed http://', () async {
+      expect(
+        state(),
+        isA<ConnectServerAwaitingInsecureConsent>().having(
+          (s) => s.httpsFailed,
+          'httpsFailed',
+          isTrue,
+        ),
+      );
+
+      controller().reset();
+      await controller().connect('http://192.168.1.20:3456');
+
+      expect(
+        state(),
+        isA<ConnectServerAwaitingInsecureConsent>().having(
+          (s) => s.httpsFailed,
+          'httpsFailed',
+          isFalse,
+        ),
+      );
+    });
+
     test('accepting confirms the server', () async {
       await controller().acceptInsecureConnection();
 
@@ -125,13 +149,34 @@ void main() {
       controller().reset();
       states.clear();
 
-      await controller().connect('192.168.1.20:3456');
+      await controller().connect('http://192.168.1.20:3456');
 
       expect(states, [
         isA<ConnectServerConnecting>(),
         isA<ConnectServerConnected>(),
       ]);
       expect(currentServer(), same(connection));
+    });
+
+    test('a server already accepted is asked about again when https '
+        'failed for an address without a scheme, as blocked https looks '
+        'so', () async {
+      await controller().acceptInsecureConnection();
+      controller().reset();
+
+      await controller().connect('192.168.1.20:3456');
+
+      expect(
+        state(),
+        isA<ConnectServerAwaitingInsecureConsent>().having(
+          (s) => s.httpsFailed,
+          'httpsFailed',
+          isTrue,
+        ),
+      );
+      expect(currentServer(), isNull);
+      await controller().acceptInsecureConnection();
+      expect(state(), isA<ConnectServerConnected>());
     });
 
     test('a consent revoked in the connection settings asks again', () async {

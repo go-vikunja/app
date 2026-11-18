@@ -107,7 +107,7 @@ void main() {
           'frontend_settings': {
             'play_sound_when_done': false,
             'sidebar_width': 321,
-            'rurana_contract_foreign': {
+            'vikunja_app_contract_foreign': {
               'nested': [1, 2],
             },
             'color_schema': 'dark',

@@ -30,7 +30,7 @@ class SyncStatusSection extends ConsumerWidget {
   void _syncNow(WidgetRef ref) => unawaited(
     ref
         .read(syncEngineProvider(entry.id))
-        .refresh()
+        .refreshInNewRun()
         .then<void>((_) {}, onError: (Object _) {}),
   );
 

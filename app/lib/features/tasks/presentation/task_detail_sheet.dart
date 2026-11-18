@@ -312,6 +312,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   CommentComposerDraft? _keptDraft;
   bool _draftAsked = false;
   bool _restoringDraft = false;
+  ScaffoldMessengerState? _screenMessenger;
 
   @override
   void initState() {
@@ -349,6 +350,12 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
           .listen((_) => _refreshFromServer());
     }, fireImmediately: true);
     if (widget.task.id > 0) _loadDetails(widget.task.id);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _screenMessenger = ScaffoldMessenger.maybeOf(context);
   }
 
   // Before a detail for the same task that replaces this one in the same
@@ -828,6 +835,13 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     _messenger.currentState
       ?..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(text)));
+  }
+
+  /// For what is said once the sheet (or the pane) has gone.
+  void _showMessageBelow(String text) {
+    final messenger = widget.messengerBelow?.currentState ?? _screenMessenger;
+    if (messenger == null || !messenger.mounted) return;
+    messenger.showSnackBar(SnackBar(content: Text(text)));
   }
 
   /// [write] stored on this device, else said in the sheet that it was not.
@@ -1971,6 +1985,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     controller: _details,
                     writable: descriptionWriter != null && !readOnly,
                     onMessage: _showMessage,
+                    onMessageAfterClose: _showMessageBelow,
                   ),
                   RelatedTasksSection(
                     task: task,

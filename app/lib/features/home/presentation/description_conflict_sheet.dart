@@ -119,7 +119,7 @@ class _Version extends StatelessWidget {
             // Only to compare: links open nothing here.
             child: RichHtml(
               html: html,
-              onLink: (_) {},
+              onLink: null,
               onTaskLink: (_) {},
               empty: Text(
                 context.l10n.syncProblemNoDescription,

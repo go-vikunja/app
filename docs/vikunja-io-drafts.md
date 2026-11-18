@@ -57,15 +57,15 @@ If you open a project that someone shared with you by link, the app signs you in
 
 So that the app works offline, it keeps the following in its own storage on your device:
 
-- for each account, a copy of your projects, tasks and notifications, changes and uploads not sent yet, comment drafts, and attachments you opened (cached for up to three days after their last use);
+- for each account, a copy of your projects, tasks and notifications, changes and uploads not sent yet, drafts of comments and descriptions, and attachments you opened (cached for up to three days after their last use);
 - the sign-in tokens and, if you set them up, your servers' access headers and client certificates, in the secure storage;
-- the list of your accounts with server address, username and name, the connection settings, your settings on this device, and a description you are still editing.
+- the list of your accounts with server address, username and name, the connection settings, and your settings on this device.
 
 The app sends none of this anywhere but to your server. It does not encrypt this data itself and relies on your device's encryption, so please use a screen lock. The app lock, if you turn it on, guards the screen, not the stored data.
 
 When you sign out of an account or remove it, the app deletes that account's data, drafts, widget content, notifications and tokens from the device, and asks the server to end the session. Changes not sent yet are lost, and the app warns you first. A server's connection settings stay until you forget them, and the app offers to forget them when no other account uses that server. Deleting the app deletes its data. On iOS the system can keep the secure storage after the app is deleted, and the app clears it the first time it starts after being installed again. A session you never signed out of ends on the server once it has gone unused for the server's session lifetime, three days by default.
 
-On Android, the app's data is excluded from backups and device transfers. On iOS, the copy of your tasks, the uploads not sent yet and the widgets' content are excluded from backups, while your settings, the account list, the connection settings and drafts are part of the device's backup. The secure storage never moves to another device.
+On Android, the app's data is excluded from backups and device transfers. On iOS, the copy of your tasks, the uploads not sent yet, your drafts and the widgets' content are excluded from backups, while your settings, the account list and the connection settings are part of the device's backup. The secure storage never moves to another device.
 
 #### Notifications and widgets
 
@@ -77,7 +77,7 @@ Notifications and widgets can show task titles on the lock screen and the home s
 
 The app asks only for permissions that one of its features needs: network access; notifications; exact alarms (Android), so that reminders come on time; running after a restart and in the background, to plan reminders and sync; Face ID, fingerprint or screen lock, only for the app lock; the camera, for photos you attach or use as your avatar; the photos and files you pick in the system's picker or share to the app; adding to your photos (iOS), which the system asks for the first time you save an attachment there; and the local network (iOS), to reach a server at home or at work. The app has no location permission and never reads your device's location.
 
-The app removes the location from photos and videos that you pick in the photo picker or take with the camera, and on Android also from those you share to the app, before it stores them for upload. Where it cannot, the file is uploaded with its location. On Android this happens for example with a location in a separate video track (action cameras, dashcams), the video of a motion photo, place names such as the city, a location in a camera maker's own or compressed metadata, and formats such as GIF, WebM or MKV. Files you pick as files are uploaded unchanged.
+The app removes the location from photos and videos that you pick in the photo picker or take with the camera, from pictures that you pick as files, and on Android also from photos and videos that you share to the app, before it stores them for upload. If it finds a location that it cannot remove, it asks you before the upload and skips the file unless you choose to upload it anyway, for files you pick and files you share alike. Some locations the app does not find, and these stay in the file: on Android for example a location in a separate video track (action cameras, dashcams), the video of a motion photo, place names such as the city, a location in a camera maker's own metadata, and formats such as GIF, WebM or MKV. Other files that you pick as files, such as videos and documents, are uploaded unchanged.
 
 #### App stores, downloads and beta versions
 
@@ -85,7 +85,7 @@ Google Play and the App Store handle downloads, updates, ratings and diagnostics
 
 If you test a beta version through Google Play, Google does not tell us who you are; we see only the feedback you send through Google Play. If you test it through TestFlight on iPhone or iPad, we see what TestFlight shows us about you, such as your email address, and the feedback and crash reports you send. We use them only to run the beta (Art. 6(1)(b) GDPR) and remove you from the list of testers when the beta ends or you leave it.
 
-If you download the APK file from GitHub, [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) applies. If you download it from dl.vikunja.io, [Server log files](#server-log-files) applies.
+If you download the APK file from GitHub, yourself or through an app such as Obtainium that watches the releases, [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) applies. If you download it from dl.vikunja.io, [Server log files](#server-log-files) applies.
 
 #### Questions and bug reports
 
@@ -125,7 +125,7 @@ The Vikunja app brings your tasks to your Android phone or tablet, iPhone and iP
 
 ## Get the app
 
-- **Android:** [Google Play](https://play.google.com/store/apps/details?id=io.vikunja.app). Without Google Play, install the APK from the [GitHub releases](https://github.com/go-vikunja/app/releases) or [dl.vikunja.io](https://dl.vikunja.io/app/). Each release lists the APK's SHA-256 and that of its signing certificate.
+- **Android:** [Google Play](https://play.google.com/store/apps/details?id=io.vikunja.app). Without Google Play, install an APK from the [GitHub releases](https://github.com/go-vikunja/app/releases) or [dl.vikunja.io](https://dl.vikunja.io/app/): the one for your phone's processor, usually `arm64-v8a`, is much smaller than the one for every device. Each release lists the SHA-256 of every APK and that of the signing certificate. An APK installed this way gets no updates by itself, security fixes included: [Obtainium](https://obtainium.imranr.dev) can watch `https://github.com/go-vikunja/app` and install each new release.
 - **iPhone and iPad:** APP-STORE-LINK
 
 The app needs Android 7.0 or newer, or iOS 15 or newer, and a Vikunja server with version 2.3.0 or newer. It is free, without ads or in-app purchases.
@@ -185,7 +185,7 @@ The app uses your device's language when it has a translation, and English other
 
 ## Troubleshooting
 
-- **The app cannot reach your server:** open the address in your phone's browser. If the browser warns about the certificate, set up the server's certificate under **Connection options**. If the server answers only over unencrypted HTTP, the app asks before it uses it.
+- **The app cannot reach your server:** open the address in your phone's browser. If the browser warns about the certificate, set up the server's certificate under **Connection options**. If the server answers only over unencrypted HTTP, the app asks before it uses it. If you typed the address without `https://` and the server answered only over HTTP, the app asks each time, as someone on the network may be blocking HTTPS; if your server really uses only HTTP, type the address with `http://`.
 - **This server is too old:** the app needs Vikunja 2.3.0 or newer. Ask whoever runs the server to update Vikunja.
 - **Reminders come late (Android):** allow exact alarms. The **Notifications** section of the **Account** tab shows **Reminders may be late** with **Allow exact alarms**.
 - **No notifications:** if notifications are off for the app, the **Notifications** section says so, with **Turn on**. Then try **Send a test notification**.

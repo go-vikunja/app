@@ -172,13 +172,24 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   ProviderListenable<Object?> get repositoryProvider => taskRepositoryProvider;
 
   @override
-  Future<void>? startRefresh() => _download(_viewId, board: _showsBoard);
+  Future<void>? startRefresh() =>
+      _download(_viewId, board: _showsBoard, inNewRun: true);
 
-  Future<void>? _download(int viewId, {required bool board}) {
+  /// [inNewRun] for a refresh the user started; the quiet ones join a sync
+  /// under way.
+  Future<void>? _download(
+    int viewId, {
+    required bool board,
+    bool inNewRun = false,
+  }) {
     final repository = ref.read(taskRepositoryProvider);
     return board
-        ? repository?.refreshBoard(widget.projectId, viewId)
-        : repository?.refreshProjectList(widget.projectId, viewId: viewId);
+        ? repository?.refreshBoard(widget.projectId, viewId, inNewRun: inNewRun)
+        : repository?.refreshProjectList(
+            widget.projectId,
+            viewId: viewId,
+            inNewRun: inNewRun,
+          );
   }
 
   @override

@@ -53,8 +53,14 @@ abstract interface class TaskRepository {
   /// Runs the sync and downloads the view's tasks and their positions,
   /// for a table or Gantt view only when the device cannot evaluate its
   /// filter. Throws the `VikunjaFailure` of the download; a [viewId] of 0
-  /// only syncs.
-  Future<void> refreshProjectList(int projectId, {required int viewId});
+  /// only syncs. [inNewRun], for a refresh the user started or after a
+  /// write, syncs in a run of its own after any under way; else the sync
+  /// joins a run under way.
+  Future<void> refreshProjectList(
+    int projectId, {
+    required int viewId,
+    bool inNewRun = false,
+  });
 
   /// What a kanban view's board is built from, with its filter evaluated
   /// here (`BoardSource.matchingIds`).
@@ -63,7 +69,8 @@ abstract interface class TaskRepository {
   /// Runs the sync, then downloads the board: every bucket with its first
   /// page of cards, and again each further page loaded before. Throws the
   /// `VikunjaFailure` of the download and keeps the previous board then.
-  Future<void> refreshBoard(int projectId, int viewId);
+  /// [inNewRun] as in [refreshProjectList].
+  Future<void> refreshBoard(int projectId, int viewId, {bool inNewRun = false});
 
   /// Downloads the next page of one bucket's cards and adds it to the
   /// board; online only, throws the `VikunjaFailure`.
@@ -113,9 +120,10 @@ abstract interface class TaskRepository {
 
   /// Runs the sync, which brings a changed definition; a saved filter the
   /// device cannot evaluate is then downloaded. Throws the `VikunjaFailure`
-  /// of the download.
-  Future<void> refreshSavedFilter(int pseudoProjectId);
+  /// of the download. [inNewRun] as in [refreshProjectList].
+  Future<void> refreshSavedFilter(int pseudoProjectId, {bool inNewRun = false});
 
+  /// A refresh the user started: a sync of its own, after any under way.
   Future<void> refreshOpenTasks();
 
   /// Writes apply to the local row at once and are queued for the server;

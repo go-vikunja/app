@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
+import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
 import '../../helpers/fake_sync_client.dart';
@@ -98,6 +99,64 @@ void main() {
     write.serverTasks.addEntries(tasks.map((t) => MapEntry(t.id, t)));
   });
 
+  test('with the real engine, a run that read a task before its send '
+      'cannot leave that stale row: the refresh after the drain runs after '
+      'it', () async {
+    final before = now.subtract(const Duration(minutes: 10));
+    read.allTasks = [for (final task in tasks) task.copyWith(updated: before)];
+    write.serverTasks.addEntries(read.allTasks.map((t) => MapEntry(t.id, t)));
+    final engine = DefaultSyncEngine(
+      db: db,
+      client: read,
+      perPage: 50,
+      now: () => now,
+    );
+    addTearDown(engine.dispose);
+    await engine.ensureInitialSync();
+    await queue(1, done);
+    // The server answers the run's first task read as it was before the
+    // send, every later one as it is after it.
+    final reached = Completer<void>();
+    final held = Completer<void>();
+    var taskReads = 0;
+    read.beforeRequest = (request) async {
+      if (!request.startsWith('tasks ')) return;
+      if (++taskReads == 1) {
+        reached.complete();
+        await held.future;
+      } else {
+        read.allTasks = [
+          for (final task in read.allTasks) write.serverTasks[task.id] ?? task,
+        ];
+      }
+    };
+    final running = engine.refresh();
+    await reached.future;
+    final outbox = OutboxSender(
+      db: db,
+      writeClient: write,
+      readClient: read,
+      sync: engine,
+      now: () => now,
+      createTimer: timers.create,
+      random: ZeroRandom(),
+      currentUserId: () => null,
+    );
+    addTearDown(outbox.dispose);
+
+    final draining = outbox.drain();
+    while (await db.outboxDao.count() > 0) {
+      await pumpEventQueue();
+    }
+    expect((await db.tasksDao.find(1))!.done, isTrue);
+    held.complete();
+    await running;
+    await draining;
+
+    expect((await db.tasksDao.find(1))!.done, isTrue);
+    expect(taskReads, greaterThan(2));
+  });
+
   group('sending', () {
     test(
       "sends the queued ops in order and applies the server's answers",
@@ -117,7 +176,7 @@ void main() {
         expect(one.updated, now);
         expect((await db.tasksDao.findRow(1))!.pendingChanges, isNull);
         expect((await db.tasksDao.find(2))!.isFavorite, isTrue);
-        expect(sync.refreshCalls, 1);
+        expect(sync.refreshAfterWriteCalls, 1);
         expect(states, [
           OutboxSenderState.idle,
           OutboxSenderState.draining,
@@ -146,7 +205,7 @@ void main() {
       expect(write.deletes, [1]);
       expect(await db.tasksDao.findRow(1), isNull);
       expect(await db.outboxDao.count(), 0);
-      expect(sync.refreshCalls, 1);
+      expect(sync.refreshAfterWriteCalls, 1);
     });
 
     for (final (what, code) in [
@@ -266,7 +325,7 @@ void main() {
       await second;
 
       expect(write.requests, ['update 1', 'update 2']);
-      expect(sync.refreshCalls, 1);
+      expect(sync.refreshAfterWriteCalls, 1);
     });
 
     test(
@@ -278,7 +337,7 @@ void main() {
         final first = outbox.drain();
         await pumpEventQueue();
         expect(write.requests, ['update 1']);
-        expect(sync.refreshCalls, 1);
+        expect(sync.refreshAfterWriteCalls, 1);
 
         await queue(2, done);
         final second = outbox.drain();
@@ -288,7 +347,7 @@ void main() {
         await second;
 
         expect(write.requests, ['update 1', 'update 2']);
-        expect(sync.refreshCalls, 2);
+        expect(sync.refreshAfterWriteCalls, 2);
         expect(await db.outboxDao.count(), 0);
       },
     );
@@ -553,7 +612,7 @@ void main() {
     test('nothing to send means no refresh', () async {
       await sender().drain();
 
-      expect(sync.refreshCalls, 0);
+      expect(sync.refreshAfterWriteCalls, 0);
       expect(write.requests, isEmpty);
     });
 
@@ -564,7 +623,7 @@ void main() {
       await sender().drain();
 
       expect(await db.outboxDao.count(), 0);
-      expect(sync.refreshCalls, 1);
+      expect(sync.refreshAfterWriteCalls, 1);
     });
 
     test('after dispose nothing is sent', () async {
@@ -595,7 +654,7 @@ void main() {
       expect(op.attempts, 1);
       expect(op.nextAttemptAt, now.add(const Duration(seconds: 2)));
       expect(decodeFailure(op.lastError!), isA<NetworkFailure>());
-      expect(sync.refreshCalls, 0);
+      expect(sync.refreshAfterWriteCalls, 0);
       expect(await db.outboxDao.loadProblems(), isEmpty);
 
       for (final wait in const [4, 8, 16]) {
@@ -614,7 +673,7 @@ void main() {
 
       expect(await db.outboxDao.count(), 0);
       expect(write.serverTasks[1]!.done, isTrue);
-      expect(sync.refreshCalls, 1);
+      expect(sync.refreshAfterWriteCalls, 1);
       expect(states.last, OutboxSenderState.idle);
       expect(timers.active, isEmpty);
     });
@@ -1013,13 +1072,13 @@ void main() {
       await queue(1, done);
       final outbox = sender();
       expect(await outbox.sendNow(), isNull);
-      expect(sync.refreshCalls, 1);
+      expect(sync.refreshAfterWriteCalls, 1);
 
       await queue(2, done);
       final quiet = sender();
       expect(await quiet.sendNow(refreshAfter: false), isNull);
       expect(write.requests, ['update 1', 'update 2']);
-      expect(sync.refreshCalls, 1);
+      expect(sync.refreshAfterWriteCalls, 1);
 
       write.beforeRequest = (_) =>
           fail(const NetworkFailure(NetworkProblem.unreachable));
@@ -1032,7 +1091,7 @@ void main() {
 
       expect(write.updates.last, (1, favorite));
       expect(await db.outboxDao.count(), 0);
-      expect(sync.refreshCalls, 1);
+      expect(sync.refreshAfterWriteCalls, 1);
     });
 
     test('pause stops the drain between ops', () async {
@@ -1101,7 +1160,7 @@ void main() {
       expect(daily.doneAt, server.doneAt);
       expect(await db.outboxDao.count(), 0);
       expect(outbox.state, OutboxSenderState.idle);
-      expect(sync.refreshCalls, 1);
+      expect(sync.refreshAfterWriteCalls, 1);
     });
 
     test('sent with a label whose request failed after the body goes again '
@@ -1452,7 +1511,7 @@ void main() {
         expect(await db.outboxDao.count(), 1);
         expect(outbox.state, OutboxSenderState.idle);
         expect(timers.active, isEmpty);
-        expect(sync.refreshCalls, 1);
+        expect(sync.refreshAfterWriteCalls, 1);
         // The local edit stays until the user decides.
         expect((await db.tasksDao.find(1))!.done, isTrue);
       });
@@ -1707,7 +1766,7 @@ void main() {
       await pumpEventQueue();
       expect(seen.last!.id, 100);
       expect(await db.outboxDao.count(), 0);
-      expect(sync.refreshCalls, 1);
+      expect(sync.refreshAfterWriteCalls, 1);
     });
 
     test(
@@ -2071,7 +2130,7 @@ void main() {
 
       expect(write.requests, isEmpty);
       expect(read.requests, isEmpty);
-      expect(sync.refreshCalls, 0);
+      expect(sync.refreshAfterWriteCalls, 0);
       expect(await db.outboxDao.count(), 0);
       expect(await db.tasksDao.findRow(id), isNull);
     });
@@ -2124,7 +2183,7 @@ void main() {
       expect(write.serverTasks.keys, isNot(contains(100)));
       expect(await db.tasksDao.findRow(id), isNull);
       expect(await db.outboxDao.count(), 0);
-      expect(sync.refreshCalls, 0);
+      expect(sync.refreshAfterWriteCalls, 0);
     });
 
     test('a lookup that finds nothing still sends the create when its delete '

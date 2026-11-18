@@ -1,7 +1,6 @@
-import 'dart:typed_data';
-
 import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -52,6 +51,7 @@ void main() {
     int? projectId = 1,
     User? Function(int commentId)? replyAuthorOf,
     bool toggleable = false,
+    bool opensLinks = true,
   }) async {
     usePhoneSurface(tester, logicalSize: const Size(360, 1600));
     await pumpSignedInApp(tester, sync: data);
@@ -69,7 +69,7 @@ void main() {
                 child: SelectionArea(
                   child: RichTextView(
                     document: RichDocument(blocks),
-                    onLink: taps.links.add,
+                    onLink: opensLinks ? taps.links.add : null,
                     onTaskLink: taps.tasks.add,
                     onToggleTaskItem: toggleable ? taps.taskItems.add : null,
                     projectId: projectId,
@@ -589,6 +589,194 @@ void main() {
 
       expect(taps.links, ['https://example.com/docs']);
       semantics.dispose();
+    });
+  });
+
+  group('where a link goes', () {
+    const variant = TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.iOS,
+    });
+    const shop = 'https://bücher.example/a?b=1';
+    const shopShown = 'https://xn--bcher-kva.example/a?b=1';
+    late List<String> clipboardTexts;
+
+    setUp(() => clipboardTexts = []);
+
+    void mockClipboard(WidgetTester tester) {
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            clipboardTexts.add((call.arguments as Map)['text'] as String);
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+    }
+
+    Future<void> longPressOnText(WidgetTester tester, String text) async {
+      final range = find.textRange.ofSubstring(text).evaluate().single;
+      final box = range.renderObject
+          .getBoxesForSelection(
+            TextSelection(
+              baseOffset: range.textRange.start,
+              extentOffset: range.textRange.end,
+            ),
+          )
+          .first;
+      await tester.longPressAt(
+        range.renderObject.localToGlobal(box.toRect().center),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('a long press shows the full address and its host in '
+        'punycode without opening it; Open opens it', (tester) async {
+      final taps = await pumpRichText(tester, const [
+        RichParagraph([
+          RichTextRun('See '),
+          RichTextRun('the shop', href: shop),
+        ]),
+      ]);
+
+      await longPressOnText(tester, 'the shop');
+
+      expect(find.text(en.linkDetailsTitle), findsOneWidget);
+      expect(find.text(shopShown), findsOneWidget);
+      expect(
+        find.text(en.linkDetailsHost('xn--bcher-kva.example')),
+        findsOneWidget,
+      );
+      expect(find.text(en.linkDetailsMismatch), findsNothing);
+      expect(taps.links, isEmpty);
+
+      await tester.tap(find.text(en.linkDetailsOpen));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.linkDetailsTitle), findsNothing);
+      expect(taps.links, [shop]);
+    }, variant: variant);
+
+    testWidgets('Copy address copies the address as shown', (tester) async {
+      mockClipboard(tester);
+      final taps = await pumpRichText(tester, const [
+        RichParagraph([RichTextRun('the shop', href: shop)]),
+      ]);
+
+      await longPressOnText(tester, 'the shop');
+      await tester.tap(find.text(en.linkDetailsCopy));
+      await tester.pumpAndSettle();
+
+      expect(clipboardTexts, [shopShown]);
+      expect(taps.links, isEmpty);
+      expect(find.text(en.linkDetailsTitle), findsNothing);
+    }, variant: variant);
+
+    testWidgets('a tap on a link whose text names another host shows where '
+        'it goes first; Cancel opens nothing', (tester) async {
+      const target = 'https://evil.example/login';
+      final taps = await pumpRichText(tester, const [
+        RichParagraph([
+          RichTextRun('https://vikunja.', href: target),
+          RichTextRun(
+            'example.com/login',
+            marks: {RichMark.bold},
+            href: target,
+          ),
+        ]),
+      ]);
+
+      await tester.tapOnText(find.textRange.ofSubstring('example.com/login'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.linkDetailsMismatch), findsOneWidget);
+      expect(find.text(en.linkDetailsHost('evil.example')), findsOneWidget);
+      expect(find.text(target), findsOneWidget);
+      expect(taps.links, isEmpty);
+
+      await tester.tap(find.text(en.cancel));
+      await tester.pumpAndSettle();
+      expect(taps.links, isEmpty);
+
+      await tester.tapOnText(find.textRange.ofSubstring('https://vikunja.'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.linkDetailsOpen));
+      await tester.pumpAndSettle();
+      expect(taps.links, [target]);
+    }, variant: variant);
+
+    testWidgets('where links open nothing, the dialog offers no Open', (
+      tester,
+    ) async {
+      const target = 'https://evil.example/login';
+      await pumpRichText(tester, const [
+        RichParagraph([
+          RichTextRun('the shop', href: shop),
+          RichTextRun(' and '),
+          RichTextRun('https://vikunja.example.com', href: target),
+        ]),
+      ], opensLinks: false);
+
+      await longPressOnText(tester, 'the shop');
+      expect(find.text(shopShown), findsOneWidget);
+      expect(find.text(en.linkDetailsCopy), findsOneWidget);
+      expect(find.text(en.linkDetailsOpen), findsNothing);
+      await tester.tap(find.text(en.cancel));
+      await tester.pumpAndSettle();
+
+      await tester.tapOnText(
+        find.textRange.ofSubstring('https://vikunja.example.com'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(en.linkDetailsMismatch), findsOneWidget);
+      expect(find.text(en.linkDetailsCopy), findsOneWidget);
+      expect(find.text(en.linkDetailsOpen), findsNothing);
+    }, variant: variant);
+
+    testWidgets('an invisible character before the address in a mark of its '
+        'own still asks first', (tester) async {
+      const target = 'https://evil.example/';
+      final taps = await pumpRichText(tester, const [
+        RichParagraph([
+          RichTextRun('​', marks: {RichMark.bold}, href: target),
+          RichTextRun('https://bank.example', href: target),
+        ]),
+      ]);
+
+      await tester.tapOnText(
+        find.textRange.ofSubstring('https://bank.example'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.linkDetailsMismatch), findsOneWidget);
+      expect(taps.links, isEmpty);
+    });
+
+    testWidgets('a tap on a link whose text names its own host opens it at '
+        'once', (tester) async {
+      final taps = await pumpRichText(tester, const [
+        RichParagraph([
+          RichTextRun(
+            'https://example.com/docs',
+            href: 'https://www.example.com/docs',
+          ),
+        ]),
+      ]);
+
+      await tester.tapOnText(
+        find.textRange.ofSubstring('https://example.com/docs'),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.linkDetailsTitle), findsNothing);
+      expect(taps.links, ['https://www.example.com/docs']);
     });
   });
 

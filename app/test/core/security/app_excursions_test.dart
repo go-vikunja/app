@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
+import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 
 void main() {
   var now = DateTime.utc(2026, 10, 27, 9);
@@ -106,5 +107,22 @@ void main() {
       ..dispose()
       ..abandon();
     expect(abandons, 2);
+  });
+
+  test('keep the lock open no longer than its own time, 30 seconds with '
+      'immediately and ten minutes at most', () {
+    expect(
+      [
+        for (final lockAfter in LockAfter.values)
+          AppExcursions.graceFor(lockAfter.duration),
+      ],
+      const [
+        Duration(seconds: 30),
+        Duration(minutes: 1),
+        Duration(minutes: 5),
+        Duration(minutes: 10),
+        Duration(minutes: 10),
+      ],
+    );
   });
 }

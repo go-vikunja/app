@@ -280,10 +280,18 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
 
   void _onStateChanged(ConnectServerState? previous, ConnectServerState next) {
     switch (next) {
+      // An address opened from elsewhere, such as the https offer of the
+      // Connection page.
+      case ConnectServerConnecting(:final input, target: ConnectTarget.server)
+          when input.trim() != _address.text.trim():
+        _address.text = input;
       case ConnectServerFailed() || ConnectServerLinkFailed():
         unawaited(HapticFeedback.heavyImpact());
-      case ConnectServerAwaitingInsecureConsent(:final connection):
-        unawaited(_askForInsecureConsent(connection));
+      case ConnectServerAwaitingInsecureConsent(
+        :final connection,
+        :final httpsFailed,
+      ):
+        unawaited(_askForInsecureConsent(connection, httpsFailed: httpsFailed));
       case ConnectServerConnected() when widget.adding:
         unawaited(context.push(AppRoutes.addAccountServer));
       case ConnectServerConnected():
@@ -363,10 +371,14 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     }
   }
 
-  Future<void> _askForInsecureConsent(ServerConnection connection) async {
+  Future<void> _askForInsecureConsent(
+    ServerConnection connection, {
+    required bool httpsFailed,
+  }) async {
     final accepted = await confirmInsecureConnection(
       context,
       rootUri: connection.rootUri,
+      httpsFailed: httpsFailed,
     );
     if (!mounted) return;
     if (accepted) {

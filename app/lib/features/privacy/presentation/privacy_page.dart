@@ -191,6 +191,11 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
                       onTap: () =>
                           unawaited(_chooseLockAfter(settings.lockAfter)),
                     ),
+                  if (settings.appLock && platform == TargetPlatform.android)
+                    SettingsNote(
+                      icon: Icons.notifications_outlined,
+                      text: l10n.privacyAppLockNoDone,
+                    ),
                   SettingsNote(
                     icon: Icons.visibility_off_outlined,
                     text: bestEffort

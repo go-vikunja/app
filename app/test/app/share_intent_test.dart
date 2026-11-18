@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -362,6 +363,70 @@ void main() {
     ]);
     expect(find.text(en.shareAddedToTask(1)), findsOneWidget);
     expect(data.shareSource.calls.last, 'clear');
+  });
+
+  testWidgets('a file whose location could not be removed says so on its '
+      'row before anything is uploaded, and goes only when the user chooses '
+      'Upload; Skip leaves it out', (tester) async {
+    // Each share's copy of the file.
+    for (final copy in ['/cache/share-inbox/1', '/cache/share-inbox/2']) {
+      data.shareLocations.failures[copy] = PlatformException(
+        code: 'remove_location_failed',
+      );
+    }
+    await pumpSignedInApp(tester, sync: data);
+    for (final (choice, id, uploaded) in [
+      (en.attachmentLocationKeptSkip, -1, false),
+      (en.attachmentLocationKeptUpload, -2, true),
+    ]) {
+      data.tasks.writes.clear();
+      data.shareSource.push(const IncomingShare(text: 'Files', files: [_list]));
+      await tester.pumpAndSettle();
+
+      expect(
+        inSheet(find.text(en.shareFileLocationKept('2 KB'))),
+        findsOneWidget,
+      );
+      // The sheet shows its progress while the question is up.
+      await tester.tap(action(en.shareCreate));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.text(en.attachmentLocationKeptTitle), findsOneWidget);
+      expect(data.tasks.writes, isEmpty);
+      await tester.tap(find.text(choice));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.writes, [
+        'create $id Files',
+        if (uploaded) 'queueUpload $id list.pdf move',
+      ], reason: choice);
+    }
+  });
+
+  testWidgets('Add to task with only a file whose location stayed: Skip '
+      'leaves nothing to add, so the sheet stays', (tester) async {
+    data.shareLocations.failures['/cache/share-inbox/1'] = PlatformException(
+      code: 'remove_location_failed',
+    );
+    await pumpSignedInApp(tester, sync: data);
+    data.shareSource.push(const IncomingShare(files: [_list]));
+    await tester.pumpAndSettle();
+    await tester.tap(inSheet(find.text(en.shareAddToTask)));
+    await tester.pumpAndSettle();
+    await tester.enterText(field(en.addRelationSearch), 'water');
+    await tester.pumpAndSettle();
+    await tester.tap(inSheet(find.text('Water the plants')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(action(en.shareAdd));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text(en.attachmentLocationKeptSkip));
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.writes, isEmpty);
+    expect(sheet, findsOneWidget);
+    expect(find.text(en.shareAddedToTask(0)), findsNothing);
   });
 
   testWidgets('a file can be left out; one that cannot be read is flagged '

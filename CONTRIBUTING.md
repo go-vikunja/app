@@ -45,7 +45,7 @@ flutter analyze
 
 - After a change to annotated providers or Drift tables, regenerate and commit the generated code (`cd app && dart run build_runner build`). After an ARB change or a pull, run `flutter pub get` at the root; the l10n code it writes is not committed.
 - After a change to the description editor (`app/editor/`), run `tool/build_editor.sh` and commit the page it builds and its notices.
-- After a change to the Android dependencies, write the Gradle lockfile and the Android libraries' notices again (`python3 -I tool/build_android_notices.py`, see the [README](README.md#common-commands)).
+- After a change to the Android dependencies, write the Gradle lockfile, the verification metadata and the Android libraries' notices again (`python3 -I tool/build_android_notices.py`, see the [README](README.md#common-commands)), and read the verification metadata's diff before committing it.
 - After a change to the store texts (`fastlane/metadata/`), run `python3 -I tool/check_store_metadata.py`; the `checks` job runs it through its tests.
 
 ## Rules for the code

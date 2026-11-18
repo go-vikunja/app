@@ -15,7 +15,8 @@ typedef RemoveAccountChoice = ({bool confirmed, bool forgetConnectionSettings});
 /// accounts, whose changes only that account's Send now can send, and only
 /// once it is signed in again if its session ended. [connectionSettings]
 /// lists what is stored for the server when no other account uses it; the
-/// dialog then offers to forget it too, checked at first.
+/// dialog then offers to forget it too, checked at first. [title] and
+/// [reason], which leads the text, are for a removal the app suggests.
 Future<RemoveAccountChoice> confirmRemoveAccount(
   BuildContext context, {
   required RegisteredAccount entry,
@@ -23,6 +24,8 @@ Future<RemoveAccountChoice> confirmRemoveAccount(
   RegisteredAccount? nextAccount,
   bool fromAccountsList = false,
   String? connectionSettings,
+  String? title,
+  String? reason,
 }) async {
   final l10n = context.l10n;
   final account = entry.account;
@@ -32,6 +35,7 @@ Future<RemoveAccountChoice> confirmRemoveAccount(
       ? account.username
       : l10n.signOutDialogAccount(account.displayName, account.username);
   final body = [
+    ?reason,
     if (guest)
       l10n.guestRemoveDialogBody(accountTitle(account), host)
     else
@@ -52,11 +56,14 @@ Future<RemoveAccountChoice> confirmRemoveAccount(
     context: context,
     builder: (context) => AlertDialog.adaptive(
       scrollable: true,
-      title: Text(switch ((guest, fromAccountsList)) {
-        (true, _) => l10n.guestRemoveDialogTitle,
-        (false, true) => l10n.removeAccountDialogTitle,
-        (false, false) => l10n.signOutDialogTitle,
-      }),
+      title: Text(
+        title ??
+            switch ((guest, fromAccountsList)) {
+              (true, _) => l10n.guestRemoveDialogTitle,
+              (false, true) => l10n.removeAccountDialogTitle,
+              (false, false) => l10n.signOutDialogTitle,
+            },
+      ),
       content: connectionSettings == null
           ? Text(body)
           : StatefulBuilder(

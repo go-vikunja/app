@@ -25,7 +25,7 @@ class OfflineBanner extends ConsumerWidget {
     unawaited(
       ref
           .read(syncEngineProvider(accountId))
-          .refresh()
+          .refreshInNewRun()
           .then<void>((_) {}, onError: (Object _) {}),
     );
   }

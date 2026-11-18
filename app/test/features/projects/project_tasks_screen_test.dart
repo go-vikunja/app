@@ -307,7 +307,7 @@ void main() {
   });
 
   testWidgets('a stale download fetches the view again when it opens, '
-      'quietly when that fails', (tester) async {
+      'quietly when that fails, joining a sync under way', (tester) async {
     data.tasks.setSnapshot(
       'view:11',
       ListSnapshot(
@@ -319,6 +319,8 @@ void main() {
     await pumpProject(tester);
 
     expect(data.tasks.projectListRefreshes, [(1, 11)]);
+    expect(data.engine.refreshCalls, 1);
+    expect(data.engine.refreshInNewRunCalls, 0);
     expect(find.byType(DataFailureCard), findsNothing);
     expect(rows(tester).first, ('Eight', 0));
   });
@@ -368,7 +370,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(DataFailureCard), findsNothing);
     expect(data.tasks.projectListRefreshes, hasLength(2));
-    expect(data.engine.refreshCalls, 2);
+    expect(data.engine.refreshInNewRunCalls, 2);
   });
 
   testWidgets('a refresh that fails after the user switched views says '

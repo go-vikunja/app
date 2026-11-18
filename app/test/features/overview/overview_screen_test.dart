@@ -544,7 +544,7 @@ void main() {
     expect(find.byType(TaskRow), findsNWidgets(5));
     expect(find.text(en.dataFailureRefreshTitle), findsOneWidget);
     expect(find.textContaining(en.dataFailureStaleNote), findsOneWidget);
-    expect(data.engine.refreshCalls, 1);
+    expect(data.engine.refreshInNewRunCalls, 1);
 
     data.engine.onRefresh = () async =>
         data.tasks.all = openTasks().sublist(0, 2);
@@ -553,7 +553,7 @@ void main() {
 
     expect(find.byType(DataFailureCard), findsNothing);
     expect(find.byType(TaskRow), findsNWidgets(2));
-    expect(data.engine.refreshCalls, 2);
+    expect(data.engine.refreshInNewRunCalls, 2);
   });
 
   testWidgets('offline, a refresh shows the quiet notice over the saved data', (
@@ -639,7 +639,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(data.engine.refreshCalls, 1);
+    expect(data.engine.refreshInNewRunCalls, 1);
     expect(find.byType(TaskRow), findsOneWidget);
     semantics.dispose();
   });
@@ -665,7 +665,7 @@ void main() {
     run.complete();
     await tester.pumpAndSettle();
     expect(offersRefresh(), isTrue);
-    expect(data.engine.refreshCalls, 1);
+    expect(data.engine.refreshInNewRunCalls, 1);
     semantics.dispose();
   });
 

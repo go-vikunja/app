@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
-# The unsigned Play bundle and universal APK of a release tag, with the
-# desugar_jdk_libs source and release.env, in build/release/unsigned/ (D86):
-# GitHub's job `build` and the first step of tool/ci/release.sh. No secret
-# reaches this script; release_sign.sh signs its output.
+# The unsigned Play bundle, the universal APK and the per-ABI APKs of a
+# release tag, with the desugar_jdk_libs source and release.env, in
+# build/release/unsigned/ (D86): GitHub's job `build` and the first step of
+# tool/ci/release.sh. No secret reaches this script; release_sign.sh signs its
+# output.
 #
 # Usage: tool/ci/release_build.sh [--tag TAG] [--dry-run]
 #
 # Anything but a tag run of go-vikunja/app on GitHub Actions is a dry run,
 # whose failed checks become reasons in NOT_RELEASABLE. Outside GitHub
-# Actions, only --dry-run runs.
+# Actions, only --dry-run runs. VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN, the
+# repository variable of the same name in the job, names a patch release's tag
+# that may go without every German text (check_german in release_lib.sh).
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -149,15 +152,17 @@ if ((l10n_status == 1)); then
 elif ((l10n_status != 0)); then
   exit "$l10n_status"
 fi
-if ! python3 -I tool/l10n_progress.py --min 100 de >/dev/null; then
-  refuse "German is not complete: a release needs every English text in German (D88); finish it on Crowdin and merge Crowdin's pull request" \
-    "German incomplete"
-fi
+check_german "$tag"
 
 rm -rf "$release_unsigned_dir"
-apk_built=app/build/app/outputs/flutter-apk/app-release.apk
+apk_dir=app/build/app/outputs/flutter-apk
+apk_built="${apk_dir}/app-release.apk"
 aab_built=app/build/app/outputs/bundle/release/app-release.aab
-rm -f "$apk_built" "$aab_built"
+abi_apks=()
+for abi in "${RELEASE_APK_ABIS[@]}"; do
+  abi_apks+=("${apk_dir}/app-${abi}-release.apk")
+done
+rm -f "$apk_built" "$aab_built" "${abi_apks[@]}"
 
 setup_flutter
 ci_gradle_setup
@@ -169,54 +174,77 @@ aapt2="$(build_tool aapt2)"
 python3 -I tool/build_android_notices.py --self-test
 python3 -I tool/build_android_notices.py --check
 
-for kind in appbundle apk; do
+release_flutter_build() {
   (
     cd app
-    VIKUNJA_APP_UNSIGNED=true flutter build "$kind" --release --build-name="$build_name" \
+    VIKUNJA_APP_UNSIGNED=true flutter build "$@" --release --build-name="$build_name" \
       --build-number="$build_number" --dart-define=SOURCE_CODE_URL="$source_url"
   )
-done
-
-for built in "$aab_built" "$apk_built"; do
-  if [[ ! -f "$built" ]]; then
-    echo "error: the build wrote no ${built}" >&2
+}
+must_exist() {
+  if [[ ! -f "$1" ]]; then
+    echo "error: the build wrote no $1" >&2
     exit 1
   fi
+}
+release_flutter_build appbundle
+release_flutter_build apk
+must_exist "$aab_built"
+must_exist "$apk_built"
+# Before the split build, which writes into the same folder.
+mkdir -p "$release_unsigned_dir"
+cp "$aab_built" "${release_unsigned_dir}/app-release.aab"
+cp "$apk_built" "${release_unsigned_dir}/app-release.apk"
+# Without the property Flutter adds 1000 times the ABI's number to the version
+# code, which would collide with D73's codes of later releases.
+release_flutter_build apk --split-per-abi --android-project-arg=force-version-code-ignoring-abi=true
+for built in "${abi_apks[@]}"; do
+  must_exist "$built"
+  cp "$built" "${release_unsigned_dir}/"
 done
 
 python3 -I tool/check_exported_components.py --self-test
 python3 -I tool/check_exported_components.py \
   app/build/app/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
 
-aab_report="$("$jarsigner" -verify "$aab_built" 2>&1 || true)"
+aab_report="$("$jarsigner" -verify "${release_unsigned_dir}/app-release.aab" 2>&1 || true)"
 if ! grep -q '^jar is unsigned\.' <<<"$aab_report"; then
   echo "$aab_report" >&2
   echo "error: the release build is signed (android/key.properties?)" >&2
   exit 1
 fi
-if apk_report="$("$apksigner" verify "$apk_built" 2>&1)"; then
-  echo "error: the release build is signed (android/key.properties?)" >&2
-  exit 1
-fi
-apk_error="$(grep -m 1 '^ERROR' <<<"$apk_report" || true)"
-echo "Unsigned: jarsigner says \"jar is unsigned.\" of the bundle; apksigner refuses the APK: ${apk_error:-DOES NOT VERIFY}"
+echo "Unsigned: jarsigner says \"jar is unsigned.\" of the bundle."
+# apk, the ABIs of its native code
+check_unsigned_apk() {
+  local apk="$1" apk_report apk_error badging
+  shift
+  if apk_report="$("$apksigner" verify "$apk" 2>&1)"; then
+    echo "error: $(basename "$apk") is signed (android/key.properties?)" >&2
+    exit 1
+  fi
+  apk_error="$(grep -m 1 '^ERROR' <<<"$apk_report" || true)"
+  echo "Unsigned: apksigner refuses $(basename "$apk"): ${apk_error:-DOES NOT VERIFY}"
+  badging="$("$aapt2" dump badging "$apk")"
+  check_apk_badging "$apk" "$badging" "$build_name" "$build_number" "$@"
+}
+check_unsigned_apk "${release_unsigned_dir}/app-release.apk" "${RELEASE_APK_ABIS[@]}"
+for abi in "${RELEASE_APK_ABIS[@]}"; do
+  check_unsigned_apk "${release_unsigned_dir}/app-${abi}-release.apk" "$abi"
+done
 
-badging="$("$aapt2" dump badging "$apk_built")"
-package_line="$(sed -n 1p <<<"$badging")"
-if [[ "$package_line" != *" versionCode='${build_number}' versionName='${build_name}' "* ]]; then
-  echo "error: the APK's version is not ${build_name} (${build_number}): ${package_line}" >&2
-  exit 1
-fi
-
-mkdir -p "$release_unsigned_dir"
-cp "$aab_built" "${release_unsigned_dir}/app-release.aab"
-cp "$apk_built" "${release_unsigned_dir}/app-release.apk"
 desugar_archive="$(python3 -I tool/ci/desugar_source.py --fetch "$release_unsigned_dir")"
 desugar_name="$(basename "$desugar_archive")"
 desugar_commit="$(sed -n 's/^commit=//p' tool/android_notices/desugar_jdk_libs.source)"
 aab_sha256="$(sha256_of "${release_unsigned_dir}/app-release.aab")"
 apk_sha256="$(sha256_of "${release_unsigned_dir}/app-release.apk")"
 desugar_sha256="$(sha256_of "${release_unsigned_dir}/${desugar_name}")"
+abi_lines=""
+abi_sums=()
+for abi in "${RELEASE_APK_ABIS[@]}"; do
+  abi_sha256="$(sha256_of "${release_unsigned_dir}/app-${abi}-release.apk")"
+  abi_lines+="UNSIGNED_APK_$(release_abi_key "$abi")_SHA256=${abi_sha256}"$'\n'
+  abi_sums+=("$abi_sha256" "app-${abi}-release.apk")
+done
 
 cat >"${release_unsigned_dir}/release.env" <<ENV
 TAG=${tag}
@@ -228,9 +256,10 @@ DESUGAR_ARCHIVE=${desugar_name}
 DESUGAR_COMMIT=${desugar_commit}
 UNSIGNED_AAB_SHA256=${aab_sha256}
 UNSIGNED_APK_SHA256=${apk_sha256}
-DESUGAR_ARCHIVE_SHA256=${desugar_sha256}
+${abi_lines}DESUGAR_ARCHIVE_SHA256=${desugar_sha256}
 DRY_RUN=${dry_run}
 NOT_RELEASABLE=${not_releasable}
 ENV
 cat "${release_unsigned_dir}/release.env"
-printf '%s  %s\n' "$aab_sha256" app-release.aab "$apk_sha256" app-release.apk "$desugar_sha256" "$desugar_name"
+printf '%s  %s\n' "$aab_sha256" app-release.aab "$apk_sha256" app-release.apk "${abi_sums[@]}" \
+  "$desugar_sha256" "$desugar_name"

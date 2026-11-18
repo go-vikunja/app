@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
+import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
@@ -39,8 +40,9 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dar
 /// the quiet sync when it opens, the scheduler that keeps syncing while it
 /// is in front, the socket that brings the server's notifications at once,
 /// the other accounts' outboxes, the notification schedulers and session
-/// reminders of every signed-in account, and the switch from one account
-/// to another.
+/// reminders of every signed-in account, the switch from one account to
+/// another, and the offer to remove an http account whose user is signed in
+/// over https too.
 class HomeShell extends ConsumerStatefulWidget {
   const new({required this.navigationShell, super.key});
 
@@ -115,6 +117,8 @@ class _HomeShellState extends ConsumerState<HomeShell>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkSession();
       _syncQuietly();
+      // The shell starts again after an added account's first sync.
+      if (mounted) unawaited(offerToRemoveHttpTwin(context, ref));
     });
   }
 

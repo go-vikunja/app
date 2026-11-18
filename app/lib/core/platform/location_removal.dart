@@ -22,21 +22,26 @@ final class PlatformLocationRemoval implements LocationRemoval {
 }
 
 extension RemoveLocations on LocationRemoval {
-  /// One file after the other. A file that keeps its location is still
-  /// handed on; the log names why, never the file.
-  Future<void> removeFromAll(Iterable<String> paths) async {
+  /// One file after the other; answers the paths of the files that keep
+  /// their location, for the user to decide on before they are uploaded.
+  /// The log names why, never the file.
+  Future<Set<String>> removeFromAll(Iterable<String> paths) async {
+    final kept = <String>{};
     for (final path in paths) {
       try {
         await removeFrom(path);
       } on PlatformException catch (error) {
+        kept.add(path);
         // The platforms' messages name a reason or a type, never a path.
         _log.warning(
           'A file keeps its location: PlatformException(${error.code}, '
           '${error.message})',
         );
       } on Object catch (error) {
+        kept.add(path);
         _log.warning('A file keeps its location: ${error.runtimeType}');
       }
     }
+    return kept;
   }
 }

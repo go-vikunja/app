@@ -12,11 +12,26 @@ part 'attachment_picker.g.dart';
 /// photo library calls it.
 @immutable
 final class PickedFile {
-  const new({required this.path, required this.name, this.mimeType});
+  const new({
+    required this.path,
+    required this.name,
+    this.mimeType,
+    this.keptLocation = false,
+  });
 
   final String path;
   final String name;
   final String? mimeType;
+
+  /// A photo, video or picture whose location could not be removed.
+  final bool keptLocation;
+
+  PickedFile withKeptLocation() => PickedFile(
+    path: path,
+    name: name,
+    mimeType: mimeType,
+    keptLocation: true,
+  );
 }
 
 /// What a pick came to: the copies, and by name the files left uncopied
@@ -34,6 +49,9 @@ final class PickedFiles {
   final List<String> failed;
 
   bool get isEmpty => files.isEmpty && tooLarge.isEmpty && failed.isEmpty;
+
+  PickedFiles withFiles(List<PickedFile> files) =>
+      PickedFiles(files: files, tooLarge: tooLarge, failed: failed);
 }
 
 enum AttachmentSource { files, photos, camera }
@@ -43,7 +61,8 @@ enum AttachmentSource { files, photos, camera }
 /// not open (no camera, a denied permission on iOS).
 abstract interface class AttachmentPicker {
   /// Any files from the system's document picker, or only images; one
-  /// known to be above [maxBytes] is not copied.
+  /// known to be above [maxBytes] is not copied. Pictures among them lose
+  /// their location as photos do; other files stay as they are.
   Future<PickedFiles> pickFiles({
     required int maxBytes,
     bool imagesOnly = false,

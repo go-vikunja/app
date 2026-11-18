@@ -713,6 +713,56 @@ void main() {
       ]);
     });
 
+    testWidgets('a long press shows the address a relative link opens, and '
+        'a link whose text names another host asks before the browser '
+        'opens', (tester) async {
+      await openWithLinks(
+        tester,
+        [
+          '<p><a href="/projects/3">relative</a> ',
+          '<a href="https://evil.example/login">',
+          'https://tasks.example.org/login</a></p>',
+        ].join(),
+      );
+
+      final range = find.textRange.ofSubstring('relative').evaluate().single;
+      final box = range.renderObject
+          .getBoxesForSelection(
+            TextSelection(
+              baseOffset: range.textRange.start,
+              extentOffset: range.textRange.end,
+            ),
+          )
+          .first;
+      await tester.longPressAt(
+        range.renderObject.localToGlobal(box.toRect().center),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('https://tasks.example.org/projects/3'), findsOneWidget);
+      expect(
+        find.text(en.linkDetailsHost('tasks.example.org')),
+        findsOneWidget,
+      );
+      await tester.tap(find.text(en.cancel));
+      await tester.pumpAndSettle();
+      expect(linkOpener.opened, isEmpty);
+
+      await tester.tapOnText(
+        find.textRange.ofSubstring('https://tasks.example.org/login'),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(en.linkDetailsMismatch), findsOneWidget);
+      expect(linkOpener.opened, isEmpty);
+      await tester.tap(
+        find.descendant(
+          of: find.byWidgetPredicate((widget) => widget is AlertDialog),
+          matching: find.text(en.linkDetailsOpen),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(linkOpener.opened, [Uri.parse('https://evil.example/login')]);
+    });
+
     testWidgets('a link nothing can open says so', (tester) async {
       linkOpener = FakeExternalLinkOpener(succeeds: false);
       await openWithLinks(tester, '<p><a href="tel:+4930123">call</a></p>');

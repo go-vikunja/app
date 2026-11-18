@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
@@ -116,15 +117,71 @@ LinkTarget? linkTargetOf(String href, AccountLinkBases bases) {
   if (stripped.isEmpty) return null;
   final taskId = parseTaskIdFromUrl(stripped, bases: bases.taskLinkBases);
   if (taskId != null) return TaskLinkTarget(taskId);
-  final parsed = Uri.tryParse(stripped);
-  if (parsed == null) return null;
-  final uri = parsed.hasScheme ? parsed : bases.relativeBase.resolveUri(parsed);
+  final uri = _resolved(stripped, bases);
+  if (uri == null) return null;
   if (isSystemLink(uri)) return ExternalLinkTarget(uri);
-  if (!isWebLink(uri)) return null;
   final resolvedTaskId = parseTaskIdFromUrl(
     uri.toString(),
     bases: bases.taskLinkBases,
   );
   if (resolvedTaskId != null) return TaskLinkTarget(resolvedTaskId);
   return ExternalLinkTarget(uri);
+}
+
+/// The full address [href] stands for, resolved as [linkTargetOf] does,
+/// for showing before it opens; null when it opens nothing.
+Uri? linkAddressOf(String href, AccountLinkBases bases) {
+  final stripped = href.replaceAll(_ignoredInHref, '');
+  return stripped.isEmpty ? null : _resolved(stripped, bases);
+}
+
+Uri? _resolved(String href, AccountLinkBases bases) {
+  final parsed = Uri.tryParse(href);
+  if (parsed == null) return null;
+  final uri = parsed.hasScheme ? parsed : bases.relativeBase.resolveUri(parsed);
+  return isSystemLink(uri) || isWebLink(uri) ? uri : null;
+}
+
+/// The host [address] opens, in punycode and lower case; null for a link
+/// without one, such as `mailto:`.
+String? linkHostOf(Uri address) {
+  if (address.host.isEmpty) return null;
+  return withAsciiHost(address).host.toLowerCase();
+}
+
+final _webAddressText = RegExp(r'^(https?://|www\.)', caseSensitive: false);
+final _whitespace = RegExp(r'\s+');
+final _formatCharacters = RegExp(r'\p{Cf}', unicode: true);
+final _bidiControls = RegExp(r'[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]');
+
+/// Whether a link whose text is [text] should be looked at before it opens
+/// [address]: the text reads like a web address (with http(s):// or www.)
+/// on another host once invisible format characters are left out, or user
+/// info in either puts a host of its own before the real one, as in
+/// `https://vikunja.example.com@evil.example/`. Hosts are compared in
+/// punycode, ignoring case, a trailing dot and a leading `www.`. A bidi
+/// control in the text always counts: it can make other characters show
+/// as an address.
+bool linkTextMisleads(String text, Uri address) {
+  if (address.userInfo.isNotEmpty || _bidiControls.hasMatch(text)) return true;
+  final word = text
+      .replaceAll(_formatCharacters, '')
+      .trim()
+      .split(_whitespace)
+      .first;
+  if (!_webAddressText.hasMatch(word)) return false;
+  final named = Uri.tryParse(
+    word.toLowerCase().startsWith('www.') ? 'https://$word' : word,
+  );
+  if (named == null || named.host.isEmpty || named.userInfo.isNotEmpty) {
+    return true;
+  }
+  return _comparable(named) != _comparable(address);
+}
+
+String? _comparable(Uri uri) {
+  var host = linkHostOf(uri);
+  if (host == null) return null;
+  if (host.endsWith('.')) host = host.substring(0, host.length - 1);
+  return host.startsWith('www.') ? host.substring(4) : host;
 }

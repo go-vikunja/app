@@ -159,6 +159,40 @@ void main() {
     expect(await drafts.read(account: 'a', taskId: 5), draft);
   });
 
+  test("development builds' drafts in the preferences, which iOS backs up, "
+      'are removed when an account first reads or drops them, and not '
+      'offered', () async {
+    final preferences = MemoryPreferencesStore()
+      ..values[CommentDrafts.keyFor('a')] = jsonEncode({
+        '3': {'text': 'Old', 'mentions': <Object?>[]},
+      })
+      ..values[CommentDrafts.keyFor('b')] = '{}'
+      ..values[CommentDrafts.keyFor('c')] = '{}'
+      ..values['other'] = 'kept';
+    drafts = CommentDrafts(store, legacy: preferences, now: () => now);
+
+    expect(await drafts.read(account: 'a', taskId: 3), isNull);
+    await drafts.save(draft, account: 'b', taskId: 3);
+    await drafts.discardAll('c');
+
+    expect(preferences.values, {'other': 'kept'});
+    expect(store.values.keys, [CommentDrafts.keyFor('b')]);
+  });
+
+  test('old drafts that cannot be removed now are removed later, and keep '
+      'nothing from working', () async {
+    final preferences = MemoryPreferencesStore()
+      ..values[CommentDrafts.keyFor('a')] = '{}'
+      ..failNextRead.add(CommentDrafts.keyFor('a'));
+    drafts = CommentDrafts(store, legacy: preferences, now: () => now);
+
+    await drafts.save(draft, account: 'a', taskId: 3);
+    expect(preferences.values, isNotEmpty);
+    expect(await drafts.read(account: 'a', taskId: 3), draft);
+
+    expect(preferences.values, isEmpty);
+  });
+
   test('a failed write fails its caller only', () async {
     final failing = _FailingOnce(store);
     drafts = CommentDrafts(failing, now: () => now);

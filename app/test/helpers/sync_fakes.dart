@@ -153,6 +153,16 @@ final class FakeSyncEngine implements SyncEngine {
 
   /// A run of [onRefresh] after the one under way, if any.
   @override
+  Future<void> refreshInNewRun() async {
+    refreshInNewRunCalls++;
+    await _running?.then<void>((_) {}, onError: (Object _) {});
+    await _run(initial: _initial, handler: onRefresh);
+  }
+
+  int refreshInNewRunCalls = 0;
+
+  /// A run of [onRefresh] after the one under way, if any.
+  @override
   Future<void> refreshAfterWrite() async {
     refreshAfterWriteCalls++;
     await _running?.then<void>((_) {}, onError: (Object _) {});
@@ -236,7 +246,7 @@ final class FakeProjectRepository implements ProjectRepository {
   Stream<List<Project>> watchAll() => _replaying(() => _all, _changes.stream);
 
   @override
-  Future<void> refresh() => _engine.refresh();
+  Future<void> refresh() => _engine.refreshInNewRun();
 
   @override
   Future<Project?> find(int id) async => byId(id);
@@ -947,9 +957,13 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   }
 
   @override
-  Future<void> refreshProjectList(int projectId, {required int viewId}) async {
+  Future<void> refreshProjectList(
+    int projectId, {
+    required int viewId,
+    bool inNewRun = false,
+  }) async {
     projectListRefreshes.add((projectId, viewId));
-    await _engine.refresh();
+    await _sync(inNewRun: inNewRun);
     await onRefreshProjectList?.call(projectId, viewId);
     if (refreshProjectListFailure case final failure?) throw failure;
   }
@@ -1061,9 +1075,13 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   VikunjaFailure? refreshBoardFailure;
 
   @override
-  Future<void> refreshBoard(int projectId, int viewId) async {
+  Future<void> refreshBoard(
+    int projectId,
+    int viewId, {
+    bool inNewRun = false,
+  }) async {
     boardRefreshes.add((projectId, viewId));
-    await _engine.refresh();
+    await _sync(inNewRun: inNewRun);
     await onRefreshBoard?.call(projectId, viewId);
     if (refreshBoardFailure case final failure?) throw failure;
   }
@@ -1266,15 +1284,23 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   VikunjaFailure? refreshSavedFilterFailure;
 
   @override
-  Future<void> refreshSavedFilter(int pseudoProjectId) async {
+  Future<void> refreshSavedFilter(
+    int pseudoProjectId, {
+    bool inNewRun = false,
+  }) async {
     savedFilterRefreshes.add(pseudoProjectId);
-    await _engine.refresh();
+    await _sync(inNewRun: inNewRun);
     await onRefreshSavedFilter?.call(pseudoProjectId);
     if (refreshSavedFilterFailure case final failure?) throw failure;
   }
 
   @override
-  Future<void> refreshOpenTasks() => _engine.refresh();
+  Future<void> refreshOpenTasks() => _engine.refreshInNewRun();
+
+  /// A run of its own counts in [FakeSyncEngine.refreshInNewRunCalls], a
+  /// joining one in [FakeSyncEngine.refreshCalls].
+  Future<void> _sync({required bool inNewRun}) =>
+      inNewRun ? _engine.refreshInNewRun() : _engine.refresh();
 
   /// Every write, in order, as `create -1 Title`, `update 1`,
   /// `updateDescription 1`, `toggle 1 at 42 true`, `setDone 1 true`,

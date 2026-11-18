@@ -1003,7 +1003,7 @@ void main() {
     }
 
     List<Map<String, Object?>> keptDrafts() =>
-        switch (auth.preferences.values[DescriptionDrafts.key]) {
+        switch (auth.drafts.values[DescriptionDrafts.key]) {
           final String raw => [
             for (final entry in jsonDecode(raw) as List<Object?>)
               entry! as Map<String, Object?>,
@@ -1044,7 +1044,7 @@ void main() {
       await tester.pump();
 
       await toBackground(tester);
-      final kept = auth.preferences.values[DescriptionDrafts.key]!;
+      final kept = auth.drafts.values[DescriptionDrafts.key]!;
       expect(keptDraft(), containsPair('html', '<p>Draft</p>'));
       expect(data.tasks.descriptionUpdates, isEmpty);
       toForeground(tester);
@@ -1053,10 +1053,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text(en.taskEditDiscard));
       await tester.pumpAndSettle();
-      expect(auth.preferences.values[DescriptionDrafts.key], isNull);
+      expect(auth.drafts.values[DescriptionDrafts.key], isNull);
 
       // As if the system had ended the app while it was in the background.
-      auth.preferences.values[DescriptionDrafts.key] = kept;
+      auth.drafts.values[DescriptionDrafts.key] = kept;
       await openEditor(tester, pumpApp: false, settle: false);
       await pumpFrames(tester, 10);
       expect(find.text(en.descriptionEditorRestoreTitle), findsOneWidget);
@@ -1069,7 +1069,7 @@ void main() {
       expect(data.tasks.descriptionUpdates, [
         (1, '<p>Draft</p>', '<p>Numbers</p>'),
       ]);
-      expect(auth.preferences.values[DescriptionDrafts.key], isNull);
+      expect(auth.drafts.values[DescriptionDrafts.key], isNull);
     });
 
     testWidgets('signed out with the editor still up, going to the '
@@ -1090,7 +1090,7 @@ void main() {
       addTearDown(() => toForeground(tester));
       await tester.runAsync(() => Future<void>.delayed(Duration.zero));
 
-      expect(auth.preferences.values[DescriptionDrafts.key], isNull);
+      expect(auth.drafts.values[DescriptionDrafts.key], isNull);
     });
 
     testWidgets('while editing each new copy is kept as the draft, written '
@@ -1105,7 +1105,7 @@ void main() {
         'base': '<p>Numbers</p>',
       });
 
-      auth.preferences.values.remove(DescriptionDrafts.key);
+      auth.drafts.values.remove(DescriptionDrafts.key);
       bridge.edit('<p>Draft</p>');
       await copyTaken(tester);
       expect(bridge.htmlCalls, 2);
@@ -1178,7 +1178,7 @@ void main() {
       await startApp(tester);
       await keepDraft(tester, '<p>Draft</p>');
       // Not offered, as reading it failed this once.
-      auth.preferences.failNextRead.add(DescriptionDrafts.key);
+      auth.drafts.failNextRead.add(DescriptionDrafts.key);
       await openEditor(tester, pumpApp: false);
       expect(restoreTitle(), findsNothing);
       expect(keptDraft(), isNotNull);
@@ -1261,14 +1261,14 @@ void main() {
       bridges.last.edit('<p>Draft</p>');
       await tester.pump();
       await toBackground(tester);
-      final kept = auth.preferences.values[DescriptionDrafts.key]!;
+      final kept = auth.drafts.values[DescriptionDrafts.key]!;
       toForeground(tester);
       await tester.pageBack();
       await tester.pumpAndSettle();
       await tester.tap(find.text(en.taskEditDiscard));
       await tester.pumpAndSettle();
 
-      auth.preferences.values[DescriptionDrafts.key] = kept;
+      auth.drafts.values[DescriptionDrafts.key] = kept;
       await openEditor(
         tester,
         route: AppRoutes.taskDescription(2),
@@ -1277,7 +1277,7 @@ void main() {
       expect(find.text(en.descriptionEditorRestoreTitle), findsNothing);
       await tester.pageBack();
       await tester.pumpAndSettle();
-      expect(auth.preferences.values[DescriptionDrafts.key], kept);
+      expect(auth.drafts.values[DescriptionDrafts.key], kept);
 
       await openEditor(tester, pumpApp: false, settle: false);
       await pumpFrames(tester, 10);
@@ -1286,7 +1286,7 @@ void main() {
       expect(bridges.last.init!.html, '<p>Numbers</p>');
       await tester.pageBack();
       await tester.pumpAndSettle();
-      expect(auth.preferences.values[DescriptionDrafts.key], isNull);
+      expect(auth.drafts.values[DescriptionDrafts.key], isNull);
     });
 
     testWidgets('an offer closed from outside counts as unanswered: the page '

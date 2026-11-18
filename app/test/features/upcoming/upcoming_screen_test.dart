@@ -446,7 +446,7 @@ void main() {
 
     await pullToRefresh(tester, find.byType(CustomScrollView));
 
-    expect(data.engine.refreshCalls, 1);
+    expect(data.engine.refreshInNewRunCalls, 1);
   });
 
   testWidgets('Refresh in the menu syncs too', (tester) async {
@@ -464,7 +464,7 @@ void main() {
     await tester.tap(find.text(en.refresh));
     await tester.pumpAndSettle();
 
-    expect(data.engine.refreshCalls, 1);
+    expect(data.engine.refreshInNewRunCalls, 1);
   });
 
   testWidgets('in German', (tester) async {

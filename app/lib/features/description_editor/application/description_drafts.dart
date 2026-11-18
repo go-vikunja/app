@@ -2,18 +2,24 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/storage/draft_files.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 
 part 'description_drafts.g.dart';
 
+final _log = Logger('DescriptionDrafts');
+
 // One for the app, so that the writes of every editor go one after the
 // other.
 @Riverpod(keepAlive: true)
-DescriptionDrafts descriptionDrafts(Ref ref) =>
-    DescriptionDrafts(ref.watch(preferencesStoreProvider));
+DescriptionDrafts descriptionDrafts(Ref ref) => DescriptionDrafts(
+  ref.watch(draftStoreProvider),
+  legacy: ref.watch(preferencesStoreProvider),
+);
 
 /// An edit the editor held, unsaved, and the description it started from.
 @immutable
@@ -38,22 +44,27 @@ typedef TaskIdResolver = Future<int> Function(int taskId);
 /// offline is a temporary one until the create is answered; with a
 /// [TaskIdResolver], reading, saving and discarding follow it to the server
 /// id.
+///
+/// Development builds kept them in the preferences, which iOS backs up;
+/// what is there is removed, not taken over, when the drafts are first
+/// read.
 final class DescriptionDrafts {
-  new(this._store);
+  new(this._store, {this._legacy});
 
   static const key = 'description_editor.drafts';
   static const maxDrafts = 20;
 
-  /// The one draft development builds kept before step 40b; what it holds
-  /// is not taken over.
-  static const _oneSlotKey = 'description_editor.draft';
+  /// What development builds kept in the preferences: the drafts under
+  /// [key] since step 40b, the one draft before.
+  static const List<String> legacyKeys = [key, 'description_editor.draft'];
 
   /// A lookup that does not answer must not hold the writes after it.
   static const _resolveTimeout = Duration(seconds: 2);
 
   final PreferencesStore _store;
+  final PreferencesStore? _legacy;
   Future<void> _writes = Future.value();
-  var _oneSlotChecked = false;
+  var _legacyChecked = false;
 
   Future<DescriptionDraft?> read({
     required String account,
@@ -130,12 +141,7 @@ final class DescriptionDrafts {
 
   /// Oldest first.
   Future<List<Map<String, Object?>>> _entries() async {
-    if (!_oneSlotChecked) {
-      _oneSlotChecked = true;
-      if (await _store.getString(_oneSlotKey) != null) {
-        await _store.remove(_oneSlotKey);
-      }
-    }
+    await _dropLegacy();
     final raw = await _store.getString(key);
     if (raw == null) return [];
     try {
@@ -148,6 +154,22 @@ final class DescriptionDrafts {
       };
     } on FormatException {
       return [];
+    }
+  }
+
+  Future<void> _dropLegacy() async {
+    final legacy = _legacy;
+    if (legacy == null || _legacyChecked) return;
+    _legacyChecked = true;
+    try {
+      for (final key in legacyKeys) {
+        if (await legacy.getString(key) != null) await legacy.remove(key);
+      }
+    } on Object catch (error) {
+      _legacyChecked = false;
+      _log.info(
+        'Could not remove the old description drafts: ${error.runtimeType}',
+      );
     }
   }
 

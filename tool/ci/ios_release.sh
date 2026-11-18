@@ -15,7 +15,8 @@
 # VIKUNJA_APP_ASC_KEY_FILE, the App Store Connect API key's id, its issuer id
 # and the path of its .p8 file; VIKUNJA_APP_SOURCE_CODE_URL, the repository's
 # URL (default https://github.com/go-vikunja/app), whose tree at the tag the
-# build links as its source.
+# build links as its source; VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN, a patch
+# release's tag that may go without every German text (release_lib.sh).
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -140,10 +141,7 @@ if [[ -n "$key_file" ]]; then
     refuse "VIKUNJA_APP_ASC_KEY_FILE can be read by other users: chmod 600 it" "API key readable by others"
   fi
 fi
-if ! python3 -I tool/l10n_progress.py --min 100 de >/dev/null; then
-  refuse "German is not complete: a release needs every English text in German (D88); finish it on Crowdin and merge Crowdin's pull request" \
-    "German incomplete"
-fi
+check_german "$tag"
 
 icon=app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
 icon_info="$(sips -g pixelWidth -g pixelHeight -g hasAlpha -g space -g profile "$icon")"

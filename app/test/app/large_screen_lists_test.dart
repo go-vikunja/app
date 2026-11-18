@@ -314,7 +314,7 @@ void main() {
 
     testWidgets('at 1280×800: a pull in the margin refreshes', (tester) async {
       await pumpAt(tester, androidTabletLandscape);
-      final before = data.engine.refreshCalls;
+      final before = data.engine.refreshInNewRunCalls;
 
       final scrollable = verticalScrollableIn(find.byType(OverviewScreen));
       final list = tester.getRect(scrollable);
@@ -327,7 +327,7 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       await tester.pumpAndSettle();
 
-      expect(data.engine.refreshCalls, before + 1);
+      expect(data.engine.refreshInNewRunCalls, before + 1);
     });
 
     testWidgets('at 1280×800: the header keeps its place from loading to '

@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/storage/draft_files.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/home/application/app_version.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
@@ -150,6 +151,7 @@ void main() {
             ),
             secureStoreProvider.overrideWithValue(auth.secureStore),
             preferencesStoreProvider.overrideWithValue(auth.preferences),
+            draftStoreProvider.overrideWithValue(auth.drafts),
             webAuthenticatorProvider.overrideWithValue(auth.webAuthenticator),
             ...sync.overrides,
             ...NotificationFakes().overrides,

@@ -31,6 +31,16 @@ OTHER_COMMIT = 'e' * 40
 CREDENTIALS = ('KEYSTORE_BASE64', 'KEY_PROPERTIES', 'APK_KEYSTORE_BASE64', 'APK_KEY_PROPERTIES',
                'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON', 'S3_ACCESS_KEY', 'S3_SECRET_KEY')
 APK_TYPE = 'application/vnd.android.package-archive'
+ABIS = ('arm64-v8a', 'armeabi-v7a', 'x86_64')
+
+
+def abi_key(abi):
+    return abi.upper().replace('-', '_')
+
+
+def apk_files(name):
+    """The universal APK, then the per-ABI ones."""
+    return [f'vikunja-app-{name}.apk'] + [f'vikunja-app-{name}-{abi}.apk' for abi in ABIS]
 
 FAKE_TOOL = r'''
 import hashlib
@@ -82,6 +92,11 @@ if tool == 'gh':
     finish(2, err='fake gh: unexpected call\n')
 
 if tool == 'git':
+    if argv[:3] == ['ls-remote', '--tags', '--refs'] and len(argv) == 5:
+        entry['prompt'] = os.environ.get('GIT_TERMINAL_PROMPT')
+        if os.environ.get('FAKE_GIT_TAGS') == 'error':
+            finish(128, err="fatal: unable to access 'https://github.com/go-vikunja/app/': timed out\n")
+        finish(out=''.join(f'{"c" * 40}\trefs/tags/{name}\n' for name in os.environ.get('FAKE_GIT_TAGS', '').split()))
     if argv[:1] == ['ls-remote'] and len(argv) == 4:
         entry['prompt'] = os.environ.get('GIT_TERMINAL_PROMPT')
         ref, built, other = argv[2], os.environ.get('GITHUB_SHA', ''), 'e' * 40
@@ -110,7 +125,8 @@ if operation == 'head-object':
         finish(254, err='\nAn error occurred (404) when calling the HeadObject operation: Not Found\n')
     if state == 'forbidden':
         finish(254, err='\nAn error occurred (403) when calling the HeadObject operation: Forbidden\n')
-    finish(out=(os.environ['FAKE_S3_SHA256'] if state == 'same' else '0' * 64) + '\n')
+    key = argv[argv.index('--key') + 1]
+    finish(out=(json.loads(os.environ['FAKE_S3_SHA256'])[key] if state == 'same' else '0' * 64) + '\n')
 if operation == 'put-object':
     finish(out='{"ETag": "\\"0\\""}\n')
 finish(2, err='fake aws: unexpected call\n')
@@ -157,17 +173,23 @@ def make_release(root, tag, signing='release', not_releasable=''):
         'DESUGAR_ARCHIVE': DESUGAR, 'DESUGAR_COMMIT': COMMIT,
         'UNSIGNED_AAB_SHA256': write(os.path.join(unsigned, 'app-release.aab'), b'unsigned bundle ' + tag.encode()),
         'UNSIGNED_APK_SHA256': write(os.path.join(unsigned, 'app-release.apk'), b'unsigned apk ' + tag.encode()),
+        **{f'UNSIGNED_APK_{abi_key(abi)}_SHA256': write(os.path.join(unsigned, f'app-{abi}-release.apk'),
+                                                         f'unsigned {abi} apk {tag}'.encode()) for abi in ABIS},
         'DESUGAR_ARCHIVE_SHA256': write(os.path.join(unsigned, DESUGAR), desugar),
         'DRY_RUN': '0', 'NOT_RELEASABLE': not_releasable,
     }
     write_env(os.path.join(unsigned, 'release.env'), values)
     apk = f'vikunja-app-{name}.apk'
     apk_sha256 = write(os.path.join(signed, apk), b'signed apk ' + tag.encode())
+    abi_sha256 = {f'APK_{abi_key(abi)}_SHA256': write(os.path.join(signed, f'vikunja-app-{name}-{abi}.apk'),
+                                                      f'signed {abi} apk {tag}'.encode()) for abi in ABIS}
     write(os.path.join(signed, DESUGAR), desugar)
     with open(os.path.join(signed, 'SHA256SUMS'), 'w', encoding='utf-8') as f:
-        f.write(f'{apk_sha256}  {apk}\n{values["DESUGAR_ARCHIVE_SHA256"]}  {DESUGAR}\n')
+        f.write(f'{apk_sha256}  {apk}\n')
+        f.writelines(f'{abi_sha256[f"APK_{abi_key(abi)}_SHA256"]}  vikunja-app-{name}-{abi}.apk\n' for abi in ABIS)
+        f.write(f'{values["DESUGAR_ARCHIVE_SHA256"]}  {DESUGAR}\n')
     values.update({
-        'APK_FILE': apk, 'APK_SHA256': apk_sha256,
+        'APK_FILE': apk, 'APK_SHA256': apk_sha256, **abi_sha256,
         'AAB_SHA256': write(os.path.join(signed, 'app-release.aab'), b'signed bundle ' + tag.encode()),
         'UPLOAD_CERT_SHA256': CERTIFICATE, 'APK_CERT_SHA256': CERTIFICATE, 'APK_SET': 'upload', 'SIGNING': signing,
     })
@@ -349,13 +371,29 @@ class ValidationTest(Fixture):
             f.write(b'!')
         self.assert_refused('check', 'does not have the SHA-256 that UNSIGNED_AAB_SHA256')
 
+    def test_tampered_per_abi_files(self):
+        with open(os.path.join(self.signed, 'vikunja-app-1.0.0-beta.1-arm64-v8a.apk'), 'ab') as f:
+            f.write(b'!')
+        self.assert_refused('dl', 'does not have the SHA-256 that APK_ARM64_V8A_SHA256', dry_run=False)
+        with open(os.path.join(self.root, 'unsigned', 'app-x86_64-release.apk'), 'ab') as f:
+            f.write(b'!')
+        self.assert_refused('check', 'does not have the SHA-256 that UNSIGNED_APK_X86_64_SHA256')
+
     def test_missing_file(self):
         os.remove(os.path.join(self.signed, DESUGAR))
         self.assert_refused('github', f'{DESUGAR} is missing')
+        os.remove(os.path.join(self.root, 'unsigned', 'app-armeabi-v7a-release.apk'))
+        self.assert_refused('check', 'app-armeabi-v7a-release.apk is missing')
 
-    def test_sha256sums_must_list_the_two_files(self):
-        with open(os.path.join(self.signed, 'SHA256SUMS'), 'a', encoding='utf-8') as f:
+    def test_sha256sums_must_list_every_file(self):
+        path = os.path.join(self.signed, 'SHA256SUMS')
+        with open(path, encoding='utf-8') as f:
+            listed = f.read()
+        with open(path, 'a', encoding='utf-8') as f:
             f.write(f'{"0" * 64}  app-release.aab\n')
+        self.assert_refused('github', 'SHA256SUMS does not list exactly')
+        with open(path, 'w', encoding='utf-8') as f:
+            f.write(''.join(line for line in listed.splitlines(keepends=True) if 'x86_64' not in line))
         self.assert_refused('github', 'SHA256SUMS does not list exactly')
 
     def test_inconsistent_values(self):
@@ -503,7 +541,7 @@ class TagTest(Fixture):
 
     def run_step(self, step, **env):
         assets = [{'name': name, 'size': os.path.getsize(os.path.join(self.signed, name))}
-                  for name in (self.values['APK_FILE'], 'SHA256SUMS', DESUGAR)]
+                  for name in (*apk_files(self.TAG[1:]), 'SHA256SUMS', DESUGAR)]
         return self.publish(step, env=self.official(
             **{f'HAS_{name}': 'true' for name in SECRETS}, GH_TOKEN=GH_TOKEN, FAKE_GH_ASSETS=json.dumps(assets),
             **env))
@@ -571,17 +609,22 @@ class DlTest(Fixture):
     def test_absent_is_uploaded(self):
         result = self.dl()
         self.assertEqual(result.returncode, 0, result.stderr)
-        key = 'app/1.0.0-beta.1/vikunja-app-1.0.0-beta.1.apk'
-        self.assertIn(f'Published the APK on dl.vikunja.io: {key}', result.stdout)
-        head, put = self.calls('aws')
-        self.assertEqual(head['argv'], ['--endpoint-url', 'https://s3.example.test', 's3api', 'head-object',
-                                        '--bucket', S3['S3_BUCKET'], '--key', key, '--query', 'Metadata.sha256',
-                                        '--output', 'text'])
-        self.assertEqual(put['argv'], ['--endpoint-url', 'https://s3.example.test', 's3api', 'put-object',
-                                       '--bucket', S3['S3_BUCKET'], '--key', key,
-                                       '--body', os.path.join(self.signed, 'vikunja-app-1.0.0-beta.1.apk'),
-                                       '--content-type', APK_TYPE, '--metadata', f'sha256={self.values["APK_SHA256"]}'])
-        for call in (head, put):
+        calls = self.calls('aws')
+        self.assertEqual(len(calls), 2 * len(apk_files('1.0.0-beta.1')))
+        for index, name in enumerate(apk_files('1.0.0-beta.1')):
+            key = f'app/1.0.0-beta.1/{name}'
+            sha256 = self.values['APK_SHA256' if index == 0 else f'APK_{abi_key(ABIS[index - 1])}_SHA256']
+            with self.subTest(name):
+                self.assertIn(f'Published the APK on dl.vikunja.io: {key}', result.stdout)
+                head, put = calls[2 * index:2 * index + 2]
+                self.assertEqual(head['argv'], ['--endpoint-url', 'https://s3.example.test', 's3api', 'head-object',
+                                                '--bucket', S3['S3_BUCKET'], '--key', key, '--query',
+                                                'Metadata.sha256', '--output', 'text'])
+                self.assertEqual(put['argv'], ['--endpoint-url', 'https://s3.example.test', 's3api', 'put-object',
+                                               '--bucket', S3['S3_BUCKET'], '--key', key,
+                                               '--body', os.path.join(self.signed, name),
+                                               '--content-type', APK_TYPE, '--metadata', f'sha256={sha256}'])
+        for call in calls:
             self.assertEqual(call['credentials'], [hashlib.sha256(S3[name].encode()).hexdigest()
                                                    for name in ('S3_ACCESS_KEY', 'S3_SECRET_KEY', 'S3_REGION')])
             self.assertEqual(call['settings'], {
@@ -593,10 +636,13 @@ class DlTest(Fixture):
             self.assertFalse({name for name in call['env'] if name.startswith('S3_') or name.startswith('GOOGLE')})
 
     def test_same_is_skipped(self):
-        result = self.dl(FAKE_S3_STATE='same', FAKE_S3_SHA256=self.values['APK_SHA256'])
+        name = '1.0.0-beta.1'
+        published = {f'app/{name}/{file}': value for file, value in zip(
+            apk_files(name), [self.values['APK_SHA256'], *(self.values[f'APK_{abi_key(abi)}_SHA256'] for abi in ABIS)])}
+        result = self.dl(FAKE_S3_STATE='same', FAKE_S3_SHA256=json.dumps(published))
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('already published', result.stdout)
-        self.assertEqual([call['argv'][3] for call in self.calls('aws')], ['head-object'])
+        self.assertEqual(result.stdout.count('already published'), len(published))
+        self.assertEqual([call['argv'][3] for call in self.calls('aws')], ['head-object'] * len(published))
 
     def test_other_content_fails(self):
         result = self.dl(FAKE_S3_STATE='other')
@@ -657,6 +703,10 @@ class DlTest(Fixture):
         self.assertIn('--endpoint-url $S3_ENDPOINT s3api put-object --bucket $S3_BUCKET '
                       '--key app/1.0.0-beta.1/vikunja-app-1.0.0-beta.1.apk', result.stdout)
         self.assertIn(f'--content-type {APK_TYPE} --metadata sha256={self.values["APK_SHA256"]}', result.stdout)
+        for abi in ABIS:
+            self.assertIn(f'--key app/1.0.0-beta.1/vikunja-app-1.0.0-beta.1-{abi}.apk '
+                          f'--body vikunja-app-1.0.0-beta.1-{abi}.apk --content-type {APK_TYPE} '
+                          f'--metadata sha256={self.values[f"APK_{abi_key(abi)}_SHA256"]}', result.stdout)
         for value in S3.values():
             self.assertNotIn(value, result.stdout + result.stderr)
         result = self.publish('--dry-run', 'dl')
@@ -667,18 +717,18 @@ class DlTest(Fixture):
 class GithubTest(Fixture):
     def github(self, *arguments, **env):
         assets = [{'name': name, 'size': os.path.getsize(os.path.join(self.signed, name))}
-                  for name in (self.values['APK_FILE'], 'SHA256SUMS', DESUGAR)]
+                  for name in (*apk_files(self.TAG[1:]), 'SHA256SUMS', DESUGAR)]
         return self.publish(*arguments, 'github', env=self.official(**{
             'GH_TOKEN': GH_TOKEN, 'FAKE_GH_ASSETS': json.dumps(assets), 'FAKE_GH_DOWNLOAD': self.signed, **env}))
 
-    def assert_created(self, create, prerelease):
+    def assert_created(self, create, prerelease, latest=True):
         tag = self.TAG
-        flags = ['--prerelease', '--latest=false'] if prerelease else ['--latest']
+        flags = ['--prerelease', '--latest=false'] if prerelease else ['--latest' if latest else '--latest=false']
         notes = create['argv'][create['argv'].index('--notes-file') + 1]
         self.assertEqual(create['argv'], [
             'release', 'create', tag, '--repo', 'go-vikunja/app', '--verify-tag', '--title',
             f'Vikunja app {tag[1:]}', '--notes-file', notes, *flags,
-            os.path.join(self.signed, self.values['APK_FILE']), os.path.join(self.signed, 'SHA256SUMS'),
+            *(os.path.join(self.signed, name) for name in apk_files(tag[1:])), os.path.join(self.signed, 'SHA256SUMS'),
             os.path.join(self.signed, DESUGAR)])
         self.assertEqual(create['env'], ['GH_TOKEN'])
         return create['notes']
@@ -693,11 +743,17 @@ class GithubTest(Fixture):
         self.assertEqual(notes, '\n'.join([
             'Vikunja app 1.0.0-beta.1, a beta: it may still have rough edges.',
             '',
-            f'- APK `vikunja-app-1.0.0-beta.1.apk`, SHA-256 `{self.values["APK_SHA256"]}`',
+            f'- APK for every device `vikunja-app-1.0.0-beta.1.apk`, SHA-256 `{self.values["APK_SHA256"]}`',
+            *(f'- APK for {abi} only `vikunja-app-1.0.0-beta.1-{abi}.apk`, '
+              f'SHA-256 `{self.values[f"APK_{abi_key(abi)}_SHA256"]}`' for abi in ABIS),
             f'- APK signing certificate SHA-256 `{CERTIFICATE}`',
             '- Source code: https://github.com/go-vikunja/app/tree/v1.0.0-beta.1',
             f'- `{DESUGAR}`: the source code of desugar_jdk_libs at upstream commit {COMMIT} '
             '(GPL-2.0 with the Classpath exception), which the app contains',
+            '',
+            'An APK installed by hand gets no updates by itself. [Obtainium](https://obtainium.imranr.dev) can watch '
+            'these releases and install each new one: add https://github.com/go-vikunja/app, and to get the smaller '
+            'APK for your phone, filter the APKs by its ABI, usually `arm64-v8a`.',
         ]) + '\n')
         self.assertIn('Published the GitHub release: https://github.com/go-vikunja/app/releases/tag/v1.0.0-beta.1',
                       result.stdout)
@@ -719,7 +775,7 @@ class GithubTest(Fixture):
         self.assertEqual(len(download['argv']), 7)
 
     def test_published_with_the_same_sizes_but_other_content_fails(self):
-        for name in (self.values['APK_FILE'], 'SHA256SUMS', DESUGAR):
+        for name in (*apk_files(self.TAG[1:]), 'SHA256SUMS', DESUGAR):
             with self.subTest(name=name):
                 forged = os.path.join(self.tmp, 'forged-' + name)
                 shutil.copytree(self.signed, forged)
@@ -764,7 +820,8 @@ class GithubTest(Fixture):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('gh release create v1.0.0-beta.1 --repo <GITHUB_REPOSITORY> --verify-tag '
                       '--title "Vikunja app 1.0.0-beta.1" --notes-file notes.md --prerelease --latest=false '
-                      f'vikunja-app-1.0.0-beta.1.apk SHA256SUMS {DESUGAR}', result.stdout)
+                      f'{" ".join(apk_files("1.0.0-beta.1"))} SHA256SUMS {DESUGAR}', result.stdout)
+        self.assertNotIn('higher final release tag', result.stdout)
         self.assertIn('  - Source code: https://github.com/go-vikunja/app/tree/v1.0.0-beta.1', result.stdout)
         self.assertEqual(self.calls(), [])
 
@@ -773,10 +830,31 @@ class FinalGithubTest(GithubTest):
     TAG = 'v1.0.0'
 
     def test_absent_is_created(self):
-        result = self.github()
+        result = self.github(FAKE_GIT_TAGS='v0.0.26-alpha v1.0.0-beta.2 v1.0.0 v1.1.0-beta.1')
         self.assertEqual(result.returncode, 0, result.stderr)
         notes = self.assert_created(self.calls('gh')[1], prerelease=False)
         self.assertTrue(notes.startswith('Vikunja app 1.0.0.\n\n'), notes)
+        tags = self.calls('git')[1]
+        self.assertEqual(tags['argv'], ['ls-remote', '--tags', '--refs', 'https://github.com/go-vikunja/app',
+                                        'refs/tags/v*'])
+        self.assertEqual(tags['prompt'], '0')
+        self.assertNotIn('Not marked latest', result.stdout)
+
+    def test_an_older_line_is_not_latest(self):
+        for higher in ('v1.0.1', 'v1.1.0', 'v2.0.0'):
+            with self.subTest(higher=higher):
+                self.forget_calls()
+                result = self.github(FAKE_GIT_TAGS=f'v1.0.0 {higher} v3.0.0-beta.1')
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assert_created(self.calls('gh')[1], prerelease=False, latest=False)
+                self.assertIn(f'Not marked latest: go-vikunja/app has the higher final release tag {higher}.',
+                              result.stdout)
+
+    def test_tag_listing_errors_fail(self):
+        result = self.github(FAKE_GIT_TAGS='error')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('error: git ls-remote failed:\n  fatal: unable to access', result.stderr)
+        self.assertEqual([call['argv'][1] for call in self.calls('gh')], [])
 
     def test_draft_is_replaced(self):
         result = self.github(FAKE_GH_STATE='draft')
@@ -787,6 +865,8 @@ class FinalGithubTest(GithubTest):
         result = self.publish('--dry-run', 'github')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('--notes-file notes.md --latest vikunja-app-1.0.0.apk', result.stdout)
+        self.assertIn('--latest=false instead if the repository has a higher final release tag', result.stdout)
+        self.assertEqual(self.calls(), [])
 
 
 class PlayDryRunTest(Fixture):

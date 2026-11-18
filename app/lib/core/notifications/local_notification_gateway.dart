@@ -503,10 +503,12 @@ final class LocalNotificationGateway implements NotificationGateway {
           visibility: _visibility(privacy),
           // The defaults do what the background handler needs: no user
           // interface (`showsUserInterface`), dismissed on tap
-          // (`cancelNotification`).
+          // (`cancelNotification`). Such an action also runs from a secure
+          // lock screen, so Done is left out while the app lock is on.
           actions: [
             for (final (id, title) in [
-              (NotificationActionIds.markDone, _texts.markDone),
+              if (!privacy.doneNeedsUnlock)
+                (NotificationActionIds.markDone, _texts.markDone),
               (NotificationActionIds.snooze10Minutes, _texts.snooze10Minutes),
               (NotificationActionIds.snooze1Hour, _texts.snooze1Hour),
             ])

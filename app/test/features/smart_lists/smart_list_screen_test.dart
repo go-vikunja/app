@@ -174,7 +174,7 @@ void main() {
 
       await pullToRefresh(tester, find.byType(CustomScrollView));
 
-      expect(data.engine.refreshCalls, 1);
+      expect(data.engine.refreshInNewRunCalls, 1);
       expect(data.tasks.savedFilterRefreshes, isEmpty);
     });
   });
@@ -210,7 +210,7 @@ void main() {
 
       await pullToRefresh(tester, find.byType(CustomScrollView));
 
-      expect(data.engine.refreshCalls, 1);
+      expect(data.engine.refreshInNewRunCalls, 1);
       expect(data.tasks.savedFilterRefreshes, isEmpty);
     });
 
@@ -535,6 +535,9 @@ void main() {
       containerOf(tester).read(appRouterProvider).go(AppRoutes.project(-3));
       await tester.pumpAndSettle();
       expect(data.tasks.savedFilterRefreshes, [-3]);
+      // Opening is no refresh the user started: it joins a sync under way.
+      expect(data.engine.refreshCalls, 1);
+      expect(data.engine.refreshInNewRunCalls, 0);
     });
 
     testWidgets('pull to refresh downloads it again', (tester) async {
@@ -549,6 +552,8 @@ void main() {
 
       expect(data.tasks.savedFilterRefreshes, [filter.projectId]);
       expect(rowTitles(tester), ['Inbox star', 'Plain']);
+      expect(data.engine.refreshInNewRunCalls, 1);
+      expect(data.engine.refreshCalls, 0);
     });
 
     testWidgets('a task done here leaves the list after its Undo', (

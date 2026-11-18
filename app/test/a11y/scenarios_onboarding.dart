@@ -223,8 +223,43 @@ final List<SweepScenario> onboardingStateScenarios = [
       tester,
       connector: FakeServerConnector.succeeding(insecureServer()),
     ),
-    navigate: (tester, _) => _submitAddress(tester, '192.168.1.20:3456'),
+    navigate: (tester, _) => _submitAddress(tester, 'http://192.168.1.20:3456'),
     expectScreen: (_) => alertDialog,
+  ),
+  SweepScenario(
+    kind: SweepKind.state,
+    name: 'connect https failed question',
+    route: AppRoutes.connect,
+    setUp: (tester, _) => pumpVikunjaApp(
+      tester,
+      connector: FakeServerConnector.succeeding(insecureServer()),
+    ),
+    navigate: (tester, _) => _submitAddress(tester, '192.168.1.20:3456'),
+    expectScreen: (l10n) => find.text(l10n.insecureFallbackDialogTitle),
+  ),
+  SweepScenario(
+    kind: SweepKind.state,
+    name: 'connection https offer',
+    route: AppRoutes.connection,
+    setUp: (tester, _) async {
+      final auth = AuthFakes();
+      await profilesOver(auth).consentToCleartext(_plain);
+      await auth.seedAccount(
+        insecureServer(),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      await pumpVikunjaApp(
+        tester,
+        auth: auth,
+        sync: sweepData(),
+        connector: FakeServerConnector.succeeding(
+          fullServer270(root: 'https://192.168.1.20'),
+        ),
+      );
+    },
+    navigate: (tester, _) async =>
+        pushTo(tester, AppRoutes.connectionFor(_plain)),
+    expectScreen: (l10n) => find.text(l10n.connectionUseHttps),
   ),
   SweepScenario(
     kind: SweepKind.state,

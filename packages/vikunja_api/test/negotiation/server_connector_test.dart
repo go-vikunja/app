@@ -482,6 +482,25 @@ void main() {
       ]);
     });
 
+    test('http reached because https failed is told apart from a typed '
+        'http://', () async {
+      final dio = fakeDio(_vikunja27('http://example.com'));
+
+      final fallback = await _connect(dio, 'example.com');
+      final typed = await _connect(dio, 'http://example.com');
+      final secure = await _connect(
+        fakeDio(_vikunja27('https://example.com')),
+        'example.com',
+      );
+
+      expect(reachedOverHttpFallback('example.com', fallback), isTrue);
+      expect(reachedOverHttpFallback(' Example.com:80 ', fallback), isTrue);
+      expect(reachedOverHttpFallback('http://example.com', typed), isFalse);
+      expect(reachedOverHttpFallback('HTTP://example.com', typed), isFalse);
+      expect(reachedOverHttpFallback('example.com', secure), isFalse);
+      expect(reachedOverHttpFallback('not an address', fallback), isFalse);
+    });
+
     test('without a scheme http follows a failed TLS handshake', () async {
       final dio = fakeDio({
         ..._both(
@@ -1569,6 +1588,8 @@ void main() {
           .where((request) => request.uri.isScheme('http'))
           .toList();
       expect(abandoned, isNotEmpty);
+      // Each probe's own token follows the attempt's in a microtask.
+      await pumpEventQueue();
       for (final request in abandoned) {
         expect(request.cancelToken!.isCancelled, isTrue);
       }

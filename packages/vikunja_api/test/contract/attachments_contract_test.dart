@@ -104,7 +104,7 @@ void main() {
           expect(connection.info.taskAttachmentsEnabled, isTrue);
           expect(connection.info.maxFileSizeBytes, 20 * _mebibyte);
           user = await registerAndLogin(dio, connection);
-          temp = Directory.systemTemp.createTempSync('rurana_attachments');
+          temp = Directory.systemTemp.createTempSync('vikunja_app_attachments');
 
           final v2 = clients(ApiVersion.v2).writes;
           projectId = (await paced(

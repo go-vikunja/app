@@ -19,6 +19,7 @@ import 'package:vikunja_mobile/features/attachments/application/attachment_provi
 import 'package:vikunja_mobile/features/attachments/application/queue_attachments.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_source_items.dart';
+import 'package:vikunja_mobile/features/attachments/presentation/location_kept_prompt.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
@@ -45,6 +46,7 @@ class TaskAttachmentsSection extends ConsumerStatefulWidget {
     required this.controller,
     required this.writable,
     required this.onMessage,
+    this.onMessageAfterClose,
     super.key,
   });
 
@@ -55,6 +57,9 @@ class TaskAttachmentsSection extends ConsumerStatefulWidget {
   final TaskDetailsController controller;
   final bool writable;
   final ValueChanged<String> onMessage;
+
+  /// For what is said once the section has gone, below the sheet.
+  final ValueChanged<String>? onMessageAfterClose;
 
   @override
   ConsumerState<TaskAttachmentsSection> createState() =>
@@ -88,6 +93,8 @@ class _TaskAttachmentsSectionState
   Future<void> _add(AttachmentSource source) async {
     final repository = ref.read(taskRepositoryProvider);
     if (repository == null || _picking || _queueing) return;
+    final l10n = context.l10n;
+    final afterClose = widget.onMessageAfterClose;
     final maxBytes = _attachments?.maxUploadBytes ?? defaultMaxUploadBytes;
     _picking = true;
     final PickedFiles picked;
@@ -104,13 +111,26 @@ class _TaskAttachmentsSectionState
     }
     if (picked.isEmpty) return;
     // Queued even when the sheet closed meanwhile: the user picked them.
+    // Those whose location stayed go only when the user says so, which a
+    // closed sheet cannot ask; they are left out, and that is said below.
     if (mounted) setState(() => _queueing = true);
     try {
+      final asked = mounted;
+      final files = await withoutUnwantedLocations(
+        asked ? context : null,
+        picked.files,
+      );
+      final skipped = asked ? 0 : picked.files.length - files.length;
       final queued = await queueAttachments(repository, widget.task.id, [
-        for (final file in picked.files)
+        for (final file in files)
           (path: file.path, name: file.name, mimeType: file.mimeType),
       ], moveSource: true);
-      if (!mounted) return;
+      if (!mounted) {
+        if (skipped > 0) {
+          afterClose?.call(l10n.attachmentLocationKeptLeftOut(skipped));
+        }
+        return;
+      }
       final result = QueuedAttachments(
         queued: queued.queued,
         tooLarge: [...picked.tooLarge, ...queued.tooLarge],

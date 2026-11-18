@@ -169,6 +169,21 @@ void main() {
       expect(punycodeHost('${'a' * 70}ü.example'), isNull);
     });
 
+    test("a URL's host becomes punycode, the rest stays", () {
+      expect(
+        withAsciiHost(Uri.parse('https://user@Bücher.example:8443/a?b#c')),
+        Uri.parse('https://user@xn--bcher-kva.example:8443/a?b#c'),
+      );
+      for (final uri in [
+        Uri.parse('https://tasks.example.org/x'),
+        Uri.parse('mailto:anna@example.org'),
+        Uri.parse('https://[::1]:3456/'),
+        Uri.parse('https://bücher..example/'),
+      ]) {
+        expect(withAsciiHost(uri), uri, reason: '$uri');
+      }
+    });
+
     group('drops invisible characters from copy and paste', () {
       for (final input in [
         'https://example.com\u200B',

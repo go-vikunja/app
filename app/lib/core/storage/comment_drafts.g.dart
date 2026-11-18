@@ -48,4 +48,4 @@ final class CommentDraftsProvider
   }
 }
 
-String _$commentDraftsHash() => r'ff720c647cf74eeb394404e182263ef9897f5c03';
+String _$commentDraftsHash() => r'f9b53e22bb22fdea1d58fd83870cdd0d53d05a95';

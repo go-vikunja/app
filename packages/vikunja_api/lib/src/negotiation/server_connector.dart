@@ -62,6 +62,19 @@ final class DioServerConnector implements ServerConnector {
   }
 }
 
+/// Whether [connection], found for what the user typed as [input], is on
+/// `http` only because `https` failed: without a typed scheme the connector
+/// tries `http` after every `https` candidate failed to connect, which is
+/// also what blocking `https` on the network looks like (D8).
+bool reachedOverHttpFallback(String input, ServerConnection connection) {
+  if (!connection.isInsecure) return false;
+  try {
+    return !normalizeServerAddress(input).hasExplicitScheme;
+  } on InvalidServerAddress {
+    return false;
+  }
+}
+
 final class _ConnectAttempt {
   new(this._connector, this._candidates, this._callerToken);
 

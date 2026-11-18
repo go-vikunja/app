@@ -34,9 +34,17 @@ setup_flutter
 "${repo_root}/tool/wait_for_test_servers.sh"
 
 # Every contract test lives in test/contract; naming it spares compiling the
-# other test files only to skip them.
-(cd "${repo_root}/packages/vikunja_api" && VIKUNJA_CONTRACT=1 flutter test --tags contract test/contract)
+# other test files only to skip them. Both suites run before a failure counts,
+# so a run against an older release shows everything that fails (D28).
+failed=()
+(cd "${repo_root}/packages/vikunja_api" && VIKUNJA_CONTRACT=1 flutter test --tags contract test/contract) ||
+  failed+=(vikunja_api)
 # Upcoming is compared with the server's filter strings in this zone. One
 # file at a time: the app's files have not been run in parallel since the
 # test server stopped answering parallel writes with "database is locked".
-(cd "${repo_root}/app" && VIKUNJA_CONTRACT=1 TZ=Europe/Berlin flutter test --tags contract --concurrency=1 test/contract)
+(cd "${repo_root}/app" && VIKUNJA_CONTRACT=1 TZ=Europe/Berlin flutter test --tags contract --concurrency=1 test/contract) ||
+  failed+=(app)
+if ((${#failed[@]})); then
+  echo "error: the contract tests of ${failed[*]} failed" >&2
+  exit 1
+fi

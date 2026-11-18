@@ -13,6 +13,76 @@ release_root="${VIKUNJA_APP_RELEASE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/..
 release_unsigned_dir="${release_root}/unsigned"
 release_signed_dir="${release_root}/signed"
 
+# The per-ABI APKs beside the universal one, by Flutter's ABI names. They
+# keep the universal APK's version code, so a device moves between them.
+RELEASE_APK_ABIS=(arm64-v8a armeabi-v7a x86_64)
+
+# abi: its part of a release.env key, ARM64_V8A for arm64-v8a.
+release_abi_key() {
+  printf '%s' "$1" | LC_ALL=C tr 'a-z-' 'A-Z_'
+}
+
+# apk, its `aapt2 dump badging`, build name, build number, ABI ...: exits
+# unless the APK has this version and native code for exactly these ABIs.
+check_apk_badging() {
+  local apk="$1" badging="$2" name="$3" number="$4" package_line found expected
+  shift 4
+  package_line="$(sed -n 1p <<<"$badging")"
+  if [[ "$package_line" != *" versionCode='${number}' versionName='${name}' "* ]]; then
+    echo "error: the version of $(basename "$apk") is not ${name} (${number}): ${package_line}" >&2
+    exit 1
+  fi
+  found="$(sed -n "s/^native-code: //p" <<<"$badging" | tr -d "'" | tr ' ' '\n' | sed '/^$/d' | LC_ALL=C sort |
+    tr '\n' ' ')"
+  expected="$(printf '%s\n' "$@" | LC_ALL=C sort | tr '\n' ' ')"
+  if [[ "$found" != "$expected" ]]; then
+    echo "error: $(basename "$apk") has native code for ${found% }, not for ${expected% }" >&2
+    exit 1
+  fi
+}
+
+# tag: German must have every English text (D88). A patch release (x.y.z with
+# z > 0) may go without when VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN names its
+# tag, so the override never carries over to the next release (owner,
+# 2026-11-18); the log then says how many texts English stands in for.
+# Refusals go to the caller's refuse MESSAGE REASON. Run from the repository.
+check_german() {
+  local tag="$1" allowed="${VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN:-}" report status=0 translated total
+  local missing lacks patch='^v[0-9]+\.[0-9]+\.[1-9][0-9]*(-beta\.[0-9]+)?$'
+  report="$(python3 -I tool/l10n_progress.py --min 100 de)" || status=$?
+  if ((status == 0)); then
+    if [[ -n "$allowed" ]]; then
+      echo "German is complete: VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN (${allowed}) is not needed; unset it."
+    fi
+    return 0
+  fi
+  if ((status != 1)); then
+    refuse "tool/l10n_progress.py could not count the German texts (exit ${status})" "German incomplete"
+    return 0
+  fi
+  read -r _ translated _ total _ <<<"$report"
+  missing=$((total - translated))
+  lacks="German lacks ${missing} of the ${total} English texts"
+  if [[ -z "$allowed" && "$tag" =~ $patch ]]; then
+    refuse "${lacks}: a release needs every English text in German (D88); finish it on Crowdin and merge Crowdin's pull request, or for this patch release set VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN=${tag} (docs/releasing.md)" \
+      "German incomplete"
+  elif [[ -z "$allowed" ]]; then
+    refuse "${lacks}: a release needs every English text in German (D88), and ${tag} is no patch release, so the translations must be complete; finish them on Crowdin and merge Crowdin's pull request" \
+      "German incomplete"
+  elif [[ "$allowed" != "$tag" ]]; then
+    refuse "${lacks}, and VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN names ${allowed}, not ${tag}" "German incomplete"
+  elif [[ ! "$tag" =~ $patch ]]; then
+    refuse "${lacks}, and VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN is for patch releases only: ${tag} needs German complete" \
+      "German incomplete"
+  else
+    echo "warning: ${lacks}; VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN releases the patch release ${tag} without them," \
+      "and English stands in for them (D88)" >&2
+    if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
+      echo "::warning title=German incomplete::${tag} is released with ${missing} of ${total} English texts not in German (VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN)"
+    fi
+  fi
+}
+
 # The only runs that publish: GitHub Actions on a tag of the official repository.
 official_release_run() {
   [[ "${GITHUB_ACTIONS:-}" == true && "${GITHUB_REPOSITORY:-}" == "$OFFICIAL_REPOSITORY" &&

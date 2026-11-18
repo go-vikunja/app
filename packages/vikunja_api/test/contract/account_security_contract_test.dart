@@ -18,11 +18,11 @@ import 'helpers.dart';
 // request and the TOTP enrolment and cancel below need it, the cancel from
 // 2.7.1 a code of the enrolment's secret too, which stays in memory as well.
 // From 2.8.0 the cancel is refused and the setup can only be finished.
-// The port runs over an OAuth session whose code exchange sent a Rurana
+// The port runs over an OAuth session whose code exchange sent the app's
 // User-Agent. No token value, secret or password is ever printed: failures
 // name shapes and lengths.
 const _pace = Duration(milliseconds: 500);
-const _ruranaAgent = 'Rurana/0.31.0+31 (android 15)';
+const _appAgent = 'Vikunja-App/0.31.0+31 (android 15)';
 const _propfind = '''
 <?xml version="1.0" encoding="utf-8"?>
 <d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
@@ -43,7 +43,7 @@ void main() {
     for (final (:port, :version) in contractServers) {
       group('$version on :$port', () {
         late Dio dio;
-        late Dio ruranaDio;
+        late Dio appDio;
         late ServerConnection connection;
         late OAuthTokenClient tokenClient;
         late _User user;
@@ -173,23 +173,23 @@ void main() {
 
         setUpAll(() async {
           dio = contractDio();
-          ruranaDio = Dio(
+          appDio = Dio(
             BaseOptions(
               connectTimeout: const Duration(seconds: 5),
               receiveTimeout: const Duration(seconds: 20),
-              headers: {'User-Agent': _ruranaAgent},
+              headers: {'User-Agent': _appAgent},
             ),
           );
           connection = await DioServerConnector(dio)
               .connect('http://localhost:$port');
-          tokenClient = OAuthTokenClient(ruranaDio, connection);
+          tokenClient = OAuthTokenClient(appDio, connection);
           user = await _registerAndLogin(dio, connection);
           current = await signIn();
         });
 
         tearDownAll(() {
           dio.close(force: true);
-          ruranaDio.close(force: true);
+          appDio.close(force: true);
         });
 
         test('sessions: the current sid with our User-Agent and another '
@@ -220,7 +220,7 @@ void main() {
             final mine = sessions.singleWhere(
               (session) => session.id == current.sessionId,
             );
-            expect(mine.deviceInfo, _ruranaAgent);
+            expect(mine.deviceInfo, _appAgent);
             expect(mine.created, isNotNull);
             expect(mine.lastActive, isNotNull);
 

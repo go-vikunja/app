@@ -174,7 +174,7 @@ void main() {
     await pullToRefresh(tester, find.byType(CustomScrollView));
 
     expect(rowTitles(tester), ['Fresh']);
-    expect(data.engine.refreshCalls, 1);
+    expect(data.engine.refreshInNewRunCalls, 1);
   });
 
   testWidgets('Refresh in the menu runs a sync without a drag', (tester) async {
@@ -186,7 +186,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(rowTitles(tester), ['Fresh']);
-    expect(data.engine.refreshCalls, 1);
+    expect(data.engine.refreshInNewRunCalls, 1);
   });
 
   testWidgets('a failure notice and collapsed state do not outlive the '

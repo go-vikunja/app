@@ -109,7 +109,7 @@ void main() {
     expect(write.updates, [(1, const TaskChanges(done: true))]);
     expect(pendingIds.read().value, isEmpty);
     expect(pendingCount.read().value, 0);
-    expect(engine.refreshCalls, 1);
+    expect(engine.refreshAfterWriteCalls, 1);
   });
 
   test("the pickers' label create and people search reach the account's "
@@ -196,7 +196,7 @@ void main() {
     expect(container.read(taskRepositoryProvider), isNull);
     expect(files.deleted, [accountId]);
     expect(engine.disposed, isTrue);
-    expect(engine.refreshCalls, 0);
+    expect(engine.refreshAfterWriteCalls, 0);
     // Disposed: a drain sends nothing any more.
     await sender.drain();
     expect(write.requests, ['update 1']);

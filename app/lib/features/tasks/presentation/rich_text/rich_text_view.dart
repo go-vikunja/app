@@ -1,15 +1,21 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_api/vikunja_api.dart' show withAsciiHost;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
+import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_view.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/inline_pills.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/rich_text/link_details.dart';
 
 // A span of up to 1000 columns would turn a small text into a million
 // cells; a larger table shows row by row instead.
@@ -20,17 +26,23 @@ const _checkboxTapTarget = 48.0;
 
 /// A description or comment from the web editor's schema, drawn with the
 /// app's theme: nothing in it loads or opens by itself. A tap on a link
-/// goes to [onLink] with the href as the text has it, one on a task pill
+/// goes to [onLink] with the href as the text has it (null where links
+/// open nothing, and the address dialog offers no Open), one on a task pill
 /// to [onTaskLink]; attachment images load through the account's
 /// authenticated client, other images only stand in as a link. With
 /// [onToggleTaskItem] the checkboxes that can be toggled in place (those
 /// with a source offset) take taps; the others stay read-only.
-class RichTextView extends StatefulWidget {
+///
+/// A long press on a link shows its full address and host first, and so
+/// does a tap on a link whose text names another address than it opens
+/// (anyone who can write in the project can make one).
+class RichTextView extends ConsumerStatefulWidget {
   const new({
     required this.document,
     required this.onLink,
     required this.onTaskLink,
     this.onToggleTaskItem,
+    this.linkAddress,
     this.style,
     this.projectId,
     this.replyAuthorOf,
@@ -38,9 +50,13 @@ class RichTextView extends StatefulWidget {
   });
 
   final RichDocument document;
-  final ValueChanged<String> onLink;
+  final ValueChanged<String>? onLink;
   final ValueChanged<int> onTaskLink;
   final ValueChanged<RichTaskItem>? onToggleTaskItem;
+
+  /// The full address a link's href opens, null when it opens nothing;
+  /// without it an absolute http(s) or other app's href stands for itself.
+  final Uri? Function(String href)? linkAddress;
 
   /// The body text; the theme's `bodyMedium` when null.
   final TextStyle? style;
@@ -53,11 +69,62 @@ class RichTextView extends StatefulWidget {
   final User? Function(int commentId)? replyAuthorOf;
 
   @override
-  State<RichTextView> createState() => _RichTextViewState();
+  ConsumerState<RichTextView> createState() => _RichTextViewState();
 }
 
-class _RichTextViewState extends State<RichTextView> {
+class _RichTextViewState extends ConsumerState<RichTextView> {
   final _recognizers = <GestureRecognizer>[];
+
+  Uri? _addressOf(String href) {
+    if (widget.linkAddress case final resolve?) return resolve(href);
+    final uri = Uri.tryParse(href.trim());
+    return isWebLink(uri) || isSystemLink(uri) ? uri : null;
+  }
+
+  void _onLinkTap(String href, String text) {
+    final address = _addressOf(href);
+    if (address != null && linkTextMisleads(text, address)) {
+      unawaited(_showLinkDetails(href, address, misleading: true));
+    } else {
+      widget.onLink?.call(href);
+    }
+  }
+
+  void _onLinkLongPress(String href, String text) {
+    unawaited(Feedback.forLongPress(context));
+    final address = _addressOf(href);
+    unawaited(
+      _showLinkDetails(
+        href,
+        address,
+        misleading: address != null && linkTextMisleads(text, address),
+      ),
+    );
+  }
+
+  Future<void> _showLinkDetails(
+    String href,
+    Uri? address, {
+    required bool misleading,
+  }) async {
+    final shown = address == null ? href : '${withAsciiHost(address)}';
+    final choice = await showLinkDetails(
+      context,
+      address: shown,
+      host: address == null ? null : linkHostOf(address),
+      misleading: misleading,
+      canOpen: address != null && widget.onLink != null,
+    );
+    if (!mounted) return;
+    switch (choice) {
+      case LinkDetailsChoice.open:
+        widget.onLink?.call(href);
+      case LinkDetailsChoice.copy:
+        await copyLinkAddress(context, ref, shown);
+      case null:
+        break;
+    }
+  }
 
   void _disposeRecognizers() {
     for (final recognizer in _recognizers) {
@@ -82,6 +149,8 @@ class _RichTextViewState extends State<RichTextView> {
       l10n: context.l10n,
       recognizers: _recognizers,
       textScaler: MediaQuery.textScalerOf(context),
+      onLinkTap: _onLinkTap,
+      onLinkLongPress: _onLinkLongPress,
     );
     return renderer.column(
       renderer.blocks(
@@ -132,6 +201,8 @@ final class _Renderer {
     required this.l10n,
     required this.recognizers,
     required this.textScaler,
+    required this.onLinkTap,
+    required this.onLinkLongPress,
   });
 
   final RichTextView view;
@@ -139,6 +210,10 @@ final class _Renderer {
   final AppLocalizations l10n;
   final List<GestureRecognizer> recognizers;
   final TextScaler textScaler;
+
+  /// With the href and the whole text of the link.
+  final void Function(String href, String text) onLinkTap;
+  final void Function(String href, String text) onLinkLongPress;
 
   ColorScheme get colors => theme.colorScheme;
 
@@ -232,40 +307,70 @@ final class _Renderer {
     );
   }
 
-  List<InlineSpan> inlines(List<RichInline> inlines, TextStyle base) => [
-    for (final inline in inlines)
-      switch (inline) {
-        RichTextRun(:final text, :final marks, :final href) => TextSpan(
-          text: text,
-          style: _runStyle(marks, base, link: href != null),
-          recognizer: href == null ? null : _tap(() => view.onLink(href)),
-        ),
-        RichHardBreak() => const TextSpan(text: '\n'),
-        // The span scales its widget by the paragraph's text scale, so the
-        // pill must not scale its own text again.
-        RichMention(:final username, :final label) => WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: MediaQuery.withNoTextScaling(
-            child: MentionPill(username: username, label: label, style: base),
+  List<InlineSpan> inlines(List<RichInline> inlines, TextStyle base) {
+    final linkTexts = _linkTexts(inlines);
+    return [
+      for (final (index, inline) in inlines.indexed)
+        switch (inline) {
+          RichTextRun(:final text, :final marks, :final href) => TextSpan(
+            text: text,
+            style: _runStyle(marks, base, link: href != null),
+            recognizer: href == null ? null : _link(href, linkTexts[index]!),
           ),
-        ),
-        RichTaskLink(:final taskId, :final href) => WidgetSpan(
-          alignment: PlaceholderAlignment.middle,
-          child: MediaQuery.withNoTextScaling(
-            child: TaskLinkPill(
-              taskId: taskId,
-              href: href,
-              projectId: view.projectId,
-              style: base,
-              onOpen: () => view.onTaskLink(taskId),
+          RichHardBreak() => const TextSpan(text: '\n'),
+          // The span scales its widget by the paragraph's text scale, so the
+          // pill must not scale its own text again.
+          RichMention(:final username, :final label) => WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: MediaQuery.withNoTextScaling(
+              child: MentionPill(username: username, label: label, style: base),
             ),
           ),
-        ),
-      },
-  ];
+          RichTaskLink(:final taskId, :final href) => WidgetSpan(
+            alignment: PlaceholderAlignment.middle,
+            child: MediaQuery.withNoTextScaling(
+              child: TaskLinkPill(
+                taskId: taskId,
+                href: href,
+                projectId: view.projectId,
+                style: base,
+                onOpen: () => view.onTaskLink(taskId),
+              ),
+            ),
+          ),
+        },
+    ];
+  }
 
-  TapGestureRecognizer _tap(VoidCallback onTap) {
-    final recognizer = TapGestureRecognizer()..onTap = onTap;
+  /// The whole text of the link each run belongs to: the runs side by side
+  /// with the same href, which marks inside a link split.
+  static List<String?> _linkTexts(List<RichInline> inlines) {
+    String? hrefOf(RichInline inline) =>
+        inline is RichTextRun ? inline.href : null;
+    final texts = List<String?>.filled(inlines.length, null);
+    var start = 0;
+    while (start < inlines.length) {
+      final href = hrefOf(inlines[start]);
+      var end = start + 1;
+      if (href != null) {
+        while (end < inlines.length && hrefOf(inlines[end]) == href) {
+          end++;
+        }
+        final text = inlines
+            .sublist(start, end)
+            .map((inline) => (inline as RichTextRun).text)
+            .join();
+        texts.fillRange(start, end, text);
+      }
+      start = end;
+    }
+    return texts;
+  }
+
+  GestureRecognizer _link(String href, String text) {
+    final recognizer = _LinkRecognizer(
+      onLongPress: () => onLinkLongPress(href, text),
+    )..onTap = () => onLinkTap(href, text);
     recognizers.add(recognizer);
     return recognizer;
   }
@@ -684,7 +789,7 @@ final class _Renderer {
         ),
         RichExternalImage(:final url) => ExternalImagePlaceholder(
           url: url,
-          onOpen: () => view.onLink(url.toString()),
+          onOpen: () => view.onLink?.call(url.toString()),
         ),
       },
     );
@@ -693,3 +798,25 @@ final class _Renderer {
 
 /// A cell where it starts (`origin`), or a slot its span covers.
 typedef _GridSlot = ({RichTableCell cell, bool origin});
+
+/// A link's tap that also takes a long press, as a text span holds one
+/// recognizer. A tap recognizer, because the paragraph's semantics know
+/// only those and long presses, and a link must stay a link there.
+final class _LinkRecognizer extends TapGestureRecognizer {
+  new({required VoidCallback onLongPress})
+    : _longPress = LongPressGestureRecognizer()..onLongPress = onLongPress;
+
+  final LongPressGestureRecognizer _longPress;
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    super.addAllowedPointer(event);
+    _longPress.addPointer(event);
+  }
+
+  @override
+  void dispose() {
+    _longPress.dispose();
+    super.dispose();
+  }
+}

@@ -862,7 +862,7 @@ void main() {
 
       unawaited(controllerOf(container).excursion(() => lost.future));
       leave(tester);
-      now = now.add(const Duration(minutes: 5));
+      now = now.add(const Duration(seconds: 20));
       lifecycle(tester, const [
         AppLifecycleState.detached,
         AppLifecycleState.resumed,
@@ -913,15 +913,18 @@ void main() {
     testLock('only the first resume after a relaunch ends them', (
       tester,
     ) async {
-      final container = await startUnlocked(tester);
+      final container = await startUnlocked(tester, _immediately);
       final picker = Completer<String>();
 
+      auth.result = DeviceAuthResult.success;
       leave(tester);
       lifecycle(tester, const [
         AppLifecycleState.detached,
         AppLifecycleState.resumed,
       ]);
-      await tester.pump();
+      await pumpPastPromptSettle(tester);
+      expect(lockOf(container).locked, isFalse);
+      auth.result = DeviceAuthResult.cancelled;
       final picked = controllerOf(container).excursion(() => picker.future);
       lifecycle(tester, const [
         AppLifecycleState.inactive,
@@ -931,7 +934,7 @@ void main() {
       expect(container.read(appExcursionsProvider).active, isTrue);
 
       leave(tester);
-      now = now.add(const Duration(minutes: 5));
+      now = now.add(const Duration(seconds: 20));
       comeBack(tester);
       picker.complete('photo.jpg');
 
@@ -945,7 +948,7 @@ void main() {
 
       final picked = controllerOf(container).excursion(() => picker.future);
       leave(tester);
-      now = now.add(const Duration(minutes: 5));
+      now = now.add(const Duration(seconds: 29));
       comeBack(tester);
       picker.complete('photo.jpg');
 
@@ -964,6 +967,39 @@ void main() {
       unawaited(controllerOf(container).excursion(() => picker.future));
       leave(tester);
       now = now.add(const Duration(minutes: 10));
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isTrue);
+      picker.complete();
+    });
+
+    testLock('one longer than the lock time counts from its start', (
+      tester,
+    ) async {
+      final container = await startUnlocked(
+        tester,
+        const PrivacySettings(appLock: true, lockAfter: LockAfter.fiveMinutes),
+      );
+      final picker = Completer<void>();
+
+      unawaited(controllerOf(container).excursion(() => picker.future));
+      leave(tester);
+      now = now.add(const Duration(minutes: 6));
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isTrue);
+      picker.complete();
+    });
+
+    testLock('with immediately, one longer than 30 seconds counts from its '
+        'start, also while it waits hidden', (tester) async {
+      final container = await startUnlocked(tester, _immediately);
+      final picker = Completer<void>();
+
+      unawaited(controllerOf(container).excursion(() => picker.future));
+      leave(tester);
+      now = now.add(const Duration(seconds: 30));
+      expect(controllerOf(container).isLockedNow(), isTrue);
       comeBack(tester);
 
       expect(lockOf(container).locked, isTrue);
@@ -1022,7 +1058,7 @@ void main() {
 
       final shared = controllerOf(container).excursion(() => share.future);
       leave(tester);
-      now = now.add(const Duration(minutes: 3));
+      now = now.add(const Duration(seconds: 50));
       share.complete();
       await shared;
       expect(lockOf(container).locked, isFalse);
@@ -1034,7 +1070,7 @@ void main() {
       leave(tester);
       final again = Completer<void>();
       final sharedAgain = controllerOf(container).excursion(() => again.future);
-      now = now.add(const Duration(minutes: 1));
+      now = now.add(const Duration(seconds: 30));
       again.complete();
       await sharedAgain;
       now = now.add(const Duration(minutes: 1));

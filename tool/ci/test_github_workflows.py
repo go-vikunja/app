@@ -10,12 +10,13 @@ import unittest
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WORKFLOWS = os.path.join(ROOT, '.github', 'workflows')
+DEPENDABOT = os.path.join(ROOT, '.github', 'dependabot.yml')
 EDITOR_NODE = os.path.join(ROOT, 'app', 'editor', '.nvmrc')
 
-WORKFLOW_FILES = {'ci.yaml', 'release.yaml'}
+WORKFLOW_FILES = {'ci.yaml', 'release.yaml', 'upstream.yaml'}
 ALLOWED_ACTIONS = {'actions/checkout', 'actions/cache', 'actions/setup-node', 'actions/upload-artifact',
                    'actions/download-artifact'}
-RUNNERS = {'ubuntu-24.04', 'macos-26'}
+RUNNERS = {'ubuntu-24.04', 'xcode-27'}
 CI_JOB_SCRIPTS = {
     'checks': {'tool/ci/checks.sh', 'tool/ci/test.sh', 'tool/ci/outdated.sh'},
     'editor': {'tool/ci/editor.sh'},
@@ -108,6 +109,7 @@ class GitHubWorkflowsTest(unittest.TestCase):
                 cls.texts[name] = f.read()
         cls.ci = cls.workflows['ci.yaml']
         cls.release = cls.workflows['release.yaml']
+        cls.upstream = cls.workflows['upstream.yaml']
 
     def all_jobs(self):
         for file, workflow in self.workflows.items():
@@ -131,6 +133,10 @@ class GitHubWorkflowsTest(unittest.TestCase):
             with self.subTest(event):
                 self.assertIsNone(ci[event])
         self.assertEqual(triggers(self.release), {'push': {'tags': ['v*']}})
+        upstream = triggers(self.upstream)
+        self.assertEqual(set(upstream), {'schedule', 'workflow_dispatch'})
+        self.assertEqual(len(upstream['schedule']), 1)
+        self.assertIsNone(upstream['workflow_dispatch'])
         for file, workflow in self.workflows.items():
             with self.subTest(file):
                 self.assertNotIn('pull_request_target', triggers(workflow))
@@ -211,7 +217,7 @@ class GitHubWorkflowsTest(unittest.TestCase):
         self.assertIs(concurrency['cancel-in-progress'], True)
         self.assertNotIn('concurrency', self.release)
         self.assertEqual(self.release['jobs']['publish']['concurrency'],
-                         {'group': 'release-publish', 'cancel-in-progress': False})
+                         {'group': 'release-publish', 'cancel-in-progress': False, 'queue': 'max'})
 
     def test_the_schedule_runs_osv_only(self):
         for name, job in self.ci['jobs'].items():
@@ -223,6 +229,25 @@ class GitHubWorkflowsTest(unittest.TestCase):
                                      f"{NOT_SCHEDULED} && ({OFFICIAL} || vars.VIKUNJA_APP_IOS_JOB == 'true')")
                 else:
                     self.assertEqual(job['if'], NOT_SCHEDULED)
+
+    def test_ios_builds_with_the_xcode_of_the_releases(self):
+        self.assertEqual(self.ci['jobs']['ios']['runs-on'], 'xcode-27')
+
+    def test_the_upstream_versions_job(self):
+        self.assertEqual(list(self.upstream['jobs']), ['versions'])
+        job = self.upstream['jobs']['versions']
+        self.assertEqual(kinds(job), ['actions/checkout', 'run'])
+        self.assertEqual(runs(job), ['tool/ci/upstream.sh'])
+        self.assertNotIn('env', job)
+
+    def test_dependabot_updates_the_actions(self):
+        config = load(DEPENDABOT)
+        self.assertEqual(config['version'], 2)
+        (update,) = config['updates']
+        self.assertEqual(update['package-ecosystem'], 'github-actions')
+        self.assertEqual(update['directory'], '/')
+        self.assertEqual(update['schedule']['interval'], 'weekly')
+        self.assertGreaterEqual(update['cooldown']['default-days'], 1)
 
     def test_the_ci_jobs_and_their_scripts(self):
         self.assertEqual(set(self.ci['jobs']), set(CI_JOB_SCRIPTS))
@@ -296,6 +321,8 @@ class GitHubWorkflowsTest(unittest.TestCase):
         self.assertNotIn('needs', build)
         self.assertNotIn('environment', build)
         self.assertEqual(runs(build), ['tool/ci/release_build.sh --tag "$GITHUB_REF_NAME"'])
+        self.assertEqual(step_running(build, 'tool/ci/release_build.sh --tag "$GITHUB_REF_NAME"')['env'],
+                         {'VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN': '${{ vars.VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN }}'})
         self.assertEqual(kinds(build), ['actions/checkout', 'run', 'actions/upload-artifact'])
         self.assertEqual(steps_using(build, 'actions/upload-artifact')[0]['with'],
                          {'name': 'release-unsigned', 'path': 'build/release/unsigned/', 'if-no-files-found': 'error',
@@ -330,6 +357,7 @@ class GitHubWorkflowsTest(unittest.TestCase):
 
     def test_secrets_only_in_publish(self):
         self.assertNotRegex(self.texts['ci.yaml'], SECRETS_REFERENCE)
+        self.assertNotRegex(self.texts['upstream.yaml'], SECRETS_REFERENCE)
         others = dict(self.release, jobs={name: job for name, job in self.release['jobs'].items()
                                           if name not in ('publish', 'secret-scope')})
         self.assertNotRegex(json.dumps(others), SECRETS_REFERENCE)

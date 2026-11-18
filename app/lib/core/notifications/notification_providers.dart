@@ -150,8 +150,8 @@ NotificationPresentation _presentation(
   privacy: _privacyOf(settings),
 );
 
-/// Done on iOS asks for the device unlock while the app lock is on, as D39
-/// left for the app lock.
+/// While the app lock is on, Done on iOS asks for the device unlock, as D39
+/// left for the app lock, and Android leaves Done out.
 NotificationPrivacy _privacyOf(PrivacySettings settings) => NotificationPrivacy(
   hiddenOnLockScreen:
       settings.notificationContent == NotificationContent.hiddenOnLockScreen,
@@ -166,11 +166,14 @@ bool _changesWhatIsScheduled(PrivacySettings? before, PrivacySettings? after) =>
     (before.notificationContent != after.notificationContent ||
         before.appLock != after.appLock);
 
+/// Turning the app lock on counts: a reminder already shown keeps a Done
+/// that runs without the unlock.
 bool _showsLess(PrivacySettings? before, PrivacySettings? after) =>
     before != null &&
     after != null &&
-    before.notificationContent != after.notificationContent &&
-    after.notificationContent != NotificationContent.all;
+    ((before.notificationContent != after.notificationContent &&
+            after.notificationContent != NotificationContent.all) ||
+        (!before.appLock && after.appLock));
 
 /// Delivered notifications keep the texts and the visibility they were
 /// shown with.

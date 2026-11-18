@@ -436,6 +436,44 @@ void main() {
       );
     });
 
+    test('Android: no Done, which would run from the lock screen, while '
+        'Done needs the device unlocked, also when shown at once; the '
+        'snoozes stay', () async {
+      const locked = NotificationPrivacy(doneNeedsUnlock: true);
+      final gateway0 = gateway();
+      await gateway0.schedule(
+        ScheduledNotification(
+          osId: 1,
+          fireAt: notification.fireAt,
+          title: 't',
+          body: 'b',
+          payload: 'p',
+          exact: true,
+          privacy: locked,
+        ),
+      );
+      await gateway0.schedule(
+        ScheduledNotification(
+          osId: 2,
+          fireAt: now,
+          title: 't',
+          body: 'b',
+          payload: 'p',
+          exact: true,
+          privacy: locked,
+        ),
+      );
+
+      for (final method in ['zonedSchedule', 'show']) {
+        final actions = (platformSpecifics(call(method))['actions']! as List)
+            .map((a) => (a as Map)['id']);
+        expect(actions, [
+          NotificationActionIds.snooze10Minutes,
+          NotificationActionIds.snooze1Hour,
+        ], reason: method);
+      }
+    });
+
     test('an instant due within a second is shown at once', () async {
       await gateway().schedule(
         ScheduledNotification(

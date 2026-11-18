@@ -1,11 +1,17 @@
 #!/usr/bin/env bash
 # The CI job `osv` (D86): OSV advisories for the three lockfiles, with the
 # accepted ones in osv-scanner.toml. Uses osv-scanner from PATH, else
-# downloads the pinned release and checks its sha256.
+# downloads the pinned release and checks its sha256. Packages that only the
+# editor's tests use (tool/ci/editor_test_packages.py) are scanned too, but
+# their advisories do not fail the job, so they never block a release.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 cd "$repo_root"
+
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+python3 -I tool/ci/editor_test_packages.py app/editor/package-lock.json "${tmp}/editor"
 
 if command -v osv-scanner >/dev/null 2>&1; then
   scanner=osv-scanner
@@ -22,8 +28,6 @@ else
       exit 2
       ;;
   esac
-  tmp="$(mktemp -d)"
-  trap 'rm -rf "$tmp"' EXIT
   scanner="${tmp}/osv-scanner"
   curl --fail --silent --show-error --location --retry 3 --output "$scanner" \
     "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_${platform}"
@@ -33,5 +37,13 @@ fi
 
 "$scanner" scan source --config=osv-scanner.toml \
   --lockfile=pubspec.lock \
-  --lockfile=app/editor/package-lock.json \
+  --lockfile="${tmp}/editor/build/package-lock.json" \
   --lockfile=app/android/app/gradle.lockfile
+
+status=0
+"$scanner" scan source --config=osv-scanner.toml --lockfile="${tmp}/editor/tests/package-lock.json" || status=$?
+if ((status == 1)); then
+  echo "warning: the advisories above concern packages that only the editor's tests use: update them, but they do not block a release" >&2
+elif ((status != 0)); then
+  exit "$status"
+fi

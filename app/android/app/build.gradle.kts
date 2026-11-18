@@ -45,7 +45,10 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        // Not Flutter's default, so that a Flutter update cannot raise it
+        // unnoticed: API 37 needs ACCESS_LOCAL_NETWORK for servers on the
+        // local network (D76).
+        targetSdk = 36
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
         // You can force using the value of versionCode by specifying the `-P force-version-code-ignoring-abi=true`
@@ -101,7 +104,8 @@ flutter {
 }
 
 // gradle.lockfile, for the vulnerability scan. After a plugin or Flutter
-// upgrade: ./gradlew :app:dependencies --write-locks
+// upgrade, write it and gradle/verification-metadata.xml again
+// (docs/releasing.md#gradle-dependency-verification).
 // Locks only what ships and the JVM tests: the tooling classpaths (lint, test
 // platform, Kotlin compiler) change with every AGP update and never ship.
 configurations.configureEach {

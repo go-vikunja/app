@@ -592,6 +592,30 @@ void main() {
       ]);
     });
 
+    test('turning the app lock on withdraws the reminders and activity '
+        'already shown, whose Done runs without the unlock; turning it off '
+        'withdraws nothing', () async {
+      final (alice, _) = await twoAccounts();
+      container.listen(accountNotificationSchedulersProvider, (_, _) {});
+      await pumpEventQueue();
+      String payload(String key) =>
+          NotificationPayload(accountId: alice, taskId: 1, key: key).toJson();
+      gateway.tray.addAll({
+        101: payload('1:due'),
+        102: payload(ActivityTray.activityKey(5)),
+        103: payload(ActivityTray.sessionKey(alice)),
+      });
+
+      await change((settings) => settings.copyWith(appLock: true));
+      await pumpEventQueue();
+      expect(gateway.tray.keys, [103]);
+
+      gateway.tray[104] = payload('1:due');
+      await change((settings) => settings.copyWith(appLock: false));
+      await pumpEventQueue();
+      expect(gateway.tray.keys, unorderedEquals([103, 104]));
+    });
+
     test('no titles: generic texts, the payload unchanged', () async {
       final (aliceDue, _) = await scheduledForBoth();
       final payload = gateway.pending[aliceDue]!.payload;

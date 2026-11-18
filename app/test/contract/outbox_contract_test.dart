@@ -206,9 +206,12 @@ Future<void> _until(
 /// A drain whose transient failures are retried: the SQLite test server
 /// answers a lost write race with a 500 (another contract file seeding at
 /// the same time is enough), which the sender retries on its own timer.
+/// The drain after it waits out the refresh that sending on the timer
+/// starts, which would otherwise run on into the next test.
 Future<void> _drainFully(OutboxSender sender, AppDatabase db) async {
   await sender.drain();
   await _until(() async => await db.outboxDao.count() == 0);
+  await sender.drain();
 }
 
 void main() {
@@ -602,7 +605,8 @@ void main() {
             '/projects/${seed.projectId}/tasks',
             {'title': 'Goes elsewhere first'},
           );
-          await engine.refresh();
+          // A run already under way may have read the server before these.
+          await engine.refreshAfterWrite();
           sender.pause();
           await repository.deleteTask(deletedElsewhere);
           await repository.deleteTask(inDoomedProject);
@@ -768,7 +772,7 @@ void main() {
               'repeat_after': 86400,
             },
           );
-          await engine.refresh();
+          await engine.refreshAfterWrite();
           expect((await db.tasksDao.find(dailyId))!.repeats, isTrue);
           final before = await reads.tasks.read(dailyId);
           final attemptsBefore = writes.attempts;
@@ -810,7 +814,7 @@ void main() {
               ],
             },
           );
-          await engine.refresh();
+          await engine.refreshAfterWrite();
           final seeded = (await db.tasksDao.find(dailyId))!;
           expect(seeded.repeats, isTrue);
           expect(seeded.dueDate, isNull);

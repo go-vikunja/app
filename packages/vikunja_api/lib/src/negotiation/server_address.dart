@@ -121,4 +121,17 @@ String? punycodeHost(String host) {
       : labels.join('.');
 }
 
+/// [uri] with its host as [punycodeHost] gives it, where a resolver and the
+/// browser look it up: Dart's Uri percent-encodes a non-ASCII host. As it
+/// is when the host does not decode or punycode refuses it.
+Uri withAsciiHost(Uri uri) {
+  try {
+    final host = Uri.decodeComponent(uri.host);
+    final ascii = punycodeHost(host);
+    return ascii == null || ascii == host ? uri : uri.replace(host: ascii);
+  } on FormatException {
+    return uri;
+  }
+}
+
 bool _isAscii(String text) => text.runes.every((codePoint) => codePoint < 0x80);

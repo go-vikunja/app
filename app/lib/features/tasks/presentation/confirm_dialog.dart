@@ -8,6 +8,7 @@ Future<bool> confirmAdaptive(
   required String title,
   required String body,
   required String confirmLabel,
+  String? cancelLabel,
   bool destructive = false,
 }) async {
   final l10n = context.l10n;
@@ -20,7 +21,7 @@ Future<bool> confirmAdaptive(
       actions: [
         AdaptiveDialogAction(
           onPressed: () => Navigator.of(context).pop(false),
-          child: Text(l10n.cancel),
+          child: Text(cancelLabel ?? l10n.cancel),
         ),
         AdaptiveDialogAction(
           onPressed: () => Navigator.of(context).pop(true),

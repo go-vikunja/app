@@ -205,7 +205,8 @@ class AppLockController extends _$AppLockController {
   }
 
   /// Runs [action] without locking when the app goes out of sight for it,
-  /// up to [AppExcursions.cap]. Nested and overlapping calls count.
+  /// for as long as [AppExcursions.graceFor] gives the lock's time. Nested
+  /// and overlapping calls count.
   Future<T> excursion<T>(Future<T> Function() action) =>
       _excursions.run(action);
 
@@ -462,7 +463,7 @@ class AppLockController extends _$AppLockController {
     if (_visible || _authenticating) return;
     final now = _now();
     final elapsed = now.difference(startedAt);
-    _hiddenAt = elapsed >= AppExcursions.cap || elapsed.isNegative
+    _hiddenAt = elapsed >= _excursionGrace || elapsed.isNegative
         ? startedAt
         : now;
     _promptOnShow = true;
@@ -494,13 +495,13 @@ class AppLockController extends _$AppLockController {
     }
   }
 
+  Duration get _excursionGrace => AppExcursions.graceFor(_lockAfter.duration);
+
   DateTime? _outOfSightSince() {
     if (!_excursions.active) return _hiddenAt;
     final startedAt = _excursions.startedAt!;
     final elapsed = _now().difference(startedAt);
-    return elapsed >= AppExcursions.cap || elapsed.isNegative
-        ? startedAt
-        : null;
+    return elapsed >= _excursionGrace || elapsed.isNegative ? startedAt : null;
   }
 
   void _scheduleAutoPrompt() {

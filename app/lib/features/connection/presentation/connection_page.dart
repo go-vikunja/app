@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart' show CancelToken;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
@@ -8,11 +10,14 @@ import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/network/network_profile.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/network_profiles.dart';
+import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
+import 'package:vikunja_mobile/features/accounts/application/https_twins.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
@@ -22,6 +27,7 @@ import 'package:vikunja_mobile/features/connection/presentation/connection_navig
 import 'package:vikunja_mobile/features/connection/presentation/connection_texts.dart';
 import 'package:vikunja_mobile/features/connection/presentation/fingerprint_view.dart';
 import 'package:vikunja_mobile/features/connection/presentation/headers_page.dart';
+import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/insecure_connection_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 
@@ -82,10 +88,81 @@ class _ConnectionOverview extends ConsumerStatefulWidget {
 
 class _ConnectionOverviewState extends ConsumerState<_ConnectionOverview> {
   var _busy = false;
+  final _httpsCheck = CancelToken();
+
+  /// Where the server of an account on this http address answers over
+  /// https too.
+  Uri? _httpsRoot;
 
   OriginKey get _origin => widget.origin;
 
   NetworkProfiles get _profiles => ref.read(networkProfilesProvider);
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_origin.isSecure) unawaited(_lookForHttps());
+  }
+
+  @override
+  void dispose() {
+    _httpsCheck.cancel();
+    super.dispose();
+  }
+
+  /// An account keeps the address it was added with, as its id comes from
+  /// it (D25), so moving to https means adding the account there. Nothing
+  /// is offered for a user already signed in there too.
+  Future<void> _lookForHttps() async {
+    try {
+      final registry = await ref.read(accountsProvider.future);
+      final accounts = registry.accounts;
+      final root = accounts
+          .where(
+            (entry) =>
+                !entry.account.isLinkShare && !hasHttpsTwin(accounts, entry),
+          )
+          .map((entry) => entry.connection.rootUri)
+          .where((root) => OriginKey.tryOf(root) == _origin)
+          .firstOrNull;
+      if (root == null || _httpsCheck.isCancelled) return;
+      final found = await ref
+          .read(serverConnectorProvider)
+          .connect(
+            '${Uri(scheme: 'https', host: root.host, path: root.path)}',
+            cancelToken: _httpsCheck,
+          );
+      if (mounted && !found.isInsecure) {
+        setState(() => _httpsRoot = found.rootUri);
+      }
+    } on Object catch (error) {
+      if (!_httpsCheck.isCancelled) {
+        _log.info('No https for this address: ${error.runtimeType}');
+      }
+    }
+  }
+
+  /// Adds the account at [root] like the share target opens a link: on the
+  /// Add account screen this page was opened over, else on a new one. The
+  /// connect screen listens from its first frame on.
+  Future<void> _useHttps(Uri root) async {
+    final router = GoRouter.of(context);
+    final container = ProviderScope.containerOf(context, listen: false);
+    final adding = router.routerDelegate.currentConfiguration.matches.any(
+      (match) => match.matchedLocation == AppRoutes.addAccount,
+    );
+    if (adding) {
+      Navigator.of(context).popUntil(
+        (route) => route.settings.name == AppRoutes.addAccount || route.isFirst,
+      );
+    } else {
+      unawaited(router.push(AppRoutes.addAccount));
+    }
+    await WidgetsBinding.instance.endOfFrame;
+    unawaited(
+      container.read(connectServerControllerProvider.notifier).connect('$root'),
+    );
+  }
 
   Future<void> _edit(Future<void> Function() change) async {
     setState(() => _busy = true);
@@ -429,6 +506,15 @@ class _ConnectionOverviewState extends ConsumerState<_ConnectionOverview> {
     return SectionCard(
       title: l10n.connectionCleartextHeading,
       children: [
+        if (_httpsRoot case final https?)
+          SettingsNote(
+            icon: Icons.lock_outline,
+            text: l10n.connectionHttpsAvailable('$https'),
+            action: TextButton(
+              onPressed: enabled ? () => unawaited(_useHttps(https)) : null,
+              child: Text(l10n.connectionUseHttps),
+            ),
+          ),
         if (consentAt == null)
           SettingsNote(
             icon: Icons.no_encryption_outlined,

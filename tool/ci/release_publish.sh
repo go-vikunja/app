@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # The publish steps of .github/workflows/release.yaml (D86): the bundle to
-# Google Play, the APK to dl.vikunja.io, the GitHub release. Publishes only
+# Google Play, the universal and the per-ABI APKs to dl.vikunja.io, the GitHub
+# release. Publishes only
 # from go-vikunja/app (release_lib.sh); otherwise prints what it would do.
 # Each step skips what is already published with the same content, so
 # re-running the job is the retry.
@@ -141,10 +142,17 @@ check_file() {
 }
 
 apk_file="vikunja-app-${build_name}.apk"
+apk_files=("$apk_file")
+for abi in "${RELEASE_APK_ABIS[@]}"; do
+  apk_files+=("vikunja-app-${build_name}-${abi}.apk")
+done
 signing=""
 if [[ "$step" == check ]]; then
   check_file app-release.aab UNSIGNED_AAB_SHA256
   check_file app-release.apk UNSIGNED_APK_SHA256
+  for abi in "${RELEASE_APK_ABIS[@]}"; do
+    check_file "app-${abi}-release.apk" "UNSIGNED_APK_$(release_abi_key "$abi")_SHA256"
+  done
   check_file "$desugar_archive" DESUGAR_ARCHIVE_SHA256
 else
   if [[ "$(value APK_FILE)" != "$apk_file" ]]; then
@@ -160,12 +168,20 @@ else
     fail "${env_file}: SIGNING is neither release nor throwaway"
   fi
   check_file "$apk_file" APK_SHA256
+  apk_sha256s=("$apk_sha256")
+  for abi in "${RELEASE_APK_ABIS[@]}"; do
+    check_file "vikunja-app-${build_name}-${abi}.apk" "APK_$(release_abi_key "$abi")_SHA256"
+    apk_sha256s+=("$(value "APK_$(release_abi_key "$abi")_SHA256")")
+  done
   check_file app-release.aab AAB_SHA256
   check_file "$desugar_archive" DESUGAR_ARCHIVE_SHA256
+  expected_sums="$(printf '%s  %s\n' "$desugar_sha256" "$desugar_archive")"
+  for ((i = 0; i < ${#apk_files[@]}; i++)); do
+    expected_sums+=$'\n'"${apk_sha256s[i]}  ${apk_files[i]}"
+  done
   if [[ ! -f "${release_dir}/SHA256SUMS" ]] ||
-    [[ "$(sort "${release_dir}/SHA256SUMS")" != "$(printf '%s  %s\n%s  %s\n' "$apk_sha256" "$apk_file" \
-      "$desugar_sha256" "$desugar_archive" | sort)" ]]; then
-    fail "${release_dir}/SHA256SUMS does not list exactly ${apk_file} and ${desugar_archive}"
+    [[ "$(sort "${release_dir}/SHA256SUMS")" != "$(sort <<<"$expected_sums")" ]]; then
+    fail "${release_dir}/SHA256SUMS does not list exactly ${apk_files[*]} and ${desugar_archive}"
   fi
 fi
 
@@ -201,7 +217,8 @@ work="$(release_work_dir)"
 trap 'rm -rf "$work"' EXIT
 trap 'exit 130' INT TERM
 
-dl_key="app/${build_name}/${apk_file}"
+dl_dir="app/${build_name}"
+dl_key="${dl_dir}/${apk_file}"
 release_title="Vikunja app ${build_name}"
 if [[ "$channel" == beta ]]; then
   play_track=beta
@@ -212,7 +229,7 @@ else
   play_track=production
   play_fraction="${VIKUNJA_APP_PLAY_ROLLOUT:-0.1}"
   release_flags=(--latest)
-  release_kind="marked latest"
+  release_kind="marked latest unless the repository has a higher final release tag"
 fi
 
 print_plan() {
@@ -222,7 +239,7 @@ print_plan() {
   fi
   echo "$1 ${tag} (${channel}, versionCode ${build_number}):"
   echo "  Google Play io.vikunja.app: track ${play_track}, ${rollout}"
-  echo "  dl.vikunja.io: ${dl_key}"
+  echo "  dl.vikunja.io: ${dl_key} and the per-ABI APKs beside it"
   echo "  GitHub release \"${release_title}\" in ${GITHUB_REPOSITORY:-<GITHUB_REPOSITORY>}, ${release_kind}"
 }
 
@@ -362,7 +379,7 @@ aws_failed() {
 }
 
 run_dl() {
-  local missing=() host existing status=0 endpoint_shown="<S3_ENDPOINT>" bucket_shown="<S3_BUCKET>"
+  local missing=() host i endpoint_shown="<S3_ENDPOINT>" bucket_shown="<S3_BUCKET>"
   if ((${#reasons[@]})); then
     if [[ -n "$s3_endpoint" ]]; then
       endpoint_shown="\$S3_ENDPOINT"
@@ -370,11 +387,13 @@ run_dl() {
     if [[ -n "$s3_bucket" ]]; then
       bucket_shown="\$S3_BUCKET"
     fi
-    echo "Would upload the APK to dl.vikunja.io:"
-    echo "  aws --endpoint-url ${endpoint_shown} s3api put-object" \
-      "--bucket ${bucket_shown} --key ${dl_key} --body ${apk_file}" \
-      "--content-type application/vnd.android.package-archive --metadata sha256=${apk_sha256}"
-    echo "  with path-style addressing, unless head-object finds the key: skipped with this sha256, an error with another"
+    echo "Would upload the APKs to dl.vikunja.io:"
+    for ((i = 0; i < ${#apk_files[@]}; i++)); do
+      echo "  aws --endpoint-url ${endpoint_shown} s3api put-object" \
+        "--bucket ${bucket_shown} --key ${dl_dir}/${apk_files[i]} --body ${apk_files[i]}" \
+        "--content-type application/vnd.android.package-archive --metadata sha256=${apk_sha256s[i]}"
+    done
+    echo "  with path-style addressing, each unless head-object finds its key: skipped with its sha256, an error with another"
     not_published
   fi
   [[ -n "$s3_access_key" ]] || missing+=(S3_ACCESS_KEY)
@@ -404,50 +423,91 @@ run_dl() {
   s3_endpoint="https://${host}"
   (umask 077 && printf '[default]\ns3 =\n    addressing_style = path\n' >"${work}/aws-config")
 
-  existing="$(s3api head-object --bucket "$s3_bucket" --key "$dl_key" --query Metadata.sha256 --output text \
+  for ((i = 0; i < ${#apk_files[@]}; i++)); do
+    put_apk "${dl_dir}/${apk_files[i]}" "${release_dir}/${apk_files[i]}" "${apk_sha256s[i]}"
+  done
+}
+
+# key, file, its SHA-256
+put_apk() {
+  local existing status=0
+  existing="$(s3api head-object --bucket "$s3_bucket" --key "$1" --query Metadata.sha256 --output text \
     2>"${work}/aws.err")" || status=$?
   if ((status == 0)); then
-    if [[ "$existing" == "$apk_sha256" ]]; then
-      echo "dl.vikunja.io has ${dl_key} with this SHA-256 already: already published"
+    if [[ "$existing" == "$3" ]]; then
+      echo "dl.vikunja.io has $1 with this SHA-256 already: already published"
       return
     fi
-    fail "dl.vikunja.io has ${dl_key} with the SHA-256 metadata ${existing}, not ${apk_sha256}:" \
+    fail "dl.vikunja.io has $1 with the SHA-256 metadata ${existing}, not $3:" \
       "delete it from the bucket to publish this build ${retry_hint}"
   fi
   if ! grep -Eq '404|Not Found' "${work}/aws.err"; then
     aws_failed head-object
   fi
-  if ! s3api put-object --bucket "$s3_bucket" --key "$dl_key" --body "${release_dir}/${apk_file}" \
-    --content-type application/vnd.android.package-archive --metadata "sha256=${apk_sha256}" \
+  if ! s3api put-object --bucket "$s3_bucket" --key "$1" --body "$2" \
+    --content-type application/vnd.android.package-archive --metadata "sha256=$3" \
     >/dev/null 2>"${work}/aws.err"; then
     aws_failed put-object
   fi
-  echo "Published the APK on dl.vikunja.io: ${dl_key}"
+  echo "Published the APK on dl.vikunja.io: $1"
 }
 
 release_notes() {
-  local intro="."
+  local intro="." i
   if [[ "$channel" == beta ]]; then
     intro=", a beta: it may still have rough edges."
   fi
+  printf '%s\n' "${release_title}${intro}" ""
+  printf '%s\n' "- APK for every device \`${apk_file}\`, SHA-256 \`${apk_sha256}\`"
+  for ((i = 1; i < ${#apk_files[@]}; i++)); do
+    printf '%s\n' "- APK for ${RELEASE_APK_ABIS[i - 1]} only \`${apk_files[i]}\`, SHA-256 \`${apk_sha256s[i]}\`"
+  done
   printf '%s\n' \
-    "${release_title}${intro}" \
-    "" \
-    "- APK \`${apk_file}\`, SHA-256 \`${apk_sha256}\`" \
     "- APK signing certificate SHA-256 \`${apk_certificate}\`" \
     "- Source code: ${source_url}" \
-    "- \`${desugar_archive}\`: the source code of desugar_jdk_libs at upstream commit ${desugar_commit} (GPL-2.0 with the Classpath exception), which the app contains"
+    "- \`${desugar_archive}\`: the source code of desugar_jdk_libs at upstream commit ${desugar_commit} (GPL-2.0 with the Classpath exception), which the app contains" \
+    "" \
+    "An APK installed by hand gets no updates by itself. [Obtainium](https://obtainium.imranr.dev) can watch these releases and install each new one: add https://github.com/${GITHUB_REPOSITORY:-go-vikunja/app}, and to get the smaller APK for your phone, filter the APKs by its ABI, usually \`arm64-v8a\`."
+}
+
+# Final releases only: an older line's patch must not become "Latest" while a
+# higher final release tag exists.
+latest_flags() {
+  local listing tag_number name number pattern='^refs/tags/v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+  if ! listing="$(GIT_TERMINAL_PROMPT=0 git ls-remote --tags --refs "https://github.com/${GITHUB_REPOSITORY}" \
+    'refs/tags/v*' 2>"${work}/git.err")"; then
+    echo "error: git ls-remote failed:" >&2
+    sed 's/^/  /' "${work}/git.err" >&2
+    exit 1
+  fi
+  tag_number=$((build_number - 99))
+  while read -r _ name; do
+    if [[ "$name" =~ $pattern ]]; then
+      number=$((BASH_REMATCH[1] * 1000000 + BASH_REMATCH[2] * 10000 + BASH_REMATCH[3] * 100))
+      if ((number > tag_number)); then
+        echo "Not marked latest: ${GITHUB_REPOSITORY} has the higher final release tag ${name#refs/tags/}."
+        release_flags=(--latest=false)
+        return
+      fi
+    fi
+  done <<<"$listing"
 }
 
 run_github() {
-  local files status=0 state url file
-  files=("${release_dir}/${apk_file}" "${release_dir}/SHA256SUMS" "${release_dir}/${desugar_archive}")
+  local files=() status=0 state url file
+  for file in "${apk_files[@]}"; do
+    files+=("${release_dir}/${file}")
+  done
+  files+=("${release_dir}/SHA256SUMS" "${release_dir}/${desugar_archive}")
   if ((${#reasons[@]})); then
     echo "Would create the GitHub release ${tag}:"
     echo "  gh release create ${tag} --repo ${GITHUB_REPOSITORY:-<GITHUB_REPOSITORY>} --verify-tag" \
-      "--title \"${release_title}\" --notes-file notes.md ${release_flags[*]} ${apk_file} SHA256SUMS ${desugar_archive}"
+      "--title \"${release_title}\" --notes-file notes.md ${release_flags[*]} ${apk_files[*]} SHA256SUMS ${desugar_archive}"
     echo "  after checking that the tag still points at the built commit and deleting a leftover draft;"
-    echo "  a published release with these three files, the same SHA-256 each, is left as it is"
+    if [[ "$channel" != beta ]]; then
+      echo "  --latest=false instead if the repository has a higher final release tag (git ls-remote --tags);"
+    fi
+    echo "  a published release with these ${#files[@]} files, the same SHA-256 each, is left as it is"
     echo "with the notes:"
     release_notes | sed 's/^/  /'
     not_published
@@ -456,6 +516,9 @@ run_github() {
   [[ -n "${GH_TOKEN:-}" ]] || fail "GH_TOKEN is not set"
   [[ -n "${GITHUB_REPOSITORY:-}" ]] || fail "GITHUB_REPOSITORY is not set"
   check_tag
+  if [[ "$channel" != beta ]]; then
+    latest_flags
+  fi
   release_notes >"${work}/notes.md"
 
   gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,assets >"${work}/release.json" \
@@ -502,7 +565,7 @@ PYTHON
             "to publish this build ${retry_hint}"
         fi
       done
-      echo "The GitHub release ${tag} has these three files already: already published"
+      echo "The GitHub release ${tag} has these ${#files[@]} files already: already published"
       return
       ;;
     *)

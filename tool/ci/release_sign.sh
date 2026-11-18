@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Signs the output of tool/ci/release_build.sh (D86): the bundle with the
-# upload key (jarsigner), the APK with the APK key or else the upload key
-# (apksigner). Checks both certificates against
+# upload key (jarsigner), the universal and the per-ABI APKs with the APK key
+# or else the upload key (apksigner). Checks both certificates against
 # tool/ci/release_certificates.txt and writes build/release/signed/. GitHub's
 # job `publish` in the environment release, and every dry run.
 #
@@ -83,6 +83,13 @@ if [[ -z "$desugar_archive" || "$desugar_archive" == */* || "$desugar_archive" =
 fi
 verify_sha256 "${release_unsigned_dir}/app-release.aab" "$unsigned_aab_sha256"
 verify_sha256 "${release_unsigned_dir}/app-release.apk" "$unsigned_apk_sha256"
+unsigned_abi_lines=""
+for abi in "${RELEASE_APK_ABIS[@]}"; do
+  key="UNSIGNED_APK_$(release_abi_key "$abi")_SHA256"
+  abi_sha256="$(unsigned_value "$key")"
+  verify_sha256 "${release_unsigned_dir}/app-${abi}-release.apk" "$abi_sha256"
+  unsigned_abi_lines+="${key}=${abi_sha256}"$'\n'
+done
 verify_sha256 "${release_unsigned_dir}/${desugar_archive}" "$desugar_sha256"
 
 add_reason() {
@@ -288,19 +295,33 @@ fi
 if [[ "$apk_set" == apk ]]; then
   rm -f "$upload_keystore"
 fi
+# unsigned APK, signed APK
 sign_apk() {
   VIKUNJA_APP_STORE_PASSWORD="$apk_store_password" VIKUNJA_APP_KEY_PASSWORD="$apk_key_password" \
     "$apksigner" sign --ks "$apk_keystore" --ks-type "$apk_type" --ks-key-alias "$apk_alias" \
     --ks-pass env:VIKUNJA_APP_STORE_PASSWORD --key-pass env:VIKUNJA_APP_KEY_PASSWORD --v4-signing-enabled false \
-    --out "$1" "${release_unsigned_dir}/app-release.apk"
+    --out "$2" "$1"
 }
-if ! sign_apk "$apk_signed"; then
-  echo "error: apksigner could not sign the APK with ${apk_label} (is the keyPassword of its properties right?)" >&2
-  exit 1
-fi
+abi_files=()
+for abi in "${RELEASE_APK_ABIS[@]}"; do
+  abi_files+=("vikunja-app-${build_name}-${abi}.apk")
+done
+for apk in app-release.apk "${RELEASE_APK_ABIS[@]}"; do
+  if [[ "$apk" == app-release.apk ]]; then
+    out="$apk_signed"
+  else
+    out="${release_signed_dir}/vikunja-app-${build_name}-${apk}.apk"
+    apk="app-${apk}-release.apk"
+  fi
+  if ! sign_apk "${release_unsigned_dir}/${apk}" "$out"; then
+    echo "error: apksigner could not sign ${apk} with ${apk_label} (is the keyPassword of its properties right?)" >&2
+    exit 1
+  fi
+done
 # A re-run of publish signs again, and dl.vikunja.io and the GitHub release
 # skip only the same SHA-256: an EC or DSA signature differs every time.
-if ! sign_apk "${work}/again.apk" || ! cmp -s "$apk_signed" "${work}/again.apk"; then
+if ! sign_apk "${release_unsigned_dir}/app-release.apk" "${work}/again.apk" ||
+  ! cmp -s "$apk_signed" "${work}/again.apk"; then
   echo "error: signing the APK twice with ${apk_label} gave two different files: a re-run could not match" \
     "an APK already published. Sign the APK with an RSA key (docs/releasing.md)" >&2
   exit 1
@@ -308,37 +329,48 @@ fi
 rm -f "$upload_keystore" "$apk_keystore" "${work}/again.apk"
 unset upload_store_password upload_key_password apk_store_password apk_key_password
 
-if ! apk_report="$("$apksigner" verify --verbose --print-certs "$apk_signed")"; then
-  echo "$apk_report" >&2
-  echo "error: the signed APK does not verify" >&2
-  exit 1
-fi
-if ! grep -qx 'Verified using v2 scheme (APK Signature Scheme v2): true' <<<"$apk_report"; then
-  echo "$apk_report" >&2
-  echo "error: the APK has no valid v2 signature" >&2
-  exit 1
-fi
-if ! grep -qx 'Number of signers: 1' <<<"$apk_report"; then
-  echo "$apk_report" >&2
-  echo "error: the APK does not have exactly one signer" >&2
-  exit 1
-fi
-# apksigner up to build-tools 36 writes "Signer #1 certificate ...", from 37
-# "V2 Signer: certificate ...", or "V3.0 Signer: ..." for a v3 signature.
-signer_line='^(Signer #1|V[0-9.]+ Signer:) certificate'
-apk_signer="$(sed -E -n "s/${signer_line} SHA-256 digest: //p" <<<"$apk_report" | sort -u)"
-if [[ -z "$apk_signer" || "$apk_signer" != "$apk_certificate" ]]; then
-  echo "error: the APK is signed by ${apk_signer:-nothing}, the ${apk_label} key is ${apk_certificate}" >&2
-  exit 1
-fi
-if grep -Eq "${signer_line} DN: .*CN=Android Debug" <<<"$apk_report"; then
-  echo "error: the APK is signed with a debug key" >&2
-  exit 1
-fi
-if ! "$zipalign" -c -P 16 4 "$apk_signed"; then
-  echo "error: the APK is not aligned: 4 bytes, and native libraries at 16 KB pages" >&2
-  exit 1
-fi
+# apk, the ABIs of its native code
+verify_apk() {
+  local apk="$1" apk_report name
+  shift
+  name="$(basename "$apk")"
+  if ! apk_report="$("$apksigner" verify --verbose --print-certs "$apk")"; then
+    echo "$apk_report" >&2
+    echo "error: the signed ${name} does not verify" >&2
+    exit 1
+  fi
+  if ! grep -qx 'Verified using v2 scheme (APK Signature Scheme v2): true' <<<"$apk_report"; then
+    echo "$apk_report" >&2
+    echo "error: ${name} has no valid v2 signature" >&2
+    exit 1
+  fi
+  if ! grep -qx 'Number of signers: 1' <<<"$apk_report"; then
+    echo "$apk_report" >&2
+    echo "error: ${name} does not have exactly one signer" >&2
+    exit 1
+  fi
+  # apksigner up to build-tools 36 writes "Signer #1 certificate ...", from
+  # 37 "V2 Signer: certificate ...", or "V3.0 Signer: ..." for a v3 signature.
+  signer_line='^(Signer #1|V[0-9.]+ Signer:) certificate'
+  apk_signer="$(sed -E -n "s/${signer_line} SHA-256 digest: //p" <<<"$apk_report" | sort -u)"
+  if [[ -z "$apk_signer" || "$apk_signer" != "$apk_certificate" ]]; then
+    echo "error: ${name} is signed by ${apk_signer:-nothing}, the ${apk_label} key is ${apk_certificate}" >&2
+    exit 1
+  fi
+  if grep -Eq "${signer_line} DN: .*CN=Android Debug" <<<"$apk_report"; then
+    echo "error: ${name} is signed with a debug key" >&2
+    exit 1
+  fi
+  if ! "$zipalign" -c -P 16 4 "$apk"; then
+    echo "error: ${name} is not aligned: 4 bytes, and native libraries at 16 KB pages" >&2
+    exit 1
+  fi
+  check_apk_badging "$apk" "$("$aapt2" dump badging "$apk")" "$build_name" "$build_number" "$@"
+}
+verify_apk "$apk_signed" "${RELEASE_APK_ABIS[@]}"
+for abi in "${RELEASE_APK_ABIS[@]}"; do
+  verify_apk "${release_signed_dir}/vikunja-app-${build_name}-${abi}.apk" "$abi"
+done
 
 aab_report="$("$jarsigner" -verify "$aab_signed" 2>&1 || true)"
 if ! grep -q '^jar verified\.' <<<"$aab_report"; then
@@ -358,24 +390,21 @@ if grep -q 'CN=Android Debug' <<<"$aab_certificate"; then
   exit 1
 fi
 
-badging="$("$aapt2" dump badging "$apk_signed")"
-package_line="$(sed -n 1p <<<"$badging")"
-if [[ "$package_line" != *" versionCode='${build_number}' versionName='${build_name}' "* ]]; then
-  echo "error: the APK's version is not ${build_name} (${build_number}): ${package_line}" >&2
-  exit 1
-fi
-
 cp "${release_unsigned_dir}/${desugar_archive}" "${release_signed_dir}/${desugar_archive}"
 (
   cd "$release_signed_dir"
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$apk_file" "$desugar_archive" >SHA256SUMS
+    sha256sum "$apk_file" "${abi_files[@]}" "$desugar_archive" >SHA256SUMS
   else
-    shasum -a 256 "$apk_file" "$desugar_archive" >SHA256SUMS
+    shasum -a 256 "$apk_file" "${abi_files[@]}" "$desugar_archive" >SHA256SUMS
   fi
 )
 apk_sha256="$(sha256_of "$apk_signed")"
 aab_sha256="$(sha256_of "$aab_signed")"
+abi_lines=""
+for abi in "${RELEASE_APK_ABIS[@]}"; do
+  abi_lines+="APK_$(release_abi_key "$abi")_SHA256=$(sha256_of "${release_signed_dir}/vikunja-app-${build_name}-${abi}.apk")"$'\n'
+done
 signing=release
 if ((throwaway)); then
   signing=throwaway
@@ -395,11 +424,11 @@ DESUGAR_ARCHIVE=${desugar_archive}
 DESUGAR_COMMIT=${desugar_commit}
 UNSIGNED_AAB_SHA256=${unsigned_aab_sha256}
 UNSIGNED_APK_SHA256=${unsigned_apk_sha256}
-DESUGAR_ARCHIVE_SHA256=${desugar_sha256}
+${unsigned_abi_lines}DESUGAR_ARCHIVE_SHA256=${desugar_sha256}
 DRY_RUN=${signed_dry_run}
 APK_FILE=${apk_file}
 APK_SHA256=${apk_sha256}
-AAB_SHA256=${aab_sha256}
+${abi_lines}AAB_SHA256=${aab_sha256}
 UPLOAD_CERT_SHA256=${upload_certificate}
 APK_CERT_SHA256=${apk_certificate}
 APK_SET=${apk_set}
@@ -408,4 +437,4 @@ NOT_RELEASABLE=${not_releasable}
 ENV
 cat "${release_signed_dir}/release.env"
 cat "${release_signed_dir}/SHA256SUMS"
-echo "Verified: APK v2-signed by ${apk_signer} (${apk_label}) and aligned (zipalign -c -P 16 4), bundle verified and signed by ${aab_signer} (${upload_label}), version ${build_name} (${build_number})."
+echo "Verified: the universal and the ${#RELEASE_APK_ABIS[@]} per-ABI APKs v2-signed by ${apk_signer} (${apk_label}) and aligned (zipalign -c -P 16 4), bundle verified and signed by ${aab_signer} (${upload_label}), version ${build_name} (${build_number})."

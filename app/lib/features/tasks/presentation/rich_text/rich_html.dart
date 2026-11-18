@@ -24,7 +24,7 @@ class RichHtml extends ConsumerStatefulWidget {
   });
 
   final String html;
-  final ValueChanged<String> onLink;
+  final ValueChanged<String>? onLink;
   final ValueChanged<int> onTaskLink;
   final void Function(String html, RichTaskItem item)? onToggleTaskItem;
   final Widget? empty;
@@ -68,6 +68,7 @@ class _RichHtmlState extends ConsumerState<RichHtml> {
       onToggleTaskItem: onToggle == null
           ? null
           : (item) => onToggle(html, item),
+      linkAddress: bases == null ? null : (href) => linkAddressOf(href, bases),
       style: widget.style,
       projectId: widget.projectId,
       replyAuthorOf: widget.replyAuthorOf,

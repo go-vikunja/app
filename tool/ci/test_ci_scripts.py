@@ -30,9 +30,12 @@ class CiScriptsTest(unittest.TestCase):
         with open(os.path.join(ROOT, 'tool/ci/osv.sh'), encoding='utf-8') as f:
             text = f.read()
         files = re.findall(r'--(?:lockfile|config)=(\S+)', text)
-        self.assertEqual(sorted(files), ['app/android/app/gradle.lockfile', 'app/editor/package-lock.json',
-                                         'osv-scanner.toml', 'pubspec.lock'])
-        for path in files:
+        self.assertEqual(sorted(files), ['"${tmp}/editor/build/package-lock.json"',
+                                         '"${tmp}/editor/tests/package-lock.json"', 'app/android/app/gradle.lockfile',
+                                         'osv-scanner.toml', 'osv-scanner.toml', 'pubspec.lock'])
+        self.assertIn('python3 -I tool/ci/editor_test_packages.py app/editor/package-lock.json "${tmp}/editor"', text)
+        for path in ('app/android/app/gradle.lockfile', 'app/editor/package-lock.json', 'osv-scanner.toml',
+                     'pubspec.lock'):
             self.assertTrue(os.path.isfile(os.path.join(ROOT, path)), path)
 
 

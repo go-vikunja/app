@@ -14,6 +14,13 @@ void main() {
     expect(testServerVersion(''), release);
   });
 
+  test('the default image is pinned by its tag and digest', () {
+    expect(
+      defaultTestServerImage,
+      matches(RegExp(r'^vikunja/vikunja:\d+\.\d+\.\d+@sha256:[0-9a-f]{64}$')),
+    );
+  });
+
   test('another image expects the release of its tag', () {
     for (final image in [
       'vikunja/vikunja:2.7.1',

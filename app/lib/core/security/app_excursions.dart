@@ -13,8 +13,18 @@ part 'app_excursions.g.dart';
 final class AppExcursions {
   new({required this._now});
 
-  /// A longer one counts like a normal hide from its start.
   static const cap = Duration(minutes: 10);
+  static const immediateGrace = Duration(seconds: 30);
+
+  /// How long an excursion keeps an app lock that locks after [lockAfter]
+  /// open; a longer one counts like a plain hide from its start. At most
+  /// [cap] or the lock's own time; with "Immediately", which would end
+  /// every round trip in a lock, [immediateGrace].
+  static Duration graceFor(Duration lockAfter) => lockAfter <= Duration.zero
+      ? immediateGrace
+      : lockAfter < cap
+      ? lockAfter
+      : cap;
 
   final DateTime Function() _now;
   final _ended = StreamController<DateTime>.broadcast(sync: true);

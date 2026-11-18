@@ -7,14 +7,17 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_connection.dart';
+import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 
 import '../../helpers/activity_fakes.dart';
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/fake_sync_client.dart' show FakeSyncClient, RequestGate;
 import '../../helpers/fake_timers.dart';
 import '../../helpers/realtime_fakes.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/test_database.dart';
 import '../../helpers/zero_random.dart';
 
 final class _Tokens implements AccessTokenSource {
@@ -235,10 +238,10 @@ void main() {
         socket.push(RealtimeNotification(notification));
         await pumpEventQueue();
         expect(activity.received.last, notification, reason: kind);
-        final before = engine.refreshCalls;
+        final before = engine.refreshAfterWriteCalls;
         timerOf(RealtimeConnection.syncDebounce).fire();
         await pumpEventQueue();
-        expect(engine.refreshCalls, before + 1, reason: kind);
+        expect(engine.refreshAfterWriteCalls, before + 1, reason: kind);
       }
       for (final kind in quiet) {
         socket.push(
@@ -295,7 +298,7 @@ void main() {
       );
       timerOf(RealtimeConnection.syncDebounce).fire();
       await pumpEventQueue();
-      expect(engine.refreshCalls, 1);
+      expect(engine.refreshAfterWriteCalls, 1);
       expect(activity.received, hasLength(3));
     });
 
@@ -320,12 +323,70 @@ void main() {
         await pumpEventQueue();
       }
       expect(engine.refreshCalls, 1);
+      expect(engine.refreshAfterWriteCalls, 0);
 
       running.complete();
       await pumpEventQueue();
-      expect(engine.refreshCalls, 2);
+      expect(engine.refreshAfterWriteCalls, 1);
       await pumpEventQueue();
-      expect(engine.refreshCalls, 2);
+      expect(engine.refreshCalls, 1);
+      expect(engine.refreshAfterWriteCalls, 1);
+    });
+
+    test('with the real engine, a notification while a run is past its '
+        'delta gets a run after it, which brings the change', () async {
+      final db = testDatabase();
+      Task titled(String title, DateTime updated) =>
+          sampleTask(id: 1, title: title, updated: updated);
+      final client = FakeSyncClient()
+        ..allProjects = [const Project(id: 1, title: 'Work')]
+        ..allTasks = [titled('Before', now)];
+      final sync = DefaultSyncEngine(
+        db: db,
+        client: client,
+        perPage: 50,
+        now: () => now,
+      );
+      addTearDown(sync.dispose);
+      await sync.ensureInitialSync();
+      final realtime = RealtimeConnection(
+        connector: connector,
+        url: url,
+        tokens: tokens,
+        engine: sync,
+        activity: activity,
+        clock: () => now,
+        createTimer: timers.create,
+        random: ZeroRandom(),
+      );
+      addTearDown(realtime.dispose);
+      realtime.start();
+      await pumpEventQueue();
+      final gate = RequestGate()..pattern = 'tasks (all)';
+      client.beforeRequest = gate.call;
+      final running = sync.refresh();
+      while (!gate.isHolding) {
+        await pumpEventQueue();
+      }
+
+      // The run has read its delta when the comment lands.
+      client.allTasks = [titled('Commented on the web', now.add(second))];
+      connector.lastSocket.push(
+        RealtimeNotification(sampleNotification(id: 1, name: 'task.comment')),
+      );
+      await pumpEventQueue();
+      timerOf(RealtimeConnection.syncDebounce).fire();
+      await pumpEventQueue();
+      client.beforeRequest = null;
+      gate.release();
+      await running;
+      Future<String> title() async => (await db.tasksDao.find(1))!.title;
+      expect(await title(), 'Before');
+
+      for (var i = 0; i < 10 && await title() == 'Before'; i++) {
+        await pumpEventQueue();
+      }
+      expect(await title(), 'Commented on the web');
     });
 
     test('a store that fails leaves the socket live', () async {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/misc.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 
@@ -13,6 +15,9 @@ final class FakeAttachmentPicker implements AttachmentPicker {
   List<PickedFile> photos = [];
   PickedFile? camera;
   Exception? failure;
+
+  /// Lets a test hold the photo picker open.
+  Completer<void>? photosHeld;
   final List<String> calls = [];
   final List<int> maxBytes = [];
 
@@ -39,6 +44,7 @@ final class FakeAttachmentPicker implements AttachmentPicker {
     bool multiple = true,
   }) async {
     _record('photos', imagesOnly: imagesOnly, multiple: multiple);
+    await photosHeld?.future;
     return multiple ? photos : photos.take(1).toList();
   }
 

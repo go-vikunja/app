@@ -15,9 +15,13 @@ final class ShareFilePreparing extends ShareFileStatus {
 }
 
 final class ShareFileReady extends ShareFileStatus {
-  const new(this.copy);
+  const new(this.copy, {this.keptLocation = false});
 
   final CopiedSharedFile copy;
+
+  /// Its location could not be removed; the sheet says so, and the file
+  /// goes only when the user chooses Upload when asked.
+  final bool keptLocation;
 }
 
 final class ShareFileTooLarge extends ShareFileStatus {
@@ -106,8 +110,11 @@ final class ShareFilesController extends ValueNotifier<List<ShareFileItem>> {
       }
       // Not by the other app's type, which can be generic: the platform
       // tells photos and videos apart by their content.
-      await _locations?.removeFromAll([copy.path]);
-      _set(item.file, ShareFileReady(copy));
+      final kept = await _locations?.removeFromAll([copy.path]);
+      _set(
+        item.file,
+        ShareFileReady(copy, keptLocation: kept?.isNotEmpty ?? false),
+      );
     }
   }
 

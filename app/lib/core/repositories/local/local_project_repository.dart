@@ -43,7 +43,7 @@ final class LocalProjectRepository implements ProjectRepository {
   Stream<List<Project>> watchAll() => _db.projectsDao.watchAll();
 
   @override
-  Future<void> refresh() => _sync.refresh();
+  Future<void> refresh() => _sync.refreshInNewRun();
 
   @override
   Future<Project?> find(int id) => _db.projectsDao.loadProject(id);
@@ -75,7 +75,7 @@ final class LocalProjectRepository implements ProjectRepository {
     );
     _log.fine('Moved project $projectId');
     unawaited(
-      _sync.refresh().then<void>(
+      _sync.refreshAfterWrite().then<void>(
         (_) {},
         onError: (Object error) => _log.fine(
           'Sync after moving project $projectId failed: ${error.runtimeType}',

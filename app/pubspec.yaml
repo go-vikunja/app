@@ -17,8 +17,8 @@ dependencies:
   drift_flutter: ^0.3.1
   dynamic_color: ^2.1.0
   file_selector: ^1.1.0
-  # 0.5.3+7 appeared three days before step 26; held until it has been
-  # reviewed.
+  # Held at the version the iOS build was tested with; the newer ones, reviewed
+  # on 2026-11-18, wait for the device test (docs/releasing.md#held-ios-plugins).
   file_selector_ios: 0.5.3+6
   flutter:
     sdk: flutter
@@ -30,8 +30,8 @@ dependencies:
   flutter_web_auth_2: ^5.1.0
   go_router: ^18.0.2
   image_picker: ^1.2.4
-  # 0.8.13+12 appeared six days before step 26; held until it has been
-  # reviewed.
+  # Held at the version the iOS build was tested with; the newer ones, reviewed
+  # on 2026-11-18, wait for the device test (docs/releasing.md#held-ios-plugins).
   image_picker_ios: 0.8.13+10
   intl: ^0.20.3
   local_auth: ^3.0.2
@@ -64,7 +64,8 @@ dependencies:
     path: ../plugins/vikunja_widgets
   webview_flutter: ^4.14.1
   webview_flutter_android: ^4.14.1
-  # 3.27.1 appeared a day before step 25; held until it has been reviewed.
+  # Held at the version the iOS build was tested with; the newer ones, reviewed
+  # on 2026-11-18, wait for the device test (docs/releasing.md#held-ios-plugins).
   webview_flutter_wkwebview: 3.27.0
   workmanager: ^0.10.10
 

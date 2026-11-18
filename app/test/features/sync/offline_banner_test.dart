@@ -128,12 +128,12 @@ void main() {
 
     await tester.tap(find.byType(OfflineBanner));
     await tester.pump();
-    expect(data.engine.refreshCalls, 1);
+    expect(data.engine.refreshInNewRunCalls, 1);
     expect(bannerText, findsOneWidget);
 
     await tester.tap(find.byType(OfflineBanner));
     await tester.pump();
-    expect(data.engine.refreshCalls, 1);
+    expect(data.engine.refreshInNewRunCalls, 1);
 
     run.complete();
     await tester.pumpAndSettle();
@@ -159,7 +159,7 @@ void main() {
     await tester.tap(find.byType(OfflineBanner));
     await tester.pump();
 
-    expect(data.engine.refreshCalls, 0);
+    expect(data.engine.refreshInNewRunCalls, 0);
     logout.complete();
     await tester.pumpAndSettle();
   });
@@ -185,7 +185,7 @@ void main() {
     await tester.tap(find.byType(OfflineBanner));
     await tester.pump();
 
-    expect(data.engine.refreshCalls, 0);
+    expect(data.engine.refreshInNewRunCalls, 0);
     expect(
       tester.getSemantics(find.byType(OfflineBanner)),
       isSemantics(
@@ -210,7 +210,7 @@ void main() {
 
     await tester.tap(find.byType(OfflineBanner));
     await tester.pumpAndSettle();
-    expect(data.engine.refreshCalls, 2);
+    expect(data.engine.refreshInNewRunCalls, 2);
     expect(bannerText, findsOneWidget);
   });
 

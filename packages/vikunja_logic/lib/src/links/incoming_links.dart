@@ -81,7 +81,8 @@ const _guestRoutes = {'share', 'projects', 'tasks'};
 /// made, `{base}share/{hash}/auth` with an optional `?view={id}`, or an
 /// address the web shows a guest, which carries the hash as
 /// `#share-auth-token={hash}`; or a pasted or shared text with such a link
-/// among other words. The link needs its http(s) scheme. `/auth` and
+/// among other words. The link needs its http(s) scheme and no user info
+/// (as in `https://user@host/`), like the invite's. `/auth` and
 /// trailing slashes are optional, other query parameters (`logoVisible`)
 /// are ignored, and a hash is 40 letters and digits.
 ParsedLinkShareUrl? parseLinkShareUrl(String text) =>
@@ -96,9 +97,12 @@ T? _firstLink<T>(String text, T? Function(Uri uri) parse) {
   if (trimmed.isEmpty) return null;
   for (final candidate in [trimmed, ...trimmed.split(_whitespace)]) {
     final uri = Uri.tryParse(candidate);
+    // User info shows a host of its choosing before the real one, as in
+    // https://vikunja.example.com@evil.example/.
     if (uri == null ||
         !(uri.isScheme('https') || uri.isScheme('http')) ||
-        uri.host.isEmpty) {
+        uri.host.isEmpty ||
+        uri.userInfo.isNotEmpty) {
       continue;
     }
     try {

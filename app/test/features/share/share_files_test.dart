@@ -154,9 +154,12 @@ void main() {
       expect(controller.ready, hasLength(6));
     });
 
-    test('stays in a copy it could not be removed from, which is still '
-        'ready; the log names no file', () async {
-      final files = [media(1, 'IMG_1.jpg', 'image/jpeg')];
+    test('stays in a copy it could not be removed from, which is ready '
+        'marked for the sheet to say so; the log names no file', () async {
+      final files = [
+        media(1, 'IMG_1.jpg', 'image/jpeg'),
+        media(2, 'IMG_2.jpg', 'image/jpeg'),
+      ];
       final source = FakeShareIntentSource(
         initial: IncomingShare(files: files),
       );
@@ -178,7 +181,17 @@ void main() {
 
       await controller.prepare();
 
-      expect(controller.ready.single.$2.path, '/cache/share-inbox/1');
+      expect(
+        [
+          for (final item in controller.value)
+            if (item.status case ShareFileReady(
+              :final copy,
+              :final keptLocation,
+            ))
+              (copy.path, keptLocation),
+        ],
+        [('/cache/share-inbox/1', true), ('/cache/share-inbox/2', false)],
+      );
       final record = records.single;
       expect(record.level, Level.WARNING);
       expect(

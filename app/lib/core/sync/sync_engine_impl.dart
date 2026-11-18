@@ -164,12 +164,15 @@ final class DefaultSyncEngine implements SyncEngine {
   /// What a run stored in another isolate meanwhile is adopted with the
   /// lease; a full pull that became due while waiting for it runs instead.
   @override
-  Future<SyncOutcome> refresh() => _refresh(afterWrite: false);
+  Future<SyncOutcome> refresh() => _refresh(newRun: false);
 
   @override
-  Future<void> refreshAfterWrite() => _refresh(afterWrite: true);
+  Future<void> refreshInNewRun() => _refresh(newRun: true);
 
-  Future<SyncOutcome> _refresh({required bool afterWrite}) async {
+  @override
+  Future<void> refreshAfterWrite() => _refresh(newRun: true);
+
+  Future<SyncOutcome> _refresh({required bool newRun}) async {
     await _ensureRestored();
     final full = !_canRunIncrementally;
     return await _join(
@@ -179,7 +182,7 @@ final class DefaultSyncEngine implements SyncEngine {
             : _runIncremental(),
       ),
       full: full,
-      afterWrite: afterWrite,
+      newRun: newRun,
     );
   }
 
@@ -294,15 +297,15 @@ final class DefaultSyncEngine implements SyncEngine {
 
   /// A full run joins only a full run: joining an incremental one would
   /// resolve without the full pull, so it waits for that run instead,
-  /// whatever its outcome. [afterWrite] joins only a run that has not
+  /// whatever its outcome. [newRun] joins only a run that has not
   /// started yet.
   Future<SyncOutcome> _join(
     Future<SyncOutcome> Function() start, {
     required bool full,
-    bool afterWrite = false,
+    bool newRun = false,
   }) {
     if (_current case final running?
-        when (!full || _currentIsFull) && !(afterWrite && _currentStarted)) {
+        when (!full || _currentIsFull) && !(newRun && _currentStarted)) {
       return running;
     }
     final previous = _current;

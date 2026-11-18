@@ -57,24 +57,28 @@ void main() {
     expect(await repository.find(2), home);
   });
 
-  test('a refresh is a sync run, and its failure passes through', () async {
-    await db.projectsDao.upsertAll([work]);
-    final seen = <List<Project>>[];
-    final errors = <Object>[];
-    repository.watchAll().listen(seen.add, onError: errors.add);
-    await pumpEventQueue();
+  test(
+    'a refresh is a sync run of its own, and its failure passes through',
+    () async {
+      await db.projectsDao.upsertAll([work]);
+      final seen = <List<Project>>[];
+      final errors = <Object>[];
+      repository.watchAll().listen(seen.add, onError: errors.add);
+      await pumpEventQueue();
 
-    await repository.refresh();
-    expect(sync.refreshCalls, 1);
+      await repository.refresh();
+      expect(sync.refreshInNewRunCalls, 1);
 
-    sync.error = const NetworkFailure(NetworkProblem.unreachable);
-    await expectLater(repository.refresh(), throwsA(isA<NetworkFailure>()));
+      sync.error = const NetworkFailure(NetworkProblem.unreachable);
+      await expectLater(repository.refresh(), throwsA(isA<NetworkFailure>()));
 
-    expect(sync.refreshCalls, 2);
-    expect(errors, isEmpty);
-    expect(seen, hasLength(1));
-    expect(await repository.find(1), work);
-  });
+      expect(sync.refreshInNewRunCalls, 2);
+      expect(sync.refreshCalls, 0);
+      expect(errors, isEmpty);
+      expect(seen, hasLength(1));
+      expect(await repository.find(1), work);
+    },
+  );
 
   group('moving a project', () {
     final view = sampleListView(id: 70, projectId: 3);
@@ -118,7 +122,8 @@ void main() {
       expect(moved.isFavorite, isTrue);
       expect(moved.views, [view]);
       expect(await stored(2), home);
-      expect(sync.refreshCalls, 1);
+      expect(sync.refreshAfterWriteCalls, 1);
+      expect(sync.refreshCalls, 0);
     });
 
     test('to the top level', () async {

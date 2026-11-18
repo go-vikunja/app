@@ -6,27 +6,27 @@ HOW TO SIGN IN
 3. Sign in with the username and the password given in the sign-in information. Two-factor authentication is off.
 4. After the first sync the Overview opens.
 
-The demo account is shared by everyone who tries the demo, and the Vikunja project resets the server at irregular intervals. You may therefore see tasks that other visitors created, or an empty account after a reset. Everything works with an empty account too: "New task" on the Overview creates a task, and "New project" in the Projects tab a project.
+The demo account is shared by everyone who tries the demo, and the server is reset at irregular intervals. You may therefore see other visitors' tasks, or an empty account after a reset. Everything works with an empty account too: "New task" on the Overview creates a task, and "New project" in the Projects tab a project.
 
 WHAT TO TRY
 - Overview and Upcoming; a project's List, Kanban, Table and Gantt views (Projects tab, then a project, then the view switcher).
 - Tap a task for its details; Edit changes its dates, priority, labels and reminders.
-- Offline first: tasks are read from a copy on the device; comments and a task's attachments load only online. Turn on Airplane Mode, check off or edit a task, turn Airplane Mode off; the change is sent by itself.
+- Offline first: tasks are read from a copy on the device; comments and attachments load only online. Turn on Airplane Mode, check off or edit a task, turn it off again; the change is sent by itself.
 - Reminders: give a task a reminder a few minutes ahead. The notification is scheduled on the device; there is no push service.
 - Widgets: add a Vikunja widget to the Home Screen.
 - App lock with Face ID: Account tab, App lock and privacy.
 
 ACCOUNTS (5.1.1(v))
-Accounts belong to the user's Vikunja server and are created on its web page: "Create account" on the server screen opens the server's sign-in page, whose own link leads to its registration. To delete an account: Account tab, Account settings, Delete account. The app explains what happens and opens the server's own deletion page, where the user confirms with the password; the server then emails a confirmation link and deletes the account three days after it was confirmed. Where a server does not allow deleting accounts, the row says so and tells the user to ask whoever runs the server. Please do not delete the shared demo account: other visitors use it, and the confirmation link goes to the demo account's email address, which reviewers cannot read, so the deletion cannot be completed there. Delete account shows the flow up to the server's page.
+Accounts belong to the user's Vikunja server and are created on its web page: "Create account" on the server screen opens the server's sign-in page, whose own link leads to its registration. To delete an account: Account tab, Account settings, Delete account. The app explains what happens and opens the server's own deletion page, where the user confirms with the password; the server then emails a confirmation link and deletes the account three days after confirmation. Where a server does not allow it, the row says to ask whoever runs the server. Please do not delete the shared demo account: other visitors use it, and its confirmation link goes to an address reviewers cannot read. Delete account shows the flow up to the server's page.
 
 LOGIN SERVICES (4.8)
-The app offers no third-party or social login and adds no account system of its own: users sign in with the account of the Vikunja server they add, on that server's own sign-in page.
+The app offers no third-party or social login and adds no account system of its own: users sign in with their account on the Vikunja server they add, on its own sign-in page.
 
 USER CONTENT
-Tasks, comments and attachments are stored on the user's Vikunja server and are visible only to people the user shares a project with on that server, whose operator moderates it. There is no public content and no way to find strangers.
+Tasks, comments and attachments live on the user's Vikunja server, whose operator moderates it, and only people with access to the account or to a project the user shares see them. There are no public feeds or profiles and no way to find strangers; only the shared demo account is open to every visitor.
 
 APP TRANSPORT SECURITY
-The app sets NSAllowsArbitraryLoads because users connect to Vikunja servers they run themselves (home servers, NAS, LAN or VPN hosts) whose addresses are only known at run time, and some of them speak only HTTP. Per-domain exceptions are impossible, and NSAllowsLocalNetworking would not cover fully qualified LAN or VPN host names. The app always tries HTTPS first, uses HTTP only after the user confirms an "Unencrypted connection" warning for that server, and marks that server as unencrypted. Certificate validation is never turned off. The demo server uses HTTPS with a public certificate.
+The app sets NSAllowsArbitraryLoads because users connect to Vikunja servers they run themselves (home servers, NAS, LAN or VPN hosts) whose addresses are only known at run time, and some of them speak only HTTP. Per-domain exceptions are impossible, and NSAllowsLocalNetworking would not cover fully qualified LAN or VPN host names. The app always tries HTTPS first, uses HTTP only after the user confirms a warning ("Unencrypted connection" for an http:// address; "No encrypted connection", asked each time, when HTTPS failed for one typed without a scheme), and marks that server as unencrypted. Certificate validation is never turned off. The demo server uses HTTPS with a public certificate.
 
 PERMISSIONS
 Notifications (reminders, scheduled on the device), camera and photos (attachments, avatar), Face ID (optional app lock), local network (servers on the user's network). None is required to use the app.

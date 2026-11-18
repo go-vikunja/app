@@ -453,6 +453,62 @@ void main() {
           expect(await newestUntil(DateTime.utc(2000)), isNull);
         });
 
+        // Edits, which the count probe cannot see, so only the delta's
+        // filter brings them.
+        test('an edit in the second of the watermark, or stamped below it '
+            'within the overlap, comes with the next refresh over '
+            '${apiVersion.pathSegment}', () async {
+          final user = await registerAndLogin(dio, connection);
+          final seeder = Seeder(dio, connection, user);
+          final projectId = await seeder.create('/projects', {'title': 'P'});
+          final taskId = await seeder.create('/projects/$projectId/tasks', {
+            'title': 'Before',
+          });
+          final only = onlyApiVersion(connection, apiVersion);
+          final client = createReadClient(
+            dio: createAuthenticatedDio(
+              base: dio,
+              connection: only,
+              tokens: StaticJwt(user.jwt),
+            ),
+            connection: only,
+          );
+          final db = testDatabase();
+          final engine = DefaultSyncEngine(
+            db: db,
+            client: client,
+            perPage: only.info.maxItemsPerPage,
+          );
+          addTearDown(engine.dispose);
+          await engine.ensureInitialSync();
+          Future<DateTime> edit(String title) async {
+            await seeder.patch('/tasks/$taskId', {'title': title});
+            return (await client.tasks.read(taskId)).updated!;
+          }
+
+          // As if the last run had read another task in that second, or
+          // the server had stamped this one before committing it.
+          Future<String> refreshFrom(DateTime watermark) async {
+            await db.syncStateDao.write({
+              SyncStateKeys.watermark: watermark.toIso8601String(),
+            });
+            await engine.refresh();
+            return (await db.tasksDao.find(taskId))!.title;
+          }
+
+          final inTheSecond = await edit('In the second');
+          expect(await refreshFrom(inTheSecond), 'In the second');
+          final stamped = await edit('Stamped earlier');
+          expect(
+            await refreshFrom(
+              stamped
+                  .add(DefaultSyncEngine.catchUpOverlap)
+                  .subtract(const Duration(seconds: 2)),
+            ),
+            'Stamped earlier',
+          );
+        });
+
         test('a favourite in an archived project counts on both sides, so '
             "no project's count is walked after the archive over "
             '${apiVersion.pathSegment}', () async {

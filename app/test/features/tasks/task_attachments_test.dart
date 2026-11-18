@@ -181,6 +181,75 @@ void main() {
       expect(inSheet(find.text('c.jpg')), findsOneWidget);
     });
 
+    testWidgets('a photo whose location could not be removed is uploaded '
+        'only when the user says so; Skip leaves it out', (tester) async {
+      picker.photos = const [
+        PickedFile(
+          path: '/cache/kept.jpg',
+          name: 'kept.jpg',
+          keptLocation: true,
+        ),
+        PickedFile(path: '/cache/clean.jpg', name: 'clean.jpg'),
+      ];
+      await openDetail(tester, data.tasks.find(4)!);
+      // The section shows its progress while the question is up.
+      Future<void> addPhotos() async {
+        await tester.tap(inSheet(find.byTooltip(en.attachmentAdd)));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(en.attachmentSourcePhotos).last);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+
+      await addPhotos();
+      expect(find.text(en.attachmentLocationKeptTitle), findsOneWidget);
+      expect(
+        find.text('${en.attachmentLocationKeptBody(1)}\n\nkept.jpg'),
+        findsOneWidget,
+      );
+      expect(data.tasks.writes, isEmpty);
+      await tester.tap(find.text(en.attachmentLocationKeptSkip));
+      await tester.pumpAndSettle();
+      expect(data.tasks.writes, ['queueUpload 4 clean.jpg move']);
+
+      await addPhotos();
+      await tester.tap(find.text(en.attachmentLocationKeptUpload));
+      await tester.pumpAndSettle();
+      expect(data.tasks.writes, [
+        'queueUpload 4 clean.jpg move',
+        'queueUpload 4 kept.jpg move',
+        'queueUpload 4 clean.jpg move',
+      ]);
+    });
+
+    testWidgets('a photo whose location could not be removed is left out '
+        'when the sheet closed meanwhile, and the screen below says so', (
+      tester,
+    ) async {
+      picker
+        ..photos = const [
+          PickedFile(
+            path: '/cache/kept.jpg',
+            name: 'kept.jpg',
+            keptLocation: true,
+          ),
+          PickedFile(path: '/cache/clean.jpg', name: 'clean.jpg'),
+        ]
+        ..photosHeld = Completer<void>();
+      await openDetail(tester, data.tasks.find(4)!);
+      await add(tester, en.attachmentSourcePhotos);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskDetailSheet), findsNothing);
+      picker.photosHeld!.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.attachmentLocationKeptTitle), findsNothing);
+      expect(data.tasks.writes, ['queueUpload 4 clean.jpg move']);
+      expect(find.text(en.attachmentLocationKeptLeftOut(1)), findsOneWidget);
+    });
+
     testWidgets("a file above the server's limit is refused with the limit; "
         'the others go', (tester) async {
       picker.files = const [

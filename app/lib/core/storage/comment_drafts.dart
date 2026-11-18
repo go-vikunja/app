@@ -2,15 +2,21 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/storage/draft_files.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 
 part 'comment_drafts.g.dart';
 
+final _log = Logger('CommentDrafts');
+
 @Riverpod(keepAlive: true)
-CommentDrafts commentDrafts(Ref ref) =>
-    CommentDrafts(ref.watch(preferencesStoreProvider));
+CommentDrafts commentDrafts(Ref ref) => CommentDrafts(
+  ref.watch(draftStoreProvider),
+  legacy: ref.watch(preferencesStoreProvider),
+);
 
 /// A mention in `CommentComposerDraft.text`: the characters from `start`
 /// to `end` stand for the user `username`, shown as `label`.
@@ -48,18 +54,25 @@ final class CommentComposerDraft {
 /// The unsent comment of each task, per account, so that nothing typed is
 /// lost offline, after a failed send or when the app is ended: kept until
 /// it is sent or emptied, and dropped with the account on sign-out. One
-/// preferences entry per account holds the account's [maxDrafts] most
+/// entry of [_store] per account holds the account's [maxDrafts] most
 /// recently changed drafts.
+///
+/// Development builds kept them in the preferences, which iOS backs up;
+/// what an account has there is removed, not taken over, when its drafts
+/// are first read or dropped.
 final class CommentDrafts {
-  new(this._store, {DateTime Function()? now}) : _now = now ?? DateTime.now;
+  new(this._store, {this._legacy, DateTime Function()? now})
+    : _now = now ?? DateTime.now;
 
   static const maxDrafts = 50;
 
   static String keyFor(String account) => 'comment_drafts.$account';
 
   final PreferencesStore _store;
+  final PreferencesStore? _legacy;
   final DateTime Function() _now;
   Future<void> _writes = Future.value();
+  final _legacyChecked = <String>{};
 
   Future<CommentComposerDraft?> read({
     required String account,
@@ -108,7 +121,11 @@ final class CommentDrafts {
       _change(account, (drafts) => drafts.remove('$taskId'));
 
   Future<void> discardAll(String account) {
-    final done = _writes.then((_) => _store.remove(keyFor(account)));
+    final done = _writes.then((_) async {
+      _legacyChecked.remove(account);
+      await _dropLegacy(account);
+      await _store.remove(keyFor(account));
+    });
     _writes = done.catchError((Object _) {});
     return done;
   }
@@ -132,6 +149,7 @@ final class CommentDrafts {
   }
 
   Future<Map<String, Object?>> _decoded(String account) async {
+    await _dropLegacy(account);
     final raw = await _store.getString(keyFor(account));
     if (raw == null) return {};
     try {
@@ -141,6 +159,21 @@ final class CommentDrafts {
       };
     } on FormatException {
       return {};
+    }
+  }
+
+  Future<void> _dropLegacy(String account) async {
+    final legacy = _legacy;
+    if (legacy == null || !_legacyChecked.add(account)) return;
+    try {
+      if (await legacy.getString(keyFor(account)) != null) {
+        await legacy.remove(keyFor(account));
+      }
+    } on Object catch (error) {
+      _legacyChecked.remove(account);
+      _log.info(
+        'Could not remove the old comment drafts: ${error.runtimeType}',
+      );
     }
   }
 

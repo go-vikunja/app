@@ -34,7 +34,7 @@ const _writtenFrontendKeys = {
 const Map<String, Object?> _foreignKeys = {
   'play_sound_when_done': false,
   'sidebar_width': 280,
-  'rurana_unknown_key': {
+  'vikunja_app_unknown_key': {
     'nested': [1, 2],
   },
 };

@@ -146,7 +146,11 @@ void main() {
       expect(await storedCopies(), isEmpty);
       await pumpEventQueue();
       expect(uploaded.map((a) => a.name), ['photo.png', 'b.txt']);
-      expect(sync.refreshCalls, 0, reason: 'an upload changes no task');
+      expect(
+        sync.refreshAfterWriteCalls,
+        0,
+        reason: 'an upload changes no task',
+      );
     });
 
     test('an upload never holds up an edit queued after it', () async {

@@ -294,6 +294,11 @@ const overlayInventory = <String, OverlayCoverage>{
       'showAttachmentImage MaterialPageRoute': Swept(
     'image viewer',
   ),
+  'features/tasks/presentation/rich_text/link_details.dart '
+      'showLinkDetails showAdaptiveDialog': Exempt(
+    '$_sameAlertAsDelete, with the address as selectable text; opened on '
+    'Android and iOS in test/features/tasks/rich_text_view_test.dart',
+  ),
   'features/tasks/presentation/task_detail_sheet.dart '
       'showTaskDetail showReadableCupertinoSheet': Swept(
     'detail sheet',

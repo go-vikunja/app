@@ -109,7 +109,7 @@ void main() {
         final realtime = RealtimeConnection(
           connector: const IoRealtimeConnector(),
           url: realtimeUri(only),
-          headers: const {'User-Agent': 'Rurana contract tests'},
+          headers: const {'User-Agent': 'Vikunja app contract tests'},
           tokens: tokens,
           engine: engine,
           activity: repository,
@@ -166,11 +166,12 @@ void main() {
         expect(stored, listed);
         expect(stored.payload, listed.payload);
 
-        expect(engine.refreshCalls, 0);
+        expect(engine.refreshAfterWriteCalls, 0);
         await Future<void>.delayed(
           RealtimeConnection.syncDebounce + const Duration(milliseconds: 500),
         );
-        expect(engine.refreshCalls, 1);
+        expect(engine.refreshAfterWriteCalls, 1);
+        expect(engine.refreshCalls, 0);
       });
     }
   });

@@ -326,7 +326,8 @@ void main() {
             'so the task stays on the board', () async {
           final inboxId = await defaultInFront('Inbox');
           final added = await task('Added after the download');
-          await engine.refresh();
+          // A board refresh the column changes started may still be going.
+          await engine.refreshAfterWrite();
           expect(await shownIn(inboxId), [added]);
 
           await act(() => buckets.delete(projectId, viewId, inboxId));

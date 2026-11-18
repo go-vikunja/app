@@ -19,6 +19,7 @@ import 'package:vikunja_mobile/core/repositories/task_details_repository_provide
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/attachments/presentation/attachment_messages.dart';
+import 'package:vikunja_mobile/features/attachments/presentation/location_kept_prompt.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
@@ -649,7 +650,10 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       }
       return;
     }
-    if (!mounted) {
+    final upload =
+        mounted &&
+        (await withoutUnwantedLocations(context, [picked])).isNotEmpty;
+    if (!upload || !mounted) {
       unawaited(_deletePicked(picked));
       return;
     }

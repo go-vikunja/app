@@ -402,6 +402,33 @@ void main() {
       );
     });
 
+    test('whose server address, typed without a scheme, answered only over '
+        'http asks first that https failed, even with a consent', () async {
+      final plainApi = insecureServer(root: 'http://api.example.org');
+      connector.handler = (input) async => input == 'api.example.org'
+          ? plainApi
+          : throw NotAVikunjaServer(Uri.parse(base), statusCode: 200);
+      auth.linkShareGateway.serve(token);
+      await container
+          .read(networkProfilesProvider)
+          .consentToCleartext(OriginKey.of(plainApi.rootUri));
+      await controller().connect(shareLink());
+
+      await controller().connect('api.example.org', forPendingShare: true);
+
+      expect(
+        state(),
+        isA<ConnectServerAwaitingInsecureConsent>().having(
+          (s) => s.httpsFailed,
+          'httpsFailed',
+          isTrue,
+        ),
+      );
+      expect(auth.linkShareGateway.authentications, isEmpty);
+      await controller().acceptInsecureConnection();
+      expect(auth.linkShareGateway.authentications, hasLength(1));
+    });
+
     group("with a stored server that names the link's host as its web", () {
       final claiming = accountPagesServer270(
         root: 'https://evil.example.net',

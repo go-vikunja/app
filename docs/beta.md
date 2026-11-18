@@ -299,7 +299,8 @@ The test repository's trial ([part 1](#1-the-repository-and-ci)) ran the workflo
 
 Still to watch in go-vikunja/app, from the import's pull request on:
 - anonymous pulls from Docker Hub against its rate limits (a login is not built);
-- GitHub's macOS runners, which three times had none free for `ios` ([releasing.md](releasing.md#when-the-publish-job-fails)).
+- GitHub's macOS runners, which three times had none free for `ios` ([releasing.md](releasing.md#when-the-publish-job-fails));
+- since step 40h: `ios` on the image `xcode-27` (Xcode 27, like the releases) in place of `macos-26` with Xcode 26.6, which no run has tried yet; the per-ABI APKs in the release build and its artifact; the first runs of the workflow "Upstream versions" and of Dependabot; Gradle's dependency verification on Linux, whose `aapt2` is trusted without a checksum ([releasing.md](releasing.md#gradle-dependency-verification)).
 
 Each fix is a commit on `main`; the tag waits for a green run. The environment, the real signing and the publishing first run on go-vikunja/app's first tag.
 
@@ -457,6 +458,7 @@ The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-
 - [ ] A restore (8.3 #9): an encrypted backup restored to another device brings back no tokens, connection secrets, databases or widget files.
 - [ ] The capture cover (8.3 #11) in a real screen recording, AirPlay or mirrored display.
 - [ ] Photo locations (8.3 #12): a photo from Photos, a photo and a video taken with the camera, each without its location on the server.
+- [ ] The held iOS plugins ([releasing.md](releasing.md#held-ios-plugins), step 40h): a build with the newest `file_selector_ios`, `image_picker_ios` and `webview_flutter_wkwebview` runs the file and photo pickers, the photo-location check above and the description editor; if they pass, one commit lifts the three pins.
 - [ ] Background refresh through BGTaskScheduler (`io.vikunja.app.sync`).
 - [ ] An account's online flows (the simulator checks had only an expired session).
 - [ ] Increase Contrast, Bold Text, Reduce Motion and VoiceOver: [accessibility-checklist.md](accessibility-checklist.md#3-final-ios-phase) section 3.
@@ -471,7 +473,7 @@ The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-
 
 - [ ] **TalkBack and VoiceOver:** the manual passes of [accessibility-checklist.md](accessibility-checklist.md#2-manual-on-android) ([Q19](open-questions.md#q19-device-setup-for-the-manual-talkback-pass)); TalkBack and Switch Access need the owner at the controls.
 - [ ] **The threat model again** for 1.0.0 ([section 9](threat-model.md#9-review-cadence)): 8.1 on the tree to be released, 8.2 again for what changed since the beta's sign-off, 8.3 from the device test above, and a new row in [section 8.4](threat-model.md#84-sign-off).
-- [ ] **The public demo:** ask the Vikunja maintainers whether the testers and the stores' reviewers may use try.vikunja.io with the demo account (the review notes ask the reviewers not to delete it) and whether there are times it should not be used ([D76]).
+- [ ] **The public demo:** ask the Vikunja maintainers whether the testers and the stores' reviewers may use try.vikunja.io with the demo account (the review notes ask the reviewers not to delete it) and whether there are times it should not be used ([D76]), or whether the reviewers can have an account of their own on a server that is not reset (code review of 2026-11-17).
 - [ ] **The written offer's wording** for desugar_jdk_libs, which kolaente confirms, as the Vikunja project makes it since step 38f ([D89]; the text is in `app/assets/legal/android.md`).
 - [ ] **The privacy section's open points** ([vikunja-io-drafts.md](vikunja-io-drafts.md)): Vikunja Cloud's terms, the legal bases and periods that kolaente checks, what App Store Connect shows of the testers, and the statements about the stores' statistics and the testers, read again once the beta has started.
 - [ ] **US export:** no annual self-classification report is due. Since BIS's rule of 29 March 2021 ([86 FR 16482][bis-rule]) the report covers only mass-market components and executable software ([15 CFR 740.17(e)(3)][cfr-740-17]), not an end-user app with standard encryption only ([releasing.md](releasing.md#export-compliance)).
@@ -485,8 +487,8 @@ The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-
 Once everything [before 1.0.0](#before-100) is done (the app is in production on Play already, so no production access is applied for):
 
 1. **The release** as [releasing.md](releasing.md#cutting-a-release) says: `app/pubspec.yaml` to `version: 1.0.0+1`, Cronet checked, both dry runs, a green CI run, the tag `v1.0.0` (version code and iOS build 1000099), the approval, the GitHub release and dl.vikunja.io checked.
-2. **Google Play:** the release run uploads the bundle to production as a staged rollout, to the share `VIKUNJA_APP_PLAY_ROLLOUT` (0.1 when unset); raise or complete it in the Play Console as the vitals allow ([releasing.md](releasing.md#cutting-a-release) step 5). Google may review the production release first (up to 7 days).
-3. **The App Store:** upload the build from the Mac ([releasing.md](releasing.md#each-testflight-build)); in App Store Connect add it to version 1.0.0 with the version's texts and screenshots, the App Review information (the sign-in information in its fields, the notes, the maintainers' answer if Apple asks for it) and France as [Q23](open-questions.md#q23-french-encryption-declaration-for-the-app-store) decides, then submit it for review. Once 1.0.0 is released it takes no more builds; fixes go into 1.0.1.
+2. **Google Play:** the release run uploads the bundle to production as a staged rollout, to the share `VIKUNJA_APP_PLAY_ROLLOUT` (0.1 when unset); raise or complete it in the Play Console as [the rollout](releasing.md#the-rollout) says, with its abort thresholds. Google may review the production release first (up to 7 days).
+3. **The App Store:** upload the build from the Mac ([releasing.md](releasing.md#each-testflight-build)); in App Store Connect add it to version 1.0.0 with the version's texts and screenshots, the App Review information (the sign-in information in its fields, the notes, the maintainers' answer if Apple asks for it) and France as [Q23](open-questions.md#q23-french-encryption-declaration-for-the-app-store) decides, choose the 7-day phased release ([the rollout](releasing.md#the-rollout)), then submit it for review. Once 1.0.0 is released it takes no more builds; fixes go into 1.0.1.
 4. **Afterwards:** the store links and the GitHub release in the README and on the help page on vikunja.io (kolaente publishes it), the 37d decision completed, and step 37d closed in the roadmap.
 
 ## Sources

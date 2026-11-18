@@ -385,10 +385,13 @@ void main() {
       TargetPlatform.iOS,
     });
 
-    Future<void> connectInsecurely(WidgetTester tester) async {
+    Future<void> connectInsecurely(
+      WidgetTester tester, {
+      String address = 'http://192.168.1.20:3456',
+    }) async {
       connector.handler = (_) async => insecureServer();
       await pumpVikunjaApp(tester, connector: connector);
-      await _submitAddress(tester, '192.168.1.20:3456');
+      await _submitAddress(tester, address);
       await tester.pumpAndSettle();
     }
 
@@ -402,6 +405,7 @@ void main() {
         find.text(en.insecureDialogBody('192.168.1.20:3456')),
         findsOneWidget,
       );
+      expect(find.text(en.insecureFallbackDialogTitle), findsNothing);
       expect(
         debugDefaultTargetPlatformOverride == TargetPlatform.iOS
             ? find.byType(CupertinoAlertDialog)
@@ -427,7 +431,29 @@ void main() {
       expect(find.byType(ConnectServerScreen), findsOneWidget);
       expect(find.byType(ServerOverviewScreen), findsNothing);
       expect(containerOf(tester).read(currentServerProvider), isNull);
-      expect(find.text('192.168.1.20:3456'), findsOneWidget);
+      expect(find.text('http://192.168.1.20:3456'), findsOneWidget);
+    }, variant: variant);
+
+    testWidgets('typed without a scheme, says that https failed rather than '
+        'that the server uses http, and continues when accepted', (
+      tester,
+    ) async {
+      usePhoneSurface(tester);
+      await connectInsecurely(tester, address: '192.168.1.20:3456');
+
+      expect(find.text(en.insecureFallbackDialogTitle), findsOneWidget);
+      expect(
+        find.text(en.insecureFallbackDialogBody('192.168.1.20:3456')),
+        findsOneWidget,
+      );
+      expect(find.text(en.insecureDialogTitle), findsNothing);
+      expect(containerOf(tester).read(currentServerProvider), isNull);
+
+      await tester.tap(find.text(en.insecureDialogContinue));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ServerOverviewScreen), findsOneWidget);
+      expect(find.text(en.overviewInsecureBadge), findsOneWidget);
     }, variant: variant);
   });
 }

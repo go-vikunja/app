@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/network_profiles.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
@@ -10,12 +13,18 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/connection/application/certificate_checks.dart';
 import 'package:vikunja_mobile/features/connection/presentation/certificate_page.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_page.dart';
+import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/connection_fakes.dart';
+import '../../helpers/fakes.dart';
+import '../../helpers/guest_entry_fakes.dart';
+import '../../helpers/guest_fakes.dart';
 import '../../helpers/pump_app.dart';
+import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 import '../../helpers/tls_fixtures.dart';
 
@@ -255,6 +264,205 @@ void main() {
   });
 
   group('an http address', () {
+    final httpsRoot = Uri.parse('https://192.168.1.20');
+
+    /// Alice's account at [plain] unless [seed] stores others.
+    Future<FakeServerConnector> pumpWithAccountThere(
+      WidgetTester tester, {
+      required bool httpsAnswers,
+      Future<void> Function()? seed,
+      SyncFakes? data,
+      bool openPage = true,
+    }) async {
+      usePhoneSurface(tester, logicalSize: const Size(360, 1400));
+      await profilesOver(auth).consentToCleartext(plain);
+      if (seed != null) {
+        await seed();
+      } else {
+        await auth.seedAccount(
+          insecureServer(),
+          tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+        );
+      }
+      final connector = FakeServerConnector(
+        (input) async => httpsAnswers && input == '$httpsRoot'
+            ? fullServer270(root: '$httpsRoot')
+            : throw ServerUnreachable(Uri.parse(input)),
+      );
+      await pumpVikunjaApp(
+        tester,
+        auth: auth,
+        sync: data ?? SyncFakes(),
+        connector: connector,
+        overrides: [checks.providerOverride, ...guestEntryOverrides()],
+      );
+      if (openPage) await open(tester, AppRoutes.connectionFor(plain));
+      return connector;
+    }
+
+    String top(WidgetTester tester) =>
+        containerOf(tester)
+            .read(appRouterProvider)
+            .routerDelegate
+            .state
+            .matchedLocation;
+
+    List<String> accountIds(WidgetTester tester) => [
+      for (final entry in containerOf(
+        tester,
+      ).read(accountsProvider).value!.accounts)
+        entry.id,
+    ];
+
+    testWidgets('with an account there, offers https where the same server '
+        'answers, and Use https adds the account at that address', (
+      tester,
+    ) async {
+      final connector = await pumpWithAccountThere(tester, httpsAnswers: true);
+
+      expect(connector.inputs, ['$httpsRoot']);
+      expect(
+        find.text(en.connectionHttpsAvailable('$httpsRoot')),
+        findsOneWidget,
+      );
+      expect(find.text(en.connectionCleartextRevoke), findsOneWidget);
+
+      await tester.tap(find.text(en.connectionUseHttps));
+      await tester.pumpAndSettle();
+
+      expect(connector.inputs, ['$httpsRoot', '$httpsRoot']);
+      expect(
+        tester.widget<ServerOverviewScreen>(find.byType(ServerOverviewScreen)),
+        isA<ServerOverviewScreen>().having((s) => s.adding, 'adding', isTrue),
+      );
+      expect(
+        containerOf(tester).read(currentServerProvider)?.rootUri,
+        httpsRoot,
+      );
+    });
+
+    testWidgets('once signed in over https, the app offers to remove the '
+        'http account, and Remove does', (tester) async {
+      const alice = User(id: 7, username: 'alice', name: 'Alice Example');
+      auth.serveUser(alice, now: DateTime.now().toUtc());
+      final httpsId = accountIdFor(httpsRoot, alice.id);
+      final data = SyncFakes();
+      data.accounts[httpsId] = AccountDataFakes(
+        now: DateTime.now(),
+        status: const SyncNeverRun(),
+      );
+      await pumpWithAccountThere(tester, httpsAnswers: true, data: data);
+      final httpId = accountIds(tester).single;
+
+      await tester.tap(find.text(en.connectionUseHttps));
+      await tester.pumpAndSettle();
+      expect(find.text(en.httpAccountRemoveTitle), findsNothing);
+      await tester.tap(find.widgetWithText(FilledButton, en.continueToSignIn));
+      await tester.pumpAndSettle();
+
+      expect(accountIds(tester), [httpId, httpsId]);
+      expect(find.text(en.httpAccountRemoveTitle), findsOneWidget);
+      expect(
+        find.textContaining(en.httpAccountRemoveReason('192.168.1.20')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(en.removeAccountDialogPendingChanges(1)),
+        findsNothing,
+      );
+      await tester.tap(find.text(en.removeAccountDialogConfirm).last);
+      await tester.pumpAndSettle();
+
+      expect(accountIds(tester), [httpsId]);
+      expect(find.text(en.httpAccountRemoveTitle), findsNothing);
+    });
+
+    testWidgets('Use HTTPS from the Add account screen returns to that '
+        'screen with the https address', (tester) async {
+      final connector = await pumpWithAccountThere(
+        tester,
+        httpsAnswers: true,
+        openPage: false,
+      );
+      await open(tester, AppRoutes.addAccount);
+      await open(tester, AppRoutes.connectionFor(plain));
+
+      await tester.tap(find.text(en.connectionUseHttps));
+      await tester.pumpAndSettle();
+
+      expect(connector.inputs, ['$httpsRoot', '$httpsRoot']);
+      expect(
+        find.byType(ConnectServerScreen, skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(
+        find.byType(ServerOverviewScreen, skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(find.byType(ConnectionPage, skipOffstage: false), findsNothing);
+      expect(top(tester), AppRoutes.addAccountServer);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(top(tester), AppRoutes.addAccount);
+      expect(find.text('$httpsRoot'), findsOneWidget);
+    });
+
+    testWidgets('a guest there gets no https offer', (tester) async {
+      final connector = await pumpWithAccountThere(
+        tester,
+        httpsAnswers: true,
+        seed: () => auth.seedGuest(
+          insecureServer(),
+          token: issueLinkShareToken(issuedAt: DateTime.now().toUtc()),
+        ),
+      );
+
+      expect(connector.inputs, isEmpty);
+      expect(find.text(en.connectionUseHttps), findsNothing);
+      expect(find.text(en.connectionCleartextRevoke), findsOneWidget);
+    });
+
+    testWidgets('offers no https once the same user is signed in there too', (
+      tester,
+    ) async {
+      final connector = await pumpWithAccountThere(
+        tester,
+        httpsAnswers: true,
+        seed: () async {
+          final tokens = issueTokens(issuedAt: DateTime.now().toUtc());
+          await auth.seedAccount(
+            fullServer270(root: '$httpsRoot'),
+            tokens: tokens,
+            activate: false,
+          );
+          await auth.seedAccount(insecureServer(), tokens: tokens);
+        },
+      );
+
+      expect(connector.inputs, isEmpty);
+      expect(find.text(en.connectionUseHttps), findsNothing);
+      expect(find.text(en.connectionCleartextRevoke), findsOneWidget);
+    });
+
+    testWidgets('offers no https where it does not answer, nor without an '
+        'account there', (tester) async {
+      final connector = await pumpWithAccountThere(tester, httpsAnswers: false);
+
+      expect(connector.inputs, ['$httpsRoot']);
+      expect(find.text(en.connectionUseHttps), findsNothing);
+      expect(find.text(en.connectionCleartextRevoke), findsOneWidget);
+
+      await open(
+        tester,
+        AppRoutes.connectionFor(
+          OriginKey.of(Uri.parse('http://192.168.1.30:3456')),
+        ),
+      );
+      expect(connector.inputs, ['$httpsRoot']);
+      expect(find.text(en.connectionUseHttps), findsNothing);
+    });
+
     testWidgets('offers to allow unencrypted connections with the existing '
         'question, and only then headers', (tester) async {
       await pumpSignedOut(tester);

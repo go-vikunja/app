@@ -22,7 +22,7 @@ Future<RealtimeSocket> _connect(
 ) => patiently(
   () => _connector.connect(
     realtimeUri(onlyVersion(connection, version)),
-    headers: {'User-Agent': 'Rurana contract tests'},
+    headers: {'User-Agent': 'Vikunja app contract tests'},
   ),
 );
 

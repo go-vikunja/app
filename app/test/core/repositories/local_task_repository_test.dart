@@ -21,6 +21,9 @@ import '../../helpers/zero_random.dart';
 void main() {
   late AppDatabase db;
   late RecordingSyncEngine sync;
+
+  /// The sender's, apart from the repository's own runs.
+  late RecordingSyncEngine senderSync;
   late FakeWriteClient write;
   late FakeSyncClient read;
   late FakeTimers timers;
@@ -47,6 +50,7 @@ void main() {
   setUp(() async {
     db = testDatabase();
     sync = RecordingSyncEngine();
+    senderSync = RecordingSyncEngine();
     write = FakeWriteClient(clock: () => now);
     read = FakeSyncClient();
     timers = FakeTimers();
@@ -54,7 +58,7 @@ void main() {
       db: db,
       writeClient: write,
       readClient: read,
-      sync: sync,
+      sync: senderSync,
       now: () => now,
       createTimer: timers.create,
       random: ZeroRandom(),
@@ -91,14 +95,17 @@ void main() {
     expect(seen.last.map((t) => t.id), [2, 4]);
   });
 
-  test('every refresh is a sync run whose failure passes through', () async {
+  test('every refresh is a sync run whose failure passes through; one the '
+      'user started is a run of its own', () async {
     final errors = <Object>[];
     repository.watchOpenTasks().listen((_) {}, onError: errors.add);
     await pumpEventQueue();
 
     await repository.refreshOpenTasks();
+    await repository.refreshProjectList(7, viewId: 0, inNewRun: true);
+    expect(sync.refreshInNewRunCalls, 2);
     await repository.refreshProjectList(7, viewId: 0);
-    expect(sync.refreshCalls, 2);
+    expect(sync.refreshCalls, 1);
 
     sync.error = const ServerFailure(502);
     await expectLater(
@@ -110,7 +117,8 @@ void main() {
       throwsA(isA<ServerFailure>()),
     );
 
-    expect(sync.refreshCalls, 4);
+    expect(sync.refreshInNewRunCalls, 3);
+    expect(sync.refreshCalls, 2);
     expect(errors, isEmpty);
   });
 
@@ -143,7 +151,7 @@ void main() {
       expect(pending.last, 0);
       expect(pendingIds.last, isEmpty);
       expect((await db.tasksDao.find(2))!.updated, now);
-      expect(sync.refreshCalls, 1);
+      expect(senderSync.refreshAfterWriteCalls, 1);
     });
 
     test('an undo before the send merges into one change', () async {
@@ -357,7 +365,7 @@ void main() {
       expect(watched.last!.identifier, '-100');
       expect(write.creates.single, draft);
       expect(await db.tasksDao.find(-1), isNull);
-      expect(sync.refreshCalls, 1);
+      expect(senderSync.refreshAfterWriteCalls, 1);
     });
 
     test('an edit before the send goes with the create', () async {

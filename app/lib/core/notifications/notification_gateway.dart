@@ -37,7 +37,7 @@ final class NotificationPrivacy {
   final bool hiddenOnLockScreen;
 
   /// iOS: the Done action asks for the device to be unlocked. Android
-  /// cannot ask per action.
+  /// cannot ask per action, so there the notification has no Done.
   final bool doneNeedsUnlock;
 
   @override

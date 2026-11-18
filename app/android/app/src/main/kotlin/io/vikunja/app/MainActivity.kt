@@ -23,6 +23,7 @@ class MainActivity : FlutterFragmentActivity() {
     private var shareInbox: ShareInbox? = null
     private var fileActions: FileActionsChannel? = null
     private var documents: DocumentPickerChannel? = null
+    private var restartedInOwnTask = false
 
     // On while the app lock is up, when Flutter leaves back to the platform:
     // Android would otherwise close the activity, and the app's state with
@@ -34,6 +35,15 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        if (OwnTask.startedInAnotherTask(isTaskRoot, intent.flags)) {
+            restartedInOwnTask = true
+            startActivity(OwnTask.restart(this, intent))
+            // Nothing restored and no kept engine: the fragment this adds gets
+            // an engine of its own on the way out, which never runs Dart.
+            super.onCreate(null)
+            finish()
+            return
+        }
         // Reopened from Recents, the activity gets the task's root intent
         // again; when a home screen shortcut started the task, quick_actions
         // would report that shortcut a second time, when a task link started
@@ -147,8 +157,11 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    override fun shouldAttachEngineToActivity(): Boolean = !restartedInOwnTask
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        if (restartedInOwnTask) return
         val messenger = flutterEngine.dartExecutor.binaryMessenger
         device = DeviceChannel(applicationContext, messenger, engineState.window, this)
         applyWindowState()

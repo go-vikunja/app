@@ -2,8 +2,12 @@
 # tests. Only the latest release is tested (owner decision, 2026-10-09):
 #   34527  2.8.0  latest release
 #   34528-34531  the same release behind TLS, opt-in profile `tls` (below)
-# Bump the image tag when a new Vikunja release comes out, here and in
-# defaultTestServerImage of packages/vikunja_api/test/contract/helpers.dart.
+# The image is pinned by its tag and the digest of its multi-platform index,
+# so a tag that is moved on Docker Hub fails the pull instead of testing
+# another build. Bump both when a new Vikunja release comes out, here and in
+# defaultTestServerImage of packages/vikunja_api/test/contract/helpers.dart;
+# after a pull, `docker image inspect --format '{{index .RepoDigests 0}}'
+# vikunja/vikunja:<tag>` prints the digest.
 # VIKUNJA_APP_TEST_VIKUNJA_IMAGE runs another release instead, for example
 # vikunja/vikunja:2.7.1 before a tag (docs/releasing.md); the contract tests
 # then expect the version of its tag.
@@ -66,7 +70,7 @@ x-vikunja-env: &vikunja-env
 # host's network) and the Android emulator with `adb reverse`.
 services:
   vikunja:
-    image: ${VIKUNJA_APP_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0}
+    image: ${VIKUNJA_APP_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0@sha256:35d937baf3b5d5803bed6b9e11d007448b7b536df9e4346dc35551e1072636c3}
     environment:
       <<: *vikunja-env
       VIKUNJA_SERVICE_PUBLICURL: http://localhost:34527/
@@ -82,7 +86,7 @@ services:
   #   34530  access-header gate like Cloudflare Access, test CA
   #   34531  plain HTTP straight to Vikunja, for seeding from the host only
   vikunja-tls:
-    image: ${VIKUNJA_APP_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0}
+    image: ${VIKUNJA_APP_TEST_VIKUNJA_IMAGE:-vikunja/vikunja:2.8.0@sha256:35d937baf3b5d5803bed6b9e11d007448b7b536df9e4346dc35551e1072636c3}
     profiles: ["tls"]
     environment:
       <<: *vikunja-env

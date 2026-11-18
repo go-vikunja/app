@@ -147,7 +147,12 @@ void main() {
 
     await _connect(tester, 'old.example.com');
 
-    expect(find.text(en.insecureDialogTitle), findsOneWidget);
+    // https did not connect, so the question says so.
+    expect(find.text(en.insecureFallbackDialogTitle), findsOneWidget);
+    expect(
+      find.text(en.insecureFallbackDialogBody('old.example.com')),
+      findsOneWidget,
+    );
     await tester.tap(find.text(en.insecureDialogContinue));
     await tester.pumpAndSettle();
 

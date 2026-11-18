@@ -932,8 +932,10 @@ void main() {
     // The server decides by the share's permission, as for a user, and so
     // does the board; the repository refuses a guest nothing of its own.
     late BucketRepository guests;
+    late FakeSyncEngine engine;
 
     setUp(() async {
+      engine = FakeSyncEngine();
       final auth = AuthFakes();
       final guest = await auth.seedGuest(
         fullServer270(),
@@ -945,7 +947,7 @@ void main() {
           appDatabaseProvider.overrideWith((ref, _) => db),
           writeClientProvider.overrideWith((ref, _) => write),
           accountTaskRepositoryProvider.overrideWith(
-            (ref, _) => FakeTaskRepository(FakeSyncEngine()),
+            (ref, _) => FakeTaskRepository(engine),
           ),
         ],
       );
@@ -960,6 +962,10 @@ void main() {
 
       await guests.delete(7, 80, 3);
       await guests.delete(7, 80, 2);
+      await pumpEventQueue();
+      // After a write: a sync of its own, not one that read before it.
+      expect(engine.refreshInNewRunCalls, 2);
+      expect(engine.refreshCalls, 0);
 
       expect(write.requests, [
         'read view 80',
