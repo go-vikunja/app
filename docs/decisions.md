@@ -2947,7 +2947,7 @@ Open:
 
 ## D90: Fixes from the code review before beta.1
 
-*Step 40a, in review.*
+*Accepted 2026-11-17 (step 40a).*
 
 A code review of the whole app on 2026-11-17 gave steps 40a to 40e ([roadmap](roadmap.md)). Step 40a takes the findings that belong in the first public build, `v1.0.0-beta.1`: B1, E1, N2, N4, P4, P5 and the spelling point of P9. P1 needed no change. The owner reviews the step as a whole; nothing here is marked as the owner's decision yet.
 
@@ -3009,7 +3009,7 @@ Limits:
 
 ## D91: Fixes from the code review: the description editor and leaving pages for a switch
 
-*Step 40b, in review.*
+*Accepted 2026-11-17 (step 40b).*
 
 Step 40b takes the findings of the code review of 2026-11-17 ([D90](#d90-fixes-from-the-code-review-before-beta1)) about the description editor: B2, B9 and B17. B9 has two halves: the editor dropped its draft whenever the page went, and a switch of account from outside removed the pages over the shell without asking. The owner reviews the step as a whole; nothing here is marked as the owner's decision yet.
 
@@ -3074,7 +3074,7 @@ Limits:
 
 ## D92: Fixes from the code review: security
 
-*Step 40c, in review.*
+*Accepted 2026-11-17 (step 40c).*
 
 Step 40c takes the security findings of the code review of 2026-11-17 ([D90](#d90-fixes-from-the-code-review-before-beta1)): S1 and S2. S1 is fixed; S2 is not, by the owner's decision of 2026-11-17 (below). The owner reviews the step as a whole; apart from S2, nothing here is marked as the owner's decision yet.
 
@@ -3113,7 +3113,7 @@ Limits:
 
 ## D93: Fixes from the code review: quick fixes
 
-*Step 40d, in review.*
+*Accepted 2026-11-18 (step 40d).*
 
 Step 40d takes the quick fixes of the code review of 2026-11-17 ([D90](#d90-fixes-from-the-code-review-before-beta1)): B3, B4, B8 and N5. The owner reviews the step as a whole; nothing here is marked as the owner's decision yet.
 
