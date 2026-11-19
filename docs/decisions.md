@@ -3857,3 +3857,14 @@ Since step 40j a full run no longer writes unchanged pages ([D99](#d99-battery-a
 
 Limits:
 - Nothing was measured on a device, nor with the widget tree of such an account.
+
+## D105: Architecture overview and the step record in an archive
+
+*Accepted 2026-11-19 (step 40v).*
+
+Step 40v takes finding W1 of the code review (2026-11-17): `architecture.md` had grown to more than a megabyte, a record of every step with its status markers, which a new maintainer cannot read.
+
+- [architecture.md](architecture.md) is now a short overview of the design as it is: principles, packages and the dependency rule, the layers of the app, server and sessions, database, sync and outbox, the entry points outside the screens, the editor, tests and where to start. It names no steps and carries no status markers; the reasons stay in this log, linked by number.
+- The step record moves unchanged, apart from its links and an opening note, to [archive/architecture-by-step.md](archive/architecture-by-step.md), as it stood after step 40s. It is no longer updated; the roadmap and this log carry what later steps do. Code comments that cite "architecture §" with a section number refer to it, as the overview says.
+- Principle 5 keeps the wording the threat model's R7 refers to; the anchor `architecture.md#1-principles` this log uses stays.
+- A step changes the overview only where the design it describes changes.
