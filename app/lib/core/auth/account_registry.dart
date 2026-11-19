@@ -183,6 +183,27 @@ final class AccountRegistry {
     ];
   });
 
+  /// Every account id stored, registered or in [accountsToDelete], entries
+  /// this version cannot read included; null when the registry cannot be
+  /// read or such an entry names no id.
+  Future<Set<String>?> knownAccountIds() => _serialized(() async {
+    final stored = await _read();
+    if (stored.unreadableRegistry != null) return null;
+    final ids = {
+      for (final entry in stored.state.accounts) entry.id,
+      ...stored.toDelete,
+      ...stored.storedRecentIds,
+    };
+    for (final (_, raw) in stored.unreadableEntries) {
+      if (raw['id'] case final String id) {
+        ids.add(id);
+      } else {
+        return null;
+      }
+    }
+    return ids;
+  });
+
   /// The local data of [accountId] is gone: it leaves [accountsToDelete].
   Future<void> dataDeleted(String accountId) =>
       _update((_) => null, toDelete: _without(accountId));

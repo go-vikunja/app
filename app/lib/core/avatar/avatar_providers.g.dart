@@ -9,22 +9,25 @@ part of 'avatar_providers.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 /// Read lazily: the sync engine keeps the account's read client alive, and
-/// without one (signed out, or in tests) every avatar is the initials. The
-/// sync tells it the user's `updated` (`AvatarCache.noteUpdated`).
+/// without one (signed out, or in tests) every avatar is the initials or the
+/// one kept on disk. The sync tells it the user's `updated`
+/// (`AvatarCache.noteUpdated`).
 
 @ProviderFor(accountAvatarCache)
 final accountAvatarCacheProvider = AccountAvatarCacheFamily._();
 
 /// Read lazily: the sync engine keeps the account's read client alive, and
-/// without one (signed out, or in tests) every avatar is the initials. The
-/// sync tells it the user's `updated` (`AvatarCache.noteUpdated`).
+/// without one (signed out, or in tests) every avatar is the initials or the
+/// one kept on disk. The sync tells it the user's `updated`
+/// (`AvatarCache.noteUpdated`).
 
 final class AccountAvatarCacheProvider
     extends $FunctionalProvider<AvatarCache, AvatarCache, AvatarCache>
     with $Provider<AvatarCache> {
   /// Read lazily: the sync engine keeps the account's read client alive, and
-  /// without one (signed out, or in tests) every avatar is the initials. The
-  /// sync tells it the user's `updated` (`AvatarCache.noteUpdated`).
+  /// without one (signed out, or in tests) every avatar is the initials or the
+  /// one kept on disk. The sync tells it the user's `updated`
+  /// (`AvatarCache.noteUpdated`).
   AccountAvatarCacheProvider._({
     required AccountAvatarCacheFamily super.from,
     required String super.argument,
@@ -77,11 +80,12 @@ final class AccountAvatarCacheProvider
 }
 
 String _$accountAvatarCacheHash() =>
-    r'92eaf23fd89d1e8d082a169ac7b19fb6a096bd81';
+    r'303cfd4e720458cc808d1e6d97c7833765aa2e11';
 
 /// Read lazily: the sync engine keeps the account's read client alive, and
-/// without one (signed out, or in tests) every avatar is the initials. The
-/// sync tells it the user's `updated` (`AvatarCache.noteUpdated`).
+/// without one (signed out, or in tests) every avatar is the initials or the
+/// one kept on disk. The sync tells it the user's `updated`
+/// (`AvatarCache.noteUpdated`).
 
 final class AccountAvatarCacheFamily extends $Family
     with $FunctionalFamilyOverride<AvatarCache, String> {
@@ -95,8 +99,9 @@ final class AccountAvatarCacheFamily extends $Family
       );
 
   /// Read lazily: the sync engine keeps the account's read client alive, and
-  /// without one (signed out, or in tests) every avatar is the initials. The
-  /// sync tells it the user's `updated` (`AvatarCache.noteUpdated`).
+  /// without one (signed out, or in tests) every avatar is the initials or the
+  /// one kept on disk. The sync tells it the user's `updated`
+  /// (`AvatarCache.noteUpdated`).
 
   AccountAvatarCacheProvider call(String accountId) =>
       AccountAvatarCacheProvider._(argument: accountId, from: this);

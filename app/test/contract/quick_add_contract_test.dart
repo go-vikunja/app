@@ -250,7 +250,12 @@ void main() {
           addTearDown(sender.dispose);
           tasks = LocalTaskRepository(db, engine, sender, writes);
           addTearDown(tasks.dispose);
-          labels = LocalLabelRepository(db, writes, reads);
+          labels = LocalLabelRepository(
+            db,
+            writes,
+            outbox: sender,
+            currentUser: () => User(id: user.id, username: user.username),
+          );
           users = _SwitchableUsers(LocalUserRepository(db, reads), writes);
           await engine.ensureInitialSync();
         });
@@ -337,21 +342,28 @@ void main() {
           expect(task.reminders, isEmpty);
         });
 
-        test('offline: created at once, sent with its label after '
-            'reconnect', () async {
+        test('offline: created at once with a new label made on the device, '
+            'sent with both labels after reconnect, the new one '
+            'once', () async {
           writes.offline = true;
+          final newLabel = 'offline${apiVersion.name}';
 
           final result = await (await service()).submit(
-            'Offline erledigen *wichtig +Garage @nobody${apiVersion.name}',
+            'Offline erledigen *wichtig *$newLabel +Garage '
+            '@nobody${apiVersion.name}',
           );
           await sender.drain();
 
           expect(result.unresolvedAssignees, ['nobody${apiVersion.name}']);
+          expect(result.labelsKept, isEmpty);
           final localId = result.createdTaskIds.single;
           expect(localId, isNegative);
           final local = (await db.tasksDao.find(localId))!;
-          expect(local.labels.map((label) => label.id), [wichtigId]);
-          expect(await db.outboxDao.count(), 2);
+          expect(local.labels.map((label) => label.title).toSet(), {
+            'wichtig',
+            newLabel,
+          });
+          expect(await db.outboxDao.count(), 3);
 
           writes.offline = false;
           await sender.sendNow();
@@ -359,7 +371,16 @@ void main() {
           final task = await sentTask(localId);
           expect(task.title, 'Offline erledigen @nobody${apiVersion.name}');
           expect(task.projectId, garageId);
-          expect(task.labels.map((label) => label.id), [wichtigId]);
+          expect(task.labels.map((label) => label.title).toSet(), {
+            'wichtig',
+            newLabel,
+          });
+          expect(task.labels.map((label) => label.id), contains(wichtigId));
+          final onServer = await reads.labels.listAll();
+          expect(
+            onServer.where((label) => label.title == newLabel),
+            hasLength(1),
+          );
         });
       });
     }

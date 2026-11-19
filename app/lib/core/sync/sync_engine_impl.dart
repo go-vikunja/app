@@ -417,6 +417,7 @@ final class DefaultSyncEngine implements SyncEngine {
     );
     _log.info('Starting incremental sync run $runId from ${_watermark!}');
     return await _guarded(runId, () => run.phase.name, () async {
+      final marks = await _wholePullMarks();
       if (_currentUser != null) {
         _emit(
           const SyncRunning(phase: SyncPhase.account, done: 0, initial: false),
@@ -435,6 +436,7 @@ final class DefaultSyncEngine implements SyncEngine {
           finishedAt,
           full: false,
           newest: run.newestUpdated,
+          wholePullMarks: marks,
         );
       });
       _log.info('Sync run $runId done');
@@ -453,6 +455,8 @@ final class DefaultSyncEngine implements SyncEngine {
       'sync run $runId at ${checkpoint.phase.name}',
     );
     return await _guarded(runId, () => checkpoint.phase.name, () async {
+      final marks = checkpoint.wholePullMarks ?? await _wholePullMarks();
+      checkpoint = checkpoint.copyWith(wholePullMarks: marks);
       await _save(checkpoint);
       if (checkpoint.phase == SyncPhase.account) {
         checkpoint = await _syncAccount(checkpoint);
@@ -469,9 +473,16 @@ final class DefaultSyncEngine implements SyncEngine {
       if (checkpoint.phase == SyncPhase.archivedTasks) {
         checkpoint = await _syncArchivedTasks(checkpoint);
       }
-      await _finish(checkpoint, resumed: resumed);
+      await _finish(checkpoint, resumed: resumed, wholePullMarks: marks);
     });
   }
+
+  /// [SyncStateKeys.wholePullMarks], 0 before the first mark.
+  Future<int> _wholePullMarks() async =>
+      int.tryParse(
+        (await _db.syncStateDao.readAll())[SyncStateKeys.wholePullMarks] ?? '',
+      ) ??
+      0;
 
   Future<SyncOutcome> _guarded(
     String runId,
@@ -579,6 +590,7 @@ final class DefaultSyncEngine implements SyncEngine {
 
   Future<SyncCheckpoint> _syncLabels(SyncCheckpoint checkpoint) async {
     var current = checkpoint;
+    final remappedBefore = await _db.labelsDao.remappedServerIds();
     final byId = await collectPages<Label>(
       fetch: (page) async {
         _checkDisposed();
@@ -594,7 +606,7 @@ final class DefaultSyncEngine implements SyncEngine {
     _checkDisposed();
     await _db.transaction(() async {
       await _db.labelsDao.upsertAll(byId.values);
-      await _db.labelsDao.purgeNotIn(byId.keys);
+      await _db.labelsDao.purgeNotIn(byId.keys, remappedBefore: remappedBefore);
     });
     _log.info('Sync run ${current.runId}: ${byId.length} labels');
     return await _advance(current, SyncPhase.tasks, report: false);
@@ -656,6 +668,7 @@ final class DefaultSyncEngine implements SyncEngine {
   Future<void> _finish(
     SyncCheckpoint checkpoint, {
     required bool resumed,
+    required int wholePullMarks,
   }) async {
     _report(checkpoint);
     final since = switch (checkpoint.newestUpdatedAtStart) {
@@ -690,7 +703,12 @@ final class DefaultSyncEngine implements SyncEngine {
     final purged = await _db.transaction(() async {
       await _holdLease();
       final purged = await _db.tasksDao.purgeNotInRun(caughtUp.runId);
-      await _writeCompletion(finishedAt, full: true, newest: newest);
+      await _writeCompletion(
+        finishedAt,
+        full: true,
+        newest: newest,
+        wholePullMarks: wholePullMarks,
+      );
       return purged;
     });
     _log.info('Sync run ${checkpoint.runId} done, $purged tasks purged');
@@ -713,11 +731,14 @@ final class DefaultSyncEngine implements SyncEngine {
   /// it. An incremental run never lowers it, a full run sets it afresh, so
   /// a value a fast clock once stored goes with the daily full pull (a
   /// resumed one keeps what incremental runs read meanwhile, see
-  /// [_finish]).
+  /// [_finish]). The projects to pull whole are cleared unless a write
+  /// marked more since the run started, when [wholePullMarks] was read (a
+  /// resumed full run's first part, see [SyncCheckpoint.wholePullMarks]).
   Future<void> _writeCompletion(
     DateTime finishedAt, {
     required bool full,
     required NewestUpdated newest,
+    required int wholePullMarks,
   }) async {
     if (newest.aheadOfClock case final ahead?) {
       _log.warning(
@@ -730,12 +751,13 @@ final class DefaultSyncEngine implements SyncEngine {
       newest.value,
       watermarkFloor,
     ].nonNulls.reduce((a, b) => a.isAfter(b) ? a : b);
+    final markedSince = await _wholePullMarks() != wholePullMarks;
     await _db.syncStateDao.write({
       // An incremental run leaves a stopped full run's checkpoint, which
       // the next full run continues from (see _resumable), unless it found
       // a project newly live (IncrementalRun).
       if (full) ...SyncCheckpoint.cleared,
-      SyncStateKeys.pendingWholePull: null,
+      if (!markedSince) SyncStateKeys.pendingWholePull: null,
       SyncStateKeys.lastSyncedAt: finishedAt.toIso8601String(),
       if (full) SyncStateKeys.lastFullSyncAt: finishedAt.toIso8601String(),
       if (full) SyncStateKeys.unexplainedTotals: null,

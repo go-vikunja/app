@@ -14,7 +14,6 @@ import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
-import 'package:vikunja_mobile/features/common/presentation/online_only_fab.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
@@ -33,8 +32,10 @@ enum _LabelAction { edit, delete }
 
 /// The labels this device has, the user's own and, apart, those of other
 /// people the user sees on shared tasks, by title. A label opens its open
-/// tasks; only one's own labels can be edited or deleted, online. Pulling
-/// down syncs.
+/// tasks; only one's own labels can be edited or deleted. A new label, and
+/// a change or delete of one the server does not have yet, works offline
+/// and is marked until it is sent; the server's other labels are changed
+/// and deleted online. Pulling down syncs.
 class LabelsPage extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -95,11 +96,7 @@ class _LabelsPageState extends ConsumerState<LabelsPage>
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(
-          SnackBar(
-            content: Text(
-              labelChangeFailureText(l10n, error, LabelChange.delete),
-            ),
-          ),
+          SnackBar(content: Text(labelChangeFailureText(l10n, error))),
         );
     } finally {
       if (mounted) setState(() => _busyLabelId = null);
@@ -116,18 +113,17 @@ class _LabelsPageState extends ConsumerState<LabelsPage>
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final labels = ref.watch(allLabelsProvider);
-    final offline = ref.watch(offlineProvider) != null;
     return Scaffold(
       appBar: AppBar(
         title: ScreenTitle(l10n.labelsTitle),
         actions: [RefreshButton(onPressed: refreshing ? null : refresh)],
       ),
-      floatingActionButton: OnlineOnlyFab(
-        icon: Icons.add,
-        label: l10n.labelsNew,
-        offline: offline,
-        offlineReason: l10n.labelsNewOffline,
+      floatingActionButton: FloatingActionButton.extended(
+        // Every tab's top route stays below this page with its own button.
+        heroTag: null,
         onPressed: () => unawaited(_create()),
+        icon: const Icon(Icons.add),
+        label: Text(l10n.labelsNew),
       ),
       body: buildRefreshable(
         labels,
@@ -146,7 +142,7 @@ class _LabelsPageState extends ConsumerState<LabelsPage>
                       body: l10n.labelsEmptyBody,
                     ),
                     FilledButton.tonalIcon(
-                      onPressed: offline ? null : () => unawaited(_create()),
+                      onPressed: () => unawaited(_create()),
                       icon: const Icon(Icons.add),
                       label: Text(l10n.labelsNew),
                     ),
@@ -165,6 +161,7 @@ class _LabelsPageState extends ConsumerState<LabelsPage>
     final theme = Theme.of(context);
     final userId = ref.watch(activeUserIdProvider);
     final offline = ref.watch(offlineProvider) != null;
+    final pending = ref.watch(pendingLabelIdsProvider).value ?? const {};
     final searchable = labels.length > labelSearchThreshold;
     final query = searchable ? _query.text : '';
     final shown = filterLabels(labels, query);
@@ -177,7 +174,8 @@ class _LabelsPageState extends ConsumerState<LabelsPage>
       mine: mine,
       busy: _busyLabelId == label.id,
       enabled: !busy,
-      offline: offline,
+      pending: pending.contains(label.id),
+      deletable: !offline || pending.contains(label.id),
       onTap: () => _openTasks(label),
       onAction: (action) => _onAction(label, action),
     );
@@ -254,7 +252,8 @@ class _LabelRow extends StatelessWidget {
     required this.mine,
     required this.busy,
     required this.enabled,
-    required this.offline,
+    required this.pending,
+    required this.deletable,
     required this.onTap,
     required this.onAction,
     super.key,
@@ -269,8 +268,13 @@ class _LabelRow extends StatelessWidget {
   /// False while a change of any label is on its way.
   final bool enabled;
 
-  /// Delete is off then; the form says it is offline itself.
-  final bool offline;
+  /// The server does not have it, or a change of it, yet.
+  final bool pending;
+
+  /// Off while offline for a label the server has with nothing of it
+  /// queued, as its delete goes to the server at once; the form says it is
+  /// offline itself.
+  final bool deletable;
   final VoidCallback onTap;
   final ValueChanged<_LabelAction> onAction;
 
@@ -290,7 +294,20 @@ class _LabelRow extends StatelessWidget {
         width: 24,
         child: Center(child: LabelColorDot(hexColor: label.hexColor)),
       ),
-      title: Text(title),
+      title: pending
+          ? Row(
+              children: [
+                Flexible(child: Text(title)),
+                const SizedBox(width: 6),
+                Icon(
+                  Icons.cloud_off_outlined,
+                  size: 16,
+                  color: colors.onSurfaceVariant,
+                  semanticLabel: l10n.taskNotYetSynced,
+                ),
+              ],
+            )
+          : Text(title),
       subtitle: lines.isEmpty
           ? null
           : Text(
@@ -331,21 +348,23 @@ class _LabelRow extends StatelessWidget {
                 ),
                 PopupMenuItem(
                   value: _LabelAction.delete,
-                  enabled: !offline,
+                  enabled: deletable,
                   child: IgnorePointer(
                     child: ListTile(
-                      enabled: !offline,
+                      enabled: deletable,
                       leading: Icon(
                         Icons.delete_outline,
-                        color: offline ? null : colors.error,
+                        color: deletable ? colors.error : null,
                       ),
                       title: Text(
                         l10n.labelsDelete,
-                        style: TextStyle(color: offline ? null : colors.error),
+                        style: TextStyle(
+                          color: deletable ? colors.error : null,
+                        ),
                       ),
-                      subtitle: offline
-                          ? Text(l10n.labelsNeedsConnection)
-                          : null,
+                      subtitle: deletable
+                          ? null
+                          : Text(l10n.labelsNeedsConnection),
                     ),
                   ),
                 ),

@@ -41,9 +41,14 @@ const _counterFrom = 50;
 
 /// A new label ([labelId] null), which starts with a random colour of the
 /// web's palette, or one of the user's own labels: title, colour and,
-/// once it exists, its description, which the editor saves on its own.
-/// Save waits for the server, sends only what changed and stays open with
-/// the reason when it refuses; a label that is gone closes the page.
+/// once it exists, its description, which the editor saves on its own. A
+/// new label is stored on the device at once and its create queued, offline
+/// too, and so is a change of a label the server does not have yet, or one
+/// with a change still queued, which folds into the queued create while
+/// that has not left the device (the description too). Saving a change of
+/// any other label waits for the server, sends only what changed and stays
+/// open with the reason when it refuses; a label that is gone closes the
+/// page. A label created here stays open when its create is answered.
 class LabelFormPage extends ConsumerStatefulWidget {
   const new({this.labelId, super.key});
 
@@ -166,11 +171,9 @@ class _LabelFormPageState extends ConsumerState<LabelFormPage> {
       unawaited(HapticFeedback.heavyImpact());
       if (!mounted) return;
       setState(() => _saving = false);
-      final text = labelChangeFailureText(
-        l10n,
-        error,
-        _creating ? LabelChange.create : LabelChange.edit,
-      );
+      final text = _creating
+          ? l10n.localChangeFailed
+          : labelChangeFailureText(l10n, error);
       if (error is NotFound && !_creating) {
         setState(() => _closing = true);
         router.pop();
@@ -227,17 +230,23 @@ class _LabelFormPageState extends ConsumerState<LabelFormPage> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final labels = ref.watch(allLabelsProvider);
+    final labelId = widget.labelId;
+    final found = labelId == null
+        ? null
+        : ref.watch(labelByIdProvider(labelId));
     final userId = ref.watch(activeUserIdProvider);
     final offline = ref.watch(offlineProvider) != null;
-    final labelId = widget.labelId;
-    final label = labelId == null
-        ? null
-        : labels.value?.where((label) => label.id == labelId).firstOrNull;
-    if (labels.hasValue) _adopt(label);
+    final pending = ref.watch(pendingLabelIdsProvider).value ?? const {};
+    final label = found?.value;
+    final loaded = found?.hasValue ?? false;
+    if (loaded) _adopt(label);
     final original = _original;
-    final own = _creating || (original != null && isOwnLabel(original, userId));
+    // Followed: a create from findOrCreate may take another member's label.
+    final shown = label ?? original;
+    final own = _creating || (shown != null && isOwnLabel(shown, userId));
     final enabled = !_saving && own;
+    final queuedHere =
+        _creating || (label != null && pending.contains(label.id));
 
     final Widget body;
     if (_creating || (original != null && (label != null || _closing))) {
@@ -253,7 +262,7 @@ class _LabelFormPageState extends ConsumerState<LabelFormPage> {
         originalHexColor: _initialHexColor,
         enabled: enabled,
         notes: [
-          if (offline) const OfflineNotice(),
+          if (offline && !queuedHere) const OfflineNotice(),
           if (!own)
             ListNote(
               icon: Icons.lock_outline,
@@ -271,7 +280,7 @@ class _LabelFormPageState extends ConsumerState<LabelFormPage> {
         onLink: _openLink,
         onTaskLink: _openTask,
       );
-    } else if (labels.hasValue) {
+    } else if (loaded) {
       body = CenteredScrollView(
         maxWidth: ReadableWidth.form,
         child: EmptyState(

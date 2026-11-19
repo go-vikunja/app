@@ -51,8 +51,8 @@ final class QuickAddPlan {
   final List<Label> labels;
 
   /// `*label` titles without a label of that title; created on submit,
-  /// which needs a connection. One that could not be created stays at the
-  /// end of the title as typed.
+  /// offline too. One that could not be created (a guest's, or one too
+  /// long) stays at the end of the title as typed.
   final List<String> newLabels;
   final List<User> assignees;
 
@@ -138,12 +138,12 @@ final class QuickAddResult {
   final List<int> createdTaskIds;
 
   /// Titles of the new labels of [QuickAddExtras] whose label could not be
-  /// created (offline, or the server refused); the tasks were created
+  /// created (a title the server would refuse); the tasks were created
   /// without them.
   final List<String> labelsNotCreated;
 
-  /// The lines' new labels that could not be created (offline, refused,
-  /// too long, or for a guest), as typed with their prefix and once
+  /// The lines' new labels that could not be created (too long, refused
+  /// before the create, or for a guest), as typed with their prefix and once
   /// whatever their case; each stays at the end of its line's title. A
   /// title also picked in the sheet is in [labelsNotCreated] too.
   final List<String> labelsKept;
@@ -171,8 +171,9 @@ abstract interface class QuickAddService {
   /// the one before becomes a subtask of the nearest line above it with
   /// less indent, in that line's project unless it names its own (the
   /// `parenttask` relation queued behind both creates); `*label`s that do
-  /// not exist and the new labels of [extras] are created online first, and
-  /// a `*label` that could not be created stays at the end of its line's
+  /// not exist and the new labels of [extras] are created first, on the
+  /// device and offline too, through the outbox like the tasks, and a
+  /// `*label` that could not be created stays at the end of its line's
   /// title as typed; `@names` are resolved with the server's user search in
   /// the task's project when it is reachable and with the known users
   /// otherwise; every task also gets [extras]. A title over the server's

@@ -10,9 +10,18 @@ final _log = Logger('AccountData');
 
 /// The details straight from the server, addressed by the task's server
 /// id: a task created here once its create was answered, before that
-/// [TaskNotSyncedYet] without a request.
+/// [TaskNotSyncedYet] without a request. What is read and written is kept
+/// in the account's database, stamped with [_now]; a failure to keep it
+/// leaves the read or write standing.
 final class LocalTaskDetailsRepository implements TaskDetailsRepository {
-  new(this._db, this._read, this._write, {this._subscriberId});
+  new(
+    this._db,
+    this._read,
+    this._write, {
+    this._subscriberId,
+    this._me,
+    DateTime Function()? now,
+  }) : _now = now ?? DateTime.now;
 
   final AppDatabase _db;
   final VikunjaReadClient _read;
@@ -24,18 +33,49 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
   /// notifications. Null records nothing.
   final int? _subscriberId;
 
+  /// The signed-in user as the server lists those who reacted; null leaves
+  /// the stored reactions as they are after a reaction is written.
+  final User? _me;
+  final DateTime Function() _now;
+
   @override
   Future<TaskDetails> details(int taskId) async {
     final id = await _serverId(taskId);
+    final version = _db.taskDetailsDao.detailsVersion(id);
+    final commentsVersion = _db.taskDetailsDao.commentsVersion(id);
     final details = await _read.tasks.readDetails(id);
     // The sync cannot see a task read elsewhere: mark-read bumps nothing.
-    await _db.tasksDao.storeCommentState(
-      id,
-      commentCount: details.commentCount,
-      isUnread: details.isUnread,
-    );
+    // A comment written since the read started already moved the count.
+    if (_db.taskDetailsDao.commentsVersion(id) == commentsVersion) {
+      await _db.tasksDao.storeCommentState(
+        id,
+        commentCount: details.commentCount,
+        isUnread: details.isUnread,
+      );
+    }
     await _recordSubscription(id, details.subscription);
+    await _keep(
+      'details',
+      () => _db.taskDetailsDao.storeDetails(
+        id,
+        details,
+        at: _now(),
+        version: version,
+      ),
+    );
     return details;
+  }
+
+  @override
+  Future<StoredRead<TaskDetails>?> storedDetails(int taskId) async {
+    final id = await _db.tasksDao.resolveId(taskId);
+    return id < 0 ? null : await _db.taskDetailsDao.storedDetails(id);
+  }
+
+  @override
+  Future<StoredRead<List<TaskComment>>?> storedComments(int taskId) async {
+    final id = await _db.tasksDao.resolveId(taskId);
+    return id < 0 ? null : await _db.taskDetailsDao.storedComments(id);
   }
 
   /// A failure only leaves the stored state as it was; the read stands.
@@ -58,12 +98,24 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
     int page = 1,
     bool newestFirst = false,
   }) async {
+    final id = await _serverId(taskId);
+    final version = _db.taskDetailsDao.commentsVersion(id);
     final comments = await _read.comments.list(
-      await _serverId(taskId),
+      id,
       page: page,
       newestFirst: newestFirst,
     );
     final sorted = [...comments.items]..sort(_oldestFirst);
+    await _keep(
+      'comments',
+      () => _db.taskDetailsDao.storeComments(
+        id,
+        sorted,
+        replace: page == 1,
+        at: _now(),
+        version: version,
+      ),
+    );
     return Page(
       items: List.unmodifiable(newestFirst ? sorted.reversed : sorted),
       page: comments.page,
@@ -86,6 +138,7 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
     final id = await _serverId(taskId);
     final created = await _write.comments.create(id, draft.html);
     await _db.tasksDao.addToCommentCount(id, 1);
+    await _keep('a comment', () => _db.taskDetailsDao.putComment(id, created));
     return created;
   }
 
@@ -98,10 +151,20 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
     _checkContent(draft);
     final id = await _serverId(taskId);
     final stored = await _write.comments.update(id, comment.id, draft.html);
-    return comment.copyWith(
+    final edited = comment.copyWith(
       html: stored.html,
       updated: stored.updated ?? comment.updated,
     );
+    await _keep(
+      'an edit',
+      () => _db.taskDetailsDao.editComment(
+        id,
+        comment.id,
+        html: edited.html,
+        updated: edited.updated,
+      ),
+    );
+    return edited;
   }
 
   @override
@@ -109,18 +172,49 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
     final id = await _serverId(taskId);
     await _write.comments.delete(id, commentId);
     await _db.tasksDao.addToCommentCount(id, -1);
+    await _keep(
+      'a deletion',
+      () => _db.taskDetailsDao.removeComment(id, commentId),
+    );
   }
 
   @override
   Future<void> addReaction(ReactionEntity kind, int id, String value) async {
     _checkReactionLength(value);
-    await _write.reactions.add(kind, await _reactionTarget(kind, id), value);
+    final target = await _reactionTarget(kind, id);
+    await _write.reactions.add(kind, target, value);
+    await _keepReaction(kind, target, value, add: true);
   }
 
   @override
   Future<void> removeReaction(ReactionEntity kind, int id, String value) async {
     // No length check: v1 stores longer values, which must stay removable.
-    await _write.reactions.remove(kind, await _reactionTarget(kind, id), value);
+    final target = await _reactionTarget(kind, id);
+    await _write.reactions.remove(kind, target, value);
+    await _keepReaction(kind, target, value, add: false);
+  }
+
+  Future<void> _keepReaction(
+    ReactionEntity kind,
+    int target,
+    String value, {
+    required bool add,
+  }) async {
+    final me = _me;
+    if (me == null) return;
+    await _keep(
+      'a reaction',
+      () =>
+          _db.taskDetailsDao.toggleReaction(kind, target, value, me, add: add),
+    );
+  }
+
+  Future<void> _keep(String what, Future<void> Function() store) async {
+    try {
+      await store();
+    } on Object catch (error) {
+      _log.warning('Could not store $what of a task: ${error.runtimeType}');
+    }
   }
 
   // Not async*: its cancel would wait for a row change that may never come.

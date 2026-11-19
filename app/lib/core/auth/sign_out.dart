@@ -25,6 +25,7 @@ final class AccountDeletions {
     required this._registry,
     required this._wipe,
     this._cancelScheduled,
+    this._wipeUnknown,
     this._cancelTimeout = const Duration(seconds: 10),
   });
 
@@ -34,6 +35,10 @@ final class AccountDeletions {
   /// Before [finishAll]'s wipes: what the account's database says it has
   /// scheduled, as no notification scheduler of this isolate knows it.
   final Future<void> Function(String accountId)? _cancelScheduled;
+
+  /// After [finishAll]'s wipes, with every account id the registry knows:
+  /// deletes what accounts it does not know left behind.
+  final Future<void> Function(Set<String> knownAccountIds)? _wipeUnknown;
   final Duration _cancelTimeout;
   final _running = <String, Future<bool>>{};
 
@@ -45,7 +50,8 @@ final class AccountDeletions {
         () => unawaited(_running.remove(accountId)),
       );
 
-  /// Every account still listed; false when any is left. Never throws.
+  /// Every account still listed, then what accounts the registry does not
+  /// know left; false when any listed is left. Never throws.
   Future<bool> finishAll() async {
     final List<String> accountIds;
     try {
@@ -61,7 +67,22 @@ final class AccountDeletions {
       await _cancelScheduledQuietly(accountId);
       if (!await finish(accountId)) finished = false;
     }
+    await _wipeUnknownQuietly();
     return finished;
+  }
+
+  Future<void> _wipeUnknownQuietly() async {
+    final wipeUnknown = _wipeUnknown;
+    if (wipeUnknown == null) return;
+    try {
+      if (await _registry.knownAccountIds() case final known?) {
+        await wipeUnknown(known);
+      }
+    } on Object catch (error) {
+      _log.warning(
+        'Could not delete what unknown accounts left: ${error.runtimeType}',
+      );
+    }
   }
 
   /// Off the list once it is signed in again: its files and notifications

@@ -222,7 +222,7 @@ void main() {
                 projects: await db.projectsDao.loadAll(),
               ),
               tasks: tasks,
-              labels: LocalLabelRepository(db, writes, reads),
+              labels: LocalLabelRepository(db, writes, outbox: sender),
               users: LocalUserRepository(db, reads),
               now: DateTime.now,
             );

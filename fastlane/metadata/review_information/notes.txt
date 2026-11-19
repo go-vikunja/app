@@ -11,7 +11,7 @@ The demo account is shared by everyone who tries the demo, and the server is res
 WHAT TO TRY
 - Overview and Upcoming; a project's List, Kanban, Table and Gantt views (Projects tab, then a project, then the view switcher).
 - Tap a task for its details; Edit changes its dates, priority, labels and reminders.
-- Offline first: tasks are read from a copy on the device; comments and attachments load only online. Turn on Airplane Mode, check off or edit a task, turn it off again; the change is sent by itself.
+- Offline first: tasks are read from a copy on the device; comments and attachments show as last loaded online. Turn on Airplane Mode, check off or edit a task, turn it off again; the change is sent by itself.
 - Reminders: give a task a reminder a few minutes ahead. The notification is scheduled on the device; there is no push service.
 - Widgets: add a Vikunja widget to the Home Screen.
 - App lock with Face ID: Account tab, App lock and privacy.

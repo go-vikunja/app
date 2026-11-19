@@ -6,7 +6,7 @@ How the app is built, for a maintainer who is new to it. This describes the desi
 
 1. **The local database is the single source of truth for the UI.** Screens read database streams. The network only feeds the database ([D29](decisions.md#d29-screens-read-and-write-through-repository-interfaces), [D31](decisions.md#d31-one-drift-sqlite-file-per-account-shared-across-isolates)).
 2. **One domain-level API, two transports.** `/api/v1` and `/api/v2` sit behind the same ports. The adapter is chosen from the server's negotiated capabilities, never from a version string.
-3. **Every task write goes through the outbox, even when online.** The UI, notification actions and widgets share one retry, ordering and conflict path ([D34](decisions.md#d34-outbox-local-first-task-writes-one-serial-sender-coalescing-retry-classes)). The few areas that are online only are listed in section 5.4.
+3. **Every task write goes through the outbox, even when online, and so does a label's create.** The UI, notification actions and widgets share one retry, ordering and conflict path ([D34](decisions.md#d34-outbox-local-first-task-writes-one-serial-sender-coalescing-retry-classes)). The few areas that are online only are listed in section 5.4.
 4. **Every entry point builds the same object graph** in a Riverpod `ProviderContainer`: the UI, the background task, the notification-action isolate and the Android widget worker (section 6).
 5. **Secrets live only in the Keychain or Keystore.** Extensions, widgets and the notification-action isolate never refresh a user's tokens; a guest's token may be renewed there, and a guest is signed in again at most once. The description editor's WebView gets no token and loads nothing from the network.
 6. **Pure logic lives in pure-Dart packages** and is pinned by test vectors, many ported from the web frontend's own tests.
@@ -67,11 +67,11 @@ app/lib/
 | `network/` | Dio factory, connection settings per server address, certificates. Section 4.3. |
 | `db/` | The Drift database per account: tables, DAOs, mappers. Section 5.1. |
 | `sync/` | The sync engine and its status. Section 5.2. |
-| `outbox/` | The task write path. Section 5.3. |
+| `outbox/` | The write path of tasks and of labels created here. Section 5.3. |
 | `repositories/` | The interfaces the screens use; `local/` backs them by the database and outbox, `online/` by the server alone. |
 | `notifications/`, `background/`, `activity/`, `realtime/`, `widgets/` | Work outside the screens. Section 6. |
 | `filters/` | The filter language evaluated on the device ([D51](decisions.md#d51-filter-engine-on-the-device-saved-filters-filter-builder-offline-search)). |
-| `attachments/`, `files/`, `share/` | Attachment images and downloads, the platform's file pickers, the Android share target ([D53](decisions.md#d53-attachments-uploaded-through-the-outbox-opened-through-the-platform-android-share-target)). |
+| `attachments/`, `files/`, `share/` | Attachment images (kept on disk with the avatars, section 5.5) and downloads, the platform's file pickers, the Android share target ([D53](decisions.md#d53-attachments-uploaded-through-the-outbox-opened-through-the-platform-android-share-target)). |
 | `security/`, `logging/`, `storage/` | App lock and screen protection ([D64](decisions.md#d64-app-lock-over-the-ui-and-device-privacy-settings)), logging that redacts secrets and personal data, local preferences. |
 
 ## 4. Server, accounts and sessions
@@ -118,10 +118,11 @@ flowchart LR
 
 One Drift SQLite file per account, opened by every isolate that works for that account ([D31](decisions.md#d31-one-drift-sqlite-file-per-account-shared-across-isolates)). Signing out deletes it.
 
-- Keys are the server's ids. A task created on the device has a negative temporary id until its create is sent; `task_id_remaps` lets a screen follow it to the server's id ([D35](decisions.md#d35-task-creates-through-the-outbox-under-temporary-negative-ids)).
+- Keys are the server's ids. A task created on the device has a negative temporary id until its create is sent; `task_id_remaps` lets a screen follow it to the server's id ([D35](decisions.md#d35-task-creates-through-the-outbox-under-temporary-negative-ids)); since step 40m labels created on the device do the same with `label_id_remaps`.
 - Dates are UTC epoch milliseconds; every row keeps the server's `created` and `updated`.
 - Besides the server's entities there are the `outbox`, `list_snapshots` (the server's order for lists the device cannot compute), `scheduled_notifications` (what the OS was last given), `server_notifications` (the inbox), `imported_widget_actions` and `sync_state` (the sync's watermark and checkpoint, user settings, saved filters).
-- `schemaVersion` is 1 since the first public release. Every schema change bumps it, adds a migration and a new schema dump under `app/drift_schemas/`, from which drift_dev generates the migration tests' schemas (see the [README](../README.md)).
+- The task sheet's last reads of what the sync does not bring are kept per task for offline (`TaskDetailsDao`): `task_detail_loads` (when, and the cover), `task_attachments`, `task_reactions`, `task_comments` and `task_comment_reactions`, with the people in each row. A read replaces them, a write the server took changes them, and they go with their task. A read that started before such a write stores nothing, so a slow answer cannot bring back what the write changed (an in-memory count of writes per task, per isolate).
+- `schemaVersion` is 2 since step 40m (1 at the first public release). Every schema change bumps it, adds a migration and a new schema dump under `app/drift_schemas/`, from which drift_dev generates the migration tests' schemas (see the [README](../README.md)).
 
 ### 5.2 Sync
 
@@ -141,11 +142,24 @@ A task write changes the local row and queues an op in the same transaction, so 
 - **One serial sender per account** sends the oldest op through the write client: v2 as a merge-patch, v1 by reading the task and posting it whole. The server's answer replaces the row, except fields a newer op still holds. A create inserts the task under the server's id and records the remap.
 - **Retries** fall into three classes: waiting for what is not the server's word (network, rate limit, session), counted failures with a backoff, and failures that become a sync problem at once. Sync problems are listed in the Account tab, where the user retries, discards or, for a conflicting description, chooses a version.
 - **Uploads** run in a lane of their own beside the serial queue, at most 50 MiB per file.
+- **Labels created here** (since step 40m, [D109](decisions.md#d109-offline-details-stored-task-details-images-on-disk-labels-created-offline)): `createLabel`, `updateLabel` and `deleteLabel` share the queue's order, with the label in `outbox.label_id` and task id 0. A task update naming a label whose create is queued waits for it. The create's answer moves the label, its tasks, the queued task edits and the label's own ops to the server id in one transaction; a lost answer is looked for by exact title, creator and time before a second create, and a delete queued behind a create cancels both without a request.
 - **Descriptions** are sent with the version they were edited from and checked against the server's first, so neither side's edit is silently overwritten ([D52](decisions.md#d52-descriptions-edited-in-a-locked-down-tiptap-webview-never-silently-overwritten)).
 
 ### 5.4 Online-only areas
 
-These writes go straight to the server and are applied to the database from its answer, so they need a connection: projects, views and kanban columns, saved filters, labels, comments and reactions, attachment deletes and the cover, restores from the trash, account settings and the avatar. Some are never stored at all: security settings (two-factor status, sessions, API tokens), teams, a project's shares and the trash.
+These writes go straight to the server and are applied to the database from its answer, so they need a connection: projects, views and kanban columns, saved filters, labels (except creating one, and changing or deleting one with something of it still queued), comments and reactions, attachment deletes and the cover, restores from the trash, account settings and the avatar. Some are never stored at all: security settings (two-factor status, sessions, API tokens), teams, a project's shares and the trash.
+
+A task's attachments, reactions and comments are read by the task sheet, not synced. What it last read is stored (section 5.1) and stands in while a read is under way, and, with the time of that read, when the read fails for a reason that may pass: no connection, a server error, a rate limit, an answer that is not the server's (a captive portal's page), a lost token-refresh race or a rejected token. A task gone or no longer allowed shows as such. A change made while comment pages were loading reads them again. Offline, the stored attachments can be opened, shared and saved when their file is in the download cache or kept in the image cache (section 5.5); deleting one, the cover, comments and reactions are off and say why.
+
+### 5.5 Images
+
+Attachment images and avatars are loaded with the account's session from its own server, never by a WebView, and go through a memory cache per account in front (`AttachmentImageCache`, 32 MB; `AvatarCache`).
+
+- Behind both sits one `ImageDiskCache` per account in `<cache>/images/<account>/`: every attachment image the memory cache loads (the list's previews, the `xl` previews of the detail sheet and the description editor, originals opened in the full-screen viewer) and avatars. Every load from the server writes it; an attachment image kept already is only marked as used, as attachments never change. It answers when the server cannot be asked (no connection, a server error, a session problem), and for an attachment also when the server sends no image (a login or maintenance page in front of it), so these images show offline and after a restart. Where only the original is kept, it stands in for the `xl` preview for the session. A missing or forbidden attachment and a missing user are not read from it and leave it; an attachment deleted in the app leaves memory and disk in every size.
+- At most 100 MB per account, the least recently used first out, and none unused for 30 days (checked when the account's index loads at its first use after a start, and whenever an image is found in use; a read counts as use). Only raster images (`image/*`, never SVG) up to 25 MB whose header names at most 40 megapixels, the memory cache's own limits, checked when written and again when read. An answer the rules refuse leaves the attachment image kept; a new avatar they refuse (an SVG) replaces the kept one, an answer that is no image does not.
+- A row showing an avatar from disk, or initials after a failure that may pass, asks again when the 2-minute retry is due; rows of the same user and size share one request.
+- The cache folder is out of backups on both platforms. Sign-out and account removal close the account's disk cache, which skips what was asked of it and has not started, and delete the folder; a folder that cannot be deleted leaves the account to the next start's wipe. After the start's wipes, folders of accounts the registry knows neither as registered nor as still to delete go too (`AccountDeletions.finishAll`), unless the registry cannot be read.
+- The editor page still loads nothing: the app hands it these images as `data:` URLs (section 7).
 
 ## 6. Work outside the screens
 
@@ -182,7 +196,7 @@ Descriptions are edited in the web's own editor, TipTap, so the HTML stays what 
 
 - `app/editor/` builds one self-contained page with a strict content security policy; the WebView loads nothing from the network and gets no token.
 - The app and the page talk through one JavaScript channel with a token new for every load; `editor_protocol.dart` defines the messages, `bridge.js` the page's side.
-- The page asks for its attachment images by URL; the app loads them with the account's session and sends them back as `data:` URLs.
+- The page asks for its attachment images by URL; the app loads them with the account's session, offline from the images it kept (section 5.5), and sends them back as `data:` URLs.
 - Reading a task does not use the WebView: `vikunja_logic` parses the stored HTML and Flutter renders it.
 
 ## 8. Cross-cutting

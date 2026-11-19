@@ -132,6 +132,33 @@ TaskChanges withoutLabels(TaskChanges changes, Set<int> labelIds) {
   );
 }
 
+/// [changes] with the label ids of [mapping] replaced. An id then both
+/// added and removed (a label swapped for its twin on the server) is an add
+/// when [carried], the labels the task has now, holds it, else a removal.
+TaskChanges withLabelIdsMapped(
+  TaskChanges changes,
+  Map<int, int> mapping, {
+  required Set<int> carried,
+}) {
+  final labels = changes.labels;
+  if (labels == null || mapping.isEmpty) return changes;
+  int mapped(int id) => mapping[id] ?? id;
+  final added = labels.added.map(mapped).toSet();
+  final removed = labels.removed.map(mapped).toSet();
+  final both = added.intersection(removed);
+  final change = IdSetChange(
+    added: added.difference(both.difference(carried)),
+    removed: removed.difference(both.intersection(carried)),
+  );
+  return _rebuilt(
+    changes,
+    labels: change.isEmpty ? null : change,
+    relations: changes.relations,
+    kanban: changes.kanban,
+    positions: changes.positions,
+  );
+}
+
 /// [changes] with its relation change replaced by [relations]; an empty one
 /// is left out.
 TaskChanges withRelations(TaskChanges changes, RelationChange? relations) =>

@@ -5,6 +5,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/epoch_millis.dart';
+import 'package:vikunja_mobile/core/db/tables/labels.dart';
 import 'package:vikunja_mobile/core/db/tables/outbox.dart';
 import 'package:vikunja_mobile/core/db/tables/sync_state.dart';
 import 'package:vikunja_mobile/core/db/tables/task_id_remaps.dart';
@@ -12,6 +13,7 @@ import 'package:vikunja_mobile/core/db/tables/tasks.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
+import 'package:vikunja_mobile/core/outbox/label_op_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
@@ -40,10 +42,10 @@ enum DeleteUnqueue {
   notQueued,
 }
 
-/// The queue of task writes and the local side of each write: a queued
-/// change is applied to the task row in the same transaction, so the row
-/// shows it at once, and `pending_changes` keeps the merged unsent fields
-/// for the sync's upserts.
+/// The queue of task and label writes and the local side of each task
+/// write: a queued change is applied to the task row in the same
+/// transaction, so the row shows it at once, and `pending_changes` keeps
+/// the merged unsent fields for the sync's upserts.
 ///
 /// A delete is an op like the others: it hides the row and waits behind
 /// the task's queued ops, which stay, so their changes reach the server
@@ -65,7 +67,13 @@ enum DeleteUnqueue {
 /// [queuedUploads] when nothing else is ready) and waits while a delete of
 /// its task is queued: it goes with the delete, or after the delete was
 /// taken back. Its stored copy is the caller's to delete.
-@DriftAccessor(tables: [Outbox, Tasks, TaskIdRemaps, SyncState])
+///
+/// Label ops (`createLabel`, `updateLabel`, `deleteLabel`) share the queue
+/// and its order under task id 0 with their label in `label_id`; they are
+/// queued and completed by `LabelOpsDao`. A task update that names a label
+/// created here waits for that label's create, and its label ids follow
+/// the remap.
+@DriftAccessor(tables: [Outbox, Tasks, TaskIdRemaps, SyncState, Labels])
 final class OutboxDao extends DatabaseAccessor<AppDatabase>
     with _$OutboxDaoMixin {
   new(super.attachedDatabase);
@@ -163,7 +171,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// task's id on the server, stay queued behind it; a project move drops
   /// the placements and positions queued before it. A temporary id whose
   /// create was answered meanwhile is followed to the server id, the task's
-  /// own and those its relations name. A repeating task's Done queued
+  /// own and those its relations name, and so is a label created here; one
+  /// whose create was discarded is left out. A repeating task's Done queued
   /// while nothing else of the task is carries the occurrence the row shows
   /// as its done base. False when the task is unknown here or queued for
   /// deletion, or its description is not [ifDescription] when that is
@@ -175,7 +184,10 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     String? ifDescription,
   }) => transaction(() async {
     final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
-    final changes = await _withResolvedRelations(requested);
+    final changes = await _withResolvedLabels(
+      await _withResolvedRelations(requested),
+      taskId,
+    );
     final row = await _row(taskId);
     if (row == null || row.pendingDelete) return false;
     if (ifDescription != null && row.description != ifDescription) {
@@ -185,7 +197,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     var pending = _pendingOf(row);
     if (taskId < 0) {
       final create = await _createOf(taskId);
-      if (create != null && _neverReachedServer(create)) {
+      if (create != null && neverReachedServer(create)) {
         await _write(
           create.id,
           _retaken(
@@ -299,7 +311,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
     if (taskId > 0) return TaskOnServer.yes;
     final create = await _createOf(taskId);
-    return create == null || _neverReachedServer(create)
+    return create == null || neverReachedServer(create)
         ? TaskOnServer.no
         : TaskOnServer.maybe;
   }
@@ -360,10 +372,11 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// not part of it (see [queuedUploads]). It may be `sending`, in another
   /// isolate or left by a run that died, and then nothing may overtake
   /// it. An update or delete under a temporary id waits for its create,
-  /// which is ahead of it or failed; so does an update whose relations name
-  /// a task whose create has not been answered, wherever that create is,
-  /// and every later op of its task, so a delete never goes before the
-  /// task's edits.
+  /// which is ahead of it or failed, and so does a label's edit or delete
+  /// under a temporary label id; so does an update whose relations name a
+  /// task, or whose labels name a label, whose create has not been
+  /// answered, wherever that create is, and every later op of its task, so
+  /// a delete never goes before the task's edits.
   Future<OutboxRow?> nextInLine() async {
     var after = 0;
     final waiting = <int>{};
@@ -378,13 +391,21 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
                           .equals(OutboxOperationKind.uploadAttachment.name)
                           .not() &
                       (o.taskId.isBiggerThanValue(0) |
-                          o.kind.equals(OutboxOperationKind.createTask.name)),
+                          o.kind.equals(OutboxOperationKind.createTask.name) |
+                          o.labelId.isBiggerThanValue(0) |
+                          o.kind.equals(OutboxOperationKind.createLabel.name)),
                 )
                 ..orderBy([(o) => OrderingTerm.asc(o.sequence)])
                 ..limit(1))
               .getSingleOrNull();
-      if (op == null || op.state != OutboxState.pending.name) return op;
-      if (!waiting.contains(op.taskId) && !await waitsForRelatedCreate(op)) {
+      if (op == null ||
+          op.state != OutboxState.pending.name ||
+          op.labelId != null) {
+        return op;
+      }
+      if (!waiting.contains(op.taskId) &&
+          !await waitsForRelatedCreate(op) &&
+          !await attachedDatabase.labelOpsDao.waitsForCreate(op)) {
         return op;
       }
       waiting.add(op.taskId);
@@ -615,6 +636,10 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       transaction(() async {
         final op = await find(id);
         if (op == null) return;
+        if (op.labelId != null) {
+          await attachedDatabase.labelOpsDao.markFailed(op, failure);
+          return;
+        }
         if (op.kind == OutboxOperationKind.uploadAttachment.name) {
           // A refusal means the server stored nothing; after a timeout a
           // retry must look for the file first.
@@ -704,14 +729,12 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// the server: a create or upload marked so (`sent_at`) keeps the mark,
   /// so its Retry looks first, and such a create takes no edit and no
   /// delete into it, as the server may have the task. Otherwise as
-  /// [markFailed].
+  /// [markFailed]. A label's create keeps the mark too.
   Future<void> markGivenUp(String id, VikunjaFailure failure) =>
       transaction(() async {
         final op = await find(id);
         if (op == null) return;
-        if (op.sentAt == null ||
-            (op.kind != OutboxOperationKind.createTask.name &&
-                op.kind != OutboxOperationKind.uploadAttachment.name)) {
+        if (op.sentAt == null || !_createsOnServer(op.kind)) {
           await markFailed(id, failure);
           return;
         }
@@ -893,10 +916,11 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// killed run, a disposed sender or a failed local apply left them, as
   /// no live sender takes that long over one op. A younger one may still
   /// be on its way in another isolate and stays, and so do the uploads in
-  /// [keep], which the caller is still streaming. A create or upload among
-  /// them may have reached the server, so it is marked uncertain as of its
-  /// attempt (an earlier `sent_at` stays), and the next attempt looks for
-  /// the task or attachment before sending it again.
+  /// [keep], which the caller is still streaming. A create (of a task or a
+  /// label) or upload among them may have reached the server, so it is
+  /// marked uncertain as of its attempt (an earlier `sent_at` stays), and
+  /// the next attempt looks for the task, label or attachment before
+  /// sending it again.
   ///
   /// The first call with a [process] (the caller's process id) other than
   /// the one stored ([sendingProcessKey]) resets every op `sending` at
@@ -930,6 +954,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
               o.kind.isIn([
                 OutboxOperationKind.createTask.name,
                 OutboxOperationKind.uploadAttachment.name,
+                OutboxOperationKind.createLabel.name,
               ]),
         ))
         .write(
@@ -1096,27 +1121,34 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
 
   Future<Set<int>> loadPendingTaskIds() async {
     final query = selectOnly(outbox, distinct: true)
-      ..addColumns([outbox.taskId]);
+      ..addColumns([outbox.taskId])
+      ..where(outbox.labelId.isNull());
     return {for (final row in await query.get()) row.read(outbox.taskId)!};
   }
 
   Stream<List<SyncProblem>> watchProblems() =>
-      watchTables({outbox, tasks}, loadProblems);
+      watchTables({outbox, tasks, labels}, loadProblems);
 
   Future<List<SyncProblem>> loadProblems() async {
     final query =
-        select(outbox)
-            .join([leftOuterJoin(tasks, tasks.id.equalsExp(outbox.taskId))])
+        select(outbox).join([
+            leftOuterJoin(tasks, tasks.id.equalsExp(outbox.taskId)),
+            leftOuterJoin(labels, labels.id.equalsExp(outbox.labelId)),
+          ])
           ..where(outbox.state.equals(OutboxState.failed.name))
           ..orderBy([OrderingTerm.asc(outbox.sequence)]);
     final rows = await query.get();
     return [
       for (final row in rows)
-        ?_problemOf(row.readTable(outbox), row.readTableOrNull(tasks)),
+        ?_problemOf(
+          row.readTable(outbox),
+          row.readTableOrNull(tasks),
+          row.readTableOrNull(labels),
+        ),
     ];
   }
 
-  SyncProblem? _problemOf(OutboxRow op, TaskRow? task) {
+  SyncProblem? _problemOf(OutboxRow op, TaskRow? task, LabelRow? label) {
     final kind = OutboxOperationKind.values.asNameMap()[op.kind];
     final error = op.lastError;
     if (kind == null || error == null) return null;
@@ -1124,7 +1156,14 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       operationId: op.id,
       kind: kind,
       taskId: op.taskId,
-      taskTitle: task?.title ?? '',
+      taskTitle: switch (kind) {
+        OutboxOperationKind.createLabel =>
+          label?.title ?? decodeLabelCreate(op.payload).label.title,
+        _ when kind.isLabelOp =>
+          label?.title ?? queuedLabelTitle(op.payload) ?? '',
+        _ => task?.title ?? '',
+      },
+      labelId: op.labelId,
       failure: decodeFailure(error),
       failedAt: op.lastAttemptAt ?? op.createdAt,
       changes: kind == OutboxOperationKind.updateTask
@@ -1160,6 +1199,14 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       ).mapTaskIds((id) => resolved[id]!),
     );
   }
+
+  Future<TaskChanges> _withResolvedLabels(
+    TaskChanges changes,
+    int taskId,
+  ) async => (await attachedDatabase.labelOpsDao.resolveLabels(
+    changes,
+    taskId: taskId,
+  )).changes;
 
   /// Every queued relation that names the task [from] names [to] instead,
   /// or is dropped when [to] is null; an update left empty goes. The
@@ -1211,11 +1258,19 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
           ))
           .getSingleOrNull();
 
-  /// A create the server was never asked for, or rejected: it still takes
-  /// edits. In flight, or sent without an answer (also one the sender gave
-  /// up on), the server may have it, so later ops queue behind it.
-  static bool _neverReachedServer(OutboxRow create) =>
+  /// A create (of a task or a label) the server was never asked for, or
+  /// rejected: it still takes edits. In flight, or sent without an answer
+  /// (also one the sender gave up on), the server may have it, so later ops
+  /// queue behind it.
+  static bool neverReachedServer(OutboxRow create) =>
       create.state != OutboxState.sending.name && create.sentAt == null;
+
+  /// Ops whose request may leave something on the server without an
+  /// answer, which a later attempt looks for first.
+  static bool _createsOnServer(String kind) =>
+      kind == OutboxOperationKind.createTask.name ||
+      kind == OutboxOperationKind.uploadAttachment.name ||
+      kind == OutboxOperationKind.createLabel.name;
 
   /// Whether a delete of the task is queued, whatever its state.
   Future<bool> hasQueuedDelete(int taskId) async =>
@@ -1231,6 +1286,28 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
             ..orderBy([(o) => OrderingTerm.asc(o.sequence)])
             ..limit(1))
           .getSingleOrNull();
+
+  /// The op goes back to the queue with [payload] and a clean slate.
+  Future<void> retake(String id, String payload) =>
+      _write(id, _retaken(payload));
+
+  /// Queues a label op: [labelId] is its label, the task id 0.
+  Future<String> queueLabelOp({
+    required OutboxOperationKind kind,
+    required int labelId,
+    required String payload,
+    required DateTime now,
+  }) => _insert(
+    kind: kind,
+    taskId: 0,
+    labelId: labelId,
+    payload: payload,
+    now: now,
+  );
+
+  /// The task's `pending_changes` from the ops that remain.
+  Future<void> refreshPendingChanges(int taskId) =>
+      _refreshPendingChanges(taskId);
 
   /// Back in the queue with the merged [payload] and a clean slate, like
   /// the first time.
@@ -1314,6 +1391,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     required int taskId,
     required String payload,
     required DateTime now,
+    int? labelId,
   }) async {
     final highest = outbox.sequence.max();
     final query = selectOnly(outbox)..addColumns([highest]);
@@ -1329,6 +1407,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         createdAt: now.toUtc(),
         attempts: 0,
         state: OutboxState.pending.name,
+        labelId: labelId,
       ),
     );
     return id;

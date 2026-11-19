@@ -339,6 +339,27 @@ void main() {
     expect(gone.title, 'This label is gone');
   });
 
+  test('a widget set up for a label created here follows it to its server '
+      'id once its create is answered', () async {
+    await db.labelOpsDao.queueCreate(const NewLabel(title: 'Shed'), now: now);
+    await db.outboxDao.queueUpdate(
+      5,
+      const TaskChanges(labels: IdSetChange(added: {-1})),
+      now: now,
+    );
+    expect(titles(await one(const LabelTasksKind(-1))), ['Weeding']);
+
+    await db.labelOpsDao.completeCreate(
+      (await db.labelOpsDao.createOf(-1))!.id,
+      const Label(id: 50, title: 'Shed'),
+      at: now,
+    );
+
+    final followed = await one(const LabelTasksKind(-1));
+    expect(followed.title, 'Shed');
+    expect(titles(followed), ['Weeding']);
+  });
+
   test('Favorites lists the open favourite tasks', () async {
     final favorites = await one(const FavoritesKind());
 

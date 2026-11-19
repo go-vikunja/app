@@ -5,6 +5,8 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/daos/label_ops_dao.dart';
+import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/text/title_order.dart';
@@ -13,39 +15,31 @@ final _log = Logger('AccountData');
 
 const _labelMissing = 8002;
 
-/// Labels from the account's database; a create goes to the server first.
-/// A create without an answer may still have reached the server, which
-/// keeps labels of the same title side by side: the label is looked for
-/// among the user's own before the failure is reported and before the
-/// next create of that title. Changes and deletes are online too, stored
-/// once answered, and a quiet [SyncEngine.refreshAfterWrite] follows them.
+/// Labels from the account's database. A create is local first: the label
+/// is stored under a temporary id with its create queued in the outbox,
+/// which the [OutboxSender] (`outbox`) drains; a change or delete of such
+/// a label, or of one with a change still queued, is queued too. Changes
+/// and deletes of the server's other labels are online, stored once
+/// answered, and a quiet [SyncEngine.refreshAfterWrite] follows them.
 final class LocalLabelRepository implements LabelRepository {
   new(
     this._db,
-    this._write,
-    this._read, {
+    this._write, {
+    this._outbox,
     this._sync,
     DateTime Function()? now,
-    int? Function()? currentUserId,
+    User? Function()? currentUser,
   }) : _now = now ?? DateTime.now,
-       _currentUserId = currentUserId ?? _unknownUser;
+       _currentUser = currentUser ?? _unknownUser;
 
-  static int? _unknownUser() => null;
-
-  /// How far before an unanswered create the lookup reaches: the server's
-  /// `created` is its own clock; the same hour of skew the outbox allows.
-  static const lostResponseWindow = Duration(hours: 1);
+  static User? _unknownUser() => null;
 
   final AppDatabase _db;
   final VikunjaWriteClient _write;
-  final VikunjaReadClient _read;
+  final OutboxSender? _outbox;
   final SyncEngine? _sync;
   final DateTime Function() _now;
-  final int? Function() _currentUserId;
-
-  /// Titles whose create may have reached the server unanswered, with the
-  /// time of the first such attempt.
-  final _unconfirmed = <String, DateTime>{};
+  final User? Function() _currentUser;
 
   @override
   Stream<List<Label>> watchAll() => _db.labelsDao.watchAll().map(
@@ -57,33 +51,46 @@ final class LocalLabelRepository implements LabelRepository {
   );
 
   @override
-  Future<Label> create(NewLabel label) async {
-    final sent = _asStored(label);
-    final title = sent.title;
-    if (_unconfirmed[title] case final since?) {
-      if (await _createdSince(title, since) case final found?) {
-        return await _store(found);
-      }
-    }
-    final attemptedAt = _now();
-    try {
-      return await _store(await _write.labels.create(sent));
-    } on VikunjaFailure catch (failure) {
-      if (failure is! NetworkFailure && failure is! ServerFailure) rethrow;
-      final since = _unconfirmed.putIfAbsent(title, () => attemptedAt);
-      final found = await _createdSinceIfReachable(title, since);
-      if (found == null) rethrow;
-      return await _store(found);
-    }
-  }
+  Stream<Label?> watchLabel(int id) => _db.labelsDao.watchLabel(id);
+
+  @override
+  Future<Label> create(NewLabel label) => _queueCreate(label, adopt: false);
 
   @override
   Future<Label> findOrCreate(NewLabel label) async {
+    final title = withoutNul(label.title).toLowerCase();
+    final matches = [
+      for (final stored in await _db.labelsDao.loadAll())
+        if (stored.title.toLowerCase() == title) stored,
+    ]..sort(_oldestFirst);
+    final exact = withoutNul(label.title);
+    final found =
+        matches.where((stored) => stored.title == exact).firstOrNull ??
+        matches.firstOrNull;
+    return found ?? await _queueCreate(label, adopt: true);
+  }
+
+  /// The server's labels by id, then the ones created here in the order
+  /// they were.
+  static int _oldestFirst(Label a, Label b) {
+    if ((a.id > 0) != (b.id > 0)) return a.id > 0 ? -1 : 1;
+    return a.id.abs().compareTo(b.id.abs());
+  }
+
+  Future<Label> _queueCreate(NewLabel label, {required bool adopt}) async {
     final sent = _asStored(label);
-    if (await _titled(sent.title) case final found?) {
-      return await _store(found);
+    if (labelTitleProblem(sent.title) != null) {
+      throw ArgumentError.value(label, 'label', 'has no valid title');
     }
-    return await create(sent);
+    final created = await _db.labelOpsDao.queueCreate(
+      sent,
+      now: _now(),
+      createdBy: _currentUser(),
+      adopt: adopt,
+    );
+    _log.fine('Queued the create of label ${created.id}');
+    _drainQuietly();
+    return created;
   }
 
   /// [label] with the title the server stores, without U+0000, so the
@@ -99,13 +106,28 @@ final class LocalLabelRepository implements LabelRepository {
     if (changes.title case final title? when labelTitleProblem(title) != null) {
       throw ArgumentError.value(changes, 'changes', 'has no valid title');
     }
+    final (queueing, queued) = await _db.labelOpsDao.queueUpdate(
+      id,
+      changes,
+      now: _now(),
+    );
+    switch (queueing) {
+      case LabelQueueing.queued:
+        _drainQuietly();
+        return queued!;
+      case LabelQueueing.gone:
+        throw const NotFound(code: _labelMissing);
+      case LabelQueueing.online:
+        break;
+    }
+    final serverId = await _db.labelsDao.resolveId(id);
     final Label answer;
     try {
-      answer = await _write.labels.update(id, changes);
+      answer = await _write.labels.update(serverId, changes);
     } on NotFound catch (failure) {
       if (failure.code == _labelMissing) {
-        await _db.labelsDao.remove(id);
-        _settle('Label $id was gone');
+        await _db.labelsDao.remove(serverId);
+        _settle('Label $serverId was gone');
       }
       rethrow;
     }
@@ -116,28 +138,37 @@ final class LocalLabelRepository implements LabelRepository {
             title: answer.title,
             description: answer.description,
             hexColor: answer.hexColor,
-            createdBy: await _storedCreator(id),
+            createdBy: (await _db.labelsDao.find(serverId))?.createdBy,
             created: answer.created,
             updated: answer.updated,
           );
     await _db.labelsDao.upsertAll([stored]);
-    _settle('Changed label $id');
+    _settle('Changed label $serverId');
     return stored;
   }
 
   @override
   Future<void> delete(int id) async {
-    await _write.labels.delete(id);
-    await _db.labelsDao.remove(id);
-    _settle('Deleted label $id');
+    switch (await _db.labelOpsDao.queueDelete(id, now: _now())) {
+      case LabelQueueing.queued:
+        _drainQuietly();
+        return;
+      case LabelQueueing.gone:
+        return;
+      case LabelQueueing.online:
+        break;
+    }
+    final serverId = await _db.labelsDao.resolveId(id);
+    await _write.labels.delete(serverId);
+    await _db.labelsDao.remove(serverId);
+    _settle('Deleted label $serverId');
   }
 
-  Future<User?> _storedCreator(int id) async {
-    for (final label in await _db.labelsDao.loadAll()) {
-      if (label.id == id) return label.createdBy;
-    }
-    return null;
-  }
+  @override
+  Stream<Set<int>> watchPendingIds() => _db.labelOpsDao.watchPendingIds();
+
+  @override
+  Stream<Map<int, int>> watchRemaps() => _db.labelsDao.watchRemaps();
 
   void _settle(String done) {
     _log.fine(done);
@@ -152,67 +183,18 @@ final class LocalLabelRepository implements LabelRepository {
     );
   }
 
-  /// The server's label titled [title], ignoring case; of several the one
-  /// with the same case, else the oldest.
-  Future<Label?> _titled(String title) async {
-    final matches = await _sameTitleOnServer(title);
-    if (matches.isEmpty) return null;
-    matches.sort((a, b) => a.id.compareTo(b.id));
-    return matches.where((label) => label.title == title).firstOrNull ??
-        matches.first;
-  }
-
-  /// Every label on the server titled [title], ignoring case, from all
-  /// pages of a search for it.
-  Future<List<Label>> _sameTitleOnServer(String title) async {
-    final lower = title.toLowerCase();
-    final matches = <Label>[];
-    for (var page = 1; ; page++) {
-      final current = await _read.labels.list(page: page, search: title);
-      matches.addAll(
-        current.items.where((label) => label.title.toLowerCase() == lower),
-      );
-      if (!current.hasMore) return matches;
-    }
-  }
-
-  Future<Label> _store(Label label) async {
-    _unconfirmed.remove(label.title);
-    await _db.labelsDao.upsertAll([label]);
-    return label;
-  }
-
-  Future<Label?> _createdSinceIfReachable(String title, DateTime since) async {
-    try {
-      return await _createdSince(title, since);
-    } on VikunjaFailure {
-      return null;
-    }
-  }
-
-  /// The newest label titled exactly [title] that this user created since
-  /// [lostResponseWindow] before [since] and this device has no row for;
-  /// another member's label of that title, visible through a shared task,
-  /// is not the one the lost create made.
-  Future<Label?> _createdSince(String title, DateTime since) async {
-    final stored = {
-      for (final label in await _db.labelsDao.loadAll()) label.id,
-    };
-    final from = since.subtract(lostResponseWindow);
-    final userId = _currentUserId();
-    Label? found;
-    for (final label in await _sameTitleOnServer(title)) {
-      final created = label.created;
-      if (label.title != title ||
-          (userId != null && label.createdBy?.id != userId) ||
-          stored.contains(label.id) ||
-          created == null ||
-          created.isBefore(from)) {
-        continue;
-      }
-      if (found == null || label.id > found.id) found = label;
-    }
-    return found;
+  /// The write is stored; the send reports through the outbox state and
+  /// the sync problems.
+  void _drainQuietly() {
+    final outbox = _outbox;
+    if (outbox == null) return;
+    unawaited(
+      outbox.drain().then<void>(
+        (_) {},
+        onError: (Object error) =>
+            _log.warning('Outbox drain failed: ${error.runtimeType}'),
+      ),
+    );
   }
 
   @override

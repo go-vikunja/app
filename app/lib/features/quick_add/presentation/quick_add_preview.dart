@@ -11,7 +11,6 @@ import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dar
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_text_controller.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/quick_add_formatting.dart';
-import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
@@ -67,7 +66,6 @@ class QuickAddPreview extends ConsumerWidget {
         : _chips(
             context,
             MomentFormatter.watch(context, ref),
-            offline: ref.watch(offlineProvider) != null,
             guest: ref.watch(activeAccountIsGuestProvider),
           );
     final notes = [
@@ -107,7 +105,6 @@ class QuickAddPreview extends ConsumerWidget {
   List<Widget> _chips(
     BuildContext context,
     MomentFormatter formatter, {
-    required bool offline,
     required bool guest,
   }) {
     final l10n = context.l10n;
@@ -164,7 +161,7 @@ class QuickAddPreview extends ConsumerWidget {
           onRemove: () => onRemove(MagicSpanKind.label, items: [label.title]),
         ),
       for (final title in plan.newLabels)
-        _newLabelChip(l10n, title, offline: offline, guest: guest),
+        _newLabelChip(l10n, title, guest: guest),
       for (final user in plan.assignees)
         _PartChip(
           kind: MagicSpanKind.assignee,
@@ -219,23 +216,23 @@ class QuickAddPreview extends ConsumerWidget {
     ];
   }
 
+  /// Created on Add, offline too, by the rule `createLabels` follows; a
+  /// guest cannot create labels, and the server would refuse a title that
+  /// long.
   Widget _newLabelChip(
     AppLocalizations l10n,
     String title, {
-    required bool offline,
     required bool guest,
   }) {
-    final (icon, label, semanticsLabel) = guest
+    final (
+      icon,
+      label,
+      semanticsLabel,
+    ) = guest || labelTitleProblem(withoutNul(title)) != null
         ? (
             Icons.label_off_outlined,
             l10n.quickAddLabelStaysInTitle(title),
             l10n.quickAddLabelStaysInTitleSemantics(title),
-          )
-        : offline
-        ? (
-            Icons.cloud_off_outlined,
-            l10n.quickAddNewLabelOffline(title),
-            l10n.quickAddNewLabelOfflineSemantics(title),
           )
         : (
             Icons.new_label_outlined,

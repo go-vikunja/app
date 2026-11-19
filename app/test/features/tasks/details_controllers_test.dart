@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/repositories/task_details_repository.dart'
+    show StoredRead;
 import 'package:vikunja_mobile/features/tasks/presentation/details/comments_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/task_details_controller.dart';
 
@@ -594,15 +596,50 @@ void main() {
         expect(controller.find(2)!.reactions, eyes);
       });
 
-      test('a page arriving after a reaction or a deletion here keeps '
-          'both', () async {
+      test('a reaction here while a later page loads reads the pages again '
+          'once it is on the server', () async {
         final more = controller.loadMore();
-        controller.setReactions(1, eyes);
+        final onServer = Completer<void>();
+        final write = controller.writing(() async {
+          controller.setReactions(1, eyes);
+          await onServer.future;
+        });
+        await release();
+        await more;
+        expect(ids(controller), [1, 2, 3]);
+        expect(held, hasLength(1));
+
+        all = [all[0].copyWith(reactions: eyes), ...all.skip(1)];
+        onServer.complete();
+        await write;
+        await release();
+        expect(held, hasLength(3));
+        expect(controller.find(1)!.reactions, eyes);
+      });
+
+      test('a page arriving after a reaction or a deletion here keeps '
+          'both; the pages are read again once the reaction is on the '
+          'server', () async {
+        final more = controller.loadMore();
+        final onServer = Completer<void>();
+        final write = controller.writing(() async {
+          controller.setReactions(1, eyes);
+          await onServer.future;
+        });
         all = all.where((comment) => comment.id != 2).toList();
         controller.remove(2);
         await release();
         await more;
 
+        expect(ids(controller), [1, 3]);
+        expect(controller.find(1)!.reactions, eyes);
+        expect(held, hasLength(1));
+
+        all = [all[0].copyWith(reactions: eyes), ...all.skip(1)];
+        onServer.complete();
+        await write;
+        await release();
+        expect(held, hasLength(3));
         expect(ids(controller), [1, 3]);
         expect(controller.find(1)!.reactions, eyes);
       });
@@ -644,6 +681,468 @@ void main() {
       fail = true;
       await controller.refreshLoaded();
       expect(ids(controller), [1, 3]);
+    });
+  });
+
+  group('stored details and comments', () {
+    const offline = NetworkFailure(NetworkProblem.unreachable);
+    // What a captive portal, a failing proxy or a server in trouble answers.
+    const passing = <VikunjaFailure>[
+      offline,
+      ServerFailure(502),
+      RateLimited(),
+      UnexpectedResponse(200),
+      NotJsonResponse(200, message: 'text/html'),
+      RefreshRaceLost(),
+      TokenRejected(),
+    ];
+    const final_ = <VikunjaFailure>[NotFound(code: 4002), Forbidden()];
+    final morning = DateTime.utc(2026, 11, 19, 8);
+    final storedDetails = TaskDetails(
+      attachments: [sampleAttachment(id: 3, name: 'pass.pdf')],
+      commentCount: 2,
+    );
+    List<int> idsOf(CommentsController controller) => [
+      for (final comment in controller.value.comments) comment.id,
+    ];
+
+    group('TaskDetailsController', () {
+      late List<Completer<TaskDetails>> reads;
+      late Completer<StoredRead<TaskDetails>?> stored;
+      late TaskDetailsController controller;
+
+      setUp(() {
+        reads = [];
+        stored = Completer();
+        controller = TaskDetailsController(
+          read: (_) => (reads..add(Completer())).last.future,
+          markRead: (_) async {},
+          stored: (_) => stored.future,
+        );
+        addTearDown(controller.dispose);
+      });
+
+      TaskDetailsLoaded shown() => controller.value as TaskDetailsLoaded;
+
+      test('what is stored shows while the read runs and gives way to its '
+          'answer', () async {
+        unawaited(controller.load(1));
+        stored.complete((value: storedDetails, readAt: morning));
+        await pumpEventQueue();
+
+        expect(shown().details, same(storedDetails));
+        expect(shown().storedAt, morning);
+        expect(shown().failure, isNull);
+
+        const answer = TaskDetails(commentCount: 3);
+        reads.last.complete(answer);
+        await pumpEventQueue();
+
+        expect(shown().details, same(answer));
+        expect(shown().storedAt, isNull);
+      });
+
+      test('offline it stays with the failure, also when that comes first; '
+          'Retry keeps it while it reads', () async {
+        unawaited(controller.load(1).catchError((_) => storedDetails));
+        reads.last.completeError(offline);
+        await pumpEventQueue();
+        expect(controller.value, isA<TaskDetailsFailed>());
+
+        stored.complete((value: storedDetails, readAt: morning));
+        await pumpEventQueue();
+        expect(shown().details, same(storedDetails));
+        expect(shown().failure, offline);
+
+        final states = <TaskDetailsState>[];
+        controller.addListener(() => states.add(controller.value));
+        unawaited(controller.load(1).catchError((_) => storedDetails));
+        await pumpEventQueue();
+        expect(shown().storedAt, morning);
+        expect(shown().failure, isNull);
+
+        reads.last.completeError(offline);
+        await pumpEventQueue();
+        expect(shown().failure, offline);
+        expect(states, everyElement(isA<TaskDetailsLoaded>()));
+      });
+
+      test('they stay with every failure that may pass, whichever comes '
+          'first', () async {
+        stored.complete((value: storedDetails, readAt: morning));
+        for (final failure in passing) {
+          unawaited(controller.load(1).catchError((_) => storedDetails));
+          reads.last.completeError(failure);
+          await pumpEventQueue();
+          expect(shown().details, same(storedDetails), reason: '$failure');
+          expect(shown().storedAt, morning, reason: '$failure');
+          expect(shown().failure, failure, reason: '$failure');
+
+          final refreshed = controller.refresh();
+          reads.last.completeError(failure);
+          await refreshed;
+          expect(shown().failure, failure, reason: '$failure');
+        }
+      });
+
+      test('they stay when the read failed for a reason that may pass before '
+          'they were read', () async {
+        unawaited(controller.load(1).catchError((_) => storedDetails));
+        reads.last.completeError(const ServerFailure(503));
+        await pumpEventQueue();
+        stored.complete((value: storedDetails, readAt: morning));
+        await pumpEventQueue();
+
+        expect(shown().details, same(storedDetails));
+        expect(shown().failure, const ServerFailure(503));
+      });
+
+      test(
+        'a task that is gone or may no longer be read shows as such',
+        () async {
+          stored.complete((value: storedDetails, readAt: morning));
+          for (final failure in final_) {
+            unawaited(controller.load(1).catchError((_) => storedDetails));
+            await pumpEventQueue();
+            expect(shown().storedAt, morning);
+
+            reads.last.completeError(failure);
+            await pumpEventQueue();
+
+            expect(
+              (controller.value as TaskDetailsFailed).failure,
+              same(failure),
+            );
+          }
+        },
+      );
+
+      test('changes made here keep them marked as stored; a refresh brings '
+          "the server's or keeps them offline", () async {
+        unawaited(controller.load(1).catchError((_) => storedDetails));
+        stored.complete((value: storedDetails, readAt: morning));
+        reads.last.completeError(offline);
+        await pumpEventQueue();
+
+        controller.setCover(3);
+        expect(shown().details.coverImageAttachmentId, 3);
+        expect(shown().storedAt, morning);
+        expect(shown().failure, offline);
+
+        final failing = controller.refresh();
+        reads.last.completeError(offline);
+        await failing;
+        expect(shown().storedAt, morning);
+        expect(shown().failure, offline);
+
+        final refreshed = controller.refresh();
+        reads.last.complete(const TaskDetails(commentCount: 5));
+        await refreshed;
+        expect(shown().storedAt, isNull);
+        expect(shown().details.commentCount, 5);
+      });
+
+      test('nothing stored: the failure is the state as before', () async {
+        unawaited(controller.load(1).catchError((_) => storedDetails));
+        stored.complete(null);
+        reads.last.completeError(offline);
+        await pumpEventQueue();
+
+        expect((controller.value as TaskDetailsFailed).failure, offline);
+      });
+
+      test('a change made while they stand in drops the first read, which '
+          'may not have it, and reads again once written', () async {
+        const mine = {
+          '👍': [User(id: 1, username: 'me')],
+        };
+        unawaited(controller.load(1));
+        stored.complete((value: storedDetails, readAt: morning));
+        await pumpEventQueue();
+
+        final reacting = controller.writing(() async {
+          controller.setReactions(mine);
+        });
+        reads.first.complete(const TaskDetails());
+        await reacting;
+        await pumpEventQueue();
+
+        expect(reads, hasLength(2));
+        expect(shown().details.reactions, mine);
+        expect(shown().storedAt, morning);
+
+        reads.last.complete(const TaskDetails(reactions: mine));
+        await pumpEventQueue();
+        expect(shown().details.reactions, mine);
+        expect(shown().storedAt, isNull);
+      });
+    });
+
+    group('CommentsController', () {
+      late List<TaskComment> all;
+      late Exception? failure;
+      late List<String> calls;
+      StoredRead<List<TaskComment>>? kept;
+
+      CommentsController create() {
+        final controller = CommentsController(
+          read: (taskId, {required page, required newestFirst}) async {
+            calls.add('$page ${newestFirst ? 'newest' : 'oldest'}');
+            if (failure case final failure?) throw failure;
+            final ordered = newestFirst ? all.reversed.toList() : all;
+            return Page(
+              items: ordered.skip((page - 1) * 2).take(2).toList(),
+              page: page,
+              perPage: 2,
+              totalPages: (ordered.length / 2).ceil(),
+            );
+          },
+          stored: (_) async => kept,
+        )..forTask(5);
+        addTearDown(controller.dispose);
+        return controller;
+      }
+
+      setUp(() {
+        all = [for (var id = 1; id <= 3; id++) sampleComment(id: id)];
+        failure = null;
+        calls = [];
+        kept = (
+          value: [sampleComment(id: 1), sampleComment(id: 2)],
+          readAt: morning,
+        );
+      });
+
+      test('offline they show in the order chosen, with the failure and '
+          "without more to load; Retry brings the server's", () async {
+        failure = offline;
+        final controller = create()..useDefaultOrder(newestFirst: true);
+
+        await controller.show();
+        expect(idsOf(controller), [2, 1]);
+        expect(controller.value.storedAt, morning);
+        expect(controller.value.failure, offline);
+        expect(controller.value.shown, isTrue);
+        expect(controller.value.hasMore, isFalse);
+
+        await controller.toggleOrder();
+        expect(idsOf(controller), [1, 2]);
+        expect(controller.value.storedAt, morning);
+
+        failure = null;
+        await controller.retry();
+        expect(idsOf(controller), [1, 2]);
+        expect(controller.value.storedAt, isNull);
+        expect(controller.value.failure, isNull);
+        expect(controller.value.hasMore, isTrue);
+        await controller.loadMore();
+        expect(idsOf(controller), [1, 2, 3]);
+      });
+
+      test('a reaction made on them while the first page loads is read '
+          'again once that page is in', () async {
+        const mine = {
+          '👍': [User(id: 1, username: 'me')],
+        };
+        final first = Completer<void>();
+        var reads = 0;
+        final controller = CommentsController(
+          read: (taskId, {required page, required newestFirst}) async {
+            reads++;
+            if (reads == 1) await first.future;
+            return Page(
+              items: [
+                sampleComment(id: 1, reactions: reads == 1 ? const {} : mine),
+              ],
+              page: 1,
+              perPage: 2,
+              totalPages: 1,
+            );
+          },
+          stored: (_) async => kept,
+        )..forTask(5);
+        addTearDown(controller.dispose);
+
+        final showing = controller.show();
+        await pumpEventQueue();
+        await controller.writing(() async {
+          controller.setReactions(1, mine);
+        });
+        first.complete();
+        await showing;
+        await pumpEventQueue();
+
+        expect(reads, 2);
+        expect(controller.find(1)!.reactions, mine);
+        expect(controller.value.storedAt, isNull);
+      });
+
+      test('a comment deleted while the first page loads, which may have been '
+          'read before, is read again once that page is in', () async {
+        final first = Completer<void>();
+        var reads = 0;
+        final controller = CommentsController(
+          read: (taskId, {required page, required newestFirst}) async {
+            reads++;
+            if (reads == 1) await first.future;
+            return Page(
+              items: [
+                sampleComment(id: 1),
+                if (reads == 1) sampleComment(id: 2),
+              ],
+              page: 1,
+              perPage: 2,
+              totalPages: 1,
+            );
+          },
+          stored: (_) async => kept,
+        )..forTask(5);
+        addTearDown(controller.dispose);
+
+        final showing = controller.show();
+        await pumpEventQueue();
+        expect(controller.value.storedAt, morning);
+        controller.remove(2);
+        expect(idsOf(controller), [1]);
+        first.complete();
+        await showing;
+        await pumpEventQueue();
+
+        expect(reads, 2);
+        expect(idsOf(controller), [1]);
+        expect(controller.value.storedAt, isNull);
+      });
+
+      test('a comment deleted while a load fails is not read again on top of '
+          'the next load', () async {
+        final controller = create();
+        await controller.show();
+        calls.clear();
+
+        failure = offline;
+        final more = controller.loadMore();
+        controller.remove(2);
+        await more;
+        failure = null;
+        all = [sampleComment(id: 1), sampleComment(id: 3)];
+        await controller.retry();
+        await pumpEventQueue();
+
+        expect(calls, ['2 oldest', '1 oldest', '2 oldest']);
+      });
+
+      test('a comment deleted while a later page loads reads the pages again '
+          'once it is in', () async {
+        final controller = create();
+        await controller.show();
+        calls.clear();
+
+        final more = controller.loadMore();
+        all = [sampleComment(id: 1), sampleComment(id: 3)];
+        controller.remove(2);
+        await more;
+        await pumpEventQueue();
+
+        expect(calls, ['2 oldest', '1 oldest', '2 oldest']);
+        expect(idsOf(controller), [1, 3]);
+      });
+
+      test('they stand in while the first page loads', () async {
+        final answer = Completer<void>();
+        final held = CommentsController(
+          read: (taskId, {required page, required newestFirst}) async {
+            await answer.future;
+            return Page(
+              items: [sampleComment(id: 9)],
+              page: 1,
+              perPage: 2,
+              totalPages: 1,
+            );
+          },
+          stored: (_) async => kept,
+        )..forTask(5);
+        addTearDown(held.dispose);
+
+        final showing = held.show();
+        await pumpEventQueue();
+        expect(idsOf(held), [1, 2]);
+        expect(held.value.loading, isTrue);
+        expect(held.value.storedAt, morning);
+
+        answer.complete();
+        await showing;
+        expect(idsOf(held), [9]);
+        expect(held.value.storedAt, isNull);
+      });
+
+      test(
+        'every failure that may pass keeps them, with the failure',
+        () async {
+          for (final failing in passing) {
+            failure = failing;
+            final controller = create();
+            await controller.show();
+            expect(idsOf(controller), [1, 2], reason: '$failing');
+            expect(controller.value.storedAt, morning, reason: '$failing');
+            expect(controller.value.failure, failing, reason: '$failing');
+          }
+        },
+      );
+
+      test('a task that is gone or may no longer be read, or nothing stored, '
+          'is the failure as before', () async {
+        for (final failing in final_) {
+          failure = failing;
+          final controller = create();
+          await controller.show();
+          expect(controller.value.comments, isEmpty);
+          expect(controller.value.storedAt, isNull);
+          expect(controller.value.failure, same(failing));
+        }
+
+        failure = offline;
+        kept = null;
+        final controller = create();
+        await controller.show();
+        expect(controller.value.comments, isEmpty);
+        expect(controller.value.failure, offline);
+      });
+
+      test('a later page that fails keeps the pages of the server', () async {
+        final controller = create();
+        await controller.show();
+        failure = offline;
+
+        await controller.loadMore();
+
+        expect(idsOf(controller), [1, 2]);
+        expect(controller.value.storedAt, isNull);
+        expect(controller.value.failure, offline);
+      });
+
+      test('a comment written while they show reads the thread; a change '
+          'from the server tries the first page again', () async {
+        failure = offline;
+        final controller = create();
+        await controller.show();
+        expect(controller.value.storedAt, morning);
+
+        failure = null;
+        await controller.refreshLoaded();
+        expect(idsOf(controller), [1, 2]);
+        expect(controller.value.storedAt, isNull);
+
+        failure = offline;
+        await controller.toggleOrder();
+        expect(controller.value.storedAt, morning);
+        failure = null;
+        all = [...all, sampleComment(id: 4)];
+        await controller.add(sampleComment(id: 4), wasEmpty: false);
+
+        expect(idsOf(controller), [4, 3]);
+        expect(controller.value.storedAt, isNull);
+        expect(calls.last, '1 newest');
+      });
     });
   });
 }

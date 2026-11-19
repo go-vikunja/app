@@ -713,6 +713,28 @@ void main() {
       );
     });
 
+    test('count among the known accounts, with those registered and those '
+        'still to delete; one without an id leaves every id unknown', () async {
+      await seedWithUnreadable();
+      await registry.upsert(_entry('c3', insecureServer(), userId: 9));
+      await registry.remove('c3');
+
+      expect(await registry.knownAccountIds(), {'a1', 'b2', 'c3'});
+
+      final json = storedJson();
+      (json['accounts']! as List<Object?>).add({'server_root': 'x'});
+      preferences.values[AccountRegistry.storageKey] = jsonEncode(json);
+
+      expect(await registry.knownAccountIds(), isNull);
+    });
+
+    test('a registry that cannot be read at all knows no account ids, not '
+        'none', () async {
+      preferences.values[AccountRegistry.storageKey] = '{not json';
+
+      expect(await registry.knownAccountIds(), isNull);
+    });
+
     test('a registry that cannot be read at all is kept aside before the '
         'first write replaces it', () async {
       preferences.values[AccountRegistry.storageKey] = '{not json';

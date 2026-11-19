@@ -23,7 +23,8 @@ enum AttachmentAction { open, share, save, makeCover, removeCover, delete }
 /// One attachment: a thumbnail for an image the server can preview, else
 /// an icon of its kind, the name, the size and whether it is the cover. A
 /// tap runs [onOpen] and the menu offers [actions], each told where the
-/// row is on screen (an iPad anchors the share sheet there). While
+/// row is on screen (an iPad anchors the share sheet there); [offline]
+/// shows those that change the server disabled, saying why. While
 /// [busyStatus] says what runs (a download, a delete, a cover change) the
 /// row shows it in place of the size and takes no taps; [onCancel], when
 /// given, stops it.
@@ -34,15 +35,23 @@ class AttachmentRow extends StatelessWidget {
     this.onOpen,
     this.actions = const [],
     this.onAction,
+    this.offline = false,
     this.busyStatus,
     this.onCancel,
     super.key,
   });
 
+  static const Set<AttachmentAction> _serverWrites = {
+    AttachmentAction.makeCover,
+    AttachmentAction.removeCover,
+    AttachmentAction.delete,
+  };
+
   final TaskAttachment attachment;
   final bool isCover;
   final ValueChanged<Rect?>? onOpen;
   final List<AttachmentAction> actions;
+  final bool offline;
   final void Function(AttachmentAction action, Rect? origin)? onAction;
   final String? busyStatus;
   final VoidCallback? onCancel;
@@ -83,10 +92,20 @@ class AttachmentRow extends StatelessWidget {
             onSelected: (action) => onAction(action, _originOf(context)),
             itemBuilder: (context) => [
               for (final action in actions)
-                PopupMenuItem(
-                  value: action,
-                  child: _ActionLabel(action: action),
-                ),
+                if (offline && _serverWrites.contains(action))
+                  PopupMenuItem(
+                    value: action,
+                    enabled: false,
+                    child: Semantics(
+                      hint: l10n.attachmentNeedsConnection,
+                      child: _ActionLabel(action: action, enabled: false),
+                    ),
+                  )
+                else
+                  PopupMenuItem(
+                    value: action,
+                    child: _ActionLabel(action: action),
+                  ),
             ],
           );
     // The menu stays its own node beside the row's.
@@ -160,15 +179,18 @@ class AttachmentRow extends StatelessWidget {
 }
 
 class _ActionLabel extends StatelessWidget {
-  const new({required this.action});
+  const new({required this.action, this.enabled = true});
 
   final AttachmentAction action;
+
+  /// The error colour would override a disabled item's dimmed style.
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
-    final destructive = action == AttachmentAction.delete;
+    final destructive = enabled && action == AttachmentAction.delete;
     final (icon, label) = switch (action) {
       AttachmentAction.open => (Icons.open_in_new, l10n.attachmentOpen),
       AttachmentAction.share => (Icons.share_outlined, l10n.attachmentShare),

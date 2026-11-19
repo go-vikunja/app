@@ -8,16 +8,176 @@ part of 'attachment_image_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// `<cache>/images`, which holds a folder per account; backups leave the
+/// cache folder out on both platforms.
+
+@ProviderFor(imageDiskCacheRoot)
+final imageDiskCacheRootProvider = ImageDiskCacheRootProvider._();
+
+/// `<cache>/images`, which holds a folder per account; backups leave the
+/// cache folder out on both platforms.
+
+final class ImageDiskCacheRootProvider
+    extends
+        $FunctionalProvider<
+          Future<Directory> Function(),
+          Future<Directory> Function(),
+          Future<Directory> Function()
+        >
+    with $Provider<Future<Directory> Function()> {
+  /// `<cache>/images`, which holds a folder per account; backups leave the
+  /// cache folder out on both platforms.
+  ImageDiskCacheRootProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'imageDiskCacheRootProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$imageDiskCacheRootHash();
+
+  @$internal
+  @override
+  $ProviderElement<Future<Directory> Function()> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  Future<Directory> Function() create(Ref ref) {
+    return imageDiskCacheRoot(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Future<Directory> Function() value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Future<Directory> Function()>(value),
+    );
+  }
+}
+
+String _$imageDiskCacheRootHash() =>
+    r'21edeb62712efa747e294d078367a595f777ff9e';
+
+/// The account's attachment images and avatars on disk, shared by its two
+/// memory caches. The account's sign-out deletes the folder
+/// (`accountDataWiper`), and the start the folders of accounts the
+/// registry does not know (`AccountDeletions.finishAll`).
+
+@ProviderFor(accountImageDiskCache)
+final accountImageDiskCacheProvider = AccountImageDiskCacheFamily._();
+
+/// The account's attachment images and avatars on disk, shared by its two
+/// memory caches. The account's sign-out deletes the folder
+/// (`accountDataWiper`), and the start the folders of accounts the
+/// registry does not know (`AccountDeletions.finishAll`).
+
+final class AccountImageDiskCacheProvider
+    extends $FunctionalProvider<ImageDiskCache, ImageDiskCache, ImageDiskCache>
+    with $Provider<ImageDiskCache> {
+  /// The account's attachment images and avatars on disk, shared by its two
+  /// memory caches. The account's sign-out deletes the folder
+  /// (`accountDataWiper`), and the start the folders of accounts the
+  /// registry does not know (`AccountDeletions.finishAll`).
+  AccountImageDiskCacheProvider._({
+    required AccountImageDiskCacheFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountImageDiskCacheProvider',
+         isAutoDispose: false,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountImageDiskCacheHash();
+
+  @override
+  String toString() {
+    return r'accountImageDiskCacheProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<ImageDiskCache> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  ImageDiskCache create(Ref ref) {
+    final argument = this.argument as String;
+    return accountImageDiskCache(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ImageDiskCache value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ImageDiskCache>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountImageDiskCacheProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountImageDiskCacheHash() =>
+    r'bed01245acd1c2ca1fb39b3ba5300da4cbcd36f0';
+
+/// The account's attachment images and avatars on disk, shared by its two
+/// memory caches. The account's sign-out deletes the folder
+/// (`accountDataWiper`), and the start the folders of accounts the
+/// registry does not know (`AccountDeletions.finishAll`).
+
+final class AccountImageDiskCacheFamily extends $Family
+    with $FunctionalFamilyOverride<ImageDiskCache, String> {
+  AccountImageDiskCacheFamily._()
+    : super(
+        retry: null,
+        name: r'accountImageDiskCacheProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: false,
+      );
+
+  /// The account's attachment images and avatars on disk, shared by its two
+  /// memory caches. The account's sign-out deletes the folder
+  /// (`accountDataWiper`), and the start the folders of accounts the
+  /// registry does not know (`AccountDeletions.finishAll`).
+
+  AccountImageDiskCacheProvider call(String accountId) =>
+      AccountImageDiskCacheProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountImageDiskCacheProvider';
+}
+
 /// Kept for the session and dropped when the account signs out or another
-/// becomes active ([inactiveAttachmentImages]). The read client is looked
-/// up per request, like the avatar cache does.
+/// becomes active ([inactiveAttachmentImages]); what is on disk stays. The
+/// read client is looked up per request, like the avatar cache does. An
+/// original in the download cache is read from there, offline too.
 
 @ProviderFor(accountAttachmentImages)
 final accountAttachmentImagesProvider = AccountAttachmentImagesFamily._();
 
 /// Kept for the session and dropped when the account signs out or another
-/// becomes active ([inactiveAttachmentImages]). The read client is looked
-/// up per request, like the avatar cache does.
+/// becomes active ([inactiveAttachmentImages]); what is on disk stays. The
+/// read client is looked up per request, like the avatar cache does. An
+/// original in the download cache is read from there, offline too.
 
 final class AccountAttachmentImagesProvider
     extends
@@ -28,8 +188,9 @@ final class AccountAttachmentImagesProvider
         >
     with $Provider<AttachmentImages> {
   /// Kept for the session and dropped when the account signs out or another
-  /// becomes active ([inactiveAttachmentImages]). The read client is looked
-  /// up per request, like the avatar cache does.
+  /// becomes active ([inactiveAttachmentImages]); what is on disk stays. The
+  /// read client is looked up per request, like the avatar cache does. An
+  /// original in the download cache is read from there, offline too.
   AccountAttachmentImagesProvider._({
     required AccountAttachmentImagesFamily super.from,
     required String super.argument,
@@ -83,11 +244,12 @@ final class AccountAttachmentImagesProvider
 }
 
 String _$accountAttachmentImagesHash() =>
-    r'8c4987d8bb70f799f768b24ecd9ea535166e12c6';
+    r'870a280b5d4274728009ea1eca4ad8e01b127a32';
 
 /// Kept for the session and dropped when the account signs out or another
-/// becomes active ([inactiveAttachmentImages]). The read client is looked
-/// up per request, like the avatar cache does.
+/// becomes active ([inactiveAttachmentImages]); what is on disk stays. The
+/// read client is looked up per request, like the avatar cache does. An
+/// original in the download cache is read from there, offline too.
 
 final class AccountAttachmentImagesFamily extends $Family
     with $FunctionalFamilyOverride<AttachmentImages, String> {
@@ -101,8 +263,9 @@ final class AccountAttachmentImagesFamily extends $Family
       );
 
   /// Kept for the session and dropped when the account signs out or another
-  /// becomes active ([inactiveAttachmentImages]). The read client is looked
-  /// up per request, like the avatar cache does.
+  /// becomes active ([inactiveAttachmentImages]); what is on disk stays. The
+  /// read client is looked up per request, like the avatar cache does. An
+  /// original in the download cache is read from there, offline too.
 
   AccountAttachmentImagesProvider call(String accountId) =>
       AccountAttachmentImagesProvider._(argument: accountId, from: this);

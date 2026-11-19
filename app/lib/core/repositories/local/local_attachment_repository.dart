@@ -5,6 +5,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
@@ -13,8 +14,10 @@ import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 final _log = Logger('Attachments');
 
 /// The server's attachments, addressed by the task's server id; the
-/// download cache is per account. The cover is not stored here, so a cover
-/// change writes nothing locally; the detail sheet reads it again.
+/// download cache is per account. What the server took also changes the
+/// task's stored details; a failure to change them leaves the write
+/// standing. A delete also drops the attachment's download and its images
+/// in memory and on disk.
 final class LocalAttachmentRepository implements AttachmentRepository {
   new(
     this._db,
@@ -22,6 +25,7 @@ final class LocalAttachmentRepository implements AttachmentRepository {
     this._write,
     this._downloads, {
     required this._accountId,
+    required this._images,
     required this.uploadsEnabled,
     required this.maxUploadBytes,
   });
@@ -31,6 +35,7 @@ final class LocalAttachmentRepository implements AttachmentRepository {
   final VikunjaWriteClient _write;
   final AttachmentDownloads _downloads;
   final String _accountId;
+  final AttachmentImages _images;
 
   @override
   final bool uploadsEnabled;
@@ -52,19 +57,23 @@ final class LocalAttachmentRepository implements AttachmentRepository {
       );
     }
     await _write.attachments.delete(id, attachmentId);
+    await _keep(() => _db.taskDetailsDao.removeAttachment(id, attachmentId));
     try {
       await _downloads.forget(_accountId, id, attachmentId);
     } on FileSystemException catch (error) {
       _log.info('Could not delete a download: ${error.osError?.errorCode}');
     }
+    await _images.drop(id, attachmentId);
   }
 
   @override
   Future<void> setCover(int taskId, int? attachmentId) async {
+    final id = await _serverId(taskId);
     await _write.tasks.update(
-      await _serverId(taskId),
+      id,
       TaskChanges(coverImageAttachmentId: attachmentId ?? 0),
     );
+    await _keep(() => _db.taskDetailsDao.storeCover(id, attachmentId ?? 0));
   }
 
   @override
@@ -100,7 +109,7 @@ final class LocalAttachmentRepository implements AttachmentRepository {
     if (size > maxUploadBytes) {
       throw UploadTooLarge(size: size, maxBytes: maxUploadBytes);
     }
-    return await _write.attachments.upload(
+    final attachment = await _write.attachments.upload(
       id,
       fileName: safeFileName(fileName),
       bytes: file.openRead(),
@@ -109,6 +118,18 @@ final class LocalAttachmentRepository implements AttachmentRepository {
       timeout: uploadTimeoutFor(size),
       cancel: cancel,
     );
+    await _keep(() => _db.taskDetailsDao.addAttachment(id, attachment));
+    return attachment;
+  }
+
+  Future<void> _keep(Future<void> Function() change) async {
+    try {
+      await change();
+    } on Object catch (error) {
+      _log.warning(
+        'Could not store an attachment change: ${error.runtimeType}',
+      );
+    }
   }
 
   Future<int> _serverId(int taskId) async {

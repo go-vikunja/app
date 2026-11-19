@@ -217,6 +217,28 @@ void main() {
     expect(data.savedFilters.drafts.single.filter.filter, 'labels in 1, 2');
   });
 
+  testWidgets('a label created here and not on the server yet is not '
+      'suggested, nor counted against the title of one that is', (
+    tester,
+  ) async {
+    labels = FakeLabelRepository(
+      labels: [
+        sampleLabel(id: 1, title: 'Work'),
+        sampleLabel(id: -1, title: 'Errand'),
+        sampleLabel(id: 2, title: 'errand'),
+      ],
+    );
+    await openNewSavedFilter(tester);
+
+    await type(tester, 'labels in ');
+    expect(chipLabels(tester), ['errand', 'Work']);
+    await choose(tester, 'errand');
+
+    expect(filterText(tester), 'labels in errand ');
+    await create(tester);
+    expect(data.savedFilters.drafts.single.filter.filter, 'labels in 2');
+  });
+
   testWidgets('a title a value cannot hold goes as its id', (tester) async {
     await openNewSavedFilter(tester);
     await type(tester, 'labels = R');

@@ -5,9 +5,10 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/user_repository.dart';
 
-/// Labels in memory; [createFailure] makes the next creates throw, like an
-/// offline device, and [beforeCreate] holds a create until it completes.
-/// [serverOnly] are labels the server has that this device has not synced.
+/// Labels in memory; [createFailure] makes the next creates throw, like a
+/// device that cannot store them, and [beforeCreate] holds a create until
+/// it completes. [serverOnly] are labels the server has that this device
+/// has not synced; [pendingIds] and [remap] stand in for the outbox.
 ///
 /// [update] and [delete] apply to the labels at once, as the real one does
 /// once the server answered, and are recorded in [updates] and [deletes]
@@ -37,10 +38,61 @@ final class FakeLabelRepository implements LabelRepository {
 
   List<Label> get labels => List.unmodifiable(_labels);
 
+  Set<int> _pendingIds = const {};
+  Map<int, int> _remaps = const {};
+  final _pendingChanges = StreamController<Set<int>>.broadcast();
+  final _remapChanges = StreamController<Map<int, int>>.broadcast();
+
+  /// The labels [watchPendingIds] reports, as the outbox would.
+  Set<int> get pendingIds => _pendingIds;
+
+  set pendingIds(Set<int> ids) {
+    _pendingIds = Set.unmodifiable(ids);
+    _pendingChanges.add(_pendingIds);
+  }
+
+  /// Answers the create of the label [localId] as [serverId]: the label
+  /// moves to that id, and [watchRemaps] reports it. With [taken], a label
+  /// the server had under that title, the label is that one.
+  void remap(int localId, int serverId, {Label? taken}) {
+    final index = _labels.indexWhere((label) => label.id == localId);
+    if (index >= 0) {
+      final local = taken ?? _labels[index];
+      _labels[index] = Label(
+        id: serverId,
+        title: local.title,
+        description: local.description,
+        hexColor: local.hexColor,
+        createdBy: local.createdBy,
+      );
+    }
+    _remaps = Map.unmodifiable({..._remaps, localId: serverId});
+    _remapChanges.add(_remaps);
+    _changes.add(_sorted());
+  }
+
   @override
   Stream<List<Label>> watchAll() async* {
     yield _sorted();
     yield* _changes.stream;
+  }
+
+  @override
+  Stream<Label?> watchLabel(int id) => watchAll().map(
+    (labels) =>
+        labels.where((label) => label.id == (_remaps[id] ?? id)).firstOrNull,
+  );
+
+  @override
+  Stream<Set<int>> watchPendingIds() async* {
+    yield _pendingIds;
+    yield* _pendingChanges.stream;
+  }
+
+  @override
+  Stream<Map<int, int>> watchRemaps() async* {
+    yield _remaps;
+    yield* _remapChanges.stream;
   }
 
   @override
@@ -75,6 +127,7 @@ final class FakeLabelRepository implements LabelRepository {
     return found;
   }
 
+  /// A temporary id is followed to its [remap], as the real one does.
   @override
   Future<Label> update(int id, LabelChanges changes) async {
     updates.add((id, changes));
@@ -84,11 +137,12 @@ final class FakeLabelRepository implements LabelRepository {
       throw ArgumentError.value(changes, 'changes');
     }
     if (othersLabels.contains(id)) throw const Forbidden();
-    final index = _labels.indexWhere((label) => label.id == id);
+    final resolved = _remaps[id] ?? id;
+    final index = _labels.indexWhere((label) => label.id == resolved);
     if (index < 0) throw const NotFound(code: 8002);
     final current = _labels[index];
     final changed = Label(
-      id: id,
+      id: resolved,
       title: changes.title ?? current.title,
       description: changes.description ?? current.description,
       hexColor: changes.hexColor ?? current.hexColor,
@@ -107,7 +161,7 @@ final class FakeLabelRepository implements LabelRepository {
     await beforeChange?.call();
     if (changeFailure case final failure?) throw failure;
     if (othersLabels.contains(id)) throw const Forbidden();
-    _labels.removeWhere((label) => label.id == id);
+    _labels.removeWhere((label) => label.id == (_remaps[id] ?? id));
     _changes.add(_sorted());
   }
 
@@ -115,7 +169,11 @@ final class FakeLabelRepository implements LabelRepository {
     ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
 
   @override
-  void dispose() => unawaited(_changes.close());
+  void dispose() {
+    unawaited(_changes.close());
+    unawaited(_pendingChanges.close());
+    unawaited(_remapChanges.close());
+  }
 }
 
 /// Assignable users per project in memory; [searchFailure] makes searches

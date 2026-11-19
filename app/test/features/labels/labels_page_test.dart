@@ -257,8 +257,8 @@ void main() {
     expect(find.byType(LabelFormPage), findsOneWidget);
   });
 
-  testWidgets('offline the new label button is off with the reason and the '
-      'saved labels show under a notice', (tester) async {
+  testWidgets('offline the new label button works and the saved labels show '
+      'under a notice', (tester) async {
     harness.labels = FakeLabelRepository(labels: [ownLabel(1, 'Urgent')]);
     await harness.pump(tester, location: AppRoutes.labels);
     harness.goOffline();
@@ -266,10 +266,95 @@ void main() {
 
     expect(find.byType(OfflineNotice), findsOneWidget);
     expect(find.text('Urgent'), findsOneWidget);
-    final button = tester.widget<FloatingActionButton>(
-      find.byType(FloatingActionButton),
+    await tester.tap(find.widgetWithText(FloatingActionButton, en.labelsNew));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LabelFormPage), findsOneWidget);
+    expect(currentLocation(tester), AppRoutes.labelNew);
+  });
+
+  testWidgets('offline the empty page offers a new label too', (tester) async {
+    await harness.pump(tester, location: AppRoutes.labels);
+    harness.goOffline();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, en.labelsNew));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(LabelFormPage), findsOneWidget);
+  });
+
+  group('a label not on the server yet', () {
+    setUp(
+      () => harness.labels = FakeLabelRepository(
+        labels: [ownLabel(-1, 'Errand'), ownLabel(1, 'Urgent')],
+      )..pendingIds = {-1},
     );
-    expect(button.onPressed, isNull);
-    expect(button.tooltip, en.labelsNewOffline);
+
+    testWidgets('is marked as not yet synced, as a task is', (tester) async {
+      await harness.pump(tester, location: AppRoutes.labels);
+
+      final marker = find.descendant(
+        of: find.widgetWithText(ListTile, 'Errand'),
+        matching: find.byIcon(Icons.cloud_off_outlined),
+      );
+      expect(marker, findsOneWidget);
+      expect(
+        find.bySemanticsLabel(RegExp(en.taskNotYetSynced)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.widgetWithText(ListTile, 'Urgent'),
+          matching: find.byIcon(Icons.cloud_off_outlined),
+        ),
+        findsNothing,
+      );
+
+      harness.labels.pendingIds = {};
+      await tester.pumpAndSettle();
+      expect(marker, findsNothing);
+    });
+
+    testWidgets('keeps its tasks open when its create is answered', (
+      tester,
+    ) async {
+      await harness.pump(tester, location: AppRoutes.labelTasks(-1));
+      expect(find.byType(LabelTasksScreen), findsOneWidget);
+      expect(find.text('Errand'), findsOneWidget);
+
+      harness.labels.remap(-1, 900);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LabelTasksScreen), findsOneWidget);
+      expect(find.text(en.labelTasksGoneTitle), findsNothing);
+      expect(find.text('Errand'), findsOneWidget);
+    });
+
+    testWidgets('is deleted offline, while a label the server has is '
+        'not', (tester) async {
+      await harness.pump(tester, location: AppRoutes.labels);
+      harness.goOffline();
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip(en.labelsOptionsFor('Urgent')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<PopupMenuItem<Object?>>(menuItem(en.labelsDelete))
+            .enabled,
+        isFalse,
+      );
+      await tester.tapAt(Offset.zero);
+      await tester.pumpAndSettle();
+
+      await openMenuItem(tester, 'Errand', en.labelsDelete);
+      await tester.tap(dialogText(en.labelsDelete));
+      await tester.pumpAndSettle();
+
+      expect(harness.labels.deletes, [-1]);
+      expect(find.text(en.labelsDeleted), findsOneWidget);
+      expect(find.text('Errand'), findsNothing);
+    });
   });
 }

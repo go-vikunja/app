@@ -72,7 +72,7 @@ void main() {
       knownUsers: await db.usersDao.loadAll(),
     ),
     tasks: tasks,
-    labels: LocalLabelRepository(db, write, read, now: () => now),
+    labels: LocalLabelRepository(db, write, outbox: sender, now: () => now),
     users: LocalUserRepository(db, read),
     now: () => now,
     grammar: fakeGrammar,
@@ -125,8 +125,8 @@ void main() {
     expect(remapped.labels.map((label) => label.id), {10, 900});
   });
 
-  test('offline: the create and the update wait and go out on '
-      'reconnect', () async {
+  test('offline: a new label is created on the device with the task, and '
+      'the label, the create and the update go out on reconnect', () async {
     read.beforeRequest = (_) =>
         throw const NetworkFailure(NetworkProblem.unreachable);
     write.beforeRequest = (request) =>
@@ -137,10 +137,20 @@ void main() {
     );
     await pumpEventQueue();
 
-    expect(result.labelsKept, ['*neu']);
+    expect(result.labelsKept, isEmpty);
     expect(result.unresolvedAssignees, ['bob']);
-    expect(await db.outboxDao.count(), 2);
+    final localId = result.createdTaskIds.single;
+    final ops = await db.outboxDao.all();
+    expect(ops.map((op) => (op.kind, op.taskId, op.labelId)), [
+      ('createLabel', 0, -1),
+      ('createTask', localId, null),
+      ('updateTask', localId, null),
+    ]);
+    final local = (await db.tasksDao.find(localId))!;
+    expect(local.title, 'Offline erledigen @bob');
+    expect(local.labels.map((label) => label.id), unorderedEquals([10, -1]));
     expect(write.serverTasks, isEmpty);
+    expect(write.serverLabels.keys, [10]);
 
     read.beforeRequest = null;
     write.beforeRequest = null;
@@ -148,9 +158,33 @@ void main() {
 
     expect(await db.outboxDao.count(), 0);
     final onServer = write.serverTasks.values.single;
-    expect(onServer.title, 'Offline erledigen @bob *neu');
-    expect(onServer.labels.map((label) => label.id), [10]);
+    expect(onServer.title, 'Offline erledigen @bob');
+    expect(
+      onServer.labels.map((label) => label.id),
+      unorderedEquals([10, 900]),
+    );
+    expect(write.serverLabels[900]!.title, 'neu');
     expect(onServer.assignees.map((user) => user.id), [20]);
+    final remapped = (await tasks.watchTask(localId).first)!;
+    expect(
+      remapped.labels.map((label) => label.id),
+      unorderedEquals([10, 900]),
+    );
+  });
+
+  test('a new label the server has already, not synced yet, is taken '
+      'instead of a second one', () async {
+    write.serverLabels[30] = const Label(id: 30, title: 'Neu');
+    read.allLabels = [const Label(id: 30, title: 'Neu')];
+
+    final result = await (await service()).submit('Reifen *neu +Garage');
+    await sender.drain();
+
+    expect(write.requests, ['create Reifen', 'update 100']);
+    expect(read.requests, contains('labels page 1 search neu'));
+    expect(write.serverTasks[100]!.labels.map((label) => label.id), [30]);
+    final local = (await tasks.watchTask(result.createdTaskIds.single).first)!;
+    expect(local.labels.map((label) => label.id), [30]);
   });
 
   test(

@@ -1,16 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/outbox/label_op_json.dart';
+import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_user_repository.dart';
 
 import '../../helpers/fake_sync_client.dart';
+import '../../helpers/fake_timers.dart';
 import '../../helpers/fake_write_client.dart';
 import '../../helpers/recording_sync_engine.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
+import '../../helpers/zero_random.dart';
 
 void main() {
   late AppDatabase db;
@@ -19,21 +24,33 @@ void main() {
 
   group('LocalLabelRepository', () {
     final now = DateTime.utc(2026, 10, 11, 12);
+    const me = User(id: 5, username: 'me', name: 'Me');
     late FakeWriteClient write;
     late FakeSyncClient read;
     late RecordingSyncEngine sync;
+    late OutboxSender outbox;
     late LocalLabelRepository repository;
 
     setUp(() async {
       write = FakeWriteClient(clock: () => now);
       read = FakeSyncClient();
       sync = RecordingSyncEngine();
+      outbox = OutboxSender(
+        db: db,
+        writeClient: write,
+        readClient: read,
+        sync: sync,
+        now: () => now,
+        createTimer: FakeTimers().create,
+        random: ZeroRandom(),
+      );
+      addTearDown(outbox.dispose);
       repository = LocalLabelRepository(
         db,
         write,
-        read,
         sync: sync,
         now: () => now,
+        currentUser: () => me,
       );
       addTearDown(repository.dispose);
       await db.labelsDao.upsertAll([
@@ -42,16 +59,7 @@ void main() {
       ]);
     });
 
-    /// The server stores the label, then the answer is lost.
-    void loseAnswers() {
-      write.afterRequest = (_) async {
-        read.allLabels = [...write.serverLabels.values];
-        throw const NetworkFailure(NetworkProblem.timeout);
-      };
-    }
-
-    Label serverLabel(int id, String title, {required DateTime created}) =>
-        Label(id: id, title: title, created: created);
+    Future<List<OutboxRow>> ops() => db.outboxDao.all();
 
     test('lists the labels by title, whatever the case', () async {
       final labels = await repository.watchAll().first;
@@ -82,271 +90,236 @@ void main() {
       },
     );
 
-    test('a created label is stored as the server answered it', () async {
-      final created = await repository.create(
-        const NewLabel(title: 'errand', hexColor: '0ead69'),
-      );
+    group('create', () {
+      test('stores the label at once, offline too, under a temporary id, '
+          'created by the user, and queues its create', () async {
+        write.beforeRequest = (_) =>
+            throw const NetworkFailure(NetworkProblem.unreachable);
 
-      expect(write.requests, ['create label errand']);
-      expect(created.id, 900);
-      expect(created.hexColor, '0ead69');
-      final labels = await repository.watchAll().first;
-      expect(labels.map((label) => label.title), ['errand', 'Home', 'urgent']);
-      expect(labels.first, created);
-    });
+        final created = await repository.create(
+          const NewLabel(title: 'errand', hexColor: '0ead69'),
+        );
 
-    test('a failed create throws and stores nothing', () async {
-      write.beforeRequest = (_) =>
-          throw const NetworkFailure(NetworkProblem.unreachable);
-
-      await expectLater(
-        repository.create(const NewLabel(title: 'errand')),
-        throwsA(isA<NetworkFailure>()),
-      );
-
-      expect(write.requests, ['create label errand']);
-      expect(read.requests, ['labels page 1 search errand']);
-      expect(await db.labelsDao.loadAll(), hasLength(2));
-    });
-
-    test('a create the server rejects is not looked for', () async {
-      write.beforeRequest = (_) =>
-          throw const ValidationFailed(message: 'invalid');
-
-      await expectLater(
-        repository.create(const NewLabel(title: 'errand')),
-        throwsA(isA<ValidationFailed>()),
-      );
-
-      expect(read.requests, isEmpty);
-    });
-
-    test('a create whose answer was lost adopts the label the server '
-        'stored', () async {
-      loseAnswers();
-
-      final created = await repository.create(const NewLabel(title: 'errand'));
-
-      expect(created.id, 900);
-      expect(write.requests, ['create label errand']);
-      expect(read.requests, ['labels page 1 search errand']);
-      expect((await repository.watchAll().first).map((label) => label.title), [
-        'errand',
-        'Home',
-        'urgent',
-      ]);
-    });
-
-    test('the lookup takes the label of exactly that title with the highest '
-        'id, created inside the window and new here', () async {
-      write.beforeRequest = (_) =>
-          throw const NetworkFailure(NetworkProblem.timeout);
-      read.allLabels = [
-        serverLabel(1, 'urgent', created: now),
-        serverLabel(30, 'Errand', created: now),
-        serverLabel(31, 'errand run', created: now),
-        serverLabel(
-          32,
+        expect(created.id, -1);
+        expect(created.hexColor, '0ead69');
+        expect(created.createdBy, me);
+        expect(isOwnLabel(created, me.id), isTrue);
+        expect(write.requests, isEmpty);
+        final labels = await repository.watchAll().first;
+        expect(labels.map((label) => label.title), [
           'errand',
-          created: now.subtract(const Duration(minutes: 30)),
-        ),
-        serverLabel(
-          33,
-          'errand',
-          created: now.subtract(const Duration(minutes: 59)),
-        ),
-        serverLabel(
-          34,
-          'errand',
-          created: now.subtract(const Duration(hours: 2)),
-        ),
-      ];
-
-      final found = await repository.create(const NewLabel(title: 'errand'));
-      expect(found.id, 33);
-
-      await expectLater(
-        repository.create(const NewLabel(title: 'urgent')),
-        throwsA(isA<NetworkFailure>()),
-      );
-    });
-
-    test('with the lookup failing too, the failure propagates and the next '
-        'create of the title looks before it posts', () async {
-      loseAnswers();
-      read.beforeRequest = (_) =>
-          throw const NetworkFailure(NetworkProblem.unreachable);
-
-      await expectLater(
-        repository.create(const NewLabel(title: 'errand')),
-        throwsA(
-          isA<NetworkFailure>().having(
-            (f) => f.problem,
-            'problem',
-            NetworkProblem.timeout,
+          'Home',
+          'urgent',
+        ]);
+        expect(labels.first, created);
+        expect(labels.first.createdBy, me);
+        final op = (await ops()).single;
+        expect(op.kind, OutboxOperationKind.createLabel.name);
+        expect(
+          decodeLabelCreate(op.payload),
+          const QueuedLabelCreate(
+            label: NewLabel(title: 'errand', hexColor: '0ead69'),
           ),
-        ),
-      );
-      expect(await db.labelsDao.loadAll(), hasLength(2));
+        );
+        expect(await repository.watchPendingIds().first, {-1});
+      });
 
-      read.beforeRequest = null;
-      write.afterRequest = null;
-      final adopted = await repository.create(const NewLabel(title: 'errand'));
-
-      expect(adopted.id, 900);
-      expect(write.requests, ['create label errand']);
-      expect(write.serverLabels, hasLength(1));
-    });
-
-    test('the next create posts when the lookup finds nothing, and looks '
-        'no more once it succeeded', () async {
-      write.beforeRequest = (_) =>
-          throw const NetworkFailure(NetworkProblem.timeout);
-      await expectLater(
-        repository.create(const NewLabel(title: 'errand')),
-        throwsA(isA<NetworkFailure>()),
-      );
-
-      write.beforeRequest = null;
-      final created = await repository.create(const NewLabel(title: 'errand'));
-      expect(created.id, 900);
-      expect(read.requests, [
-        'labels page 1 search errand',
-        'labels page 1 search errand',
-      ]);
-
-      await repository.create(const NewLabel(title: 'errand'));
-      expect(read.requests, hasLength(2));
-    });
-
-    group('with the user known', () {
-      const me = User(id: 5, username: 'me');
-      const ana = User(id: 6, username: 'ana');
-      const errand = NewLabel(title: 'errand');
-
-      setUp(() {
+      test('sends it through the outbox, and the label follows the server '
+          'id', () async {
         repository = LocalLabelRepository(
           db,
           write,
-          read,
-          sync: sync,
+          outbox: outbox,
           now: () => now,
-          currentUserId: () => me.id,
+          currentUser: () => me,
         );
-        addTearDown(repository.dispose);
-        write.beforeRequest = (_) =>
-            throw const NetworkFailure(NetworkProblem.timeout);
+        final seen = <Label?>[];
+        final created = await repository.create(
+          const NewLabel(title: 'errand'),
+        );
+        final subscription = repository.watchLabel(created.id).listen(seen.add);
+        addTearDown(subscription.cancel);
+
+        await outbox.drain();
+        await pumpEventQueue();
+
+        expect(write.requests, ['create label errand']);
+        expect(seen.last!.id, 900);
+        expect(seen.last!.title, 'errand');
+        expect(await repository.watchRemaps().first, {-1: 900});
+        expect(await repository.watchPendingIds().first, isEmpty);
       });
 
-      test("a lost create adopts the user's own label, not another "
-          "member's of that title", () async {
-        read.allLabels = [
-          Label(id: 30, title: 'errand', created: now, createdBy: ana),
-          Label(
-            id: 29,
-            title: 'errand',
-            created: now.subtract(const Duration(minutes: 5)),
-            createdBy: me,
+      test('refuses a blank or too long title before any write', () async {
+        for (final title in ['', '   ', '\u0000', 'x' * 251]) {
+          await expectLater(
+            repository.create(NewLabel(title: title)),
+            throwsArgumentError,
+          );
+        }
+        expect(await ops(), isEmpty);
+        expect(await db.labelsDao.loadAll(), hasLength(2));
+
+        final longest = await repository.create(NewLabel(title: 'ä' * 250));
+        expect(longest.title, 'ä' * 250);
+      });
+
+      test('stores and sends a title without U+0000, as the server stores '
+          'it, with the colour and description', () async {
+        final created = await repository.create(
+          const NewLabel(
+            title: 'err\u0000and',
+            hexColor: '0ead69',
+            description: '<p>Outside</p>',
           ),
-        ];
+        );
 
-        final found = await repository.create(errand);
+        expect(created.title, 'errand');
+        expect(created.description, '<p>Outside</p>');
+        expect(
+          decodeLabelCreate((await ops()).single.payload).label,
+          const NewLabel(
+            title: 'errand',
+            hexColor: '0ead69',
+            description: '<p>Outside</p>',
+          ),
+        );
+      });
+    });
 
-        expect(found.id, 29);
+    group('findOrCreate', () {
+      test('takes the label this device has under that title, ignoring case, '
+          'the same case first, without queueing', () async {
+        await db.labelsDao.upsertAll([
+          sampleLabel(id: 3, title: 'Einkauf'),
+          sampleLabel(id: 4, title: 'einkauf'),
+          sampleLabel(id: 7, title: 'einkaufen'),
+        ]);
+
+        expect(
+          (await repository.findOrCreate(const NewLabel(title: 'einkauf'))).id,
+          4,
+        );
+        expect(
+          (await repository.findOrCreate(const NewLabel(title: 'EINKAUF'))).id,
+          3,
+        );
+        expect(
+          (await repository.findOrCreate(const NewLabel(title: 'Ur\u0000gent')))
+              .id,
+          1,
+        );
+        expect(await ops(), isEmpty);
+        expect(write.requests, isEmpty);
+        expect(read.requests, isEmpty);
       });
 
-      test("another member's label alone is no answer: the failure "
-          'propagates and the next create posts', () async {
-        read.allLabels = [
-          Label(id: 30, title: 'errand', created: now, createdBy: ana),
-        ];
+      test('creates one this device does not have, offline too, whose create '
+          'takes a label the server has under that title', () async {
+        final created = await repository.findOrCreate(
+          const NewLabel(title: 'errand'),
+        );
+
+        expect(created.id, -1);
+        expect(decodeLabelCreate((await ops()).single.payload).adopt, isTrue);
+        expect(
+          (await repository.findOrCreate(const NewLabel(title: 'Errand'))).id,
+          -1,
+        );
+        expect(await ops(), hasLength(1));
+      });
+    });
+
+    group('a label created here', () {
+      setUp(() async {
+        await db.projectsDao.upsertAll([const Project(id: 1, title: 'Inbox')]);
+        await db.tasksDao.upsertAll([sampleTask(id: 10, title: 'Call')]);
+        await repository.create(const NewLabel(title: 'errand'));
+        await db.outboxDao.queueUpdate(
+          10,
+          const TaskChanges(labels: IdSetChange(added: {-1})),
+          now: now,
+        );
+      });
+
+      test('is changed here, the change folded into its create', () async {
+        final changed = await repository.update(
+          -1,
+          const LabelChanges(title: 'errands', description: '<p>Out</p>'),
+        );
+
+        expect(changed.title, 'errands');
+        expect(changed.description, '<p>Out</p>');
+        expect(write.requests, isEmpty);
+        final create = (await ops()).first;
+        expect(
+          decodeLabelCreate(create.payload).label,
+          const NewLabel(title: 'errands', description: '<p>Out</p>'),
+        );
+        expect((await db.tasksDao.find(10))!.labels.single.title, 'errands');
+      });
+
+      test('refuses a blank title before any write', () async {
+        await expectLater(
+          repository.update(-1, const LabelChanges(title: ' ')),
+          throwsArgumentError,
+        );
+        expect((await db.labelsDao.find(-1))!.title, 'errand');
+      });
+
+      test('is deleted without a request, from its tasks and the queued '
+          'edits', () async {
+        await repository.delete(-1);
+
+        expect(write.requests, isEmpty);
+        expect(await ops(), isEmpty);
+        expect(await db.labelsDao.find(-1), isNull);
+        expect((await db.tasksDao.find(10))!.labels, isEmpty);
+        expect(sync.refreshAfterWriteCalls, 0);
+      });
+
+      test('that is gone is a NotFound for a change and nothing for a '
+          'delete', () async {
+        await repository.delete(-1);
 
         await expectLater(
-          repository.create(errand),
-          throwsA(isA<NetworkFailure>()),
+          repository.update(-1, const LabelChanges(title: 'x')),
+          throwsA(isA<NotFound>().having((f) => f.code, 'code', 8002)),
         );
-
-        write.beforeRequest = null;
-        final created = await repository.create(errand);
-
-        expect(created.id, 900);
-        expect(write.requests, ['create label errand', 'create label errand']);
-        expect(read.requests, [
-          'labels page 1 search errand',
-          'labels page 1 search errand',
-        ]);
-      });
-    });
-
-    test('findOrCreate adopts a label the server has under that title, '
-        'ignoring case, instead of making a second one', () async {
-      read.allLabels = [
-        serverLabel(40, 'einkaufen', created: now),
-        serverLabel(41, 'Einkauf', created: now),
-        serverLabel(42, 'einkauf', created: now),
-      ];
-
-      final found = await repository.findOrCreate(
-        const NewLabel(title: 'EINKAUF'),
-      );
-
-      expect(found.id, 41);
-      expect(write.requests, isEmpty);
-      expect(read.requests, ['labels page 1 search EINKAUF']);
-      expect(
-        (await repository.watchAll().first).map((label) => label.id),
-        contains(41),
-      );
-      expect(
-        (await repository.findOrCreate(const NewLabel(title: 'einkauf'))).id,
-        42,
-      );
-    });
-
-    test('findOrCreate creates a label the server does not have', () async {
-      final created = await repository.findOrCreate(
-        const NewLabel(title: 'errand'),
-      );
-
-      expect(created.id, 900);
-      expect(read.requests, ['labels page 1 search errand']);
-      expect(write.requests, ['create label errand']);
-    });
-
-    group('a title with a U+0000 is the one the server stores, without it', () {
-      const withNul = NewLabel(
-        title: 'err\u0000and',
-        hexColor: '0ead69',
-        description: '<p>Outside</p>',
-      );
-
-      test('findOrCreate finds the label of that title', () async {
-        read.allLabels = [serverLabel(40, 'errand', created: now)];
-
-        final found = await repository.findOrCreate(withNul);
-
-        expect(found.id, 40);
-        expect(read.requests, ['labels page 1 search errand']);
+        await repository.delete(-1);
         expect(write.requests, isEmpty);
       });
 
-      test('a create sends it with the colour and description', () async {
-        final created = await repository.create(withNul);
+      test('whose create may be on the server takes a change and a delete '
+          'behind it, also under the server id once answered', () async {
+        final create = (await ops()).first;
+        await db.outboxDao.claim(create.id, at: now);
 
-        expect(write.requests, ['create label errand']);
-        expect(created.title, 'errand');
-        expect(created.hexColor, '0ead69');
-        expect(created.description, '<p>Outside</p>');
-      });
+        await repository.update(-1, const LabelChanges(title: 'errands'));
+        await db.labelOpsDao.completeCreate(
+          create.id,
+          const Label(id: 50, title: 'errand'),
+          at: now,
+        );
+        await repository.update(-1, const LabelChanges(hexColor: 'e69f00'));
 
-      test('a create whose answer was lost adopts the label', () async {
-        loseAnswers();
+        expect(write.requests, isEmpty);
+        final edit = (await ops()).firstWhere(
+          (op) => op.kind == OutboxOperationKind.updateLabel.name,
+        );
+        expect(edit.labelId, 50);
+        expect(
+          decodeLabelChanges(edit.payload),
+          const LabelChanges(title: 'errands', hexColor: 'e69f00'),
+        );
 
-        final created = await repository.create(withNul);
-
-        expect(created.id, 900);
-        expect(read.requests, ['labels page 1 search errand']);
-        expect(write.serverLabels, hasLength(1));
+        await repository.delete(50);
+        expect(
+          (await ops()).where((op) => op.labelId != null).map((op) => op.kind),
+          [OutboxOperationKind.deleteLabel.name],
+        );
+        expect(await db.labelsDao.find(50), isNull);
+        expect(write.requests, isEmpty);
       });
     });
 

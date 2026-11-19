@@ -40,6 +40,55 @@ void main() {
     );
   });
 
+  test('names a failed change of a label and says why', () {
+    String describe(OutboxOperationKind kind, VikunjaFailure failure) =>
+        describeSyncProblem(en, problem(failure, kind: kind));
+    const create = OutboxOperationKind.createLabel;
+    const update = OutboxOperationKind.updateLabel;
+    const delete = OutboxOperationKind.deleteLabel;
+
+    expect(
+      describe(create, const ValidationFailed(message: 'invalid')),
+      '${en.syncProblemLabelCreateFailed} ${en.labelsInvalid}',
+    );
+    expect(
+      describe(update, const Forbidden()),
+      '${en.syncProblemLabelUpdateFailed} ${en.labelsNotCreator}',
+    );
+    expect(
+      describe(delete, const Forbidden()),
+      '${en.syncProblemLabelDeleteFailed} ${en.labelsNotCreator}',
+    );
+    expect(
+      describe(create, const Forbidden()),
+      '${en.syncProblemLabelCreateFailed} ${en.syncProblemRejected}',
+    );
+    expect(
+      describe(update, const NotFound(code: 8002)),
+      '${en.syncProblemLabelUpdateFailed} ${en.labelsGone}',
+    );
+    expect(
+      describe(delete, const NotFound()),
+      '${en.syncProblemLabelDeleteFailed} ${en.syncProblemUnexpected}',
+    );
+    expect(
+      describe(update, const DomainError(400, code: 2002)),
+      '${en.syncProblemLabelUpdateFailed} ${en.labelsInvalid}',
+    );
+    expect(
+      describe(create, const DomainError(400, code: 8001)),
+      '${en.syncProblemLabelCreateFailed} ${en.syncProblemRejected}',
+    );
+    expect(
+      describe(delete, const ServerFailure(500)),
+      '${en.syncProblemLabelDeleteFailed} ${en.syncProblemServerKeptFailing}',
+    );
+    expect(
+      describe(create, const NetworkFailure(NetworkProblem.timeout)),
+      '${en.syncProblemLabelCreateFailed} ${en.syncProblemUnexpected}',
+    );
+  });
+
   test('a description also changed on the web says so', () {
     expect(
       describeSyncProblem(

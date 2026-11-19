@@ -153,6 +153,26 @@ void main() {
       );
     });
 
+    test("an uploaded file joins the task's stored attachments, after "
+        'those of the last read; none are stored for a task never '
+        'read', () async {
+      const listed = TaskAttachment(id: 9, taskId: 1, name: 'a.pdf', size: 4);
+      await db.taskDetailsDao.storeDetails(
+        1,
+        const TaskDetails(attachments: [listed]),
+        at: now,
+      );
+      await queueUpload(1);
+      await queueUpload(2, name: 'b.png');
+
+      await sender().drain();
+
+      final stored = (await db.taskDetailsDao.storedDetails(1))!.value;
+      expect(stored.attachments.map((a) => a.id), [9, 300]);
+      expect(stored.attachments.last.name, 'photo.png');
+      expect(await db.taskDetailsDao.storedDetails(2), isNull);
+    });
+
     test('an upload never holds up an edit queued after it', () async {
       await queueUpload(1);
       await db.outboxDao.queueUpdate(

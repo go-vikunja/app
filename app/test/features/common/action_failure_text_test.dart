@@ -149,15 +149,11 @@ void main() {
           l10n.actionFailureServerError,
         );
         expect(
-          labelChangeFailureText(l10n, busy, LabelChange.edit),
+          labelChangeFailureText(l10n, busy),
           l10n.actionFailureServerError,
         );
         expect(
-          labelChangeFailureText(
-            l10n,
-            const LinkShareGone(code: 13003),
-            LabelChange.create,
-          ),
+          labelChangeFailureText(l10n, const LinkShareGone(code: 13003)),
           l10n.actionFailureGuestAccessEnded,
         );
       });

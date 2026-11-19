@@ -7,6 +7,7 @@ void main() {
     final checkpoint = SyncCheckpoint(
       runId: 'run-1',
       newestUpdatedAtStart: DateTime.utc(2026, 10, 10, 12),
+      wholePullMarks: 3,
       phase: SyncPhase.archivedTasks,
       done: 120,
       total: 300,
@@ -37,11 +38,13 @@ void main() {
     );
   });
 
-  test('advancing keeps the run and its bound, and resets the counters', () {
+  test('advancing keeps the run, its bound and its marks, and resets the '
+      'counters', () {
     final newest = DateTime.utc(2026, 10, 10, 12);
     final checkpoint = SyncCheckpoint(
       runId: 'run-1',
       newestUpdatedAtStart: newest,
+      wholePullMarks: 2,
       phase: SyncPhase.tasks,
       done: 5,
       total: 9,
@@ -54,6 +57,7 @@ void main() {
       SyncCheckpoint(
         runId: 'run-1',
         newestUpdatedAtStart: newest,
+        wholePullMarks: 2,
         phase: SyncPhase.archivedTasks,
       ),
     );

@@ -57,7 +57,7 @@ If you open a project that someone shared with you by link, the app signs you in
 
 So that the app works offline, it keeps the following in its own storage on your device:
 
-- for each account, a copy of your projects, tasks and notifications, changes and uploads not sent yet, drafts of comments and descriptions, and attachments you opened (cached for up to three days after their last use);
+- for each account, a copy of your projects, tasks and notifications, the attachments list, reactions and comments of tasks you opened, changes and uploads not sent yet, drafts of comments and descriptions, attachments you opened (cached for up to three days after their last use), and the images and profile pictures you saw (up to 100 MB, each kept for up to 30 days after its last use);
 - the sign-in tokens and, if you set them up, your servers' access headers and client certificates, in the secure storage;
 - the list of your accounts with server address, username and name, the connection settings, and your settings on this device.
 
@@ -154,7 +154,7 @@ Tap **Try the public demo** and sign in with username `demo` and password `demo`
 
 ## Working offline
 
-After the first sync, lists, tables, timelines, filters, saved filters and search work offline. Checking off, creating and editing tasks, descriptions and their checklists, subtasks and relations, moving cards on a Kanban board and adding attachments work offline too; they are sent when the server can be reached. Comments, managing projects, views and Kanban columns, creating labels, teams and sharing need a connection.
+After the first sync, lists, tables, timelines, filters, saved filters and search work offline. Checking off, creating and editing tasks, descriptions and their checklists, subtasks and relations, moving cards on a Kanban board, adding attachments and creating labels work offline too; they are sent when the server can be reached. A task you opened before shows its attachments, reactions and comments offline as they were then, with the time they were loaded, and the images you saw stay on your device for up to 30 days. Writing comments and reactions, deleting attachments, changing or deleting a label that is already on your server, managing projects, views and Kanban columns, teams and sharing need a connection.
 
 While you are offline, a banner says so. On the **Account** tab, **Pending changes** shows how many changes are waiting, with **Send now**, and **Sync problems** lists the changes the server refused, which you can try again or discard. If you sign out while changes are waiting, they are lost; the app warns you first.
 
@@ -194,7 +194,7 @@ The app uses your device's language when it has a translation, and English other
 - There are no keyboard shortcuts yet.
 - A yearly repeat is every 365 days, as Vikunja has no calendar year as a repeat, so it moves by a day after each 29 February.
 - Vikunja sends no push notifications, so a reminder you add on the web reaches your device with the next sync.
-- Comments, reactions and a task's attachments load only with a connection.
+- Comments, reactions and a task's attachments show offline only as they were when you last opened the task online; new ones load with a connection.
 
 ## Troubleshooting
 

@@ -35,6 +35,8 @@ import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
+import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
+import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/application/link_targets.dart';
@@ -204,10 +206,11 @@ final class TaskDetailPaneHost {
 /// id a queued create gets show; [task] itself is the fallback once the row
 /// is gone. Its project is watched too. What only the server has is read
 /// on opening and again, with the comments shown, whenever the task changes
-/// on the server; offline the sheet says so in one line and shows the
-/// rest. Comments are written in a field pinned below the list, which
-/// keeps an unsent one as a draft. Messages about what happens in the
-/// sheet show inside it.
+/// on the server; a read that fails is one line with Retry, above what was
+/// last read where that stays (offline, a failure that may pass) and says
+/// as of when. Comments are written in a field pinned below the list,
+/// which keeps an unsent one as a draft. Messages about what happens in
+/// the sheet show inside it.
 class TaskDetailSheet extends ConsumerStatefulWidget {
   const new({
     required this.task,
@@ -252,10 +255,12 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   late final _details = TaskDetailsController(
     read: (id) => _detailsRepository().details(id),
     markRead: (id) => _detailsRepository().markRead(id),
+    stored: (id) => _detailsRepository().storedDetails(id),
   );
   late final _comments = CommentsController(
     read: (id, {required page, required newestFirst}) =>
         _detailsRepository().comments(id, page: page, newestFirst: newestFirst),
+    stored: (id) => _detailsRepository().storedComments(id),
   );
   late final _composer = CommentComposerController()
     ..addListener(_composerChanged);
@@ -696,6 +701,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
       context.l10n,
       before: before,
       after: after,
+      now: ref.read(clockProvider)(),
     );
     if (message == null) return;
     announce(context, message);
@@ -706,6 +712,12 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   void _retryDetails(int taskId) {
     ref.read(attachmentImagesProvider)?.forgetFailures();
     _loadDetails(taskId);
+  }
+
+  void _retryOffline(int taskId) {
+    syncActiveAccountNow(ref);
+    if (taskId > 0) _retryDetails(taskId);
+    if (_comments.value.storedAt != null) unawaited(_comments.retry());
   }
 
   void _showMessage(String text) {
@@ -1078,22 +1090,25 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
           child: ListenableBuilder(
             listenable: Listenable.merge([_details, _comments, _actions]),
             builder: (context, _) {
-              final details = switch (_details.value) {
-                TaskDetailsLoaded(:final details) when task.id > 0 => details,
+              final loaded = switch (_details.value) {
+                final TaskDetailsLoaded loaded when task.id > 0 => loaded,
                 _ => null,
               };
+              final details = loaded?.details;
+              // Stored details carry no permission of their own.
+              final answered = loaded?.storedAt == null ? details : null;
               // Until the details arrive (or when they leave it open), the
               // permission the last sync stored for the project, which
               // follows changes on the web; an earlier read in this run of
               // the app only where the server stores none.
               final writable =
-                  details?.maxPermission?.canWrite ??
+                  answered?.maxPermission?.canWrite ??
                   (projectAccess.isKnown ? projectAccess.canWrite : null) ??
                   switch (_account) {
                     final account? => _access.writable(account, task.id),
                     null => null,
                   } ??
-                  (details == null ? null : _writable(details));
+                  (answered == null ? null : _writable(answered));
               final readOnly = writable == false;
               // Every task write in a read-only or archived project would
               // end as a sync problem; one for a task without a row (a sync
@@ -1140,7 +1155,11 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   onlineWrites &&
                   commentsOffered &&
                   !offline &&
-                  _details.value is TaskDetailsLoading;
+                  switch (_details.value) {
+                    TaskDetailsLoading() => true,
+                    TaskDetailsLoaded(storedAt: _?, failure: null) => true,
+                    _ => false,
+                  };
               final commentsNote = commentsOffered && task.id > 0
                   ? archived
                         ? l10n.commentsArchivedNote
@@ -1225,6 +1244,16 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   _Inset(
                     child: TaskStatusLine(done: task.done, pending: pending),
                   ),
+                  // The shell's banner is under the sheet.
+                  if (offline && pane == null)
+                    _Inset(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: OfflineNotice(
+                          onRetry: () => _retryOffline(task.id),
+                        ),
+                      ),
+                    ),
                   if (details != null &&
                       (details.reactions.isNotEmpty || mayReact))
                     _Inset(
@@ -1381,12 +1410,29 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                             : l10n.taskDetailDetailsFailed,
                         onRetry: () => _retryDetails(task.id),
                       ),
+                    )
+                  else if (loaded case TaskDetailsLoaded(
+                    storedAt: final at?,
+                    :final failure?,
+                  ))
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: DetailsNotice(
+                        text: (l10n) {
+                          final when = storedWhen(l10n, at, now: now);
+                          return failure is NetworkFailure
+                              ? l10n.taskDetailDetailsStored(when)
+                              : l10n.taskDetailDetailsStoredFailed(when);
+                        },
+                        onRetry: () => _retryDetails(task.id),
+                      ),
                     ),
                   TaskAttachmentsSection(
                     task: task,
                     details: details,
                     controller: _details,
                     writable: descriptionWriter != null && !readOnly,
+                    offline: offline,
                     onMessage: _showMessage,
                     onMessageAfterClose: _showMessageBelow,
                   ),
@@ -1408,6 +1454,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     ...commentsSection(
                       count: details.commentCount,
                       state: _comments.value,
+                      now: now,
                       controller: _comments,
                       onLink: _openLink,
                       onTaskLink: (taskId) =>

@@ -53,11 +53,14 @@ final class CommentActions {
 /// the heading with the count, "No comments yet" for none, else "Show
 /// comments" until the first page arrives, then the order toggle, the
 /// comments, and "Load more" while pages remain. A button stays in place,
-/// disabled, while its page loads. [keyOf] gives a comment's row the key
-/// the sheet scrolls to it by; [highlighted] is tinted for a moment.
+/// disabled, while its page loads. Stored comments shown in place of a
+/// page that failed follow a note of when they were read ([now] for "ago").
+/// [keyOf] gives a comment's row the key the sheet scrolls to it by;
+/// [highlighted] is tinted for a moment.
 List<Widget> commentsSection({
   required int count,
   required CommentsState state,
+  required DateTime now,
   required CommentsController controller,
   required ValueChanged<String> onLink,
   required ValueChanged<int> onTaskLink,
@@ -71,6 +74,8 @@ List<Widget> commentsSection({
     for (final comment in state.comments) comment.id: comment.author,
   };
   final comments = state.comments;
+  final failed = state.shown && !state.loading && state.failure != null;
+  final storedAt = state.storedAt;
   return [
     _CommentsHeader(
       key: headerKey,
@@ -88,6 +93,14 @@ List<Widget> commentsSection({
           child: _ShowCommentsButton(
             onPressed: state.loading ? null : controller.show,
           ),
+        ),
+      ),
+    if (failed && storedAt != null)
+      _Inset(
+        child: DetailsNotice(
+          text: (l10n) =>
+              commentsStoredText(l10n, storedAt, state.failure!, now: now),
+          onRetry: () => unawaited(controller.retry()),
         ),
       ),
     for (final (index, comment) in comments.indexed)
@@ -111,7 +124,7 @@ List<Widget> commentsSection({
       ),
     if (state.shown && state.loading && !state.hasMore)
       const _Inset(child: _CommentsLoading()),
-    if (state.shown && !state.loading && state.failure != null)
+    if (failed && storedAt == null)
       _Inset(
         child: DetailsNotice(
           text: (l10n) => commentsFailureText(l10n, state.failure!),
@@ -179,15 +192,33 @@ String commentsFailureText(AppLocalizations l10n, Object failure) =>
     ? l10n.commentsNeedConnection
     : l10n.commentsFailed;
 
+/// Above stored comments that stand in for a page that failed with
+/// [failure].
+String commentsStoredText(
+  AppLocalizations l10n,
+  DateTime storedAt,
+  Object failure, {
+  required DateTime now,
+}) {
+  final when = storedWhen(l10n, storedAt, now: now);
+  return failure is NetworkFailure
+      ? l10n.commentsStored(when)
+      : l10n.commentsStoredFailed(when);
+}
+
 /// What a screen reader hears once a page the user asked for arrived or
 /// failed: the buttons that asked may be gone by then.
 String? commentsResultAnnouncement(
   AppLocalizations l10n, {
   required CommentsState before,
   required CommentsState after,
+  required DateTime now,
 }) {
   if (!before.loading || after.loading) return null;
   if (after.failure case final failure?) {
+    if (after.storedAt case final storedAt?) {
+      return commentsStoredText(l10n, storedAt, failure, now: now);
+    }
     return commentsFailureText(l10n, failure);
   }
   final known = {for (final comment in before.comments) comment.id};
@@ -501,7 +532,6 @@ class _CommentMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final colors = Theme.of(context).colorScheme;
     return PopupMenuButton<_CommentAction>(
       tooltip: l10n.commentOptions(comment.author.displayName),
       enabled: enabled,
@@ -514,40 +544,57 @@ class _CommentMenu extends StatelessWidget {
       },
       itemBuilder: (context) => [
         for (final action in items)
-          PopupMenuItem(
-            value: action,
-            enabled:
-                !actions.offline ||
-                action == _CommentAction.reply ||
-                action == _CommentAction.copyLink,
-            child: Row(
-              children: [
-                Icon(
-                  switch (action) {
-                    _CommentAction.reply => Icons.reply,
-                    _CommentAction.copyLink => Icons.link,
-                    _CommentAction.edit => Icons.edit_outlined,
-                    _CommentAction.delete => Icons.delete_outline,
-                  },
-                  color: action == _CommentAction.delete ? colors.error : null,
-                ),
-                const SizedBox(width: 12),
-                Flexible(
-                  child: Text(
-                    switch (action) {
-                      _CommentAction.reply => l10n.commentReply,
-                      _CommentAction.copyLink => l10n.commentCopyLink,
-                      _CommentAction.edit => l10n.commentEdit,
-                      _CommentAction.delete => l10n.commentDelete,
-                    },
-                    style: action == _CommentAction.delete
-                        ? TextStyle(color: colors.error)
-                        : null,
-                  ),
-                ),
-              ],
+          if (actions.offline &&
+              (action == _CommentAction.edit ||
+                  action == _CommentAction.delete))
+            PopupMenuItem(
+              value: action,
+              enabled: false,
+              child: Semantics(
+                hint: l10n.commentFailedNeedsConnection,
+                child: _CommentActionLabel(action: action, enabled: false),
+              ),
+            )
+          else
+            PopupMenuItem(
+              value: action,
+              child: _CommentActionLabel(action: action),
             ),
-          ),
+      ],
+    );
+  }
+}
+
+class _CommentActionLabel extends StatelessWidget {
+  const new({required this.action, this.enabled = true});
+
+  final _CommentAction action;
+
+  /// The error colour would override a disabled item's dimmed style.
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final colors = Theme.of(context).colorScheme;
+    final destructive = enabled && action == _CommentAction.delete;
+    return Row(
+      children: [
+        Icon(switch (action) {
+          _CommentAction.reply => Icons.reply,
+          _CommentAction.copyLink => Icons.link,
+          _CommentAction.edit => Icons.edit_outlined,
+          _CommentAction.delete => Icons.delete_outline,
+        }, color: destructive ? colors.error : null),
+        const SizedBox(width: 12),
+        Flexible(
+          child: Text(switch (action) {
+            _CommentAction.reply => l10n.commentReply,
+            _CommentAction.copyLink => l10n.commentCopyLink,
+            _CommentAction.edit => l10n.commentEdit,
+            _CommentAction.delete => l10n.commentDelete,
+          }, style: destructive ? TextStyle(color: colors.error) : null),
+        ),
       ],
     );
   }

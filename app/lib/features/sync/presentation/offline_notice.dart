@@ -6,7 +6,9 @@ import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 /// not show, when the last sync or refresh could not reach the server: the
 /// saved data is shown, nothing is wrong with it.
 class OfflineNotice extends StatelessWidget {
-  const new({super.key});
+  const new({this.onRetry, super.key});
+
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +40,8 @@ class OfflineNotice extends StatelessWidget {
                   ),
                 ),
               ),
+              if (onRetry case final onRetry?)
+                TextButton(onPressed: onRetry, child: Text(context.l10n.retry)),
             ],
           ),
         ),

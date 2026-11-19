@@ -2,22 +2,25 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
-import 'package:vikunja_mobile/features/labels/presentation/label_change_failure.dart';
 import 'package:vikunja_mobile/features/tasks/application/label_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/label_search.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
-/// Lets the user tick labels, and create one online unless a link-share
-/// guest, whom the server refuses that; Done returns the ticked labels, in
-/// the order they were ticked after the [selected] ones. Null when
-/// dismissed, which keeps the previous selection. With [createLater] a new
-/// label is not created but returned as one [isLabelToCreate], for the
-/// caller to create.
+final _log = Logger('LabelPicker');
+
+/// Lets the user tick labels, and create one, offline too, unless a
+/// link-share guest, whom the server refuses that; Done returns the ticked
+/// labels, in the order they were ticked after the [selected] ones, a
+/// label created here meanwhile under its server id once its create was
+/// answered. Null when dismissed, which keeps the previous selection. With
+/// [createLater] a new label is not created but returned as one
+/// [isLabelToCreate], for the caller to create.
 Future<List<Label>?> pickLabels(
   BuildContext context, {
   required List<Label> selected,
@@ -32,9 +35,12 @@ Future<List<Label>?> pickLabels(
   ),
 );
 
-/// A label [pickLabels] was asked to create later: not on the server yet,
-/// it has a negative id of its own and no colour.
-bool isLabelToCreate(Label label) => label.id < 0;
+/// A label [pickLabels] was asked to create later: not stored yet, it has
+/// an id of its own far below the temporary ids of labels created here,
+/// and no colour.
+bool isLabelToCreate(Label label) => label.id <= _firstIdToCreate;
+
+const int _firstIdToCreate = -(1 << 40);
 
 class LabelPicker extends ConsumerStatefulWidget {
   const new({
@@ -60,10 +66,45 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
   String? _createError;
 
   @override
+  void initState() {
+    super.initState();
+    ref.listenManual(labelRemapsProvider, (_, next) {
+      if (next.value case final remaps?) _followRemaps(remaps);
+    }, fireImmediately: true);
+  }
+
+  @override
   void dispose() {
     _query.dispose();
     super.dispose();
   }
+
+  /// A ticked label created here whose create was answered is the server's
+  /// label from now on.
+  void _followRemaps(Map<int, int> remaps) {
+    if (!_selected.any((label) => remaps.containsKey(label.id))) return;
+    final followed = <Label>[];
+    for (final label in _selected) {
+      final id = remaps[label.id] ?? label.id;
+      if (followed.any((other) => other.id == id)) continue;
+      followed.add(id == label.id ? label : _withId(label, id));
+    }
+    setState(
+      () => _selected
+        ..clear()
+        ..addAll(followed),
+    );
+  }
+
+  static Label _withId(Label label, int id) => Label(
+    id: id,
+    title: label.title,
+    description: label.description,
+    hexColor: label.hexColor,
+    createdBy: label.createdBy,
+    created: label.created,
+    updated: label.updated,
+  );
 
   bool _isSelected(Label label) => _selected.any((s) => s.id == label.id);
 
@@ -75,6 +116,7 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
     }
   });
 
+  /// Created at once on the device, offline too; the outbox sends it.
   Future<void> _create(String title) async {
     final l10n = context.l10n;
     final repository = ref.read(labelRepositoryProvider);
@@ -84,7 +126,9 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
       return;
     }
     if (widget.createLater) {
-      final id = _selected.map((label) => label.id).fold<int>(0, min) - 1;
+      final id =
+          _selected.map((label) => label.id).fold(_firstIdToCreate + 1, min) -
+          1;
       setState(() => _selected.add(Label(id: id, title: title)));
       return;
     }
@@ -99,9 +143,8 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
         NewLabel(title: title, hexColor: randomLabelColor(_random)),
       );
     } on Object catch (failure) {
-      // After a timeout the repository looks for the label before the next
-      // create of this title, as the server may have stored it.
-      error = labelChangeFailureText(l10n, failure, LabelChange.create);
+      _log.warning('Creating a label failed: ${failure.runtimeType}');
+      error = l10n.localChangeFailed;
     }
     if (!mounted) return;
     setState(() {
@@ -158,7 +201,10 @@ class _LabelPickerState extends ConsumerState<LabelPicker> {
         PickerHeader(
           title: l10n.labelPickerTitle,
           actionLabel: l10n.pickerDone,
-          onAction: () => Navigator.of(context).pop(_selected),
+          onAction: () => Navigator.of(context).pop([
+            for (final label in _selected)
+              stored.value?.where((s) => s.id == label.id).firstOrNull ?? label,
+          ]),
         ),
         Expanded(
           child: ListView(
@@ -250,25 +296,18 @@ class _CreateRow extends StatelessWidget {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
     return ListTile(
-      leading: creating
-          ? const SizedBox.square(
-              dimension: 24,
-              child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-            )
-          : const Icon(Icons.add),
+      leading: const Icon(Icons.add),
       title: Text(
         l10n.labelPickerCreate(title),
         maxLines: 3,
         overflow: TextOverflow.ellipsis,
       ),
-      subtitle: switch ((creating, tooLong)) {
-        (true, _) => Text(l10n.labelPickerCreating),
-        (false, true) => Text(
-          l10n.labelPickerTitleTooLong(maxLabelTitleLength),
-          style: TextStyle(color: colors.error),
-        ),
-        _ => null,
-      },
+      subtitle: tooLong
+          ? Text(
+              l10n.labelPickerTitleTooLong(maxLabelTitleLength),
+              style: TextStyle(color: colors.error),
+            )
+          : null,
       enabled: !creating && !tooLong,
       onTap: onCreate,
     );

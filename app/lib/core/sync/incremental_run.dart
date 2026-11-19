@@ -20,16 +20,21 @@ typedef SyncProgress = void Function(SyncPhase phase, {int done, int? total});
 /// for projects new to this device or un-archived since its last run: for
 /// projects the app stored itself from a write's answer, which the run then
 /// finds unchanged. A completed run clears the mark, a full one pulls
-/// everything anyway; a stopped full run starts over (see
-/// [IncrementalRun]).
+/// everything anyway, unless the mark was made after the run started, also
+/// in a resumed run's first part; a stopped full run starts over (see
+/// [IncrementalRun]), one under way saves its checkpoint again.
 Future<void> pullWholeOnNextRun(AppDatabase db, Set<int> projectIds) =>
     db.transaction(() async {
-      final stored = (await db.syncStateDao
-          .readAll())[SyncStateKeys.pendingWholePull];
-      final ids = {...IncrementalRun._parseIds(stored), ...projectIds};
+      final state = await db.syncStateDao.readAll();
+      final ids = {
+        ...IncrementalRun._parseIds(state[SyncStateKeys.pendingWholePull]),
+        ...projectIds,
+      };
+      final marks = int.tryParse(state[SyncStateKeys.wholePullMarks] ?? '');
       await db.syncStateDao.write({
         ...SyncCheckpoint.cleared,
         SyncStateKeys.pendingWholePull: (ids.toList()..sort()).join(','),
+        SyncStateKeys.wholePullMarks: '${(marks ?? 0) + 1}',
       });
     });
 
@@ -240,11 +245,16 @@ final class IncrementalRun {
         await _db.tasksDao.purgeInProjects(removed);
       }
       await _db.kanbanDao.removeGoneViews();
-      if (!setEquals(pulledWhole, pendingBefore)) {
+      final stored = _parseIds(
+        (await _db.syncStateDao.readAll())[SyncStateKeys.pendingWholePull],
+      );
+      // Marked by a write while the projects were read: the next run's.
+      final pending = {...pulledWhole, ...stored.difference(pendingBefore)};
+      if (!setEquals(pending, stored)) {
         await _db.syncStateDao.write({
-          SyncStateKeys.pendingWholePull: pulledWhole.isEmpty
+          SyncStateKeys.pendingWholePull: pending.isEmpty
               ? null
-              : (pulledWhole.toList()..sort()).join(','),
+              : (pending.toList()..sort()).join(','),
         });
       }
     });
@@ -264,6 +274,7 @@ final class IncrementalRun {
   Future<void> _syncLabels() async {
     phase = SyncPhase.labels;
     final local = {for (final l in await _db.labelsDao.loadAll()) l.id: l};
+    final remappedBefore = await _db.labelsDao.remappedServerIds();
     final byId = await collectPages<Label>(
       fetch: (page) =>
           _request(() => _client.labels.list(page: page, perPage: _perPage)),
@@ -277,7 +288,7 @@ final class IncrementalRun {
     ];
     await _db.transaction(() async {
       if (changed.isNotEmpty) await _db.labelsDao.upsertAll(changed);
-      await _db.labelsDao.purgeNotIn(byId.keys);
+      await _db.labelsDao.purgeNotIn(byId.keys, remappedBefore: remappedBefore);
     });
   }
 

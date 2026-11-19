@@ -4,6 +4,10 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/repositories/task_details_repository.dart'
+    show StoredRead;
+import 'package:vikunja_mobile/features/tasks/presentation/details/task_details_controller.dart'
+    show keepsStored;
 
 final _log = Logger('Comments');
 
@@ -17,6 +21,7 @@ final class CommentsState {
     this.hasMore = false,
     this.loading = false,
     this.failure,
+    this.storedAt,
   });
 
   /// The first page the user asked for arrived or failed; until the user
@@ -31,6 +36,15 @@ final class CommentsState {
   /// Of the last page asked for; the pages before it stay.
   final Object? failure;
 
+  /// Set while [comments] are the ones stored on the device, which the
+  /// server answered then: while the first page loads, and once it failed
+  /// for a reason that may pass ([failure], [keepsStored]).
+  final DateTime? storedAt;
+
+  static const _unset = Object();
+
+  /// [failure] is replaced whether given or not; [storedAt] passed as null
+  /// is cleared.
   CommentsState copyWith({
     bool? shown,
     bool? newestFirst,
@@ -39,6 +53,7 @@ final class CommentsState {
     bool? hasMore,
     bool? loading,
     Object? failure,
+    Object? storedAt = _unset,
   }) => CommentsState(
     shown: shown ?? this.shown,
     newestFirst: newestFirst ?? this.newestFirst,
@@ -47,6 +62,9 @@ final class CommentsState {
     hasMore: hasMore ?? this.hasMore,
     loading: loading ?? this.loading,
     failure: failure,
+    storedAt: identical(storedAt, _unset)
+        ? this.storedAt
+        : storedAt as DateTime?,
   );
 }
 
@@ -56,22 +74,34 @@ typedef CommentPageReader = Future<Page<TaskComment>> Function(
   required bool newestFirst,
 });
 
+typedef StoredCommentsReader = Future<StoredRead<List<TaskComment>>?> Function(
+  int taskId,
+);
+
 /// A task's comments on demand, a page at a time, in the order the user's
 /// settings name until the user turns it for this sheet. Comments written,
 /// edited or deleted here apply at once; the server pages by offset, so a
 /// deletion makes the next "Load more" read the last loaded page again to
 /// skip nothing. A refresh under way when such a change comes may have
 /// read the server before it, so it is dropped and read again once
-/// [writing] has nothing pending.
+/// [writing] has nothing pending; pages under way are read again once
+/// they are in.
+///
+/// While the first page loads, and when it fails for a reason that may
+/// pass ([keepsStored]), the comments last stored on the device show, if
+/// any ([CommentsState.storedAt]), in the order chosen; a page of the
+/// server replaces them.
 final class CommentsController extends ValueNotifier<CommentsState> {
-  new({required this._read}) : super(const CommentsState());
+  new({required this._read, this._stored}) : super(const CommentsState());
 
   final CommentPageReader _read;
+  final StoredCommentsReader? _stored;
   int? _taskId;
   int _generation = 0;
   int? _refreshing;
   int _writes = 0;
   bool _refreshDue = false;
+  bool _changedWhileLoading = false;
   bool _orderChosen = false;
   bool _disposed = false;
 
@@ -128,14 +158,18 @@ final class CommentsController extends ValueNotifier<CommentsState> {
   }
 
   /// The loaded pages again, quietly, when the task changed on the server:
-  /// what is shown stays until they arrive and when they fail.
+  /// what is shown stays until they arrive and when they fail. Stored
+  /// comments that show try the first page again.
   Future<void> refreshLoaded() async {
     final taskId = _taskId;
-    if (taskId == null || value.loadedPages == 0 || value.loading) return;
+    if (taskId == null || value.loading) return;
+    final stored = value.storedAt != null && value.shown;
+    if (!stored && value.loadedPages == 0) return;
     if (_writes > 0) {
       _refreshDue = true;
       return;
     }
+    if (stored) return await retry();
     final pages = value.loadedPages;
     final generation = _refreshing = ++_generation;
     try {
@@ -190,9 +224,10 @@ final class CommentsController extends ValueNotifier<CommentsState> {
   /// newest first, last when oldest first, after the pages not read yet,
   /// which are read for it. While the thread is not shown it starts with
   /// the comment when it [wasEmpty], else it is read: its first page when
-  /// newest first, every page when oldest first.
+  /// newest first, every page when oldest first. Stored comments that show
+  /// count as not shown.
   Future<void> add(TaskComment comment, {required bool wasEmpty}) async {
-    if (!value.shown) {
+    if (!value.shown || value.storedAt != null) {
       if (!wasEmpty) return await _load(1, 1, toEnd: !value.newestFirst);
       _generation++;
       _set(
@@ -246,6 +281,7 @@ final class CommentsController extends ValueNotifier<CommentsState> {
 
   void remove(int commentId) {
     _deleted.add(commentId);
+    _noteChange();
     if (!value.comments.any((comment) => comment.id == commentId)) return;
     _dropRefresh();
     if (value.hasMore) _removed++;
@@ -270,6 +306,7 @@ final class CommentsController extends ValueNotifier<CommentsState> {
   void _change(int commentId, TaskComment Function(TaskComment) change) {
     if (find(commentId) == null) return;
     _dropRefresh();
+    _noteChange();
     _set(
       value.copyWith(
         comments: [
@@ -281,6 +318,12 @@ final class CommentsController extends ValueNotifier<CommentsState> {
     );
   }
 
+  /// Pages under way may have been read before a change made here, and the
+  /// device may keep none of them; they are read again once they are in.
+  void _noteChange() {
+    if (value.loading) _changedWhileLoading = true;
+  }
+
   Future<void> _loadNext({bool toEnd = false}) {
     final next = value.loadedPages + 1;
     final behind = (_removed + _perPage - 1) ~/ _perPage;
@@ -290,6 +333,7 @@ final class CommentsController extends ValueNotifier<CommentsState> {
   void _restart() {
     _generation++;
     _removed = 0;
+    _changedWhileLoading = false;
   }
 
   void _dropRefresh() {
@@ -309,12 +353,30 @@ final class CommentsController extends ValueNotifier<CommentsState> {
   /// Pages [from] to [to], [toEnd] on to the last, appending what is not
   /// shown yet; [from] is below [to] only after deletions, to pick up what
   /// moved onto loaded pages. What changed here meanwhile stays as it is.
+  /// Before the server's first page the stored comments stand in.
   Future<void> _load(int from, int to, {bool toEnd = false}) async {
     final taskId = _taskId;
     if (taskId == null) return;
     final generation = ++_generation;
     final removedBefore = _removed;
     _set(value.copyWith(loading: true));
+    final stored = value.loadedPages == 0 ? _readStored(taskId) : null;
+    if (stored != null) {
+      unawaited(
+        stored.then((stored) {
+          if (stored == null || generation != _generation || !value.loading) {
+            return;
+          }
+          _set(
+            value.copyWith(
+              comments: _inOrder(stored.value),
+              storedAt: stored.readAt,
+              failure: value.failure,
+            ),
+          );
+        }),
+      );
+    }
     try {
       final read = <TaskComment>[];
       var hasMore = value.hasMore;
@@ -334,11 +396,14 @@ final class CommentsController extends ValueNotifier<CommentsState> {
         }
       }
       _removed -= removedBefore;
-      final known = {for (final comment in value.comments) comment.id};
+      final before = value.storedAt == null
+          ? value.comments
+          : const <TaskComment>[];
+      final known = {for (final comment in before) comment.id};
       _set(
         value.copyWith(
           comments: [
-            ...value.comments,
+            ...before,
             for (final comment in read)
               if (!_deleted.contains(comment.id) && known.add(comment.id))
                 comment,
@@ -347,14 +412,67 @@ final class CommentsController extends ValueNotifier<CommentsState> {
           loadedPages: last,
           hasMore: hasMore,
           loading: false,
+          storedAt: null,
         ),
       );
+      if (_changedWhileLoading) {
+        _changedWhileLoading = false;
+        _refreshDue = true;
+        _refreshIfDue();
+      }
     } on Object catch (error) {
       _log.fine('Loading comments failed: ${error.runtimeType}');
-      if (generation == _generation) {
-        _set(value.copyWith(shown: true, loading: false, failure: error));
+      if (generation != _generation) return;
+      // Nothing it read was stored, so the change has nothing to correct.
+      _changedWhileLoading = false;
+      if (keepsStored(error) && stored != null) {
+        final kept = await stored;
+        if (generation != _generation) return;
+        if (kept != null) {
+          _set(
+            value.copyWith(
+              comments: _inOrder(kept.value),
+              storedAt: kept.readAt,
+              shown: true,
+              loading: false,
+              hasMore: false,
+              failure: error,
+            ),
+          );
+          return;
+        }
       }
+      _set(
+        value.copyWith(
+          comments: value.storedAt == null ? null : const [],
+          storedAt: null,
+          shown: true,
+          loading: false,
+          failure: error,
+        ),
+      );
     }
+  }
+
+  /// Null when nothing is stored or it cannot be read.
+  Future<StoredRead<List<TaskComment>>?> _readStored(int taskId) async {
+    final read = _stored;
+    if (read == null) return null;
+    try {
+      return await read(taskId);
+    } on Object catch (error) {
+      _log.warning('Reading stored comments failed: ${error.runtimeType}');
+      return null;
+    }
+  }
+
+  /// [oldestFirst] in the order shown, without those deleted here.
+  List<TaskComment> _inOrder(List<TaskComment> oldestFirst) {
+    final kept = [
+      for (final comment in oldestFirst)
+        if (!_deleted.contains(comment.id)) comment,
+    ];
+    return value.newestFirst ? kept.reversed.toList() : kept;
   }
 
   void _set(CommentsState state) {

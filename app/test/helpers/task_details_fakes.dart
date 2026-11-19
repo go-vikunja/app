@@ -36,12 +36,18 @@ import 'package:vikunja_mobile/core/repositories/task_resolver.dart';
 /// what the real repository changes on the synced row: the count and the
 /// flag a details read brings, the flag a mark read clears, the count a
 /// comment written or deleted moves.
+///
+/// What the device stored is only what a test puts in [storedDetailsByTask]
+/// and [storedCommentsByTask]; reads and writes leave both alone, and
+/// reading them is not recorded in [calls].
 final class FakeTaskDetailsRepository implements TaskDetailsRepository {
   new({DateTime Function()? clock})
     : clock = clock ?? (() => DateTime.utc(2026, 10, 21, 12));
 
   final Map<int, TaskDetails> detailsByTask = {};
   final Map<int, List<TaskComment>> commentsByTask = {};
+  final Map<int, StoredRead<TaskDetails>> storedDetailsByTask = {};
+  final Map<int, StoredRead<List<TaskComment>>> storedCommentsByTask = {};
   int commentsPerPage = 50;
   final List<String> calls = [];
   final List<int> markedRead = [];
@@ -77,6 +83,14 @@ final class FakeTaskDetailsRepository implements TaskDetailsRepository {
     );
     return details;
   }
+
+  @override
+  Future<StoredRead<TaskDetails>?> storedDetails(int taskId) async =>
+      storedDetailsByTask[taskId];
+
+  @override
+  Future<StoredRead<List<TaskComment>>?> storedComments(int taskId) async =>
+      storedCommentsByTask[taskId];
 
   @override
   Future<Page<TaskComment>> comments(
@@ -321,12 +335,14 @@ final class FakeTaskResolver implements TaskResolver {
 /// images loaded before, like the real cache. A failed load is
 /// remembered until it is forgotten, a failure that cannot pass for good.
 /// Every load is recorded in [loads] (`3 7 md`, `3 7 original`);
-/// [beforeLoad] can hold one.
+/// [beforeLoad] can hold one. A drop is recorded in [drops] (`3 7`) and
+/// forgets what was loaded of the attachment.
 final class FakeAttachmentImages implements AttachmentImages {
   final Map<(int, int, AttachmentPreviewSize?), AttachmentImage> images = {};
   final Map<(int, int, AttachmentPreviewSize?), Exception> failures = {};
   AttachmentImage? fallback;
   final List<String> loads = [];
+  final List<String> drops = [];
   Future<void> Function(String load)? beforeLoad;
   final _loaded = <(int, int, AttachmentPreviewSize?)>{};
   final _failed = <(int, int, AttachmentPreviewSize?), Object>{};
@@ -387,6 +403,15 @@ final class FakeAttachmentImages implements AttachmentImages {
   }) {
     final key = (taskId, attachmentId, preview);
     return _loaded.contains(key) ? images[key] ?? fallback : null;
+  }
+
+  @override
+  Future<void> drop(int taskId, int attachmentId) async {
+    drops.add('$taskId $attachmentId');
+    bool ofIt((int, int, AttachmentPreviewSize?) key) =>
+        key.$1 == taskId && key.$2 == attachmentId;
+    _loaded.removeWhere(ofIt);
+    _failed.removeWhere((key, _) => ofIt(key));
   }
 }
 

@@ -6,6 +6,7 @@ part of 'labels_dao.dart';
 mixin _$LabelsDaoMixin on DatabaseAccessor<AppDatabase> {
   $LabelsTable get labels => attachedDatabase.labels;
   $UsersTable get users => attachedDatabase.users;
+  $LabelIdRemapsTable get labelIdRemaps => attachedDatabase.labelIdRemaps;
   LabelsDaoManager get managers => LabelsDaoManager(this);
 }
 
@@ -16,4 +17,6 @@ class LabelsDaoManager {
       $$LabelsTableTableManager(_db.attachedDatabase, _db.labels);
   $$UsersTableTableManager get users =>
       $$UsersTableTableManager(_db.attachedDatabase, _db.users);
+  $$LabelIdRemapsTableTableManager get labelIdRemaps =>
+      $$LabelIdRemapsTableTableManager(_db.attachedDatabase, _db.labelIdRemaps);
 }

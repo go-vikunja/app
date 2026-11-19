@@ -25,6 +25,7 @@ import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
+import 'package:vikunja_mobile/features/tasks/application/label_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_draft.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart';
@@ -64,11 +65,14 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
   Task? _current;
   TaskDraft? _draft;
   bool _saving = false;
+  Map<int, int> _labelRemaps = const {};
 
   bool get _dirty {
     final draft = _draft;
     final original = _original;
-    return draft != null && original != null && !draft.diff(original).isEmpty;
+    return draft != null &&
+        original != null &&
+        !draft.diff(original, labelRemaps: _labelRemaps).isEmpty;
   }
 
   bool get _titleFits => _draft!.titleFits(_original!);
@@ -177,7 +181,10 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     setState(() => _saving = true);
     final saved = await saveLocalChange(
       context,
-      () => repository.updateTask(current.id, draft.diff(original)),
+      () => repository.updateTask(
+        current.id,
+        draft.diff(original, labelRemaps: _labelRemaps),
+      ),
       action: 'Saving the edit page',
       messenger: messenger,
     );
@@ -203,6 +210,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
     final l10n = context.l10n;
     final task = ref.watch(taskByIdProvider(widget.taskId));
     if (task case AsyncValue(hasValue: true, :final value)) _adopt(value);
+    _labelRemaps = ref.watch(labelRemapsProvider).value ?? const {};
     final draft = _draft;
     final current = _current;
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];

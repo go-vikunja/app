@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
@@ -169,6 +170,76 @@ void main() {
 
       expect(harness.users.searches, isEmpty);
       expect(find.text('Kim Lee'), findsOneWidget);
+    });
+
+    testWidgets('of a label created here stays open when its create is '
+        'answered, and Save goes to the label under its server id', (
+      tester,
+    ) async {
+      harness.labels = FakeLabelRepository(
+        labels: [ownLabel(-1, 'Errand', html: '<p>Old</p>')],
+      );
+      await harness.pump(
+        tester,
+        location: AppRoutes.labels,
+        overrides: [bridges.override],
+      );
+      unawaited(
+        containerOf(tester)
+            .read(appRouterProvider)
+            .push<Object>(AppRoutes.labelDescription(-1)),
+      );
+      await tester.pumpAndSettle();
+      bridges.last.edit('<p>New</p>');
+      await tester.pump();
+
+      harness.labels.remap(-1, 900);
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.labelsGoneTitle), findsNothing);
+      expect(find.byType(DescriptionEditorPage), findsOneWidget);
+      await tester.tap(saveButton());
+      await tester.pumpAndSettle();
+      expect(harness.labels.updates, [
+        (-1, const LabelChanges(description: '<p>New</p>')),
+      ]);
+      final saved = harness.labels.labels.single;
+      expect((saved.id, saved.description), (900, '<p>New</p>'));
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+    });
+
+    testWidgets('kept as a draft under the temporary id of a label created '
+        'here is offered once the label has its server id', (tester) async {
+      harness.labels = FakeLabelRepository(
+        labels: [ownLabel(-1, 'Errand', html: '<p>Old</p>')],
+      );
+      await harness.pump(
+        tester,
+        location: AppRoutes.labels,
+        overrides: [bridges.override],
+      );
+      final container = containerOf(tester);
+      await container
+          .read(descriptionDraftsProvider)
+          .save(
+            const DescriptionDraft(html: '<p>Offline draft</p>', base: ''),
+            account: container.read(activeAccountIdProvider)!,
+            target: const LabelDescriptionTarget(-1),
+          );
+      harness.labels.remap(-1, 900);
+      await tester.pumpAndSettle();
+
+      unawaited(
+        container
+            .read(appRouterProvider)
+            .push<Object>(AppRoutes.labelDescription(900)),
+      );
+      await pumpFrames(tester, 10);
+
+      expect(find.text(en.descriptionEditorRestoreTitle), findsOneWidget);
+      await tester.tap(find.text(en.descriptionEditorRestore));
+      await tester.pumpAndSettle();
+      expect(bridges.last.init!.html, '<p>Offline draft</p>');
     });
 
     testWidgets('a label that is gone shows so', (tester) async {

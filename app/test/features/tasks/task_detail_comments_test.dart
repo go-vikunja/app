@@ -480,6 +480,7 @@ void main() {
     });
 
     testWidgets('offline, reactions, Edit and Delete are off', (tester) async {
+      final semantics = tester.ensureSemantics();
       seedComments([
         sampleComment(
           id: 1,
@@ -519,7 +520,25 @@ void main() {
           ),
         );
         expect(item.enabled, isFalse, reason: action);
+        expect(
+          tester.getSemantics(find.text(action)),
+          matchesSemantics(
+            label: action,
+            hint: en.commentFailedNeedsConnection,
+            isButton: true,
+            hasEnabledState: true,
+          ),
+          reason: action,
+        );
       }
+      expect(
+        tester.widget<Text>(find.text(en.commentDelete)).style?.color,
+        isNot(
+          Theme.of(tester.element(find.text(en.commentDelete)))
+              .colorScheme
+              .error,
+        ),
+      );
       await tester.tap(find.text(en.commentDelete), warnIfMissed: false);
       await tester.pumpAndSettle();
       expect(find.text(en.commentDeleteTitle), findsNothing);
@@ -529,6 +548,7 @@ void main() {
         ),
         isEmpty,
       );
+      semantics.dispose();
     });
 
     testWidgets('in an archived project there is a note instead of the '

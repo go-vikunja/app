@@ -12,23 +12,24 @@ import 'package:vikunja_mobile/features/session/application/sign_out_controller.
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 
+/// A sync run of the active account now, as the banner's tap starts it;
+/// the status stream reports the outcome.
+void syncActiveAccountNow(WidgetRef ref) {
+  final accountId = ref.read(activeAccountIdProvider);
+  if (accountId == null) return;
+  unawaited(
+    ref
+        .read(syncEngineProvider(accountId))
+        .refreshInNewRun()
+        .then<void>((_) {}, onError: (Object _) {}),
+  );
+}
+
 /// The shell's strip while the last sync could not reach the server: the
 /// saved data is shown, and when it was synced last. A tap syncs now.
 /// Nothing while online.
 class OfflineBanner extends ConsumerWidget {
   const new({super.key});
-
-  void _syncNow(WidgetRef ref) {
-    final accountId = ref.read(activeAccountIdProvider);
-    if (accountId == null) return;
-    // The status stream reports the outcome.
-    unawaited(
-      ref
-          .read(syncEngineProvider(accountId))
-          .refreshInNewRun()
-          .then<void>((_) {}, onError: (Object _) {}),
-    );
-  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -59,7 +60,7 @@ class OfflineBanner extends ConsumerWidget {
       ),
       null => l10n.accountNeverSynced,
     };
-    final onTap = canSync ? () => _syncNow(ref) : null;
+    final onTap = canSync ? () => syncActiveAccountNow(ref) : null;
 
     // Announced when it appears; the time ticks every minute and is only
     // read on focus, as the value.

@@ -113,8 +113,9 @@ void main() {
   });
 
   test("the pickers' label create and people search reach the account's "
-      'database, and what they return is attached locally and sent', () async {
-    final (_, repository) = await signedIn();
+      'database; the label is stored at once, created by the signed-in user, '
+      'and sent with the update that attaches it', () async {
+    final (accountId, repository) = await signedIn();
     final labels = container.read(labelRepositoryProvider);
     final users = container.read(userRepositoryProvider);
     expect(labels, isA<LocalLabelRepository>());
@@ -122,12 +123,18 @@ void main() {
     const bob = User(id: 8, username: 'bob', name: 'Bob');
     read.projectUsers[task.projectId] = [bob];
     write.serverUsers[bob.id] = bob;
+    final gate = Completer<void>();
+    write.beforeRequest = (request) async {
+      if (request.startsWith('create label')) await gate.future;
+    };
 
     final label = await labels!.create(
       const NewLabel(title: 'Garden', hexColor: '0ead69'),
     );
     final found = await users!.searchAssignees(task.projectId, ' bo ');
 
+    expect(label.id, isNegative);
+    expect(label.createdBy?.id, 7);
     expect(found, [bob]);
     expect(read.requests, contains('users ${task.projectId} bo'));
     expect(await labels.watchAll().first, [label]);
@@ -143,38 +150,47 @@ void main() {
     final local = (await opened.single.tasksDao.find(task.id))!;
     expect(local.labels, [label]);
     expect(local.assignees, [bob]);
-    await pumpEventQueue();
+
+    gate.complete();
+    await container.read(outboxSenderProvider(accountId)).drain();
 
     expect(write.requests, ['create label Garden', 'update 1']);
     final stored = write.serverTasks[task.id]!;
-    expect(stored.labels.map((l) => l.id), [label.id]);
+    expect(stored.labels.map((l) => l.id), [900]);
     expect(stored.assignees.map((u) => u.id), [bob.id]);
-    expect((await opened.single.tasksDao.find(task.id))!.labels, [label]);
+    expect(
+      (await opened.single.tasksDao.find(task.id))!.labels.map((l) => l.id),
+      [900],
+    );
+    expect((await labels.watchLabel(label.id).first)!.id, 900);
   });
 
   test("a lost label create adopts the signed-in user's own label, not "
       "another member's of that title", () async {
-    await signedIn();
+    final (accountId, _) = await signedIn();
     final labels = container.read(labelRepositoryProvider)!;
     const alice = User(id: 7, username: 'alice');
     const ana = User(id: 6, username: 'ana');
-    // The repository judges the lookup window by the device clock.
-    final created = DateTime.now().toUtc();
     read.allLabels = [
-      Label(id: 30, title: 'errand', created: created, createdBy: ana),
+      Label(id: 30, title: 'errand', created: now, createdBy: ana),
       Label(
         id: 29,
         title: 'errand',
-        created: created.subtract(const Duration(minutes: 5)),
+        created: now.subtract(const Duration(minutes: 5)),
         createdBy: alice,
       ),
     ];
     write.beforeRequest = (_) =>
         throw const NetworkFailure(NetworkProblem.timeout);
 
-    final found = await labels.create(const NewLabel(title: 'errand'));
+    final local = await labels.create(const NewLabel(title: 'errand'));
+    final sender = container.read(outboxSenderProvider(accountId));
+    await sender.drain();
+    write.beforeRequest = null;
+    await sender.sendNow();
 
-    expect(found.id, 29);
+    expect(write.requests, ['create label errand']);
+    expect((await labels.watchLabel(local.id).first)!.id, 29);
   });
 
   test('signing out with an op in flight disposes the sender and wipes the '

@@ -26,7 +26,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_selection.dart';
 /// The open tasks with one label, grouped by due date like a saved
 /// filter's list: what `done = false && labels in <id>` finds in a saved
 /// filter's scope, from the local database. A label found by the search
-/// opens it.
+/// opens it. A label created here stays open when its create is answered.
 class LabelTasksScreen extends ConsumerStatefulWidget {
   const new({required this.labelId, super.key});
 
@@ -58,10 +58,8 @@ class _LabelTasksScreenState extends ConsumerState<LabelTasksScreen>
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final labels = ref.watch(allLabelsProvider).value;
-    final label = labels
-        ?.where((label) => label.id == widget.labelId)
-        .firstOrNull;
+    final found = ref.watch(labelByIdProvider(widget.labelId));
+    final label = found.value;
     final tasks = ref.watch(labelTasksProvider(widget.labelId));
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final projectsById = {for (final project in projects) project.id: project};
@@ -87,7 +85,7 @@ class _LabelTasksScreenState extends ConsumerState<LabelTasksScreen>
                 ],
               ),
         bottomNavigationBar: selecting ? selectionActionBar(selectable) : null,
-        body: labels != null && label == null
+        body: found.hasValue && label == null
             ? CenteredScrollView(
                 maxWidth: ReadableWidth.list,
                 child: EmptyState(

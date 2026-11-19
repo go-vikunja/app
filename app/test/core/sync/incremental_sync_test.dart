@@ -1484,6 +1484,100 @@ void main() {
       expect((await state())[SyncStateKeys.pendingWholePull], isNull);
     });
 
+    group('a mark made while a run is under way', () {
+      const pullOfTwo = ['project 2 tasks id > 0 per_page=50 page=1'];
+
+      /// Marks project 2 while the request [pattern] of [run] is held.
+      Future<void> markDuring(
+        String pattern,
+        Future<void> Function() run,
+      ) async {
+        final gate = RequestGate()..pattern = pattern;
+        client.beforeRequest = gate.call;
+        final running = run();
+        while (!gate.isHolding) {
+          await pumpEventQueue();
+        }
+        await pullWholeOnNextRun(db, {2});
+        client.beforeRequest = null;
+        gate.release();
+        await running;
+      }
+
+      test('outlives that run: the next one pulls the project whole and '
+          'clears it', () async {
+        final sync = await synced();
+
+        await markDuring('labels', sync.refresh);
+
+        expect((await state())[SyncStateKeys.pendingWholePull], '2');
+        expect(requestsFor('project 2 tasks'), isEmpty);
+        await sync.refresh();
+        expect(requestsFor('project 2 tasks'), pullOfTwo);
+        expect((await state())[SyncStateKeys.pendingWholePull], isNull);
+      });
+
+      test('while it reads the projects is kept beside those it pulls '
+          'whole itself', () async {
+        final sync = await synced();
+        client
+          ..allProjects.add(project(id: 9, title: 'Shared'))
+          ..allTasks.add(task(id: 901, title: 'Shared 901', projectId: 9));
+
+        await markDuring('projects page 1', sync.refresh);
+
+        expect((await projectTasksIn(db, 9)).map((t) => t.id), [901]);
+        expect((await state())[SyncStateKeys.pendingWholePull], '2,9');
+        expect(requestsFor('project 2 tasks'), isEmpty);
+        await sync.refresh();
+        expect(requestsFor('project 2 tasks'), pullOfTwo);
+        expect((await state())[SyncStateKeys.pendingWholePull], isNull);
+      });
+
+      test('outlives a full run too', () async {
+        final sync = engine();
+
+        await markDuring('labels', sync.ensureInitialSync);
+
+        expect((await state())[SyncStateKeys.pendingWholePull], '2');
+        client.requests.clear();
+        now = DateTime.utc(2026, 10, 10, 13);
+        await sync.refresh();
+        expect(requestsFor('project 2 tasks'), pullOfTwo);
+        expect((await state())[SyncStateKeys.pendingWholePull], isNull);
+      });
+
+      test('outlives a full run that saves its checkpoint again, stops and '
+          'is resumed', () async {
+        final sync = engine();
+        final gate = RequestGate()..pattern = 'tasks done = true';
+        client.beforeRequest = gate.call;
+        final running = sync.ensureInitialSync();
+        while (!gate.isHolding) {
+          await pumpEventQueue();
+        }
+        await pullWholeOnNextRun(db, {2});
+        client.beforeRequest = (request) async {
+          if (request.startsWith('tasks updated >=')) {
+            throw const NetworkFailure(NetworkProblem.timeout);
+          }
+        };
+        gate.release();
+        await expectLater(running, throwsA(isA<NetworkFailure>()));
+        expect((await state())[SyncStateKeys.phase], SyncPhase.finishing.name);
+
+        client.beforeRequest = null;
+        await sync.ensureInitialSync();
+
+        expect((await state())[SyncStateKeys.pendingWholePull], '2');
+        client.requests.clear();
+        now = DateTime.utc(2026, 10, 10, 13);
+        await sync.refresh();
+        expect(requestsFor('project 2 tasks'), pullOfTwo);
+        expect((await state())[SyncStateKeys.pendingWholePull], isNull);
+      });
+    });
+
     test('dispose ends an incremental run quietly', () async {
       final sync = await synced();
       final gate = RequestGate()..pattern = 'labels';

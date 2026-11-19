@@ -30,9 +30,9 @@ final class DescriptionDraft {
   final String base;
 }
 
-/// The server id a task's temporary [taskId] was given once its create was
-/// answered; any other id as it is.
-typedef TaskIdResolver = Future<int> Function(int taskId);
+/// The server id a temporary [id] of a task or a label was given once its
+/// create was answered; any other id as it is.
+typedef IdResolver = Future<int> Function(int id);
 
 /// The unsaved edits of the description editors, kept while editing, so
 /// that they outlive the system ending the app: one per account and
@@ -40,10 +40,10 @@ typedef TaskIdResolver = Future<int> Function(int taskId);
 /// autosave, the task or project changes only on Save. Signing out drops
 /// the account's.
 ///
-/// A task's draft names the id the editor had, which for a task created
-/// offline is a temporary one until the create is answered; with a
-/// [TaskIdResolver], reading, saving and discarding follow it to the server
-/// id.
+/// A task's or a label's draft names the id the editor had, which for one
+/// created offline is a temporary one until the create is answered; with
+/// an [IdResolver] for the target's kind, reading, saving and discarding
+/// follow it to the server id.
 ///
 /// Development builds kept them in the preferences, which iOS backs up;
 /// what is there is removed, not taken over, when the drafts are first
@@ -69,12 +69,12 @@ final class DescriptionDrafts {
   Future<DescriptionDraft?> read({
     required String account,
     required DescriptionTarget target,
-    TaskIdResolver? resolveTaskId,
+    IdResolver? resolveId,
   }) async {
     await _writes;
     for (final entry in (await _entries()).reversed) {
       if (entry['account'] == account &&
-          await _isFor(entry['target'], target, resolveTaskId)) {
+          await _isFor(entry['target'], target, resolveId)) {
         return switch ((entry['html'], entry['base'])) {
           (final String html, final String base) => DescriptionDraft(
             html: html,
@@ -87,14 +87,14 @@ final class DescriptionDrafts {
     return null;
   }
 
-  /// Replaces [target]'s draft, the one under a task's temporary id too.
+  /// Replaces [target]'s draft, the one under its temporary id too.
   Future<void> save(
     DescriptionDraft draft, {
     required String account,
     required DescriptionTarget target,
-    TaskIdResolver? resolveTaskId,
+    IdResolver? resolveId,
   }) => _change((entries) async {
-    await _removeFor(entries, account, target, resolveTaskId);
+    await _removeFor(entries, account, target, resolveId);
     entries.add({
       'account': account,
       'target': _targetKey(target),
@@ -110,9 +110,8 @@ final class DescriptionDrafts {
   Future<void> discard({
     required String account,
     required DescriptionTarget target,
-    TaskIdResolver? resolveTaskId,
-  }) =>
-      _change((entries) => _removeFor(entries, account, target, resolveTaskId));
+    IdResolver? resolveId,
+  }) => _change((entries) => _removeFor(entries, account, target, resolveId));
 
   /// Removes [account]'s drafts, as the account signs out. One that names
   /// no account is no one's and goes too.
@@ -177,12 +176,12 @@ final class DescriptionDrafts {
     List<Map<String, Object?>> entries,
     String account,
     DescriptionTarget target,
-    TaskIdResolver? resolveTaskId,
+    IdResolver? resolveId,
   ) async {
     final kept = [
       for (final entry in entries)
         if (entry['account'] != account ||
-            !await _isFor(entry['target'], target, resolveTaskId))
+            !await _isFor(entry['target'], target, resolveId))
           entry,
     ];
     entries
@@ -193,31 +192,37 @@ final class DescriptionDrafts {
   static Future<bool> _isFor(
     Object? stored,
     DescriptionTarget target,
-    TaskIdResolver? resolveTaskId,
+    IdResolver? resolveId,
   ) async {
     if (stored == _targetKey(target)) return true;
-    if (resolveTaskId == null ||
-        target is! TaskDescriptionTarget ||
+    final (prefix, targetId) = switch (target) {
+      TaskDescriptionTarget(:final taskId) => (_taskPrefix, taskId),
+      LabelDescriptionTarget(:final labelId) => (_labelPrefix, labelId),
+      _ => (null, 0),
+    };
+    if (resolveId == null ||
+        prefix == null ||
         stored is! String ||
-        !stored.startsWith(_taskPrefix)) {
+        !stored.startsWith(prefix)) {
       return false;
     }
-    final storedId = int.tryParse(stored.substring(_taskPrefix.length));
-    if (storedId == null || (storedId > 0 && target.taskId > 0)) return false;
+    final storedId = int.tryParse(stored.substring(prefix.length));
+    if (storedId == null || (storedId > 0 && targetId > 0)) return false;
     Future<int> resolved(int id) async => id > 0
         ? id
-        : await resolveTaskId(id)
+        : await resolveId(id)
               .timeout(_resolveTimeout, onTimeout: () => id)
               .catchError((_) => id);
-    return await resolved(storedId) == await resolved(target.taskId);
+    return await resolved(storedId) == await resolved(targetId);
   }
 
   static const _taskPrefix = 'task:';
+  static const _labelPrefix = 'label:';
 
   static String _targetKey(DescriptionTarget target) => switch (target) {
     TaskDescriptionTarget(:final taskId) => '$_taskPrefix$taskId',
     ProjectDescriptionTarget(:final projectId) => 'project:$projectId',
-    LabelDescriptionTarget(:final labelId) => 'label:$labelId',
+    LabelDescriptionTarget(:final labelId) => '$_labelPrefix$labelId',
     SavedFilterDescriptionTarget(:final pseudoProjectId) =>
       'filter:$pseudoProjectId',
     TeamDescriptionTarget(:final teamId) => 'team:$teamId',

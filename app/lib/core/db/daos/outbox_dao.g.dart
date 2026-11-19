@@ -8,6 +8,7 @@ mixin _$OutboxDaoMixin on DatabaseAccessor<AppDatabase> {
   $TasksTable get tasks => attachedDatabase.tasks;
   $TaskIdRemapsTable get taskIdRemaps => attachedDatabase.taskIdRemaps;
   $SyncStateTable get syncState => attachedDatabase.syncState;
+  $LabelsTable get labels => attachedDatabase.labels;
   OutboxDaoManager get managers => OutboxDaoManager(this);
 }
 
@@ -22,4 +23,6 @@ class OutboxDaoManager {
       $$TaskIdRemapsTableTableManager(_db.attachedDatabase, _db.taskIdRemaps);
   $$SyncStateTableTableManager get syncState =>
       $$SyncStateTableTableManager(_db.attachedDatabase, _db.syncState);
+  $$LabelsTableTableManager get labels =>
+      $$LabelsTableTableManager(_db.attachedDatabase, _db.labels);
 }

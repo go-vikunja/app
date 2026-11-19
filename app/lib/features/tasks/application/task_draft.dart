@@ -129,9 +129,11 @@ final class TaskDraft {
   /// Only what differs from [original]; empty when nothing does. A changed
   /// repeat sends the seconds and the mode that differ from the task's
   /// own, so removing a repeat is `0` and mode `0`. Labels and assignees
-  /// go as the ids added and removed; reminders as the whole list, once it
-  /// holds other reminders than the task's in any order.
-  TaskChanges diff(Task original) {
+  /// go as the ids added and removed, a label created here compared by the
+  /// server id [labelRemaps] has for its temporary one; reminders as the
+  /// whole list, once it holds other reminders than the task's in any
+  /// order.
+  TaskChanges diff(Task original, {Map<int, int> labelRemaps = const {}}) {
     final base = TaskDraft.fromTask(original);
     final trimmedTitle = normalizedTitle;
     final repeatChanged = repeat != base.repeat;
@@ -153,8 +155,11 @@ final class TaskDraft {
           ? repeatMode
           : null,
       labels: _idSetChange(
-        [for (final label in labels) label.id],
-        [for (final label in original.labels) label.id],
+        [for (final label in labels) labelRemaps[label.id] ?? label.id],
+        [
+          for (final label in original.labels)
+            labelRemaps[label.id] ?? label.id,
+        ],
       ),
       assignees: _idSetChange(
         [for (final user in assignees) user.id],

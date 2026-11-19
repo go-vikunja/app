@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
@@ -28,6 +29,7 @@ AttachmentRepository accountAttachmentRepository(Ref ref, String accountId) {
     ref.watch(writeClientProvider(accountId)),
     ref.watch(attachmentDownloadsProvider),
     accountId: accountId,
+    images: ref.watch(accountAttachmentImagesProvider(accountId)),
     uploadsEnabled: limits.enabled,
     maxUploadBytes: limits.maxBytes,
   );

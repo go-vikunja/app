@@ -168,7 +168,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   /// Draft writes one after the other, so that a later one wins.
   Future<void> _draftWrites = Future.value();
   String? _account;
-  TaskIdResolver? _resolveTaskId;
+  IdResolver? _resolveId;
   int? _projectId;
   EditorTheme? _theme;
   var _starting = false;
@@ -253,14 +253,13 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         return null;
       }),
     LabelDescriptionTarget(:final labelId) =>
-      ref.watch(allLabelsProvider).whenData((labels) {
-        for (final label in labels) {
-          if (label.id == labelId) {
-            return (description: label.description, projectId: null);
-          }
-        }
-        return null;
-      }),
+      ref
+          .watch(labelByIdProvider(labelId))
+          .whenData(
+            (label) => label == null
+                ? null
+                : (description: label.description, projectId: null),
+          ),
     SavedFilterDescriptionTarget(:final pseudoProjectId) =>
       ref.watch(savedFiltersProvider).whenData((filters) {
         for (final filter in filters) {
@@ -313,14 +312,14 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   /// from [stored]; one declined, or saved already, is dropped.
   Future<void> _open(String stored) async {
     final account = _account = ref.read(activeAccountIdProvider);
-    final resolveTaskId = _resolveTaskId = _taskIdResolver();
+    final resolveId = _resolveId = _idResolver();
     DescriptionDraft? draft;
     if (account != null) {
       try {
         draft = await _drafts.read(
           account: account,
           target: widget.target,
-          resolveTaskId: resolveTaskId,
+          resolveId: resolveId,
         );
       } on Object catch (error) {
         _log.warning('Reading the draft failed: ${error.runtimeType}');
@@ -342,19 +341,29 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         () => _drafts.discard(
           account: account,
           target: widget.target,
-          resolveTaskId: resolveTaskId,
+          resolveId: resolveId,
         ),
       );
       _start(stored);
     }
   }
 
-  /// Follows a task's temporary id through the account's tasks, which know
-  /// the server id once the create was answered.
-  TaskIdResolver? _taskIdResolver() {
-    final tasks = ref.read(taskRepositoryProvider);
-    if (tasks == null || widget.target is! TaskDescriptionTarget) return null;
-    return (taskId) async => (await findLocalTask(tasks, taskId))?.id ?? taskId;
+  /// Follows a task's or a label's temporary id through the account's
+  /// tasks or labels, which know the server id once the create was
+  /// answered.
+  IdResolver? _idResolver() {
+    switch (widget.target) {
+      case TaskDescriptionTarget():
+        final tasks = ref.read(taskRepositoryProvider);
+        if (tasks == null) return null;
+        return (id) async => (await findLocalTask(tasks, id))?.id ?? id;
+      case LabelDescriptionTarget():
+        final labels = ref.read(labelRepositoryProvider);
+        if (labels == null) return null;
+        return (id) async => (await labels.watchLabel(id).first)?.id ?? id;
+      case _:
+        return null;
+    }
   }
 
   /// A fresh page load of the edit that started from [opened]: [restored]
@@ -514,7 +523,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     final copy = _copy;
     final opened = _opened;
     final account = _account;
-    final resolveTaskId = _resolveTaskId;
+    final resolveId = _resolveId;
     if (opened == null || account == null) return;
     if (copy == _drafted && (!force || copy == null)) return;
     _drafted = copy;
@@ -530,14 +539,14 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         await _drafts.discard(
           account: account,
           target: widget.target,
-          resolveTaskId: resolveTaskId,
+          resolveId: resolveId,
         );
       } else {
         await _drafts.save(
           DescriptionDraft(html: copy, base: opened),
           account: account,
           target: widget.target,
-          resolveTaskId: resolveTaskId,
+          resolveId: resolveId,
         );
       }
     });
@@ -929,11 +938,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
             error,
             ProjectChange.edit,
           ),
-          LabelDescriptionTarget() => labelChangeFailureText(
-            l10n,
-            error,
-            LabelChange.edit,
-          ),
+          LabelDescriptionTarget() => labelChangeFailureText(l10n, error),
           SavedFilterDescriptionTarget() => savedFilterFailureText(
             l10n,
             error,
@@ -953,12 +958,12 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
 
   void _close({required bool saved}) {
     if (_account case final account?) {
-      final resolveTaskId = _resolveTaskId;
+      final resolveId = _resolveId;
       _queueDraftWrite(
         () => _drafts.discard(
           account: account,
           target: widget.target,
-          resolveTaskId: resolveTaskId,
+          resolveId: resolveId,
         ),
       );
     }

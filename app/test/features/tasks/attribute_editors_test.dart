@@ -81,7 +81,10 @@ void main() {
           if (other.id != id) other else ?change(other),
       ];
 
-  Future<void> pumpApp(WidgetTester tester) async {
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    FakeLabelRepository? labels,
+  }) async {
     usePhoneSurface(tester, logicalSize: const Size(360, 1200));
     await pumpSignedInApp(
       tester,
@@ -89,7 +92,7 @@ void main() {
       now: now,
       overrides: [
         labelRepositoryProvider.overrideWithValue(
-          FakeLabelRepository(labels: [errand, finance]),
+          labels ?? FakeLabelRepository(labels: [errand, finance]),
         ),
       ],
     );
@@ -625,6 +628,23 @@ void main() {
       await open(tester);
       await tick(tester, 'Finance');
       await tick(tester, 'Finance');
+      await tapIn(tester, find.byType(LabelPicker), en.pickerDone);
+
+      expect(find.byType(LabelPicker), findsNothing);
+      expect(data.tasks.updates, isEmpty);
+      expect(said(tester), isEmpty);
+    });
+
+    testWidgets('a label created here whose create is answered while the '
+        'picker is open is no change', (tester) async {
+      const groceries = Label(id: -1, title: 'Groceries');
+      replaceRow(2, (task) => task.copyWith(labels: [errand, groceries]));
+      final labels = FakeLabelRepository(labels: [errand, finance, groceries]);
+      await pumpApp(tester, labels: labels);
+      await open(tester);
+
+      labels.remap(-1, 900);
+      await tester.pumpAndSettle();
       await tapIn(tester, find.byType(LabelPicker), en.pickerDone);
 
       expect(find.byType(LabelPicker), findsNothing);

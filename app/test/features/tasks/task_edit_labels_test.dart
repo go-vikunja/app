@@ -1,18 +1,20 @@
-import 'dart:async';
-
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
+import 'package:vikunja_mobile/core/repositories/local/local_label_repository.dart';
 import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
 
+import '../../helpers/fake_write_client.dart';
 import '../../helpers/label_user_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/test_database.dart';
 import 'edit_page_harness.dart';
 
 void main() {
@@ -275,29 +277,50 @@ void main() {
       );
     });
 
-    testWidgets('shows progress while the server creates it', (tester) async {
-      final answer = Completer<void>();
-      labels.beforeCreate = () => answer.future;
-      await openPage(tester);
+    testWidgets('offline it creates the label on the device at once, '
+        'without a request or a connection note, and ticks it', (tester) async {
+      final db = testDatabase();
+      await db.labelsDao.upsertAll([errand, finance, garden, gardening]);
+      final write = FakeWriteClient(clock: () => now)
+        ..beforeRequest = (_) =>
+            throw const NetworkFailure(NetworkProblem.unreachable);
+      final local = LocalLabelRepository(db, write, now: () => now);
+      await openEditPageWith(
+        tester,
+        data: data,
+        taskId: 1,
+        now: now,
+        labels: local,
+      );
       await openPicker(tester);
 
       await tester.enterText(searchField(), 'Groceries');
       await tester.pumpAndSettle();
       await tester.tap(createRow('Groceries'));
-      await tester.pump();
-
-      expect(inPicker(find.byType(CircularProgressIndicator)), findsOneWidget);
-      expect(inPicker(find.text(en.labelPickerCreating)), findsOneWidget);
-      expect(tester.widget<ListTile>(createRow('Groceries')).enabled, isFalse);
-
-      answer.complete();
       await tester.pumpAndSettle();
+
+      expect(write.requests, isEmpty);
       expect(ticked(tester, 'Groceries'), isTrue);
+      expect(createRow('Groceries'), findsNothing);
+      expect(
+        inPicker(find.textContaining(en.labelsNeedsConnection)),
+        findsNothing,
+      );
+      expect(
+        (await db.outboxDao.all()).single.kind,
+        OutboxOperationKind.createLabel.name,
+      );
+      await tapPickerDone(tester);
+      await saveEdits(tester);
+      expect(
+        data.tasks.updates.single.$2,
+        const TaskChanges(labels: IdSetChange(added: {-1})),
+      );
     });
 
-    testWidgets('offline it says that a connection is needed and ticks '
+    testWidgets('a label the device cannot store says so and ticks '
         'nothing', (tester) async {
-      labels.createFailure = const NetworkFailure(NetworkProblem.unreachable);
+      labels.createFailure = const UnexpectedResponse(null, message: 'disk');
       await openPage(tester);
       await openPicker(tester);
 
@@ -306,92 +329,97 @@ void main() {
       await tester.tap(createRow('Groceries'));
       await tester.pumpAndSettle();
 
-      expect(inPicker(find.text(en.labelsNewOffline)), findsOneWidget);
+      expect(inPicker(find.text(en.localChangeFailed)), findsOneWidget);
       expect(createRow('Groceries'), findsOneWidget);
+      await tester.enterText(searchField(), 'Grocery');
+      await tester.pumpAndSettle();
+      expect(inPicker(find.text(en.localChangeFailed)), findsNothing);
       await tapPickerDone(tester);
       expect(editSaveEnabled(tester), isFalse);
     });
 
-    testWidgets('a timeout says the create is unconfirmed', (tester) async {
-      labels.createFailure = const NetworkFailure(NetworkProblem.timeout);
+    testWidgets('a ticked label created here follows its server id when its '
+        'create is answered while the picker is open', (tester) async {
+      labels = FakeLabelRepository(
+        labels: [
+          errand,
+          const Label(id: -1, title: 'Groceries'),
+        ],
+      );
       await openPage(tester);
       await openPicker(tester);
-
-      await tester.enterText(searchField(), 'Groceries');
-      await tester.pumpAndSettle();
-      await tester.tap(createRow('Groceries'));
+      await tester.tap(row('Groceries'));
       await tester.pumpAndSettle();
 
+      labels.remap(-1, 900);
+      await tester.pumpAndSettle();
+
+      expect(row('Groceries'), findsOneWidget);
+      expect(ticked(tester, 'Groceries'), isTrue);
+      await tapPickerDone(tester);
+      await saveEdits(tester);
       expect(
-        inPicker(find.text(en.labelPickerCreateUnconfirmed)),
-        findsOneWidget,
+        data.tasks.updates.single.$2,
+        const TaskChanges(labels: IdSetChange(added: {900})),
       );
-      expect(inPicker(find.text(en.labelsNewOffline)), findsNothing);
     });
 
-    testWidgets("another failure shows the server's message until the "
-        'query changes', (tester) async {
-      labels.createFailure = const DomainError(
-        400,
-        code: 9999,
-        message: 'The label title is odd.',
+    testWidgets('a ticked label from findOrCreate that took a label the '
+        'server had shows that label on Done, its title and colour', (
+      tester,
+    ) async {
+      labels = FakeLabelRepository(
+        labels: [
+          errand,
+          const Label(id: -1, title: 'groceries', hexColor: '000000'),
+        ],
       );
       await openPage(tester);
       await openPicker(tester);
-
-      await tester.enterText(searchField(), 'Groceries');
-      await tester.pumpAndSettle();
-      await tester.tap(createRow('Groceries'));
+      await tester.tap(row('groceries'));
       await tester.pumpAndSettle();
 
-      final message = en.labelPickerCreateRejected('The label title is odd.');
-      expect(inPicker(find.text(message)), findsOneWidget);
-      await tester.enterText(searchField(), 'Grocery');
+      labels.remap(
+        -1,
+        900,
+        taken: sampleLabel(id: 900, title: 'Groceries', hexColor: '1973ff'),
+      );
       await tester.pumpAndSettle();
-      expect(inPicker(find.text(message)), findsNothing);
+      await tapPickerDone(tester);
+
+      expect(find.widgetWithText(InputChip, 'groceries'), findsNothing);
+      final chip = tester.widget<InputChip>(
+        find.widgetWithText(InputChip, 'Groceries'),
+      );
+      expect(chip.backgroundColor, const Color(0xFF1973FF));
+      await saveEdits(tester);
+      expect(
+        data.tasks.updates.single.$2,
+        const TaskChanges(labels: IdSetChange(added: {900})),
+      );
     });
 
-    for (final l10n in [en, de]) {
-      for (final (name, failure, message) in [
-        (
-          'a refused label',
-          const ValidationFailed(message: 'The label title is invalid.')
-              as VikunjaFailure,
-          l10n.labelsInvalid,
-        ),
-        (
-          'a server error',
-          const ServerFailure(500, message: 'Internal Server Error'),
-          l10n.actionFailureServerError,
-        ),
-      ]) {
-        testWidgets('${l10n.localeName}: $name in our own words', (
-          tester,
-        ) async {
-          useLocale(tester, Locale(l10n.localeName));
-          labels.createFailure = failure;
-          await openPage(tester);
-          await openPicker(tester, l10n);
+    testWidgets('opened before the create of a label the task carries was '
+        'answered, following it to its server id is no change', (tester) async {
+      const groceries = Label(id: -1, title: 'Groceries');
+      data.tasks.all = [
+        sampleTask(id: 1, title: 'Shopping', labels: [errand, groceries]),
+      ];
+      labels = FakeLabelRepository(labels: [errand, groceries]);
+      await openPage(tester);
+      labels.remap(-1, 900);
+      await tester.pumpAndSettle();
 
-          await tester.enterText(
-            find.widgetWithText(TextField, l10n.labelPickerSearch),
-            'Groceries',
-          );
-          await tester.pumpAndSettle();
-          await tester.tap(
-            inPicker(
-              find.widgetWithText(
-                ListTile,
-                l10n.labelPickerCreate('Groceries'),
-              ),
-            ),
-          );
-          await tester.pumpAndSettle();
+      await openPicker(tester);
+      expect(ticked(tester, 'Groceries'), isTrue);
+      await tapPickerDone(tester);
 
-          expect(inPicker(find.text(message)), findsOneWidget);
-        });
-      }
-    }
+      expect(editSaveEnabled(tester), isFalse);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(find.byType(TaskEditPage), findsNothing);
+    });
 
     testWidgets('refuses a title over 250 characters', (tester) async {
       await openPage(tester);

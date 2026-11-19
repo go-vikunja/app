@@ -4,8 +4,24 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/repositories/task_details_repository.dart'
+    show StoredRead;
 
 final _log = Logger('TaskDetails');
+
+/// Whether what the device stored stays, with [failure], once a read of the
+/// server failed: for what may pass, such as no connection, a captive
+/// portal or a failing proxy, not for a task that is gone or may no longer
+/// be read.
+bool keepsStored(Object failure) => switch (failure) {
+  NetworkFailure() ||
+  ServerFailure() ||
+  RateLimited() ||
+  UnexpectedResponse() ||
+  RefreshRaceLost() ||
+  TokenRejected() => true,
+  _ => false,
+};
 
 sealed class TaskDetailsState {
   const new();
@@ -22,17 +38,29 @@ final class TaskDetailsLoading extends TaskDetailsState {
 }
 
 final class TaskDetailsLoaded extends TaskDetailsState {
-  const new(this.details);
+  const new(this.details, {this.storedAt, this.failure});
 
   final TaskDetails details;
+
+  /// Set while [details] are the ones stored on the device, which the
+  /// server answered then; null for its answer of now.
+  final DateTime? storedAt;
+
+  /// What kept the server's answer away while the stored ones show
+  /// ([keepsStored]); null while it may still come.
+  final Object? failure;
 }
 
-/// Offline included.
+/// Offline included, when nothing is stored or [failure] does not keep it.
 final class TaskDetailsFailed extends TaskDetailsState {
   const new(this.failure);
 
   final Object failure;
 }
+
+typedef StoredDetailsReader = Future<StoredRead<TaskDetails>?> Function(
+  int taskId,
+);
 
 /// What the server has beyond the stored row (attachments, reactions, the
 /// comment count, unread, subscription), read once when the sheet opens
@@ -42,12 +70,17 @@ final class TaskDetailsFailed extends TaskDetailsState {
 /// of them comes may have read the server before it, so it is dropped and
 /// read again once [writing] has nothing pending. A result that says the
 /// task is unread marks it read, fire and forget.
+///
+/// Until the first answer comes, and when it fails for a reason that may
+/// pass ([keepsStored]), the details last stored on the device show, if
+/// any ([TaskDetailsLoaded.storedAt]); any other failure shows as such.
 final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
-  new({required this._read, required this._markRead})
+  new({required this._read, required this._markRead, this._stored})
     : super(const TaskDetailsIdle());
 
   final Future<TaskDetails> Function(int taskId) _read;
   final Future<void> Function(int taskId) _markRead;
+  final StoredDetailsReader? _stored;
   int? _id;
   int _generation = 0;
   int? _refreshing;
@@ -58,22 +91,37 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
   int? get id => _id;
 
   /// The read, whose failure is also in [value]; the follow bell takes
-  /// its subscription from it.
+  /// its subscription from it. Stored details of the task that show stay
+  /// while it runs; a change made here meanwhile drops it like a refresh.
   Future<TaskDetails> load(int taskId) {
+    final stored = switch (value) {
+      final TaskDetailsLoaded shown
+          when taskId == _id && shown.storedAt != null =>
+        shown,
+      _ => null,
+    };
     _id = taskId;
     final generation = ++_generation;
-    _set(const TaskDetailsLoading());
+    if (stored != null) {
+      _set(TaskDetailsLoaded(stored.details, storedAt: stored.storedAt));
+      _refreshing = generation;
+    } else {
+      _set(const TaskDetailsLoading());
+      unawaited(_showStored(taskId, generation));
+    }
     final request = Future.sync(() => _read(taskId));
     unawaited(
       request.then(
         (details) {
+          if (_refreshing == generation) _refreshing = null;
           if (generation != _generation) return;
           _set(TaskDetailsLoaded(details));
           if (details.isUnread) unawaited(_markReadQuietly(taskId));
         },
         onError: (Object error) {
+          if (_refreshing == generation) _refreshing = null;
           _log.fine('Loading task details failed: ${error.runtimeType}');
-          if (generation == _generation) _set(TaskDetailsFailed(error));
+          if (generation == _generation) _fail(error);
         },
       ),
     );
@@ -100,11 +148,52 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
       if (details.isUnread) unawaited(_markReadQuietly(taskId));
     } on Object catch (error) {
       _log.fine('Refreshing task details failed: ${error.runtimeType}');
-      if (generation == _generation && value is! TaskDetailsLoaded) {
-        _set(TaskDetailsFailed(error));
-      }
+      final answered = switch (value) {
+        TaskDetailsLoaded(storedAt: null) => true,
+        _ => false,
+      };
+      if (generation == _generation && !answered) _fail(error);
     } finally {
       if (_refreshing == generation) _refreshing = null;
+    }
+  }
+
+  void _fail(Object error) {
+    if (keepsStored(error)) {
+      if (value case TaskDetailsLoaded(:final details, storedAt: final at?)) {
+        _set(TaskDetailsLoaded(details, storedAt: at, failure: error));
+        return;
+      }
+    }
+    _set(TaskDetailsFailed(error));
+  }
+
+  /// Shows what is stored while the read runs, or once it failed for a
+  /// reason that keeps it.
+  Future<void> _showStored(int taskId, int generation) async {
+    final read = _stored;
+    if (read == null) return;
+    final StoredRead<TaskDetails>? stored;
+    try {
+      stored = await read(taskId);
+    } on Object catch (error) {
+      _log.warning('Reading stored task details failed: ${error.runtimeType}');
+      return;
+    }
+    if (stored == null || generation != _generation) return;
+    switch (value) {
+      case TaskDetailsLoading():
+        _set(TaskDetailsLoaded(stored.value, storedAt: stored.readAt));
+        _refreshing = generation;
+      case TaskDetailsFailed(:final failure) when keepsStored(failure):
+        _set(
+          TaskDetailsLoaded(
+            stored.value,
+            storedAt: stored.readAt,
+            failure: failure,
+          ),
+        );
+      case _:
     }
   }
 
@@ -160,9 +249,15 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
   );
 
   void _change(TaskDetails? Function(TaskDetails details) change) {
-    if (value case TaskDetailsLoaded(:final details)) {
-      if (change(details) case final changed?) {
-        _set(TaskDetailsLoaded(changed));
+    if (value case final TaskDetailsLoaded shown) {
+      if (change(shown.details) case final changed?) {
+        _set(
+          TaskDetailsLoaded(
+            changed,
+            storedAt: shown.storedAt,
+            failure: shown.failure,
+          ),
+        );
         _dropRefresh();
       }
     }

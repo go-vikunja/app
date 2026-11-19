@@ -200,9 +200,8 @@ void main() {
       expect(chip(en.repeatEveryDays(3)), findsOneWidget);
     });
 
-    testWidgets('a new label needs a connection, offline it says so', (
-      tester,
-    ) async {
+    testWidgets('a new label is created on Add, offline too: its chip says '
+        'so either way', (tester) async {
       final semantics = tester.ensureSemantics();
       await harness.open(tester);
       await typeLine(tester, 'Fix bike *neu');
@@ -223,25 +222,36 @@ void main() {
       );
       await tester.pump();
 
-      final offline = chip(en.quickAddNewLabelOffline('neu'));
-      expect(offline, findsOneWidget);
+      final created = chip(en.quickAddNewLabel('neu'));
+      expect(created, findsOneWidget);
       expect(
         find.descendant(
-          of: offline,
+          of: created,
           matching: find.byIcon(Icons.cloud_off_outlined),
         ),
-        findsOneWidget,
+        findsNothing,
       );
-      expect(
-        find.bySemanticsLabel(
-          RegExp(
-            '^${RegExp.escape(en.quickAddNewLabelOfflineSemantics('neu'))}',
-          ),
-        ),
-        findsOneWidget,
-      );
-      expect(chip(en.quickAddNewLabel('neu')), findsNothing);
       semantics.dispose();
+    });
+
+    testWidgets('a new label longer than the server allows stays in the '
+        'title', (tester) async {
+      await harness.open(tester);
+      final long = 'x' * 251;
+      await typeLine(tester, 'Fix bike *$long');
+
+      expect(chip(en.quickAddLabelStaysInTitle(long)), findsOneWidget);
+      expect(chip(en.quickAddNewLabel(long)), findsNothing);
+    });
+
+    testWidgets('a new label is judged without the NUL characters the server '
+        'drops, as on Add', (tester) async {
+      await harness.open(tester);
+      final longest = '${'x' * 250}\u0000';
+      await typeLine(tester, 'Fix bike *$longest');
+
+      expect(chip(en.quickAddNewLabel(longest)), findsOneWidget);
+      expect(chip(en.quickAddLabelStaysInTitle(longest)), findsNothing);
     });
 
     testWidgets("a guest's new label stays in the title, online too", (
@@ -515,7 +525,7 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(find.text(en.quickAddHelpLabelsBody('@')), findsOneWidget);
+      expect(find.text(en.quickAddHelpLabelsCreated('@')), findsOneWidget);
       // The 27th of next month, never a date in the past.
       for (final example in ['nov 27', '27/11', '2026-11-27']) {
         await tester.scrollUntilVisible(
@@ -560,7 +570,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(en.quickAddHelpLabelsBodyGuest('*')), findsOneWidget);
-      expect(find.text(en.quickAddHelpLabelsBody('*')), findsNothing);
+      expect(find.text(en.quickAddHelpLabelsCreated('*')), findsNothing);
     });
   });
 

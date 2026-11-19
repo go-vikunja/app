@@ -579,6 +579,37 @@ void main() {
 
       expect(ids(await repository.watchLabelTasks(1).first), [40, 1]);
     });
+
+    test('created here lists its tasks under the temporary id and stays '
+        'open when its create is answered', () async {
+      write.beforeRequest = (_) =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+      await db.labelOpsDao.queueCreate(
+        const NewLabel(title: 'Errand'),
+        now: DateTime.utc(2026, 10, 12, 9),
+      );
+      await repository.updateTask(
+        2,
+        const TaskChanges(labels: IdSetChange(added: {-1})),
+      );
+      final seen = <List<int>>[];
+      final subscription = repository
+          .watchLabelTasks(-1)
+          .listen((tasks) => seen.add(ids(tasks)));
+      addTearDown(subscription.cancel);
+      await pumpEventQueue();
+      expect(seen.last, [2]);
+
+      write.beforeRequest = null;
+      await sender.sendNow();
+      await pumpEventQueue();
+
+      expect(await db.labelsDao.resolveId(-1), 900);
+      expect(seen.last, [2]);
+      expect((await db.tasksDao.find(2))!.labels.map((label) => label.id), [
+        900,
+      ]);
+    });
   });
 
   // None of these touches the task's `updated`, which `Task ==` compares.

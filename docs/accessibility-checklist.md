@@ -104,7 +104,7 @@ On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to
 - [ ] **The row:** Account › the version › "Über die App". After "Hilfe und Fehler melden" comes "Support-Details" with "Was du beilegen kannst, wenn du einen Fehler meldest; du siehst es, bevor du es teilst", one button. Signed out, the row is there too (the button under the Connect screen's form).
 - [ ] **The page:** it opens full screen with "Support-Details" as its level-1 heading and a close button; while the details are collected the spinner says "Support-Details", and "Teilen" is not available until the text is there. The note, the switch "Serveradressen anzeigen" with "Sonst erscheinen sie als <server-1>, <server-2> und so weiter" (TalkBack reads it as a switch with its state), then the text. Turning the switch on changes the text in place; leaving and opening the page again finds it off. Record how TalkBack reads the monospaced text block (by line, or as one long text) and whether swiping through it is usable.
 - [ ] **Share:** "Teilen" opens the system's share sheet; with the app lock on, the app is not locked on return. Switch Access reaches the close button, "Teilen" and the switch; the Scanner finds nothing new on the page, also at the largest font, where the text wraps inside its card.
-- [ ] **Quick add offline:** airplane mode on until the offline banner shows, then "Neue Aufgabe" and type `Einkaufen *neuesLabel`. The new label's chip reads "neuesLabel · braucht eine Verbindung" with a cloud icon, and TalkBack "Neues Label neuesLabel, braucht eine Verbindung, sonst bleibt es im Titel". After "Hinzufügen" the snackbar says "„Einkaufen *neuesLabel“ hinzugefügt" and "Diese Labels konnten nicht erstellt werden und bleiben deshalb im Titel: *neuesLabel"; it stays while TalkBack is on.
+- [ ] **Quick add offline:** airplane mode on until the offline banner shows, then "Neue Aufgabe" and type `Einkaufen *neuesLabel`. The new label's chip reads "neuesLabel · neu", and TalkBack "Neues Label neuesLabel, wird beim Hinzufügen erstellt". After "Hinzufügen" the task carries the label at once; since step 40m it is created on the device and sent when the connection is back ([D109]).
 - [ ] **Quick add as a guest:** switch to the guest; the same text gives the chip "neuesLabel · bleibt im Titel" and TalkBack "Das Label neuesLabel gibt es nicht; es bleibt im Titel". The help (`?`) says under Labels that as a guest you can't create new ones.
 - [ ] **Signing straight back in:** mark a task done from a reminder notification while the server cannot be reached, then at once sign that account out and sign in to it again from the Connect screen; the wait shows only while the notification's Done still holds the account's data, so record whether it was seen. The button reads "Abmeldung wird abgeschlossen …" while it waits (TalkBack reads it once it has focus), and back leaves the screen. If the wait gives up after 30 s, the error card reads "Die Abmeldung läuft noch" with its explanation and suggestion and is read when it appears.
 
@@ -120,7 +120,19 @@ The texts new in this step are English until Vikunja's Crowdin brings them; the 
 - [ ] **Swipes without a screen reader:** a slow drag shows the strip and its name, crossing the threshold ticks, letting go before it does nothing; on a board and in a timeline nothing swipes.
 - [ ] **Scanner:** the selection bars and the Overdue heading in light, dark and at the largest font.
 
-### 2.9 The flows
+### 2.9 Checks of step 40m
+
+On a phone in German, with TalkBack and the Scanner, offline after the task was opened once online ([D109]):
+
+The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
+
+- [ ] **The task sheet offline:** under the title "Offline – gespeicherte Daten werden angezeigt" with "Noch einmal versuchen", read as one region; above the attachments "Attachments and reactions as of …" and with the comments "Comments as of …", the comments' note announced when they load. "Noch einmal versuchen" starts a sync.
+- [ ] **Actions that need a connection:** in an attachment's menu "Delete attachment" (and the cover) and in a comment's menu Edit and Delete read as unavailable with "This needs a connection to the server.", greyed, never red; Open, Share and Save stay available.
+- [ ] **Images:** an image in the description and an avatar seen online show offline after the app was closed.
+- [ ] **A label created offline:** in the label picker "Create label "x"" works offline; on the Labels page the label reads "Noch nicht synchronisiert" until it is sent; a refused one is a sync problem named "The label could not be created." with its title.
+- [ ] **Scanner:** the task sheet offline in light, dark and at the largest font.
+
+### 2.10 The flows
 
 Each flow lists what to do, what to expect and what to record, beyond section 2.2.
 
@@ -161,3 +173,4 @@ Once, on a device (the simulator for what it can show):
 [D84]: decisions.md#d84-everyday-editing-in-the-task-detail-properties-in-place-task-links-move-to-column
 [Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass
 [D106]: decisions.md#d106-faster-work-in-lists-swipes-selecting-several-tasks-reschedule
+[D109]: decisions.md#d109-offline-details-stored-task-details-images-on-disk-labels-created-offline

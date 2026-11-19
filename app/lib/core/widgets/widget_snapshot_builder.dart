@@ -351,7 +351,9 @@ final class _AccountBuild {
     );
   }
 
-  Future<WidgetSnapshot> _label(WidgetKind kind, int labelId) async {
+  /// A widget set up for a label created here follows it to its server id.
+  Future<WidgetSnapshot> _label(WidgetKind kind, int configuredId) async {
+    final labelId = await db.labelsDao.resolveId(configuredId);
     final label = labels.where((label) => label.id == labelId).firstOrNull;
     if (label == null) return _gone(kind, l10n.labelTasksGoneTitle);
     final ids = await filters.matchingForSavedFilter(

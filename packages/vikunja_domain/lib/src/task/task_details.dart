@@ -4,8 +4,8 @@ import 'package:vikunja_domain/src/task/reactions.dart';
 import 'package:vikunja_domain/src/task/subscription.dart';
 import 'package:vikunja_domain/src/task/task_attachment.dart';
 
-/// What only a single task read carries and the sync does not store:
-/// read on demand, online.
+/// What only a single task read carries and the sync does not bring: read
+/// on demand, online; the app keeps the last read for offline.
 @immutable
 final class TaskDetails {
   const new({

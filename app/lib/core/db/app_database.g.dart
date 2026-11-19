@@ -5088,6 +5088,17 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
         type: DriftSqlType.int,
         requiredDuringInsert: false,
       ).withConverter<DateTime?>($OutboxTable.$convertersentAtn);
+  static const VerificationMeta _labelIdMeta = const VerificationMeta(
+    'labelId',
+  );
+  @override
+  late final GeneratedColumn<int> labelId = GeneratedColumn<int>(
+    'label_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5102,6 +5113,7 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
     state,
     lastError,
     sentAt,
+    labelId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5174,6 +5186,12 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
         lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
       );
     }
+    if (data.containsKey('label_id')) {
+      context.handle(
+        _labelIdMeta,
+        labelId.isAcceptableOrUnknown(data['label_id']!, _labelIdMeta),
+      );
+    }
     return context;
   }
 
@@ -5239,6 +5257,10 @@ class $OutboxTable extends Outbox with TableInfo<$OutboxTable, OutboxRow> {
           data['${effectivePrefix}sent_at'],
         ),
       ),
+      labelId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}label_id'],
+      ),
     );
   }
 
@@ -5271,11 +5293,12 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
   /// `OutboxOperationKind.name`.
   final String kind;
 
-  /// Negative for a task created here that the server has not named yet.
+  /// Negative for a task created here that the server has not named yet;
+  /// 0 for a label op.
   final int taskId;
 
   /// The `TaskChanges` as JSON, the `NewTask` for a create; empty for a
-  /// delete.
+  /// delete. A label op's: the queued create, or the `LabelChanges`.
   final String payload;
   final DateTime createdAt;
   final int attempts;
@@ -5294,6 +5317,11 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
   /// the Done landed. Null for every other op and for a create the server
   /// rejected.
   final DateTime? sentAt;
+
+  /// The label of a `createLabel`, `updateLabel` or `deleteLabel`, negative
+  /// until the label's create is answered; null for a task op. Last, as
+  /// version 2 adds it to version 1's table.
+  final int? labelId;
   const OutboxRow({
     required this.id,
     required this.sequence,
@@ -5307,6 +5335,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     required this.state,
     this.lastError,
     this.sentAt,
+    this.labelId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5341,6 +5370,9 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
         $OutboxTable.$convertersentAtn.toSql(sentAt),
       );
     }
+    if (!nullToAbsent || labelId != null) {
+      map['label_id'] = Variable<int>(labelId);
+    }
     return map;
   }
 
@@ -5366,6 +5398,9 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       sentAt: sentAt == null && nullToAbsent
           ? const Value.absent()
           : Value(sentAt),
+      labelId: labelId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(labelId),
     );
   }
 
@@ -5387,6 +5422,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       state: serializer.fromJson<String>(json['state']),
       lastError: serializer.fromJson<String?>(json['lastError']),
       sentAt: serializer.fromJson<DateTime?>(json['sentAt']),
+      labelId: serializer.fromJson<int?>(json['labelId']),
     );
   }
   @override
@@ -5405,6 +5441,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       'state': serializer.toJson<String>(state),
       'lastError': serializer.toJson<String?>(lastError),
       'sentAt': serializer.toJson<DateTime?>(sentAt),
+      'labelId': serializer.toJson<int?>(labelId),
     };
   }
 
@@ -5421,6 +5458,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     String? state,
     Value<String?> lastError = const Value.absent(),
     Value<DateTime?> sentAt = const Value.absent(),
+    Value<int?> labelId = const Value.absent(),
   }) => OutboxRow(
     id: id ?? this.id,
     sequence: sequence ?? this.sequence,
@@ -5438,6 +5476,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     state: state ?? this.state,
     lastError: lastError.present ? lastError.value : this.lastError,
     sentAt: sentAt.present ? sentAt.value : this.sentAt,
+    labelId: labelId.present ? labelId.value : this.labelId,
   );
   OutboxRow copyWithCompanion(OutboxCompanion data) {
     return OutboxRow(
@@ -5457,6 +5496,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
       state: data.state.present ? data.state.value : this.state,
       lastError: data.lastError.present ? data.lastError.value : this.lastError,
       sentAt: data.sentAt.present ? data.sentAt.value : this.sentAt,
+      labelId: data.labelId.present ? data.labelId.value : this.labelId,
     );
   }
 
@@ -5474,7 +5514,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
           ..write('lastAttemptAt: $lastAttemptAt, ')
           ..write('state: $state, ')
           ..write('lastError: $lastError, ')
-          ..write('sentAt: $sentAt')
+          ..write('sentAt: $sentAt, ')
+          ..write('labelId: $labelId')
           ..write(')'))
         .toString();
   }
@@ -5493,6 +5534,7 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
     state,
     lastError,
     sentAt,
+    labelId,
   );
   @override
   bool operator ==(Object other) =>
@@ -5509,7 +5551,8 @@ class OutboxRow extends DataClass implements Insertable<OutboxRow> {
           other.lastAttemptAt == this.lastAttemptAt &&
           other.state == this.state &&
           other.lastError == this.lastError &&
-          other.sentAt == this.sentAt);
+          other.sentAt == this.sentAt &&
+          other.labelId == this.labelId);
 }
 
 class OutboxCompanion extends UpdateCompanion<OutboxRow> {
@@ -5525,6 +5568,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
   final Value<String> state;
   final Value<String?> lastError;
   final Value<DateTime?> sentAt;
+  final Value<int?> labelId;
   final Value<int> rowid;
   const OutboxCompanion({
     this.id = const Value.absent(),
@@ -5539,6 +5583,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     this.state = const Value.absent(),
     this.lastError = const Value.absent(),
     this.sentAt = const Value.absent(),
+    this.labelId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   OutboxCompanion.insert({
@@ -5554,6 +5599,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     required String state,
     this.lastError = const Value.absent(),
     this.sentAt = const Value.absent(),
+    this.labelId = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        sequence = Value(sequence),
@@ -5576,6 +5622,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     Expression<String>? state,
     Expression<String>? lastError,
     Expression<int>? sentAt,
+    Expression<int>? labelId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -5591,6 +5638,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
       if (state != null) 'state': state,
       if (lastError != null) 'last_error': lastError,
       if (sentAt != null) 'sent_at': sentAt,
+      if (labelId != null) 'label_id': labelId,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -5608,6 +5656,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
     Value<String>? state,
     Value<String?>? lastError,
     Value<DateTime?>? sentAt,
+    Value<int?>? labelId,
     Value<int>? rowid,
   }) {
     return OutboxCompanion(
@@ -5623,6 +5672,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
       state: state ?? this.state,
       lastError: lastError ?? this.lastError,
       sentAt: sentAt ?? this.sentAt,
+      labelId: labelId ?? this.labelId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -5674,6 +5724,9 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
         $OutboxTable.$convertersentAtn.toSql(sentAt.value),
       );
     }
+    if (labelId.present) {
+      map['label_id'] = Variable<int>(labelId.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -5695,6 +5748,7 @@ class OutboxCompanion extends UpdateCompanion<OutboxRow> {
           ..write('state: $state, ')
           ..write('lastError: $lastError, ')
           ..write('sentAt: $sentAt, ')
+          ..write('labelId: $labelId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -5943,6 +5997,256 @@ class TaskIdRemapsCompanion extends UpdateCompanion<TaskIdRemapRow> {
   @override
   String toString() {
     return (StringBuffer('TaskIdRemapsCompanion(')
+          ..write('localId: $localId, ')
+          ..write('serverId: $serverId, ')
+          ..write('at: $at')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $LabelIdRemapsTable extends LabelIdRemaps
+    with TableInfo<$LabelIdRemapsTable, LabelIdRemapRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $LabelIdRemapsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _localIdMeta = const VerificationMeta(
+    'localId',
+  );
+  @override
+  late final GeneratedColumn<int> localId = GeneratedColumn<int>(
+    'local_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _serverIdMeta = const VerificationMeta(
+    'serverId',
+  );
+  @override
+  late final GeneratedColumn<int> serverId = GeneratedColumn<int>(
+    'server_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime, int> at =
+      GeneratedColumn<int>(
+        'at',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<DateTime>($LabelIdRemapsTable.$converterat);
+  @override
+  List<GeneratedColumn> get $columns => [localId, serverId, at];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'label_id_remaps';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LabelIdRemapRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('local_id')) {
+      context.handle(
+        _localIdMeta,
+        localId.isAcceptableOrUnknown(data['local_id']!, _localIdMeta),
+      );
+    }
+    if (data.containsKey('server_id')) {
+      context.handle(
+        _serverIdMeta,
+        serverId.isAcceptableOrUnknown(data['server_id']!, _serverIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_serverIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {localId};
+  @override
+  LabelIdRemapRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LabelIdRemapRow(
+      localId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}local_id'],
+      )!,
+      serverId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}server_id'],
+      )!,
+      at: $LabelIdRemapsTable.$converterat.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}at'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $LabelIdRemapsTable createAlias(String alias) {
+    return $LabelIdRemapsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $converterat = const EpochMillis();
+}
+
+class LabelIdRemapRow extends DataClass implements Insertable<LabelIdRemapRow> {
+  final int localId;
+  final int serverId;
+  final DateTime at;
+  const LabelIdRemapRow({
+    required this.localId,
+    required this.serverId,
+    required this.at,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['local_id'] = Variable<int>(localId);
+    map['server_id'] = Variable<int>(serverId);
+    {
+      map['at'] = Variable<int>($LabelIdRemapsTable.$converterat.toSql(at));
+    }
+    return map;
+  }
+
+  LabelIdRemapsCompanion toCompanion(bool nullToAbsent) {
+    return LabelIdRemapsCompanion(
+      localId: Value(localId),
+      serverId: Value(serverId),
+      at: Value(at),
+    );
+  }
+
+  factory LabelIdRemapRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LabelIdRemapRow(
+      localId: serializer.fromJson<int>(json['localId']),
+      serverId: serializer.fromJson<int>(json['serverId']),
+      at: serializer.fromJson<DateTime>(json['at']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'localId': serializer.toJson<int>(localId),
+      'serverId': serializer.toJson<int>(serverId),
+      'at': serializer.toJson<DateTime>(at),
+    };
+  }
+
+  LabelIdRemapRow copyWith({int? localId, int? serverId, DateTime? at}) =>
+      LabelIdRemapRow(
+        localId: localId ?? this.localId,
+        serverId: serverId ?? this.serverId,
+        at: at ?? this.at,
+      );
+  LabelIdRemapRow copyWithCompanion(LabelIdRemapsCompanion data) {
+    return LabelIdRemapRow(
+      localId: data.localId.present ? data.localId.value : this.localId,
+      serverId: data.serverId.present ? data.serverId.value : this.serverId,
+      at: data.at.present ? data.at.value : this.at,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LabelIdRemapRow(')
+          ..write('localId: $localId, ')
+          ..write('serverId: $serverId, ')
+          ..write('at: $at')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(localId, serverId, at);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LabelIdRemapRow &&
+          other.localId == this.localId &&
+          other.serverId == this.serverId &&
+          other.at == this.at);
+}
+
+class LabelIdRemapsCompanion extends UpdateCompanion<LabelIdRemapRow> {
+  final Value<int> localId;
+  final Value<int> serverId;
+  final Value<DateTime> at;
+  const LabelIdRemapsCompanion({
+    this.localId = const Value.absent(),
+    this.serverId = const Value.absent(),
+    this.at = const Value.absent(),
+  });
+  LabelIdRemapsCompanion.insert({
+    this.localId = const Value.absent(),
+    required int serverId,
+    required DateTime at,
+  }) : serverId = Value(serverId),
+       at = Value(at);
+  static Insertable<LabelIdRemapRow> custom({
+    Expression<int>? localId,
+    Expression<int>? serverId,
+    Expression<int>? at,
+  }) {
+    return RawValuesInsertable({
+      if (localId != null) 'local_id': localId,
+      if (serverId != null) 'server_id': serverId,
+      if (at != null) 'at': at,
+    });
+  }
+
+  LabelIdRemapsCompanion copyWith({
+    Value<int>? localId,
+    Value<int>? serverId,
+    Value<DateTime>? at,
+  }) {
+    return LabelIdRemapsCompanion(
+      localId: localId ?? this.localId,
+      serverId: serverId ?? this.serverId,
+      at: at ?? this.at,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (localId.present) {
+      map['local_id'] = Variable<int>(localId.value);
+    }
+    if (serverId.present) {
+      map['server_id'] = Variable<int>(serverId.value);
+    }
+    if (at.present) {
+      map['at'] = Variable<int>(
+        $LabelIdRemapsTable.$converterat.toSql(at.value),
+      );
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LabelIdRemapsCompanion(')
           ..write('localId: $localId, ')
           ..write('serverId: $serverId, ')
           ..write('at: $at')
@@ -8631,6 +8935,2383 @@ class ImportedWidgetActionsCompanion
   }
 }
 
+class $TaskDetailLoadsTable extends TaskDetailLoads
+    with TableInfo<$TaskDetailLoadsTable, TaskDetailLoadRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskDetailLoadsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tasks (id) ON DELETE CASCADE',
+    ),
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> detailsLoadedAt =
+      GeneratedColumn<int>(
+        'details_loaded_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>(
+        $TaskDetailLoadsTable.$converterdetailsLoadedAtn,
+      );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> commentsLoadedAt =
+      GeneratedColumn<int>(
+        'comments_loaded_at',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>(
+        $TaskDetailLoadsTable.$convertercommentsLoadedAtn,
+      );
+  static const VerificationMeta _coverImageAttachmentIdMeta =
+      const VerificationMeta('coverImageAttachmentId');
+  @override
+  late final GeneratedColumn<int> coverImageAttachmentId = GeneratedColumn<int>(
+    'cover_image_attachment_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    taskId,
+    detailsLoadedAt,
+    commentsLoadedAt,
+    coverImageAttachmentId,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_detail_loads';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TaskDetailLoadRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    }
+    if (data.containsKey('cover_image_attachment_id')) {
+      context.handle(
+        _coverImageAttachmentIdMeta,
+        coverImageAttachmentId.isAcceptableOrUnknown(
+          data['cover_image_attachment_id']!,
+          _coverImageAttachmentIdMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {taskId};
+  @override
+  TaskDetailLoadRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskDetailLoadRow(
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      )!,
+      detailsLoadedAt: $TaskDetailLoadsTable.$converterdetailsLoadedAtn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}details_loaded_at'],
+        ),
+      ),
+      commentsLoadedAt: $TaskDetailLoadsTable.$convertercommentsLoadedAtn
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.int,
+              data['${effectivePrefix}comments_loaded_at'],
+            ),
+          ),
+      coverImageAttachmentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}cover_image_attachment_id'],
+      )!,
+    );
+  }
+
+  @override
+  $TaskDetailLoadsTable createAlias(String alias) {
+    return $TaskDetailLoadsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $converterdetailsLoadedAt =
+      const EpochMillis();
+  static TypeConverter<DateTime?, int?> $converterdetailsLoadedAtn =
+      NullAwareTypeConverter.wrap($converterdetailsLoadedAt);
+  static TypeConverter<DateTime, int> $convertercommentsLoadedAt =
+      const EpochMillis();
+  static TypeConverter<DateTime?, int?> $convertercommentsLoadedAtn =
+      NullAwareTypeConverter.wrap($convertercommentsLoadedAt);
+}
+
+class TaskDetailLoadRow extends DataClass
+    implements Insertable<TaskDetailLoadRow> {
+  final int taskId;
+  final DateTime? detailsLoadedAt;
+  final DateTime? commentsLoadedAt;
+
+  /// 0 for none; may name an attachment that is gone, as on the server.
+  final int coverImageAttachmentId;
+  const TaskDetailLoadRow({
+    required this.taskId,
+    this.detailsLoadedAt,
+    this.commentsLoadedAt,
+    required this.coverImageAttachmentId,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['task_id'] = Variable<int>(taskId);
+    if (!nullToAbsent || detailsLoadedAt != null) {
+      map['details_loaded_at'] = Variable<int>(
+        $TaskDetailLoadsTable.$converterdetailsLoadedAtn.toSql(detailsLoadedAt),
+      );
+    }
+    if (!nullToAbsent || commentsLoadedAt != null) {
+      map['comments_loaded_at'] = Variable<int>(
+        $TaskDetailLoadsTable.$convertercommentsLoadedAtn.toSql(
+          commentsLoadedAt,
+        ),
+      );
+    }
+    map['cover_image_attachment_id'] = Variable<int>(coverImageAttachmentId);
+    return map;
+  }
+
+  TaskDetailLoadsCompanion toCompanion(bool nullToAbsent) {
+    return TaskDetailLoadsCompanion(
+      taskId: Value(taskId),
+      detailsLoadedAt: detailsLoadedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(detailsLoadedAt),
+      commentsLoadedAt: commentsLoadedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(commentsLoadedAt),
+      coverImageAttachmentId: Value(coverImageAttachmentId),
+    );
+  }
+
+  factory TaskDetailLoadRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskDetailLoadRow(
+      taskId: serializer.fromJson<int>(json['taskId']),
+      detailsLoadedAt: serializer.fromJson<DateTime?>(json['detailsLoadedAt']),
+      commentsLoadedAt: serializer.fromJson<DateTime?>(
+        json['commentsLoadedAt'],
+      ),
+      coverImageAttachmentId: serializer.fromJson<int>(
+        json['coverImageAttachmentId'],
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'taskId': serializer.toJson<int>(taskId),
+      'detailsLoadedAt': serializer.toJson<DateTime?>(detailsLoadedAt),
+      'commentsLoadedAt': serializer.toJson<DateTime?>(commentsLoadedAt),
+      'coverImageAttachmentId': serializer.toJson<int>(coverImageAttachmentId),
+    };
+  }
+
+  TaskDetailLoadRow copyWith({
+    int? taskId,
+    Value<DateTime?> detailsLoadedAt = const Value.absent(),
+    Value<DateTime?> commentsLoadedAt = const Value.absent(),
+    int? coverImageAttachmentId,
+  }) => TaskDetailLoadRow(
+    taskId: taskId ?? this.taskId,
+    detailsLoadedAt: detailsLoadedAt.present
+        ? detailsLoadedAt.value
+        : this.detailsLoadedAt,
+    commentsLoadedAt: commentsLoadedAt.present
+        ? commentsLoadedAt.value
+        : this.commentsLoadedAt,
+    coverImageAttachmentId:
+        coverImageAttachmentId ?? this.coverImageAttachmentId,
+  );
+  TaskDetailLoadRow copyWithCompanion(TaskDetailLoadsCompanion data) {
+    return TaskDetailLoadRow(
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      detailsLoadedAt: data.detailsLoadedAt.present
+          ? data.detailsLoadedAt.value
+          : this.detailsLoadedAt,
+      commentsLoadedAt: data.commentsLoadedAt.present
+          ? data.commentsLoadedAt.value
+          : this.commentsLoadedAt,
+      coverImageAttachmentId: data.coverImageAttachmentId.present
+          ? data.coverImageAttachmentId.value
+          : this.coverImageAttachmentId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskDetailLoadRow(')
+          ..write('taskId: $taskId, ')
+          ..write('detailsLoadedAt: $detailsLoadedAt, ')
+          ..write('commentsLoadedAt: $commentsLoadedAt, ')
+          ..write('coverImageAttachmentId: $coverImageAttachmentId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    taskId,
+    detailsLoadedAt,
+    commentsLoadedAt,
+    coverImageAttachmentId,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskDetailLoadRow &&
+          other.taskId == this.taskId &&
+          other.detailsLoadedAt == this.detailsLoadedAt &&
+          other.commentsLoadedAt == this.commentsLoadedAt &&
+          other.coverImageAttachmentId == this.coverImageAttachmentId);
+}
+
+class TaskDetailLoadsCompanion extends UpdateCompanion<TaskDetailLoadRow> {
+  final Value<int> taskId;
+  final Value<DateTime?> detailsLoadedAt;
+  final Value<DateTime?> commentsLoadedAt;
+  final Value<int> coverImageAttachmentId;
+  const TaskDetailLoadsCompanion({
+    this.taskId = const Value.absent(),
+    this.detailsLoadedAt = const Value.absent(),
+    this.commentsLoadedAt = const Value.absent(),
+    this.coverImageAttachmentId = const Value.absent(),
+  });
+  TaskDetailLoadsCompanion.insert({
+    this.taskId = const Value.absent(),
+    this.detailsLoadedAt = const Value.absent(),
+    this.commentsLoadedAt = const Value.absent(),
+    this.coverImageAttachmentId = const Value.absent(),
+  });
+  static Insertable<TaskDetailLoadRow> custom({
+    Expression<int>? taskId,
+    Expression<int>? detailsLoadedAt,
+    Expression<int>? commentsLoadedAt,
+    Expression<int>? coverImageAttachmentId,
+  }) {
+    return RawValuesInsertable({
+      if (taskId != null) 'task_id': taskId,
+      if (detailsLoadedAt != null) 'details_loaded_at': detailsLoadedAt,
+      if (commentsLoadedAt != null) 'comments_loaded_at': commentsLoadedAt,
+      if (coverImageAttachmentId != null)
+        'cover_image_attachment_id': coverImageAttachmentId,
+    });
+  }
+
+  TaskDetailLoadsCompanion copyWith({
+    Value<int>? taskId,
+    Value<DateTime?>? detailsLoadedAt,
+    Value<DateTime?>? commentsLoadedAt,
+    Value<int>? coverImageAttachmentId,
+  }) {
+    return TaskDetailLoadsCompanion(
+      taskId: taskId ?? this.taskId,
+      detailsLoadedAt: detailsLoadedAt ?? this.detailsLoadedAt,
+      commentsLoadedAt: commentsLoadedAt ?? this.commentsLoadedAt,
+      coverImageAttachmentId:
+          coverImageAttachmentId ?? this.coverImageAttachmentId,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (detailsLoadedAt.present) {
+      map['details_loaded_at'] = Variable<int>(
+        $TaskDetailLoadsTable.$converterdetailsLoadedAtn.toSql(
+          detailsLoadedAt.value,
+        ),
+      );
+    }
+    if (commentsLoadedAt.present) {
+      map['comments_loaded_at'] = Variable<int>(
+        $TaskDetailLoadsTable.$convertercommentsLoadedAtn.toSql(
+          commentsLoadedAt.value,
+        ),
+      );
+    }
+    if (coverImageAttachmentId.present) {
+      map['cover_image_attachment_id'] = Variable<int>(
+        coverImageAttachmentId.value,
+      );
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskDetailLoadsCompanion(')
+          ..write('taskId: $taskId, ')
+          ..write('detailsLoadedAt: $detailsLoadedAt, ')
+          ..write('commentsLoadedAt: $commentsLoadedAt, ')
+          ..write('coverImageAttachmentId: $coverImageAttachmentId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TaskAttachmentsTable extends TaskAttachments
+    with TableInfo<$TaskAttachmentsTable, TaskAttachmentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskAttachmentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tasks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mimeMeta = const VerificationMeta('mime');
+  @override
+  late final GeneratedColumn<String> mime = GeneratedColumn<String>(
+    'mime',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sizeMeta = const VerificationMeta('size');
+  @override
+  late final GeneratedColumn<int> size = GeneratedColumn<int>(
+    'size',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> created =
+      GeneratedColumn<int>(
+        'created',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($TaskAttachmentsTable.$convertercreatedn);
+  static const VerificationMeta _createdByIdMeta = const VerificationMeta(
+    'createdById',
+  );
+  @override
+  late final GeneratedColumn<int> createdById = GeneratedColumn<int>(
+    'created_by_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdByUsernameMeta = const VerificationMeta(
+    'createdByUsername',
+  );
+  @override
+  late final GeneratedColumn<String> createdByUsername =
+      GeneratedColumn<String>(
+        'created_by_username',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _createdByNameMeta = const VerificationMeta(
+    'createdByName',
+  );
+  @override
+  late final GeneratedColumn<String> createdByName = GeneratedColumn<String>(
+    'created_by_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    taskId,
+    id,
+    position,
+    name,
+    mime,
+    size,
+    created,
+    createdById,
+    createdByUsername,
+    createdByName,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_attachments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TaskAttachmentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('mime')) {
+      context.handle(
+        _mimeMeta,
+        mime.isAcceptableOrUnknown(data['mime']!, _mimeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_mimeMeta);
+    }
+    if (data.containsKey('size')) {
+      context.handle(
+        _sizeMeta,
+        size.isAcceptableOrUnknown(data['size']!, _sizeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_sizeMeta);
+    }
+    if (data.containsKey('created_by_id')) {
+      context.handle(
+        _createdByIdMeta,
+        createdById.isAcceptableOrUnknown(
+          data['created_by_id']!,
+          _createdByIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_by_username')) {
+      context.handle(
+        _createdByUsernameMeta,
+        createdByUsername.isAcceptableOrUnknown(
+          data['created_by_username']!,
+          _createdByUsernameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_by_name')) {
+      context.handle(
+        _createdByNameMeta,
+        createdByName.isAcceptableOrUnknown(
+          data['created_by_name']!,
+          _createdByNameMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {taskId, id};
+  @override
+  TaskAttachmentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskAttachmentRow(
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      mime: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mime'],
+      )!,
+      size: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}size'],
+      )!,
+      created: $TaskAttachmentsTable.$convertercreatedn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}created'],
+        ),
+      ),
+      createdById: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_by_id'],
+      ),
+      createdByUsername: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by_username'],
+      ),
+      createdByName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}created_by_name'],
+      ),
+    );
+  }
+
+  @override
+  $TaskAttachmentsTable createAlias(String alias) {
+    return $TaskAttachmentsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $convertercreated = const EpochMillis();
+  static TypeConverter<DateTime?, int?> $convertercreatedn =
+      NullAwareTypeConverter.wrap($convertercreated);
+}
+
+class TaskAttachmentRow extends DataClass
+    implements Insertable<TaskAttachmentRow> {
+  final int taskId;
+  final int id;
+  final int position;
+  final String name;
+  final String mime;
+  final int size;
+  final DateTime? created;
+  final int? createdById;
+  final String? createdByUsername;
+  final String? createdByName;
+  const TaskAttachmentRow({
+    required this.taskId,
+    required this.id,
+    required this.position,
+    required this.name,
+    required this.mime,
+    required this.size,
+    this.created,
+    this.createdById,
+    this.createdByUsername,
+    this.createdByName,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['task_id'] = Variable<int>(taskId);
+    map['id'] = Variable<int>(id);
+    map['position'] = Variable<int>(position);
+    map['name'] = Variable<String>(name);
+    map['mime'] = Variable<String>(mime);
+    map['size'] = Variable<int>(size);
+    if (!nullToAbsent || created != null) {
+      map['created'] = Variable<int>(
+        $TaskAttachmentsTable.$convertercreatedn.toSql(created),
+      );
+    }
+    if (!nullToAbsent || createdById != null) {
+      map['created_by_id'] = Variable<int>(createdById);
+    }
+    if (!nullToAbsent || createdByUsername != null) {
+      map['created_by_username'] = Variable<String>(createdByUsername);
+    }
+    if (!nullToAbsent || createdByName != null) {
+      map['created_by_name'] = Variable<String>(createdByName);
+    }
+    return map;
+  }
+
+  TaskAttachmentsCompanion toCompanion(bool nullToAbsent) {
+    return TaskAttachmentsCompanion(
+      taskId: Value(taskId),
+      id: Value(id),
+      position: Value(position),
+      name: Value(name),
+      mime: Value(mime),
+      size: Value(size),
+      created: created == null && nullToAbsent
+          ? const Value.absent()
+          : Value(created),
+      createdById: createdById == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdById),
+      createdByUsername: createdByUsername == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdByUsername),
+      createdByName: createdByName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdByName),
+    );
+  }
+
+  factory TaskAttachmentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskAttachmentRow(
+      taskId: serializer.fromJson<int>(json['taskId']),
+      id: serializer.fromJson<int>(json['id']),
+      position: serializer.fromJson<int>(json['position']),
+      name: serializer.fromJson<String>(json['name']),
+      mime: serializer.fromJson<String>(json['mime']),
+      size: serializer.fromJson<int>(json['size']),
+      created: serializer.fromJson<DateTime?>(json['created']),
+      createdById: serializer.fromJson<int?>(json['createdById']),
+      createdByUsername: serializer.fromJson<String?>(
+        json['createdByUsername'],
+      ),
+      createdByName: serializer.fromJson<String?>(json['createdByName']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'taskId': serializer.toJson<int>(taskId),
+      'id': serializer.toJson<int>(id),
+      'position': serializer.toJson<int>(position),
+      'name': serializer.toJson<String>(name),
+      'mime': serializer.toJson<String>(mime),
+      'size': serializer.toJson<int>(size),
+      'created': serializer.toJson<DateTime?>(created),
+      'createdById': serializer.toJson<int?>(createdById),
+      'createdByUsername': serializer.toJson<String?>(createdByUsername),
+      'createdByName': serializer.toJson<String?>(createdByName),
+    };
+  }
+
+  TaskAttachmentRow copyWith({
+    int? taskId,
+    int? id,
+    int? position,
+    String? name,
+    String? mime,
+    int? size,
+    Value<DateTime?> created = const Value.absent(),
+    Value<int?> createdById = const Value.absent(),
+    Value<String?> createdByUsername = const Value.absent(),
+    Value<String?> createdByName = const Value.absent(),
+  }) => TaskAttachmentRow(
+    taskId: taskId ?? this.taskId,
+    id: id ?? this.id,
+    position: position ?? this.position,
+    name: name ?? this.name,
+    mime: mime ?? this.mime,
+    size: size ?? this.size,
+    created: created.present ? created.value : this.created,
+    createdById: createdById.present ? createdById.value : this.createdById,
+    createdByUsername: createdByUsername.present
+        ? createdByUsername.value
+        : this.createdByUsername,
+    createdByName: createdByName.present
+        ? createdByName.value
+        : this.createdByName,
+  );
+  TaskAttachmentRow copyWithCompanion(TaskAttachmentsCompanion data) {
+    return TaskAttachmentRow(
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      id: data.id.present ? data.id.value : this.id,
+      position: data.position.present ? data.position.value : this.position,
+      name: data.name.present ? data.name.value : this.name,
+      mime: data.mime.present ? data.mime.value : this.mime,
+      size: data.size.present ? data.size.value : this.size,
+      created: data.created.present ? data.created.value : this.created,
+      createdById: data.createdById.present
+          ? data.createdById.value
+          : this.createdById,
+      createdByUsername: data.createdByUsername.present
+          ? data.createdByUsername.value
+          : this.createdByUsername,
+      createdByName: data.createdByName.present
+          ? data.createdByName.value
+          : this.createdByName,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskAttachmentRow(')
+          ..write('taskId: $taskId, ')
+          ..write('id: $id, ')
+          ..write('position: $position, ')
+          ..write('name: $name, ')
+          ..write('mime: $mime, ')
+          ..write('size: $size, ')
+          ..write('created: $created, ')
+          ..write('createdById: $createdById, ')
+          ..write('createdByUsername: $createdByUsername, ')
+          ..write('createdByName: $createdByName')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    taskId,
+    id,
+    position,
+    name,
+    mime,
+    size,
+    created,
+    createdById,
+    createdByUsername,
+    createdByName,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskAttachmentRow &&
+          other.taskId == this.taskId &&
+          other.id == this.id &&
+          other.position == this.position &&
+          other.name == this.name &&
+          other.mime == this.mime &&
+          other.size == this.size &&
+          other.created == this.created &&
+          other.createdById == this.createdById &&
+          other.createdByUsername == this.createdByUsername &&
+          other.createdByName == this.createdByName);
+}
+
+class TaskAttachmentsCompanion extends UpdateCompanion<TaskAttachmentRow> {
+  final Value<int> taskId;
+  final Value<int> id;
+  final Value<int> position;
+  final Value<String> name;
+  final Value<String> mime;
+  final Value<int> size;
+  final Value<DateTime?> created;
+  final Value<int?> createdById;
+  final Value<String?> createdByUsername;
+  final Value<String?> createdByName;
+  final Value<int> rowid;
+  const TaskAttachmentsCompanion({
+    this.taskId = const Value.absent(),
+    this.id = const Value.absent(),
+    this.position = const Value.absent(),
+    this.name = const Value.absent(),
+    this.mime = const Value.absent(),
+    this.size = const Value.absent(),
+    this.created = const Value.absent(),
+    this.createdById = const Value.absent(),
+    this.createdByUsername = const Value.absent(),
+    this.createdByName = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TaskAttachmentsCompanion.insert({
+    required int taskId,
+    required int id,
+    required int position,
+    required String name,
+    required String mime,
+    required int size,
+    this.created = const Value.absent(),
+    this.createdById = const Value.absent(),
+    this.createdByUsername = const Value.absent(),
+    this.createdByName = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : taskId = Value(taskId),
+       id = Value(id),
+       position = Value(position),
+       name = Value(name),
+       mime = Value(mime),
+       size = Value(size);
+  static Insertable<TaskAttachmentRow> custom({
+    Expression<int>? taskId,
+    Expression<int>? id,
+    Expression<int>? position,
+    Expression<String>? name,
+    Expression<String>? mime,
+    Expression<int>? size,
+    Expression<int>? created,
+    Expression<int>? createdById,
+    Expression<String>? createdByUsername,
+    Expression<String>? createdByName,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (taskId != null) 'task_id': taskId,
+      if (id != null) 'id': id,
+      if (position != null) 'position': position,
+      if (name != null) 'name': name,
+      if (mime != null) 'mime': mime,
+      if (size != null) 'size': size,
+      if (created != null) 'created': created,
+      if (createdById != null) 'created_by_id': createdById,
+      if (createdByUsername != null) 'created_by_username': createdByUsername,
+      if (createdByName != null) 'created_by_name': createdByName,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TaskAttachmentsCompanion copyWith({
+    Value<int>? taskId,
+    Value<int>? id,
+    Value<int>? position,
+    Value<String>? name,
+    Value<String>? mime,
+    Value<int>? size,
+    Value<DateTime?>? created,
+    Value<int?>? createdById,
+    Value<String?>? createdByUsername,
+    Value<String?>? createdByName,
+    Value<int>? rowid,
+  }) {
+    return TaskAttachmentsCompanion(
+      taskId: taskId ?? this.taskId,
+      id: id ?? this.id,
+      position: position ?? this.position,
+      name: name ?? this.name,
+      mime: mime ?? this.mime,
+      size: size ?? this.size,
+      created: created ?? this.created,
+      createdById: createdById ?? this.createdById,
+      createdByUsername: createdByUsername ?? this.createdByUsername,
+      createdByName: createdByName ?? this.createdByName,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (mime.present) {
+      map['mime'] = Variable<String>(mime.value);
+    }
+    if (size.present) {
+      map['size'] = Variable<int>(size.value);
+    }
+    if (created.present) {
+      map['created'] = Variable<int>(
+        $TaskAttachmentsTable.$convertercreatedn.toSql(created.value),
+      );
+    }
+    if (createdById.present) {
+      map['created_by_id'] = Variable<int>(createdById.value);
+    }
+    if (createdByUsername.present) {
+      map['created_by_username'] = Variable<String>(createdByUsername.value);
+    }
+    if (createdByName.present) {
+      map['created_by_name'] = Variable<String>(createdByName.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskAttachmentsCompanion(')
+          ..write('taskId: $taskId, ')
+          ..write('id: $id, ')
+          ..write('position: $position, ')
+          ..write('name: $name, ')
+          ..write('mime: $mime, ')
+          ..write('size: $size, ')
+          ..write('created: $created, ')
+          ..write('createdById: $createdById, ')
+          ..write('createdByUsername: $createdByUsername, ')
+          ..write('createdByName: $createdByName, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TaskReactionsTable extends TaskReactions
+    with TableInfo<$TaskReactionsTable, TaskReactionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskReactionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tasks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<int> userId = GeneratedColumn<int>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _usernameMeta = const VerificationMeta(
+    'username',
+  );
+  @override
+  late final GeneratedColumn<String> username = GeneratedColumn<String>(
+    'username',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    taskId,
+    position,
+    value,
+    userId,
+    username,
+    name,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_reactions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TaskReactionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('username')) {
+      context.handle(
+        _usernameMeta,
+        username.isAcceptableOrUnknown(data['username']!, _usernameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_usernameMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {taskId, position};
+  @override
+  TaskReactionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskReactionRow(
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}user_id'],
+      )!,
+      username: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}username'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+    );
+  }
+
+  @override
+  $TaskReactionsTable createAlias(String alias) {
+    return $TaskReactionsTable(attachedDatabase, alias);
+  }
+}
+
+class TaskReactionRow extends DataClass implements Insertable<TaskReactionRow> {
+  final int taskId;
+  final int position;
+  final String value;
+  final int userId;
+  final String username;
+  final String name;
+  const TaskReactionRow({
+    required this.taskId,
+    required this.position,
+    required this.value,
+    required this.userId,
+    required this.username,
+    required this.name,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['task_id'] = Variable<int>(taskId);
+    map['position'] = Variable<int>(position);
+    map['value'] = Variable<String>(value);
+    map['user_id'] = Variable<int>(userId);
+    map['username'] = Variable<String>(username);
+    map['name'] = Variable<String>(name);
+    return map;
+  }
+
+  TaskReactionsCompanion toCompanion(bool nullToAbsent) {
+    return TaskReactionsCompanion(
+      taskId: Value(taskId),
+      position: Value(position),
+      value: Value(value),
+      userId: Value(userId),
+      username: Value(username),
+      name: Value(name),
+    );
+  }
+
+  factory TaskReactionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskReactionRow(
+      taskId: serializer.fromJson<int>(json['taskId']),
+      position: serializer.fromJson<int>(json['position']),
+      value: serializer.fromJson<String>(json['value']),
+      userId: serializer.fromJson<int>(json['userId']),
+      username: serializer.fromJson<String>(json['username']),
+      name: serializer.fromJson<String>(json['name']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'taskId': serializer.toJson<int>(taskId),
+      'position': serializer.toJson<int>(position),
+      'value': serializer.toJson<String>(value),
+      'userId': serializer.toJson<int>(userId),
+      'username': serializer.toJson<String>(username),
+      'name': serializer.toJson<String>(name),
+    };
+  }
+
+  TaskReactionRow copyWith({
+    int? taskId,
+    int? position,
+    String? value,
+    int? userId,
+    String? username,
+    String? name,
+  }) => TaskReactionRow(
+    taskId: taskId ?? this.taskId,
+    position: position ?? this.position,
+    value: value ?? this.value,
+    userId: userId ?? this.userId,
+    username: username ?? this.username,
+    name: name ?? this.name,
+  );
+  TaskReactionRow copyWithCompanion(TaskReactionsCompanion data) {
+    return TaskReactionRow(
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      position: data.position.present ? data.position.value : this.position,
+      value: data.value.present ? data.value.value : this.value,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      username: data.username.present ? data.username.value : this.username,
+      name: data.name.present ? data.name.value : this.name,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskReactionRow(')
+          ..write('taskId: $taskId, ')
+          ..write('position: $position, ')
+          ..write('value: $value, ')
+          ..write('userId: $userId, ')
+          ..write('username: $username, ')
+          ..write('name: $name')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(taskId, position, value, userId, username, name);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskReactionRow &&
+          other.taskId == this.taskId &&
+          other.position == this.position &&
+          other.value == this.value &&
+          other.userId == this.userId &&
+          other.username == this.username &&
+          other.name == this.name);
+}
+
+class TaskReactionsCompanion extends UpdateCompanion<TaskReactionRow> {
+  final Value<int> taskId;
+  final Value<int> position;
+  final Value<String> value;
+  final Value<int> userId;
+  final Value<String> username;
+  final Value<String> name;
+  final Value<int> rowid;
+  const TaskReactionsCompanion({
+    this.taskId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.value = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.username = const Value.absent(),
+    this.name = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TaskReactionsCompanion.insert({
+    required int taskId,
+    required int position,
+    required String value,
+    required int userId,
+    required String username,
+    required String name,
+    this.rowid = const Value.absent(),
+  }) : taskId = Value(taskId),
+       position = Value(position),
+       value = Value(value),
+       userId = Value(userId),
+       username = Value(username),
+       name = Value(name);
+  static Insertable<TaskReactionRow> custom({
+    Expression<int>? taskId,
+    Expression<int>? position,
+    Expression<String>? value,
+    Expression<int>? userId,
+    Expression<String>? username,
+    Expression<String>? name,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (taskId != null) 'task_id': taskId,
+      if (position != null) 'position': position,
+      if (value != null) 'value': value,
+      if (userId != null) 'user_id': userId,
+      if (username != null) 'username': username,
+      if (name != null) 'name': name,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TaskReactionsCompanion copyWith({
+    Value<int>? taskId,
+    Value<int>? position,
+    Value<String>? value,
+    Value<int>? userId,
+    Value<String>? username,
+    Value<String>? name,
+    Value<int>? rowid,
+  }) {
+    return TaskReactionsCompanion(
+      taskId: taskId ?? this.taskId,
+      position: position ?? this.position,
+      value: value ?? this.value,
+      userId: userId ?? this.userId,
+      username: username ?? this.username,
+      name: name ?? this.name,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<int>(userId.value);
+    }
+    if (username.present) {
+      map['username'] = Variable<String>(username.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskReactionsCompanion(')
+          ..write('taskId: $taskId, ')
+          ..write('position: $position, ')
+          ..write('value: $value, ')
+          ..write('userId: $userId, ')
+          ..write('username: $username, ')
+          ..write('name: $name, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TaskCommentsTable extends TaskComments
+    with TableInfo<$TaskCommentsTable, TaskCommentRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskCommentsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tasks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _htmlMeta = const VerificationMeta('html');
+  @override
+  late final GeneratedColumn<String> html = GeneratedColumn<String>(
+    'html',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorIdMeta = const VerificationMeta(
+    'authorId',
+  );
+  @override
+  late final GeneratedColumn<int> authorId = GeneratedColumn<int>(
+    'author_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorUsernameMeta = const VerificationMeta(
+    'authorUsername',
+  );
+  @override
+  late final GeneratedColumn<String> authorUsername = GeneratedColumn<String>(
+    'author_username',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _authorNameMeta = const VerificationMeta(
+    'authorName',
+  );
+  @override
+  late final GeneratedColumn<String> authorName = GeneratedColumn<String>(
+    'author_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> created =
+      GeneratedColumn<int>(
+        'created',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($TaskCommentsTable.$convertercreatedn);
+  @override
+  late final GeneratedColumnWithTypeConverter<DateTime?, int> updated =
+      GeneratedColumn<int>(
+        'updated',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      ).withConverter<DateTime?>($TaskCommentsTable.$converterupdatedn);
+  @override
+  List<GeneratedColumn> get $columns => [
+    taskId,
+    id,
+    html,
+    authorId,
+    authorUsername,
+    authorName,
+    created,
+    updated,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_comments';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TaskCommentRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('html')) {
+      context.handle(
+        _htmlMeta,
+        html.isAcceptableOrUnknown(data['html']!, _htmlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_htmlMeta);
+    }
+    if (data.containsKey('author_id')) {
+      context.handle(
+        _authorIdMeta,
+        authorId.isAcceptableOrUnknown(data['author_id']!, _authorIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_authorIdMeta);
+    }
+    if (data.containsKey('author_username')) {
+      context.handle(
+        _authorUsernameMeta,
+        authorUsername.isAcceptableOrUnknown(
+          data['author_username']!,
+          _authorUsernameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_authorUsernameMeta);
+    }
+    if (data.containsKey('author_name')) {
+      context.handle(
+        _authorNameMeta,
+        authorName.isAcceptableOrUnknown(data['author_name']!, _authorNameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_authorNameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {taskId, id};
+  @override
+  TaskCommentRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskCommentRow(
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      )!,
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      html: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}html'],
+      )!,
+      authorId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}author_id'],
+      )!,
+      authorUsername: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_username'],
+      )!,
+      authorName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}author_name'],
+      )!,
+      created: $TaskCommentsTable.$convertercreatedn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}created'],
+        ),
+      ),
+      updated: $TaskCommentsTable.$converterupdatedn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}updated'],
+        ),
+      ),
+    );
+  }
+
+  @override
+  $TaskCommentsTable createAlias(String alias) {
+    return $TaskCommentsTable(attachedDatabase, alias);
+  }
+
+  static TypeConverter<DateTime, int> $convertercreated = const EpochMillis();
+  static TypeConverter<DateTime?, int?> $convertercreatedn =
+      NullAwareTypeConverter.wrap($convertercreated);
+  static TypeConverter<DateTime, int> $converterupdated = const EpochMillis();
+  static TypeConverter<DateTime?, int?> $converterupdatedn =
+      NullAwareTypeConverter.wrap($converterupdated);
+}
+
+class TaskCommentRow extends DataClass implements Insertable<TaskCommentRow> {
+  final int taskId;
+  final int id;
+  final String html;
+  final int authorId;
+  final String authorUsername;
+  final String authorName;
+  final DateTime? created;
+  final DateTime? updated;
+  const TaskCommentRow({
+    required this.taskId,
+    required this.id,
+    required this.html,
+    required this.authorId,
+    required this.authorUsername,
+    required this.authorName,
+    this.created,
+    this.updated,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['task_id'] = Variable<int>(taskId);
+    map['id'] = Variable<int>(id);
+    map['html'] = Variable<String>(html);
+    map['author_id'] = Variable<int>(authorId);
+    map['author_username'] = Variable<String>(authorUsername);
+    map['author_name'] = Variable<String>(authorName);
+    if (!nullToAbsent || created != null) {
+      map['created'] = Variable<int>(
+        $TaskCommentsTable.$convertercreatedn.toSql(created),
+      );
+    }
+    if (!nullToAbsent || updated != null) {
+      map['updated'] = Variable<int>(
+        $TaskCommentsTable.$converterupdatedn.toSql(updated),
+      );
+    }
+    return map;
+  }
+
+  TaskCommentsCompanion toCompanion(bool nullToAbsent) {
+    return TaskCommentsCompanion(
+      taskId: Value(taskId),
+      id: Value(id),
+      html: Value(html),
+      authorId: Value(authorId),
+      authorUsername: Value(authorUsername),
+      authorName: Value(authorName),
+      created: created == null && nullToAbsent
+          ? const Value.absent()
+          : Value(created),
+      updated: updated == null && nullToAbsent
+          ? const Value.absent()
+          : Value(updated),
+    );
+  }
+
+  factory TaskCommentRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskCommentRow(
+      taskId: serializer.fromJson<int>(json['taskId']),
+      id: serializer.fromJson<int>(json['id']),
+      html: serializer.fromJson<String>(json['html']),
+      authorId: serializer.fromJson<int>(json['authorId']),
+      authorUsername: serializer.fromJson<String>(json['authorUsername']),
+      authorName: serializer.fromJson<String>(json['authorName']),
+      created: serializer.fromJson<DateTime?>(json['created']),
+      updated: serializer.fromJson<DateTime?>(json['updated']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'taskId': serializer.toJson<int>(taskId),
+      'id': serializer.toJson<int>(id),
+      'html': serializer.toJson<String>(html),
+      'authorId': serializer.toJson<int>(authorId),
+      'authorUsername': serializer.toJson<String>(authorUsername),
+      'authorName': serializer.toJson<String>(authorName),
+      'created': serializer.toJson<DateTime?>(created),
+      'updated': serializer.toJson<DateTime?>(updated),
+    };
+  }
+
+  TaskCommentRow copyWith({
+    int? taskId,
+    int? id,
+    String? html,
+    int? authorId,
+    String? authorUsername,
+    String? authorName,
+    Value<DateTime?> created = const Value.absent(),
+    Value<DateTime?> updated = const Value.absent(),
+  }) => TaskCommentRow(
+    taskId: taskId ?? this.taskId,
+    id: id ?? this.id,
+    html: html ?? this.html,
+    authorId: authorId ?? this.authorId,
+    authorUsername: authorUsername ?? this.authorUsername,
+    authorName: authorName ?? this.authorName,
+    created: created.present ? created.value : this.created,
+    updated: updated.present ? updated.value : this.updated,
+  );
+  TaskCommentRow copyWithCompanion(TaskCommentsCompanion data) {
+    return TaskCommentRow(
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      id: data.id.present ? data.id.value : this.id,
+      html: data.html.present ? data.html.value : this.html,
+      authorId: data.authorId.present ? data.authorId.value : this.authorId,
+      authorUsername: data.authorUsername.present
+          ? data.authorUsername.value
+          : this.authorUsername,
+      authorName: data.authorName.present
+          ? data.authorName.value
+          : this.authorName,
+      created: data.created.present ? data.created.value : this.created,
+      updated: data.updated.present ? data.updated.value : this.updated,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskCommentRow(')
+          ..write('taskId: $taskId, ')
+          ..write('id: $id, ')
+          ..write('html: $html, ')
+          ..write('authorId: $authorId, ')
+          ..write('authorUsername: $authorUsername, ')
+          ..write('authorName: $authorName, ')
+          ..write('created: $created, ')
+          ..write('updated: $updated')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    taskId,
+    id,
+    html,
+    authorId,
+    authorUsername,
+    authorName,
+    created,
+    updated,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskCommentRow &&
+          other.taskId == this.taskId &&
+          other.id == this.id &&
+          other.html == this.html &&
+          other.authorId == this.authorId &&
+          other.authorUsername == this.authorUsername &&
+          other.authorName == this.authorName &&
+          other.created == this.created &&
+          other.updated == this.updated);
+}
+
+class TaskCommentsCompanion extends UpdateCompanion<TaskCommentRow> {
+  final Value<int> taskId;
+  final Value<int> id;
+  final Value<String> html;
+  final Value<int> authorId;
+  final Value<String> authorUsername;
+  final Value<String> authorName;
+  final Value<DateTime?> created;
+  final Value<DateTime?> updated;
+  final Value<int> rowid;
+  const TaskCommentsCompanion({
+    this.taskId = const Value.absent(),
+    this.id = const Value.absent(),
+    this.html = const Value.absent(),
+    this.authorId = const Value.absent(),
+    this.authorUsername = const Value.absent(),
+    this.authorName = const Value.absent(),
+    this.created = const Value.absent(),
+    this.updated = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TaskCommentsCompanion.insert({
+    required int taskId,
+    required int id,
+    required String html,
+    required int authorId,
+    required String authorUsername,
+    required String authorName,
+    this.created = const Value.absent(),
+    this.updated = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : taskId = Value(taskId),
+       id = Value(id),
+       html = Value(html),
+       authorId = Value(authorId),
+       authorUsername = Value(authorUsername),
+       authorName = Value(authorName);
+  static Insertable<TaskCommentRow> custom({
+    Expression<int>? taskId,
+    Expression<int>? id,
+    Expression<String>? html,
+    Expression<int>? authorId,
+    Expression<String>? authorUsername,
+    Expression<String>? authorName,
+    Expression<int>? created,
+    Expression<int>? updated,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (taskId != null) 'task_id': taskId,
+      if (id != null) 'id': id,
+      if (html != null) 'html': html,
+      if (authorId != null) 'author_id': authorId,
+      if (authorUsername != null) 'author_username': authorUsername,
+      if (authorName != null) 'author_name': authorName,
+      if (created != null) 'created': created,
+      if (updated != null) 'updated': updated,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TaskCommentsCompanion copyWith({
+    Value<int>? taskId,
+    Value<int>? id,
+    Value<String>? html,
+    Value<int>? authorId,
+    Value<String>? authorUsername,
+    Value<String>? authorName,
+    Value<DateTime?>? created,
+    Value<DateTime?>? updated,
+    Value<int>? rowid,
+  }) {
+    return TaskCommentsCompanion(
+      taskId: taskId ?? this.taskId,
+      id: id ?? this.id,
+      html: html ?? this.html,
+      authorId: authorId ?? this.authorId,
+      authorUsername: authorUsername ?? this.authorUsername,
+      authorName: authorName ?? this.authorName,
+      created: created ?? this.created,
+      updated: updated ?? this.updated,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (html.present) {
+      map['html'] = Variable<String>(html.value);
+    }
+    if (authorId.present) {
+      map['author_id'] = Variable<int>(authorId.value);
+    }
+    if (authorUsername.present) {
+      map['author_username'] = Variable<String>(authorUsername.value);
+    }
+    if (authorName.present) {
+      map['author_name'] = Variable<String>(authorName.value);
+    }
+    if (created.present) {
+      map['created'] = Variable<int>(
+        $TaskCommentsTable.$convertercreatedn.toSql(created.value),
+      );
+    }
+    if (updated.present) {
+      map['updated'] = Variable<int>(
+        $TaskCommentsTable.$converterupdatedn.toSql(updated.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskCommentsCompanion(')
+          ..write('taskId: $taskId, ')
+          ..write('id: $id, ')
+          ..write('html: $html, ')
+          ..write('authorId: $authorId, ')
+          ..write('authorUsername: $authorUsername, ')
+          ..write('authorName: $authorName, ')
+          ..write('created: $created, ')
+          ..write('updated: $updated, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $TaskCommentReactionsTable extends TaskCommentReactions
+    with TableInfo<$TaskCommentReactionsTable, TaskCommentReactionRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $TaskCommentReactionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _taskIdMeta = const VerificationMeta('taskId');
+  @override
+  late final GeneratedColumn<int> taskId = GeneratedColumn<int>(
+    'task_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES tasks (id) ON DELETE CASCADE',
+    ),
+  );
+  static const VerificationMeta _commentIdMeta = const VerificationMeta(
+    'commentId',
+  );
+  @override
+  late final GeneratedColumn<int> commentId = GeneratedColumn<int>(
+    'comment_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _positionMeta = const VerificationMeta(
+    'position',
+  );
+  @override
+  late final GeneratedColumn<int> position = GeneratedColumn<int>(
+    'position',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _valueMeta = const VerificationMeta('value');
+  @override
+  late final GeneratedColumn<String> value = GeneratedColumn<String>(
+    'value',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<int> userId = GeneratedColumn<int>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _usernameMeta = const VerificationMeta(
+    'username',
+  );
+  @override
+  late final GeneratedColumn<String> username = GeneratedColumn<String>(
+    'username',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    taskId,
+    commentId,
+    position,
+    value,
+    userId,
+    username,
+    name,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'task_comment_reactions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<TaskCommentReactionRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('task_id')) {
+      context.handle(
+        _taskIdMeta,
+        taskId.isAcceptableOrUnknown(data['task_id']!, _taskIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_taskIdMeta);
+    }
+    if (data.containsKey('comment_id')) {
+      context.handle(
+        _commentIdMeta,
+        commentId.isAcceptableOrUnknown(data['comment_id']!, _commentIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_commentIdMeta);
+    }
+    if (data.containsKey('position')) {
+      context.handle(
+        _positionMeta,
+        position.isAcceptableOrUnknown(data['position']!, _positionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_positionMeta);
+    }
+    if (data.containsKey('value')) {
+      context.handle(
+        _valueMeta,
+        value.isAcceptableOrUnknown(data['value']!, _valueMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_valueMeta);
+    }
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    if (data.containsKey('username')) {
+      context.handle(
+        _usernameMeta,
+        username.isAcceptableOrUnknown(data['username']!, _usernameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_usernameMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {taskId, commentId, position};
+  @override
+  TaskCommentReactionRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return TaskCommentReactionRow(
+      taskId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}task_id'],
+      )!,
+      commentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}comment_id'],
+      )!,
+      position: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}position'],
+      )!,
+      value: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}value'],
+      )!,
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}user_id'],
+      )!,
+      username: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}username'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+    );
+  }
+
+  @override
+  $TaskCommentReactionsTable createAlias(String alias) {
+    return $TaskCommentReactionsTable(attachedDatabase, alias);
+  }
+}
+
+class TaskCommentReactionRow extends DataClass
+    implements Insertable<TaskCommentReactionRow> {
+  final int taskId;
+  final int commentId;
+  final int position;
+  final String value;
+  final int userId;
+  final String username;
+  final String name;
+  const TaskCommentReactionRow({
+    required this.taskId,
+    required this.commentId,
+    required this.position,
+    required this.value,
+    required this.userId,
+    required this.username,
+    required this.name,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['task_id'] = Variable<int>(taskId);
+    map['comment_id'] = Variable<int>(commentId);
+    map['position'] = Variable<int>(position);
+    map['value'] = Variable<String>(value);
+    map['user_id'] = Variable<int>(userId);
+    map['username'] = Variable<String>(username);
+    map['name'] = Variable<String>(name);
+    return map;
+  }
+
+  TaskCommentReactionsCompanion toCompanion(bool nullToAbsent) {
+    return TaskCommentReactionsCompanion(
+      taskId: Value(taskId),
+      commentId: Value(commentId),
+      position: Value(position),
+      value: Value(value),
+      userId: Value(userId),
+      username: Value(username),
+      name: Value(name),
+    );
+  }
+
+  factory TaskCommentReactionRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return TaskCommentReactionRow(
+      taskId: serializer.fromJson<int>(json['taskId']),
+      commentId: serializer.fromJson<int>(json['commentId']),
+      position: serializer.fromJson<int>(json['position']),
+      value: serializer.fromJson<String>(json['value']),
+      userId: serializer.fromJson<int>(json['userId']),
+      username: serializer.fromJson<String>(json['username']),
+      name: serializer.fromJson<String>(json['name']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'taskId': serializer.toJson<int>(taskId),
+      'commentId': serializer.toJson<int>(commentId),
+      'position': serializer.toJson<int>(position),
+      'value': serializer.toJson<String>(value),
+      'userId': serializer.toJson<int>(userId),
+      'username': serializer.toJson<String>(username),
+      'name': serializer.toJson<String>(name),
+    };
+  }
+
+  TaskCommentReactionRow copyWith({
+    int? taskId,
+    int? commentId,
+    int? position,
+    String? value,
+    int? userId,
+    String? username,
+    String? name,
+  }) => TaskCommentReactionRow(
+    taskId: taskId ?? this.taskId,
+    commentId: commentId ?? this.commentId,
+    position: position ?? this.position,
+    value: value ?? this.value,
+    userId: userId ?? this.userId,
+    username: username ?? this.username,
+    name: name ?? this.name,
+  );
+  TaskCommentReactionRow copyWithCompanion(TaskCommentReactionsCompanion data) {
+    return TaskCommentReactionRow(
+      taskId: data.taskId.present ? data.taskId.value : this.taskId,
+      commentId: data.commentId.present ? data.commentId.value : this.commentId,
+      position: data.position.present ? data.position.value : this.position,
+      value: data.value.present ? data.value.value : this.value,
+      userId: data.userId.present ? data.userId.value : this.userId,
+      username: data.username.present ? data.username.value : this.username,
+      name: data.name.present ? data.name.value : this.name,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskCommentReactionRow(')
+          ..write('taskId: $taskId, ')
+          ..write('commentId: $commentId, ')
+          ..write('position: $position, ')
+          ..write('value: $value, ')
+          ..write('userId: $userId, ')
+          ..write('username: $username, ')
+          ..write('name: $name')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(taskId, commentId, position, value, userId, username, name);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is TaskCommentReactionRow &&
+          other.taskId == this.taskId &&
+          other.commentId == this.commentId &&
+          other.position == this.position &&
+          other.value == this.value &&
+          other.userId == this.userId &&
+          other.username == this.username &&
+          other.name == this.name);
+}
+
+class TaskCommentReactionsCompanion
+    extends UpdateCompanion<TaskCommentReactionRow> {
+  final Value<int> taskId;
+  final Value<int> commentId;
+  final Value<int> position;
+  final Value<String> value;
+  final Value<int> userId;
+  final Value<String> username;
+  final Value<String> name;
+  final Value<int> rowid;
+  const TaskCommentReactionsCompanion({
+    this.taskId = const Value.absent(),
+    this.commentId = const Value.absent(),
+    this.position = const Value.absent(),
+    this.value = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.username = const Value.absent(),
+    this.name = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  TaskCommentReactionsCompanion.insert({
+    required int taskId,
+    required int commentId,
+    required int position,
+    required String value,
+    required int userId,
+    required String username,
+    required String name,
+    this.rowid = const Value.absent(),
+  }) : taskId = Value(taskId),
+       commentId = Value(commentId),
+       position = Value(position),
+       value = Value(value),
+       userId = Value(userId),
+       username = Value(username),
+       name = Value(name);
+  static Insertable<TaskCommentReactionRow> custom({
+    Expression<int>? taskId,
+    Expression<int>? commentId,
+    Expression<int>? position,
+    Expression<String>? value,
+    Expression<int>? userId,
+    Expression<String>? username,
+    Expression<String>? name,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (taskId != null) 'task_id': taskId,
+      if (commentId != null) 'comment_id': commentId,
+      if (position != null) 'position': position,
+      if (value != null) 'value': value,
+      if (userId != null) 'user_id': userId,
+      if (username != null) 'username': username,
+      if (name != null) 'name': name,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  TaskCommentReactionsCompanion copyWith({
+    Value<int>? taskId,
+    Value<int>? commentId,
+    Value<int>? position,
+    Value<String>? value,
+    Value<int>? userId,
+    Value<String>? username,
+    Value<String>? name,
+    Value<int>? rowid,
+  }) {
+    return TaskCommentReactionsCompanion(
+      taskId: taskId ?? this.taskId,
+      commentId: commentId ?? this.commentId,
+      position: position ?? this.position,
+      value: value ?? this.value,
+      userId: userId ?? this.userId,
+      username: username ?? this.username,
+      name: name ?? this.name,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (taskId.present) {
+      map['task_id'] = Variable<int>(taskId.value);
+    }
+    if (commentId.present) {
+      map['comment_id'] = Variable<int>(commentId.value);
+    }
+    if (position.present) {
+      map['position'] = Variable<int>(position.value);
+    }
+    if (value.present) {
+      map['value'] = Variable<String>(value.value);
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<int>(userId.value);
+    }
+    if (username.present) {
+      map['username'] = Variable<String>(username.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('TaskCommentReactionsCompanion(')
+          ..write('taskId: $taskId, ')
+          ..write('commentId: $commentId, ')
+          ..write('position: $position, ')
+          ..write('value: $value, ')
+          ..write('userId: $userId, ')
+          ..write('username: $username, ')
+          ..write('name: $name, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -8646,6 +11327,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SyncStateTable syncState = $SyncStateTable(this);
   late final $OutboxTable outbox = $OutboxTable(this);
   late final $TaskIdRemapsTable taskIdRemaps = $TaskIdRemapsTable(this);
+  late final $LabelIdRemapsTable labelIdRemaps = $LabelIdRemapsTable(this);
   late final $ScheduledNotificationsTable scheduledNotifications =
       $ScheduledNotificationsTable(this);
   late final $ServerNotificationsTable serverNotifications =
@@ -8658,6 +11340,16 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $KanbanBucketsTable kanbanBuckets = $KanbanBucketsTable(this);
   late final $ImportedWidgetActionsTable importedWidgetActions =
       $ImportedWidgetActionsTable(this);
+  late final $TaskDetailLoadsTable taskDetailLoads = $TaskDetailLoadsTable(
+    this,
+  );
+  late final $TaskAttachmentsTable taskAttachments = $TaskAttachmentsTable(
+    this,
+  );
+  late final $TaskReactionsTable taskReactions = $TaskReactionsTable(this);
+  late final $TaskCommentsTable taskComments = $TaskCommentsTable(this);
+  late final $TaskCommentReactionsTable taskCommentReactions =
+      $TaskCommentReactionsTable(this);
   late final Index projectViewsProject = Index(
     'project_views_project',
     'CREATE INDEX project_views_project ON project_views (project_id)',
@@ -8693,6 +11385,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final KanbanDao kanbanDao = KanbanDao(this as AppDatabase);
   late final ImportedWidgetActionsDao importedWidgetActionsDao =
       ImportedWidgetActionsDao(this as AppDatabase);
+  late final TaskDetailsDao taskDetailsDao = TaskDetailsDao(
+    this as AppDatabase,
+  );
+  late final LabelOpsDao labelOpsDao = LabelOpsDao(this as AppDatabase);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8710,6 +11406,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     syncState,
     outbox,
     taskIdRemaps,
+    labelIdRemaps,
     scheduledNotifications,
     serverNotifications,
     listSnapshots,
@@ -8717,6 +11414,11 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     listPreferenceEntries,
     kanbanBuckets,
     importedWidgetActions,
+    taskDetailLoads,
+    taskAttachments,
+    taskReactions,
+    taskComments,
+    taskCommentReactions,
     projectViewsProject,
     tasksProject,
     tasksDoneDue,
@@ -8772,6 +11474,41 @@ abstract class _$AppDatabase extends GeneratedDatabase {
         limitUpdateKind: UpdateKind.delete,
       ),
       result: [TableUpdate('task_relations', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'tasks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('task_detail_loads', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'tasks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('task_attachments', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'tasks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('task_reactions', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'tasks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('task_comments', kind: UpdateKind.delete)],
+    ),
+    WritePropagation(
+      on: TableUpdateQuery.onTableName(
+        'tasks',
+        limitUpdateKind: UpdateKind.delete,
+      ),
+      result: [TableUpdate('task_comment_reactions', kind: UpdateKind.delete)],
     ),
   ]);
 }
@@ -10362,6 +13099,107 @@ final class $$TasksTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$TaskDetailLoadsTable, List<TaskDetailLoadRow>>
+  _taskDetailLoadsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.taskDetailLoads,
+    aliasName: 'tasks__id__task_detail_loads__task_id',
+  );
+
+  $$TaskDetailLoadsTableProcessedTableManager get taskDetailLoadsRefs {
+    final manager = $$TaskDetailLoadsTableTableManager(
+      $_db,
+      $_db.taskDetailLoads,
+    ).filter((f) => f.taskId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _taskDetailLoadsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$TaskAttachmentsTable, List<TaskAttachmentRow>>
+  _taskAttachmentsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.taskAttachments,
+    aliasName: 'tasks__id__task_attachments__task_id',
+  );
+
+  $$TaskAttachmentsTableProcessedTableManager get taskAttachmentsRefs {
+    final manager = $$TaskAttachmentsTableTableManager(
+      $_db,
+      $_db.taskAttachments,
+    ).filter((f) => f.taskId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _taskAttachmentsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$TaskReactionsTable, List<TaskReactionRow>>
+  _taskReactionsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.taskReactions,
+    aliasName: 'tasks__id__task_reactions__task_id',
+  );
+
+  $$TaskReactionsTableProcessedTableManager get taskReactionsRefs {
+    final manager = $$TaskReactionsTableTableManager(
+      $_db,
+      $_db.taskReactions,
+    ).filter((f) => f.taskId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_taskReactionsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<$TaskCommentsTable, List<TaskCommentRow>>
+  _taskCommentsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.taskComments,
+    aliasName: 'tasks__id__task_comments__task_id',
+  );
+
+  $$TaskCommentsTableProcessedTableManager get taskCommentsRefs {
+    final manager = $$TaskCommentsTableTableManager(
+      $_db,
+      $_db.taskComments,
+    ).filter((f) => f.taskId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_taskCommentsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $TaskCommentReactionsTable,
+    List<TaskCommentReactionRow>
+  >
+  _taskCommentReactionsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.taskCommentReactions,
+        aliasName: 'tasks__id__task_comment_reactions__task_id',
+      );
+
+  $$TaskCommentReactionsTableProcessedTableManager
+  get taskCommentReactionsRefs {
+    final manager = $$TaskCommentReactionsTableTableManager(
+      $_db,
+      $_db.taskCommentReactions,
+    ).filter((f) => f.taskId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _taskCommentReactionsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
@@ -10609,6 +13447,131 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
           }) => $$TaskRelationsTableFilterComposer(
             $db: $db,
             $table: $db.taskRelations,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> taskDetailLoadsRefs(
+    Expression<bool> Function($$TaskDetailLoadsTableFilterComposer f) f,
+  ) {
+    final $$TaskDetailLoadsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.taskDetailLoads,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TaskDetailLoadsTableFilterComposer(
+            $db: $db,
+            $table: $db.taskDetailLoads,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> taskAttachmentsRefs(
+    Expression<bool> Function($$TaskAttachmentsTableFilterComposer f) f,
+  ) {
+    final $$TaskAttachmentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.taskAttachments,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TaskAttachmentsTableFilterComposer(
+            $db: $db,
+            $table: $db.taskAttachments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> taskReactionsRefs(
+    Expression<bool> Function($$TaskReactionsTableFilterComposer f) f,
+  ) {
+    final $$TaskReactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.taskReactions,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TaskReactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.taskReactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> taskCommentsRefs(
+    Expression<bool> Function($$TaskCommentsTableFilterComposer f) f,
+  ) {
+    final $$TaskCommentsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.taskComments,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TaskCommentsTableFilterComposer(
+            $db: $db,
+            $table: $db.taskComments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> taskCommentReactionsRefs(
+    Expression<bool> Function($$TaskCommentReactionsTableFilterComposer f) f,
+  ) {
+    final $$TaskCommentReactionsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.taskCommentReactions,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TaskCommentReactionsTableFilterComposer(
+            $db: $db,
+            $table: $db.taskCommentReactions,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -10983,6 +13946,132 @@ class $$TasksTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> taskDetailLoadsRefs<T extends Object>(
+    Expression<T> Function($$TaskDetailLoadsTableAnnotationComposer a) f,
+  ) {
+    final $$TaskDetailLoadsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.taskDetailLoads,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TaskDetailLoadsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.taskDetailLoads,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> taskAttachmentsRefs<T extends Object>(
+    Expression<T> Function($$TaskAttachmentsTableAnnotationComposer a) f,
+  ) {
+    final $$TaskAttachmentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.taskAttachments,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TaskAttachmentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.taskAttachments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> taskReactionsRefs<T extends Object>(
+    Expression<T> Function($$TaskReactionsTableAnnotationComposer a) f,
+  ) {
+    final $$TaskReactionsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.taskReactions,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TaskReactionsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.taskReactions,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> taskCommentsRefs<T extends Object>(
+    Expression<T> Function($$TaskCommentsTableAnnotationComposer a) f,
+  ) {
+    final $$TaskCommentsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.taskComments,
+      getReferencedColumn: (t) => t.taskId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TaskCommentsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.taskComments,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> taskCommentReactionsRefs<T extends Object>(
+    Expression<T> Function($$TaskCommentReactionsTableAnnotationComposer a) f,
+  ) {
+    final $$TaskCommentReactionsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.taskCommentReactions,
+          getReferencedColumn: (t) => t.taskId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$TaskCommentReactionsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.taskCommentReactions,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$TasksTableTableManager
@@ -11003,6 +14092,11 @@ class $$TasksTableTableManager
             bool taskAssigneesRefs,
             bool taskRemindersRefs,
             bool taskRelationsRefs,
+            bool taskDetailLoadsRefs,
+            bool taskAttachmentsRefs,
+            bool taskReactionsRefs,
+            bool taskCommentsRefs,
+            bool taskCommentReactionsRefs,
           })
         > {
   $$TasksTableTableManager(_$AppDatabase db, $TasksTable table)
@@ -11150,6 +14244,11 @@ class $$TasksTableTableManager
                 taskAssigneesRefs = false,
                 taskRemindersRefs = false,
                 taskRelationsRefs = false,
+                taskDetailLoadsRefs = false,
+                taskAttachmentsRefs = false,
+                taskReactionsRefs = false,
+                taskCommentsRefs = false,
+                taskCommentReactionsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -11158,6 +14257,11 @@ class $$TasksTableTableManager
                     if (taskAssigneesRefs) db.taskAssignees,
                     if (taskRemindersRefs) db.taskReminders,
                     if (taskRelationsRefs) db.taskRelations,
+                    if (taskDetailLoadsRefs) db.taskDetailLoads,
+                    if (taskAttachmentsRefs) db.taskAttachments,
+                    if (taskReactionsRefs) db.taskReactions,
+                    if (taskCommentsRefs) db.taskComments,
+                    if (taskCommentReactionsRefs) db.taskCommentReactions,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -11246,6 +14350,111 @@ class $$TasksTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (taskDetailLoadsRefs)
+                        await $_getPrefetchedData<
+                          TaskRow,
+                          $TasksTable,
+                          TaskDetailLoadRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TasksTableReferences
+                              ._taskDetailLoadsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TasksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).taskDetailLoadsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.taskId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (taskAttachmentsRefs)
+                        await $_getPrefetchedData<
+                          TaskRow,
+                          $TasksTable,
+                          TaskAttachmentRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TasksTableReferences
+                              ._taskAttachmentsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TasksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).taskAttachmentsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.taskId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (taskReactionsRefs)
+                        await $_getPrefetchedData<
+                          TaskRow,
+                          $TasksTable,
+                          TaskReactionRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TasksTableReferences
+                              ._taskReactionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TasksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).taskReactionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.taskId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (taskCommentsRefs)
+                        await $_getPrefetchedData<
+                          TaskRow,
+                          $TasksTable,
+                          TaskCommentRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TasksTableReferences
+                              ._taskCommentsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TasksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).taskCommentsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.taskId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (taskCommentReactionsRefs)
+                        await $_getPrefetchedData<
+                          TaskRow,
+                          $TasksTable,
+                          TaskCommentReactionRow
+                        >(
+                          currentTable: table,
+                          referencedTable: $$TasksTableReferences
+                              ._taskCommentReactionsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$TasksTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).taskCommentReactionsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.taskId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -11271,6 +14480,11 @@ typedef $$TasksTableProcessedTableManager =
         bool taskAssigneesRefs,
         bool taskRemindersRefs,
         bool taskRelationsRefs,
+        bool taskDetailLoadsRefs,
+        bool taskAttachmentsRefs,
+        bool taskReactionsRefs,
+        bool taskCommentsRefs,
+        bool taskCommentReactionsRefs,
       })
     >;
 typedef $$TaskLabelsTableCreateCompanionBuilder = TaskLabelsCompanion Function({
@@ -12722,6 +15936,7 @@ typedef $$OutboxTableCreateCompanionBuilder = OutboxCompanion Function({
   required String state,
   Value<String?> lastError,
   Value<DateTime?> sentAt,
+  Value<int?> labelId,
   Value<int> rowid,
 });
 typedef $$OutboxTableUpdateCompanionBuilder = OutboxCompanion Function({
@@ -12737,6 +15952,7 @@ typedef $$OutboxTableUpdateCompanionBuilder = OutboxCompanion Function({
   Value<String> state,
   Value<String?> lastError,
   Value<DateTime?> sentAt,
+  Value<int?> labelId,
   Value<int> rowid,
 });
 
@@ -12812,6 +16028,11 @@ class $$OutboxTableFilterComposer
         column: $table.sentAt,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnFilters<int> get labelId => $composableBuilder(
+    column: $table.labelId,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$OutboxTableOrderingComposer
@@ -12882,6 +16103,11 @@ class $$OutboxTableOrderingComposer
     column: $table.sentAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get labelId => $composableBuilder(
+    column: $table.labelId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$OutboxTableAnnotationComposer
@@ -12934,6 +16160,9 @@ class $$OutboxTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<DateTime?, int> get sentAt =>
       $composableBuilder(column: $table.sentAt, builder: (column) => column);
+
+  GeneratedColumn<int> get labelId =>
+      $composableBuilder(column: $table.labelId, builder: (column) => column);
 }
 
 class $$OutboxTableTableManager
@@ -12976,6 +16205,7 @@ class $$OutboxTableTableManager
                 Value<String> state = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
                 Value<DateTime?> sentAt = const Value.absent(),
+                Value<int?> labelId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OutboxCompanion(
                 id: id,
@@ -12990,6 +16220,7 @@ class $$OutboxTableTableManager
                 state: state,
                 lastError: lastError,
                 sentAt: sentAt,
+                labelId: labelId,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -13006,6 +16237,7 @@ class $$OutboxTableTableManager
                 required String state,
                 Value<String?> lastError = const Value.absent(),
                 Value<DateTime?> sentAt = const Value.absent(),
+                Value<int?> labelId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => OutboxCompanion.insert(
                 id: id,
@@ -13020,6 +16252,7 @@ class $$OutboxTableTableManager
                 state: state,
                 lastError: lastError,
                 sentAt: sentAt,
+                labelId: labelId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -13217,6 +16450,172 @@ typedef $$TaskIdRemapsTableProcessedTableManager =
         BaseReferences<_$AppDatabase, $TaskIdRemapsTable, TaskIdRemapRow>,
       ),
       TaskIdRemapRow,
+      PrefetchHooks Function()
+    >;
+typedef $$LabelIdRemapsTableCreateCompanionBuilder =
+    LabelIdRemapsCompanion Function({
+      Value<int> localId,
+      required int serverId,
+      required DateTime at,
+    });
+typedef $$LabelIdRemapsTableUpdateCompanionBuilder =
+    LabelIdRemapsCompanion Function({
+      Value<int> localId,
+      Value<int> serverId,
+      Value<DateTime> at,
+    });
+
+class $$LabelIdRemapsTableFilterComposer
+    extends Composer<_$AppDatabase, $LabelIdRemapsTable> {
+  $$LabelIdRemapsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get localId => $composableBuilder(
+    column: $table.localId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime, DateTime, int> get at =>
+      $composableBuilder(
+        column: $table.at,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+}
+
+class $$LabelIdRemapsTableOrderingComposer
+    extends Composer<_$AppDatabase, $LabelIdRemapsTable> {
+  $$LabelIdRemapsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get localId => $composableBuilder(
+    column: $table.localId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get serverId => $composableBuilder(
+    column: $table.serverId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get at => $composableBuilder(
+    column: $table.at,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LabelIdRemapsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LabelIdRemapsTable> {
+  $$LabelIdRemapsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get localId =>
+      $composableBuilder(column: $table.localId, builder: (column) => column);
+
+  GeneratedColumn<int> get serverId =>
+      $composableBuilder(column: $table.serverId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime, int> get at =>
+      $composableBuilder(column: $table.at, builder: (column) => column);
+}
+
+class $$LabelIdRemapsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LabelIdRemapsTable,
+          LabelIdRemapRow,
+          $$LabelIdRemapsTableFilterComposer,
+          $$LabelIdRemapsTableOrderingComposer,
+          $$LabelIdRemapsTableAnnotationComposer,
+          $$LabelIdRemapsTableCreateCompanionBuilder,
+          $$LabelIdRemapsTableUpdateCompanionBuilder,
+          (
+            LabelIdRemapRow,
+            BaseReferences<_$AppDatabase, $LabelIdRemapsTable, LabelIdRemapRow>,
+          ),
+          LabelIdRemapRow,
+          PrefetchHooks Function()
+        > {
+  $$LabelIdRemapsTableTableManager(_$AppDatabase db, $LabelIdRemapsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LabelIdRemapsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LabelIdRemapsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LabelIdRemapsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> localId = const Value.absent(),
+                Value<int> serverId = const Value.absent(),
+                Value<DateTime> at = const Value.absent(),
+              }) => LabelIdRemapsCompanion(
+                localId: localId,
+                serverId: serverId,
+                at: at,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> localId = const Value.absent(),
+                required int serverId,
+                required DateTime at,
+              }) => LabelIdRemapsCompanion.insert(
+                localId: localId,
+                serverId: serverId,
+                at: at,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$LabelIdRemapsTable, LabelIdRemapRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $LabelIdRemapsTable,
+                    LabelIdRemapRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LabelIdRemapsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LabelIdRemapsTable,
+      LabelIdRemapRow,
+      $$LabelIdRemapsTableFilterComposer,
+      $$LabelIdRemapsTableOrderingComposer,
+      $$LabelIdRemapsTableAnnotationComposer,
+      $$LabelIdRemapsTableCreateCompanionBuilder,
+      $$LabelIdRemapsTableUpdateCompanionBuilder,
+      (
+        LabelIdRemapRow,
+        BaseReferences<_$AppDatabase, $LabelIdRemapsTable, LabelIdRemapRow>,
+      ),
+      LabelIdRemapRow,
       PrefetchHooks Function()
     >;
 typedef $$ScheduledNotificationsTableCreateCompanionBuilder =
@@ -14817,6 +18216,1835 @@ typedef $$ImportedWidgetActionsTableProcessedTableManager =
       ImportedWidgetActionRow,
       PrefetchHooks Function()
     >;
+typedef $$TaskDetailLoadsTableCreateCompanionBuilder =
+    TaskDetailLoadsCompanion Function({
+      Value<int> taskId,
+      Value<DateTime?> detailsLoadedAt,
+      Value<DateTime?> commentsLoadedAt,
+      Value<int> coverImageAttachmentId,
+    });
+typedef $$TaskDetailLoadsTableUpdateCompanionBuilder =
+    TaskDetailLoadsCompanion Function({
+      Value<int> taskId,
+      Value<DateTime?> detailsLoadedAt,
+      Value<DateTime?> commentsLoadedAt,
+      Value<int> coverImageAttachmentId,
+    });
+
+final class $$TaskDetailLoadsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $TaskDetailLoadsTable,
+          TaskDetailLoadRow
+        > {
+  $$TaskDetailLoadsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $TasksTable _taskIdTable(_$AppDatabase db) =>
+      db.tasks.createAlias('task_detail_loads__task_id__tasks__id');
+
+  $$TasksTableProcessedTableManager get taskId {
+    final $_column = $_itemColumn<int>('task_id')!;
+
+    final manager = $$TasksTableTableManager(
+      $_db,
+      $_db.tasks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_taskIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TaskDetailLoadsTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskDetailLoadsTable> {
+  $$TaskDetailLoadsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int>
+  get detailsLoadedAt => $composableBuilder(
+    column: $table.detailsLoadedAt,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int>
+  get commentsLoadedAt => $composableBuilder(
+    column: $table.commentsLoadedAt,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get coverImageAttachmentId => $composableBuilder(
+    column: $table.coverImageAttachmentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TasksTableFilterComposer get taskId {
+    final $$TasksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableFilterComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskDetailLoadsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskDetailLoadsTable> {
+  $$TaskDetailLoadsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get detailsLoadedAt => $composableBuilder(
+    column: $table.detailsLoadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get commentsLoadedAt => $composableBuilder(
+    column: $table.commentsLoadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get coverImageAttachmentId => $composableBuilder(
+    column: $table.coverImageAttachmentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TasksTableOrderingComposer get taskId {
+    final $$TasksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableOrderingComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskDetailLoadsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskDetailLoadsTable> {
+  $$TaskDetailLoadsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumnWithTypeConverter<DateTime?, int> get detailsLoadedAt =>
+      $composableBuilder(
+        column: $table.detailsLoadedAt,
+        builder: (column) => column,
+      );
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get commentsLoadedAt =>
+      $composableBuilder(
+        column: $table.commentsLoadedAt,
+        builder: (column) => column,
+      );
+
+  GeneratedColumn<int> get coverImageAttachmentId => $composableBuilder(
+    column: $table.coverImageAttachmentId,
+    builder: (column) => column,
+  );
+
+  $$TasksTableAnnotationComposer get taskId {
+    final $$TasksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskDetailLoadsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TaskDetailLoadsTable,
+          TaskDetailLoadRow,
+          $$TaskDetailLoadsTableFilterComposer,
+          $$TaskDetailLoadsTableOrderingComposer,
+          $$TaskDetailLoadsTableAnnotationComposer,
+          $$TaskDetailLoadsTableCreateCompanionBuilder,
+          $$TaskDetailLoadsTableUpdateCompanionBuilder,
+          (TaskDetailLoadRow, $$TaskDetailLoadsTableReferences),
+          TaskDetailLoadRow,
+          PrefetchHooks Function({bool taskId})
+        > {
+  $$TaskDetailLoadsTableTableManager(
+    _$AppDatabase db,
+    $TaskDetailLoadsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskDetailLoadsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskDetailLoadsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TaskDetailLoadsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> taskId = const Value.absent(),
+                Value<DateTime?> detailsLoadedAt = const Value.absent(),
+                Value<DateTime?> commentsLoadedAt = const Value.absent(),
+                Value<int> coverImageAttachmentId = const Value.absent(),
+              }) => TaskDetailLoadsCompanion(
+                taskId: taskId,
+                detailsLoadedAt: detailsLoadedAt,
+                commentsLoadedAt: commentsLoadedAt,
+                coverImageAttachmentId: coverImageAttachmentId,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> taskId = const Value.absent(),
+                Value<DateTime?> detailsLoadedAt = const Value.absent(),
+                Value<DateTime?> commentsLoadedAt = const Value.absent(),
+                Value<int> coverImageAttachmentId = const Value.absent(),
+              }) => TaskDetailLoadsCompanion.insert(
+                taskId: taskId,
+                detailsLoadedAt: detailsLoadedAt,
+                commentsLoadedAt: commentsLoadedAt,
+                coverImageAttachmentId: coverImageAttachmentId,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TaskDetailLoadsTable, TaskDetailLoadRow>(table),
+                  $$TaskDetailLoadsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({taskId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (taskId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.taskId,
+                        referencedTable: $$TaskDetailLoadsTableReferences
+                            ._taskIdTable(db),
+                        referencedColumn: $$TaskDetailLoadsTableReferences
+                            ._taskIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TaskDetailLoadsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TaskDetailLoadsTable,
+      TaskDetailLoadRow,
+      $$TaskDetailLoadsTableFilterComposer,
+      $$TaskDetailLoadsTableOrderingComposer,
+      $$TaskDetailLoadsTableAnnotationComposer,
+      $$TaskDetailLoadsTableCreateCompanionBuilder,
+      $$TaskDetailLoadsTableUpdateCompanionBuilder,
+      (TaskDetailLoadRow, $$TaskDetailLoadsTableReferences),
+      TaskDetailLoadRow,
+      PrefetchHooks Function({bool taskId})
+    >;
+typedef $$TaskAttachmentsTableCreateCompanionBuilder =
+    TaskAttachmentsCompanion Function({
+      required int taskId,
+      required int id,
+      required int position,
+      required String name,
+      required String mime,
+      required int size,
+      Value<DateTime?> created,
+      Value<int?> createdById,
+      Value<String?> createdByUsername,
+      Value<String?> createdByName,
+      Value<int> rowid,
+    });
+typedef $$TaskAttachmentsTableUpdateCompanionBuilder =
+    TaskAttachmentsCompanion Function({
+      Value<int> taskId,
+      Value<int> id,
+      Value<int> position,
+      Value<String> name,
+      Value<String> mime,
+      Value<int> size,
+      Value<DateTime?> created,
+      Value<int?> createdById,
+      Value<String?> createdByUsername,
+      Value<String?> createdByName,
+      Value<int> rowid,
+    });
+
+final class $$TaskAttachmentsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $TaskAttachmentsTable,
+          TaskAttachmentRow
+        > {
+  $$TaskAttachmentsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $TasksTable _taskIdTable(_$AppDatabase db) =>
+      db.tasks.createAlias('task_attachments__task_id__tasks__id');
+
+  $$TasksTableProcessedTableManager get taskId {
+    final $_column = $_itemColumn<int>('task_id')!;
+
+    final manager = $$TasksTableTableManager(
+      $_db,
+      $_db.tasks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_taskIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TaskAttachmentsTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskAttachmentsTable> {
+  $$TaskAttachmentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mime => $composableBuilder(
+    column: $table.mime,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get created =>
+      $composableBuilder(
+        column: $table.created,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<int> get createdById => $composableBuilder(
+    column: $table.createdById,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdByUsername => $composableBuilder(
+    column: $table.createdByUsername,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get createdByName => $composableBuilder(
+    column: $table.createdByName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TasksTableFilterComposer get taskId {
+    final $$TasksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableFilterComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskAttachmentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskAttachmentsTable> {
+  $$TaskAttachmentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mime => $composableBuilder(
+    column: $table.mime,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get size => $composableBuilder(
+    column: $table.size,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get created => $composableBuilder(
+    column: $table.created,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get createdById => $composableBuilder(
+    column: $table.createdById,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdByUsername => $composableBuilder(
+    column: $table.createdByUsername,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get createdByName => $composableBuilder(
+    column: $table.createdByName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TasksTableOrderingComposer get taskId {
+    final $$TasksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableOrderingComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskAttachmentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskAttachmentsTable> {
+  $$TaskAttachmentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get mime =>
+      $composableBuilder(column: $table.mime, builder: (column) => column);
+
+  GeneratedColumn<int> get size =>
+      $composableBuilder(column: $table.size, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get created =>
+      $composableBuilder(column: $table.created, builder: (column) => column);
+
+  GeneratedColumn<int> get createdById => $composableBuilder(
+    column: $table.createdById,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get createdByUsername => $composableBuilder(
+    column: $table.createdByUsername,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get createdByName => $composableBuilder(
+    column: $table.createdByName,
+    builder: (column) => column,
+  );
+
+  $$TasksTableAnnotationComposer get taskId {
+    final $$TasksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskAttachmentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TaskAttachmentsTable,
+          TaskAttachmentRow,
+          $$TaskAttachmentsTableFilterComposer,
+          $$TaskAttachmentsTableOrderingComposer,
+          $$TaskAttachmentsTableAnnotationComposer,
+          $$TaskAttachmentsTableCreateCompanionBuilder,
+          $$TaskAttachmentsTableUpdateCompanionBuilder,
+          (TaskAttachmentRow, $$TaskAttachmentsTableReferences),
+          TaskAttachmentRow,
+          PrefetchHooks Function({bool taskId})
+        > {
+  $$TaskAttachmentsTableTableManager(
+    _$AppDatabase db,
+    $TaskAttachmentsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskAttachmentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskAttachmentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TaskAttachmentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> taskId = const Value.absent(),
+                Value<int> id = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> mime = const Value.absent(),
+                Value<int> size = const Value.absent(),
+                Value<DateTime?> created = const Value.absent(),
+                Value<int?> createdById = const Value.absent(),
+                Value<String?> createdByUsername = const Value.absent(),
+                Value<String?> createdByName = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TaskAttachmentsCompanion(
+                taskId: taskId,
+                id: id,
+                position: position,
+                name: name,
+                mime: mime,
+                size: size,
+                created: created,
+                createdById: createdById,
+                createdByUsername: createdByUsername,
+                createdByName: createdByName,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int taskId,
+                required int id,
+                required int position,
+                required String name,
+                required String mime,
+                required int size,
+                Value<DateTime?> created = const Value.absent(),
+                Value<int?> createdById = const Value.absent(),
+                Value<String?> createdByUsername = const Value.absent(),
+                Value<String?> createdByName = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TaskAttachmentsCompanion.insert(
+                taskId: taskId,
+                id: id,
+                position: position,
+                name: name,
+                mime: mime,
+                size: size,
+                created: created,
+                createdById: createdById,
+                createdByUsername: createdByUsername,
+                createdByName: createdByName,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TaskAttachmentsTable, TaskAttachmentRow>(table),
+                  $$TaskAttachmentsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({taskId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (taskId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.taskId,
+                        referencedTable: $$TaskAttachmentsTableReferences
+                            ._taskIdTable(db),
+                        referencedColumn: $$TaskAttachmentsTableReferences
+                            ._taskIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TaskAttachmentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TaskAttachmentsTable,
+      TaskAttachmentRow,
+      $$TaskAttachmentsTableFilterComposer,
+      $$TaskAttachmentsTableOrderingComposer,
+      $$TaskAttachmentsTableAnnotationComposer,
+      $$TaskAttachmentsTableCreateCompanionBuilder,
+      $$TaskAttachmentsTableUpdateCompanionBuilder,
+      (TaskAttachmentRow, $$TaskAttachmentsTableReferences),
+      TaskAttachmentRow,
+      PrefetchHooks Function({bool taskId})
+    >;
+typedef $$TaskReactionsTableCreateCompanionBuilder =
+    TaskReactionsCompanion Function({
+      required int taskId,
+      required int position,
+      required String value,
+      required int userId,
+      required String username,
+      required String name,
+      Value<int> rowid,
+    });
+typedef $$TaskReactionsTableUpdateCompanionBuilder =
+    TaskReactionsCompanion Function({
+      Value<int> taskId,
+      Value<int> position,
+      Value<String> value,
+      Value<int> userId,
+      Value<String> username,
+      Value<String> name,
+      Value<int> rowid,
+    });
+
+final class $$TaskReactionsTableReferences
+    extends
+        BaseReferences<_$AppDatabase, $TaskReactionsTable, TaskReactionRow> {
+  $$TaskReactionsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $TasksTable _taskIdTable(_$AppDatabase db) =>
+      db.tasks.createAlias('task_reactions__task_id__tasks__id');
+
+  $$TasksTableProcessedTableManager get taskId {
+    final $_column = $_itemColumn<int>('task_id')!;
+
+    final manager = $$TasksTableTableManager(
+      $_db,
+      $_db.tasks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_taskIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TaskReactionsTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskReactionsTable> {
+  $$TaskReactionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TasksTableFilterComposer get taskId {
+    final $$TasksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableFilterComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskReactionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskReactionsTable> {
+  $$TaskReactionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TasksTableOrderingComposer get taskId {
+    final $$TasksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableOrderingComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskReactionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskReactionsTable> {
+  $$TaskReactionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<int> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get username =>
+      $composableBuilder(column: $table.username, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  $$TasksTableAnnotationComposer get taskId {
+    final $$TasksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskReactionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TaskReactionsTable,
+          TaskReactionRow,
+          $$TaskReactionsTableFilterComposer,
+          $$TaskReactionsTableOrderingComposer,
+          $$TaskReactionsTableAnnotationComposer,
+          $$TaskReactionsTableCreateCompanionBuilder,
+          $$TaskReactionsTableUpdateCompanionBuilder,
+          (TaskReactionRow, $$TaskReactionsTableReferences),
+          TaskReactionRow,
+          PrefetchHooks Function({bool taskId})
+        > {
+  $$TaskReactionsTableTableManager(_$AppDatabase db, $TaskReactionsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskReactionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskReactionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TaskReactionsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> taskId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<int> userId = const Value.absent(),
+                Value<String> username = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TaskReactionsCompanion(
+                taskId: taskId,
+                position: position,
+                value: value,
+                userId: userId,
+                username: username,
+                name: name,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int taskId,
+                required int position,
+                required String value,
+                required int userId,
+                required String username,
+                required String name,
+                Value<int> rowid = const Value.absent(),
+              }) => TaskReactionsCompanion.insert(
+                taskId: taskId,
+                position: position,
+                value: value,
+                userId: userId,
+                username: username,
+                name: name,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TaskReactionsTable, TaskReactionRow>(table),
+                  $$TaskReactionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({taskId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (taskId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.taskId,
+                        referencedTable: $$TaskReactionsTableReferences
+                            ._taskIdTable(db),
+                        referencedColumn: $$TaskReactionsTableReferences
+                            ._taskIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TaskReactionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TaskReactionsTable,
+      TaskReactionRow,
+      $$TaskReactionsTableFilterComposer,
+      $$TaskReactionsTableOrderingComposer,
+      $$TaskReactionsTableAnnotationComposer,
+      $$TaskReactionsTableCreateCompanionBuilder,
+      $$TaskReactionsTableUpdateCompanionBuilder,
+      (TaskReactionRow, $$TaskReactionsTableReferences),
+      TaskReactionRow,
+      PrefetchHooks Function({bool taskId})
+    >;
+typedef $$TaskCommentsTableCreateCompanionBuilder =
+    TaskCommentsCompanion Function({
+      required int taskId,
+      required int id,
+      required String html,
+      required int authorId,
+      required String authorUsername,
+      required String authorName,
+      Value<DateTime?> created,
+      Value<DateTime?> updated,
+      Value<int> rowid,
+    });
+typedef $$TaskCommentsTableUpdateCompanionBuilder =
+    TaskCommentsCompanion Function({
+      Value<int> taskId,
+      Value<int> id,
+      Value<String> html,
+      Value<int> authorId,
+      Value<String> authorUsername,
+      Value<String> authorName,
+      Value<DateTime?> created,
+      Value<DateTime?> updated,
+      Value<int> rowid,
+    });
+
+final class $$TaskCommentsTableReferences
+    extends BaseReferences<_$AppDatabase, $TaskCommentsTable, TaskCommentRow> {
+  $$TaskCommentsTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $TasksTable _taskIdTable(_$AppDatabase db) =>
+      db.tasks.createAlias('task_comments__task_id__tasks__id');
+
+  $$TasksTableProcessedTableManager get taskId {
+    final $_column = $_itemColumn<int>('task_id')!;
+
+    final manager = $$TasksTableTableManager(
+      $_db,
+      $_db.tasks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_taskIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TaskCommentsTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskCommentsTable> {
+  $$TaskCommentsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get html => $composableBuilder(
+    column: $table.html,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorUsername => $composableBuilder(
+    column: $table.authorUsername,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get created =>
+      $composableBuilder(
+        column: $table.created,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnWithTypeConverterFilters<DateTime?, DateTime, int> get updated =>
+      $composableBuilder(
+        column: $table.updated,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  $$TasksTableFilterComposer get taskId {
+    final $$TasksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableFilterComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskCommentsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskCommentsTable> {
+  $$TaskCommentsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get html => $composableBuilder(
+    column: $table.html,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get authorId => $composableBuilder(
+    column: $table.authorId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorUsername => $composableBuilder(
+    column: $table.authorUsername,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get created => $composableBuilder(
+    column: $table.created,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updated => $composableBuilder(
+    column: $table.updated,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TasksTableOrderingComposer get taskId {
+    final $$TasksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableOrderingComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskCommentsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskCommentsTable> {
+  $$TaskCommentsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get html =>
+      $composableBuilder(column: $table.html, builder: (column) => column);
+
+  GeneratedColumn<int> get authorId =>
+      $composableBuilder(column: $table.authorId, builder: (column) => column);
+
+  GeneratedColumn<String> get authorUsername => $composableBuilder(
+    column: $table.authorUsername,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get authorName => $composableBuilder(
+    column: $table.authorName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get created =>
+      $composableBuilder(column: $table.created, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<DateTime?, int> get updated =>
+      $composableBuilder(column: $table.updated, builder: (column) => column);
+
+  $$TasksTableAnnotationComposer get taskId {
+    final $$TasksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskCommentsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TaskCommentsTable,
+          TaskCommentRow,
+          $$TaskCommentsTableFilterComposer,
+          $$TaskCommentsTableOrderingComposer,
+          $$TaskCommentsTableAnnotationComposer,
+          $$TaskCommentsTableCreateCompanionBuilder,
+          $$TaskCommentsTableUpdateCompanionBuilder,
+          (TaskCommentRow, $$TaskCommentsTableReferences),
+          TaskCommentRow,
+          PrefetchHooks Function({bool taskId})
+        > {
+  $$TaskCommentsTableTableManager(_$AppDatabase db, $TaskCommentsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskCommentsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskCommentsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$TaskCommentsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> taskId = const Value.absent(),
+                Value<int> id = const Value.absent(),
+                Value<String> html = const Value.absent(),
+                Value<int> authorId = const Value.absent(),
+                Value<String> authorUsername = const Value.absent(),
+                Value<String> authorName = const Value.absent(),
+                Value<DateTime?> created = const Value.absent(),
+                Value<DateTime?> updated = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TaskCommentsCompanion(
+                taskId: taskId,
+                id: id,
+                html: html,
+                authorId: authorId,
+                authorUsername: authorUsername,
+                authorName: authorName,
+                created: created,
+                updated: updated,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int taskId,
+                required int id,
+                required String html,
+                required int authorId,
+                required String authorUsername,
+                required String authorName,
+                Value<DateTime?> created = const Value.absent(),
+                Value<DateTime?> updated = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TaskCommentsCompanion.insert(
+                taskId: taskId,
+                id: id,
+                html: html,
+                authorId: authorId,
+                authorUsername: authorUsername,
+                authorName: authorName,
+                created: created,
+                updated: updated,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$TaskCommentsTable, TaskCommentRow>(table),
+                  $$TaskCommentsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({taskId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (taskId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.taskId,
+                        referencedTable: $$TaskCommentsTableReferences
+                            ._taskIdTable(db),
+                        referencedColumn: $$TaskCommentsTableReferences
+                            ._taskIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TaskCommentsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TaskCommentsTable,
+      TaskCommentRow,
+      $$TaskCommentsTableFilterComposer,
+      $$TaskCommentsTableOrderingComposer,
+      $$TaskCommentsTableAnnotationComposer,
+      $$TaskCommentsTableCreateCompanionBuilder,
+      $$TaskCommentsTableUpdateCompanionBuilder,
+      (TaskCommentRow, $$TaskCommentsTableReferences),
+      TaskCommentRow,
+      PrefetchHooks Function({bool taskId})
+    >;
+typedef $$TaskCommentReactionsTableCreateCompanionBuilder =
+    TaskCommentReactionsCompanion Function({
+      required int taskId,
+      required int commentId,
+      required int position,
+      required String value,
+      required int userId,
+      required String username,
+      required String name,
+      Value<int> rowid,
+    });
+typedef $$TaskCommentReactionsTableUpdateCompanionBuilder =
+    TaskCommentReactionsCompanion Function({
+      Value<int> taskId,
+      Value<int> commentId,
+      Value<int> position,
+      Value<String> value,
+      Value<int> userId,
+      Value<String> username,
+      Value<String> name,
+      Value<int> rowid,
+    });
+
+final class $$TaskCommentReactionsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $TaskCommentReactionsTable,
+          TaskCommentReactionRow
+        > {
+  $$TaskCommentReactionsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $TasksTable _taskIdTable(_$AppDatabase db) =>
+      db.tasks.createAlias('task_comment_reactions__task_id__tasks__id');
+
+  $$TasksTableProcessedTableManager get taskId {
+    final $_column = $_itemColumn<int>('task_id')!;
+
+    final manager = $$TasksTableTableManager(
+      $_db,
+      $_db.tasks,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_taskIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$TaskCommentReactionsTableFilterComposer
+    extends Composer<_$AppDatabase, $TaskCommentReactionsTable> {
+  $$TaskCommentReactionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get commentId => $composableBuilder(
+    column: $table.commentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$TasksTableFilterComposer get taskId {
+    final $$TasksTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableFilterComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskCommentReactionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $TaskCommentReactionsTable> {
+  $$TaskCommentReactionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get commentId => $composableBuilder(
+    column: $table.commentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get position => $composableBuilder(
+    column: $table.position,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get value => $composableBuilder(
+    column: $table.value,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get username => $composableBuilder(
+    column: $table.username,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$TasksTableOrderingComposer get taskId {
+    final $$TasksTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableOrderingComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskCommentReactionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $TaskCommentReactionsTable> {
+  $$TaskCommentReactionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get commentId =>
+      $composableBuilder(column: $table.commentId, builder: (column) => column);
+
+  GeneratedColumn<int> get position =>
+      $composableBuilder(column: $table.position, builder: (column) => column);
+
+  GeneratedColumn<String> get value =>
+      $composableBuilder(column: $table.value, builder: (column) => column);
+
+  GeneratedColumn<int> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+
+  GeneratedColumn<String> get username =>
+      $composableBuilder(column: $table.username, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  $$TasksTableAnnotationComposer get taskId {
+    final $$TasksTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.taskId,
+      referencedTable: $db.tasks,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$TasksTableAnnotationComposer(
+            $db: $db,
+            $table: $db.tasks,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$TaskCommentReactionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $TaskCommentReactionsTable,
+          TaskCommentReactionRow,
+          $$TaskCommentReactionsTableFilterComposer,
+          $$TaskCommentReactionsTableOrderingComposer,
+          $$TaskCommentReactionsTableAnnotationComposer,
+          $$TaskCommentReactionsTableCreateCompanionBuilder,
+          $$TaskCommentReactionsTableUpdateCompanionBuilder,
+          (TaskCommentReactionRow, $$TaskCommentReactionsTableReferences),
+          TaskCommentReactionRow,
+          PrefetchHooks Function({bool taskId})
+        > {
+  $$TaskCommentReactionsTableTableManager(
+    _$AppDatabase db,
+    $TaskCommentReactionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$TaskCommentReactionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$TaskCommentReactionsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$TaskCommentReactionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> taskId = const Value.absent(),
+                Value<int> commentId = const Value.absent(),
+                Value<int> position = const Value.absent(),
+                Value<String> value = const Value.absent(),
+                Value<int> userId = const Value.absent(),
+                Value<String> username = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => TaskCommentReactionsCompanion(
+                taskId: taskId,
+                commentId: commentId,
+                position: position,
+                value: value,
+                userId: userId,
+                username: username,
+                name: name,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required int taskId,
+                required int commentId,
+                required int position,
+                required String value,
+                required int userId,
+                required String username,
+                required String name,
+                Value<int> rowid = const Value.absent(),
+              }) => TaskCommentReactionsCompanion.insert(
+                taskId: taskId,
+                commentId: commentId,
+                position: position,
+                value: value,
+                userId: userId,
+                username: username,
+                name: name,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<
+                    $TaskCommentReactionsTable,
+                    TaskCommentReactionRow
+                  >(table),
+                  $$TaskCommentReactionsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({taskId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (taskId) {
+                      state = state.withJoin(
+                        currentTable: table,
+                        currentColumn: table.taskId,
+                        referencedTable: $$TaskCommentReactionsTableReferences
+                            ._taskIdTable(db),
+                        referencedColumn: $$TaskCommentReactionsTableReferences
+                            ._taskIdTable(db)
+                            .id,
+                      ) as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$TaskCommentReactionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $TaskCommentReactionsTable,
+      TaskCommentReactionRow,
+      $$TaskCommentReactionsTableFilterComposer,
+      $$TaskCommentReactionsTableOrderingComposer,
+      $$TaskCommentReactionsTableAnnotationComposer,
+      $$TaskCommentReactionsTableCreateCompanionBuilder,
+      $$TaskCommentReactionsTableUpdateCompanionBuilder,
+      (TaskCommentReactionRow, $$TaskCommentReactionsTableReferences),
+      TaskCommentReactionRow,
+      PrefetchHooks Function({bool taskId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -14845,6 +20073,8 @@ class $AppDatabaseManager {
       $$OutboxTableTableManager(_db, _db.outbox);
   $$TaskIdRemapsTableTableManager get taskIdRemaps =>
       $$TaskIdRemapsTableTableManager(_db, _db.taskIdRemaps);
+  $$LabelIdRemapsTableTableManager get labelIdRemaps =>
+      $$LabelIdRemapsTableTableManager(_db, _db.labelIdRemaps);
   $$ScheduledNotificationsTableTableManager get scheduledNotifications =>
       $$ScheduledNotificationsTableTableManager(
         _db,
@@ -14862,4 +20092,14 @@ class $AppDatabaseManager {
       $$KanbanBucketsTableTableManager(_db, _db.kanbanBuckets);
   $$ImportedWidgetActionsTableTableManager get importedWidgetActions =>
       $$ImportedWidgetActionsTableTableManager(_db, _db.importedWidgetActions);
+  $$TaskDetailLoadsTableTableManager get taskDetailLoads =>
+      $$TaskDetailLoadsTableTableManager(_db, _db.taskDetailLoads);
+  $$TaskAttachmentsTableTableManager get taskAttachments =>
+      $$TaskAttachmentsTableTableManager(_db, _db.taskAttachments);
+  $$TaskReactionsTableTableManager get taskReactions =>
+      $$TaskReactionsTableTableManager(_db, _db.taskReactions);
+  $$TaskCommentsTableTableManager get taskComments =>
+      $$TaskCommentsTableTableManager(_db, _db.taskComments);
+  $$TaskCommentReactionsTableTableManager get taskCommentReactions =>
+      $$TaskCommentReactionsTableTableManager(_db, _db.taskCommentReactions);
 }

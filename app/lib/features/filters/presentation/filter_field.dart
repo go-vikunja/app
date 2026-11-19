@@ -379,7 +379,12 @@ class _FilterFieldState extends ConsumerState<FilterField>
         : _suggestions(
             context,
             completion,
-            labels: labels ?? const [],
+            // A label created here has only a temporary id until its create
+            // is answered, and the filter goes to the server.
+            labels: [
+              for (final label in labels ?? const <Label>[])
+                if (label.id > 0) label,
+            ],
             projects: projects ?? const [],
             users: users,
           );

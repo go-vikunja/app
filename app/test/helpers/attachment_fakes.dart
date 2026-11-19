@@ -11,12 +11,15 @@ import 'package:vikunja_mobile/core/share/share_intent_source.dart';
 /// The server's attachments as the repository reaches them, without a
 /// network. Every call is recorded in [calls] (`delete 3 7`,
 /// `delete 3 7 cover`, `setCover 3 7`, `setCover 3 null`, `download 3 7`,
-/// `uploadNow 3 photo.png`); [beforeCall] can hold or fail one, and
+/// `download 3 7 cached`, `uploadNow 3 photo.png`); [beforeCall] can hold
+/// or fail one, except a cached download, and
 /// [failure] fails every call while set (a `VikunjaFailure`,
 /// `TaskNotSyncedYet` or `UploadTooLarge`). [download] answers
 /// `<downloadDirectory>/<task>/<id>/<name>` without writing anything unless
-/// [downloads] has a file for the attachment id; [uploadNow] answers the
-/// next id from [nextAttachmentId]
+/// [downloads] has a file for the attachment id; an id in [cached] is
+/// answered so also while [failure] is set, as the real one answers from
+/// its download cache before any request. [uploadNow] answers the next id
+/// from [nextAttachmentId]
 /// with the size from [uploadSizes] by file path (0 when absent) and
 /// refuses a size above [maxUploadBytes] with `UploadTooLarge`. The cancel
 /// tokens handed in are kept in [cancelTokens].
@@ -33,6 +36,7 @@ final class FakeAttachmentRepository implements AttachmentRepository {
 
   String downloadDirectory = '/cache/attachments';
   final Map<int, File> downloads = {};
+  final Set<int> cached = {};
 
   int nextAttachmentId = 500;
   final Map<String, int> uploadSizes = {};
@@ -66,7 +70,11 @@ final class FakeAttachmentRepository implements AttachmentRepository {
     CancelToken? cancel,
   }) async {
     cancelTokens.add(cancel);
-    await _call('download $taskId ${attachment.id}');
+    if (cached.contains(attachment.id)) {
+      calls.add('download $taskId ${attachment.id} cached');
+    } else {
+      await _call('download $taskId ${attachment.id}');
+    }
     return downloads[attachment.id] ??
         File('$downloadDirectory/$taskId/${attachment.id}/${attachment.name}');
   }

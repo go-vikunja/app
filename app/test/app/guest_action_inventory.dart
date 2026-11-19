@@ -340,6 +340,13 @@ const guestActionInventory = <String, GuestActionEntry>{
     _sessions,
     uses: {'accountSecurityRepositoryProvider'},
   ),
+  // Its label branch, which follows a label created offline to its server
+  // id for the draft, runs on the label description route only.
+  'features/description_editor/presentation/description_editor_page.dart '
+      '_DescriptionEditorPageState._idResolver': (
+    BehindClosedRoutes(['/home/labels/:id/description']),
+    uses: {'labelRepositoryProvider'},
+  ),
   'features/description_editor/presentation/description_editor_page.dart '
       '_DescriptionEditorPageState._knownPeople': (
     _knownPeople,
@@ -604,6 +611,18 @@ const guestActionInventory = <String, GuestActionEntry>{
   ),
   'features/tasks/application/label_providers.dart allLabels': (
     Open('reads the labels the sync stored, which a guest assigns too'),
+    uses: {'labelRepositoryProvider'},
+  ),
+  'features/tasks/application/label_providers.dart labelById': (
+    Open("reads one stored label, the one a guest's label list shows"),
+    uses: {'labelRepositoryProvider'},
+  ),
+  'features/tasks/application/label_providers.dart pendingLabelIds': (
+    Open('reads which stored labels have a change queued; a guest has none'),
+    uses: {'labelRepositoryProvider'},
+  ),
+  'features/tasks/application/label_providers.dart labelRemaps': (
+    Open('reads which labels created here got a server id; a guest has none'),
     uses: {'labelRepositoryProvider'},
   ),
   'features/tasks/presentation/details/comment_composer.dart '

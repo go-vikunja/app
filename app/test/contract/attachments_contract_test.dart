@@ -12,6 +12,7 @@ import 'package:path/path.dart' as p;
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_cache.dart';
 import 'package:vikunja_mobile/core/attachments/upload_files.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
@@ -278,6 +279,13 @@ void main() {
                 () async => Directory(p.join(files.path, apiVersion.name)),
               ),
               accountId: 'contract',
+              images: AttachmentImageCache(
+                (taskId, attachmentId, preview) => reads.attachments.fetch(
+                  taskId,
+                  attachmentId,
+                  preview: preview,
+                ),
+              ),
               uploadsEnabled: only.info.taskAttachmentsEnabled,
               maxUploadBytes: only.info.maxFileSizeBytes ?? 20 << 20,
             );

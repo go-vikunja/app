@@ -420,11 +420,14 @@ final class LocalTaskRepository
   );
 
   @override
-  Stream<List<Task>> watchLabelTasks(int labelId) => _tasksMatching(
-    SavedFilterDefinition(
-      filter: ViewFilter(filter: 'done = false && labels in $labelId'),
-    ),
-  ).map((matches) => matches.tasks);
+  Stream<List<Task>> watchLabelTasks(int labelId) => switchLatest(
+    _db.labelsDao.watchResolvedId(labelId).distinct(),
+    (id) => _tasksMatching(
+      SavedFilterDefinition(
+        filter: ViewFilter(filter: 'done = false && labels in $id'),
+      ),
+    ).map((matches) => matches.tasks),
+  );
 
   static SavedFilterRef? _storedSavedFilter(
     Map<String, String> state,

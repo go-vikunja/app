@@ -28,8 +28,16 @@ abstract final class SyncStateKeys {
   /// Ids of the projects whose tasks still have to be pulled whole, comma
   /// separated: an incremental run writes them with the project rows, so a
   /// run that fails afterwards leaves the pull to the next one; a completed
-  /// run clears the key.
+  /// run clears the key, unless a write marked more since it started
+  /// ([wholePullMarks]).
   static const pendingWholePull = 'pending_whole_pull';
+
+  /// How many times a write marked projects for [pendingWholePull] (see
+  /// `pullWholeOnNextRun`), counting up. A run clears that key only while
+  /// this is what it was when the run started, so a project marked while a
+  /// run is under way waits for the next one; a resumed full run keeps the
+  /// value of its start in its checkpoint ([runWholePullMarks]).
+  static const wholePullMarks = 'whole_pull_marks';
 
   /// The account's `UserSettings` from the account phase of the last run,
   /// see `encodeUserSettings`. Absent before the first run.
@@ -64,6 +72,7 @@ abstract final class SyncStateKeys {
 
   static const runId = 'run_id';
   static const runNewestUpdated = 'run_newest_updated';
+  static const runWholePullMarks = 'run_whole_pull_marks';
   static const phase = 'phase';
   static const phaseDone = 'phase_done';
   static const phaseTotal = 'phase_total';
@@ -74,6 +83,7 @@ abstract final class SyncStateKeys {
   static const List<String> checkpoint = [
     runId,
     runNewestUpdated,
+    runWholePullMarks,
     phase,
     phaseDone,
     phaseTotal,
@@ -99,12 +109,16 @@ enum DoneFilter {
 /// pulled; [newestUpdatedAtStart] is the newest task `updated` the server
 /// had when the task phase began, a server time that bounds the catch-up
 /// pass before the purge (null for an account without tasks).
+/// [wholePullMarks] is [SyncStateKeys.wholePullMarks] as the run started,
+/// so a resumed run still keeps a project marked during its first part
+/// (null in a checkpoint stored before it was kept).
 @immutable
 final class SyncCheckpoint {
   const new({
     required this.runId,
     required this.phase,
     this.newestUpdatedAtStart,
+    this.wholePullMarks,
     this.done = 0,
     this.total,
     this.lastId = 0,
@@ -114,6 +128,7 @@ final class SyncCheckpoint {
 
   final String runId;
   final DateTime? newestUpdatedAtStart;
+  final int? wholePullMarks;
   final SyncPhase phase;
   final int done;
   final int? total;
@@ -130,6 +145,9 @@ final class SyncCheckpoint {
       newestUpdatedAtStart: DateTime.tryParse(
         state[SyncStateKeys.runNewestUpdated] ?? '',
       )?.toUtc(),
+      wholePullMarks: int.tryParse(
+        state[SyncStateKeys.runWholePullMarks] ?? '',
+      ),
       phase: phase,
       done: int.tryParse(state[SyncStateKeys.phaseDone] ?? '') ?? 0,
       total: int.tryParse(state[SyncStateKeys.phaseTotal] ?? ''),
@@ -150,6 +168,7 @@ final class SyncCheckpoint {
   Map<String, String?> toState() => {
     SyncStateKeys.runId: runId,
     SyncStateKeys.runNewestUpdated: newestUpdatedAtStart?.toIso8601String(),
+    SyncStateKeys.runWholePullMarks: wholePullMarks?.toString(),
     SyncStateKeys.phase: phase.name,
     SyncStateKeys.phaseDone: '$done',
     SyncStateKeys.phaseTotal: total?.toString(),
@@ -160,6 +179,7 @@ final class SyncCheckpoint {
 
   SyncCheckpoint copyWith({
     DateTime? newestUpdatedAtStart,
+    int? wholePullMarks,
     int? done,
     int? total,
     int? lastId,
@@ -168,6 +188,7 @@ final class SyncCheckpoint {
   }) => SyncCheckpoint(
     runId: runId,
     newestUpdatedAtStart: newestUpdatedAtStart ?? this.newestUpdatedAtStart,
+    wholePullMarks: wholePullMarks ?? this.wholePullMarks,
     phase: phase,
     done: done ?? this.done,
     total: total ?? this.total,
@@ -180,6 +201,7 @@ final class SyncCheckpoint {
   SyncCheckpoint advanceTo(SyncPhase next) => SyncCheckpoint(
     runId: runId,
     newestUpdatedAtStart: newestUpdatedAtStart,
+    wholePullMarks: wholePullMarks,
     phase: next,
   );
 
@@ -188,6 +210,7 @@ final class SyncCheckpoint {
       other is SyncCheckpoint &&
       other.runId == runId &&
       other.newestUpdatedAtStart == newestUpdatedAtStart &&
+      other.wholePullMarks == wholePullMarks &&
       other.phase == phase &&
       other.done == done &&
       other.total == total &&
@@ -199,6 +222,7 @@ final class SyncCheckpoint {
   int get hashCode => Object.hash(
     runId,
     newestUpdatedAtStart,
+    wholePullMarks,
     phase,
     done,
     total,
@@ -211,7 +235,8 @@ final class SyncCheckpoint {
   String toString() =>
       'SyncCheckpoint($runId, ${phase.name}, done: $done/$total, '
       'lastId: $lastId, ${doneFilter.name}, archived: $archivedProjectId, '
-      'newest updated at start: $newestUpdatedAtStart)';
+      'newest updated at start: $newestUpdatedAtStart, '
+      'whole pull marks: $wholePullMarks)';
 }
 
 /// The value of [SyncStateKeys.syncLease], `{"owner", "until", "run"}` with

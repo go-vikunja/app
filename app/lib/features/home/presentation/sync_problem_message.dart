@@ -12,9 +12,15 @@ String describeSyncProblem(AppLocalizations l10n, SyncProblem problem) {
     OutboxOperationKind.uploadAttachment => l10n.syncProblemUploadFailed(
       problem.fileName ?? '',
     ),
+    OutboxOperationKind.createLabel => l10n.syncProblemLabelCreateFailed,
+    OutboxOperationKind.updateLabel => l10n.syncProblemLabelUpdateFailed,
+    OutboxOperationKind.deleteLabel => l10n.syncProblemLabelDeleteFailed,
   };
   if (problem.kind == OutboxOperationKind.uploadAttachment) {
     return '$what ${_whyUploadFailed(l10n, problem.failure)}';
+  }
+  if (problem.kind.isLabelOp) {
+    return '$what ${_whyLabelOpFailed(l10n, problem)}';
   }
   final why = switch (problem.failure) {
     Forbidden() when _onlyReorders(problem.changes) =>
@@ -59,6 +65,18 @@ bool _namesOnlyListViews(TaskChanges? changes) =>
     changes != null &&
     (changes.positions?.isNotEmpty ?? false) &&
     (changes.kanban?.isEmpty ?? true);
+
+String _whyLabelOpFailed(AppLocalizations l10n, SyncProblem problem) =>
+    switch (problem.failure) {
+      Forbidden() when problem.kind != OutboxOperationKind.createLabel =>
+        l10n.labelsNotCreator,
+      NotFound(routeAbsent: true) => l10n.syncProblemUnexpected,
+      NotFound() => l10n.labelsGone,
+      ValidationFailed() || VikunjaFailure(code: 2002) => l10n.labelsInvalid,
+      Forbidden() || DomainError() => l10n.syncProblemRejected,
+      ServerFailure() => l10n.syncProblemServerKeptFailing,
+      _ => l10n.syncProblemUnexpected,
+    };
 
 String _whyUploadFailed(AppLocalizations l10n, VikunjaFailure failure) =>
     switch (failure) {

@@ -484,17 +484,20 @@ TaskRepository accountTaskRepository(Ref ref, String accountId) {
 
 @riverpod
 LabelRepository accountLabelRepository(Ref ref, String accountId) {
-  final userId = ref.watch(
-    accountsProvider.select(
-      (accounts) => accounts.value?.find(accountId)?.account.userId,
-    ),
-  );
   final repository = LocalLabelRepository(
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(writeClientProvider(accountId)),
-    ref.watch(readClientProvider(accountId)),
+    outbox: ref.watch(outboxSenderProvider(accountId)),
     sync: ref.watch(syncEngineProvider(accountId)),
-    currentUserId: () => userId,
+    currentUser: () =>
+        switch (ref.read(accountsProvider).value?.find(accountId)?.account) {
+          final account? => User(
+            id: account.userId,
+            username: account.username,
+            name: account.displayName,
+          ),
+          null => null,
+        },
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -548,8 +551,8 @@ UserRepository? userRepository(Ref ref) {
 /// host it confirmed, the unsent comments and the description draft,
 /// replaces its home-screen widgets' content with "Account removed", stops
 /// its outbox sender and sync engine, closes its database and deletes the
-/// files: the database, the stored copies of queued uploads and the
-/// downloaded attachments.
+/// files: the database, the stored copies of queued uploads, the
+/// downloaded attachments and the images kept on disk.
 @Riverpod(keepAlive: true)
 AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
   BackgroundRunnerChannel.release(accountId);
@@ -629,6 +632,15 @@ AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
     accountId,
     () => ref.read(attachmentDownloadsProvider).purgeAccount(accountId),
   );
+  // Not quietly: unlike the downloads, which go after a few days unused,
+  // nothing else deletes the images of an account still listed to delete,
+  // so a failure leaves the account to the next start's wipe. The closed
+  // instance goes either way: a sign-in again would find it closed.
+  try {
+    await ref.read(accountImageDiskCacheProvider(accountId)).deleteAll();
+  } finally {
+    ref.invalidate(accountImageDiskCacheProvider(accountId));
+  }
 };
 
 Future<void> _disposeQuietly(

@@ -38,11 +38,12 @@ bool attachmentImageFailureMayPass(Object failure) =>
 
 /// Authenticated attachment images of one account: previews of the list
 /// (`medium`), inline images of descriptions and comments (`extraLarge`)
-/// and originals for the full-screen viewer (null). Memory only, capped by
-/// bytes, one request per image at a time; a failure is remembered for a
-/// short time, except one that cannot pass (see
-/// [attachmentImageFailureMayPass]) for the session. Throws the
-/// `VikunjaFailure` of the request, or [AttachmentImageTooLarge].
+/// and originals for the full-screen viewer (null). In memory, capped by
+/// bytes, one request per image at a time, and kept on disk for when the
+/// server cannot be asked; a failure is remembered for a short time,
+/// except one that cannot pass (see [attachmentImageFailureMayPass]) for
+/// the session. Throws the `VikunjaFailure` of the request, or
+/// [AttachmentImageTooLarge].
 abstract interface class AttachmentImages {
   Future<AttachmentImage> load(
     int taskId,
@@ -74,4 +75,8 @@ abstract interface class AttachmentImages {
 
   /// [forgetFailure] for every image.
   void forgetFailures();
+
+  /// Drops every size of an attachment deleted in the app, in memory and
+  /// on disk; what a request still running brings back is not kept.
+  Future<void> drop(int taskId, int attachmentId);
 }

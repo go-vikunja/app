@@ -1,10 +1,14 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_api/vikunja_api.dart' show AttachmentBlob;
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_cache.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
+import 'package:vikunja_mobile/core/attachments/image_disk_cache.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_image_previews.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
 
@@ -144,6 +148,53 @@ void main() {
 
     expect(sent, isEmpty);
     expect(images.loads, ['1 2 xl']);
+  });
+
+  test('offline after a restart, the page still gets the previews the app '
+      'kept, the original where the server has no preview, never an '
+      'SVG', () async {
+    final folder = Directory.systemTemp.createTempSync('editor_previews');
+    addTearDown(() => folder.deleteSync(recursive: true));
+    final svg = AttachmentBlob(
+      bytes: Uint8List.fromList(utf8.encode('<svg/>')),
+      contentType: 'image/svg+xml',
+    );
+    final online = <(int, AttachmentPreviewSize?), AttachmentBlob>{
+      (2, AttachmentPreviewSize.extraLarge): AttachmentBlob(
+        bytes: pixel,
+        contentType: 'image/png',
+      ),
+      (3, null): AttachmentBlob(bytes: gif, contentType: 'image/gif'),
+      (4, null): svg,
+    };
+    var reachable = true;
+    Future<List<Map<String, String>>> openPage() async {
+      final disk = ImageDiskCache(() async => folder);
+      final images = AttachmentImageCache((task, attachment, preview) async {
+        if (!reachable) throw const NetworkFailure(NetworkProblem.unreachable);
+        return online[(attachment, preview)] ??
+            (throw const DomainError(422, code: 4038));
+      }, disk: disk);
+      final sent = <Map<String, String>>[];
+      await EditorImagePreviews(images: images, apiRoot: apiRoot).provide(
+        [url(1, 2), url(1, 3), url(1, 4)],
+        (preview) async {
+          sent.add(preview);
+        },
+      );
+      await disk.flush();
+      return sent;
+    }
+
+    final shown = await openPage();
+    reachable = false;
+    final shownOffline = await openPage();
+
+    expect(shown, [
+      {url(1, 2): 'data:image/png;base64,${base64Encode(pixel)}'},
+      {url(1, 3): 'data:image/gif;base64,${base64Encode(gif)}'},
+    ]);
+    expect(shownOffline, shown);
   });
 
   testWidgets('an SVG or what is no image gets no preview, however it '

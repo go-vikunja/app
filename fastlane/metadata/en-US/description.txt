@@ -4,7 +4,7 @@ Sign in to your Vikunja server (version 2.3 or newer) — your own, your organiz
 
 Offline and sync
 • Tasks you create, edit, check off or move on a board while offline are sent as soon as the server answers again.
-• Comments, reactions and a task's attachments load only with a connection, and managing projects, board columns, labels, teams and shares needs one too. Attachments you add offline are sent later.
+• A task you opened online shows its comments, reactions and attachments offline as they were then. Writing comments and reactions, and managing projects, board columns, teams and shares, needs a connection. Labels and attachments you add offline are sent later.
 • The app syncs when it starts, while it is open and in the background.
 
 Your tasks at a glance

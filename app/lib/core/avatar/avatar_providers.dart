@@ -1,12 +1,14 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_cache.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 
 part 'avatar_providers.g.dart';
 
 /// Read lazily: the sync engine keeps the account's read client alive, and
-/// without one (signed out, or in tests) every avatar is the initials. The
-/// sync tells it the user's `updated` (`AvatarCache.noteUpdated`).
+/// without one (signed out, or in tests) every avatar is the initials or the
+/// one kept on disk. The sync tells it the user's `updated`
+/// (`AvatarCache.noteUpdated`).
 @Riverpod(keepAlive: true)
 AvatarCache accountAvatarCache(Ref ref, String accountId) {
   final cache = AvatarCache(
@@ -14,6 +16,7 @@ AvatarCache accountAvatarCache(Ref ref, String accountId) {
         .read(readClientProvider(accountId))
         .avatars
         .fetch(username, size: size),
+    disk: ref.watch(accountImageDiskCacheProvider(accountId)),
   );
   ref.onDispose(cache.dispose);
   return cache;

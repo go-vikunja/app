@@ -236,6 +236,46 @@ void main() {
     expect(find.text(en.accountPendingChanges(1)), findsOneWidget);
   });
 
+  testWidgets("a failed change of a label shows the label's title and what "
+      'failed, with Retry and Discard', (tester) async {
+    data.tasks.pendingChanges = 1;
+    final deleted = SyncProblem(
+      operationId: 'op-label',
+      kind: OutboxOperationKind.deleteLabel,
+      taskId: 0,
+      taskTitle: 'Errand',
+      labelId: 50,
+      failure: const Forbidden(),
+      failedAt: now.subtract(const Duration(minutes: 5)),
+    );
+    data.tasks.syncProblems = [deleted];
+    await pumpAccountTab(tester);
+
+    final card = find.widgetWithText(StatusCard, 'Errand');
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.text(
+          '${en.syncProblemLabelDeleteFailed} ${en.labelsNotCreator}',
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.text(en.retry)),
+      findsOneWidget,
+    );
+
+    await tester.tap(
+      find.descendant(of: card, matching: find.text(en.syncProblemDiscard)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.writes, ['discard op-label']);
+    expect(find.text('Errand'), findsNothing);
+  });
+
   testWidgets('two or more problems with Retry get Retry all beside the '
       'heading, which sends them in one go', (tester) async {
     final semantics = tester.ensureSemantics();

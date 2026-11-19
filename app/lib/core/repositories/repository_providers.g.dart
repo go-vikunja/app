@@ -1646,7 +1646,7 @@ final class AccountLabelRepositoryProvider
 }
 
 String _$accountLabelRepositoryHash() =>
-    r'be44302fa163e6d0179134ea2dc4c8f3564eb64f';
+    r'bab2f58742e73bd4448dd20762c042d658817575';
 
 final class AccountLabelRepositoryFamily extends $Family
     with $FunctionalFamilyOverride<LabelRepository, String> {
@@ -1937,8 +1937,8 @@ String _$userRepositoryHash() => r'28da8498a99ef2100dbc72f90b776490a8e9c948';
 /// host it confirmed, the unsent comments and the description draft,
 /// replaces its home-screen widgets' content with "Account removed", stops
 /// its outbox sender and sync engine, closes its database and deletes the
-/// files: the database, the stored copies of queued uploads and the
-/// downloaded attachments.
+/// files: the database, the stored copies of queued uploads, the
+/// downloaded attachments and the images kept on disk.
 
 @ProviderFor(accountDataWiper)
 final accountDataWiperProvider = AccountDataWiperProvider._();
@@ -1951,8 +1951,8 @@ final accountDataWiperProvider = AccountDataWiperProvider._();
 /// host it confirmed, the unsent comments and the description draft,
 /// replaces its home-screen widgets' content with "Account removed", stops
 /// its outbox sender and sync engine, closes its database and deletes the
-/// files: the database, the stored copies of queued uploads and the
-/// downloaded attachments.
+/// files: the database, the stored copies of queued uploads, the
+/// downloaded attachments and the images kept on disk.
 
 final class AccountDataWiperProvider
     extends
@@ -1970,8 +1970,8 @@ final class AccountDataWiperProvider
   /// host it confirmed, the unsent comments and the description draft,
   /// replaces its home-screen widgets' content with "Account removed", stops
   /// its outbox sender and sync engine, closes its database and deletes the
-  /// files: the database, the stored copies of queued uploads and the
-  /// downloaded attachments.
+  /// files: the database, the stored copies of queued uploads, the
+  /// downloaded attachments and the images kept on disk.
   AccountDataWiperProvider._()
     : super(
         from: null,
@@ -2005,4 +2005,4 @@ final class AccountDataWiperProvider
   }
 }
 
-String _$accountDataWiperHash() => r'2a43e891eca3c7c614291b24c08cf5827b6c091d';
+String _$accountDataWiperHash() => r'f2edbf676b76df6ad275aa4817a5a11cd1045167';

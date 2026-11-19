@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/attachments/image_disk_cache.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_cache.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -242,6 +244,70 @@ void main() {
       expect(requests, 2);
       expect(find.byType(InitialsAvatar), findsNothing);
       expect(find.byType(Image), findsOneWidget);
+    });
+
+    testWidgets("an avatar kept on disk is replaced by the server's once the "
+        'retry is due, without a rebuild, with one request for all its '
+        'rows', (tester) async {
+      final folder = Directory.systemTemp.createTempSync('user_avatar_test');
+      addTearDown(() => folder.deleteSync(recursive: true));
+      var now = DateTime(2026, 11, 19, 9);
+      var online = false;
+      var requests = 0;
+      late final ImageDiskCache disk;
+      late final AvatarCache cache;
+      // File calls finish only outside the tester's clock, so the disk
+      // cache is made and filled there, and closed before the widgets ask.
+      await tester.runAsync(() async {
+        disk = ImageDiskCache(() async => folder, pixelsOf: (_) async => 1);
+        cache = AvatarCache(
+          (username, size) async {
+            requests++;
+            if (!online) {
+              throw const NetworkFailure(NetworkProblem.unreachable);
+            }
+            return _image('image/png', [..._png, 2]);
+          },
+          disk: disk,
+          now: () => now,
+        );
+        await AvatarCache(
+          (username, size) async => _image('image/png'),
+          disk: disk,
+        ).load('anna', 128);
+        await disk.flush();
+        expect((await cache.load('anna', 128)).bytes, _png);
+      });
+      disk.close();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            activeAccountIdProvider.overrideWithValue('account'),
+            accountAvatarCacheProvider.overrideWith((ref, _) => cache),
+          ],
+          child: const MaterialApp(
+            home: Column(
+              children: [
+                UserAvatar(user: anna, radius: 12),
+                UserAvatar(user: anna, radius: 12),
+              ],
+            ),
+          ),
+        ),
+      );
+      List<int> shown() => [
+        for (final image in tester.widgetList<Image>(find.byType(Image)))
+          (image.image as MemoryImage).bytes.last,
+      ];
+      expect(shown(), [_png.last, _png.last]);
+
+      online = true;
+      now = now.add(cache.retryAfter);
+      await tester.pump(cache.retryAfter);
+      await tester.pump();
+
+      expect(requests, 2);
+      expect(shown(), [2, 2]);
     });
 
     testWidgets('asks again once the avatar was evicted, keeping the old '

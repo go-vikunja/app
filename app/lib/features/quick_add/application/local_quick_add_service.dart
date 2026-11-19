@@ -208,7 +208,7 @@ final class LocalQuickAddService implements QuickAddService {
       users: _users,
       labels: _labels,
       random: _random,
-      online: !_guest,
+      guest: _guest,
     );
     final ready = [
       for (final plan in plans) await _resolveAssignees(plan, submission),
@@ -561,20 +561,24 @@ bool _containsIgnoringCase(List<String> values, String value) {
   return values.any((other) => other.toLowerCase() == lower);
 }
 
-/// The network part of one submit. The first `NetworkFailure` means the
-/// device is offline: later searches and label creates are skipped instead
-/// of each waiting for its own timeout. A guest's submit skips them all.
+/// The searches and label creates of one submit. The first
+/// `NetworkFailure` means the device is offline: later searches are
+/// skipped instead of each waiting for its own timeout. Labels are created
+/// on the device, offline too, and sent through the outbox. A guest's
+/// submit skips both.
 final class _Submission {
   new({
     required this._users,
     required this._labels,
     required this._random,
-    required bool online,
-  }) : _reachable = online;
+    required bool guest,
+  }) : _reachable = !guest,
+       _createsLabels = !guest;
 
   final UserRepository _users;
   final LabelRepository _labels;
   final Random _random;
+  final bool _createsLabels;
   bool _reachable;
   final _searches = <(int, String), User?>{};
   final _created = <String, Label>{};
@@ -608,29 +612,23 @@ final class _Submission {
     }
   }
 
-  /// Each title once, whatever its case, adopting a label of that title the
-  /// server has but this device has not synced yet; a title the server
-  /// cannot take or a create that fails is reported, and the tasks go
-  /// without it.
+  /// Each title once, whatever its case: the label this device has, else
+  /// one created here, whose create takes a label of that title the server
+  /// has but this device has not synced yet; a title the server cannot take
+  /// is reported, and the tasks go without it.
   Future<void> createLabels(List<String> titles) async {
     final unique = <String>[];
     for (final title in titles) {
       if (!_containsIgnoringCase(unique, title)) unique.add(title);
     }
     for (final title in unique) {
-      if (!_reachable || title.runes.length > maxLabelTitleLength) {
+      if (!_createsLabels || labelTitleProblem(withoutNul(title)) != null) {
         labelsNotCreated.add(title);
         continue;
       }
-      try {
-        _created[title.toLowerCase()] = await _labels.findOrCreate(
-          NewLabel(title: title, hexColor: randomLabelColor(_random)),
-        );
-      } on VikunjaFailure catch (failure) {
-        if (failure is NetworkFailure) _reachable = false;
-        _log.fine('Label create failed: ${failure.runtimeType}');
-        labelsNotCreated.add(title);
-      }
+      _created[title.toLowerCase()] = await _labels.findOrCreate(
+        NewLabel(title: title, hexColor: randomLabelColor(_random)),
+      );
     }
   }
 }

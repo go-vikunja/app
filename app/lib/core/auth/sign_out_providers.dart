@@ -1,4 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
+import 'package:vikunja_mobile/core/attachments/image_disk_cache.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
@@ -19,6 +21,10 @@ AccountDeletions accountDeletions(Ref ref) => AccountDeletions(
     for (final osId in await database.scheduledNotificationsDao.osIds()) {
       await gateway.cancel(osId);
     }
+  },
+  wipeUnknown: (knownAccountIds) async {
+    final root = await ref.read(imageDiskCacheRootProvider)();
+    await ImageDiskCache.deleteOtherAccounts(root, knownAccountIds);
   },
 );
 

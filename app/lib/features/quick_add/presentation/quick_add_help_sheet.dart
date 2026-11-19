@@ -148,7 +148,7 @@ class QuickAddHelpSheet extends StatelessWidget {
             Text(
               guest
                   ? l10n.quickAddHelpLabelsBodyGuest(prefixes.label)
-                  : l10n.quickAddHelpLabelsBody(prefixes.label),
+                  : l10n.quickAddHelpLabelsCreated(prefixes.label),
             ),
             _Examples([
               '${prefixes.label}${l10n.quickAddHelpExampleLabel}',

@@ -36,9 +36,9 @@ enum _Busy { downloading, deleting, saving }
 /// The task's attachments: the queued uploads (offline too) above the ones
 /// the server listed in [details], each with its menu. With [writable] and
 /// a server that takes attachments, files, photos and camera shots can be
-/// added, and attachments deleted or made the cover; opening, sharing and
-/// saving work for everyone. Nothing shows while there is nothing to list
-/// or add.
+/// added, and attachments deleted or made the cover, which [offline]
+/// shows disabled; opening, sharing and saving work for everyone. Nothing
+/// shows while there is nothing to list or add.
 class TaskAttachmentsSection extends ConsumerStatefulWidget {
   const new({
     required this.task,
@@ -46,6 +46,7 @@ class TaskAttachmentsSection extends ConsumerStatefulWidget {
     required this.controller,
     required this.writable,
     required this.onMessage,
+    this.offline = false,
     this.onMessageAfterClose,
     super.key,
   });
@@ -56,6 +57,7 @@ class TaskAttachmentsSection extends ConsumerStatefulWidget {
   final TaskDetails? details;
   final TaskDetailsController controller;
   final bool writable;
+  final bool offline;
   final ValueChanged<String> onMessage;
 
   /// For what is said once the section has gone, below the sheet.
@@ -341,6 +343,7 @@ class _TaskAttachmentsSectionState
               ? () => _cancelDownload(attachment)
               : null,
           onOpen: canDownload ? (origin) => _open(attachment, origin) : null,
+          offline: widget.offline,
           actions: [
             if (canDownload) ...[
               AttachmentAction.open,

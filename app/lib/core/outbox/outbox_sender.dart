@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
+import 'package:vikunja_mobile/core/outbox/label_op_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
@@ -119,6 +120,21 @@ enum OutboxSenderState {
 /// points at a cover attachment that was deleted, is sent once more with
 /// the cover cleared: the server refuses every update of that task until
 /// then.
+///
+/// A label created on the device goes like a task's create: one whose
+/// attempt may have reached the server without an answer first looks for
+/// the newest label of exactly that title this user created from
+/// [lostResponseWindow] before that attempt to as long after the last
+/// attempt before this one, that the device did not have when the create
+/// was queued, that no other create of the device took and whose delete is
+/// not queued, and adopts it; one from `findOrCreate` first takes a label
+/// the server has under that title, ignoring case, but none whose delete is
+/// queued. Its answer is remapped onto the temporary id, and the task
+/// updates waiting for it follow. A label's edit queued behind its create
+/// goes after it, and so does a delete queued while the create is on its
+/// way. A create whose label was deleted here goes with the delete and the
+/// row, without a lookup or a request, also after an attempt without an
+/// answer: a label that attempt made comes back with the next sync.
 final class OutboxSender {
   new({
     required this._db,
@@ -183,6 +199,8 @@ final class OutboxSender {
 
   /// The server's code for a file above its limit.
   static const _fileTooLargeCode = 4012;
+
+  static const _labelMissingCode = 8002;
 
   final AppDatabase _db;
   final VikunjaWriteClient _write;
@@ -350,6 +368,10 @@ final class OutboxSender {
   Future<void> discard(String operationId) async {
     final op = await _db.outboxDao.find(operationId);
     if (op == null) return;
+    if (op.labelId != null) {
+      await _discardLabelOp(op);
+      return;
+    }
     if (op.kind == OutboxOperationKind.uploadAttachment.name) {
       await cancelUpload(operationId);
       _log.info('Discarded an upload to task ${op.taskId}');
@@ -383,6 +405,47 @@ final class OutboxSender {
       await sweepUploads();
       _drainInBackground();
     }
+  }
+
+  /// A failed label create goes with its label, which leaves every task
+  /// and queued edit, without a server read; a label an unanswered attempt
+  /// made, before the create was given up, comes back with the next sync. A
+  /// label's failed edit or delete goes, and the label is read from the
+  /// server and stored under what else is queued for it, a deleted one
+  /// back on the tasks the server has it on; one the server no longer has
+  /// goes here too, and one it refuses to show stays as it is. Throws any
+  /// other `VikunjaFailure` of that read and changes nothing then.
+  Future<void> _discardLabelOp(OutboxRow op) async {
+    final labelId = op.labelId!;
+    if (op.kind == OutboxOperationKind.createLabel.name) {
+      await _db.labelOpsDao.cancelCreate(labelId);
+      _log.info('Discarded the create of label $labelId');
+      _drainInBackground();
+      return;
+    }
+    Label? fresh;
+    var gone = false;
+    try {
+      // Empty changes are a read.
+      fresh = await _write.labels.update(labelId, const LabelChanges());
+    } on NotFound catch (failure) {
+      if (failure.routeAbsent) rethrow;
+      gone = true;
+    } on Forbidden {
+      // Someone else's: it stays as it is.
+    }
+    await _db.transaction(() async {
+      if (await _db.outboxDao.find(op.id) == null) return;
+      if (gone) {
+        await _db.labelOpsDao.completeGone(op);
+      } else if (fresh case final label?) {
+        await _db.labelOpsDao.completeUpdate(op, label);
+      } else {
+        await _db.outboxDao.remove(op.id);
+      }
+    });
+    _log.info('Discarded ${op.kind} for label $labelId');
+    _drainInBackground();
   }
 
   /// The description the server has now for the task of [operationId],
@@ -673,6 +736,9 @@ final class OutboxSender {
       await _sendUpload(op);
       return false;
     }
+    if (kind.isLabelOp) {
+      return await _sendLabelOp(op, kind);
+    }
     if (kind == OutboxOperationKind.createTask &&
         op.sentAt == null &&
         await _dropDeletedCreate(op)) {
@@ -707,7 +773,10 @@ final class OutboxSender {
         case OutboxOperationKind.deleteTask:
           await _write.tasks.delete(op.taskId);
           task = null;
-        case OutboxOperationKind.uploadAttachment:
+        case OutboxOperationKind.uploadAttachment ||
+            OutboxOperationKind.createLabel ||
+            OutboxOperationKind.updateLabel ||
+            OutboxOperationKind.deleteLabel:
           task = null;
       }
     } on VikunjaFailure catch (failure) {
@@ -735,11 +804,196 @@ final class OutboxSender {
         await _applyUpdate(op, task!, changes!);
       case OutboxOperationKind.deleteTask:
         await _applyDelete(op);
-      case OutboxOperationKind.uploadAttachment:
+      case OutboxOperationKind.uploadAttachment ||
+          OutboxOperationKind.createLabel ||
+          OutboxOperationKind.updateLabel ||
+          OutboxOperationKind.deleteLabel:
         break;
     }
     _log.fine('Sent ${op.kind} for task ${op.taskId}');
     return true;
+  }
+
+  /// A label's create, edit or delete, as [_send] sends a task's: only the
+  /// request is guarded, and an error while applying the answer leaves the
+  /// op `sending`. A create that may have reached the server looks first;
+  /// a label the server no longer has goes here too.
+  Future<bool> _sendLabelOp(OutboxRow op, OutboxOperationKind kind) async {
+    final labelId = op.labelId!;
+    final Label? answer;
+    var takenByTitle = false;
+    var looking = false;
+    try {
+      switch (kind) {
+        case OutboxOperationKind.createLabel:
+          if (await _db.labelOpsDao.cancelDeletedCreate(op.id)) {
+            _log.info('Label $labelId was deleted here; its create goes');
+            return false;
+          }
+          final queued = decodeLabelCreate(op.payload);
+          looking = true;
+          final (:found, :seen) = await _recoverLabelCreate(op, queued);
+          final taken =
+              found ??
+              (queued.adopt ? await _labelTitled(queued.label.title) : null);
+          looking = false;
+          if (taken != null) {
+            takenByTitle = true;
+            answer = taken;
+          } else {
+            // What the server had before this request cannot be what it
+            // makes of it.
+            await _db.labelOpsDao.markCreatePosted(
+              op.id,
+              at: _now(),
+              alsoKnown: seen,
+            );
+            answer = await _write.labels.create(queued.label);
+          }
+        case OutboxOperationKind.updateLabel:
+          answer = await _write.labels.update(
+            labelId,
+            decodeLabelChanges(op.payload),
+          );
+        case OutboxOperationKind.deleteLabel:
+          await _write.labels.delete(labelId);
+          answer = null;
+        case OutboxOperationKind.createTask ||
+            OutboxOperationKind.updateTask ||
+            OutboxOperationKind.deleteTask ||
+            OutboxOperationKind.uploadAttachment:
+          throw StateError('not a label op: ${op.kind}');
+      }
+    } on VikunjaFailure catch (failure) {
+      if (failure case NotFound(code: _labelMissingCode)
+          when kind != OutboxOperationKind.createLabel && !_disposed) {
+        await _db.labelOpsDao.completeGone(op);
+        _log.info('Label $labelId was gone from the server');
+        return true;
+      }
+      // A search the server refuses is no refusal of the create, which an
+      // earlier attempt may have made: Retry looks again first.
+      if (looking &&
+          failure is! SessionEnded &&
+          _retryOf(op, failure) == _Retry.never &&
+          !_disposed) {
+        await _db.outboxDao.markGivenUp(op.id, failure);
+        return false;
+      }
+      await _handleSendFailure(op, kind, failure);
+      return false;
+    } on Object catch (error) {
+      await _handleSendFailure(
+        op,
+        kind,
+        UnexpectedResponse(null, message: '${error.runtimeType}'),
+      );
+      return false;
+    }
+    if (_disposed) return true;
+    switch (answer) {
+      case final label? when kind == OutboxOperationKind.createLabel:
+        await _db.labelOpsDao.completeCreate(
+          op.id,
+          label,
+          at: _now(),
+          takenByTitle: takenByTitle,
+        );
+      case final label?:
+        await _db.labelOpsDao.completeUpdate(op, label);
+      case null:
+        await _db.labelOpsDao.completeGone(op);
+    }
+    _log.fine('Sent ${op.kind} for label $labelId');
+    return true;
+  }
+
+  /// The label an earlier, unanswered attempt of this create left on the
+  /// server, if there is one: the newest label of exactly the sent title
+  /// that this user created from [lostResponseWindow] before the first such
+  /// attempt to as long after the create's request last left the device,
+  /// which the device did not have when the create was queued, no other
+  /// create of the device took and whose delete is not queued here. Null,
+  /// without a request, when no attempt may have reached the server or the
+  /// request never left the device, and when nothing is found. Another
+  /// member's label of that title, which the search returns once it is on
+  /// a task the user sees, is never taken, nor one made on the web after
+  /// the requests: an attempt that only looked, offline, moves nothing.
+  /// `seen` holds every label of exactly that title the search returned.
+  Future<({Label? found, Set<int> seen})> _recoverLabelCreate(
+    OutboxRow op,
+    QueuedLabelCreate queued,
+  ) async {
+    final sentAt = op.sentAt;
+    final postedAt = labelCreatePostedAt(op.payload);
+    if (sentAt == null || postedAt == null) {
+      return (found: null, seen: const <int>{});
+    }
+    final title = queued.label.title;
+    final from = sentAt.subtract(lostResponseWindow);
+    final until = postedAt.add(lostResponseWindow);
+    final userId = _currentUserId();
+    final matches = await _labelsTitledOnServer(title);
+    final taken = {
+      ...queued.known,
+      ...await _db.labelsDao.remappedServerIds(),
+      ...await _db.labelOpsDao.deletingIds(),
+    };
+    Label? found;
+    for (final label in matches) {
+      final created = label.created;
+      if (label.title != title ||
+          (userId != null && label.createdBy?.id != userId) ||
+          taken.contains(label.id) ||
+          created == null ||
+          created.isBefore(from) ||
+          created.isAfter(until)) {
+        continue;
+      }
+      if (found == null || label.id > found.id) found = label;
+    }
+    _log.info(
+      found == null
+          ? 'Create of label ${op.labelId} did not reach the server; sent '
+                'again'
+          : 'Create of label ${op.labelId} had reached the server as '
+                '${found.id}; adopted',
+    );
+    return (
+      found: found,
+      seen: {
+        for (final label in matches)
+          if (label.title == title) label.id,
+      },
+    );
+  }
+
+  /// The server's label titled [title], ignoring case; of several the one
+  /// with the same case, else the oldest. None whose delete is queued here:
+  /// it would leave the tasks of this create.
+  Future<Label?> _labelTitled(String title) async {
+    final found = await _labelsTitledOnServer(title);
+    final deleting = await _db.labelOpsDao.deletingIds();
+    final matches = [
+      for (final label in found)
+        if (!deleting.contains(label.id)) label,
+    ]..sort((a, b) => a.id.compareTo(b.id));
+    return matches.where((label) => label.title == title).firstOrNull ??
+        matches.firstOrNull;
+  }
+
+  /// Every label on the server titled [title], ignoring case, from all
+  /// pages of a search for it.
+  Future<List<Label>> _labelsTitledOnServer(String title) async {
+    final lower = title.toLowerCase();
+    final matches = <Label>[];
+    for (var page = 1; ; page++) {
+      final current = await _read.labels.list(page: page, search: title);
+      matches.addAll(
+        current.items.where((label) => label.title.toLowerCase() == lower),
+      );
+      if (!current.hasMore) return matches;
+    }
   }
 
   /// The create of [op] goes with the task's queued delete and its row,
@@ -928,6 +1182,11 @@ final class OutboxSender {
     if (_disposed) return;
     final stored = await _db.outboxDao.removeUpload(op.id);
     if (stored != null) await _deleteStoredCopy(stored);
+    try {
+      await _db.taskDetailsDao.addAttachment(op.taskId, attachment);
+    } on Object catch (error) {
+      _log.warning('Could not store an uploaded file: ${error.runtimeType}');
+    }
     _uploaded.add(attachment);
     _log.fine('Uploaded a file to task ${op.taskId}');
   }
@@ -1006,11 +1265,16 @@ final class OutboxSender {
     }
   }
 
-  /// The op's changes with every task its relations name followed to the
-  /// server id; null while one of them is still a task created here whose
-  /// create has not been answered.
+  /// The op's changes with every task its relations name and every label
+  /// it adds or removes followed to the server id; null while one of them
+  /// is still a task or a label created here whose create has not been
+  /// answered.
   Future<TaskChanges?> _sendableChanges(OutboxRow op) async {
-    final changes = decodeTaskChanges(op.payload);
+    final (:changes, :waits) = await _db.labelOpsDao.resolveLabels(
+      decodeTaskChanges(op.payload),
+      taskId: op.taskId,
+    );
+    if (waits) return null;
     final relations = changes.relations;
     if (relations == null) return changes;
     final resolved = <int, int>{};
@@ -1145,14 +1409,15 @@ final class OutboxSender {
     await sweepUploads();
   }
 
-  /// A create whose attempt may have left the task on the server is looked
-  /// for before it is sent again.
+  /// A create whose attempt may have left the task or label on the server
+  /// is looked for before it is sent again.
   Future<void> _handleSendFailure(
     OutboxRow op,
     OutboxOperationKind kind,
     VikunjaFailure failure,
   ) async {
-    if (kind == OutboxOperationKind.createTask &&
+    if ((kind == OutboxOperationKind.createTask ||
+            kind == OutboxOperationKind.createLabel) &&
         _mayHaveReachedServer(failure) &&
         !_disposed) {
       await _db.outboxDao.markUncertain(
@@ -1284,7 +1549,8 @@ final class OutboxSender {
           _Retry.counted,
         UnexpectedResponse() =>
           op.kind == OutboxOperationKind.createTask.name ||
-                  op.kind == OutboxOperationKind.uploadAttachment.name
+                  op.kind == OutboxOperationKind.uploadAttachment.name ||
+                  op.kind == OutboxOperationKind.createLabel.name
               ? _Retry.counted
               : _Retry.never,
         _ => _Retry.never,

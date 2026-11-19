@@ -1,25 +1,42 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-/// What the detail sheet shows beyond the synced row, read on demand and
-/// online only, like `SubscriptionRepository`: a failure is the
+/// What a read of the server brought last, as the device keeps it, and
+/// when it was read.
+typedef StoredRead<T> = ({T value, DateTime readAt});
+
+/// What the detail sheet shows beyond the synced row, read on demand from
+/// the server, like `SubscriptionRepository`: a failure is the
 /// `VikunjaFailure` of the request (offline a `NetworkFailure`), and a task
-/// whose create is still queued throws `TaskNotSyncedYet`. Comments and
-/// reactions are written online too; what the server answers goes back to
-/// the caller to show at once. The synced row keeps only the comment count
-/// and the unread flag, which these calls keep in step.
+/// whose create is still queued throws `TaskNotSyncedYet`. Each read is
+/// also stored, in place of the one before, for [storedDetails] and
+/// [storedComments] to show without a connection; one that started before
+/// a write to what is stored is not, as it may not have the write.
+/// Comments and reactions are written online; what the server answers
+/// goes back to the caller to show at once and into what is stored. The
+/// synced row keeps the comment count and the unread flag, which these
+/// calls keep in step.
 abstract interface class TaskDetailsRepository {
   /// Attachments, reactions, comment count, unread flag, subscription and
   /// permission of the task, from one read; the row takes the count and
   /// the flag.
   Future<TaskDetails> details(int taskId);
 
+  /// The attachments, cover and reactions of the last [details] stored
+  /// here, with the row's comment count; null when there are none.
+  Future<StoredRead<TaskDetails>?> storedDetails(int taskId);
+
   /// One page of comments, sorted by `(created, id)`, oldest first unless
-  /// [newestFirst].
+  /// [newestFirst]. The first page is stored in place of the comments
+  /// stored before, a later one beside them, so what is stored is what
+  /// the pages read since the last first page brought.
   Future<Page<TaskComment>> comments(
     int taskId, {
     int page = 1,
     bool newestFirst = false,
   });
+
+  /// The stored comments, oldest first; null when none were ever stored.
+  Future<StoredRead<List<TaskComment>>?> storedComments(int taskId);
 
   /// Clears the unread flag on the server, then that of the row, so a
   /// failed mark leaves the row unread. Idempotent; callers ignore the
@@ -48,7 +65,8 @@ abstract interface class TaskDetailsRepository {
   Future<void> deleteComment(int taskId, int commentId);
 
   /// The user's own reaction with [value] on the task or comment [id] (a
-  /// task by its local id like the other calls, a comment by its own).
+  /// task by its local id like the other calls, a comment by its own); the
+  /// stored reactions follow.
   /// Adding twice or removing one the user does not have changes nothing.
   /// An added [value] is 1 to [maxReactionLength] code points, else an
   /// `ArgumentError` without a request; v1 servers stored longer ones,

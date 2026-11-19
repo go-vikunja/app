@@ -6,6 +6,12 @@ enum OutboxOperationKind {
   updateTask,
   deleteTask,
   uploadAttachment,
+  createLabel,
+  updateLabel,
+  deleteLabel;
+
+  bool get isLabelOp =>
+      this == createLabel || this == updateLabel || this == deleteLabel;
 }
 
 /// A queued change the server rejected for good. The local edit stays
@@ -21,11 +27,16 @@ final class SyncProblem {
     required this.failedAt,
     this.changes,
     this.fileName,
+    this.labelId,
   });
 
   final String operationId;
   final OutboxOperationKind kind;
+
+  /// 0 for a label op.
   final int taskId;
+
+  /// The task's title; for a label op the label's.
   final String taskTitle;
   final VikunjaFailure failure;
   final DateTime failedAt;
@@ -37,4 +48,7 @@ final class SyncProblem {
   /// The name of the file a failed upload would have attached; null for
   /// every other kind.
   final String? fileName;
+
+  /// The label of a label op; null for every other kind.
+  final int? labelId;
 }

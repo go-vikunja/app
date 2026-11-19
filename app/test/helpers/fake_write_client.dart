@@ -721,17 +721,19 @@ final class FakeLabelsWritePort implements LabelsWritePort {
   }
 
   /// Labels of other users: changing or deleting one is `Forbidden`, as on
-  /// the server.
+  /// the server; reading one is not.
   final Set<int> othersLabels = {};
 
   /// Applies what [changes] set to the label in
   /// [FakeWriteClient.serverLabels]; one it does not hold is a `NotFound`
-  /// code 8002.
+  /// code 8002. Empty [changes] are a read.
   @override
   Future<Label> update(int id, LabelChanges changes) async {
     final description = 'update label $id $changes';
     await _client._request(description);
-    if (othersLabels.contains(id)) throw const Forbidden();
+    if (othersLabels.contains(id) && !changes.isEmpty) {
+      throw const Forbidden();
+    }
     final current = _client.serverLabels[id];
     if (current == null) throw const NotFound(code: 8002);
     final updated = Label(

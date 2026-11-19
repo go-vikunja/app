@@ -1,9 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_riverpod/misc.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -269,6 +271,12 @@ final class AuthFakes {
   final accountGateway = FakeAccountGateway();
   final linkShareGateway = FakeLinkShareGateway();
 
+  /// The folder of the accounts' images on disk. By default one that never
+  /// exists: a sign-out has nothing to delete, and no screen test waits on
+  /// real file system calls.
+  Future<Directory> Function() imageCacheRoot = () async =>
+      Directory('/no-cache/images');
+
   late final tokenStore = TokenStore(secureStore);
   late final registry = AccountRegistry(preferences);
   late final clockOffsets = ServerClockOffsets(preferences);
@@ -277,6 +285,7 @@ final class AuthFakes {
     secureStoreProvider.overrideWithValue(secureStore),
     preferencesStoreProvider.overrideWithValue(preferences),
     draftStoreProvider.overrideWithValue(drafts),
+    imageDiskCacheRootProvider.overrideWithValue(() => imageCacheRoot()),
     webAuthenticatorProvider.overrideWithValue(webAuthenticator),
     tokenGatewayProvider.overrideWithValue(tokenGateway),
     accountGatewayProvider.overrideWithValue(accountGateway),

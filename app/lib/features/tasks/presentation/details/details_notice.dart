@@ -1,5 +1,14 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
+
+/// When what the device stored was read, for "Shown as of …": a read just
+/// stored may be later than the clock's last tick.
+String storedWhen(
+  AppLocalizations l10n,
+  DateTime at, {
+  required DateTime now,
+}) => formatRelativeTime(l10n, at.isAfter(now) ? now : at, now: now);
 
 /// One quiet line about what the sheet could not read, with Retry; the
 /// rest of the sheet stays as it is.

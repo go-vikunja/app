@@ -6,6 +6,7 @@ import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/labels/presentation/label_form_page.dart';
 import 'package:vikunja_mobile/features/labels/presentation/labels_page.dart';
+import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/color_row.dart';
 
@@ -131,11 +132,28 @@ void main() {
       expect(harness.labels.created.single.hexColor, isEmpty);
     });
 
-    testWidgets('offline it stays open and says a connection is needed', (
-      tester,
-    ) async {
-      harness.labels.createFailure = const NetworkFailure(
-        NetworkProblem.unreachable,
+    testWidgets('offline it creates the label all the same, without an '
+        'offline note', (tester) async {
+      await openForm(tester, AppRoutes.labelNew);
+      harness.goOffline();
+      await tester.pump();
+      expect(find.byType(OfflineNotice), findsNothing);
+      await tester.enterText(titleField(), 'Errands');
+      await tester.pump();
+
+      await tester.tap(action(en.labelsCreate));
+      await tester.pumpAndSettle();
+
+      expect(harness.labels.created.single.title, 'Errands');
+      expect(find.byType(LabelFormPage), findsNothing);
+      expect(find.text(en.labelsCreated), findsOneWidget);
+    });
+
+    testWidgets('a label the device cannot store keeps the page open and '
+        'says so', (tester) async {
+      harness.labels.createFailure = const UnexpectedResponse(
+        null,
+        message: 'disk full',
       );
       await openForm(tester, AppRoutes.labelNew);
       await tester.enterText(titleField(), 'Errands');
@@ -145,7 +163,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(LabelFormPage), findsOneWidget);
-      expect(find.text(en.labelsNewOffline), findsOneWidget);
+      expect(find.text(en.localChangeFailed), findsOneWidget);
     });
 
     testWidgets('the counter shows near the limit, in code points', (
@@ -326,6 +344,68 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(en.labelsGoneTitle), findsOneWidget);
+    });
+  });
+
+  group('a label created here and not sent yet', () {
+    setUp(
+      () => harness.labels = FakeLabelRepository(
+        labels: [ownLabel(-1, 'Errand', hexColor: '0072b2')],
+      )..pendingIds = {-1},
+    );
+
+    testWidgets('is changed offline without an offline note', (tester) async {
+      await openForm(tester, AppRoutes.labelEdit(-1));
+      harness.goOffline();
+      await tester.pump();
+
+      expect(find.byType(OfflineNotice), findsNothing);
+      await tester.enterText(titleField(), 'Errands');
+      await tester.pump();
+      await tester.tap(action(en.labelsSave));
+      await tester.pumpAndSettle();
+
+      expect(harness.labels.updates, [
+        (-1, const LabelChanges(title: 'Errands')),
+      ]);
+      expect(find.text(en.labelsSaved), findsOneWidget);
+    });
+
+    testWidgets('stays open with the edit when its create is answered, and '
+        'saves to the server id', (tester) async {
+      await openForm(tester, AppRoutes.labelEdit(-1));
+      await tester.enterText(titleField(), 'Errands');
+      await tester.pump();
+
+      harness.labels.remap(-1, 900);
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.labelsGoneTitle), findsNothing);
+      expect(
+        tester.widget<TextField>(titleField()).controller!.text,
+        'Errands',
+      );
+      await tester.tap(action(en.labelsSave));
+      await tester.pumpAndSettle();
+
+      expect(harness.labels.labels.single.id, 900);
+      expect(harness.labels.labels.single.title, 'Errands');
+    });
+
+    testWidgets("whose create took another person's label of that title "
+        'can no longer be changed here', (tester) async {
+      await openForm(tester, AppRoutes.labelEdit(-1));
+      expect(tester.widget<TextField>(titleField()).enabled, isTrue);
+
+      harness.labels.remap(-1, 900, taken: othersLabel(900, 'Errand'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.widgetWithText(ListNote, en.labelsDescriptionCreatorOnly),
+        findsOneWidget,
+      );
+      expect(tester.widget<TextField>(titleField()).enabled, isFalse);
+      expect(action(en.labelsSave), findsNothing);
     });
   });
 

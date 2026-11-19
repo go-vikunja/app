@@ -4,7 +4,7 @@ Melde dich bei deinem Vikunja-Server an (Version 2.3 oder neuer) – deinem eige
 
 Offline und Synchronisierung
 • Aufgaben, die du offline erstellst, bearbeitest, als erledigt markierst oder auf einem Board verschiebst, werden gesendet, sobald der Server wieder antwortet.
-• Kommentare, Reaktionen und die Anhänge einer Aufgabe lädt die App nur mit Verbindung, und auch das Verwalten von Projekten, Spalten, Labels, Teams und Freigaben braucht eine. Anhänge, die du offline hinzufügst, werden später gesendet.
+• Eine Aufgabe, die du online geöffnet hast, zeigt Kommentare, Reaktionen und Anhänge offline so, wie sie damals waren. Kommentieren, Reagieren und das Verwalten von Projekten, Spalten, Teams und Freigaben brauchen eine Verbindung. Labels und Anhänge, die du offline hinzufügst, werden später gesendet.
 • Die App synchronisiert beim Start, solange sie offen ist, und im Hintergrund.
 
 Deine Aufgaben im Überblick

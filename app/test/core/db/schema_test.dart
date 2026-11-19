@@ -11,19 +11,22 @@ import 'generated/schema.dart';
 // and a migration test from v<N-1> to v<N> in migration_test.dart.
 void main() {
   late SchemaVerifier verifier;
+  final latest = GeneratedHelper.versions.last;
 
   setUpAll(() => verifier = SchemaVerifier(GeneratedHelper()));
 
-  test('the schema dump matches the generated code', () async {
-    final connection = await verifier.startAt(1);
+  test("the latest schema dump is the code's version and matches its "
+      'generated code', () async {
+    final connection = await verifier.startAt(latest);
     final db = AppDatabase(connection);
     addTearDown(db.close);
 
-    await verifier.migrateAndValidate(db, 1);
+    expect(db.schemaVersion, latest);
+    await verifier.migrateAndValidate(db, latest);
   });
 
   test('a fresh database validates against the code', () async {
-    final schema = await verifier.schemaAt(1);
+    final schema = await verifier.schemaAt(latest);
     final db = AppDatabase(schema.newConnection());
     addTearDown(db.close);
 

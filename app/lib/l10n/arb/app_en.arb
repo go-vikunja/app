@@ -1435,6 +1435,9 @@
     "description": "Tooltip and screen reader label of the star button of a task that is among the favorites."
   },
   "taskNotYetSynced": "Not yet synced",
+  "@taskNotYetSynced": {
+    "description": "Marks a task, or a label on the labels page, that was created or changed on this device, offline too, and is not on the server yet: shown in a task's details, and read out by screen readers for a task in a list and for the cloud icon of such a label."
+  },
   "taskDelete": "Delete task",
   "taskDeleteDialogTitle": "Delete task?",
   "taskDeleteDialogBody": "“{title}” will be deleted on the server too. This cannot be undone.",
@@ -1580,11 +1583,23 @@
   },
   "localChangeFailed": "The change could not be saved on this device.",
   "@localChangeFailed": {
-    "description": "Snackbar when a change could not even be stored on this device (the device's storage is full or failed), so it was neither kept nor queued for the server; for example marking a task as done, saving the edit page, moving a card or Try again in the Sync problems. It names the device so it does not read as one more refusal of the server, whose failures the Sync problems start with “The change could not be saved.”"
+    "description": "Snackbar when a change could not even be stored on this device (the device's storage is full or failed), so it was neither kept nor queued for the server; for example marking a task as done, saving the edit page, moving a card or Try again in the Sync problems. Also shown in the label picker, in red under the row that creates a label, when the new label could not be stored. It names the device so it does not read as one more refusal of the server, whose failures the Sync problems start with “The change could not be saved.”"
   },
   "syncProblemCreateFailed": "The task could not be created.",
   "@syncProblemCreateFailed": {
     "description": "Entry in the Sync problems section of the Account tab: a task created on this device could not be created on the server."
+  },
+  "syncProblemLabelCreateFailed": "The label could not be created.",
+  "@syncProblemLabelCreateFailed": {
+    "description": "Entry in the Sync problems section of the Account tab, under the label's title: a label created on this device, offline too, could not be created on the server. A sentence saying why follows."
+  },
+  "syncProblemLabelUpdateFailed": "The change to the label could not be saved.",
+  "@syncProblemLabelUpdateFailed": {
+    "description": "Entry in the Sync problems section of the Account tab, under the label's title: a change to a label (its title, color or description) made on this device could not be saved on the server. A sentence saying why follows."
+  },
+  "syncProblemLabelDeleteFailed": "The label could not be deleted.",
+  "@syncProblemLabelDeleteFailed": {
+    "description": "Entry in the Sync problems section of the Account tab, under the label's title: a label deleted on this device could not be deleted on the server. A sentence saying why follows."
   },
   "taskEdit": "Edit",
   "taskEditTitle": "Edit task",
@@ -2001,9 +2016,9 @@
   "quickAddHelpTitle": "Quick Add Magic",
   "quickAddHelpIntro": "Write the whole task in one line. These parts are recognized, marked in color and taken out of the title:",
   "quickAddHelpLabelsTitle": "Labels",
-  "quickAddHelpLabelsBody": "A word starting with {prefix}. Labels that don't exist yet are created when you add the task; without a connection the word stays in the title. Use quotes for spaces.",
-  "@quickAddHelpLabelsBody": {
-    "description": "Text of the Labels section of the Quick Add help sheet; prefix is the label prefix, for example *, kept as it is.",
+  "quickAddHelpLabelsCreated": "A word starting with {prefix}. Labels that don't exist yet are created when you add the task, offline too. Use quotes for spaces.",
+  "@quickAddHelpLabelsCreated": {
+    "description": "Text of the Labels section of the Quick Add help sheet: labels that don't exist yet are created, also without a connection (they reach the server later). prefix is the label prefix, for example *, kept as it is.",
     "placeholders": {
       "prefix": {
         "type": "String",
@@ -2148,28 +2163,6 @@
         "example": "Groceries"
       }
     }
-  },
-  "labelPickerCreating": "Creating the label…",
-  "@labelPickerCreating": {
-    "description": "Under the create row of the label picker while the new label is sent to the server."
-  },
-  "labelPickerCreateUnconfirmed": "Couldn't confirm that the label was created. Check your connection and try again.",
-  "@labelPickerCreateUnconfirmed": {
-    "description": "Error in the label picker or on the new-label page when creating a label timed out; the server may have created it."
-  },
-  "labelPickerCreateRejected": "The server did not create the label: {message}",
-  "@labelPickerCreateRejected": {
-    "description": "Error in the label picker or on the new-label page when the server refused to create a label; message is the server's own error text, untranslated.",
-    "placeholders": {
-      "message": {
-        "type": "String",
-        "example": "invalid data"
-      }
-    }
-  },
-  "labelPickerCreateFailed": "The label could not be created.",
-  "@labelPickerCreateFailed": {
-    "description": "Error in the label picker or on the new-label page when a label could not be created for any other reason."
   },
   "labelPickerTitleTooLong": "A label title can have at most {max} characters.",
   "@labelPickerTitleTooLong": {
@@ -3750,6 +3743,26 @@
   "imageViewerClose": "Close image",
   "taskDetailDetailsOffline": "Attachments, comments and reactions need a connection",
   "taskDetailDetailsFailed": "Attachments, comments and reactions couldn't be loaded",
+  "taskDetailDetailsStored": "Attachments and reactions as of {when}; updating them needs a connection",
+  "@taskDetailDetailsStored": {
+    "description": "In a task's details without a connection, above the attachments and reactions loaded earlier, which show instead; the comments have a note of their own. when is a relative time, for example 5 minutes ago.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "5 minutes ago"
+      }
+    }
+  },
+  "taskDetailDetailsStoredFailed": "Attachments and reactions as of {when}; they couldn't be loaded again",
+  "@taskDetailDetailsStoredFailed": {
+    "description": "In a task's details when the server could not answer for a reason that may pass, such as a server error or a network login page, above the attachments and reactions loaded earlier, which show instead; the comments have a note of their own. when is a relative time, for example 5 minutes ago.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "5 minutes ago"
+      }
+    }
+  },
   "taskDetailAttachments": "Attachments",
   "taskDetailCoverImage": "Cover image",
   "@taskDetailCoverImage": {
@@ -4046,6 +4059,26 @@
   "commentsLoading": "Loading comments…",
   "commentsNeedConnection": "Comments need a connection",
   "commentsFailed": "Comments couldn't be loaded",
+  "commentsStored": "Comments as of {when}; updating them needs a connection",
+  "@commentsStored": {
+    "description": "Above a task's comments loaded earlier, which show instead without a connection; when is a relative time, for example 5 minutes ago.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "5 minutes ago"
+      }
+    }
+  },
+  "commentsStoredFailed": "Comments as of {when}; they couldn't be loaded again",
+  "@commentsStoredFailed": {
+    "description": "Above a task's comments loaded earlier, which show instead when the server could not answer for a reason that may pass, such as a server error or a network login page; when is a relative time, for example 5 minutes ago.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "5 minutes ago"
+      }
+    }
+  },
   "commentEdited": "edited {when}",
   "@commentEdited": {
     "description": "After a comment's time when it was changed later.",
@@ -6169,10 +6202,6 @@
     }
   },
   "labelsNew": "New label",
-  "labelsNewOffline": "Creating a label needs a connection to the server.",
-  "@labelsNewOffline": {
-    "description": "Tooltip of the dimmed New label button while offline, and error when creating a label failed because there is no connection to the server."
-  },
   "labelsEmptyTitle": "No labels yet",
   "labelsEmptyBody": "Labels mark tasks across all projects. Create one here or while editing a task.",
   "@labelsEmptyBody": {
@@ -6250,10 +6279,16 @@
   "labelsUnconfirmed": "Couldn't confirm the change. Check your connection and pull down to refresh.",
   "labelsNotCreator": "Only the person who created this label can change it.",
   "@labelsNotCreator": {
-    "description": "Error when the server refused a change to a label because only the person who created it may change it."
+    "description": "Error when the server refused a change to a label because only the person who created it may change it. Also the sentence saying why after “The change to the label could not be saved.” or “The label could not be deleted.” in an entry of the Sync problems section of the Account tab, for a change made on this device, offline too."
   },
   "labelsGone": "This label no longer exists.",
+  "@labelsGone": {
+    "description": "Error when a label could not be changed or deleted because the server no longer has it, for example as it was deleted on the web. Also the sentence saying why after “The label could not be created.”, “The change to the label could not be saved.” or “The label could not be deleted.” in an entry of the Sync problems section of the Account tab."
+  },
   "labelsInvalid": "The server did not accept this label. Check its title and color.",
+  "@labelsInvalid": {
+    "description": "Error when the server refused a label's title or color as invalid. Also the sentence saying why after “The label could not be created.” or “The change to the label could not be saved.” in an entry of the Sync problems section of the Account tab, for a label created or changed on this device, offline too."
+  },
   "labelsRefused": "The server refused: {message}",
   "@labelsRefused": {
     "description": "Error when the server refused a change to a label; message is the server's message, for example Forbidden.",
@@ -9216,7 +9251,7 @@
   },
   "newTaskLabelsKept": "These labels couldn't be created, so they stay in the title: {labels}",
   "@newTaskLabelsKept": {
-    "description": "Warning after adding a task when labels written with Quick Add could not be created (offline, refused, too long, or for a guest); their words stay at the end of the title; labels is a comma-separated list of the words as typed, with their prefix.",
+    "description": "Warning after adding a task when labels written with Quick Add could not be created: a link-share guest's, who can't create labels, or one whose title is longer than the server allows (250 characters); their words stay at the end of the title; labels is a comma-separated list of the words as typed, with their prefix.",
     "placeholders": {
       "labels": {
         "type": "String",
@@ -9224,29 +9259,9 @@
       }
     }
   },
-  "quickAddNewLabelOffline": "{label} · needs a connection",
-  "@quickAddNewLabelOffline": {
-    "description": "Preview chip under the Quick Add field for a label that does not exist yet while the app is offline; label is its title.",
-    "placeholders": {
-      "label": {
-        "type": "String",
-        "example": "car"
-      }
-    }
-  },
-  "quickAddNewLabelOfflineSemantics": "New label {label}, needs a connection, otherwise it stays in the title",
-  "@quickAddNewLabelOfflineSemantics": {
-    "description": "Screen reader: label of the preview chip quickAddNewLabelOffline; label is its title.",
-    "placeholders": {
-      "label": {
-        "type": "String",
-        "example": "car"
-      }
-    }
-  },
   "quickAddLabelStaysInTitle": "{label} · stays in the title",
   "@quickAddLabelStaysInTitle": {
-    "description": "Preview chip under the Quick Add field for a guest's label that does not exist: guests cannot create labels; label is its title.",
+    "description": "Preview chip under the Quick Add field for a label that does not exist and is not created: a guest's (guests cannot create labels), or one whose title is longer than the server allows; label is its title.",
     "placeholders": {
       "label": {
         "type": "String",

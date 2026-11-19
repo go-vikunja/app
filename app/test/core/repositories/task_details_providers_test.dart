@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
@@ -7,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart' show OwnTaskSubscription;
+import 'package:vikunja_mobile/core/attachments/attachment_downloads.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -37,6 +39,7 @@ void main() {
   late AuthFakes auth;
   late ProviderContainer container;
   late Map<String, FakeSyncClient> readClients;
+  late AttachmentDownloads downloads;
 
   setUp(() {
     driftRuntimeOptions.dontWarnAboutMultipleDatabases = true;
@@ -45,10 +48,14 @@ void main() {
     );
     auth = AuthFakes();
     readClients = {};
+    final cache = Directory.systemTemp.createTempSync('details_providers');
+    addTearDown(() => cache.deleteSync(recursive: true));
+    downloads = AttachmentDownloads(() async => cache);
     final files = FakeAccountDatabaseFiles();
     container = ProviderContainer(
       overrides: [
         ...auth.overrides,
+        attachmentDownloadsProvider.overrideWithValue(downloads),
         accountDatabaseFilesProvider.overrideWithValue(files),
         openDatabasesProvider.overrideWithValue(
           OpenDatabases(
@@ -213,6 +220,96 @@ void main() {
 
     expect(image.bytes, hasLength(3));
     expect(client.requests, ['attachment 4 2 md']);
+  });
+
+  test('an original in the download cache loads from there, offline too, '
+      'found by the attachment stored with its task', () async {
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: noon),
+    );
+    await container.read(accountsProvider.future);
+    final db = container.read(appDatabaseProvider(alice.id));
+    await db.tasksDao.upsertAll([sampleTask(id: 4, title: 'Fly')]);
+    final pass = sampleAttachment(id: 2, taskId: 4, name: 'pass.png', size: 3);
+    final ticket = sampleAttachment(id: 6, taskId: 4, size: 3);
+    await db.taskDetailsDao.storeDetails(
+      4,
+      TaskDetails(attachments: [pass, ticket]),
+      at: noon,
+    );
+    for (final (attachment, bytes) in [
+      (pass, const [1, 2, 3]),
+      (ticket, const [1, 2]),
+    ]) {
+      (await downloads.fileFor(alice.id, 4, attachment))
+        ..createSync(recursive: true)
+        ..writeAsBytesSync(bytes);
+    }
+    final client =
+        container.read(readClientProvider(alice.id)) as FakeSyncClient
+          ..beforeRequest = (_) async =>
+              throw const NetworkFailure(NetworkProblem.unreachable);
+    final images = container.read(accountAttachmentImagesProvider(alice.id));
+
+    final original = await images.load(4, 2);
+    expect(original.bytes, const [1, 2, 3]);
+    expect(original.contentType, 'image/png');
+    expect(client.requests, isEmpty);
+
+    for (final (attachmentId, preview) in [
+      (2, AttachmentPreviewSize.medium),
+      (6, null),
+      (7, null),
+    ]) {
+      await expectLater(
+        images.load(4, attachmentId, preview: preview),
+        throwsA(isA<NetworkFailure>()),
+      );
+    }
+    expect(client.requests, [
+      'attachment 4 2 md',
+      'attachment 4 6 original',
+      'attachment 4 7 original',
+    ]);
+  });
+
+  test("an account's own reactions are stored under its user as the server "
+      'lists people', () async {
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: noon),
+    );
+    final bob = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: noon, userId: 8, username: 'bob'),
+      displayName: 'bob',
+      activate: false,
+    );
+    await container.read(accountsProvider.future);
+    final stored = <String, Reactions>{};
+    for (final entry in [alice, bob]) {
+      final task = sampleTask(id: 1, title: 'Read');
+      await container.read(appDatabaseProvider(entry.id)).tasksDao.upsertAll([
+        task,
+      ]);
+      readClients.putIfAbsent(entry.id, FakeSyncClient.new)
+        ..allTasks = [task]
+        ..taskDetails[1] = const TaskDetails();
+      final repository = container.read(
+        accountTaskDetailsRepositoryProvider(entry.id),
+      );
+      await repository.details(1);
+      await repository.addReaction(ReactionEntity.task, 1, '👍');
+      stored[entry.id] = (await repository.storedDetails(1))!.value.reactions;
+    }
+
+    expect(stored[alice.id], {
+      '👍': [const User(id: 7, username: 'alice', name: 'Alice Example')],
+    });
+    expect(stored[bob.id], {
+      '👍': [const User(id: 8, username: 'bob')],
+    });
   });
 
   test("another account's activation empties the attachment images in "

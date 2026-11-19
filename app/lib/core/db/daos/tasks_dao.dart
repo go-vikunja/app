@@ -1043,7 +1043,9 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// stays hidden. The relation changes other tasks still have queued keep
   /// their inverse edges on the incoming tasks, as the server will once
   /// they are sent, and the edges other local tasks hold to the incoming
-  /// ones follow theirs, see [_matchInverseRows]. One transaction, so that
+  /// ones follow theirs, see [_matchInverseRows]. The labels they carry are
+  /// stored under the label edits still queued; one whose delete is queued
+  /// is left out, with its place on the tasks. One transaction, so that
   /// a change queued meanwhile is not overwritten with the queue as it was
   /// read.
   Future<void> upsertAll(
@@ -1061,12 +1063,16 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         if (row.pendingChanges case final json?)
           row.id: decodeTaskChanges(json),
     };
+    final deletingLabels = await attachedDatabase.labelOpsDao.deletingIds();
+    final storedLabels = await attachedDatabase.labelsDao.withQueued([
+      for (final task in all) ...task.labels,
+    ]);
     final knownLabels = {
       for (final task in all) ...task.labels.map((label) => label.id),
       ...await _existingLabelIds({
         for (final changes in pending.values) ...?changes.labels?.added,
       }),
-    };
+    }..removeAll(deletingLabels);
     final knownUsers = {
       for (final task in all) ...task.assignees.map((user) => user.id),
       ...await _existingUserIds({
@@ -1101,7 +1107,10 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         _relationRows(task, inverse[task.id], changes?.relations),
       );
       if (changes == null) {
-        labelRows.addAll(taskLabelRows(task));
+        labelRows.addAll([
+          for (final row in taskLabelRows(task))
+            if (!deletingLabels.contains(row.labelId)) row,
+        ]);
         assigneeRows.addAll(taskAssigneeRows(task));
         reminders.addAll(taskReminderRows(task));
         continue;
@@ -1143,8 +1152,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
           ],
         ])
         ..insertAllOnConflictUpdate(labels, [
-          for (final task in all)
-            for (final label in task.labels) labelRow(label).toCompanion(false),
+          for (final label in storedLabels) labelRow(label).toCompanion(false),
         ])
         ..insertAllOnConflictUpdate(tasks, taskRows)
         ..deleteWhere(taskLabels, (t) => t.taskId.isIn(ids))

@@ -1,8 +1,12 @@
+import 'dart:io';
+
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/sign_out.dart';
 import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
@@ -98,5 +102,35 @@ void main() {
     expect(files.deleted, isEmpty);
     expect(gateway.cancelled, isEmpty);
     expect(left, isEmpty);
+  });
+
+  test('then hands every account the registry knows to the wipe of what '
+      'others left, one whose wipe failed too; nothing when the registry '
+      'cannot be read', () async {
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: now),
+    );
+    final bob = await auth.seedAccount(
+      oauthServer230(),
+      tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
+      activate: false,
+    );
+    await auth.registry.remove(bob.id);
+    final known = <Set<String>>[];
+    final deletions = AccountDeletions(
+      registry: auth.registry,
+      wipe: (_) async => throw const FileSystemException('busy'),
+      wipeUnknown: (accountIds) async => known.add(accountIds),
+    );
+
+    expect(await deletions.finishAll(), isFalse);
+    expect(known, [
+      {alice.id, bob.id},
+    ]);
+
+    auth.preferences.values[AccountRegistry.storageKey] = '{not json';
+    await deletions.finishAll();
+    expect(known, hasLength(1));
   });
 }

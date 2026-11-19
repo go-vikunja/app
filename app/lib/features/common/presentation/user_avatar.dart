@@ -35,12 +35,16 @@ class _UserAvatarState extends ConsumerState<UserAvatar> {
   (String, String, int, int)? _requested;
   CachedAvatar? _avatar;
 
-  /// Asks again on a later build once the cache has forgotten a failure
-  /// that may pass, e.g. after the app was started offline.
+  /// Set while the cache will ask the server again for the avatar shown,
+  /// the initials or the one kept on disk after a failure that may pass.
+  Timer? _retry;
+
+  /// After a failure that may pass, e.g. after the app was started offline,
+  /// asks again once the cache would: on a later build, and when the retry
+  /// is due. Rows showing the same avatar share the cache's one request.
   void _request(String accountId, AvatarCache cache, int size, int generation) {
     final key = (accountId, widget.user.username, size, generation);
-    final showsInitials = _avatar != null && _avatar!.bytes == null;
-    if (key == _requested && !showsInitials) return;
+    if (key == _requested && _retry == null) return;
     // A new generation of the same avatar keeps the old picture until the
     // new one has arrived, so it does not flash the initials.
     final sameAvatar =
@@ -48,14 +52,37 @@ class _UserAvatarState extends ConsumerState<UserAvatar> {
         (_requested!.$1, _requested!.$2, _requested!.$3) ==
             (key.$1, key.$2, key.$3);
     _requested = key;
+    _retry?.cancel();
+    _retry = null;
     final cached = cache.peek(widget.user.username, size);
     if (cached != null || !sameAvatar) _avatar = cached;
-    if (cached != null) return;
+    if (cached != null) {
+      _retryWhenDue(cache, size);
+      return;
+    }
     unawaited(
       cache.load(widget.user.username, size).then((avatar) {
-        if (mounted && _requested == key) setState(() => _avatar = avatar);
+        if (!mounted || _requested != key) return;
+        setState(() => _avatar = avatar);
+        _retryWhenDue(cache, size);
       }),
     );
+  }
+
+  void _retryWhenDue(AvatarCache cache, int size) {
+    _retry?.cancel();
+    final due = cache.untilRetry(widget.user.username, size);
+    _retry = due == null
+        ? null
+        : Timer(due, () {
+            if (mounted) setState(() {});
+          });
+  }
+
+  @override
+  void dispose() {
+    _retry?.cancel();
+    super.dispose();
   }
 
   @override

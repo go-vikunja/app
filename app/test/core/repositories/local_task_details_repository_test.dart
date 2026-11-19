@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart' show OwnTaskSubscription;
@@ -460,5 +462,310 @@ void main() {
     await pumpEventQueue();
 
     expect(changes, [later]);
+  });
+
+  group('what is read is kept for offline', () {
+    const me = User(id: 1, username: 'me', name: 'Me');
+    final morning = DateTime.utc(2026, 11, 19, 8);
+    var now = morning;
+    const offline = NetworkFailure(NetworkProblem.unreachable);
+
+    setUp(() {
+      now = morning;
+      repository = LocalTaskDetailsRepository(
+        db,
+        read,
+        write,
+        me: me,
+        now: () => now,
+      );
+      write
+        ..serverTasks[1] = read.allTasks.single
+        ..commenter = me;
+    });
+
+    test('each details read in place of the one before, stamped with its '
+        'time; a failed read leaves it', () async {
+      read.taskDetails[1] = TaskDetails(
+        attachments: [sampleAttachment(id: 3), sampleAttachment(id: 5)],
+        coverImageAttachmentId: 3,
+        reactions: const {
+          '👍': [anna],
+        },
+        commentCount: 2,
+      );
+      expect(await repository.storedDetails(1), isNull);
+
+      await repository.details(1);
+      var stored = (await repository.storedDetails(1))!;
+      expect(stored.readAt, morning);
+      expect(stored.value.attachments.map((a) => a.id), [3, 5]);
+      expect(stored.value.coverImageAttachmentId, 3);
+      expect(stored.value.reactions, read.taskDetails[1]!.reactions);
+      expect(stored.value.commentCount, 2);
+
+      now = noon;
+      read.taskDetails[1] = TaskDetails(attachments: [sampleAttachment(id: 5)]);
+      await repository.details(1);
+      read.beforeRequest = (_) async => throw offline;
+      await expectLater(repository.details(1), throwsA(offline));
+
+      stored = (await repository.storedDetails(1))!;
+      expect(stored.readAt, noon);
+      expect(stored.value.attachments.map((a) => a.id), [5]);
+      expect(stored.value.reactions, isEmpty);
+      expect(read.requests, [
+        'task details 1',
+        'task details 1',
+        'task details 1',
+      ]);
+    });
+
+    test('the first page of comments in place of those before, a later one '
+        'beside them; a failed page leaves them', () async {
+      read = FakeSyncClient(maxPerPage: 2);
+      repository = LocalTaskDetailsRepository(db, read, write, now: () => now);
+      read
+        ..allTasks = [sampleTask(id: 1, title: 'One')]
+        ..taskComments[1] = [
+          for (var id = 1; id <= 5; id++) sampleComment(id: id),
+        ];
+
+      await repository.comments(1, newestFirst: true);
+      expect((await repository.storedComments(1))!.value.map((c) => c.id), [
+        4,
+        5,
+      ]);
+      now = noon;
+      await repository.comments(1);
+      await repository.comments(1, page: 2);
+      read.beforeRequest = (_) async => throw offline;
+      await expectLater(repository.comments(1, page: 3), throwsA(offline));
+
+      final stored = (await repository.storedComments(1))!;
+      expect(stored.value.map((c) => c.id), [1, 2, 3, 4]);
+      expect(stored.readAt, noon);
+    });
+
+    test('a task created here by its server id once answered, before that '
+        'nothing', () async {
+      await db
+          .into(db.taskIdRemaps)
+          .insert(
+            TaskIdRemapRow(localId: -4, serverId: 1, at: DateTime.utc(2026)),
+          );
+      read
+        ..taskDetails[1] = TaskDetails(attachments: [sampleAttachment(id: 3)])
+        ..taskComments[1] = [sampleComment(id: 7)];
+      await repository.details(1);
+      await repository.comments(1);
+
+      expect(
+        (await repository.storedDetails(-4))!.value.attachments.single.id,
+        3,
+      );
+      expect((await repository.storedComments(-4))!.value.single.id, 7);
+      expect(await repository.storedDetails(-5), isNull);
+      expect(await repository.storedComments(-5), isNull);
+    });
+
+    test('comments written, edited and deleted here follow the server '
+        'into what is stored', () async {
+      final theirs = sampleComment(id: 4);
+      read.taskComments[1] = [theirs];
+      write.serverComments[1] = [theirs];
+      await repository.comments(1);
+
+      final mine = await repository.addComment(
+        1,
+        const CommentDraft('<p>Mine</p>'),
+      );
+      final edited = await repository.editComment(
+        1,
+        mine,
+        const CommentDraft('<p>Better</p>'),
+      );
+      var stored = (await repository.storedComments(1))!.value;
+      expect(stored.map((c) => c.id), [4, mine.id]);
+      expect(stored.last.html, '<p>Better</p>');
+      // Stored to the millisecond.
+      expect(
+        stored.last.updated!.millisecondsSinceEpoch,
+        edited.updated!.millisecondsSinceEpoch,
+      );
+      expect(stored.last.author, me);
+
+      await repository.deleteComment(1, mine.id);
+      stored = (await repository.storedComments(1))!.value;
+      expect(stored, [theirs]);
+    });
+
+    test('reactions written here follow the server with the user; without '
+        'the user, or when the write fails, they stay', () async {
+      read
+        ..taskDetails[1] = const TaskDetails(
+          reactions: {
+            '👍': [anna],
+          },
+        )
+        ..taskComments[1] = [sampleComment(id: 9)];
+      await repository.details(1);
+      await repository.comments(1);
+
+      await repository.addReaction(ReactionEntity.task, 1, '👍');
+      await repository.addReaction(ReactionEntity.comment, 9, '🎉');
+      expect((await repository.storedDetails(1))!.value.reactions, {
+        '👍': [anna, me],
+      });
+      expect((await repository.storedComments(1))!.value.single.reactions, {
+        '🎉': [me],
+      });
+
+      await repository.removeReaction(ReactionEntity.comment, 9, '🎉');
+      write.beforeRequest = (_) async => throw offline;
+      await expectLater(
+        repository.removeReaction(ReactionEntity.task, 1, '👍'),
+        throwsA(offline),
+      );
+      write.beforeRequest = null;
+      await LocalTaskDetailsRepository(
+        db,
+        read,
+        write,
+      ).addReaction(ReactionEntity.comment, 9, '🚀');
+
+      expect((await repository.storedDetails(1))!.value.reactions, {
+        '👍': [anna, me],
+      });
+      expect(
+        (await repository.storedComments(1))!.value.single.reactions,
+        isEmpty,
+      );
+    });
+
+    test('a reaction written while a details read runs stays in what is '
+        'kept when that read is answered after the next one', () async {
+      read.taskDetails[1] = const TaskDetails();
+      await repository.details(1);
+      const before = TaskDetails(commentCount: 1);
+      const after = TaskDetails(
+        reactions: {
+          '👍': [me],
+        },
+        commentCount: 1,
+      );
+      final held = Completer<void>();
+      read.beforeRequest = (_) async {
+        await held.future;
+        // What the server had when it was asked.
+        read.taskDetails[1] = before;
+      };
+      final stale = repository.details(1);
+      await pumpEventQueue();
+      read.beforeRequest = null;
+
+      await repository.addReaction(ReactionEntity.task, 1, '👍');
+      now = noon;
+      read.taskDetails[1] = after;
+      await repository.details(1);
+      held.complete();
+
+      expect(await stale, same(before));
+      final stored = (await repository.storedDetails(1))!;
+      expect(stored.value.reactions, after.reactions);
+      expect(stored.readAt, noon);
+    });
+
+    test('a comment deleted while a page read runs stays deleted in what is '
+        'kept when that page is answered after the next read', () async {
+      final theirs = sampleComment(id: 3);
+      final mine = sampleComment(id: 4, author: me);
+      read.taskComments[1] = [theirs, mine];
+      write.serverComments[1] = [theirs, mine];
+      await repository.comments(1);
+      final held = Completer<void>();
+      read.beforeRequest = (_) async {
+        await held.future;
+        read.taskComments[1] = [theirs, mine];
+      };
+      final stale = repository.comments(1);
+      await pumpEventQueue();
+      read.beforeRequest = null;
+
+      await repository.deleteComment(1, mine.id);
+      now = noon;
+      read.taskComments[1] = [theirs];
+      await repository.comments(1);
+      held.complete();
+
+      expect((await stale).items, [theirs, mine]);
+      final stored = (await repository.storedComments(1))!;
+      expect(stored.value, [theirs]);
+      expect(stored.readAt, noon);
+    });
+
+    test('a comment deleted while a details read runs keeps its count on '
+        'the task when that read is answered last', () async {
+      final mine = sampleComment(id: 4, author: me);
+      read.taskDetails[1] = const TaskDetails(commentCount: 1);
+      write.serverComments[1] = [mine];
+      await repository.details(1);
+      final held = Completer<void>();
+      read.beforeRequest = (_) async {
+        await held.future;
+        read.taskDetails[1] = const TaskDetails(commentCount: 1);
+      };
+      final stale = repository.details(1);
+      await pumpEventQueue();
+      read.beforeRequest = null;
+
+      await repository.deleteComment(1, mine.id);
+      read.taskDetails[1] = const TaskDetails();
+      await repository.details(1);
+      held.complete();
+      await stale;
+
+      expect((await db.tasksDao.find(1))!.commentCount, 0);
+    });
+
+    test('a read that starts after a write keeps what it read', () async {
+      read.taskComments[1] = [sampleComment(id: 3)];
+      await repository.comments(1);
+      await repository.addComment(1, const CommentDraft('<p>Mine</p>'));
+      read.taskComments[1] = [sampleComment(id: 3), sampleComment(id: 8)];
+
+      await repository.comments(1);
+
+      expect((await repository.storedComments(1))!.value.map((c) => c.id), [
+        3,
+        8,
+      ]);
+    });
+
+    test(
+      'a failure to keep it leaves the read and the write standing',
+      () async {
+        final details = TaskDetails(attachments: [sampleAttachment(id: 3)]);
+        read
+          ..taskDetails[1] = details
+          ..taskComments[1] = [sampleComment(id: 4)];
+        await db.customStatement(
+          'CREATE TRIGGER no_details BEFORE INSERT ON task_detail_loads '
+          "BEGIN SELECT RAISE(ABORT, 'disk full'); END",
+        );
+
+        expect(await repository.details(1), same(details));
+        expect((await repository.comments(1)).items.single.id, 4);
+        expect(
+          (await repository.addComment(
+            1,
+            const CommentDraft('<p>Hi</p>'),
+          )).html,
+          '<p>Hi</p>',
+        );
+        expect(await repository.storedDetails(1), isNull);
+        expect(await repository.storedComments(1), isNull);
+      },
+    );
   });
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/repositories/label_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 
 import '../../helpers/label_user_fakes.dart';
@@ -17,7 +18,7 @@ Future<void> openEditPageWith(
   required SyncFakes data,
   required int taskId,
   required DateTime now,
-  FakeLabelRepository? labels,
+  LabelRepository? labels,
   FakeUserRepository? users,
   Size size = const Size(360, 2200),
 }) async {

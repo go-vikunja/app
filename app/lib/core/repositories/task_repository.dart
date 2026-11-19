@@ -118,7 +118,8 @@ abstract interface class TaskRepository {
   /// The open tasks with the label [labelId], as a saved filter
   /// `done = false && labels in <id>` lists them: outside archived
   /// projects and favourite ones anywhere, nearest due date first (none
-  /// last), then newest first.
+  /// last), then newest first. A label created here is followed to its
+  /// server id once its create is answered.
   Stream<List<Task>> watchLabelTasks(int labelId);
 
   /// Runs the sync, which brings a changed definition; a saved filter the

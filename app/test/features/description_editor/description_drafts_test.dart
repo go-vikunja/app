@@ -63,7 +63,7 @@ void main() {
       (await drafts.read(
         account: 'a',
         target: server,
-        resolveTaskId: resolve,
+        resolveId: resolve,
       ))?.html,
       '<p>Draft</p>',
     );
@@ -73,26 +73,26 @@ void main() {
       TaskDescriptionTarget(-4),
     ]) {
       expect(
-        await drafts.read(account: 'a', target: other, resolveTaskId: resolve),
+        await drafts.read(account: 'a', target: other, resolveId: resolve),
         isNull,
       );
     }
     expect(
-      await drafts.read(account: 'b', target: server, resolveTaskId: resolve),
+      await drafts.read(account: 'b', target: server, resolveId: resolve),
       isNull,
     );
     expect(
       await drafts.read(
         account: 'a',
         target: const ProjectDescriptionTarget(42),
-        resolveTaskId: resolve,
+        resolveId: resolve,
       ),
       isNull,
     );
 
     await drafts.discard(account: 'a', target: server);
     expect(store.values, isNotEmpty);
-    await drafts.discard(account: 'a', target: server, resolveTaskId: resolve);
+    await drafts.discard(account: 'a', target: server, resolveId: resolve);
     expect(store.values, isEmpty);
 
     await drafts.save(draft, account: 'a', target: server);
@@ -100,7 +100,7 @@ void main() {
       await drafts.read(
         account: 'a',
         target: const TaskDescriptionTarget(-3),
-        resolveTaskId: resolve,
+        resolveId: resolve,
       ),
       isNotNull,
     );
@@ -108,9 +108,44 @@ void main() {
     await drafts.read(
       account: 'a',
       target: const TaskDescriptionTarget(7),
-      resolveTaskId: resolve,
+      resolveId: resolve,
     );
     expect(asked, isEmpty, reason: 'two server ids need no lookup');
+  });
+
+  test("a draft under a label's temporary id is found by its server id once "
+      'the create was answered, and goes with it', () async {
+    Future<int> resolve(int id) async => id == -1 ? 42 : id;
+    await drafts.save(
+      draft,
+      account: 'a',
+      target: const LabelDescriptionTarget(-1),
+    );
+
+    expect(
+      (await drafts.read(
+        account: 'a',
+        target: const LabelDescriptionTarget(42),
+        resolveId: resolve,
+      ))?.html,
+      '<p>Draft</p>',
+    );
+    for (final other in const <DescriptionTarget>[
+      TaskDescriptionTarget(42),
+      LabelDescriptionTarget(43),
+    ]) {
+      expect(
+        await drafts.read(account: 'a', target: other, resolveId: resolve),
+        isNull,
+      );
+    }
+
+    await drafts.discard(
+      account: 'a',
+      target: const LabelDescriptionTarget(42),
+      resolveId: resolve,
+    );
+    expect(store.values, isEmpty);
   });
 
   test('saved under the server id, the draft replaces the one under the '
@@ -126,7 +161,7 @@ void main() {
       const DescriptionDraft(html: '<p>Newer</p>', base: '<p>Base</p>'),
       account: 'a',
       target: const TaskDescriptionTarget(42),
-      resolveTaskId: resolve,
+      resolveId: resolve,
     );
 
     expect(stored(), [
@@ -157,7 +192,7 @@ void main() {
           .read(
             account: 'a',
             target: const TaskDescriptionTarget(42),
-            resolveTaskId: (_) => never.future,
+            resolveId: (_) => never.future,
           )
           .then((draft) {
             read = true;
@@ -168,7 +203,7 @@ void main() {
       drafts.discard(
         account: 'a',
         target: const TaskDescriptionTarget(42),
-        resolveTaskId: (_) => never.future,
+        resolveId: (_) => never.future,
       ),
     );
     unawaited(

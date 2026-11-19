@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
+import 'package:vikunja_mobile/features/tasks/application/label_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
     show taskByIdProvider;
@@ -242,7 +243,8 @@ Future<void> editPriority(
 });
 
 /// Changes [task]'s labels in the label picker: Done sends the labels
-/// added and removed against the ones it opened with.
+/// added and removed against the ones it opened with, a label created here
+/// compared by its server id once its create was answered.
 Future<void> editLabels(
   BuildContext context, {
   required TaskRepository repository,
@@ -251,18 +253,30 @@ Future<void> editLabels(
   final l10n = context.l10n;
   final announcer = Announcer.of(context);
   final write = _writer(context, repository, action: 'Changing labels');
-  final before = {for (final label in task.labels) label.id};
-  final picked = await pickLabels(context, selected: task.labels);
-  final row = latest();
-  if (picked == null || row == null) return;
-  final after = {for (final label in picked) label.id};
-  final change = IdSetChange(
-    added: after.difference(before),
-    removed: before.difference(after),
-  );
-  if (change.isEmpty) return;
-  if (!await write(row.id, TaskChanges(labels: change))) return;
-  announcer.say(l10n.taskDetailLabelsChanged);
+  final remaps = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).listen(labelRemapsProvider, (_, _) {});
+  try {
+    final picked = await pickLabels(context, selected: task.labels);
+    final row = latest();
+    if (picked == null || row == null) return;
+    final remapped = remaps.read().value ?? const <int, int>{};
+    Set<int> ids(List<Label> labels) => {
+      for (final label in labels) remapped[label.id] ?? label.id,
+    };
+    final before = ids(task.labels);
+    final after = ids(picked);
+    final change = IdSetChange(
+      added: after.difference(before),
+      removed: before.difference(after),
+    );
+    if (change.isEmpty) return;
+    if (!await write(row.id, TaskChanges(labels: change))) return;
+    announcer.say(l10n.taskDetailLabelsChanged);
+  } finally {
+    remaps.close();
+  }
 });
 
 /// Adds a reminder to [task]'s row as it is once picked; [showMessage] says
