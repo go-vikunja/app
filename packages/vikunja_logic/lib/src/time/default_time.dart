@@ -19,7 +19,19 @@ DateTime atDefaultTime(
   DateTime day, {
   required DateTime now,
   ClockTime? defaultTime,
-}) => notPassedToday(switch (defaultTime) {
+}) => notPassedToday(
+  withDefaultTime(day, now: now, defaultTime: defaultTime),
+  now: now,
+);
+
+/// [day] at the user's `default_due_time` ([defaultTime]), else at the
+/// breakpoint for [now], as the web's `getDateWithTime`, also when that
+/// has passed: where the user picks the time next, as in the time picker.
+DateTime withDefaultTime(
+  DateTime day, {
+  required DateTime now,
+  ClockTime? defaultTime,
+}) => switch (defaultTime) {
   ClockTime(:final hour, :final minute) => DateTime(
     day.year,
     day.month,
@@ -28,13 +40,17 @@ DateTime atDefaultTime(
     minute,
   ),
   null => DateTime(day.year, day.month, day.day, nearestBreakpointHour(now)),
-}, now: now);
+};
 
-/// [date], or 23:59 of today when [date] is a time of today that has
+/// [date], or 23:59 of today when [date] is a minute of today that has
 /// passed: a date the user gave without a time is never overdue the
-/// moment it is set (D102-9; the web keeps the passed time).
+/// moment it is set (D102-9; the web keeps the passed time). The minute of
+/// [now] itself has not passed, so 12:00 at 12:00:30 stays, as the
+/// breakpoints count a full hour as their own.
 DateTime notPassedToday(DateTime date, {required DateTime now}) =>
-    date.isBefore(now) &&
+    date.isBefore(
+          DateTime(now.year, now.month, now.day, now.hour, now.minute),
+        ) &&
         date.year == now.year &&
         date.month == now.month &&
         date.day == now.day

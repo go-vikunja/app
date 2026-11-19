@@ -81,7 +81,7 @@ void main() {
       expect(
         atDefaultTime(
           DateTime(2026, 8, 4),
-          now: DateTime(2026, 8, 4, 17, 45, 1),
+          now: DateTime(2026, 8, 4, 17, 46),
           defaultTime: defaultTime,
         ),
         DateTime(2026, 8, 4, 23, 59),
@@ -127,6 +127,28 @@ void main() {
         notPassedToday(DateTime(2026, 8, 4), now: now),
         DateTime(2026, 8, 4, 23, 59),
       );
+    });
+
+    test('the minute of now has not passed: a full hour at its first '
+        'minute stays, the breakpoint counting it as its own', () {
+      final at = DateTime(2026, 8, 4, 12, 0, 30);
+      expect(
+        notPassedToday(DateTime(2026, 8, 4, 12), now: at),
+        DateTime(2026, 8, 4, 12),
+      );
+      expect(atDefaultTime(at, now: at), DateTime(2026, 8, 4, 12));
+      expect(
+        notPassedToday(
+          DateTime(2026, 8, 4, 12),
+          now: DateTime(2026, 8, 4, 12, 1),
+        ),
+        DateTime(2026, 8, 4, 23, 59),
+      );
+    });
+
+    test('withDefaultTime keeps a passed time', () {
+      final now = DateTime(2026, 8, 4, 22, 30);
+      expect(withDefaultTime(now, now: now), DateTime(2026, 8, 4, 9));
     });
 
     test('leaves other days alone, past ones too', () {

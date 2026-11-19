@@ -103,4 +103,20 @@ void main() {
 
     expect(picked, [DateTime(2026, 10, 24, 12)]);
   });
+
+  testWidgets('a default due time that has passed today still starts the '
+      'time on another day: no 23:59 there', (tester) async {
+    final picked = await open(
+      tester,
+      display: const DisplaySettings(
+        timeFormat: TimeFormat.twentyFourHour,
+        defaultDueTime: ClockTime(9, 0),
+      ),
+    );
+
+    await pickDay(tester, '24');
+    await confirmTime(tester);
+
+    expect(picked, [DateTime(2026, 10, 24, 9)]);
+  });
 }

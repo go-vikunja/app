@@ -1,7 +1,7 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show withDefaultTime;
 import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
-import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/cupertino_picker_sheet.dart';
 
@@ -17,14 +17,11 @@ Future<DateTime?> pickDateTime(
   required DateTime now,
   required DisplaySettings display,
 }) {
+  // The default time even when it has passed today: the user picks the
+  // day first, and the time next.
   final initial =
       current?.toLocal() ??
-      dayWithTime(
-        now,
-        current: null,
-        now: now,
-        defaultTime: display.defaultDueTime,
-      );
+      withDefaultTime(now, now: now, defaultTime: display.defaultDueTime);
   return switch (Theme.of(context).platform) {
     TargetPlatform.iOS || TargetPlatform.macOS => showCupertinoPickerSheet(
       context,

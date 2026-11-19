@@ -190,7 +190,7 @@ Descriptions are edited in the web's own editor, TipTap, so the HTML stays what 
 - **Localisation:** English ARB strings are the source; other languages come through Vikunja's Crowdin project, and contributors change only the English ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)).
 - **Logging:** `package:logging` throughout. A record is redacted when it is made; the diagnostics log the user can add to a support request keeps warnings and errors, an error only by its type and a stack only by the app's own frames.
 - **Privacy:** app lock and screen protection over the UI, lock-screen privacy for notifications, the app's folders kept out of backups ([D64](decisions.md#d64-app-lock-over-the-ui-and-device-privacy-settings)).
-- **Licence:** AGPL-3.0-or-later; Vikunja's code is read for its behaviour only ([D67](decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet)).
+- **Licence:** MIT, with Vikunja's contribution rules ([D87](decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)); the AGPL code of Vikunja's server and web is read for its behaviour only.
 
 ## 9. Tests
 
