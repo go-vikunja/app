@@ -194,6 +194,34 @@ void main() {
       expect(gateway.authentications, hasLength(1));
     });
 
+    test('of a share with a remembered password is replaced by '
+        'authenticating with it', () async {
+      final guest = await seed(issuedAgo(const Duration(hours: 80)));
+      await fakes.linkShareStore.writePassword(guest.id, 'secret');
+      final fresh = issueLinkShareToken(issuedAt: now);
+      gateway.serve(fresh, password: 'secret');
+
+      expect(
+        await sessions().forAccount(guest.id).validAccessToken(),
+        fresh.jwt,
+      );
+      expect(gateway.authentications, [(fakeShareHash, 'secret')]);
+    });
+
+    test('a remembered password the server refuses is forgotten and the '
+        'session ends', () async {
+      final guest = await seed(issuedAgo(const Duration(hours: 80)));
+      await fakes.linkShareStore.writePassword(guest.id, 'old');
+      gateway.serve(issueLinkShareToken(issuedAt: now), password: 'new');
+
+      await expectLater(
+        sessions().forAccount(guest.id).validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+      expect((await fakes.linkShareStore.read(guest.id))?.password, isNull);
+      expect(await needsReauth(guest.id), isTrue);
+    });
+
     test('of a share that is gone ends the session as gone', () async {
       final guest = await seed(issuedAgo(const Duration(hours: 80)));
       gateway.onAuthenticate = (_, _) async =>

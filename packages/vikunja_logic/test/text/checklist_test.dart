@@ -105,6 +105,19 @@ void main() {
   });
 
   group('checklistStatistics', () {
+    test('counts the attribute in a tag, not text that reads like one', () {
+      final html = [
+        '<pre><code>&lt;li data-checked="true"&gt;</code></pre>',
+        '<p>attr data-checked="false" here</p>',
+        '<ul data-type="taskList"><li title="a>b" data-checked="false" ',
+        'data-type="taskItem"><p>real</p></li></ul>',
+      ].join();
+      expect(checklistStatistics(html), const ChecklistStatistics(total: 1));
+      expect(findCheckboxesInText(html), [
+        html.indexOf('data-checked="false" data-type'),
+      ]);
+    });
+
     test('F1 no checkbox', () {
       final stats = checklistStatistics(_f1);
       expect(stats.total, 0);

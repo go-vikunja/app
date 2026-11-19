@@ -129,7 +129,7 @@ void main() {
     });
 
     test('asks for the password, says when it was wrong, and never stores '
-        'it', () async {
+        'it unless asked to', () async {
       final token = issueLinkShareToken(issuedAt: now);
       gateway.serve(token, password: 'p4ss-word');
 
@@ -151,6 +151,26 @@ void main() {
         ...auth.preferences.values.values,
       ], everyElement(isNot(contains('p4ss-word'))));
       expect((await auth.registry.load()).accounts, hasLength(1));
+    });
+
+    test('keeps the password with Remember, and forgets it when the link '
+        'is opened again without', () async {
+      gateway.serve(issueLinkShareToken(issuedAt: now), password: 'p4ss-word');
+
+      final remembered = await guestSignIn.signIn(
+        server,
+        link(),
+        password: 'p4ss-word',
+        rememberPassword: true,
+      );
+      final accountId = (remembered as GuestSignedIn).account.id;
+      expect(
+        (await auth.linkShareStore.read(accountId))?.password,
+        'p4ss-word',
+      );
+
+      await guestSignIn.reopen(accountId, password: 'p4ss-word');
+      expect((await auth.linkShareStore.read(accountId))?.password, isNull);
     });
 
     test('a share that is gone, or link sharing off, stores nothing', () async {

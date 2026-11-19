@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/dto/sharing_codec.dart';
 import 'package:vikunja_api/src/sharing/project_sharing_port.dart';
 import 'package:vikunja_api/src/transport/all_pages.dart';
+import 'package:vikunja_api/src/transport/path_segment.dart';
 import 'package:vikunja_api/src/write/write_transport.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
@@ -115,5 +116,5 @@ final class ProjectSharingApi implements ProjectSharingPort {
   }
 
   static String _userPath(int projectId, String username) =>
-      '/projects/$projectId/users/${Uri.encodeComponent(username)}';
+      '/projects/$projectId/users/${pathSegment(username)}';
 }

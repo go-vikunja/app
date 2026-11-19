@@ -84,9 +84,11 @@ final class MentionController extends ValueNotifier<MentionSuggestions> {
     );
   }
 
+  /// A search still under way finds itself outdated and writes nothing.
   @override
   void dispose() {
     _timer?.cancel();
+    _latest++;
     super.dispose();
   }
 }

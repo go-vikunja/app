@@ -8,6 +8,7 @@ abstract final class NotificationActionIds {
   static const markDone = 'mark_done';
   static const snooze10Minutes = 'snooze_10m';
   static const snooze1Hour = 'snooze_1h';
+  static const snoozeTomorrow = 'snooze_tomorrow';
 }
 
 /// What a notification carries back: enough to find the task in the right

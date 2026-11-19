@@ -191,11 +191,13 @@ void main() {
           NotificationActionIds.markDone,
           NotificationActionIds.snooze10Minutes,
           NotificationActionIds.snooze1Hour,
+          NotificationActionIds.snoozeTomorrow,
         ]);
         expect(actions.map((a) => a['title']), [
           en.notificationActionDone,
           en.notificationActionSnooze10Minutes,
           en.notificationActionSnooze1Hour,
+          en.notificationActionSnoozeTomorrow,
         ]);
         for (final action in actions) {
           expect(action['type'], 'plain');
@@ -206,6 +208,7 @@ void main() {
       }
       expect(actionsOf(categories.last).map((a) => a['options']), [
         [DarwinNotificationActionOption.authenticationRequired.value],
+        isEmpty,
         isEmpty,
         isEmpty,
       ]);
@@ -262,8 +265,8 @@ void main() {
         ],
         [
           de.notificationActionDone,
-          de.notificationActionSnooze10Minutes,
           de.notificationActionSnooze1Hour,
+          de.notificationActionSnoozeTomorrow,
         ],
       );
     });
@@ -330,13 +333,13 @@ void main() {
           .toList();
       expect(actions.map((a) => a['id']), [
         NotificationActionIds.markDone,
-        NotificationActionIds.snooze10Minutes,
         NotificationActionIds.snooze1Hour,
+        NotificationActionIds.snoozeTomorrow,
       ]);
       expect(actions.map((a) => a['title']), [
         en.notificationActionDone,
-        en.notificationActionSnooze10Minutes,
         en.notificationActionSnooze1Hour,
+        en.notificationActionSnoozeTomorrow,
       ]);
       for (final action in actions) {
         expect(action['showsUserInterface'], isFalse);
@@ -468,8 +471,8 @@ void main() {
         final actions = (platformSpecifics(call(method))['actions']! as List)
             .map((a) => (a as Map)['id']);
         expect(actions, [
-          NotificationActionIds.snooze10Minutes,
           NotificationActionIds.snooze1Hour,
+          NotificationActionIds.snoozeTomorrow,
         ], reason: method);
       }
     });

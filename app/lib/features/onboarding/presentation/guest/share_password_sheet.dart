@@ -8,15 +8,21 @@ import 'package:vikunja_mobile/features/onboarding/application/connect_server_st
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
+typedef SharePasswordSubmit = Future<SharePasswordOutcome> Function(
+  String password, {
+  required bool remember,
+});
+
 /// Asks for a shared project's password and hands each try to [submit]; a
 /// wrong one keeps the sheet open with a note, anything else closes it.
-/// Null when the user closed it. The password lives only in the field and
-/// the one request [submit] makes, to [serverRoot], whose host the sheet
-/// names.
+/// Null when the user closed it. The password goes in the request [submit]
+/// makes, to [serverRoot], whose host the sheet names, and is kept on the
+/// device only when the user checks Remember, which starts unchecked (owner,
+/// 2026-11-19).
 Future<SharePasswordOutcome?> askForSharePassword(
   BuildContext context, {
   required Uri serverRoot,
-  required Future<SharePasswordOutcome> Function(String password) submit,
+  required SharePasswordSubmit submit,
 }) => showPickerSheet<SharePasswordOutcome>(
   context,
   builder: (context, scrollController) => SharePasswordSheet(
@@ -35,7 +41,7 @@ class SharePasswordSheet extends StatefulWidget {
   });
 
   final Uri serverRoot;
-  final Future<SharePasswordOutcome> Function(String password) submit;
+  final SharePasswordSubmit submit;
   final ScrollController? scrollController;
 
   @override
@@ -46,6 +52,7 @@ class _SharePasswordSheetState extends State<SharePasswordSheet> {
   final _password = TextEditingController();
   final _focus = FocusNode();
   var _shown = false;
+  var _remember = false;
   var _submitting = false;
   var _wrong = false;
 
@@ -69,7 +76,7 @@ class _SharePasswordSheetState extends State<SharePasswordSheet> {
     // field does not say it once more; editing the field removes it.
     final noteShown = _wrong;
     setState(() => _submitting = true);
-    final outcome = await widget.submit(password);
+    final outcome = await widget.submit(password, remember: _remember);
     if (!mounted) return;
     if (outcome != SharePasswordOutcome.wrong) {
       Navigator.of(context).pop(outcome);
@@ -153,7 +160,9 @@ class _SharePasswordSheetState extends State<SharePasswordSheet> {
                     labelText: l10n.guestPasswordLabel,
                     errorText: _wrong ? l10n.guestPasswordWrong : null,
                     errorMaxLines: 3,
-                    helperText: l10n.guestPasswordNotStored,
+                    helperText: _remember
+                        ? l10n.guestPasswordRemembered
+                        : l10n.guestPasswordNotStored,
                     helperMaxLines: 4,
                     suffixIcon: IconButton(
                       onPressed: () => setState(() => _shown = !_shown),
@@ -168,6 +177,15 @@ class _SharePasswordSheetState extends State<SharePasswordSheet> {
                     ),
                   ),
                 ),
+              ),
+              CheckboxListTile.adaptive(
+                value: _remember,
+                onChanged: _submitting
+                    ? null
+                    : (value) => setState(() => _remember = value ?? false),
+                title: Text(l10n.guestPasswordRemember),
+                controlAffinity: ListTileControlAffinity.leading,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4),
               ),
             ],
           ),

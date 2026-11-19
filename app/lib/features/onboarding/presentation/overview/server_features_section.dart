@@ -35,6 +35,8 @@ class ServerFeaturesSection extends StatelessWidget {
     );
   }
 
+  /// Webhooks and project backgrounds are left out: they stay in the web
+  /// (D20), so the app would promise what it does not offer.
   List<(IconData, String)> _enabledFeatures(AppLocalizations l10n) {
     final capabilities = connection.capabilities;
     bool has(Capability capability) => capabilities.has(capability);
@@ -49,7 +51,6 @@ class ServerFeaturesSection extends StatelessWidget {
         (Icons.verified_user_outlined, l10n.featureTotp),
       if (has(Capability.caldav))
         (Icons.calendar_month_outlined, l10n.featureCaldav),
-      if (has(Capability.webhooks)) (Icons.webhook, l10n.featureWebhooks),
       if (has(Capability.emailReminders))
         (Icons.mark_email_unread_outlined, l10n.featureEmailReminders),
       if (has(Capability.registration))
@@ -58,9 +59,6 @@ class ServerFeaturesSection extends StatelessWidget {
         (Icons.groups_outlined, l10n.featurePublicTeams),
       if (has(Capability.userDeletion))
         (Icons.person_remove_outlined, l10n.featureUserDeletion),
-      if (has(Capability.backgroundUpload) ||
-          has(Capability.backgroundUnsplash))
-        (Icons.wallpaper_outlined, l10n.featureBackgrounds),
     ];
   }
 

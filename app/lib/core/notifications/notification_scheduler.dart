@@ -10,6 +10,8 @@ import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_plan.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 
 final _log = Logger('Notifications');
 
@@ -232,6 +234,25 @@ final class NotificationScheduler {
     }
     _log.fine('Snoozed a notification of task $taskId by $duration');
     await reconcile();
+  }
+
+  /// [snooze] until tomorrow at the user's default due time, else 9:00,
+  /// in the device's time zone.
+  Future<void> snoozeUntilTomorrow({
+    required String key,
+    required int taskId,
+    DateTime? shown,
+  }) async {
+    final settings = decodeUserSettings(
+      (await _db.syncStateDao.readAll())[SyncStateKeys.userSettings],
+    );
+    final now = _now();
+    await snooze(
+      key: key,
+      taskId: taskId,
+      duration: tomorrowAt(now, settings.defaultDueTime).difference(now),
+      shown: shown,
+    );
   }
 
   Future<bool> _stillAt(String key, int taskId, DateTime shown) async {
@@ -595,4 +616,11 @@ final class NotificationScheduler {
     }
     return assigned;
   }
+}
+
+/// The next day after [now] at [time], 9:00 without one, local time.
+DateTime tomorrowAt(DateTime now, ClockTime? time) {
+  final local = now.toLocal();
+  final at = time ?? const ClockTime(9, 0);
+  return DateTime(local.year, local.month, local.day + 1, at.hour, at.minute);
 }

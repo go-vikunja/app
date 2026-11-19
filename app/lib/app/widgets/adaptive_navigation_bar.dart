@@ -41,40 +41,51 @@ class AdaptiveNavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     // Both bars have a fixed height; the labels scale a little, not twice.
     return switch (Theme.of(context).platform) {
-      TargetPlatform.iOS ||
-      TargetPlatform.macOS => MediaQuery.withClampedTextScaling(
-        maxScaleFactor: 1.3,
-        child: CupertinoTabBar(
-          currentIndex: selectedIndex,
-          onTap: onDestinationSelected,
-          // Cupertino's inactive grey reads at 2.7:1 on the bar.
-          inactiveColor: Theme.of(context).colorScheme.onSurfaceVariant,
-          items: [
-            for (final destination in destinations)
-              BottomNavigationBarItem(
-                icon: Icon(destination.icon),
-                activeIcon: Icon(destination.selectedIcon),
-                label: destination.label,
-              ),
-          ],
+      TargetPlatform.iOS || TargetPlatform.macOS => _LargeLabels(
+        destinations: destinations,
+        onDestinationSelected: onDestinationSelected,
+        maxBarScale: 1.3,
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: CupertinoTabBar(
+            currentIndex: selectedIndex,
+            onTap: onDestinationSelected,
+            // Cupertino's inactive grey reads at 2.7:1 on the bar.
+            inactiveColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            items: [
+              for (final destination in destinations)
+                BottomNavigationBarItem(
+                  icon: Icon(destination.icon),
+                  activeIcon: Icon(destination.selectedIcon),
+                  label: destination.label,
+                ),
+            ],
+          ),
         ),
       ),
       // Up to this scale the longest label, bold when selected, keeps to one
       // line in a quarter of a 320 dp phone; a wrapped one would push its
       // indicator out of line with the others.
-      _ => MediaQuery.withClampedTextScaling(
-        maxScaleFactor: 1.15,
-        child: NavigationBar(
-          selectedIndex: selectedIndex,
-          onDestinationSelected: onDestinationSelected,
-          destinations: [
-            for (final destination in destinations)
-              NavigationDestination(
-                icon: Icon(destination.icon),
-                selectedIcon: Icon(destination.selectedIcon),
-                label: destination.label,
-              ),
-          ],
+      _ => _LargeLabels(
+        destinations: destinations,
+        onDestinationSelected: onDestinationSelected,
+        maxBarScale: 1.15,
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.15,
+          child: NavigationBar(
+            selectedIndex: selectedIndex,
+            onDestinationSelected: onDestinationSelected,
+            destinations: [
+              for (final destination in destinations)
+                NavigationDestination(
+                  icon: Icon(destination.icon),
+                  selectedIcon: Icon(destination.selectedIcon),
+                  label: destination.label,
+                  // Its tooltip would show the label at the bar's size.
+                  tooltip: _beyond(context, 1.15) ? '' : null,
+                ),
+            ],
+          ),
         ),
       ),
     };
@@ -113,6 +124,123 @@ class AdaptiveNavigationRail extends StatelessWidget {
               label: Text(destination.label),
             ),
         ],
+      ),
+    );
+  }
+}
+
+bool _beyond(BuildContext context, double maxBarScale) =>
+    MediaQuery.textScalerOf(context).scale(100) / 100 > maxBarScale;
+
+/// At a text size the bar does not follow, a long press shows the
+/// destination's icon and label at the full size in the middle of the
+/// screen, and lifting the finger opens it, as UIKit's large content viewer
+/// does for tab bars; on Android too, whose tooltips keep the bar's size.
+class _LargeLabels extends StatefulWidget {
+  const new({
+    required this.destinations,
+    required this.onDestinationSelected,
+    required this.maxBarScale,
+    required this.child,
+  });
+
+  final List<AdaptiveDestination> destinations;
+  final ValueChanged<int> onDestinationSelected;
+  final double maxBarScale;
+  final Widget child;
+
+  @override
+  State<_LargeLabels> createState() => _LargeLabelsState();
+}
+
+class _LargeLabelsState extends State<_LargeLabels> {
+  OverlayEntry? _entry;
+  int? _shown;
+
+  @override
+  void dispose() {
+    _hide();
+    super.dispose();
+  }
+
+  int _indexAt(Offset position, double width) {
+    final count = widget.destinations.length;
+    return (position.dx / (width / count)).floor().clamp(0, count - 1);
+  }
+
+  void _show(int index) {
+    if (_shown == index) return;
+    _hide();
+    _shown = index;
+    final destination = widget.destinations[index];
+    final entry = _entry = OverlayEntry(
+      builder: (context) => Center(
+        child: IgnorePointer(child: _LargeLabel(destination: destination)),
+      ),
+    );
+    Overlay.of(context).insert(entry);
+  }
+
+  void _hide() {
+    _entry?.remove();
+    _entry = null;
+    _shown = null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_beyond(context, widget.maxBarScale)) return widget.child;
+    return LayoutBuilder(
+      builder: (context, constraints) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        // Screen readers read the labels already.
+        excludeFromSemantics: true,
+        onLongPressStart: (details) =>
+            _show(_indexAt(details.localPosition, constraints.maxWidth)),
+        onLongPressMoveUpdate: (details) =>
+            _show(_indexAt(details.localPosition, constraints.maxWidth)),
+        onLongPressEnd: (details) {
+          final index = _indexAt(details.localPosition, constraints.maxWidth);
+          _hide();
+          widget.onDestinationSelected(index);
+        },
+        onLongPressCancel: _hide,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class _LargeLabel extends StatelessWidget {
+  const new({required this.destination});
+
+  final AdaptiveDestination destination;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 320),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(destination.icon, size: 48),
+              const SizedBox(height: 8),
+              Text(
+                destination.label,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleLarge,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

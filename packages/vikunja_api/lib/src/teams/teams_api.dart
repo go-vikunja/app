@@ -4,6 +4,7 @@ import 'package:vikunja_api/src/dto/team_codec.dart';
 import 'package:vikunja_api/src/read/task_query_params.dart';
 import 'package:vikunja_api/src/teams/teams_port.dart';
 import 'package:vikunja_api/src/transport/all_pages.dart';
+import 'package:vikunja_api/src/transport/path_segment.dart';
 import 'package:vikunja_api/src/write/write_transport.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
@@ -160,5 +161,5 @@ final class TeamsApi implements TeamsPort {
   }
 
   static String _memberPath(int teamId, String username) =>
-      '/teams/$teamId/members/${Uri.encodeComponent(username)}';
+      '/teams/$teamId/members/${pathSegment(username)}';
 }

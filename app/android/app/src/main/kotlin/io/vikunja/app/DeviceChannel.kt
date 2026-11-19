@@ -14,11 +14,18 @@ import android.os.Looper
 import android.os.PersistableBundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Base64
 import android.util.Log
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import java.net.InetSocketAddress
+import java.net.Proxy
+import java.net.ProxySelector
+import java.net.URI
+import java.security.KeyStore
+import java.security.cert.X509Certificate
 import java.util.concurrent.Executors
 
 // The engine outlives the activity, so the channel stays registered after
@@ -62,6 +69,8 @@ internal class DeviceChannel(
                 null
             }
             "setAppLanguage" -> setAppLanguage(call.argument<String>("language"), result)
+            "userCaCertificates" -> offMain(result) { userCaCertificates() }
+            "proxyFor" -> offMain(result) { proxyFor(call.argument<String>("url")) }
             else -> result.notImplemented()
         }
     }
@@ -132,6 +141,42 @@ internal class DeviceChannel(
     }
 
     // Each read and step guards itself, so Dart always gets a result.
+    // The CAs the user or a device policy installed, which the network
+    // security config trusts for Cronet; the realtime socket's dart:io
+    // client gets them from here.
+    private fun userCaCertificates(): List<String> = try {
+        val store = KeyStore.getInstance("AndroidCAStore").apply { load(null) }
+        store.aliases().toList()
+            .filter { it.startsWith("user:") }
+            .mapNotNull { alias -> (store.getCertificate(alias) as? X509Certificate)?.encoded }
+            .map { der ->
+                "-----BEGIN CERTIFICATE-----\n" +
+                    Base64.encodeToString(der, Base64.DEFAULT) +
+                    "-----END CERTIFICATE-----\n"
+            }
+    } catch (e: Exception) {
+        Log.i(TAG, "User CAs not read: ${e.javaClass.simpleName}")
+        emptyList()
+    }
+
+    // In the form of HttpClient.findProxy: "PROXY host:port; DIRECT".
+    private fun proxyFor(url: String?): String {
+        val proxies = try {
+            ProxySelector.getDefault()?.select(URI(url ?: return "DIRECT"))
+        } catch (e: Exception) {
+            null
+        } ?: return "DIRECT"
+        val entries = proxies.mapNotNull { proxy ->
+            when (proxy.type()) {
+                Proxy.Type.DIRECT -> "DIRECT"
+                Proxy.Type.HTTP -> (proxy.address() as? InetSocketAddress)
+                    ?.let { "PROXY ${it.hostString}:${it.port}" }
+                else -> null
+            }
+        }
+        return entries.ifEmpty { listOf("DIRECT") }.joinToString("; ")
+    }
+
     private fun offMain(result: MethodChannel.Result, work: () -> Any?) {
         previousAppWork.execute {
             val value = work()

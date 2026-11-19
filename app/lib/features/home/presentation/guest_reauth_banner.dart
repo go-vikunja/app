@@ -37,10 +37,17 @@ class _GuestReauthBannerState extends ConsumerState<GuestReauthBanner> {
     final signIn = ref.read(guestSignInProvider);
     final accountId = widget.entry.id;
     Object? error;
-    Future<GuestSignInResult?> attempt({String? password}) async {
+    Future<GuestSignInResult?> attempt({
+      String? password,
+      bool remember = false,
+    }) async {
       error = null;
       try {
-        return await signIn.reopen(accountId, password: password);
+        return await signIn.reopen(
+          accountId,
+          password: password,
+          rememberPassword: remember,
+        );
       } on Object catch (failure) {
         error = failure;
         return null;
@@ -52,8 +59,8 @@ class _GuestReauthBannerState extends ConsumerState<GuestReauthBanner> {
       final outcome = await askForSharePassword(
         context,
         serverRoot: widget.entry.connection.rootUri,
-        submit: (password) async {
-          result = await attempt(password: password);
+        submit: (password, {required remember}) async {
+          result = await attempt(password: password, remember: remember);
           return switch (result) {
             GuestSignedIn() => SharePasswordOutcome.accepted,
             GuestPasswordRequired() => SharePasswordOutcome.wrong,

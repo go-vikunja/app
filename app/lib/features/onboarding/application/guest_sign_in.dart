@@ -138,7 +138,8 @@ final class GuestSignIn {
   }
 
   /// Authenticates with [link]'s hash and, with [password] when the share
-  /// has one, stores the guest and makes it active, remembering the link's
+  /// has one, kept on the device only with [rememberPassword], stores the
+  /// guest and makes it active, remembering the link's
   /// project and view for the first screen. [beforeActivatingExisting] runs
   /// for a share already on this device before it becomes active again.
   /// Throws [SignOutStillFinishing] while the database of the same guest's
@@ -147,11 +148,13 @@ final class GuestSignIn {
     ServerConnection connection,
     ParsedLinkShareUrl link, {
     String? password,
+    bool rememberPassword = false,
     Future<void> Function(String accountId)? beforeActivatingExisting,
   }) => _open(
     connection,
     link,
     password: password,
+    rememberPassword: rememberPassword,
     beforeActivatingExisting: beforeActivatingExisting,
     land: true,
   );
@@ -161,6 +164,7 @@ final class GuestSignIn {
     ParsedLinkShareUrl link, {
     required String? password,
     required bool land,
+    bool rememberPassword = false,
     Future<void> Function(String accountId)? beforeActivatingExisting,
   }) async {
     // A stored account's `/info` can be hours old (it is read again at most
@@ -194,6 +198,7 @@ final class GuestSignIn {
     final accountId = linkShareAccountIdFor(connection.rootUri, auth.shareId);
     await settleSignedOutDatabases(_files, accountId: accountId);
     await _store.write(accountId, hash: link.hash, token: auth.token.jwt);
+    await _store.writePassword(accountId, rememberPassword ? password : null);
     // The old session goes only now: retired before, it would answer the
     // requests in between as ended, which pauses the outbox. A token it
     // still writes is one of the same share, which renewal does not rotate.
@@ -248,11 +253,21 @@ final class GuestSignIn {
 
   /// [signIn] with a guest's stored link and server, without a landing:
   /// the user stays on the screen that offered to open the link again.
-  Future<GuestSignInResult> reopen(String accountId, {String? password}) async {
+  Future<GuestSignInResult> reopen(
+    String accountId, {
+    String? password,
+    bool rememberPassword = false,
+  }) async {
     final entry = await _registry.find(accountId);
     final link = await storedLink(accountId);
     if (entry == null || link == null) return const GuestLinkGone();
-    return await _open(entry.connection, link, password: password, land: false);
+    return await _open(
+      entry.connection,
+      link,
+      password: password,
+      rememberPassword: rememberPassword,
+      land: false,
+    );
   }
 
   /// Only for the account's name; the guest works without it.

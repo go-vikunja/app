@@ -22,7 +22,7 @@ Everything about a task
 • Quick Add Magic: type a task with its project, labels, people, priority and date in one line, the way the web reads it.
 
 Reminders and widgets
-• Notifications at each reminder and at the due time, planned on the device: mark the task done right there, or be reminded again in ten minutes or an hour.
+• Notifications at each reminder and at the due time, planned on the device: mark the task done right there, or be reminded again in ten minutes, an hour or tomorrow morning.
 • Vikunja sends no push notifications: a reminder you add on the web, or a task assigned to you there, reaches this device with the next sync.
 • Widgets for the Home Screen and the Lock Screen: Today, the next days, Overdue, Favorites, a project, a label or a saved filter; check tasks off right on the Home Screen. A second widget adds a new task.
 
@@ -38,6 +38,10 @@ Also
 Privacy
 • An optional app lock with Face ID, Touch ID or your passcode; task titles can be hidden in notifications and widgets.
 • No ads, no analytics, no tracking, no crash reporting. The app has no server of its own: it talks only to the servers you add.
+
+Not in the app (yet)
+• Time tracking, keyboard shortcuts and changing dates on the Gantt chart.
+• Changing your password or email, two-factor setup, data export and account deletion happen on your server's web pages, which the app opens.
 
 Open source
 The app is open source under the MIT License.

@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/core/network/network_profile.dart';
 import 'package:vikunja_mobile/core/network/network_profile_secrets.dart';
 import 'package:vikunja_mobile/core/network/network_profiles.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
+import 'package:vikunja_mobile/core/network/platform_network.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_providers.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
@@ -48,6 +49,14 @@ final class _UpgradingServer {
   static Future<_UpgradingServer> plain() async =>
       _UpgradingServer(await HttpServer.bind(InternetAddress.loopbackIPv4, 0));
 
+  static Future<_UpgradingServer> caSigned() async => _UpgradingServer(
+    await HttpServer.bindSecure(
+      InternetAddress.loopbackIPv4,
+      0,
+      serverContext('server.pem', 'server.key'),
+    ),
+  );
+
   static Future<_UpgradingServer> selfSigned() async => _UpgradingServer(
     await HttpServer.bindSecure(
       InternetAddress.loopbackIPv4,
@@ -67,6 +76,20 @@ final class _UpgradingServer {
       await socket.close();
     }
     await _server.close(force: true);
+  }
+}
+
+final class _FakePlatformNetwork implements PlatformNetwork {
+  new(this.userCaPems, {this.proxy = 'DIRECT'});
+
+  final List<String> userCaPems;
+  final String proxy;
+  final asked = <Uri>[];
+
+  @override
+  Future<PlatformNetworkSettings> settingsFor(Uri url) async {
+    asked.add(url);
+    return (userCaPems: userCaPems, proxy: proxy);
   }
 }
 
@@ -109,6 +132,25 @@ void main() {
     test('without consent the socket is never opened', () async {
       await expectLater(open(url), throwsA(isA<CleartextBlockedException>()));
       expect(server.requests, isEmpty);
+    });
+
+    test('without TLS settings of its own the socket goes through the '
+        "system's proxy", () async {
+      await profiles.consentToCleartext(
+        OriginKey.of(Uri.parse('ws://tasks.invalid/api/v2/ws')),
+      );
+      await ProfileRealtimeConnector(
+            profiles: profiles,
+            userAgent: 'Vikunja-App/test',
+            platformNetwork: _FakePlatformNetwork(
+              const [],
+              proxy: 'PROXY 127.0.0.1:${server.port}',
+            ),
+          )
+          .connect(Uri.parse('ws://tasks.invalid/api/v2/ws'))
+          .then((socket) => socket.close());
+
+      expect(server.requests, hasLength(1));
     });
 
     test('with consent the upgrade carries the profile headers and the '
@@ -255,6 +297,49 @@ void main() {
     test('without a profile the default context refuses the self-signed '
         'server', () async {
       await expectLater(open(url), throwsA(isA<HandshakeException>()));
+    });
+
+    test('without a profile a user CA from the platform opens a server it '
+        'signed, asked for the handshake URL', () async {
+      final signed = await _UpgradingServer.caSigned();
+      addTearDown(signed.close);
+      final signedUrl = Uri.parse('wss://localhost:${signed.port}/api/v2/ws');
+      final without = _FakePlatformNetwork(const []);
+      await expectLater(
+        ProfileRealtimeConnector(
+          profiles: profiles,
+          userAgent: 'Vikunja-App/test',
+          platformNetwork: without,
+        ).connect(signedUrl),
+        throwsA(isA<HandshakeException>()),
+      );
+
+      final platform = _FakePlatformNetwork([tlsFixtureText('ca.pem')]);
+      await ProfileRealtimeConnector(
+        profiles: profiles,
+        userAgent: 'Vikunja-App/test',
+        platformNetwork: platform,
+      ).connect(signedUrl).then((socket) => socket.close());
+
+      expect(platform.asked, [
+        Uri.parse('https://localhost:${signed.port}/api/v2/ws'),
+      ]);
+    });
+
+    test('a server with TLS settings of its own does not ask the '
+        'platform', () async {
+      await profiles.trustCertificate(
+        origin,
+        tlsFixtureCertificate('selfsigned.pem'),
+      );
+      final platform = _FakePlatformNetwork(const []);
+      await ProfileRealtimeConnector(
+        profiles: profiles,
+        userAgent: 'Vikunja-App/test',
+        platformNetwork: platform,
+      ).connect(url).then((socket) => socket.close());
+
+      expect(platform.asked, isEmpty);
     });
   });
 }

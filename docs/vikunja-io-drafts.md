@@ -164,6 +164,8 @@ The app creates reminders on your device from its copy of your tasks, at each re
 
 On Vikunja 2.8.0 and later, reminders and due dates come for the tasks you follow: the ones you create or are assigned to, and those in projects you follow. To follow a task or stop its notifications, tap the bell at the top of the task (**Follow task** or **Unfollow task**), or choose **Follow project** in a project's menu; this needs a connection.
 
+A reminder can be snoozed from the notification: for an hour or until tomorrow morning (at your default due time, else 9:00), on iPhone and iPad also for ten minutes.
+
 The **Notifications** section of the **Account** tab sets, for each account, which notifications you get, and has **Send a test notification**.
 
 ## Widgets
@@ -182,6 +184,7 @@ The app uses your device's language when it has a translation, and English other
 - The app has no time tracking yet.
 - Changing your password or email address, two-factor authentication, exporting your data and deleting your account happen on your server's web pages, which the app opens.
 - There are no keyboard shortcuts yet.
+- A yearly repeat is every 365 days, as Vikunja has no calendar year as a repeat, so it moves by a day after each 29 February.
 - Vikunja sends no push notifications, so a reminder you add on the web reaches your device with the next sync.
 - Comments, reactions and a task's attachments load only with a connection.
 
@@ -193,6 +196,17 @@ The app uses your device's language when it has a translation, and English other
 - **No notifications:** if notifications are off for the app, the **Notifications** section says so, with **Turn on**. Then try **Send a test notification**.
 - **A change does not show on the web:** look at **Pending changes** and **Sync problems** on the **Account** tab.
 - **A widget shows old tasks:** open the app once; it updates the widgets after each sync.
+
+### A server behind a sign-in proxy
+
+If your Vikunja sits behind Authelia, Authentik, oauth2-proxy or another proxy that asks everyone to sign in first, the app's requests cannot pass it: they carry Vikunja's own token, not the proxy's cookie. Let the API through and keep the web pages behind the proxy. Vikunja checks every API request itself, and the app's sign-in still runs through the web pages, so the proxy's sign-in still applies there. Everything the app needs is under `/api/`.
+
+- **Authelia:** a rule before your other rules for the domain, with `policy: bypass` and `resources: ['^/api/.*$']`.
+- **Authentik** (proxy provider): add `^/api/.*` to **Unauthenticated Paths**.
+- **oauth2-proxy:** `--skip-auth-route='^/api/'`.
+- **Traefik with forwardAuth:** a second router for `Host(`tasks.example.com`) && PathPrefix(`/api/`)` with the same service and without the forwardAuth middleware.
+
+A proxy that only checks a header, such as Cloudflare Access with a service token, works without this: add the header under **Connection options**.
 
 ## Delete your account
 

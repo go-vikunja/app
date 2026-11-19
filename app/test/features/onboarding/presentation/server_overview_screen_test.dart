@@ -49,13 +49,13 @@ void main() {
       en.featureLinkSharing,
       en.featureTotp,
       en.featureCaldav,
-      en.featureWebhooks,
       en.featureEmailReminders,
       en.featureRegistration,
       en.featureUserDeletion,
-      en.featureBackgrounds,
     ], findsOneWidget);
     _expectTexts([
+      'Webhooks',
+      'Project backgrounds',
       en.overviewApiBadge('v2'),
       en.tierOauthV2UnreachableBody,
       en.featurePublicTeams,

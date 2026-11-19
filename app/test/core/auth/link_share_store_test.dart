@@ -58,7 +58,7 @@ void main() {
     },
   );
 
-  test('delete removes both secrets, the hash first, and prints nothing of '
+  test('delete removes every secret, the hash first, and prints nothing of '
       'them', () async {
     await store.write('g1', hash: hash, token: 'jwt-1');
     final read = await store.read('g1');
@@ -70,8 +70,26 @@ void main() {
     expect(secureStore.operations, [
       'delete account.g1.share_hash',
       'delete account.g1.share_token',
+      'delete account.g1.share_password',
     ]);
     expect('$read', isNot(contains(hash)));
     expect('$read', isNot(contains('jwt-1')));
+  });
+
+  test('keeps a remembered password under its own key, forgets it on null '
+      'and deletes it with the guest', () async {
+    await store.write('g1', hash: hash, token: 'jwt-1');
+    expect((await store.read('g1'))?.password, isNull);
+
+    await store.writePassword('g1', 'secret');
+    expect(secureStore.values['account.g1.share_password'], 'secret');
+    expect((await store.read('g1'))?.password, 'secret');
+
+    await store.writePassword('g1', null);
+    expect(secureStore.values, isNot(contains('account.g1.share_password')));
+
+    await store.writePassword('g1', 'secret');
+    await store.delete('g1');
+    expect(secureStore.values, isEmpty);
   });
 }

@@ -19,6 +19,7 @@ import 'package:vikunja_api/src/errors/normalize_error.dart';
 import 'package:vikunja_api/src/read/read_ports.dart';
 import 'package:vikunja_api/src/read/task_query_params.dart';
 import 'package:vikunja_api/src/transport/all_pages.dart';
+import 'package:vikunja_api/src/transport/path_segment.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// Reads over `/api/v2` or `/api/v1`, chosen by
@@ -279,7 +280,7 @@ final class _AvatarsApi implements AvatarsPort {
   @override
   Future<AvatarImage> fetch(String username, {required int size}) async {
     final response = await _transport.getBytes(
-      '/avatar/${Uri.encodeComponent(username)}',
+      '/avatar/${pathSegment(username)}',
       query: {'size': size},
       accept: 'image/*',
     );

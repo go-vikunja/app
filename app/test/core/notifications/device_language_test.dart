@@ -186,8 +186,8 @@ void main() {
     final account = await started(en);
     expect(callsOf('zonedSchedule'), hasLength(1));
     expect(actionTitles(callsOf('zonedSchedule').single), [
-      en.notificationActionSnooze10Minutes,
       en.notificationActionSnooze1Hour,
+      en.notificationActionSnoozeTomorrow,
     ]);
     expect(
       argumentsOf(callsOf('zonedSchedule').single)['body'],
@@ -234,8 +234,8 @@ void main() {
       de.notificationChannelReminders,
     );
     expect(actionTitles(scheduled), [
-      de.notificationActionSnooze10Minutes,
       de.notificationActionSnooze1Hour,
+      de.notificationActionSnoozeTomorrow,
     ]);
 
     expect(todayTitle(account), de.sectionToday);

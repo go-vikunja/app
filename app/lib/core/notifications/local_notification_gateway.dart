@@ -25,6 +25,7 @@ final class LocalNotificationTexts {
     required this.markDone,
     required this.snooze10Minutes,
     required this.snooze1Hour,
+    required this.snoozeTomorrow,
     required this.activityChannelName,
     required this.activityChannelDescription,
   });
@@ -34,6 +35,7 @@ final class LocalNotificationTexts {
   final String markDone;
   final String snooze10Minutes;
   final String snooze1Hour;
+  final String snoozeTomorrow;
   final String activityChannelName;
   final String activityChannelDescription;
 }
@@ -200,6 +202,10 @@ final class LocalNotificationGateway implements NotificationGateway {
       DarwinNotificationAction.plain(
         NotificationActionIds.snooze1Hour,
         _texts.snooze1Hour,
+      ),
+      DarwinNotificationAction.plain(
+        NotificationActionIds.snoozeTomorrow,
+        _texts.snoozeTomorrow,
       ),
     ],
   );
@@ -505,12 +511,14 @@ final class LocalNotificationGateway implements NotificationGateway {
           // interface (`showsUserInterface`), dismissed on tap
           // (`cancelNotification`). Such an action also runs from a secure
           // lock screen, so Done is left out while the app lock is on.
+          // Android shows at most three actions, so 10 minutes gives way
+          // to Tomorrow (owner, 2026-11-19).
           actions: [
             for (final (id, title) in [
               if (!privacy.doneNeedsUnlock)
                 (NotificationActionIds.markDone, _texts.markDone),
-              (NotificationActionIds.snooze10Minutes, _texts.snooze10Minutes),
               (NotificationActionIds.snooze1Hour, _texts.snooze1Hour),
+              (NotificationActionIds.snoozeTomorrow, _texts.snoozeTomorrow),
             ])
               AndroidNotificationAction(id, title),
           ],

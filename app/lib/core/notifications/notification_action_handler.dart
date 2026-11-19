@@ -158,6 +158,12 @@ final class NotificationActionHandler {
         await _snooze(payload, const Duration(minutes: 10));
       case NotificationActionIds.snooze1Hour:
         await _snooze(payload, const Duration(hours: 1));
+      case NotificationActionIds.snoozeTomorrow:
+        await _scheduler(payload)?.snoozeUntilTomorrow(
+          key: payload.key,
+          taskId: payload.taskId,
+          shown: payload.occurrence,
+        );
       default:
         _log.info('Ignored the unknown notification action $actionId');
     }

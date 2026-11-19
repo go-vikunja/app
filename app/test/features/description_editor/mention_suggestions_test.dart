@@ -96,6 +96,21 @@ void main() {
     expect(controller.value.people, isEmpty);
   });
 
+  testWidgets('an answer after dispose writes nothing', (tester) async {
+    final answer = Completer<List<User>>();
+    final controller = MentionController(
+      search: (query) => answer.future,
+      known: () async => const [],
+    )..query('j');
+    await tester.pump(MentionController.debounce);
+
+    controller.dispose();
+    answer.complete([jane]);
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+  });
+
   test('at most 10 people with a username, 5 for an empty query', () {
     final many = [
       for (var i = 1; i <= 12; i++) User(id: i, username: 'user$i'),

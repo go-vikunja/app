@@ -98,6 +98,7 @@ LocalNotificationTexts localNotificationTexts(AppLocalizations l10n) =>
       markDone: l10n.notificationActionDone,
       snooze10Minutes: l10n.notificationActionSnooze10Minutes,
       snooze1Hour: l10n.notificationActionSnooze1Hour,
+      snoozeTomorrow: l10n.notificationActionSnoozeTomorrow,
       activityChannelName: l10n.notificationChannelActivity,
       activityChannelDescription: l10n.notificationChannelActivityDescription,
     );

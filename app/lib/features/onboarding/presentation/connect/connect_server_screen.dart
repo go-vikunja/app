@@ -331,7 +331,8 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     final outcome = await askForSharePassword(
       context,
       serverRoot: serverRoot,
-      submit: _controller.submitSharePassword,
+      submit: (password, {required remember}) =>
+          _controller.submitSharePassword(password, remember: remember),
     );
     if (outcome == null && mounted) _controller.reset();
   }

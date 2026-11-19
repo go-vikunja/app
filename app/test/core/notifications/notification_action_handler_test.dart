@@ -11,7 +11,10 @@ import 'package:vikunja_mobile/core/notifications/notification_action_handler.da
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
+import 'package:vikunja_mobile/core/notifications/notification_scheduler.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
@@ -411,6 +414,58 @@ void main() {
   });
 
   group('Snooze', () {
+    test('Tomorrow moves a fired reminder to the next day at the default due '
+        'time, 9:00 without one', () async {
+      final (accountId, db) = await signedIn();
+      final reminderId = notificationOsIdFor(accountId, '1:reminder:0');
+      now = reminderAt.add(const Duration(minutes: 1));
+      gateway.fire(reminderId);
+
+      await handler.handle(
+        action(
+          NotificationActionIds.snoozeTomorrow,
+          accountId: accountId,
+          taskId: 1,
+          key: '1:reminder:0',
+        ),
+      );
+      expect(
+        gateway.pending[reminderId]!.fireAt,
+        tomorrowAt(now, null).toUtc(),
+      );
+
+      await db.syncStateDao.write({
+        SyncStateKeys.userSettings: encodeUserSettings(
+          const UserSettings(defaultDueTime: ClockTime(7, 30)),
+        ),
+      });
+      gateway.fire(reminderId);
+      await handler.handle(
+        action(
+          NotificationActionIds.snoozeTomorrow,
+          accountId: accountId,
+          taskId: 1,
+          key: '1:reminder:0',
+        ),
+      );
+      expect(
+        gateway.pending[reminderId]!.fireAt,
+        tomorrowAt(now, const ClockTime(7, 30)).toUtc(),
+      );
+    });
+
+    test('tomorrowAt is the next calendar day at the time, also across a '
+        'change of daylight saving time', () {
+      expect(
+        tomorrowAt(DateTime(2026, 3, 28, 22), null),
+        DateTime(2026, 3, 29, 9),
+      );
+      expect(
+        tomorrowAt(DateTime(2026, 12, 31, 0, 5), const ClockTime(7, 30)),
+        DateTime(2027, 1, 1, 7, 30),
+      );
+    });
+
     test('moves a fired reminder to now + 10 min, under its id, before the '
         "reconcile, and a second snooze keeps the task's own time", () async {
       final (accountId, db) = await signedIn();

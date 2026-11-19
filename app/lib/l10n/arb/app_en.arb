@@ -248,7 +248,6 @@
   "featureLinkSharing": "Link sharing",
   "featureTotp": "Two-factor authentication (TOTP)",
   "featureCaldav": "CalDAV sync",
-  "featureWebhooks": "Webhooks",
   "featureEmailReminders": "Email reminders",
   "featureRegistration": "Open registration",
   "featurePublicTeams": "Public teams",
@@ -256,7 +255,6 @@
   "@featureUserDeletion": {
     "description": "Server capability shown in the feature list (noun), not an action."
   },
-  "featureBackgrounds": "Project backgrounds",
   "motdHeading": "Message from the server",
   "legalImprint": "Imprint",
   "@legalImprint": {
@@ -2787,6 +2785,10 @@
   "notificationActionSnooze1Hour": "Snooze 1 h",
   "@notificationActionSnooze1Hour": {
     "description": "Action button of a reminder notification that reminds again in one hour. Keep it short; abbreviations are fine."
+  },
+  "notificationActionSnoozeTomorrow": "Tomorrow",
+  "@notificationActionSnoozeTomorrow": {
+    "description": "Action button of a reminder notification that reminds again tomorrow morning, at the user's default due time or 9:00. Shown beside 'Snooze 1 h'. Keep it short."
   },
   "notificationReminderBody": "Reminder · {project}",
   "@notificationReminderBody": {
@@ -7246,7 +7248,15 @@
   },
   "guestPasswordNotStored": "The app doesn't save this password. If the link has to be opened again later, it asks for it again.",
   "@guestPasswordNotStored": {
-    "description": "Password sheet: helper under the field"
+    "description": "Password sheet: helper under the field while Remember is not checked"
+  },
+  "guestPasswordRemember": "Remember the password on this device",
+  "@guestPasswordRemember": {
+    "description": "Password sheet of a shared link: checkbox under the field, unchecked by default"
+  },
+  "guestPasswordRemembered": "The app keeps this password in the device's secure storage and uses it when the link has to be opened again. Removing the guest deletes it.",
+  "@guestPasswordRemembered": {
+    "description": "Password sheet: helper under the field while 'Remember the password on this device' is checked"
   },
   "guestPasswordSentTo": "The app sends the password to {host}.",
   "@guestPasswordSentTo": {

@@ -7,7 +7,10 @@ import 'package:vikunja_mobile/core/auth/link_share_gateway.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 
 typedef LinkShareRenewal = Future<LinkShareToken> Function(String token);
-typedef LinkShareAuthentication = Future<LinkShareAuth> Function(String hash);
+typedef LinkShareAuthentication = Future<LinkShareAuth> Function(
+  String hash, {
+  String? password,
+});
 typedef LinkShareEndedHandler = Future<void> Function(SessionEnded failure);
 
 final _log = Logger('LinkShareSession');
@@ -19,8 +22,10 @@ final _log = Logger('LinkShareSession');
 /// by authenticating again with the stored hash, which shares the
 /// sign-in limit of 10 requests a minute and IP: a 429 blocks it for its
 /// `Retry-After`, and with `maxAuthentications` a short-lived isolate
-/// tries it at most that often. A share that needs its password, or that
-/// is gone, ends the session: the account needs the link opened again.
+/// tries it at most that often, with the share's password when the user
+/// chose to remember it. A share that needs a password it does not have,
+/// or that is gone, ends the session: the account needs the link opened
+/// again. A remembered password the server refuses is forgotten.
 final class LinkShareSession implements AccessTokenSource {
   new({
     required this.accountId,
@@ -219,7 +224,10 @@ final class LinkShareSession implements AccessTokenSource {
     _authentications++;
     final sentAt = _clock();
     try {
-      final auth = await _authenticate(storedShare.hash);
+      final auth = await _authenticate(
+        storedShare.hash,
+        password: storedShare.password,
+      );
       _ensureUsable();
       _log.info('Guest $accountId authenticated again');
       return await _keep(auth.token, receivedAt: sentAt);
@@ -235,6 +243,9 @@ final class LinkShareSession implements AccessTokenSource {
       rethrow;
     } on VikunjaFailure catch (failure) {
       if (failure.code == _passwordRequired || failure.code == _wrongPassword) {
+        if (storedShare.password != null) {
+          await _store.writePassword(accountId, null);
+        }
         throw await _end(
           SessionEnded(
             SessionEndReason.expired,
@@ -396,8 +407,11 @@ final class LinkShareSessions {
       accountId: accountId,
       store: _store,
       renew: (token) async => await _gateway.renew(await connection(), token),
-      authenticate: (hash) async =>
-          await _gateway.authenticate(await connection(), hash),
+      authenticate: (hash, {password}) async => await _gateway.authenticate(
+        await connection(),
+        hash,
+        password: password,
+      ),
       onEnded: (failure) async {
         await _markNeedsReauth(accountId);
         await _onSessionEnded?.call(accountId, failure);

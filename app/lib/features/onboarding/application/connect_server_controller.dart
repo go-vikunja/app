@@ -300,6 +300,7 @@ class ConnectServerController extends _$ConnectServerController {
     ServerConnection connection,
     ParsedLinkShareUrl share, {
     String? password,
+    bool rememberPassword = false,
   }) async {
     final container = ref.container;
     final GuestSignInResult result;
@@ -310,6 +311,7 @@ class ConnectServerController extends _$ConnectServerController {
             connection,
             share,
             password: password,
+            rememberPassword: rememberPassword,
             // Opened again, the guest becomes active at once, like a switch.
             beforeActivatingExisting: (accountId) =>
                 prepareSyncStatus(container, accountId),
@@ -346,7 +348,10 @@ class ConnectServerController extends _$ConnectServerController {
 
   /// One try of the shared project's password; the state follows unless
   /// the password was wrong.
-  Future<SharePasswordOutcome> submitSharePassword(String password) async {
+  Future<SharePasswordOutcome> submitSharePassword(
+    String password, {
+    bool remember = false,
+  }) async {
     final share = _share;
     final connection = _shareConnection;
     if (state is! ConnectServerSharePasswordNeeded ||
@@ -354,7 +359,12 @@ class ConnectServerController extends _$ConnectServerController {
         connection == null) {
       return SharePasswordOutcome.failed;
     }
-    final next = await _signInAsGuest(connection, share, password: password);
+    final next = await _signInAsGuest(
+      connection,
+      share,
+      password: password,
+      rememberPassword: remember,
+    );
     if (!ref.mounted) return SharePasswordOutcome.failed;
     if (next is ConnectServerSharePasswordNeeded) {
       return SharePasswordOutcome.wrong;

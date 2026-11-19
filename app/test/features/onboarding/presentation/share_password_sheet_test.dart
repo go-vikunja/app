@@ -19,7 +19,7 @@ void main() {
         home: Scaffold(
           body: SharePasswordSheet(
             serverRoot: Uri.parse('https://tasks.example.org/vikunja'),
-            submit: (_) =>
+            submit: (_, {required remember}) =>
                 Future.delayed(answerAfter, () => SharePasswordOutcome.wrong),
           ),
         ),
@@ -68,4 +68,49 @@ void main() {
       });
     }
   }
+
+  testWidgets('Remember starts unchecked, changes the note under the field and '
+      'goes with the try', (tester) async {
+    final tries = <(String, bool)>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appSupportedLocales,
+        builder: (context, child) => AnnouncerHost(child: child!),
+        home: Scaffold(
+          body: SharePasswordSheet(
+            serverRoot: Uri.parse('https://tasks.example.org'),
+            submit: (password, {required remember}) async {
+              tries.add((password, remember));
+              return SharePasswordOutcome.wrong;
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final remember = find.widgetWithText(
+      CheckboxListTile,
+      en.guestPasswordRemember,
+    );
+    expect(tester.widget<CheckboxListTile>(remember).value, isFalse);
+    expect(find.text(en.guestPasswordNotStored), findsOneWidget);
+    await tester.tap(remember);
+    await tester.pumpAndSettle();
+    expect(find.text(en.guestPasswordRemembered), findsOneWidget);
+    await tester.tap(remember);
+    await tester.pumpAndSettle();
+    expect(find.text(en.guestPasswordNotStored), findsOneWidget);
+
+    await tester.enterText(find.byType(TextField), 'first');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.tap(remember);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'second');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(tries, [('first', false), ('second', true)]);
+  });
 }
