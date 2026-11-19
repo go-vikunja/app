@@ -85,32 +85,24 @@ void main() {
       ]);
     });
 
-    test('from 21:00 today is hidden; a shortcut landing on today still '
-        'shows, as on the web', () {
-      expect(
-        keysAt(DateTime(2026, 9, 15, 20, 59)),
-        contains(DateShortcut.today),
-      );
-      expect(
-        keysAt(DateTime(2026, 9, 15, 21)),
-        isNot(contains(DateShortcut.today)),
-      );
-      // Friday 21:30: later this week is today and stays.
+    test('from 21:00 today stays, unlike on the web (D106); a later '
+        'shortcut landing on today is dropped for it', () {
+      expect(keysAt(DateTime(2026, 9, 15, 21)), contains(DateShortcut.today));
+      // Friday 21:30: later this week is today.
       final friday = DateTime(2026, 9, 11, 21, 30);
       expect(keysAt(friday), [
+        DateShortcut.today,
         DateShortcut.tomorrow,
         DateShortcut.nextMonday,
-        DateShortcut.laterThisWeek,
         DateShortcut.nextWeek,
         DateShortcut.nextWeekend,
         DateShortcut.endOfMonth,
         DateShortcut.inAMonth,
       ]);
-      expect(daysAt(friday)[DateShortcut.laterThisWeek], DateTime(2026, 9, 11));
-      // Monday 21:00: next Monday is today and stays.
+      // Monday 21:00: next Monday is today.
       expect(
-        daysAt(DateTime(2026, 9, 14, 21))[DateShortcut.nextMonday],
-        DateTime(2026, 9, 14),
+        keysAt(DateTime(2026, 9, 14, 21)),
+        isNot(contains(DateShortcut.nextMonday)),
       );
     });
 

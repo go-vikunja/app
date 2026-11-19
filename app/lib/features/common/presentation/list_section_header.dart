@@ -3,12 +3,15 @@ import 'package:material_ui/material_ui.dart';
 /// A section's title in the primary colour (or [color], e.g. the error
 /// colour for overdue tasks), with [count] or [trailing] (e.g.
 /// `Text('1 of 3 done')`, styled small and muted, or a "See all" text
-/// button) at its end.
+/// button) at its end. An [action] (a text button) follows the count; it
+/// goes to a line of its own below the title when both do not fit, as in
+/// large text.
 class ListSectionHeader extends StatelessWidget {
   const new({
     required this.title,
     this.count,
     this.trailing,
+    this.action,
     this.color,
     this.padding = const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
     super.key,
@@ -17,6 +20,7 @@ class ListSectionHeader extends StatelessWidget {
   final String title;
   final int? count;
   final Widget? trailing;
+  final Widget? action;
   final Color? color;
   final EdgeInsetsGeometry padding;
 
@@ -28,6 +32,7 @@ class ListSectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    if (action case final action?) return _withAction(context, action);
     final trailing =
         this.trailing ?? (count == null ? null : Text('${count!}'));
     return LayoutBuilder(
@@ -67,6 +72,47 @@ class ListSectionHeader extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _withAction(BuildContext context, Widget action) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Padding(
+      padding: padding,
+      child: Wrap(
+        alignment: WrapAlignment.spaceBetween,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        children: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 32),
+            child: Semantics(
+              header: true,
+              headingLevel: 2,
+              child: Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: color ?? colors.primary,
+                ),
+              ),
+            ),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (count case final count?)
+                Text(
+                  '$count',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              Flexible(child: action),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -74,6 +74,7 @@ class SliverSectionCard extends StatelessWidget {
     this.title,
     this.count,
     this.trailing,
+    this.action,
     this.titleColor,
     this.margin = _margin,
     super.key,
@@ -84,6 +85,9 @@ class SliverSectionCard extends StatelessWidget {
   final String? title;
   final int? count;
   final Widget? trailing;
+
+  /// A text button after the count, see [ListSectionHeader.action].
+  final Widget? action;
   final Color? titleColor;
   final EdgeInsetsGeometry margin;
 
@@ -98,6 +102,7 @@ class SliverSectionCard extends StatelessWidget {
               title: title,
               count: count,
               trailing: trailing,
+              action: action,
               color: titleColor,
               padding: _headerPadding,
             ),

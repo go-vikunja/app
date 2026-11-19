@@ -46,14 +46,17 @@ import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/bulk_task_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_selection.dart';
 
 enum _Action {
   refresh,
+  select,
   edit,
   views,
   share,
@@ -106,6 +109,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     with
         RefreshableList<ProjectTasksScreen>,
         TaskListActions<ProjectTasksScreen>,
+        TaskSelectionActions<ProjectTasksScreen>,
         ProjectManagementActions<ProjectTasksScreen> {
   /// A view's tasks and positions older than this download again when the
   /// view opens.
@@ -196,6 +200,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   void onRepositoryReplaced() {
     super.onRepositoryReplaced();
     clearLeavingTasks();
+    endSelection();
     _quietFailures.clear();
     _lastShown = null;
     _queuedIn = null;
@@ -291,11 +296,59 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     unawaited(
       ref.read(listPreferencesProvider)?.saveLastView(widget.projectId, viewId),
     );
+    endSelection();
     setState(() {
       _chosenViewId = viewId;
       clearRefreshFailure();
       clearLeavingTasks();
     });
+  }
+
+  /// The tasks a list or table view shows that may be changed, for the
+  /// selection; none in a board or a timeline.
+  List<Task> _selectableIn(
+    Object? source, {
+    required ProjectView? view,
+    required ViewFilterKind kind,
+    required ViewPreferences preferences,
+    required Set<TableColumn> columns,
+    required Map<int, Project> projectsById,
+  }) {
+    if (source is! ProjectListSource) return const [];
+    final leaving = leavingTasksIn(source.tasksById);
+    final List<Task> shown;
+    // A task's copy that stays on screen while its done's Undo is offered
+    // is not the task to act on.
+    switch (view?.kind) {
+      case ProjectViewKind.table:
+        final sort = preferences.tableSort.forColumns(columns);
+        shown = buildTableRows(
+          source,
+          kind: kind,
+          showDone: preferences.showDone,
+          compare: (a, b) => compareTasksForTable(a, b, sort),
+          leaving: leaving,
+        );
+      case ProjectViewKind.list || null:
+        final model = buildProjectListModel(
+          source,
+          kind: kind,
+          preferences: preferences,
+          leaving: leaving,
+        );
+        final seen = <int>{};
+        shown = [
+          for (final row in [...model.rows, ...?model.doneRows])
+            if (seen.add(row.task.id)) row.task,
+        ];
+      case ProjectViewKind.kanban || ProjectViewKind.gantt:
+        return const [];
+    }
+    return [
+      for (final task in shown)
+        if (!leaving.containsKey(task.id) && taskChangeable(task, projectsById))
+          task,
+    ];
   }
 
   void _savePreferences(String listKey, ViewPreferences preferences) =>
@@ -619,250 +672,302 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
           )
         : null;
     final addsTasks = !archived && access.canAddTasks;
+    final selects =
+        viewKind == ProjectViewKind.list || viewKind == ProjectViewKind.table;
+    final selectable = selecting
+        ? _selectableIn(
+            shownData.value,
+            view: _lastShown?.view ?? view,
+            kind: _lastShown?.kind ?? kind,
+            preferences: _lastShown?.preferences ?? preferences,
+            columns: columns,
+            projectsById: projectsById,
+          )
+        : const <Task>[];
+    final selectableIds = {for (final task in selectable) task.id};
 
-    return Scaffold(
-      appBar: AppBar(
-        // The tree beside it is where to go next; back still goes back.
-        automaticallyImplyLeading: !ProjectTreeColumnScope.shownOf(context),
-        title: ScreenTitle(
-          project?.displayTitle(l10n) ?? l10n.projectUnknownTitle,
-        ),
-        actions: [
-          if (project != null &&
-              _followable &&
-              !archived &&
-              access.canEdit &&
-              !guest)
-            IconButton(
-              onPressed: managingProject
-                  ? null
-                  : () => unawaited(toggleProjectFavourite(project)),
-              tooltip: project.isFavorite
-                  ? l10n.projectRemoveFromFavourites
-                  : l10n.projectAddToFavourites,
-              isSelected: project.isFavorite,
-              icon: const Icon(Icons.star_outline),
-              selectedIcon: const FilledStar(),
-            ),
-          if (managingProject)
-            SizedBox.square(
-              dimension: kMinInteractiveDimension,
-              child: Center(
-                child: SizedBox.square(
-                  dimension: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2.5,
-                    semanticsLabel: l10n.projectSaving,
-                  ),
+    return selectionBackHandler(
+      child: Scaffold(
+        appBar: selecting
+            ? selectionBar(
+                selectable,
+                bottom: ProjectAppBarBottom(
+                  progress: progress,
+                  textScaler: MediaQuery.textScalerOf(context),
                 ),
-              ),
-            )
-          else
-            PopupMenuButton<_Action>(
-              tooltip: l10n.moreActions,
-              onSelected: (action) => _onAction(action, project: project),
-              itemBuilder: (context) {
-                final projectItems = _projectItems(
+              )
+            : AppBar(
+                // The tree beside it is where to go next; back still goes back.
+                automaticallyImplyLeading: !ProjectTreeColumnScope.shownOf(
                   context,
-                  project: project,
-                  access: access,
-                  guest: guest,
-                  archived: archived,
-                  parentArchived:
-                      project != null &&
-                      project.parentProjectId != 0 &&
-                      isArchivedInTree(project.parentProjectId, projectsById),
-                  isDefault: project?.id == defaultProjectId,
-                );
-                return [
-                  // For whoever cannot pull the list, a screen reader among
-                  // them.
-                  projectMenuItem(
-                    _Action.refresh,
-                    icon: Icons.refresh,
-                    label: l10n.refresh,
-                    enabled: !refreshing,
-                  ),
-                  if (projectItems.isNotEmpty) const PopupMenuDivider(),
-                  ...projectItems,
-                ];
-              },
-            ),
-        ],
-        bottom: ProjectAppBarBottom(
-          progress: progress,
-          textScaler: MediaQuery.textScalerOf(context),
-          tabs: tabs,
-        ),
-      ),
-      floatingActionButton: !addsTasks
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => unawaited(
-                showNewTaskSheet(context, projectId: widget.projectId),
-              ),
-              icon: const Icon(Icons.add),
-              label: Text(l10n.newTask),
-            ),
-      body: buildRefreshable(
-        shownData,
-        loadingLabel: l10n.projectTasksLoading,
-        header: listControls,
-        // Under the tabs in every view; the board and the timeline
-        // themselves use the whole width.
-        maxWidth: ReadableWidth.list,
-        // A board's columns and a timeline's rows scroll inside a
-        // horizontal scroll.
-        notificationPredicate: board || viewKind == ProjectViewKind.gantt
-            ? (notification) => notification.metrics.axis == Axis.vertical
-            : defaultScrollNotificationPredicate,
-        builder: (value, notice) {
-          final shown = _lastShown;
-          final shownView = shown == null ? view : shown.view;
-          if (value is BoardSource) {
-            final boardView = shownView ?? value.view;
-            if (boardView == null) return const SizedBox.shrink();
-            return _BoardBody(
-              projectId: widget.projectId,
-              view: boardView,
-              source: value,
-              archived: archived,
-              writable: access.canReorderOrBoard,
-              canChangeView: access.canChooseDoneAndDefaultColumn,
-              offline: offlineOrUnreachable,
-              downloadFailed: downloadFailed,
-              notes: [?notice, ?archivedNote],
-              now: now,
-              minimumPriority: minimumPriority,
-              pendingIds: pendingIds,
-              bottomPadding: addsTasks ? _fabRoom : 0,
-            );
-          }
-          final list = value as ProjectListSource;
-          final shownKind = shown?.kind ?? kind;
-          final shownPreferences = shown?.preferences ?? preferences;
-          final leaving = leavingTasksIn(list.tasksById);
-          final loadedAt = list.snapshot.loadedAt;
-          final filterNotice =
-              shownKind == ViewFilterKind.other &&
-                  list.matchingIds == null &&
-                  loadedAt != null
-              ? ListNote(
-                  icon: Icons.filter_alt_outlined,
-                  text: l10n.projectViewFilterNotice(
-                    describeViewFilter(shownView?.filter),
-                    formatRelativeTime(
-                      l10n,
-                      // The tick may lag behind a download just finished.
-                      loadedAt.isAfter(now) ? now : loadedAt,
-                      now: now,
-                    ),
-                  ),
-                )
-              : null;
-          final header = stackedNotes([
-            ?listControls,
-            ?notice,
-            ?archivedNote,
-            ?filterNotice,
-          ]);
-          switch (shownView?.kind) {
-            case ProjectViewKind.table:
-              final sort = shownPreferences.tableSort.forColumns(columns);
-              return ProjectTableBody(
-                projectId: widget.projectId,
-                projectsById: projectsById,
-                rows: buildTableRows(
-                  list,
-                  kind: shownKind,
-                  showDone: shownPreferences.showDone,
-                  compare: (a, b) => compareTasksForTable(a, b, sort),
-                  leaving: leaving,
                 ),
-                columns: columns,
-                source: list,
-                kind: shownKind,
-                view: shownView,
-                showDone: shownPreferences.showDone,
+                title: ScreenTitle(
+                  project?.displayTitle(l10n) ?? l10n.projectUnknownTitle,
+                ),
+                actions: [
+                  if (project != null &&
+                      _followable &&
+                      !archived &&
+                      access.canEdit &&
+                      !guest)
+                    IconButton(
+                      onPressed: managingProject
+                          ? null
+                          : () => unawaited(toggleProjectFavourite(project)),
+                      tooltip: project.isFavorite
+                          ? l10n.projectRemoveFromFavourites
+                          : l10n.projectAddToFavourites,
+                      isSelected: project.isFavorite,
+                      icon: const Icon(Icons.star_outline),
+                      selectedIcon: const FilledStar(),
+                    ),
+                  if (managingProject)
+                    SizedBox.square(
+                      dimension: kMinInteractiveDimension,
+                      child: Center(
+                        child: SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            semanticsLabel: l10n.projectSaving,
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    PopupMenuButton<_Action>(
+                      tooltip: l10n.moreActions,
+                      onSelected: (action) =>
+                          _onAction(action, project: project),
+                      itemBuilder: (context) {
+                        final projectItems = _projectItems(
+                          context,
+                          project: project,
+                          access: access,
+                          guest: guest,
+                          archived: archived,
+                          parentArchived:
+                              project != null &&
+                              project.parentProjectId != 0 &&
+                              isArchivedInTree(
+                                project.parentProjectId,
+                                projectsById,
+                              ),
+                          isDefault: project?.id == defaultProjectId,
+                        );
+                        return [
+                          // For whoever cannot pull the list, a screen
+                          // reader among them.
+                          projectMenuItem(
+                            _Action.refresh,
+                            icon: Icons.refresh,
+                            label: l10n.refresh,
+                            enabled: !refreshing,
+                          ),
+                          if (selects && !archived && access.canChangeTasks)
+                            projectMenuItem(
+                              _Action.select,
+                              icon: Icons.checklist,
+                              label: l10n.selectTasks,
+                            ),
+                          if (projectItems.isNotEmpty) const PopupMenuDivider(),
+                          ...projectItems,
+                        ];
+                      },
+                    ),
+                ],
+                bottom: ProjectAppBarBottom(
+                  progress: progress,
+                  textScaler: MediaQuery.textScalerOf(context),
+                  tabs: tabs,
+                ),
+              ),
+        bottomNavigationBar: selecting ? selectionActionBar(selectable) : null,
+        floatingActionButton: !addsTasks || selecting
+            ? null
+            : FloatingActionButton.extended(
+                onPressed: () => unawaited(
+                  showNewTaskSheet(context, projectId: widget.projectId),
+                ),
+                icon: const Icon(Icons.add),
+                label: Text(l10n.newTask),
+              ),
+        body: buildRefreshable(
+          shownData,
+          loadingLabel: l10n.projectTasksLoading,
+          header: listControls,
+          // Under the tabs in every view; the board and the timeline
+          // themselves use the whole width.
+          maxWidth: ReadableWidth.list,
+          // A board's columns and a timeline's rows scroll inside a
+          // horizontal scroll.
+          notificationPredicate: board || viewKind == ProjectViewKind.gantt
+              ? (notification) => notification.metrics.axis == Axis.vertical
+              : defaultScrollNotificationPredicate,
+          builder: (value, notice) {
+            final shown = _lastShown;
+            final shownView = shown == null ? view : shown.view;
+            if (value is BoardSource) {
+              final boardView = shownView ?? value.view;
+              if (boardView == null) return const SizedBox.shrink();
+              return _BoardBody(
+                projectId: widget.projectId,
+                view: boardView,
+                source: value,
+                archived: archived,
+                writable: access.canReorderOrBoard,
+                canChangeView: access.canChooseDoneAndDefaultColumn,
                 offline: offlineOrUnreachable,
                 downloadFailed: downloadFailed,
-                header: header,
+                notes: [?notice, ?archivedNote],
                 now: now,
                 minimumPriority: minimumPriority,
                 pendingIds: pendingIds,
-                onDoneChanged: (task, {required done}) =>
-                    unawaited(setTaskDone(task, done: done)),
-                onFavoriteChanged: (task, {required favorite}) =>
-                    unawaited(setTaskFavorite(task, favorite: favorite)),
-              );
-            case ProjectViewKind.gantt:
-              return ProjectTimelineBody(
-                // Collapsed rows belong to one view.
-                key: ValueKey(shownView!.id),
-                view: shownView,
-                source: list,
-                preferences: shownPreferences,
-                offline: offlineOrUnreachable,
-                downloadFailed: downloadFailed,
-                header: header,
                 bottomPadding: addsTasks ? _fabRoom : 0,
               );
-            case ProjectViewKind.list || ProjectViewKind.kanban || null:
-              break;
-          }
-          final model = buildProjectListModel(
-            list,
-            kind: shownKind,
-            preferences: shownPreferences,
-            leaving: leaving,
-          );
-          // Before its first download the view's order is made up.
-          final reorderView =
-              loadedAt != null &&
-                  listIsReorderable(
-                    projectId: widget.projectId,
-                    view: shownView,
-                    sort: shownPreferences.sort,
-                    archived: archived,
-                    writable: access.canReorderOrBoard,
+            }
+            final list = value as ProjectListSource;
+            final shownKind = shown?.kind ?? kind;
+            final shownPreferences = shown?.preferences ?? preferences;
+            final leaving = leavingTasksIn(list.tasksById);
+            final loadedAt = list.snapshot.loadedAt;
+            final filterNotice =
+                shownKind == ViewFilterKind.other &&
+                    list.matchingIds == null &&
+                    loadedAt != null
+                ? ListNote(
+                    icon: Icons.filter_alt_outlined,
+                    text: l10n.projectViewFilterNotice(
+                      describeViewFilter(shownView?.filter),
+                      formatRelativeTime(
+                        l10n,
+                        // The tick may lag behind a download just finished.
+                        loadedAt.isAfter(now) ? now : loadedAt,
+                        now: now,
+                      ),
+                    ),
                   )
-              ? shownView
-              : null;
-          return ProjectListBody(
-            projectId: widget.projectId,
-            projectsById: projectsById,
-            model: model,
-            source: list,
-            kind: shownKind,
-            view: shownView,
-            preferences: shownPreferences,
-            offline: offlineOrUnreachable,
-            downloadFailed: downloadFailed,
-            header: header,
-            now: now,
-            minimumPriority: minimumPriority,
-            pendingIds: pendingIds,
-            onDoneChanged: (task, {required done}) =>
-                unawaited(setTaskDone(task, done: done)),
-            onFavoriteChanged: (task, {required favorite}) =>
-                unawaited(setTaskFavorite(task, favorite: favorite)),
-            leavingIds: leaving.keys.toSet(),
-            onReorder: reorderView == null || repository == null
-                ? null
-                : (positions) => unawaited(
-                    saveLocalChange(context, () async {
-                      for (final MapEntry(key: taskId, value: position)
-                          in positions.entries) {
-                        await repository.positionTask(
-                          taskId,
-                          viewId: reorderView.id,
-                          position: position,
-                        );
-                      }
-                    }, action: 'Reordering a list'),
+                : null;
+            final header = stackedNotes([
+              ?listControls,
+              ?notice,
+              ?archivedNote,
+              ?filterNotice,
+            ]);
+            switch (shownView?.kind) {
+              case ProjectViewKind.table:
+                final sort = shownPreferences.tableSort.forColumns(columns);
+                return ProjectTableBody(
+                  projectId: widget.projectId,
+                  projectsById: projectsById,
+                  rows: buildTableRows(
+                    list,
+                    kind: shownKind,
+                    showDone: shownPreferences.showDone,
+                    compare: (a, b) => compareTasksForTable(a, b, sort),
+                    leaving: leaving,
                   ),
-          );
-        },
+                  columns: columns,
+                  source: list,
+                  kind: shownKind,
+                  view: shownView,
+                  showDone: shownPreferences.showDone,
+                  offline: offlineOrUnreachable,
+                  downloadFailed: downloadFailed,
+                  header: header,
+                  now: now,
+                  minimumPriority: minimumPriority,
+                  pendingIds: pendingIds,
+                  onDoneChanged: (task, {required done}) =>
+                      unawaited(setTaskDone(task, done: done)),
+                  onFavoriteChanged: (task, {required favorite}) =>
+                      unawaited(setTaskFavorite(task, favorite: favorite)),
+                  onDueDate: (task) => unawaited(changeTaskDueDate(task)),
+                  onSelect: startSelection,
+                  selection: selecting
+                      ? (task) => rowSelection(
+                          task,
+                          changeable: selectableIds.contains(task.id),
+                        )
+                      : null,
+                );
+              case ProjectViewKind.gantt:
+                return ProjectTimelineBody(
+                  // Collapsed rows belong to one view.
+                  key: ValueKey(shownView!.id),
+                  view: shownView,
+                  source: list,
+                  preferences: shownPreferences,
+                  offline: offlineOrUnreachable,
+                  downloadFailed: downloadFailed,
+                  header: header,
+                  bottomPadding: addsTasks ? _fabRoom : 0,
+                );
+              case ProjectViewKind.list || ProjectViewKind.kanban || null:
+                break;
+            }
+            final model = buildProjectListModel(
+              list,
+              kind: shownKind,
+              preferences: shownPreferences,
+              leaving: leaving,
+            );
+            // Before its first download the view's order is made up.
+            final reorderView =
+                loadedAt != null &&
+                    listIsReorderable(
+                      projectId: widget.projectId,
+                      view: shownView,
+                      sort: shownPreferences.sort,
+                      archived: archived,
+                      writable: access.canReorderOrBoard,
+                    )
+                ? shownView
+                : null;
+            return ProjectListBody(
+              projectId: widget.projectId,
+              projectsById: projectsById,
+              model: model,
+              source: list,
+              kind: shownKind,
+              view: shownView,
+              preferences: shownPreferences,
+              offline: offlineOrUnreachable,
+              downloadFailed: downloadFailed,
+              header: header,
+              now: now,
+              minimumPriority: minimumPriority,
+              pendingIds: pendingIds,
+              onDoneChanged: (task, {required done}) =>
+                  unawaited(setTaskDone(task, done: done)),
+              onFavoriteChanged: (task, {required favorite}) =>
+                  unawaited(setTaskFavorite(task, favorite: favorite)),
+              onDueDate: (task) => unawaited(changeTaskDueDate(task)),
+              onSelect: startSelection,
+              selection: selecting
+                  ? (task) => rowSelection(
+                      task,
+                      changeable: selectableIds.contains(task.id),
+                    )
+                  : null,
+              leavingIds: leaving.keys.toSet(),
+              onReorder: reorderView == null || repository == null
+                  ? null
+                  : (positions) => unawaited(
+                      saveLocalChange(context, () async {
+                        for (final MapEntry(key: taskId, value: position)
+                            in positions.entries) {
+                          await repository.positionTask(
+                            taskId,
+                            viewId: reorderView.id,
+                            position: position,
+                          );
+                        }
+                      }, action: 'Reordering a list'),
+                    ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -870,6 +975,10 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   void _onAction(_Action action, {required Project? project}) {
     if (action == _Action.refresh) {
       unawaited(refresh());
+      return;
+    }
+    if (action == _Action.select) {
+      startSelection();
       return;
     }
     if (action == _Action.follow) {
@@ -896,7 +1005,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         unawaited(toggleProjectFavourite(project));
       case _Action.delete:
         unawaited(deleteProject(project));
-      case _Action.refresh || _Action.follow:
+      case _Action.refresh || _Action.follow || _Action.select:
         break;
     }
   }

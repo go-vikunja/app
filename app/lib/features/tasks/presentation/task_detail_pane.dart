@@ -28,20 +28,27 @@ final class TaskDetailPaneEntry {
 
 /// Above the screens inside the shell's tabs, and only there: whether a
 /// task opens in the current tab's pane now ([available]), which task that
-/// pane shows ([selectedTaskId]), and [open] to show one in it. Pages over
-/// the shell, sheets, dialogs and the pane itself do not find it.
+/// pane shows ([selectedTaskId]), [open] to show one in it, and [deleted]
+/// to take tasks a list deleted out of every pane. Pages over the shell,
+/// sheets, dialogs and the pane itself do not find it.
 class TaskDetailPaneScope extends InheritedModel<int> {
   const new({
     required this.available,
     required this.selectedTaskId,
     required this.open,
     required super.child,
+    this.deleted,
     super.key,
   });
 
   final bool available;
   final int? selectedTaskId;
   final void Function(Task task, {TaskBoardOrigin? board}) open;
+  final void Function(Set<int> taskIds)? deleted;
+
+  /// [deleted] of the scope above [context], without depending on it.
+  static void Function(Set<int> taskIds)? deletedOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<TaskDetailPaneScope>()?.deleted;
 
   /// The task the current tab's pane shows; null without a pane and
   /// outside the tabs. Rebuilds [context] whenever that changes.

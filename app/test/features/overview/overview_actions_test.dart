@@ -413,6 +413,15 @@ void main() {
     await pumpOverview(tester);
 
     expect(find.byType(TaskRow), findsNWidgets(3));
+    // The Overdue heading's Reschedule takes a line of its own here.
+    expect(
+      tester.getTopLeft(find.text(en.overdueReschedule)).dy,
+      greaterThanOrEqualTo(
+        tester.getBottomLeft(find.text(en.sectionOverdue)).dy,
+      ),
+    );
+    await tester.ensureVisible(markDone('Write report'));
+    await tester.pumpAndSettle();
     await tester.tap(markDone('Write report'));
     await tester.pumpAndSettle();
 

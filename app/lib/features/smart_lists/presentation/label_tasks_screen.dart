@@ -19,7 +19,9 @@ import 'package:vikunja_mobile/features/smart_lists/presentation/due_sections_li
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/label_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/bulk_task_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_selection.dart';
 
 /// The open tasks with one label, grouped by due date like a saved
 /// filter's list: what `done = false && labels in <id>` finds in a saved
@@ -35,7 +37,10 @@ class LabelTasksScreen extends ConsumerStatefulWidget {
 }
 
 class _LabelTasksScreenState extends ConsumerState<LabelTasksScreen>
-    with RefreshableList<LabelTasksScreen>, TaskListActions<LabelTasksScreen> {
+    with
+        RefreshableList<LabelTasksScreen>,
+        TaskListActions<LabelTasksScreen>,
+        TaskSelectionActions<LabelTasksScreen> {
   @override
   ProviderListenable<Object?> get repositoryProvider => taskRepositoryProvider;
 
@@ -47,6 +52,7 @@ class _LabelTasksScreenState extends ConsumerState<LabelTasksScreen>
   void onRepositoryReplaced() {
     super.onRepositoryReplaced();
     clearLeavingTasks();
+    endSelection();
   }
 
   @override
@@ -64,43 +70,72 @@ class _LabelTasksScreenState extends ConsumerState<LabelTasksScreen>
     final pendingIds =
         ref.watch(pendingTaskIdsProvider).unwrapPrevious().value ?? const {};
     final title = label?.title ?? '';
+    final selectable = [
+      for (final task in tasks.value ?? const <Task>[])
+        if (taskChangeable(task, projectsById)) task,
+    ];
+    final selectableIds = {for (final task in selectable) task.id};
 
-    return Scaffold(
-      appBar: AppBar(
-        title: ScreenTitle(title),
-        actions: [RefreshButton(onPressed: refreshing ? null : refresh)],
-      ),
-      body: labels != null && label == null
-          ? CenteredScrollView(
-              maxWidth: ReadableWidth.list,
-              child: EmptyState(
-                icon: Icons.label_off_outlined,
-                title: l10n.labelTasksGoneTitle,
-                body: l10n.labelTasksGoneBody,
+    return selectionBackHandler(
+      child: Scaffold(
+        appBar: selecting
+            ? selectionBar(selectable)
+            : AppBar(
+                title: ScreenTitle(title),
+                actions: [
+                  RefreshButton(onPressed: refreshing ? null : refresh),
+                ],
               ),
-            )
-          : buildRefreshable(
-              tasks,
-              loadingLabel: l10n.projectTasksLoading,
-              maxWidth: ReadableWidth.list,
-              builder: (value, notice) => DueSectionsList(
-                sections: groupTasksByDueDate(withLeavingTasks(value), now),
-                projectsById: projectsById,
-                pendingIds: pendingIds,
-                now: now,
-                minimumPriority: minimumPriority,
-                header: notice,
-                emptyState: EmptyState(
-                  icon: Icons.label_outline,
-                  title: l10n.labelTasksEmptyTitle,
-                  body: l10n.labelTasksEmptyBody(title),
+        bottomNavigationBar: selecting ? selectionActionBar(selectable) : null,
+        body: labels != null && label == null
+            ? CenteredScrollView(
+                maxWidth: ReadableWidth.list,
+                child: EmptyState(
+                  icon: Icons.label_off_outlined,
+                  title: l10n.labelTasksGoneTitle,
+                  body: l10n.labelTasksGoneBody,
                 ),
-                onDoneChanged: (task, {required done}) =>
-                    unawaited(setTaskDone(task, done: done)),
-                onFavoriteChanged: (task, {required favorite}) =>
-                    unawaited(setTaskFavorite(task, favorite: favorite)),
+              )
+            : buildRefreshable(
+                tasks,
+                loadingLabel: l10n.projectTasksLoading,
+                maxWidth: ReadableWidth.list,
+                builder: (value, notice) => DueSectionsList(
+                  sections: groupTasksByDueDate(withLeavingTasks(value), now),
+                  projectsById: projectsById,
+                  pendingIds: pendingIds,
+                  now: now,
+                  minimumPriority: minimumPriority,
+                  header: notice,
+                  emptyState: EmptyState(
+                    icon: Icons.label_outline,
+                    title: l10n.labelTasksEmptyTitle,
+                    body: l10n.labelTasksEmptyBody(title),
+                  ),
+                  onDoneChanged: (task, {required done}) =>
+                      unawaited(setTaskDone(task, done: done)),
+                  onFavoriteChanged: (task, {required favorite}) =>
+                      unawaited(setTaskFavorite(task, favorite: favorite)),
+                  onDueDate: (task) => unawaited(changeTaskDueDate(task)),
+                  onSelect: startSelection,
+                  selection: (task) => rowSelection(
+                    task,
+                    changeable: selectableIds.contains(task.id),
+                  ),
+                  onReschedule: selecting
+                      ? null
+                      : (tasks) => unawaited(
+                          rescheduleTasks(
+                            context,
+                            ref,
+                            tasks,
+                            title: l10n.overdueRescheduleTitle(tasks.length),
+                          ),
+                        ),
+                  changeable: (task) => taskChangeable(task, projectsById),
+                ),
               ),
-            ),
+      ),
     );
   }
 }

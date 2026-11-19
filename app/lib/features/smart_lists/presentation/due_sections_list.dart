@@ -13,7 +13,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 /// A list that is no project, grouped by due date like the Overview, each
 /// row with its project, and [doneTasks] in a Done section below, with
-/// [doneNote] under it; [emptyState] without tasks.
+/// [doneNote] under it; [emptyState] without tasks. The Overdue heading
+/// offers Reschedule ([onReschedule]) while the list does not select.
 class DueSectionsList extends StatelessWidget {
   const new({
     required this.sections,
@@ -25,6 +26,11 @@ class DueSectionsList extends StatelessWidget {
     required this.emptyState,
     required this.onDoneChanged,
     required this.onFavoriteChanged,
+    this.onDueDate,
+    this.onSelect,
+    this.selection,
+    this.onReschedule,
+    this.changeable,
     this.doneTasks = const [],
     this.doneNote,
     super.key,
@@ -41,6 +47,16 @@ class DueSectionsList extends StatelessWidget {
   final Widget emptyState;
   final void Function(Task task, {required bool done}) onDoneChanged;
   final void Function(Task task, {required bool favorite}) onFavoriteChanged;
+  final void Function(Task task)? onDueDate;
+  final void Function(Task task)? onSelect;
+
+  /// Each row's selection while the list selects; null otherwise.
+  final TaskRowSelection? Function(Task task)? selection;
+
+  /// For the open overdue tasks shown that [changeable] lets change; the
+  /// button shows while there is one.
+  final void Function(List<Task> overdue)? onReschedule;
+  final bool Function(Task task)? changeable;
 
   Widget _row(BuildContext context, Task task) {
     final l10n = context.l10n;
@@ -63,6 +79,24 @@ class DueSectionsList extends StatelessWidget {
       onFavoriteChanged: archived
           ? null
           : (favorite) => onFavoriteChanged(task, favorite: favorite),
+      onDueDate: onDueDate == null ? null : () => onDueDate!(task),
+      onSelect: onSelect == null ? null : () => onSelect!(task),
+      selection: selection?.call(task),
+    );
+  }
+
+  Widget? _overdueAction(BuildContext context, DueSection section) {
+    final onReschedule = this.onReschedule;
+    if (onReschedule == null || section.group != DueGroup.overdue) return null;
+    final changeable = this.changeable ?? (_) => true;
+    final open = [
+      for (final task in section.tasks)
+        if (!task.done && changeable(task)) task,
+    ];
+    if (open.isEmpty) return null;
+    return TextButton(
+      onPressed: () => onReschedule(open),
+      child: Text(context.l10n.overdueReschedule),
     );
   }
 
@@ -87,6 +121,7 @@ class DueSectionsList extends StatelessWidget {
               SliverSectionCard(
                 title: dueSectionTitle(l10n, section.group),
                 count: section.tasks.length,
+                action: _overdueAction(context, section),
                 titleColor: section.group == DueGroup.overdue
                     ? Theme.of(context).colorScheme.error
                     : null,

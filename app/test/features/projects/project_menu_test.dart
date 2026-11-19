@@ -60,6 +60,9 @@ void main() {
 
   Future<void> choose(WidgetTester tester, String item) async {
     await openMenu(tester);
+    // A long menu scrolls in a short test window.
+    await tester.ensureVisible(find.text(item));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(item));
     await tester.pumpAndSettle();
   }

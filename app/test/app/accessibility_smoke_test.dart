@@ -2120,7 +2120,14 @@ void main() {
       containerOf(tester).read(appRouterProvider).go(AppRoutes.project(1));
       await tester.pumpAndSettle();
       final firstTask = find.textContaining('Task 1 ');
-      expect(actionsOf(firstTask), [l10n.moveDown]);
+      // The move actions first, then the row's own (D106), in English
+      // until Crowdin brings the new texts.
+      expect(actionsOf(firstTask), [
+        l10n.moveDown,
+        l10n.taskMarkDone,
+        l10n.taskDetailChangeDueDate,
+        l10n.taskSelect,
+      ]);
       await hold(find.ancestor(of: firstTask, matching: find.byType(TaskRow)));
 
       await openTab(tester, l10n.tabProjects);

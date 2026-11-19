@@ -22,9 +22,13 @@ import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/bulk_task_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart'
+    show TaskRowSelection;
+import 'package:vikunja_mobile/features/tasks/presentation/task_selection.dart';
 
 /// The open tasks across all projects, or those of the saved filter picked
 /// for the Overview on the web, grouped by due date. The filter is
@@ -38,7 +42,10 @@ class OverviewScreen extends ConsumerStatefulWidget {
 }
 
 class _OverviewScreenState extends ConsumerState<OverviewScreen>
-    with RefreshableList<OverviewScreen>, TaskListActions<OverviewScreen> {
+    with
+        RefreshableList<OverviewScreen>,
+        TaskListActions<OverviewScreen>,
+        TaskSelectionActions<OverviewScreen> {
   @override
   ProviderListenable<Object?> get repositoryProvider => taskRepositoryProvider;
 
@@ -46,6 +53,7 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
   void onRepositoryReplaced() {
     super.onRepositoryReplaced();
     clearLeavingTasks();
+    endSelection();
   }
 
   // One sync run brings the project titles and the filter's tasks along.
@@ -75,51 +83,84 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
       onRefresh: refreshing ? null : () => unawaited(refresh()),
     );
 
-    return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        // A page over the shell (the inbox, the edit page) finds the
-        // heroes of every tab's top route; the project screen's button
-        // would share the default tag.
-        heroTag: null,
-        onPressed: () => unawaited(showNewTaskSheet(context)),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.newTask),
-      ),
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
-            const SyncProgressBar(),
-            Expanded(
-              child: buildRefreshable(
-                overview,
-                loadingLabel: l10n.overviewLoading,
-                header: header(),
-                maxWidth: ReadableWidth.list,
-                builder: (value, notice) {
-                  final sections = groupTasksByDueDate(
-                    withLeavingTasks(value.tasks),
-                    now,
-                  );
-                  return _TaskSections(
-                    overview: value,
-                    sections: sections,
-                    projectsById: projectsById,
-                    pendingIds: pendingIds,
-                    now: now,
-                    minimumPriority: minimumPriority,
-                    offline: offline,
-                    header: header(tasksLeft: _tasksLeftToday(sections)),
-                    notice: notice,
-                    onDoneChanged: (task, {required done}) =>
-                        unawaited(setTaskDone(task, done: done)),
-                    onFavoriteChanged: (task, {required favorite}) =>
-                        unawaited(setTaskFavorite(task, favorite: favorite)),
-                  );
-                },
+    final shownTasks = overview.value?.tasks ?? const <Task>[];
+    final selectable = [
+      for (final task in shownTasks)
+        if (taskChangeable(task, projectsById)) task,
+    ];
+    final selectableIds = {for (final task in selectable) task.id};
+
+    return selectionBackHandler(
+      child: Scaffold(
+        appBar: selecting ? selectionBar(selectable) : null,
+        bottomNavigationBar: selecting ? selectionActionBar(selectable) : null,
+        floatingActionButton: selecting
+            ? null
+            : FloatingActionButton.extended(
+                // A page over the shell (the inbox, the edit page) finds the
+                // heroes of every tab's top route; the project screen's
+                // button would share the default tag.
+                heroTag: null,
+                onPressed: () => unawaited(showNewTaskSheet(context)),
+                icon: const Icon(Icons.add),
+                label: Text(l10n.newTask),
               ),
-            ),
-          ],
+        body: SafeArea(
+          top: !selecting,
+          bottom: false,
+          child: Column(
+            children: [
+              const SyncProgressBar(),
+              Expanded(
+                child: buildRefreshable(
+                  overview,
+                  loadingLabel: l10n.overviewLoading,
+                  header: header(),
+                  maxWidth: ReadableWidth.list,
+                  builder: (value, notice) {
+                    final sections = groupTasksByDueDate(
+                      withLeavingTasks(value.tasks),
+                      now,
+                    );
+                    return _TaskSections(
+                      overview: value,
+                      sections: sections,
+                      projectsById: projectsById,
+                      pendingIds: pendingIds,
+                      now: now,
+                      minimumPriority: minimumPriority,
+                      offline: offline,
+                      header: header(tasksLeft: _tasksLeftToday(sections)),
+                      notice: notice,
+                      onDoneChanged: (task, {required done}) =>
+                          unawaited(setTaskDone(task, done: done)),
+                      onFavoriteChanged: (task, {required favorite}) =>
+                          unawaited(setTaskFavorite(task, favorite: favorite)),
+                      onDueDate: (task) => unawaited(changeTaskDueDate(task)),
+                      onSelect: startSelection,
+                      selection: (task) => rowSelection(
+                        task,
+                        changeable: selectableIds.contains(task.id),
+                      ),
+                      onReschedule: selecting
+                          ? null
+                          : (tasks) => unawaited(
+                              rescheduleTasks(
+                                context,
+                                ref,
+                                tasks,
+                                title: l10n.overdueRescheduleTitle(
+                                  tasks.length,
+                                ),
+                              ),
+                            ),
+                      changeable: (task) => taskChangeable(task, projectsById),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -146,6 +187,11 @@ class _TaskSections extends StatelessWidget {
     required this.notice,
     required this.onDoneChanged,
     required this.onFavoriteChanged,
+    required this.onDueDate,
+    required this.onSelect,
+    required this.selection,
+    required this.onReschedule,
+    required this.changeable,
   });
 
   final OverviewTasks overview;
@@ -161,6 +207,11 @@ class _TaskSections extends StatelessWidget {
   final Widget? notice;
   final void Function(Task task, {required bool done}) onDoneChanged;
   final void Function(Task task, {required bool favorite}) onFavoriteChanged;
+  final void Function(Task task) onDueDate;
+  final void Function(Task task) onSelect;
+  final TaskRowSelection? Function(Task task) selection;
+  final void Function(List<Task> overdue)? onReschedule;
+  final bool Function(Task task) changeable;
 
   @override
   Widget build(BuildContext context) {
@@ -224,6 +275,11 @@ class _TaskSections extends StatelessWidget {
       },
       onDoneChanged: onDoneChanged,
       onFavoriteChanged: onFavoriteChanged,
+      onDueDate: onDueDate,
+      onSelect: onSelect,
+      selection: selection,
+      onReschedule: onReschedule,
+      changeable: changeable,
     );
   }
 }

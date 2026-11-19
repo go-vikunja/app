@@ -158,6 +158,14 @@ After the first sync, lists, tables, timelines, filters, saved filters and searc
 
 While you are offline, a banner says so. On the **Account** tab, **Pending changes** shows how many changes are waiting, with **Send now**, and **Sync problems** lists the changes the server refused, which you can try again or discard. If you sign out while changes are waiting, they are lost; the app warns you first.
 
+## Working through a list
+
+Swipe a task to the right to check it off, or to the left to change its due date. With a screen reader, both are among the task's actions.
+
+To change several tasks at once, touch and hold one of them, or choose **Select tasks** in the list's menu, then tap the others. The bar at the bottom checks them off, changes their due date or priority, moves them to another project or deletes them; each can be undone right after, a delete on Vikunja 2.8.0 and later. In a project sorted by hand, touching and holding a task moves it, so there use **Select tasks**.
+
+**Reschedule** next to **Overdue** moves all overdue tasks at once: to today, tomorrow or next week, each keeping its time of day (moved to today, a time that has passed becomes the end of the day), or to one date and time you pick.
+
 ## Reminders and notifications
 
 The app creates reminders on your device from its copy of your tasks, at each reminder and at the due time, so they come without a connection too. A task created on the web reaches your device with the next sync: about every 30 minutes on Android while the app is closed, and when iOS allows it on iPhone and iPad. Opening the app syncs at once.

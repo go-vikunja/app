@@ -28,17 +28,19 @@ import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/bulk_task_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_list_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_selection.dart';
 import 'package:vikunja_mobile/features/upcoming/application/upcoming_providers.dart';
 import 'package:vikunja_mobile/features/upcoming/application/upcoming_sections.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/date_range_labels.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/day_strip.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/timeline_day.dart';
 
-enum _Action { refresh, inbox, toggleOverdue, toggleWithoutDueDate }
+enum _Action { refresh, select, inbox, toggleOverdue, toggleWithoutDueDate }
 
 enum _CustomRange { pick }
 
@@ -53,7 +55,10 @@ class UpcomingScreen extends ConsumerStatefulWidget {
 }
 
 class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
-    with RefreshableList<UpcomingScreen>, TaskListActions<UpcomingScreen> {
+    with
+        RefreshableList<UpcomingScreen>,
+        TaskListActions<UpcomingScreen>,
+        TaskSelectionActions<UpcomingScreen> {
   /// The day picked in the strip; null shows the whole range.
   DateTime? _selectedDay;
 
@@ -64,6 +69,7 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
   void onRepositoryReplaced() {
     super.onRepositoryReplaced();
     clearLeavingTasks();
+    endSelection();
     _selectedDay = null;
   }
 
@@ -77,6 +83,46 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
 
   void _save(UpcomingPreferences preferences) =>
       unawaited(ref.read(listPreferencesProvider)?.saveUpcoming(preferences));
+
+  /// The open tasks [tasks] shows: those of the range, the overdue and
+  /// those without a due date as the preferences have them, or the day
+  /// picked in the strip.
+  List<Task> _visible(
+    List<Task> tasks,
+    DateTime now,
+    UpcomingPreferences preferences,
+  ) {
+    final range = preferences.range(now);
+    final shown = withLeavingTasks(tasks);
+    final selection = selectUpcoming(
+      [
+        for (final task in shown)
+          if (task.done) task.copyWith(done: false) else task,
+      ],
+      range: range,
+      now: now,
+      showOverdue: preferences.showOverdue,
+      showWithoutDueDate: preferences.showWithoutDueDate,
+    );
+    final stripDays = stripDaysOf(range);
+    final visible = stripDays?.contains(_selectedDay) ?? false
+        ? tasksByDay(selection)[_selectedDay] ?? const <Task>[]
+        : [
+            for (final section in upcomingSections(selection))
+              ...switch (section) {
+                OverdueSection(:final tasks) => tasks,
+                DaySection(:final tasks) => tasks,
+                WithoutDueDateSection(:final tasks) => tasks,
+              },
+          ];
+    // The tasks themselves, not the open copies that place a task just
+    // marked done while its Undo is offered.
+    final byId = {for (final task in shown) task.id: task};
+    return [
+      for (final task in visible)
+        if (byId[task.id] case final real? when !real.done) real,
+    ];
+  }
 
   /// Another range shows all of its days.
   void _saveRange(UpcomingPreferences preferences) {
@@ -153,130 +199,179 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
     final range = preferences.range(now);
     final name = rangeName(l10n, preferences);
     final dates = rangeDates(context, range, now);
+    final selectable = switch (tasks.value) {
+      final value? when selecting => [
+        for (final task in _visible(value, now, preferences))
+          if (taskChangeable(task, projectsById)) task,
+      ],
+      _ => const <Task>[],
+    };
+    final selectableIds = {for (final task in selectable) task.id};
 
-    return Scaffold(
-      appBar: AppBar(
-        title: ScreenTitle(l10n.tabUpcoming),
-        actions: [
-          _RangeButton(name: name, dates: dates, onPressed: _chooseRange),
-          const SearchButton(),
-          // Refresh and the inbox are in the menu, where they leave the
-          // title room on a narrow phone; pulling the list refreshes too,
-          // and the Overview has the bell.
-          PopupMenuButton<_Action>(
-            tooltip: l10n.moreActions,
-            onSelected: (action) => switch (action) {
-              _Action.refresh => unawaited(refresh()),
-              _Action.inbox => unawaited(
-                GoRouter.of(context).push(AppRoutes.inbox),
-              ),
-              _Action.toggleOverdue => _save(
-                preferences.copyWith(showOverdue: !preferences.showOverdue),
-              ),
-              _Action.toggleWithoutDueDate => _save(
-                preferences.copyWith(
-                  showWithoutDueDate: !preferences.showWithoutDueDate,
-                ),
-              ),
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: _Action.refresh,
-                enabled: !refreshing,
-                child: Text(l10n.refresh),
-              ),
-              if (!guest)
-                PopupMenuItem(
-                  value: _Action.inbox,
-                  child: Text(l10n.inboxButton(unread)),
-                ),
-              const PopupMenuDivider(),
-              CheckedPopupMenuItem(
-                value: _Action.toggleOverdue,
-                checked: preferences.showOverdue,
-                child: Text(l10n.upcomingShowOverdue),
-              ),
-              CheckedPopupMenuItem(
-                value: _Action.toggleWithoutDueDate,
-                checked: preferences.showWithoutDueDate,
-                child: Text(l10n.upcomingShowWithoutDate),
-              ),
-            ],
-          ),
-          const AccountSwitcherButton(),
-        ],
-        bottom: const SyncProgressBar(),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: null,
-        onPressed: () => unawaited(showNewTaskSheet(context)),
-        icon: const Icon(Icons.add),
-        label: Text(l10n.newTask),
-      ),
-      body: buildRefreshable(
-        tasks,
-        loadingLabel: l10n.overviewLoading,
-        maxWidth: ReadableWidth.list,
-        builder: (value, notice) {
-          // A task marked done here stays where it was while its Undo is
-          // offered, though the selection skips done tasks.
-          final shown = withLeavingTasks(value);
-          final shownById = {for (final task in shown) task.id: task};
-          final selection = selectUpcoming(
-            [
-              for (final task in shown)
-                if (task.done) task.copyWith(done: false) else task,
-            ],
-            range: range,
-            now: now,
-            showOverdue: preferences.showOverdue,
-            showWithoutDueDate: preferences.showWithoutDueDate,
-          );
-          bool open(Task task) => !(shownById[task.id] ?? task).done;
-          final byDay = tasksByDay(selection);
-          final stripDays = stripDaysOf(range);
-          final selectedDay = stripDays?.contains(_selectedDay) ?? false
-              ? _selectedDay
-              : null;
-          final local = now.toLocal();
-          return _UpcomingSections(
-            sections: switch (selectedDay) {
-              null => upcomingSections(selection),
-              // Even without tasks, so that it says "Nothing planned"
-              // rather than that nothing is upcoming.
-              final day => [DaySection(day, byDay[day] ?? const [])],
-            },
-            shownById: shownById,
-            projectsById: projectsById,
-            pendingIds: pendingIds,
-            now: now,
-            minimumPriority: minimumPriority,
-            subtitle: l10n.upcomingSubtitle(
-              name,
-              dates,
-              selection.inRange.where(open).length,
-            ),
-            strip: stripDays == null
-                ? null
-                : DayStrip(
-                    key: ValueKey((stripDays.first, stripDays.last)),
-                    days: stripDays,
-                    openCounts: {
-                      for (final MapEntry(key: day, value: tasks)
-                          in byDay.entries)
-                        day: tasks.where(open).length,
-                    },
-                    today: DateTime(local.year, local.month, local.day),
-                    selected: selectedDay,
-                    onSelected: (day) => setState(() => _selectedDay = day),
+    return selectionBackHandler(
+      child: Scaffold(
+        appBar: selecting
+            ? selectionBar(selectable, bottom: const SyncProgressBar())
+            : AppBar(
+                title: ScreenTitle(l10n.tabUpcoming),
+                actions: [
+                  _RangeButton(
+                    name: name,
+                    dates: dates,
+                    onPressed: _chooseRange,
                   ),
-            notice: notice,
-            onDoneChanged: (task, {required done}) =>
-                unawaited(setTaskDone(task, done: done)),
-            onFavoriteChanged: (task, {required favorite}) =>
-                unawaited(setTaskFavorite(task, favorite: favorite)),
-          );
-        },
+                  const SearchButton(),
+                  // Refresh and the inbox are in the menu, where they leave
+                  // the title room on a narrow phone; pulling the list
+                  // refreshes too, and the Overview has the bell.
+                  PopupMenuButton<_Action>(
+                    tooltip: l10n.moreActions,
+                    onSelected: (action) => switch (action) {
+                      _Action.refresh => unawaited(refresh()),
+                      _Action.select => startSelection(),
+                      _Action.inbox => unawaited(
+                        GoRouter.of(context).push(AppRoutes.inbox),
+                      ),
+                      _Action.toggleOverdue => _save(
+                        preferences.copyWith(
+                          showOverdue: !preferences.showOverdue,
+                        ),
+                      ),
+                      _Action.toggleWithoutDueDate => _save(
+                        preferences.copyWith(
+                          showWithoutDueDate: !preferences.showWithoutDueDate,
+                        ),
+                      ),
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: _Action.refresh,
+                        enabled: !refreshing,
+                        child: Text(l10n.refresh),
+                      ),
+                      PopupMenuItem(
+                        value: _Action.select,
+                        child: Text(l10n.selectTasks),
+                      ),
+                      if (!guest)
+                        PopupMenuItem(
+                          value: _Action.inbox,
+                          child: Text(l10n.inboxButton(unread)),
+                        ),
+                      const PopupMenuDivider(),
+                      CheckedPopupMenuItem(
+                        value: _Action.toggleOverdue,
+                        checked: preferences.showOverdue,
+                        child: Text(l10n.upcomingShowOverdue),
+                      ),
+                      CheckedPopupMenuItem(
+                        value: _Action.toggleWithoutDueDate,
+                        checked: preferences.showWithoutDueDate,
+                        child: Text(l10n.upcomingShowWithoutDate),
+                      ),
+                    ],
+                  ),
+                  const AccountSwitcherButton(),
+                ],
+                bottom: const SyncProgressBar(),
+              ),
+        bottomNavigationBar: selecting ? selectionActionBar(selectable) : null,
+        floatingActionButton: selecting
+            ? null
+            : FloatingActionButton.extended(
+                heroTag: null,
+                onPressed: () => unawaited(showNewTaskSheet(context)),
+                icon: const Icon(Icons.add),
+                label: Text(l10n.newTask),
+              ),
+        body: buildRefreshable(
+          tasks,
+          loadingLabel: l10n.overviewLoading,
+          maxWidth: ReadableWidth.list,
+          builder: (value, notice) {
+            // A task marked done here stays where it was while its Undo is
+            // offered, though the selection skips done tasks.
+            final shown = withLeavingTasks(value);
+            final shownById = {for (final task in shown) task.id: task};
+            final selection = selectUpcoming(
+              [
+                for (final task in shown)
+                  if (task.done) task.copyWith(done: false) else task,
+              ],
+              range: range,
+              now: now,
+              showOverdue: preferences.showOverdue,
+              showWithoutDueDate: preferences.showWithoutDueDate,
+            );
+            bool open(Task task) => !(shownById[task.id] ?? task).done;
+            final reschedulable = [
+              for (final task in selection.overdue)
+                if (open(task) && taskChangeable(task, projectsById))
+                  shownById[task.id] ?? task,
+            ];
+            final byDay = tasksByDay(selection);
+            final stripDays = stripDaysOf(range);
+            final selectedDay = stripDays?.contains(_selectedDay) ?? false
+                ? _selectedDay
+                : null;
+            final local = now.toLocal();
+            return _UpcomingSections(
+              sections: switch (selectedDay) {
+                null => upcomingSections(selection),
+                // Even without tasks, so that it says "Nothing planned"
+                // rather than that nothing is upcoming.
+                final day => [DaySection(day, byDay[day] ?? const [])],
+              },
+              shownById: shownById,
+              projectsById: projectsById,
+              pendingIds: pendingIds,
+              now: now,
+              minimumPriority: minimumPriority,
+              subtitle: l10n.upcomingSubtitle(
+                name,
+                dates,
+                selection.inRange.where(open).length,
+              ),
+              strip: stripDays == null
+                  ? null
+                  : DayStrip(
+                      key: ValueKey((stripDays.first, stripDays.last)),
+                      days: stripDays,
+                      openCounts: {
+                        for (final MapEntry(key: day, value: tasks)
+                            in byDay.entries)
+                          day: tasks.where(open).length,
+                      },
+                      today: DateTime(local.year, local.month, local.day),
+                      selected: selectedDay,
+                      onSelected: (day) => setState(() => _selectedDay = day),
+                    ),
+              notice: notice,
+              onDoneChanged: (task, {required done}) =>
+                  unawaited(setTaskDone(task, done: done)),
+              onFavoriteChanged: (task, {required favorite}) =>
+                  unawaited(setTaskFavorite(task, favorite: favorite)),
+              onDueDate: (task) => unawaited(changeTaskDueDate(task)),
+              onSelect: startSelection,
+              selection: (task) => rowSelection(
+                task,
+                changeable: selectableIds.contains(task.id),
+              ),
+              onReschedule: selecting || reschedulable.isEmpty
+                  ? null
+                  : () => unawaited(
+                      rescheduleTasks(
+                        context,
+                        ref,
+                        reschedulable,
+                        title: l10n.overdueRescheduleTitle(
+                          reschedulable.length,
+                        ),
+                      ),
+                    ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -323,6 +418,10 @@ class _UpcomingSections extends StatelessWidget {
     required this.notice,
     required this.onDoneChanged,
     required this.onFavoriteChanged,
+    required this.onDueDate,
+    required this.onSelect,
+    required this.selection,
+    required this.onReschedule,
   });
 
   final List<UpcomingSection> sections;
@@ -345,6 +444,12 @@ class _UpcomingSections extends StatelessWidget {
   final Widget? notice;
   final void Function(Task task, {required bool done}) onDoneChanged;
   final void Function(Task task, {required bool favorite}) onFavoriteChanged;
+  final void Function(Task task) onDueDate;
+  final void Function(Task task) onSelect;
+  final TaskRowSelection? Function(Task task) selection;
+
+  /// For the Overdue heading's Reschedule; null hides it.
+  final VoidCallback? onReschedule;
 
   Widget _row(BuildContext context, Task selected) {
     final l10n = context.l10n;
@@ -362,6 +467,9 @@ class _UpcomingSections extends StatelessWidget {
       onDoneChanged: (done) => onDoneChanged(task, done: done),
       onFavoriteChanged: (favorite) =>
           onFavoriteChanged(task, favorite: favorite),
+      onDueDate: () => onDueDate(task),
+      onSelect: () => onSelect(task),
+      selection: selection(task),
     );
   }
 
@@ -429,6 +537,12 @@ class _UpcomingSections extends StatelessWidget {
                 SliverSectionCard(
                   title: l10n.sectionOverdue,
                   count: tasks.length,
+                  action: onReschedule == null
+                      ? null
+                      : TextButton(
+                          onPressed: onReschedule,
+                          child: Text(l10n.overdueReschedule),
+                        ),
                   titleColor: Theme.of(context).colorScheme.error,
                   itemCount: tasks.length,
                   itemBuilder: (context, index) => _row(context, tasks[index]),

@@ -208,7 +208,8 @@ const guestActionInventory = <String, GuestActionEntry>{
     Open(
       "hands the bin's port to the task repository, which uses it only in "
       'restoreTask, whose calls are sites of their own: the Undo of a '
-      "delete in the task sheet, open to a write guest, the opener's "
+      'delete in the task sheet and of several selected tasks, open to a '
+      "write guest, the opener's "
       "Restore, gated, and the bin page's Restore, behind its closed route; "
       'a guest uses the rest of the repository for its tasks',
     ),
@@ -614,6 +615,14 @@ const guestActionInventory = <String, GuestActionEntry>{
       '_CommentComposerState._searchPeople': (
     _serverSearch,
     uses: {'userRepositoryProvider'},
+  ),
+  'features/tasks/presentation/bulk_task_actions.dart _restoreAll': (
+    Open(
+      'the Undo of a delete of several selected tasks restores them by id '
+      "from the bin, which a write guest may, as with the task sheet's Undo "
+      '(D79, D106)',
+    ),
+    uses: {'restoreTask'},
   ),
   'features/tasks/presentation/open/task_opener.dart TaskOpener._restore': (
     Gated(

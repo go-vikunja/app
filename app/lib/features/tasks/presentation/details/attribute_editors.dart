@@ -24,8 +24,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/reminder_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
-/// The new-task sheet's shortcuts (D75).
-const Set<DateShortcut> _dueShortcuts = {
+/// The new-task sheet's shortcuts (D75), also for several tasks at once.
+const Set<DateShortcut> dueDateShortcuts = {
   DateShortcut.today,
   DateShortcut.tomorrow,
   DateShortcut.nextWeek,
@@ -54,7 +54,7 @@ ReminderDates _datesOf(Task task) =>
 
 /// [moment] without the seconds a due date from the server may have and
 /// the shortcuts and the picker never set.
-DateTime? _toTheMinute(DateTime? moment) => moment?.subtract(
+DateTime? toTheMinute(DateTime? moment) => moment?.subtract(
   Duration(
     seconds: moment.second,
     milliseconds: moment.millisecond,
@@ -106,7 +106,7 @@ Future<bool> Function(int taskId, TaskChanges changes) _writer(
 
 /// Whether [task]'s reminders with the due date [due] fall two at one
 /// moment where they did not before; the server keeps only one of them.
-bool _remindersWouldCoincide(Task task, DateTime? due) =>
+bool dueChangeMergesReminders(Task task, DateTime? due) =>
     remindersCoincide(task.reminders, (
       due: due,
       start: task.startDate,
@@ -134,7 +134,7 @@ Future<void> editDueDate(
   final dueDay = due == null ? null : DateTime(due.year, due.month, due.day);
   final shortcuts = [
     for (final option in buildDateShortcuts(now))
-      if (_dueShortcuts.contains(option.shortcut))
+      if (dueDateShortcuts.contains(option.shortcut))
         (
           option,
           dayWithTime(
@@ -183,8 +183,8 @@ Future<void> editDueDate(
   }
   var row = latest();
   final utc = moment?.toUtc();
-  if (row == null || utc == _toTheMinute(row.dueDate)?.toUtc()) return;
-  if (_remindersWouldCoincide(row, utc)) {
+  if (row == null || utc == toTheMinute(row.dueDate)?.toUtc()) return;
+  if (dueChangeMergesReminders(row, utc)) {
     // Written unasked, the server would drop a reminder the user never
     // agreed to lose.
     if (!context.mounted) {

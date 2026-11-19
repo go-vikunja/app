@@ -46,20 +46,19 @@ DateTime _addDays(DateTime day, int days) =>
 
 int _lastDayOfMonth(int year, int month) => DateTime(year, month + 1, 0).day;
 
-/// The web's rules: from 21:00 `today` is hidden (another shortcut landing
-/// on today still shows, as on the web); `thisWeekend` is hidden on
-/// Sunday; `inAMonth` is clamped to the month's last day; of two shortcuts
-/// on the same day the later one is dropped.
+/// The web's rules: `thisWeekend` is hidden on Sunday; `inAMonth` is
+/// clamped to the month's last day; of two shortcuts on the same day the
+/// later one is dropped. The web also hides `today` from 21:00, when its
+/// default time has passed; here `today` then takes 23:59 (D102-9), so it
+/// stays (D106).
 List<DateShortcutOption> buildDateShortcuts(DateTime now) {
   final today = _startOfDay(now);
   final weekday = now.weekday % 7;
-  final lateInTheDay = now.hour >= 21;
   final seen = <DateTime>{};
   final options = <DateShortcutOption>[];
   DateTime after(DayInterval interval) =>
       _addDays(today, calculateDayInterval(interval, now));
   for (final shortcut in DateShortcut.values) {
-    if (shortcut == DateShortcut.today && lateInTheDay) continue;
     if (shortcut == DateShortcut.thisWeekend && weekday == 0) continue;
     final day = switch (shortcut) {
       DateShortcut.endOfMonth => DateTime(

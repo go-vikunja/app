@@ -108,7 +108,19 @@ On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to
 - [ ] **Quick add as a guest:** switch to the guest; the same text gives the chip "neuesLabel · bleibt im Titel" and TalkBack "Das Label neuesLabel gibt es nicht; es bleibt im Titel". The help (`?`) says under Labels that as a guest you can't create new ones.
 - [ ] **Signing straight back in:** mark a task done from a reminder notification while the server cannot be reached, then at once sign that account out and sign in to it again from the Connect screen; the wait shows only while the notification's Done still holds the account's data, so record whether it was seen. The button reads "Abmeldung wird abgeschlossen …" while it waits (TalkBack reads it once it has focus), and back leaves the screen. If the wait gives up after 30 s, the error card reads "Die Abmeldung läuft noch" with its explanation and suggestion and is read when it appears.
 
-### 2.8 The flows
+### 2.8 Checks of step 40o
+
+On a phone in German, with TalkBack, Switch Access and the Scanner ([D106]):
+
+The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
+
+- [ ] **Row actions:** on an Overview row, TalkBack's actions offer "Als erledigt markieren", "Fälligkeitsdatum ändern" and "Select"; each does what its swipe does, and the done is announced with its Undo. A read-only project's task offers none, and no row offers scroll actions. In a list sorted by hand the move actions come first.
+- [ ] **Selecting:** "Select" on a row; the bar says how many are selected (spoken as it changes), each row reads as checked or not checked, a read-only task as unavailable; "Select all"; the bottom bar's five buttons by name; Back ends it and "Selection ended" is spoken; with a sheet of the bar open, Back closes only the sheet. Switch Access reaches the close button, "Select all" and every bottom button. Record where focus goes after "Select" and after an action ends the selection.
+- [ ] **Reschedule:** the Overdue heading reads as a heading, then "Reschedule" as a button; at the largest font it sits on its own line below the heading, nothing cut off. The sheet takes focus with its title.
+- [ ] **Swipes without a screen reader:** a slow drag shows the strip and its name, crossing the threshold ticks, letting go before it does nothing; on a board and in a timeline nothing swipes.
+- [ ] **Scanner:** the selection bars and the Overdue heading in light, dark and at the largest font.
+
+### 2.9 The flows
 
 Each flow lists what to do, what to expect and what to record, beyond section 2.2.
 
@@ -148,3 +160,4 @@ Once, on a device (the simulator for what it can show):
 [D82]: decisions.md#d82-projects-listdetail-the-project-tree-beside-the-project-on-wide-windows
 [D84]: decisions.md#d84-everyday-editing-in-the-task-detail-properties-in-place-task-links-move-to-column
 [Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass
+[D106]: decisions.md#d106-faster-work-in-lists-swipes-selecting-several-tasks-reschedule

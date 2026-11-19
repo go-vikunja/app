@@ -34,6 +34,9 @@ class ProjectTableBody extends StatelessWidget {
     required this.pendingIds,
     required this.onDoneChanged,
     required this.onFavoriteChanged,
+    this.onDueDate,
+    this.onSelect,
+    this.selection,
     super.key,
   });
 
@@ -59,6 +62,11 @@ class ProjectTableBody extends StatelessWidget {
   final Set<int> pendingIds;
   final void Function(Task task, {required bool done}) onDoneChanged;
   final void Function(Task task, {required bool favorite}) onFavoriteChanged;
+  final void Function(Task task)? onDueDate;
+  final void Function(Task task)? onSelect;
+
+  /// Each row's selection while the list selects; null otherwise.
+  final TaskRowSelection? Function(Task task)? selection;
 
   static const _divider = Divider(height: 1);
 
@@ -145,6 +153,9 @@ class ProjectTableBody extends StatelessWidget {
       onFavoriteChanged: archived
           ? null
           : (favorite) => onFavoriteChanged(task, favorite: favorite),
+      onDueDate: onDueDate == null ? null : () => onDueDate!(task),
+      onSelect: onSelect == null ? null : () => onSelect!(task),
+      selection: selection?.call(task),
     );
   }
 }

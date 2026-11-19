@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/features/projects/application/project_access.dart
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/selected_task_highlight.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/swipe_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
@@ -26,6 +27,11 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_summary.dart';
 /// project the user may only read. Full-bleed or in a section card alike.
 /// In a table view the line holds the chosen [columns] instead. Selected
 /// while its task is open in the pane beside the list.
+///
+/// A swipe toward the end marks the task done (or not done), one toward the
+/// start opens [onDueDate]; screen readers get both, and [onSelect], as
+/// actions of the row. While the list selects ([selection]) a tap selects
+/// the row instead, and it neither swipes nor shows its controls.
 class TaskRow extends ConsumerWidget {
   const new({
     required this.task,
@@ -40,6 +46,10 @@ class TaskRow extends ConsumerWidget {
     this.onTap,
     this.onDoneChanged,
     this.onFavoriteChanged,
+    this.onDueDate,
+    this.onSelect,
+    this.selectOnLongPress = true,
+    this.selection,
     this.actions = const {},
     super.key,
   });
@@ -70,6 +80,18 @@ class TaskRow extends ConsumerWidget {
   final VoidCallback? onTap;
   final ValueChanged<bool>? onDoneChanged;
   final ValueChanged<bool>? onFavoriteChanged;
+
+  /// Changes the due date: the swipe toward the start.
+  final VoidCallback? onDueDate;
+
+  /// Starts the list's selection with this task: a long press while
+  /// [selectOnLongPress] (not where a long press lifts the row to move it)
+  /// and an action for screen readers.
+  final VoidCallback? onSelect;
+  final bool selectOnLongPress;
+
+  /// Null while the list does not select.
+  final TaskRowSelection? selection;
   final Map<CustomSemanticsAction, VoidCallback> actions;
 
   static const _indentPerLevel = 22.0;
@@ -179,14 +201,42 @@ class TaskRow extends ConsumerWidget {
         ? AvatarStack(users: task.assignees)
         : null;
     final selected = TaskDetailPaneScope.isSelected(context, task.id);
+    final selection = this.selection;
+    final changeable = !readOnly && onDoneChanged != null;
+    final onDone = changeable ? onDoneChanged : null;
+    final onDueDate = changeable ? this.onDueDate : null;
+    final onSelect = changeable ? this.onSelect : null;
+    final doneLabel = task.done ? l10n.taskMarkNotDone : l10n.taskMarkDone;
+    final rowActions = selection != null
+        ? const <CustomSemanticsAction, VoidCallback>{}
+        : {
+            ...actions,
+            if (onDone != null)
+              CustomSemanticsAction(label: doneLabel): () => onDone(!task.done),
+            CustomSemanticsAction(label: l10n.taskDetailChangeDueDate):
+                ?onDueDate,
+            CustomSemanticsAction(label: l10n.taskSelect): ?onSelect,
+          };
+    // While the list selects, it decides which rows can be selected, and
+    // the pane's task is no more marked than any other.
+    final rowSelected = selection?.selected ?? false;
+    final tap = switch (selection) {
+      null => onTap,
+      TaskRowSelection(:final onChanged?) => () => onChanged(!rowSelected),
+      _ => null,
+    };
+    final paneSelected = selection == null && selected;
 
-    return SelectedTaskHighlight(
-      selected: selected,
+    final row = SelectedTaskHighlight(
+      selected: paneSelected || rowSelected,
       child: InkWell(
-        onTap: onTap,
+        onTap: tap,
+        onLongPress: selection == null && selectOnLongPress ? onSelect : null,
         child: Semantics(
-          button: onTap != null,
-          selected: selected ? true : null,
+          button: tap != null,
+          selected: paneSelected ? true : null,
+          checked: selection == null ? null : rowSelected,
+          enabled: selection == null ? null : tap != null,
           child: Padding(
             padding: EdgeInsetsDirectional.only(
               start: 4 + _indentPerLevel * math.min(depth, _maxIndentedLevels),
@@ -206,11 +256,17 @@ class TaskRow extends ConsumerWidget {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    TaskDoneControl(
-                      done: task.done,
-                      onChanged: readOnly ? null : onDoneChanged,
-                      readOnly: readOnly,
-                    ),
+                    if (selection != null)
+                      _SelectionMark(
+                        selected: rowSelected,
+                        enabled: tap != null,
+                      )
+                    else
+                      TaskDoneControl(
+                        done: task.done,
+                        onChanged: readOnly ? null : onDoneChanged,
+                        readOnly: readOnly,
+                      ),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Padding(
@@ -224,9 +280,9 @@ class TaskRow extends ConsumerWidget {
                                 parentTitle: depth > 0 ? parentTitle : null,
                                 pending: pending,
                               ),
-                              customSemanticsActions: actions.isEmpty
+                              customSemanticsActions: rowActions.isEmpty
                                   ? null
-                                  : actions,
+                                  : rowActions,
                               child: ExcludeSemantics(
                                 child: DefaultTextStyle.merge(
                                   style: theme.textTheme.bodyLarge,
@@ -269,14 +325,83 @@ class TaskRow extends ConsumerWidget {
                         child: avatars,
                       ),
                     if (!guest)
-                      FavouriteButton(
-                        isFavorite: task.isFavorite,
-                        onChanged: readOnly ? null : onFavoriteChanged,
+                      // Hidden while the list selects, keeping its room so
+                      // the texts do not reflow.
+                      Visibility(
+                        visible: selection == null,
+                        maintainState: true,
+                        maintainAnimation: true,
+                        maintainSize: true,
+                        child: FavouriteButton(
+                          isFavorite: task.isFavorite,
+                          onChanged: readOnly ? null : onFavoriteChanged,
+                        ),
                       ),
                   ],
                 );
               },
             ),
+          ),
+        ),
+      ),
+    );
+    final swipes = selection == null;
+    return SwipeActions(
+      startAction: !swipes || onDone == null
+          ? null
+          : SwipeAction(
+              icon: task.done ? Icons.undo : Icons.check,
+              label: task.done ? l10n.taskSwipeNotDone : l10n.taskSwipeDone,
+              color: colors.primary,
+              onColor: colors.onPrimary,
+              onTriggered: () => onDone(!task.done),
+            ),
+      endAction: !swipes || onDueDate == null
+          ? null
+          : SwipeAction(
+              icon: Icons.event,
+              label: l10n.taskDetailDueDate,
+              color: colors.tertiary,
+              onColor: colors.onTertiary,
+              onTriggered: onDueDate,
+            ),
+      child: row,
+    );
+  }
+}
+
+/// Whether a row is selected while its list selects, and how to change
+/// that; [onChanged] is null for a row that cannot be selected.
+@immutable
+final class TaskRowSelection {
+  const new({required this.selected, this.onChanged});
+
+  final bool selected;
+  final ValueChanged<bool>? onChanged;
+}
+
+/// In place of the done checkbox while the list selects; the row itself
+/// says whether it is selected.
+class _SelectionMark extends StatelessWidget {
+  const new({required this.selected, required this.enabled});
+
+  final bool selected;
+  final bool enabled;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: kMinInteractiveDimension,
+        child: Center(
+          child: Icon(
+            selected ? Icons.check_circle : Icons.radio_button_unchecked,
+            color: selected
+                ? colors.primary
+                : enabled
+                ? colors.onSurfaceVariant
+                : colors.onSurfaceVariant.withValues(alpha: 0.38),
           ),
         ),
       ),

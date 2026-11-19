@@ -36,7 +36,9 @@ final class _RowDrag {
 /// the open part with its subtasks, to drop it between two others (the
 /// list scrolls near its ends), and screen readers move it with the row's
 /// actions; the done part, nested rows and the tasks in [leavingIds] stay
-/// where they are.
+/// where they are. In a list that is not put in order by hand a long press
+/// selects a row ([onSelect]), so it means one thing in either list; while
+/// the list selects ([selection]) no row lifts.
 class ProjectListBody extends StatefulWidget {
   const new({
     required this.projectId,
@@ -56,6 +58,9 @@ class ProjectListBody extends StatefulWidget {
     required this.onFavoriteChanged,
     this.leavingIds = const {},
     this.onReorder,
+    this.onDueDate,
+    this.onSelect,
+    this.selection,
     super.key,
   });
 
@@ -85,6 +90,11 @@ class ProjectListBody extends StatefulWidget {
   /// Puts top-level tasks at positions of the view, by task id, in the
   /// map's order; null while the list cannot be put in order by hand.
   final void Function(Map<int, double> positions)? onReorder;
+  final void Function(Task task)? onDueDate;
+  final void Function(Task task)? onSelect;
+
+  /// Each row's selection while the list selects; null otherwise.
+  final TaskRowSelection? Function(Task task)? selection;
 
   @override
   State<ProjectListBody> createState() => _ProjectListBodyState();
@@ -110,6 +120,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
 
   bool _movable(Task task) =>
       widget.onReorder != null &&
+      widget.selection == null &&
       task.projectId == widget.projectId &&
       !widget.leavingIds.contains(task.id);
 
@@ -425,6 +436,12 @@ class _ProjectListBodyState extends State<ProjectListBody> {
       onFavoriteChanged: archived
           ? null
           : (favorite) => widget.onFavoriteChanged(task, favorite: favorite),
+      onDueDate: widget.onDueDate == null
+          ? null
+          : () => widget.onDueDate!(task),
+      onSelect: widget.onSelect == null ? null : () => widget.onSelect!(task),
+      selectOnLongPress: widget.onReorder == null,
+      selection: widget.selection?.call(task),
       actions: actions,
     );
   }

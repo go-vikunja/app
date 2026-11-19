@@ -327,6 +327,32 @@ class _HomeShellState extends ConsumerState<HomeShell>
     }
   }
 
+  /// [taskIds] were deleted from a list at once: they leave every tab's
+  /// pane, and a pane with nothing left closes.
+  void _dropFromPanes(Set<int> taskIds) {
+    for (var tab = 0; tab < _paneStacks.length; tab++) {
+      final stack = _paneStacks[tab];
+      if (!stack.any((entry) => taskIds.contains(entry.task.id))) continue;
+      if (stack.every((entry) => taskIds.contains(entry.task.id))) {
+        if (tab == _currentTab) {
+          _closePane(tab);
+        } else {
+          setState(() => _clearPane(tab));
+        }
+        continue;
+      }
+      setState(() {
+        stack.removeWhere((entry) => taskIds.contains(entry.task.id));
+        // Else back would show the same task once more.
+        for (var index = stack.length - 1; index > 0; index--) {
+          if (stack[index].task.id == stack[index - 1].task.id) {
+            stack.removeAt(index - 1);
+          }
+        }
+      });
+    }
+  }
+
   void _closePane(int tab) {
     if (_paneStacks[tab].isEmpty) return;
     final before = _focusBeforePanes[tab];
@@ -550,6 +576,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
                 ) ??
                 top.task.id,
       open: _openFromList,
+      deleted: _dropFromPanes,
       child: ProjectTreeColumnScope(
         shown: treeBeside,
         child: Theme(

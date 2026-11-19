@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_selection.dart';
 
 import '../../helpers/announcer_region.dart';
 import '../../helpers/pump_app.dart';
@@ -112,15 +113,24 @@ void main() {
     return Offset(rect.center.dx, rect.top + 4);
   }
 
-  List<String> actionsOf(WidgetTester tester, String title) => [
-    for (final id
-        in tester
-                .getSemantics(find.text(title))
-                .getSemanticsData()
-                .customSemanticsActionIds ??
-            const <int>[])
-      CustomSemanticsAction.getAction(id)!.label!,
-  ];
+  /// The row's move actions, in English or German; its other actions (done,
+  /// due date, select) are pinned in task_list_selection_test.dart.
+  List<String> actionsOf(WidgetTester tester, String title) {
+    final moves = {
+      for (final l10n in [en, de]) ...[l10n.moveUp, l10n.moveDown],
+    };
+    return [
+      for (final id
+          in tester
+                  .getSemantics(find.text(title))
+                  .getSemanticsData()
+                  .customSemanticsActionIds ??
+              const <int>[])
+        if (CustomSemanticsAction.getAction(id)!.label! case final label
+            when moves.contains(label))
+          label,
+    ];
+  }
 
   void performAction(WidgetTester tester, String title, String label) {
     final node = tester.getSemantics(find.text(title));
@@ -571,6 +581,71 @@ void main() {
       expect(tester.takeAnnouncements(), [
         isAccessibilityAnnouncement(de.movedDown),
       ]);
+    });
+  });
+
+  group('selecting (D106)', () {
+    testWidgets('a long press lifts a row to move it and never selects, not '
+        'even on a row that does not lift', (tester) async {
+      await pumpProject(tester);
+
+      await dragRow(tester, 'Delta', between(tester, 'Alpha child', 'Bravo'));
+      await dragRow(tester, 'Alpha child', aboveRow(tester, 'Bravo'));
+
+      expect(data.tasks.positions, isNotEmpty);
+      expect(find.byType(TaskSelectionActionBar), findsNothing);
+    });
+
+    testWidgets('Select tasks in the menu selects; meanwhile no row lifts, '
+        'and the view tabs give way to the selection bar', (tester) async {
+      await pumpProject(tester);
+
+      await tester.tap(find.byTooltip(en.moreActions));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.selectTasks));
+      await tester.pumpAndSettle();
+      expect(find.text(en.selectionCount(0)), findsOneWidget);
+      expect(find.text('Everything'), findsNothing);
+
+      await tester.tap(find.text('Bravo'));
+      await tester.pumpAndSettle();
+      await dragRow(tester, 'Delta', aboveRow(tester, 'Alpha'));
+      expect(data.tasks.positions, isEmpty);
+      expect(find.text(en.selectionCount(1)), findsOneWidget);
+
+      await tester.tap(find.text(en.selectionSelectAll));
+      await tester.pumpAndSettle();
+      // Every row the list shows, the subtask included.
+      expect(find.text(en.selectionCount(5)), findsOneWidget);
+    });
+
+    testWidgets('with only done tasks selected the bar offers Not done; '
+        'Undo marks them done again', (tester) async {
+      data.listPreferences.views['view:11'] = const ViewPreferences(
+        showDone: true,
+      );
+      await pumpProject(tester);
+      await tester.tap(find.byTooltip(en.moreActions));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.selectTasks));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Done nine'));
+      await tester.pumpAndSettle();
+      expect(
+        find.descendant(
+          of: find.byType(TaskSelectionActionBar),
+          matching: find.text(en.selectionMarkDone),
+        ),
+        findsNothing,
+      );
+      await tester.tap(find.text(en.selectionMarkNotDone));
+      await tester.pumpAndSettle();
+      expect(find.text(en.tasksMarkedNotDone(1)), findsOneWidget);
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.writes, ['setDone 9 false', 'setDone 9 true']);
     });
   });
 }

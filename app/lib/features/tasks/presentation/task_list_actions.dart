@@ -7,7 +7,9 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
+import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_edits.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/attribute_editors.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 
 /// The done and favourite controls of a task list. A task marked done shows
@@ -164,6 +166,20 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
         _leaveTimers.remove(task.id)?.cancel();
         leave();
     }
+  }
+
+  /// The due-date choices of the task sheet, for the swipe toward the start
+  /// and its screen reader action.
+  Future<void> changeTaskDueDate(Task task) async {
+    final repository = ref.read(taskRepositoryProvider);
+    if (repository == null) return;
+    await editDueDate(
+      context,
+      repository: repository,
+      task: task,
+      now: ref.read(clockProvider)(),
+      display: ref.read(displaySettingsProvider),
+    );
   }
 
   Future<void> setTaskFavorite(Task task, {required bool favorite}) async {

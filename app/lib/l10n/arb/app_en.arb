@@ -9363,5 +9363,239 @@
         "example": "vikunja.example.com"
       }
     }
+  },
+  "taskSwipeDone": "Done",
+  "@taskSwipeDone": {
+    "description": "Shown under a task row while it is swiped toward the end, where letting go marks the task as done. Short: it shows beside a check icon in the uncovered strip."
+  },
+  "taskSwipeNotDone": "Not done",
+  "@taskSwipeNotDone": {
+    "description": "Shown under a done task's row while it is swiped toward the end, where letting go marks the task as not done again."
+  },
+  "taskSelect": "Select",
+  "@taskSelect": {
+    "description": "Screen reader action of a task row, and what a long press on it does: starts selecting tasks, with this one selected, to act on several at once."
+  },
+  "selectTasks": "Select tasks",
+  "@selectTasks": {
+    "description": "Menu item of a task list that starts selecting tasks, to act on several at once."
+  },
+  "selectionCount": "{count, plural, one{{count} selected} other{{count} selected}}",
+  "@selectionCount": {
+    "description": "Title of the bar at the top of a task list while tasks are selected; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "selectionEnd": "End selection",
+  "@selectionEnd": {
+    "description": "Tooltip and screen reader name of the close button at the start of the selection bar; it ends selecting and keeps every task as it is."
+  },
+  "selectionSelectAll": "Select all",
+  "@selectionSelectAll": {
+    "description": "Button of the selection bar that selects every task of the list that can be changed."
+  },
+  "selectionDeselectAll": "Deselect all",
+  "@selectionDeselectAll": {
+    "description": "Button of the selection bar, in place of Select all once every task is selected."
+  },
+  "selectionStarted": "Selecting tasks. Tap tasks to select them.",
+  "@selectionStarted": {
+    "description": "Announced to screen readers when the list starts selecting tasks."
+  },
+  "selectionEnded": "Selection ended",
+  "@selectionEnded": {
+    "description": "Announced to screen readers when the list stops selecting tasks."
+  },
+  "selectionMarkDone": "Done",
+  "@selectionMarkDone": {
+    "description": "Button of the bar under a list while tasks are selected: marks the selected tasks as done."
+  },
+  "selectionMarkNotDone": "Not done",
+  "@selectionMarkNotDone": {
+    "description": "Button of the bar under a list while only done tasks are selected: marks them as not done."
+  },
+  "selectionMove": "Move",
+  "@selectionMove": {
+    "description": "Button of the bar under a list while tasks are selected: moves the selected tasks to another project, picked next."
+  },
+  "selectionDelete": "Delete",
+  "@selectionDelete": {
+    "description": "Button of the bar under a list while tasks are selected: deletes the selected tasks after asking."
+  },
+  "selectionDueDateTitle": "{count, plural, one{Due date of {count} task} other{Due date of {count} tasks}}",
+  "@selectionDueDateTitle": {
+    "description": "Title of the due-date choices for the selected tasks; count is how many, for example 3. Each task keeps its time of day.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "selectionPriorityTitle": "{count, plural, one{Priority of {count} task} other{Priority of {count} tasks}}",
+  "@selectionPriorityTitle": {
+    "description": "Title of the priority choices for the selected tasks; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "overdueReschedule": "Reschedule",
+  "@overdueReschedule": {
+    "description": "Button at the end of the Overdue heading of a task list: opens the due-date choices for every overdue task, Today first."
+  },
+  "overdueRescheduleTitle": "{count, plural, one{Reschedule {count} overdue task} other{Reschedule {count} overdue tasks}}",
+  "@overdueRescheduleTitle": {
+    "description": "Title of the due-date choices that the Overdue heading's Reschedule opens; count is how many overdue tasks can be changed, for example 4.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "4"
+      }
+    }
+  },
+  "tasksMarkedDone": "{count, plural, one{{count} task marked as done} other{{count} tasks marked as done}}",
+  "@tasksMarkedDone": {
+    "description": "Snackbar after the selected tasks were marked as done, with an Undo action; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksMarkedNotDone": "{count, plural, one{{count} task marked as not done} other{{count} tasks marked as not done}}",
+  "@tasksMarkedNotDone": {
+    "description": "Snackbar after the selected done tasks were marked as not done, with an Undo action; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksDueDateChanged": "{count, plural, one{Due date changed for {count} task} other{Due date changed for {count} tasks}}",
+  "@tasksDueDateChanged": {
+    "description": "Snackbar after the due date of several tasks was set or removed at once, with an Undo action; count is how many, for example 4.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "4"
+      }
+    }
+  },
+  "tasksPriorityChanged": "{count, plural, one{Priority changed for {count} task} other{Priority changed for {count} tasks}}",
+  "@tasksPriorityChanged": {
+    "description": "Snackbar after the priority of the selected tasks was set, with an Undo action; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksMovedTo": "{count, plural, one{{count} task moved to {project}} other{{count} tasks moved to {project}}}",
+  "@tasksMovedTo": {
+    "description": "Snackbar after the selected tasks were moved to another project, with an Undo action; count is how many, for example 3, and project the project's title, for example Garden.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      },
+      "project": {
+        "type": "String",
+        "example": "Garden"
+      }
+    }
+  },
+  "tasksMovedToTrash": "{count, plural, one{{count} task moved to the trash} other{{count} tasks moved to the trash}}",
+  "@tasksMovedToTrash": {
+    "description": "Snackbar after the selected tasks were deleted on a server with the trash, with an Undo action; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksDeleted": "{count, plural, one{{count} task deleted} other{{count} tasks deleted}}",
+  "@tasksDeleted": {
+    "description": "Snackbar after the selected tasks were deleted for good; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksRestored": "{count, plural, one{{count} task restored} other{{count} tasks restored}}",
+  "@tasksRestored": {
+    "description": "Snackbar after Undo brought several deleted tasks back; count is how many came back, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksDeleteDialogTitle": "{count, plural, one{Delete {count} task?} other{Delete {count} tasks?}}",
+  "@tasksDeleteDialogTitle": {
+    "description": "Title of the question before the selected tasks are deleted; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksDeleteDialogBody": "{count, plural, one{{count} task will be deleted on the server too. This cannot be undone.} other{{count} tasks will be deleted on the server too. This cannot be undone.}}",
+  "@tasksDeleteDialogBody": {
+    "description": "Body of the question tasksDeleteDialogTitle on servers without the trash; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksDeleteDialogBodyTrash": "{count, plural, one{{count} task moves to the trash, for everyone. It can be restored from the trash on the Account tab for 30 days.} other{{count} tasks move to the trash, for everyone. They can be restored from the trash on the Account tab for 30 days.}}",
+  "@tasksDeleteDialogBodyTrash": {
+    "description": "Body of the question tasksDeleteDialogTitle on servers with the trash (Vikunja 2.8.0 and later), for a signed-in user; count is how many, for example 3. Undo in the snackbar after it takes the deletes back.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksDeleteDialogBodyTrashGuest": "{count, plural, one{{count} task moves to the trash, for everyone. It can be restored from there for 30 days.} other{{count} tasks move to the trash, for everyone. They can be restored from there for 30 days.}}",
+  "@tasksDeleteDialogBodyTrashGuest": {
+    "description": "Body of the question tasksDeleteDialogTitle on servers with the trash, for a link-share guest, who has no trash page; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksDueDateCoincideTitle": "Change the due dates?",
+  "@tasksDueDateCoincideTitle": {
+    "description": "Title of the question asked before the due date of several tasks is changed at once when some of them would then have two reminders at the same moment. Cancel changes none of them."
+  },
+  "tasksDueDateCoincideBody": "{count, plural, one{For {count} of the tasks some reminders would then fall at the same moment. The server keeps only one of them.} other{For {count} of the tasks some reminders would then fall at the same moment. The server keeps only one of them.}}",
+  "@tasksDueDateCoincideBody": {
+    "description": "Body of the question tasksDueDateCoincideTitle; count is how many of the tasks are affected, for example 2. Its confirm button is taskDetailDueDateCoincideConfirm, Change anyway.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
   }
 }

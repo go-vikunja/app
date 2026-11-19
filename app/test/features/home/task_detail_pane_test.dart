@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/relation_row.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/selected_task_highlight.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
@@ -468,5 +469,34 @@ void main() {
       routerOf(tester).routerDelegate.state.matchedLocation,
       AppRoutes.project(workProjectId),
     );
+  });
+
+  testWidgets('while the list selects, the task in the pane is not marked; '
+      'deleting the selection takes it out of the pane (D106)', (tester) async {
+    useWindow(tester, androidTabletLandscape);
+    await pumpSweepApp(tester);
+    await _tapRow(tester, 'Call the plumber');
+    _expectPane(tester, 'Call the plumber');
+
+    await tester.longPress(find.text('Buy seeds').first);
+    await tester.pumpAndSettle();
+    final paneRow = tester.widget<SelectedTaskHighlight>(
+      find
+          .ancestor(
+            of: find.text('Call the plumber').first,
+            matching: find.byType(SelectedTaskHighlight),
+          )
+          .first,
+    );
+    expect(paneRow.selected, isFalse);
+
+    await tester.tap(find.text('Call the plumber').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.selectionDelete));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.taskDeleteDialogConfirm).last);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TaskDetailPane), findsNothing);
   });
 }

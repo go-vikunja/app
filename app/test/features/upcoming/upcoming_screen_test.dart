@@ -4,6 +4,7 @@ import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/semantics.dart' show SemanticsAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
@@ -522,5 +523,46 @@ void main() {
     expect(find.text('Bob task'), findsOneWidget);
     expect(find.text('Alice task'), findsNothing);
     expect(find.textContaining(en.rangeNext7Days), findsOneWidget);
+  });
+
+  testWidgets('Reschedule on the Overdue heading moves the overdue tasks to '
+      'today, 23:59 where their time has passed (D106)', (tester) async {
+    await pumpUpcoming(tester);
+
+    await tester.tap(find.text(en.overdueReschedule));
+    await tester.pumpAndSettle();
+    expect(find.text(en.overdueRescheduleTitle(2)), findsOneWidget);
+    await tester.tap(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.text(en.shortcutToday),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final lateToday = DateChange.set(DateTime(2026, 10, 13, 23, 59).toUtc());
+    expect(data.tasks.updates, [
+      (1, TaskChanges(dueDate: lateToday)),
+      (2, TaskChanges(dueDate: lateToday)),
+    ]);
+    expect(sectionTitles(tester), isNot(contains(en.sectionOverdue)));
+  });
+
+  testWidgets('Select tasks in the menu selects among the tasks shown '
+      '(D106)', (tester) async {
+    await pumpUpcoming(tester);
+
+    await tester.tap(find.byTooltip(en.moreActions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.selectTasks));
+    await tester.pumpAndSettle();
+    expect(find.text(en.overdueReschedule), findsNothing);
+
+    await tester.tap(find.text(en.selectionSelectAll));
+    await tester.pumpAndSettle();
+    expect(
+      find.text(en.selectionCount(rowTitles(tester).length)),
+      findsOneWidget,
+    );
   });
 }

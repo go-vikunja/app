@@ -169,6 +169,7 @@ class _SearchPageState extends ConsumerState<SearchPage>
               unawaited(setTaskDone(task, done: done)),
           onFavoriteChanged: (task, {required favorite}) =>
               unawaited(setTaskFavorite(task, favorite: favorite)),
+          onDueDate: (task) => unawaited(changeTaskDueDate(task)),
         ),
         null when query.isEmpty => CenteredScrollView(
           maxWidth: ReadableWidth.list,
@@ -194,6 +195,7 @@ class _SearchPageState extends ConsumerState<SearchPage>
               unawaited(setTaskDone(task, done: done)),
           onFavoriteChanged: (task, {required favorite}) =>
               unawaited(setTaskFavorite(task, favorite: favorite)),
+          onDueDate: (task) => unawaited(changeTaskDueDate(task)),
         ),
       },
     );
@@ -206,6 +208,7 @@ class _Results extends ConsumerWidget {
     required this.tasks,
     required this.onDoneChanged,
     required this.onFavoriteChanged,
+    required this.onDueDate,
   });
 
   final SearchResults results;
@@ -215,6 +218,7 @@ class _Results extends ConsumerWidget {
   final List<Task> tasks;
   final _DoneChanged onDoneChanged;
   final _FavoriteChanged onFavoriteChanged;
+  final void Function(Task task) onDueDate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -223,6 +227,7 @@ class _Results extends ConsumerWidget {
       ref,
       onDoneChanged: onDoneChanged,
       onFavoriteChanged: onFavoriteChanged,
+      onDueDate: onDueDate,
     );
     final router = GoRouter.of(context);
     final more = results.taskCount - results.tasks.length;
@@ -316,6 +321,7 @@ Widget Function(BuildContext context, Task task) _taskRows(
   WidgetRef ref, {
   required _DoneChanged onDoneChanged,
   required _FavoriteChanged onFavoriteChanged,
+  required void Function(Task task) onDueDate,
 }) {
   final projects = ref.watch(projectsProvider).value ?? const <Project>[];
   final projectsById = {for (final project in projects) project.id: project};
@@ -343,6 +349,7 @@ Widget Function(BuildContext context, Task task) _taskRows(
       onFavoriteChanged: archived
           ? null
           : (favorite) => onFavoriteChanged(task, favorite: favorite),
+      onDueDate: () => onDueDate(task),
     );
   };
 }
@@ -354,11 +361,13 @@ class _LinkedTask extends ConsumerWidget {
     required this.taskId,
     required this.onDoneChanged,
     required this.onFavoriteChanged,
+    required this.onDueDate,
   });
 
   final int taskId;
   final _DoneChanged onDoneChanged;
   final _FavoriteChanged onFavoriteChanged;
+  final void Function(Task task) onDueDate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -368,6 +377,7 @@ class _LinkedTask extends ConsumerWidget {
       ref,
       onDoneChanged: onDoneChanged,
       onFavoriteChanged: onFavoriteChanged,
+      onDueDate: onDueDate,
     );
     return CustomScrollView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
