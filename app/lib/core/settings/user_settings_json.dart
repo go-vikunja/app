@@ -27,6 +27,8 @@ String encodeUserSettings(UserSettings settings) => jsonEncode({
   'time_format': ?settings.timeFormat?.wireName,
   'color_schema': settings.colorSchema.wireName,
   'default_view': ?settings.defaultViewKind?.wireName,
+  'default_due_time': ?settings.defaultDueTime?.wireName,
+  'default_task_relation_type': settings.defaultTaskRelationType.wireName,
 });
 
 UserSettings decodeUserSettings(String? stored) {
@@ -89,6 +91,12 @@ UserSettings decodeUserSettings(String? stored) {
     defaultViewKind: switch (json['default_view']) {
       final String kind => ProjectViewKind.fromWire(kind),
       _ => null,
+    },
+    defaultDueTime: ClockTime.tryParse(json['default_due_time']),
+    defaultTaskRelationType: switch (json['default_task_relation_type']) {
+      final String kind =>
+        TaskRelationKind.fromWire(kind) ?? TaskRelationKind.related,
+      _ => TaskRelationKind.related,
     },
   );
 }

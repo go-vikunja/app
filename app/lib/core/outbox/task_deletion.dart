@@ -12,3 +12,18 @@ enum TaskDeletion {
   /// with its queued changes: nothing is sent and nothing brings it back.
   discarded,
 }
+
+/// Whether the server has a task, as far as this device knows, and so
+/// whether its delete moves it to the server's trash.
+enum TaskOnServer {
+  /// A server id, also one a temporary id was answered with meanwhile.
+  yes,
+
+  /// A create on its way, or sent without an answer: the server may have
+  /// it.
+  maybe,
+
+  /// A create the server was never asked for, or refused: its delete goes
+  /// without a request.
+  no,
+}

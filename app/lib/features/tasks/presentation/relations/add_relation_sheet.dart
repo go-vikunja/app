@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -10,9 +11,9 @@ import 'package:vikunja_mobile/features/tasks/application/task_providers.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
-/// Lets the user pick a kind and another task of this account for a new
-/// relation of [task]; null when dismissed. Searches the tasks on this
-/// device, so it works offline.
+/// Lets the user pick a kind, first the user's default one, and another
+/// task of this account for a new relation of [task]; null when dismissed.
+/// Searches the tasks on this device, so it works offline.
 Future<TaskRelationRef?> pickRelation(
   BuildContext context, {
   required Task task,
@@ -35,7 +36,9 @@ class AddRelationSheet extends ConsumerStatefulWidget {
 
 class _AddRelationSheetState extends ConsumerState<AddRelationSheet> {
   final _query = TextEditingController();
-  TaskRelationKind _kind = TaskRelationKind.related;
+  late TaskRelationKind _kind =
+      ref.read(userSettingsProvider).value?.defaultTaskRelationType ??
+      TaskRelationKind.related;
   bool _includeDone = false;
 
   @override

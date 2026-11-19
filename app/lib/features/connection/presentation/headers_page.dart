@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
@@ -19,12 +20,14 @@ import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/connection/presentation/secret_text_field.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/insecure_connection_dialog.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
 
 final _log = Logger('HeadersPage');
 
 /// The custom headers sent with every request to [origin], such as a
 /// Cloudflare Access service token. The values are masked and, while one
-/// is revealed, kept out of screenshots.
+/// is revealed, kept out of screenshots. Leaving with changed names or
+/// values asks first.
 class HeadersPage extends ConsumerStatefulWidget {
   const new({required this.origin, super.key});
 
@@ -36,6 +39,9 @@ class HeadersPage extends ConsumerStatefulWidget {
 
 class _HeadersPageState extends ConsumerState<HeadersPage> {
   List<_HeaderRow>? _rows;
+
+  /// The names and values as loaded, to tell whether leaving drops an edit.
+  List<(String, String)>? _loaded;
   HeaderPreset _preset = HeaderPreset.cloudflareAccessServiceToken;
   _LoadFailure? _loadFailure;
   var _busy = false;
@@ -77,20 +83,44 @@ class _HeadersPageState extends ConsumerState<HeadersPage> {
         stored.isEmpty ||
         (stored.length == cloudflare.length &&
             cloudflare.every(stored.containsKey));
+    final rows = isCloudflare
+        ? [
+            for (final name in cloudflare)
+              _HeaderRow(name: name, value: stored[name] ?? '', fixed: true),
+          ]
+        : [
+            for (final MapEntry(:key, :value) in stored.entries)
+              _HeaderRow(name: key, value: value),
+          ];
     setState(() {
       _preset = isCloudflare
           ? HeaderPreset.cloudflareAccessServiceToken
           : HeaderPreset.custom;
-      _rows = isCloudflare
-          ? [
-              for (final name in cloudflare)
-                _HeaderRow(name: name, value: stored[name] ?? '', fixed: true),
-            ]
-          : [
-              for (final MapEntry(:key, :value) in stored.entries)
-                _HeaderRow(name: key, value: value),
-            ];
+      _rows = rows;
+      _loaded = _entered(rows);
     });
+  }
+
+  /// A row with neither a name nor a value holds nothing to lose; the
+  /// preset alone is no edit either.
+  static List<(String, String)> _entered(List<_HeaderRow> rows) => [
+    for (final row in rows)
+      if (row.name.text.isNotEmpty || row.value.text.isNotEmpty)
+        (row.name.text, row.value.text),
+  ];
+
+  bool get _edited => switch ((_rows, _loaded)) {
+    (final rows?, final loaded?) => !listEquals(_entered(rows), loaded),
+    _ => false,
+  };
+
+  Future<void> _leaveIfConfirmed() async {
+    final navigator = Navigator.of(context);
+    final discard = await confirmDiscardChanges(
+      context,
+      body: context.l10n.connectionHeadersDiscardBody,
+    );
+    if (discard && mounted) navigator.pop();
   }
 
   /// Names whose values went missing come back empty, to enter again.
@@ -260,7 +290,7 @@ class _HeadersPageState extends ConsumerState<HeadersPage> {
     final rows = _rows;
     final listError = _listError;
 
-    return Scaffold(
+    final page = Scaffold(
       appBar: AppBar(
         title: ScreenTitle(l10n.connectionHeadersHeading),
         bottom: SavingProgressBar(saving: _busy),
@@ -361,6 +391,24 @@ class _HeadersPageState extends ConsumerState<HeadersPage> {
           ),
         ),
       ),
+    );
+    // Typing changes only the rows' controllers.
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        for (final row in rows ?? const <_HeaderRow>[]) ...[
+          row.name,
+          row.value,
+        ],
+      ]),
+      builder: (context, page) => PopScope(
+        // A save under way keeps what was entered either way.
+        canPop: _busy || !_edited,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) unawaited(_leaveIfConfirmed());
+        },
+        child: page!,
+      ),
+      child: page,
     );
   }
 }

@@ -172,6 +172,66 @@ void main() {
     });
   }
 
+  group('leaving', () {
+    final question = find.text(en.connectionHeadersDiscardBody);
+
+    Future<void> back(WidgetTester tester) async {
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('with a typed value asks; Keep editing keeps it, Discard '
+        'leaves and stores nothing', (tester) async {
+      await pumpHeaders(tester, secure);
+      await tester.enterText(valueField(1), secret);
+      await tester.pump();
+
+      await back(tester);
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+      expect(question, findsOneWidget);
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+      expect(find.byType(HeadersPage), findsOneWidget);
+      expect(tester.widget<TextField>(valueField(1)).controller!.text, secret);
+
+      await back(tester);
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+      expect(find.byType(HeadersPage), findsNothing);
+      expect(await profilesOver(auth).metadataFor(secure), isNull);
+    });
+
+    testWidgets('a value typed and taken out again, another preset or an '
+        'empty row leave without asking', (tester) async {
+      await pumpHeaders(tester, secure);
+      await tester.enterText(valueField(0), id);
+      await tester.enterText(valueField(0), '');
+      await tester.tap(find.text(en.connectionHeaderPresetCustom));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(en.connectionAddHeader));
+      await tester.tap(find.text(en.connectionAddHeader));
+      await tester.pumpAndSettle();
+
+      await back(tester);
+      expect(question, findsNothing);
+      expect(find.byType(HeadersPage), findsNothing);
+    });
+
+    testWidgets('a stored header removed asks', (tester) async {
+      await pumpHeaders(
+        tester,
+        secure,
+        seed: () =>
+            profilesOver(auth).setHeaders(secure, {'X-Gate-Token': 'dummy'}),
+      );
+      await tester.tap(find.byTooltip(en.connectionRemoveHeader));
+      await tester.pumpAndSettle();
+
+      await back(tester);
+      expect(question, findsOneWidget);
+    });
+  });
+
   testWidgets('stored headers come back for editing', (tester) async {
     await pumpHeaders(
       tester,

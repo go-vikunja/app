@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/features/description_editor/presentation/descript
 import 'package:vikunja_mobile/features/labels/presentation/label_form_page.dart';
 import 'package:vikunja_mobile/features/labels/presentation/labels_page.dart';
 import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/color_row.dart';
 
 import '../../helpers/editor_bridge_fakes.dart';
 import '../../helpers/label_user_fakes.dart';
@@ -63,7 +64,7 @@ void main() {
 
       for (final hex in okabeItoColors) {
         expect(
-          find.bySemanticsLabel(en.taskEditColourSemantics('#$hex')),
+          find.bySemanticsLabel(colorSwatchLabel(en, hex)),
           findsOneWidget,
         );
       }
@@ -216,9 +217,7 @@ void main() {
     testWidgets('a colour change alone sends only the colour', (tester) async {
       await openForm(tester, AppRoutes.labelEdit(1));
 
-      await tester.tap(
-        find.bySemanticsLabel(en.taskEditColourSemantics('#0072b2')),
-      );
+      await tester.tap(find.bySemanticsLabel(en.colorNameBlue));
       await tester.pump();
       await tester.tap(action(en.labelsSave));
       await tester.pumpAndSettle();
@@ -249,9 +248,7 @@ void main() {
         'after trying another', (tester) async {
       await openForm(tester, AppRoutes.labelEdit(1));
 
-      await tester.tap(
-        find.bySemanticsLabel(en.taskEditColourSemantics('#e69f00')),
-      );
+      await tester.tap(find.bySemanticsLabel(en.colorNameOrange));
       await tester.pump();
       expect(enabled(tester, action(en.labelsSave)), isTrue);
       await tester.tap(

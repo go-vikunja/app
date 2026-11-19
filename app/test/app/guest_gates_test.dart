@@ -11,11 +11,13 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/description_editor/presentation/mention_bar.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/attribute_editors.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comment_composer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/favourite_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_button.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
@@ -270,6 +272,17 @@ void main() {
     expect(find.text(en.projectsShowArchived), findsOneWidget);
     expect(find.text(en.savedFilterNew), findsNothing);
     expect(find.text(en.projectsShowSavedFilters), findsNothing);
+  });
+
+  testWidgets('the New task sheet tells a read-only guest why it cannot '
+      'add, not to create a project', (tester) async {
+    await pumpGuestApp(tester, auth: auth, data: data);
+    unawaited(containerOf(tester).read(taskOpenerProvider).showNewTask());
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NewTaskSheet), findsOneWidget);
+    expect(find.text(en.newTaskNoProjectGuest), findsOneWidget);
+    expect(find.text(en.newTaskNoProjectError), findsNothing);
   });
 
   testWidgets("the Projects tab's empty state offers a guest nothing to "

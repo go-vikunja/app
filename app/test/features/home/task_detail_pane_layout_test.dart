@@ -10,6 +10,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/project_board.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
@@ -30,6 +31,9 @@ import '../../helpers/sync_fakes.dart';
 import '../../helpers/task_detail_panes.dart';
 
 final _android = TargetPlatformVariant.only(TargetPlatform.android);
+
+/// Flutter's margin beside a floating snackbar.
+const _snackBarMargin = 15.0;
 
 SyncFakes _offlineData() {
   const unreachable = NetworkFailure(NetworkProblem.unreachable);
@@ -628,8 +632,10 @@ void main() {
     });
   });
 
-  testWidgets("a row's Done snackbar spans the list and the pane, and goes "
-      'after its time', (tester) async {
+  testWidgets("a row's Done snackbar spans the list and the pane at the "
+      'readable width, centred beside the rail, and goes after its time', (
+    tester,
+  ) async {
     useWindow(tester, androidTabletLandscape);
     await pumpSweepApp(tester);
     await tapTaskRow(tester, 1);
@@ -642,10 +648,18 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    final snackBar = tester.getRect(find.byType(SnackBar));
+    final snackBar = snackBarRect(tester);
     final pane = _paneRect(tester);
     expect(snackBar.left, lessThan(pane.left));
     expect(snackBar.right, greaterThan(pane.left));
+    expect(snackBar.width, ReadableWidth.snackBar - 2 * _snackBarMargin);
+    expect(
+      snackBar.center.dx,
+      moreOrLessEquals(
+        (railRight(tester) + androidTabletLandscape.width) / 2,
+        epsilon: layoutTolerance,
+      ),
+    );
     expect(
       find.descendant(
         of: find.byType(TaskDetailPane),
@@ -658,5 +672,84 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(SnackBar), findsNothing);
     expectPane(tester, taskId: 1);
+  });
+
+  testWidgets("the pane's own snackbar stays in it with Flutter's margins", (
+    tester,
+  ) async {
+    useWindow(tester, androidTabletLandscape);
+    await pumpSweepApp(tester);
+    await tapTaskRow(tester, 1);
+    final paneScaffold = find
+        .descendant(
+          of: find.byType(TaskDetailPane),
+          matching: find.byType(Scaffold),
+        )
+        .first;
+    ScaffoldMessenger.of(tester.element(paneScaffold))
+        .showSnackBar(const SnackBar(content: Text('Copied')));
+    await tester.pumpAndSettle();
+
+    final snackBar = snackBarRect(tester);
+    final pane = tester.getRect(paneScaffold);
+    expect(
+      snackBar.left,
+      moreOrLessEquals(pane.left + _snackBarMargin, epsilon: layoutTolerance),
+    );
+    expect(
+      snackBar.right,
+      moreOrLessEquals(pane.right - _snackBarMargin, epsilon: layoutTolerance),
+    );
+  });
+
+  testWidgets('a page over the shell centres its snackbar in the window at '
+      'the readable width', (tester) async {
+    useWindow(tester, androidTabletLandscape);
+    await pumpSweepApp(tester);
+    goTo(tester, AppRoutes.accountSettings);
+    await tester.pumpAndSettle();
+    ScaffoldMessenger.of(tester.element(find.byType(AccountSettingsPage)))
+        .showSnackBar(const SnackBar(content: Text('Saved')));
+    await tester.pumpAndSettle();
+
+    final snackBar = snackBarRect(tester);
+    expect(snackBar.width, ReadableWidth.snackBar - 2 * _snackBarMargin);
+    expect(
+      snackBar.center.dx,
+      moreOrLessEquals(
+        androidTabletLandscape.width / 2,
+        epsilon: layoutTolerance,
+      ),
+    );
+  });
+
+  testWidgets('beside the rail, where less than the readable width is left, '
+      "a tab's snackbar keeps Flutter's margins", (tester) async {
+    const narrowTall = Size(700, 1000);
+    useWindow(tester, narrowTall);
+    await pumpSweepApp(tester);
+    final row = taskRowOf(3);
+    await tester.ensureVisible(row);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(of: row, matching: find.byType(TaskDoneControl)),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final railEdge = railRight(tester);
+    expect(narrowTall.width - railEdge, lessThan(ReadableWidth.snackBar));
+    final snackBar = snackBarRect(tester);
+    expect(
+      snackBar.left,
+      moreOrLessEquals(railEdge + _snackBarMargin, epsilon: layoutTolerance),
+    );
+    expect(
+      snackBar.right,
+      moreOrLessEquals(
+        narrowTall.width - _snackBarMargin,
+        epsilon: layoutTolerance,
+      ),
+    );
   });
 }

@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/pane_split.dart';
+import 'package:vikunja_mobile/app/layout/readable_snack_bars.dart';
 import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
@@ -625,15 +626,17 @@ class _HomeShellState extends ConsumerState<HomeShell>
                 destinations: destinations,
               ),
             Expanded(
-              child: Scaffold(
-                body: content,
-                bottomNavigationBar: rail
-                    ? null
-                    : AdaptiveNavigationBar(
-                        selectedIndex: widget.navigationShell.currentIndex,
-                        onDestinationSelected: _selectTab,
-                        destinations: destinations,
-                      ),
+              child: ReadableSnackBars(
+                child: Scaffold(
+                  body: content,
+                  bottomNavigationBar: rail
+                      ? null
+                      : AdaptiveNavigationBar(
+                          selectedIndex: widget.navigationShell.currentIndex,
+                          onDestinationSelected: _selectTab,
+                          destinations: destinations,
+                        ),
+                ),
               ),
             ),
           ],

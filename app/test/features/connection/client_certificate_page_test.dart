@@ -188,6 +188,39 @@ void main() {
     expect(sync.secureWindow.secure, isFalse);
   });
 
+  for (final (what, enter) in <(String, Future<void> Function(WidgetTester))>[
+    (
+      'a password typed',
+      (tester) => tester.enterText(passwordField(), tlsFixturePassword),
+    ),
+    ('a file chosen', choose),
+  ]) {
+    testWidgets('with $what, Back asks; Keep editing stays, Discard leaves '
+        'and stores nothing', (tester) async {
+      picker.files = [pickedCopyOf('client.p12', directory: directory)];
+      await pumpImport(tester);
+      await enter(tester);
+      await tester.pumpAndSettle();
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(
+        find.text(en.connectionClientCertificateDiscardBody),
+        findsOneWidget,
+      );
+      await tester.tap(find.text(en.taskEditKeepEditing));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClientCertificatePage), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+      expect(find.byType(ClientCertificatePage), findsNothing);
+      expect(await profilesOver(auth).metadataFor(origin), isNull);
+    });
+  }
+
   testWidgets('says the certificate is presented only to this origin', (
     tester,
   ) async {

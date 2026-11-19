@@ -145,6 +145,47 @@ void main() {
     }
   });
 
+  test("the default due time as the web's getDateWithTime takes it: two "
+      'digits for the hour, else unset', () {
+    ClockTime? read(Object? stored) => parseUserSettings({
+      'frontend_settings': {'default_due_time': stored},
+    }).defaultDueTime;
+
+    expect(read('17:45'), const ClockTime(17, 45));
+    expect(read('00:00'), const ClockTime(0, 0));
+    expect(read('09:05'), const ClockTime(9, 5));
+    for (final odd in <Object?>[
+      '9:45',
+      '24:00',
+      '12:60',
+      '09:00:00',
+      ' 09:00',
+      '',
+      null,
+      900,
+    ]) {
+      expect(read(odd), isNull, reason: '$odd');
+    }
+    expect(parseUserSettings(const {}).defaultDueTime, isNull);
+  });
+
+  test('the default relation kind: each the web offers, else related', () {
+    TaskRelationKind read(Object? stored) => parseUserSettings({
+      'frontend_settings': {'default_task_relation_type': stored},
+    }).defaultTaskRelationType;
+
+    for (final kind in TaskRelationKind.values) {
+      expect(read(kind.wireName), kind);
+    }
+    for (final odd in <Object?>['Blocking', 'unknown', '', null, 3]) {
+      expect(read(odd), TaskRelationKind.related, reason: '$odd');
+    }
+    expect(
+      parseUserSettings(const {}).defaultTaskRelationType,
+      TaskRelationKind.related,
+    );
+  });
+
   test('comments oldest first unless the web stored desc', () {
     for (final (stored, expected) in [
       ('asc', CommentSortOrder.oldestFirst),

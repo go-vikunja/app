@@ -185,6 +185,10 @@ abstract interface class TaskRepository {
   /// success.
   Future<TaskDeletion> deleteTask(int taskId);
 
+  /// Whether the server has the task as far as this device knows, for
+  /// what a delete would do with it there.
+  Future<TaskOnServer> taskOnServer(int taskId);
+
   /// Takes a delete back and returns the task as it is now. A delete still
   /// queued here, one the server refused included, is removed: the task
   /// shows again with its queued changes, without a request. A delete on

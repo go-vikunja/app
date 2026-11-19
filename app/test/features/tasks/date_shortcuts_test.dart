@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 
 void main() {
@@ -154,19 +155,55 @@ void main() {
   group('dayWithTime', () {
     final now = DateTime(2026, 9, 15, 10, 15);
 
-    test('gives a date-only pick the breakpoint time', () {
+    test('gives a date-only pick the breakpoint time without a default '
+        'due time', () {
       expect(
-        dayWithTime(DateTime(2026, 9, 20), current: null, now: now),
+        dayWithTime(
+          DateTime(2026, 9, 20),
+          current: null,
+          now: now,
+          defaultTime: null,
+        ),
         DateTime(2026, 9, 20, 12),
       );
     });
 
-    test('keeps the time already set, in local time', () {
-      final current = DateTime(2026, 9, 11, 17, 45).toUtc();
+    test("gives a date-only pick the user's default due time", () {
       expect(
-        dayWithTime(DateTime(2026, 9, 20), current: current, now: now),
+        dayWithTime(
+          DateTime(2026, 9, 20),
+          current: null,
+          now: now,
+          defaultTime: const ClockTime(17, 45),
+        ),
         DateTime(2026, 9, 20, 17, 45),
       );
+      expect(
+        dayWithTime(
+          DateTime(2026, 9, 20),
+          current: null,
+          now: DateTime(2026, 9, 15, 22),
+          defaultTime: const ClockTime(0, 0),
+        ),
+        DateTime(2026, 9, 20),
+      );
+    });
+
+    test('keeps the time already set, in local time, over the default due '
+        'time', () {
+      final current = DateTime(2026, 9, 11, 17, 45).toUtc();
+      for (final defaultTime in const [null, ClockTime(8, 0)]) {
+        expect(
+          dayWithTime(
+            DateTime(2026, 9, 20),
+            current: current,
+            now: now,
+            defaultTime: defaultTime,
+          ),
+          DateTime(2026, 9, 20, 17, 45),
+          reason: '$defaultTime',
+        );
+      }
     });
   });
 }

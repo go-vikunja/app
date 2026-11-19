@@ -354,6 +354,33 @@ void main() {
         }
       });
 
+      test("a repeat without a date takes the user's default due time", () {
+        final plan = service(
+          settings: const UserSettings(defaultDueTime: ClockTime(17, 45)),
+        ).plan('Water plants every week');
+
+        expect(plan.dueDate, DateTime(2026, 10, 12, 17, 45).toUtc());
+      });
+
+      test("a typed day takes the user's default due time, also in the "
+          "parse again for a project that isn't found", () {
+        final planner = service(
+          grammar: const QuickAddGrammar(),
+          settings: const UserSettings(defaultDueTime: ClockTime(17, 45)),
+        );
+
+        for (final line in [
+          'Buy milk tomorrow',
+          'Buy milk +Nowhere tomorrow',
+        ]) {
+          expect(
+            planner.plan(line).dueDate,
+            DateTime(2026, 10, 13, 17, 45).toUtc(),
+            reason: line,
+          );
+        }
+      });
+
       test('a parsed date wins over the repeat default', () {
         final plan = service().plan('Call mom today at 15:00 every week');
 
@@ -774,6 +801,7 @@ void main() {
         String text, {
         required DateTime now,
         required QuickAddMagicMode mode,
+        ClockTime? defaultTime,
       }) => ParsedTaskText(text: text, labels: const ['road trip']);
 
       final result = await service(

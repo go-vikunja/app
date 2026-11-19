@@ -17,12 +17,14 @@ import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/connection/application/certificate_file.dart';
 import 'package:vikunja_mobile/features/connection/presentation/secret_text_field.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
 
 final _log = Logger('ClientCertificatePage');
 
 /// Imports a client certificate (PKCS#12) for [origin]: the file's bytes
 /// stay in this page until they are checked with the password and stored
 /// in secure storage; the picker's copy is gone as soon as they are read.
+/// Leaving with a file chosen or a password typed asks first.
 class ClientCertificatePage extends ConsumerStatefulWidget {
   const new({required this.origin, super.key});
 
@@ -63,6 +65,17 @@ class _ClientCertificatePageState extends ConsumerState<ClientCertificatePage> {
     } else if (password != null) {
       announcer.say(password, onlyIfPlatformAnnounces: passwordChanged);
     }
+  }
+
+  bool get _entered => _bytes != null || _password.text.isNotEmpty;
+
+  Future<void> _leaveIfConfirmed() async {
+    final navigator = Navigator.of(context);
+    final discard = await confirmDiscardChanges(
+      context,
+      body: context.l10n.connectionClientCertificateDiscardBody,
+    );
+    if (discard && mounted) navigator.pop();
   }
 
   Future<void> _choose() async {
@@ -161,7 +174,7 @@ class _ClientCertificatePageState extends ConsumerState<ClientCertificatePage> {
     final trustsServerInApp =
         profile?.pin != null || profile?.caCertificate != null;
 
-    return Scaffold(
+    final page = Scaffold(
       appBar: AppBar(
         title: ScreenTitle(l10n.connectionClientCertificateHeading),
         bottom: SavingProgressBar(saving: _busy),
@@ -230,6 +243,18 @@ class _ClientCertificatePageState extends ConsumerState<ClientCertificatePage> {
           ),
         ),
       ),
+    );
+    return ListenableBuilder(
+      listenable: _password,
+      builder: (context, page) => PopScope(
+        // A save under way stores the certificate either way.
+        canPop: _busy || !_entered,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) unawaited(_leaveIfConfirmed());
+        },
+        child: page!,
+      ),
+      child: page,
     );
   }
 }

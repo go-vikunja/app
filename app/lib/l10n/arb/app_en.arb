@@ -1479,6 +1479,16 @@
       }
     }
   },
+  "taskDeleteDialogBodyUnconfirmed": "“{title}” was sent to the server without an answer, so it may be there already. If it is, it moves to the trash, for everyone; if not, it is deleted and won't be in the trash.",
+  "@taskDeleteDialogBodyUnconfirmed": {
+    "description": "Body of the delete-task confirmation on servers that support the trash, for signed-in users and guests, when the task was created on this device and its create was sent without an answer (a timeout or a lost connection), so the server may have it.",
+    "placeholders": {
+      "title": {
+        "type": "String",
+        "example": "Pay the bill"
+      }
+    }
+  },
   "taskDeleteDialogCancel": "Cancel",
   "taskDeleteDialogConfirm": "Delete",
   "taskDeleteGone": "This task is no longer on this device.",
@@ -1647,13 +1657,41 @@
   "taskEditNoColour": "No color",
   "taskEditColourSemantics": "Color {hex}",
   "@taskEditColourSemantics": {
-    "description": "Screen reader: a swatch of the color choice for a task, project or label; hex is the color as a hex code, for example #1973ff.",
+    "description": "Screen reader: a swatch of the color choice for a task, project or label whose color is none of the seven named ones (set on the web, for example); hex is the color as a hex code, for example #1973ff.",
     "placeholders": {
       "hex": {
         "type": "String",
         "example": "#1973ff"
       }
     }
+  },
+  "colorNameOrange": "Orange",
+  "@colorNameOrange": {
+    "description": "Screen reader: the orange swatch (#e69f00) of the color choice for a task, project or label, under the heading Color. The seven colors are the Okabe–Ito palette, which people with color blindness can tell apart; use the usual name of the color."
+  },
+  "colorNameSkyBlue": "Sky blue",
+  "@colorNameSkyBlue": {
+    "description": "Screen reader: the sky blue swatch (#56b4e9) of the color choice for a task, project or label, under the heading Color; a light blue, beside the darker Blue (#0072b2)."
+  },
+  "colorNameBluishGreen": "Bluish green",
+  "@colorNameBluishGreen": {
+    "description": "Screen reader: the bluish green swatch (#009e73) of the color choice for a task, project or label, under the heading Color; the palette's only green."
+  },
+  "colorNameYellow": "Yellow",
+  "@colorNameYellow": {
+    "description": "Screen reader: the yellow swatch (#f0e442) of the color choice for a task, project or label, under the heading Color."
+  },
+  "colorNameBlue": "Blue",
+  "@colorNameBlue": {
+    "description": "Screen reader: the blue swatch (#0072b2) of the color choice for a task, project or label, under the heading Color; a dark blue, beside the lighter Sky blue (#56b4e9)."
+  },
+  "colorNameVermilion": "Vermilion",
+  "@colorNameVermilion": {
+    "description": "Screen reader: the vermilion swatch (#d55e00) of the color choice for a task, project or label, under the heading Color; a red orange, beside the lighter Orange (#e69f00)."
+  },
+  "colorNameReddishPurple": "Reddish purple",
+  "@colorNameReddishPurple": {
+    "description": "Screen reader: the reddish purple swatch (#cc79a7) of the color choice for a task, project or label, under the heading Color; a pink purple."
   },
   "taskEditRepeat": "Repeat",
   "repeatModeNone": "Never",
@@ -1698,6 +1736,14 @@
   "newTaskKeepOpen": "Keep open after adding",
   "@newTaskKeepOpen": {
     "description": "Tooltip and screen-reader name of the pin toggle beside the new-task sheet's headline. While it is on, Add and the keyboard's action add the task, empty the title for the next one and keep the sheet open; the choice is remembered."
+  },
+  "newTaskDiscardTitle": "Discard the new task?",
+  "@newTaskDiscardTitle": {
+    "description": "Title of the question when the new-task sheet would close while a title or a description is typed in it: by Back, a tap beside it, a swipe down, or before the app switches to another account for a notification, a widget or a share. Its buttons are taskEditKeepEditing, which keeps the sheet and what was typed, and taskEditDiscard, which closes it."
+  },
+  "newTaskDiscardBody": "What you typed will be lost.",
+  "@newTaskDiscardBody": {
+    "description": "Text of the question newTaskDiscardTitle: the title and the description typed in the new-task sheet, not added yet."
   },
   "newTaskPickDate": "Pick date…",
   "newTaskNoProject": "No project",
@@ -1754,6 +1800,10 @@
   "newTaskNoProjectError": "There's no project to add tasks to yet. Create one on the Projects tab first.",
   "@newTaskNoProjectError": {
     "description": "Error on the new-task sheet, and the text of a home-screen widget, when the account has no project tasks can be added to."
+  },
+  "newTaskNoProjectGuest": "You can't add tasks through this shared link: it is read-only, or the project is archived.",
+  "@newTaskNoProjectGuest": {
+    "description": "Error on the new-task sheet, and the text of the New task home-screen widget, for a link-share guest whose shared project takes no new tasks: the link is read-only, or the project is archived. A guest cannot create projects, so unlike newTaskNoProjectError it does not point to the Projects tab. Read-only is hyphenated after “is”; “Read only” is the permission's name."
   },
   "newTaskAddFailed": "The task could not be added: {reason}",
   "@newTaskAddFailed": {
@@ -2442,7 +2492,10 @@
   "notificationSetupTurnOn": "Turn on notifications",
   "notificationSetupNotNow": "Not now",
   "notificationSetupExactTitle": "Reminders right on time",
-  "notificationSetupExactBody": "Without exact alarms, Android may show reminders minutes late. You can allow them in the system settings; the app works either way.",
+  "notificationSetupExactBodyLate": "Without exact alarms, Android may show reminders up to an hour late. You can allow them in the system settings; the app works either way.",
+  "@notificationSetupExactBodyLate": {
+    "description": "Body of the notification setup's step about exact alarms, on Android 14 and later when the app may not set them (notificationSetupExactTitle). Without them Android delivers a reminder in a window of up to an hour, later still in Doze or battery saver; the Account tab says notificationsMayBeLate. Exact alarms is Android's name for the permission (Alarms & reminders in the system settings)."
+  },
   "notificationSetupExactAllow": "Allow exact alarms",
   "notificationSetupSkip": "Skip",
   "notificationsHeading": "Notifications",
@@ -8169,6 +8222,18 @@
   "@connectionHeadersHeading": {
     "description": "Heading of the access headers section and title of its editor."
   },
+  "connectionHeadersDiscardBody": "Your edits to the access headers will be lost.",
+  "@connectionHeadersDiscardBody": {
+    "description": "Text of the question \"Discard changes?\" (taskEditDiscardTitle) when the access headers editor would close with changed names or values not saved: by Back, or before the app opens a notification, a widget link or a share. Its buttons are taskEditKeepEditing and taskEditDiscard."
+  },
+  "connectionClientCertificateDiscardBody": "The client certificate has not been saved.",
+  "@connectionClientCertificateDiscardBody": {
+    "description": "Text of the question \"Discard changes?\" (taskEditDiscardTitle) when the client certificate import would close with a file chosen or its password typed but not saved: by Back, or before the app opens a notification, a widget link or a share. Its buttons are taskEditKeepEditing and taskEditDiscard."
+  },
+  "connectionCaDiscardBody": "The CA certificate you chose has not been saved.",
+  "@connectionCaDiscardBody": {
+    "description": "Text of the question \"Discard changes?\" (taskEditDiscardTitle) when the server certificate page would close while it still offers a choice about a picked CA certificate: Save anyway after the check could not finish (connectionCaCheckFailed), or trusting the server's certificate after the CA did not issue it (connectionCaNotTrusted). It closes by Back, or before the app opens a notification, a widget link or a share. Its buttons are taskEditKeepEditing and taskEditDiscard."
+  },
   "connectionHeadersNone": "None. Only needed behind an access proxy such as Cloudflare Access.",
   "@connectionHeadersNone": {
     "description": "Access headers section when none are stored."
@@ -9078,6 +9143,22 @@
   "taskDetailReminderSameMoment": "Another reminder is already set for that moment.",
   "@taskDetailReminderSameMoment": {
     "description": "Shown when a reminder added or changed from the task sheet would fire at the same moment as another of the task's reminders: under the title of the task sheet's reminders sheet (and said to screen readers), else as a message in the sheet. The server keeps only one reminder per moment, so nothing is saved."
+  },
+  "taskDetailDueDateCoincideTitle": "Change the due date?",
+  "@taskDetailDueDateCoincideTitle": {
+    "description": "Title of the question asked before a due date chosen in the task sheet (a shortcut, Pick date…, or Clear due date) is saved when it would make two of the task's reminders fall at the same moment: reminders relative to the due date move with it. Cancel keeps the due date as it was."
+  },
+  "taskDetailDueDateCoincideBody": "Some reminders would then fall at the same moment. The server keeps only one of them.",
+  "@taskDetailDueDateCoincideBody": {
+    "description": "Body of the question taskDetailDueDateCoincideTitle. The server keeps only one reminder per moment, so the others are lost after the next sync."
+  },
+  "taskDetailDueDateCoincideConfirm": "Change anyway",
+  "@taskDetailDueDateCoincideConfirm": {
+    "description": "Button of the question taskDetailDueDateCoincideTitle that saves the chosen due date (or its removal) although reminders then fall at the same moment."
+  },
+  "taskDetailDueDateNotChanged": "Due date not changed: some reminders would fall at the same moment",
+  "@taskDetailDueDateNotChanged": {
+    "description": "Screen reader: said when a due date chosen in the task's due-date choices would put reminders at the same moment, but the question taskDetailDueDateCoincideTitle cannot be asked because the screen that opened the choices is gone (the side pane gave way to a sheet when the window narrowed). Nothing is saved; choosing again asks the question."
   },
   "taskCopyLink": "Copy link",
   "@taskCopyLink": {

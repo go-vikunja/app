@@ -2,6 +2,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_snack_bars.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
@@ -40,15 +41,17 @@ class VikunjaApp extends ConsumerWidget {
       routerConfig: ref.watch(appRouterProvider),
       builder: (context, child) => _SystemBarFallback(
         child: _LargeWindowDialogs(
-          child: AppLockGate(
-            child: AnnouncerHost(
-              child: NotificationTapListener(
-                child: DeepLinkListener(
-                  child: WidgetLinkListener(
-                    child: NewTaskShortcutListener(
-                      child: ShareIntentListener(
-                        child: GuestLandingListener(
-                          child: child ?? const SizedBox.shrink(),
+          child: ReadableSnackBars.window(
+            child: AppLockGate(
+              child: AnnouncerHost(
+                child: NotificationTapListener(
+                  child: DeepLinkListener(
+                    child: WidgetLinkListener(
+                      child: NewTaskShortcutListener(
+                        child: ShareIntentListener(
+                          child: GuestLandingListener(
+                            child: child ?? const SizedBox.shrink(),
+                          ),
                         ),
                       ),
                     ),

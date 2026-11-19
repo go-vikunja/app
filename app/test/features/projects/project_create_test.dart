@@ -65,9 +65,7 @@ void main() {
     expect(find.text('Old'), findsNothing);
     await tester.tap(find.text('Work').last);
     await tester.pumpAndSettle();
-    await tester.tap(
-      find.bySemanticsLabel(en.taskEditColourSemantics('#0072b2')),
-    );
+    await tester.tap(find.bySemanticsLabel(en.colorNameBlue));
     await tester.pumpAndSettle();
     await tester.tap(find.text(en.projectCreate));
     await tester.pumpAndSettle();

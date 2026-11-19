@@ -654,6 +654,27 @@ void main() {
       ]);
     });
 
+    testWidgets("starts at the kind of the user's settings", (tester) async {
+      data.shared.settings = const UserSettings(
+        defaultTaskRelationType: TaskRelationKind.precedes,
+      );
+      await openPicker(tester);
+
+      expect(inPicker(find.text(en.taskRelationPrecedes)), findsOneWidget);
+      expect(inPicker(find.text(en.taskRelationRelated)), findsNothing);
+      await tester.tap(inPicker(find.text('Buy sunscreen')));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.updates.single, (
+        1,
+        TaskChanges(
+          relations: RelationChange(
+            added: {const TaskRelationRef(TaskRelationKind.precedes, 6)},
+          ),
+        ),
+      ));
+    });
+
     testWidgets('dismissing the picker changes nothing', (tester) async {
       await openPicker(tester);
 

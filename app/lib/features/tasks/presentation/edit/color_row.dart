@@ -42,7 +42,7 @@ class ColorRow extends StatelessWidget {
         ),
         for (final hex in choices)
           _Swatch(
-            label: l10n.taskEditColourSemantics('#$hex'),
+            label: colorSwatchLabel(l10n, hex),
             color: parseHexColor(hex) ?? colors.surfaceContainerHighest,
             selected: value == hex,
             onTap: () => onChanged(hex),
@@ -51,6 +51,19 @@ class ColorRow extends StatelessWidget {
     );
   }
 }
+
+/// What a screen reader says for the swatch of [hex]: the name of an
+/// [okabeItoColors] colour, else the hex code.
+String colorSwatchLabel(AppLocalizations l10n, String hex) => switch (hex) {
+  'e69f00' => l10n.colorNameOrange,
+  '56b4e9' => l10n.colorNameSkyBlue,
+  '009e73' => l10n.colorNameBluishGreen,
+  'f0e442' => l10n.colorNameYellow,
+  '0072b2' => l10n.colorNameBlue,
+  'd55e00' => l10n.colorNameVermilion,
+  'cc79a7' => l10n.colorNameReddishPurple,
+  _ => l10n.taskEditColourSemantics('#$hex'),
+};
 
 class _Swatch extends StatelessWidget {
   const new({

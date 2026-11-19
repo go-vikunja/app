@@ -1582,6 +1582,21 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
 
   final Map<int, Task> _deleted = {};
 
+  /// What [taskOnServer] answers for a temporary id; a server id is
+  /// [TaskOnServer.yes].
+  final Map<int, TaskOnServer> onServer = {};
+
+  /// Thrown by [taskOnServer] while set.
+  Object? onServerFailure;
+
+  @override
+  Future<TaskOnServer> taskOnServer(int taskId) async {
+    if (onServerFailure case final failure?) {
+      Error.throwWithStackTrace(failure, StackTrace.current);
+    }
+    return taskId > 0 ? TaskOnServer.yes : onServer[taskId] ?? TaskOnServer.no;
+  }
+
   /// Removes the task and keeps it for [restoreTask]; answers [deletion].
   @override
   Future<TaskDeletion> deleteTask(int taskId) async {

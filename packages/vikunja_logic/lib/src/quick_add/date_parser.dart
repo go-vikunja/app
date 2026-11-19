@@ -1,3 +1,4 @@
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/src/quick_add/amounts.dart';
 import 'package:vikunja_logic/src/time/day_interval.dart';
 import 'package:vikunja_logic/src/time/default_time.dart';
@@ -30,24 +31,39 @@ const _weekdayAbbreviations = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 RegExp _keyword(String phrase) =>
     RegExp('(^| )($phrase)\\b', caseSensitive: false);
 
-final _keywordDates = <(RegExp, DateTime Function(DateTime now))>[
-  (_keyword('today'), (now) => _inDays(now, 0)),
-  (_keyword('tonight'), (now) => DateTime(now.year, now.month, now.day, 21)),
-  (_keyword('tomorrow'), (now) => _inDays(now, 1)),
-  (_keyword('next monday'), (now) => _after(DayInterval.nextMonday, now)),
-  (_keyword('this weekend'), (now) => _after(DayInterval.thisWeekend, now)),
+typedef _DateFor = DateTime Function(DateTime now, ClockTime? defaultTime);
+
+final _keywordDates = <(RegExp, _DateFor)>[
+  (_keyword('today'), (now, time) => _inDays(now, 0, time)),
+  (_keyword('tonight'), (now, _) => DateTime(now.year, now.month, now.day, 21)),
+  (_keyword('tomorrow'), (now, time) => _inDays(now, 1, time)),
+  (
+    _keyword('next monday'),
+    (now, time) => _after(DayInterval.nextMonday, now, time),
+  ),
+  (
+    _keyword('this weekend'),
+    (now, time) => _after(DayInterval.thisWeekend, now, time),
+  ),
   (
     _keyword('later this week'),
-    (now) => _after(DayInterval.laterThisWeek, now),
+    (now, time) => _after(DayInterval.laterThisWeek, now, time),
   ),
   (
     _keyword('later next week'),
-    (now) => _after(DayInterval.laterNextWeek, now),
+    (now, time) => _after(DayInterval.laterNextWeek, now, time),
   ),
-  (_keyword('next week'), (now) => _after(DayInterval.nextWeek, now)),
+  (
+    _keyword('next week'),
+    (now, time) => _after(DayInterval.nextWeek, now, time),
+  ),
   (
     _keyword('next month'),
-    (now) => atDefaultTime(DateTime(now.year, now.month + 1), now: now),
+    (now, time) => atDefaultTime(
+      DateTime(now.year, now.month + 1),
+      now: now,
+      defaultTime: time,
+    ),
   ),
   (_keyword('end of month'), _endOfMonth),
 ];
@@ -95,6 +111,19 @@ final _absoluteDates = [
   ),
 ];
 
+const _anyAbsoluteDate =
+    '[0-9][0-9]?/[0-9][0-9]?(?:/[0-9][0-9](?:[0-9][0-9])?)?'
+    '|[0-9]{3,4}/[0-9][0-9]?/[0-9][0-9]'
+    '|[0-9]{3,4}-[0-9][0-9]?-[0-9][0-9]'
+    r'|[0-9][0-9]?\.[0-9][0-9]?(?:\.(?:[0-9][0-9](?:[0-9][0-9])?)?)?';
+
+// Web parity: the web keeps a range such as `31.12.2026 - 01.01.2027` in
+// the title and takes no date from it.
+final _absoluteDateRange = RegExp(
+  '(?<![0-9])(?:$_anyAbsoluteDate)'
+  '(?: *[-\u2013] *(?:$_anyAbsoluteDate))+(?![0-9])',
+);
+
 final _timeAhead = RegExp('(?:at|@) ', caseSensitive: false);
 
 // D19-4: the web has no trailing boundary, so `12 decorations` was Dec 12.
@@ -111,15 +140,17 @@ final _time = RegExp(
 
 /// The web's `parseDate`: the first date phrase of [text] by its rule
 /// order, then a time (`at 9:00`, `@ 3pm`) anywhere in what is left, each
-/// removed from the text. A time alone is today at that time.
+/// removed from the text. A time alone is today at that time. A day
+/// without a time takes [defaultTime] (`atDefaultTime`).
 ({String text, DateTime? date, List<String> phrases}) parseDate(
   String text,
-  DateTime now,
-) {
+  DateTime now, {
+  ClockTime? defaultTime,
+}) {
   final found =
-      _keywordDate(text, now) ??
-      _weekdayDate(text, now) ??
-      _ordinalDate(text, now) ??
+      _keywordDate(text, now, defaultTime) ??
+      _weekdayDate(text, now, defaultTime) ??
+      _ordinalDate(text, now, defaultTime) ??
       _inAmountDate(text, now) ??
       _absoluteDate(text, now) ??
       _monthDayDate(text, now);
@@ -137,23 +168,25 @@ final _time = RegExp(
       int.parse(time[2] ?? '0'),
     );
     phrases.add(time[0]!.trim());
-    rest = rest.replaceAll(
-      RegExp(RegExp.escape(time[0]!), caseSensitive: false),
-      '',
+    rest = _withoutPhrase(
+      rest,
+      RegExp('( *)${RegExp.escape(time[0]!)}', caseSensitive: false),
     );
   }
   return (text: rest, date: date, phrases: phrases);
 }
 
-_FoundDate? _keywordDate(String text, DateTime now) {
+_FoundDate? _keywordDate(String text, DateTime now, ClockTime? defaultTime) {
   for (final (pattern, dateFor) in _keywordDates) {
     final match = pattern.firstMatch(text);
-    if (match != null) return _found(text, dateFor(now), match[2]!);
+    if (match != null) {
+      return _found(text, dateFor(now, defaultTime), match[2]!);
+    }
   }
   return null;
 }
 
-_FoundDate? _weekdayDate(String text, DateTime now) {
+_FoundDate? _weekdayDate(String text, DateTime now, ClockTime? defaultTime) {
   final match = _weekday.firstMatch(text);
   if (match == null) return null;
   final weekday = _weekdayAbbreviations.indexOf(
@@ -161,10 +194,10 @@ _FoundDate? _weekdayDate(String text, DateTime now) {
   );
   final days = (weekday - now.weekday % DateTime.daysPerWeek) % 7;
   // D38-5: the web keeps the clock time of now.
-  return _found(text, _inDays(now, days), match[2]!);
+  return _found(text, _inDays(now, days, defaultTime), match[2]!);
 }
 
-_FoundDate? _ordinalDate(String text, DateTime now) {
+_FoundDate? _ordinalDate(String text, DateTime now, ClockTime? defaultTime) {
   final match = _ordinalDay.firstMatch(text);
   if (match == null) return null;
   final day = int.parse(match[3]!);
@@ -180,13 +213,17 @@ _FoundDate? _ordinalDate(String text, DateTime now) {
     // May lie in the past and overflows like JS `setMonth` (web parity).
     date = DateTime(date.year, _monthNumber(month[1]!), date.day);
     phrases.add(month[1]!);
-    rest = rest.replaceAll(
-      RegExp('\\b${RegExp.escape(month[1]!)}\\b', caseSensitive: false),
-      '',
+    rest = _withoutPhrase(
+      rest,
+      RegExp('( *)\\b${RegExp.escape(month[1]!)}\\b', caseSensitive: false),
     );
   }
   // D38-5: the web keeps the clock time of now.
-  return (date: atDefaultTime(date, now: now), text: rest, phrases: phrases);
+  return (
+    date: atDefaultTime(date, now: now, defaultTime: defaultTime),
+    text: rest,
+    phrases: phrases,
+  );
 }
 
 _FoundDate? _inAmountDate(String text, DateTime now) {
@@ -219,14 +256,22 @@ _FoundDate? _inAmountDate(String text, DateTime now) {
 }
 
 _FoundDate? _absoluteDate(String text, DateTime now) {
+  final ranges = _absoluteDateRange.allMatches(text).toList();
+  bool inRange(RegExpMatch match) {
+    final start = match.start + match[1]!.length;
+    final end = start + match.namedGroup('date')!.length;
+    return ranges.any((range) => range.start <= start && end <= range.end);
+  }
+
   for (final pattern in _absoluteDates) {
     final match = pattern
         .allMatches(text)
         .where(
           (match) =>
-              match.start == 0 ||
-              match.end == text.length ||
-              _timeAhead.matchAsPrefix(text, match.end) != null,
+              (match.start == 0 ||
+                  match.end == text.length ||
+                  _timeAhead.matchAsPrefix(text, match.end) != null) &&
+              !inRange(match),
         )
         .firstOrNull;
     if (match == null) continue;
@@ -303,24 +348,39 @@ int _hour(RegExpMatch time) {
 int _monthNumber(String name) =>
     _monthAbbreviations.indexOf(name.substring(0, 3).toLowerCase()) + 1;
 
-// The web takes the default time of the last day's midnight, so 09:00.
-DateTime _endOfMonth(DateTime now) {
+// Without a default time the web takes the breakpoint of the last day's
+// midnight, so 09:00.
+DateTime _endOfMonth(DateTime now, ClockTime? defaultTime) {
   final lastDay = DateTime(now.year, now.month + 1, 0);
-  return atDefaultTime(lastDay, now: lastDay);
+  return atDefaultTime(lastDay, now: lastDay, defaultTime: defaultTime);
 }
 
-DateTime _inDays(DateTime now, int days) =>
-    atDefaultTime(DateTime(now.year, now.month, now.day + days), now: now);
+DateTime _inDays(DateTime now, int days, ClockTime? defaultTime) =>
+    atDefaultTime(
+      DateTime(now.year, now.month, now.day + days),
+      now: now,
+      defaultTime: defaultTime,
+    );
 
-DateTime _after(DayInterval interval, DateTime now) =>
-    _inDays(now, calculateDayInterval(interval, now));
+DateTime _after(DayInterval interval, DateTime now, ClockTime? defaultTime) =>
+    _inDays(now, calculateDayInterval(interval, now), defaultTime);
 
 _FoundDate _found(String text, DateTime date, String phrase) =>
     (date: date, text: _removeWords(text, phrase), phrases: [phrase]);
 
 // D38-9: the web removes every occurrence, also out of longer words:
 // `fri frisbee` became `sbee`.
-String _removeWords(String text, String phrase) => text.replaceAllMapped(
-  RegExp('(^| )${RegExp.escape(phrase)}(?!\\w)', caseSensitive: false),
-  (match) => match[1]!,
+String _removeWords(String text, String phrase) => _withoutPhrase(
+  text,
+  RegExp('(^| +)${RegExp.escape(phrase)}(?!\\w)', caseSensitive: false),
+);
+
+final _punctuation = RegExp('[.,;:!?\u2026)\\]}"\u201d\u00bb]');
+
+// D38-11: the spaces before a phrase (its first group) go with it when
+// punctuation follows: `Call back.`, where the web leaves `Call back .`.
+String _withoutPhrase(String text, RegExp phrase) => text.replaceAllMapped(
+  phrase,
+  (match) =>
+      _punctuation.matchAsPrefix(text, match.end) == null ? match[1]! : '',
 );

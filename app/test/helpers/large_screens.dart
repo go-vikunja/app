@@ -159,6 +159,11 @@ Rect dialogRect(WidgetTester tester) =>
 Rect bottomSheetRect(WidgetTester tester) =>
     overlayMaterialRect(tester, find.byType(BottomSheet).last);
 
+/// The visible bar of the snackbar showing; [SnackBar] itself may span its
+/// scaffold.
+Rect snackBarRect(WidgetTester tester) =>
+    overlayMaterialRect(tester, find.byType(SnackBar));
+
 /// The card of the front iOS sheet or bottom popup.
 Rect iOSSheetContentRect(WidgetTester tester) => tester.getRect(
   find

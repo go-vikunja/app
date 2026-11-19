@@ -124,7 +124,7 @@ class _NotificationSetupScreenState
       ),
       _Step.exactAlarms => (
         l10n.notificationSetupExactTitle,
-        l10n.notificationSetupExactBody,
+        l10n.notificationSetupExactBodyLate,
       ),
     };
 

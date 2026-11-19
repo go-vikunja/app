@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/features/tasks/application/display_settings.dart'
 import 'package:vikunja_mobile/features/tasks/application/reminder_editing.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
     show taskByIdProvider;
+import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/reminders_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/shortcut_chips.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
@@ -64,7 +65,8 @@ DateTime? _toTheMinute(DateTime? moment) => moment?.subtract(
 /// Runs [edit] with a way to read [task]'s row as it is by then: null once
 /// it is gone, [task] while it loads. The row stays followed until [edit]
 /// is done, also when the screen that opened the picker goes, as the pane
-/// does when the window narrows; the choice is still written then.
+/// does when the window narrows; the choice is still written then, unless
+/// it needs a question that screen would have asked.
 Future<void> _withLatest(
   BuildContext context,
   Task task,
@@ -102,9 +104,21 @@ Future<bool> Function(int taskId, TaskChanges changes) _writer(
   );
 }
 
+/// Whether [task]'s reminders with the due date [due] fall two at one
+/// moment where they did not before; the server keeps only one of them.
+bool _remindersWouldCoincide(Task task, DateTime? due) =>
+    remindersCoincide(task.reminders, (
+      due: due,
+      start: task.startDate,
+      end: task.endDate,
+    )) &&
+    !remindersCoincide(task.reminders, _datesOf(task));
+
 /// Sets [task]'s due date from Today, Tomorrow and Next week, each at the
-/// time it already has (else the next breakpoint after [now]), from the
-/// date picker, or clears it.
+/// time it already has (else the user's default due time, else the next
+/// breakpoint after [now]), from the date picker, or clears it. A due date
+/// that would put two reminders on one moment is asked about first; with
+/// the screen that asked gone, it is not written, and that is said.
 Future<void> editDueDate(
   BuildContext context, {
   required TaskRepository repository,
@@ -121,7 +135,15 @@ Future<void> editDueDate(
   final shortcuts = [
     for (final option in buildDateShortcuts(now))
       if (_dueShortcuts.contains(option.shortcut))
-        (option, dayWithTime(option.day, current: task.dueDate, now: now)),
+        (
+          option,
+          dayWithTime(
+            option.day,
+            current: task.dueDate,
+            now: now,
+            defaultTime: display.defaultDueTime,
+          ),
+        ),
   ];
   final picked = await showOptionSheet<_DueChoice>(
     context,
@@ -159,9 +181,25 @@ Future<void> editDueDate(
     case _ClearDue():
       moment = null;
   }
-  final row = latest();
+  var row = latest();
   final utc = moment?.toUtc();
   if (row == null || utc == _toTheMinute(row.dueDate)?.toUtc()) return;
+  if (_remindersWouldCoincide(row, utc)) {
+    // Written unasked, the server would drop a reminder the user never
+    // agreed to lose.
+    if (!context.mounted) {
+      announcer.say(l10n.taskDetailDueDateNotChanged);
+      return;
+    }
+    final confirmed = await confirmAdaptive(
+      context,
+      title: l10n.taskDetailDueDateCoincideTitle,
+      body: l10n.taskDetailDueDateCoincideBody,
+      confirmLabel: l10n.taskDetailDueDateCoincideConfirm,
+    );
+    row = latest();
+    if (!confirmed || row == null) return;
+  }
   final queued = await write(
     row.id,
     TaskChanges(

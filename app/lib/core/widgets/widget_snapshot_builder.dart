@@ -423,7 +423,13 @@ final class _AccountBuild {
     validUntil: nextLocalMidnight(now),
     message: _sessionMessage,
     messageLink: _sessionMessageLink,
-    empty: canAddTasks ? null : WidgetText(l10n.newTaskNoProjectError),
+    empty: canAddTasks
+        ? null
+        : WidgetText(
+            account.isGuest
+                ? l10n.newTaskNoProjectGuest
+                : l10n.newTaskNoProjectError,
+          ),
     newTaskLink: canAddTasks ? _newTaskLink(null) : null,
     newTaskLabel: l10n.newTask,
   );

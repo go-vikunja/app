@@ -39,6 +39,9 @@ class ReadableWidth extends StatelessWidget {
   /// Material dialogs (M3).
   static const dialog = 560.0;
 
+  /// Floating snackbars, with the margins beside them.
+  static const snackBar = 640.0;
+
   /// Flutter's own bounds for a dialog's width, which the date and time
   /// pickers keep under the [dialog] cap.
   static const defaultDialogConstraints = BoxConstraints(minWidth: 280);

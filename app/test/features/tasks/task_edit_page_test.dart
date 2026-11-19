@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/color_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
@@ -401,6 +402,26 @@ void main() {
       expect(find.text('Oct 15, 2026 9:30 AM'), findsOneWidget);
     });
 
+    testWidgets("a chip on an unset date takes the user's default due time", (
+      tester,
+    ) async {
+      data.shared.settings = const UserSettings(
+        defaultDueTime: ClockTime(17, 45),
+      );
+      await openEditPage(tester, 1);
+
+      await tester.tap(find.text(en.shortcutToday).at(1));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect(
+        data.tasks.updates.single.$2,
+        TaskChanges(
+          startDate: DateChange.set(DateTime(2026, 10, 10, 17, 45).toUtc()),
+        ),
+      );
+    });
+
     testWidgets('a start date set by chip and an end date cleared go '
         'together', (tester) async {
       await openEditPage(tester, 1);
@@ -438,9 +459,7 @@ void main() {
     ) async {
       await openEditPage(tester, 2);
 
-      await tester.tap(
-        find.bySemanticsLabel(en.taskEditColourSemantics('#0072b2')),
-      );
+      await tester.tap(find.bySemanticsLabel(en.colorNameBlue));
       await tester.pumpAndSettle();
       await save(tester);
       expect(
@@ -464,11 +483,11 @@ void main() {
       ];
       await openEditPage(tester, 5);
 
-      for (final hex in [...okabeItoColors, '008080']) {
-        expect(
-          find.bySemanticsLabel(en.taskEditColourSemantics('#$hex')),
-          findsOneWidget,
-        );
+      for (final label in [
+        for (final hex in okabeItoColors) colorSwatchLabel(en, hex),
+        en.taskEditColourSemantics('#008080'),
+      ]) {
+        expect(find.bySemanticsLabel(label), findsOneWidget);
       }
       expect(
         find.bySemanticsLabel(en.taskEditColourSemantics('#1973ff')),
@@ -484,9 +503,7 @@ void main() {
       ];
       await openEditPage(tester, 5);
 
-      await tester.tap(
-        find.bySemanticsLabel(en.taskEditColourSemantics('#e69f00')),
-      );
+      await tester.tap(find.bySemanticsLabel(en.colorNameOrange));
       await tester.pumpAndSettle();
       expect(saveEnabled(tester), isTrue);
       await tester.tap(

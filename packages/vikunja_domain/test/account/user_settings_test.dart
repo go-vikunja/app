@@ -91,6 +91,12 @@ void main() {
     }
   });
 
+  test('no default due time and new relations related to, as on the web', () {
+    const settings = UserSettings();
+    expect(settings.defaultDueTime, isNull);
+    expect(settings.defaultTaskRelationType, TaskRelationKind.related);
+  });
+
   test('the account settings of a new user: no name, no emails, not '
       'discoverable, the overdue summary on at 9:00', () {
     const settings = UserSettings();
@@ -164,6 +170,8 @@ void main() {
       timeFormat: TimeFormat.twelveHour,
       colorSchema: ColorSchema.dark,
       defaultViewKind: ProjectViewKind.kanban,
+      defaultDueTime: ClockTime(17, 45),
+      defaultTaskRelationType: TaskRelationKind.blocking,
     );
 
     test('without arguments keeps every field', () {
@@ -237,6 +245,16 @@ void main() {
         full.copyWith(defaultViewKind: ProjectViewKind.list).defaultViewKind,
         ProjectViewKind.list,
       );
+      expect(
+        full.copyWith(defaultDueTime: const ClockTime(8, 0)).defaultDueTime,
+        const ClockTime(8, 0),
+      );
+      expect(
+        full
+            .copyWith(defaultTaskRelationType: TaskRelationKind.precedes)
+            .defaultTaskRelationType,
+        TaskRelationKind.precedes,
+      );
     });
 
     test('null unsets the nullable fields', () {
@@ -246,8 +264,11 @@ void main() {
         dateDisplay: null,
         timeFormat: null,
         defaultViewKind: null,
+        defaultDueTime: null,
       );
 
+      expect(cleared.defaultDueTime, isNull);
+      expect(cleared.defaultTaskRelationType, TaskRelationKind.blocking);
       expect(cleared.defaultProjectId, isNull);
       expect(cleared.filterIdUsedOnOverview, isNull);
       expect(cleared.dateDisplay, isNull);
@@ -266,6 +287,8 @@ void main() {
         UserSettings(discoverableByEmail: true),
         UserSettings(overdueTasksRemindersEnabled: false),
         UserSettings(overdueTasksRemindersTime: ClockTime(10, 0)),
+        UserSettings(defaultDueTime: ClockTime(9, 0)),
+        UserSettings(defaultTaskRelationType: TaskRelationKind.subtask),
       ]) {
         expect(changed, isNot(plain));
         expect(changed.hashCode, isNot(plain.hashCode));

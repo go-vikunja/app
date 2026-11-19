@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
 export 'package:vikunja_logic/vikunja_logic.dart' show nearestBreakpointHour;
@@ -84,19 +85,19 @@ List<DateShortcutOption> buildDateShortcuts(DateTime now) {
   return options;
 }
 
-/// [day] at a time of day: the one [current] already has, else the
-/// breakpoint for [now] (local time, seconds dropped).
+/// [day] at a time of day: the one [current] already has, else the user's
+/// [defaultTime], else the breakpoint for [now] (local time, seconds
+/// dropped).
 DateTime dayWithTime(
   DateTime day, {
   required DateTime? current,
   required DateTime now,
+  required ClockTime? defaultTime,
 }) {
-  final local = current?.toLocal();
-  return DateTime(
-    day.year,
-    day.month,
-    day.day,
-    local?.hour ?? nearestBreakpointHour(now),
-    local?.minute ?? 0,
-  );
+  final (hour, minute) = switch ((current?.toLocal(), defaultTime)) {
+    (final local?, _) => (local.hour, local.minute),
+    (null, final time?) => (time.hour, time.minute),
+    (null, null) => (nearestBreakpointHour(now), 0),
+  };
+  return DateTime(day.year, day.month, day.day, hour, minute);
 }

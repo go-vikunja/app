@@ -7,10 +7,10 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/cupertino_pic
 
 /// A date with a time: the Material date picker followed by the time
 /// picker, or one Cupertino wheel. Starts from [current], else today at the
-/// breakpoint time for [now]; a cancelled time picker keeps that time.
-/// The calendar starts the week and the clock counts the hours as
-/// [display] says. Returns a local instant, or null when the user backed
-/// out.
+/// user's default due time or the breakpoint time for [now]. The calendar
+/// starts the week and the clock counts the hours as [display] says.
+/// Returns a local instant, or null when the user backed out of either
+/// picker.
 Future<DateTime?> pickDateTime(
   BuildContext context, {
   required DateTime? current,
@@ -18,7 +18,13 @@ Future<DateTime?> pickDateTime(
   required DisplaySettings display,
 }) {
   final initial =
-      current?.toLocal() ?? dayWithTime(now, current: null, now: now);
+      current?.toLocal() ??
+      dayWithTime(
+        now,
+        current: null,
+        now: now,
+        defaultTime: display.defaultDueTime,
+      );
   return switch (Theme.of(context).platform) {
     TargetPlatform.iOS || TargetPlatform.macOS => showCupertinoPickerSheet(
       context,
@@ -61,11 +67,6 @@ Future<DateTime?> _pickWithMaterialDialogs(
     initialTime: TimeOfDay.fromDateTime(initial),
     builder: formats,
   );
-  return DateTime(
-    day.year,
-    day.month,
-    day.day,
-    time?.hour ?? initial.hour,
-    time?.minute ?? initial.minute,
-  );
+  if (time == null) return null;
+  return DateTime(day.year, day.month, day.day, time.hour, time.minute);
 }

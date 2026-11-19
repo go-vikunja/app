@@ -13,10 +13,12 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/core/text/task_title_limit.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
 import 'package:vikunja_mobile/features/quick_add/application/project_references.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_lines.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
@@ -54,21 +56,31 @@ final _log = Logger('NewTaskSheet');
 /// description, labels, reminders and a repeat for every task. [projectId]
 /// preselects the list's own project; with [column] the tasks that go to
 /// it are placed on top of that board column. With its pin on, the sheet
-/// stays open after each add for the next task.
+/// stays open after each add for the next task. While a title or a
+/// description is typed, leaving asks first.
 Future<void> showNewTaskSheet(
   BuildContext context, {
   int? projectId,
   NewTaskColumn? column,
-}) => showModalBottomSheet<void>(
-  context: context,
+}) {
   // Over the tab bar, not inside the tab's own navigator.
-  useRootNavigator: true,
-  routeSettings: const RouteSettings(name: newTaskSheetRouteName),
-  isScrollControlled: true,
-  useSafeArea: true,
-  showDragHandle: true,
-  builder: (context) => NewTaskSheet(projectId: projectId, column: column),
-);
+  final navigator = Navigator.of(context, rootNavigator: true);
+  final animation = BottomSheet.createAnimationController(navigator);
+  return showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    routeSettings: const RouteSettings(name: newTaskSheetRouteName),
+    isScrollControlled: true,
+    useSafeArea: true,
+    showDragHandle: true,
+    transitionAnimationController: animation,
+    builder: (context) => NewTaskSheet(
+      projectId: projectId,
+      column: column,
+      animation: animation,
+    ),
+  );
+}
 
 /// The board column a project's new tasks go on top of.
 @immutable
@@ -119,10 +131,15 @@ final List<TaskPriority> _priorities = [
 ];
 
 class NewTaskSheet extends ConsumerStatefulWidget {
-  const new({this.projectId, this.column, super.key});
+  const new({this.projectId, this.column, this.animation, super.key});
 
   final int? projectId;
   final NewTaskColumn? column;
+
+  /// The `transitionAnimationController` of the sheet's route, which the
+  /// sheet disposes once the route is gone. With it, a swipe down that
+  /// would drop what was typed brings the sheet back up and asks.
+  final AnimationController? animation;
 
   @override
   ConsumerState<NewTaskSheet> createState() => _NewTaskSheetState();
@@ -144,6 +161,15 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   RepeatSetting _repeat = RepeatSetting.none;
   bool _adding = false;
   String? _error;
+
+  /// A title or a description is typed, which leaving would drop.
+  bool _typed = false;
+  bool _leaving = false;
+  ModalRoute<Object?>? _route;
+
+  // A swipe down pops the route without asking its PopScope; while this
+  // entry is in the route's local history, that pop removes it instead.
+  LocalHistoryEntry? _swipeGuard;
 
   /// What the last add made, under the emptied title while the sheet stays
   /// open, until the next title is typed.
@@ -168,6 +194,20 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   void initState() {
     super.initState();
     _text.addListener(_onTextChanged);
+    _description.addListener(_noteTyped);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route == _route) return;
+    _route = route;
+    final animation = widget.animation;
+    if (route != null && animation != null) {
+      // The route drives it until its exit animation has ended.
+      unawaited(route.completed.whenComplete(animation.dispose));
+    }
   }
 
   @override
@@ -179,10 +219,76 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     super.dispose();
   }
 
-  void _onTextChanged() => setState(() {
-    _error = null;
-    if (_text.text.isNotEmpty) _added = null;
-  });
+  void _onTextChanged() {
+    setState(() {
+      _error = null;
+      if (_text.text.isNotEmpty) _added = null;
+    });
+    _noteTyped();
+  }
+
+  void _noteTyped() {
+    final typed =
+        _text.text.trim().isNotEmpty || _description.text.trim().isNotEmpty;
+    if (typed != _typed) setState(() => _typed = typed);
+    _guardSwipe();
+  }
+
+  /// Keeps the swipe guard in the route's local history while leaving
+  /// would drop what was typed or an add runs.
+  void _guardSwipe() {
+    final route = _route;
+    final wanted =
+        route != null &&
+        widget.animation != null &&
+        !_leaving &&
+        (_typed || _adding);
+    final guard = _swipeGuard;
+    if (wanted == (guard != null)) return;
+    if (guard != null) {
+      _swipeGuard = null;
+      guard.remove();
+    } else {
+      final added = LocalHistoryEntry(
+        impliesAppBarDismissal: false,
+        onRemove: _onSwipeGuardTaken,
+      );
+      _swipeGuard = added;
+      route!.addLocalHistoryEntry(added);
+    }
+  }
+
+  /// A pop took the guard: a swipe down, or the drag handle's dismiss.
+  void _onSwipeGuardTaken() {
+    // Null when the sheet removed it itself.
+    if (_swipeGuard == null) return;
+    _swipeGuard = null;
+    // The navigator is still busy with that pop.
+    scheduleMicrotask(() {
+      if (!mounted) return;
+      widget.animation?.forward();
+      _guardSwipe();
+      if (!_adding) unawaited(_askToLeave());
+    });
+  }
+
+  Future<void> _askToLeave() async {
+    final l10n = context.l10n;
+    final discard = await confirmDiscardChanges(
+      context,
+      title: l10n.newTaskDiscardTitle,
+      body: l10n.newTaskDiscardBody,
+    );
+    if (discard && mounted && (_route?.isCurrent ?? false)) {
+      _close(Navigator.of(context));
+    }
+  }
+
+  void _close(NavigatorState navigator) {
+    _leaving = true;
+    _guardSwipe();
+    navigator.pop();
+  }
 
   void _usePlanner({
     required QuickAddService? service,
@@ -392,7 +498,8 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     final fallbackId = _fallbackId;
     final plans = [for (final line in lines) _plan(line)!];
     if (plans.any((plan) => plan.project == null)) {
-      setState(() => _error = l10n.newTaskNoProjectError);
+      final guest = ref.read(activeAccountIsGuestProvider);
+      setState(() => _error = _noProjectText(l10n, guest: guest));
       return;
     }
     final messenger = ScaffoldMessenger.of(context);
@@ -404,6 +511,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       _adding = true;
       _error = null;
     });
+    _guardSwipe();
 
     final QuickAddResult result;
     try {
@@ -438,6 +546,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           _failureText(l10n, partly.cause),
         ].join(' ');
       });
+      _guardSwipe();
       return;
     } on Object catch (error) {
       _log.warning('Quick add failed: ${error.runtimeType}');
@@ -446,6 +555,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         _adding = false;
         _error = _failureText(l10n, error);
       });
+      _guardSwipe();
       return;
     }
     final left = await _placeInColumn(repository, result.createdTaskIds);
@@ -478,7 +588,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       );
       return;
     }
-    navigator.pop();
+    _close(navigator);
     messenger.showSnackBar(
       SnackBar(
         duration: Duration(seconds: warnings.isEmpty ? 4 : 8),
@@ -511,6 +621,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       _adding = false;
       _added = confirmation;
     });
+    _guardSwipe();
     _focus.requestFocus();
     announcer.say(confirmation);
   }
@@ -581,6 +692,10 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         _ => null,
       };
 
+  /// A guest cannot create the project a user is asked to create.
+  static String _noProjectText(AppLocalizations l10n, {required bool guest}) =>
+      guest ? l10n.newTaskNoProjectGuest : l10n.newTaskNoProjectError;
+
   static String _failureText(AppLocalizations l10n, Object error) =>
       switch (error) {
         VikunjaFailure(:final message) when message.trim().isNotEmpty =>
@@ -589,19 +704,22 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       };
 
   /// [plan]'s title as created: without the names the server search
-  /// resolved, which are not always the ones the plan resolved, and with
-  /// the labels that could not be created at its end.
+  /// resolved, which are not always the ones the plan resolved, with the
+  /// labels that could not be created at its end, and cut to the server's
+  /// limit as the service cuts it.
   static String _createdTitle(
     QuickAddPlan plan,
     QuickAddResult result,
     QuickAddPrefixes? prefixes,
   ) {
     final title = _titleWithoutResolved(plan, result, prefixes);
-    return [
-      title,
-      for (final token in result.labelsKept)
-        if (!title.contains(token)) token,
-    ].join(' ');
+    return cutTaskTitle(
+      [
+        title,
+        for (final token in result.labelsKept)
+          if (!title.contains(token)) token,
+      ].join(' '),
+    ).title;
   }
 
   static String _titleWithoutResolved(
@@ -705,7 +823,9 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         (plan?.project ?? project) != null &&
         (_repeat.isValid || !_moreOptions);
     final noProject = projectsValue.hasValue && project == null;
-    final errorText = _error ?? (noProject ? l10n.newTaskNoProjectError : null);
+    final guest = ref.watch(activeAccountIsGuestProvider);
+    final errorText =
+        _error ?? (noProject ? _noProjectText(l10n, guest: guest) : null);
 
     final shortcuts = [
       for (final option in buildDateShortcuts(now))
@@ -728,6 +848,9 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         ? l10n.newTaskNoProject
         : projectLabel(project, projects, titleOf: titleOf);
     final formatter = MomentFormatter.watch(context, ref);
+    final defaultDueTime = ref.watch(
+      displaySettingsProvider.select((display) => display.defaultDueTime),
+    );
 
     final keepOpen = ref.watch(newTaskKeepOpenProvider).value ?? false;
 
@@ -873,7 +996,12 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           onSelected: (option) => setState(
             () => _due = option == null
                 ? null
-                : dayWithTime(option.day, current: _due, now: now).toUtc(),
+                : dayWithTime(
+                    option.day,
+                    current: _due,
+                    now: now,
+                    defaultTime: defaultDueTime,
+                  ).toUtc(),
           ),
           trailing: [
             if (shownDue case final due? when !dueOnShortcut)
@@ -1036,33 +1164,41 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       MediaQuery.viewInsetsOf(context).bottom,
       MediaQuery.viewPaddingOf(context).bottom,
     );
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottom),
-      // The suggestions and the buttons stay above the keyboard while the
-      // rest scrolls; with little room left they scroll too.
-      child: LayoutBuilder(
-        builder: (context, constraints) => Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: SingleChildScrollView(
-                controller: _scroll,
-                // Short of room, the headline goes out of view before the
-                // due date and priority rows do; the field keeps its caret
-                // in view itself. The longer form starts at its top.
-                reverse: !_moreOptions,
-                child: content,
+    return PopScope(
+      // Discard could not stop an add under way, which closes the sheet
+      // itself.
+      canPop: !_typed && !_adding,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !_adding) unawaited(_askToLeave());
+      },
+      child: Padding(
+        padding: EdgeInsets.only(bottom: bottom),
+        // The suggestions and the buttons stay above the keyboard while the
+        // rest scrolls; with little room left they scroll too.
+        child: LayoutBuilder(
+          builder: (context, constraints) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: SingleChildScrollView(
+                  controller: _scroll,
+                  // Short of room, the headline goes out of view before the
+                  // due date and priority rows do; the field keeps its
+                  // caret in view itself. The longer form starts at its top.
+                  reverse: !_moreOptions,
+                  child: content,
+                ),
               ),
-            ),
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: constraints.maxHeight.isFinite
-                    ? constraints.maxHeight * 0.6
-                    : double.infinity,
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: constraints.maxHeight.isFinite
+                      ? constraints.maxHeight * 0.6
+                      : double.infinity,
+                ),
+                child: SingleChildScrollView(child: bottomBar),
               ),
-              child: SingleChildScrollView(child: bottomBar),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

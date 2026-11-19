@@ -24,6 +24,8 @@ void main() {
       timeFormat: TimeFormat.twelveHour,
       colorSchema: ColorSchema.dark,
       defaultViewKind: ProjectViewKind.table,
+      defaultDueTime: ClockTime(17, 45),
+      defaultTaskRelationType: TaskRelationKind.blocking,
     );
 
     expect(decodeUserSettings(encodeUserSettings(settings)), settings);
@@ -166,6 +168,29 @@ void main() {
     expect(settings.discoverableByEmail, isFalse);
     expect(settings.overdueTasksRemindersEnabled, isTrue);
     expect(settings.overdueTasksRemindersTime, const ClockTime(9, 0));
+  });
+
+  test('the default due time and relation kind: every kind round-trips, '
+      'an unset time is not stored, and settings stored before them read '
+      'as unset and related', () {
+    for (final kind in TaskRelationKind.values) {
+      final settings = UserSettings(defaultTaskRelationType: kind);
+      expect(decodeUserSettings(encodeUserSettings(settings)), settings);
+    }
+    expect(
+      encodeUserSettings(const UserSettings()),
+      isNot(contains('default_due_time')),
+    );
+
+    final before = decodeUserSettings('{"week_start": 1}');
+    expect(before.defaultDueTime, isNull);
+    expect(before.defaultTaskRelationType, TaskRelationKind.related);
+    for (final odd in ['"25:00"', '"related to"', '5', 'null', '[]']) {
+      final settings = decodeUserSettings(
+        '{"default_due_time": $odd, "default_task_relation_type": $odd}',
+      );
+      expect(settings, const UserSettings(), reason: odd);
+    }
   });
 
   test('odd account fields fall back one by one', () {

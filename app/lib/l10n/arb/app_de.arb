@@ -561,7 +561,6 @@
   "notificationSetupTurnOn": "Benachrichtigungen einschalten",
   "notificationSetupNotNow": "Jetzt nicht",
   "notificationSetupExactTitle": "Erinnerungen auf die Minute",
-  "notificationSetupExactBody": "Ohne genaue Alarme zeigt Android Erinnerungen unter Umständen Minuten zu spät. Du kannst sie in den Systemeinstellungen erlauben; die App funktioniert so oder so.",
   "notificationSetupExactAllow": "Genaue Alarme erlauben",
   "notificationSetupSkip": "Überspringen",
   "notificationsHeading": "Benachrichtigungen",

@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 
 import 'parse_helpers.dart';
 
@@ -157,6 +158,86 @@ void main() {
 
     test('every occurrence of the date is removed', () {
       expect(parse('x 9/11 y 9/11').text, 'x  y');
+    });
+  });
+
+  group('web parity: a date range stays in the title, without a date', () {
+    for (final input in [
+      '01.01.2027 - 01.01.2027',
+      'Vacation 31.12.2026 - 01.01.2027',
+      '31.12.2026 - 01.01.2027 Vacation',
+      'Fair 2027-03-01 - 2027-03-04',
+      'Fair 3/1 - 3/4',
+      'Fair 2027/03/01 - 4.3.2027',
+      'Fair 1.3. - 4.3',
+      'Fair 1.3 -4.3',
+      'Fair 1.3- 4.3',
+      'Fair 1.3\u20134.3',
+      'Fair 1.3 \u2013 4.3',
+      'Tour 1.3 - 4.3 - 9.3',
+    ]) {
+      test(input, () {
+        final result = parse(input);
+        expect(result.text, input);
+        expect(result.date, isNull);
+        expect(result.datePhrases, isEmpty);
+      });
+    }
+
+    test('a date beside a range still counts', () {
+      final result = parse('Trip 01.08.2027 - 15.08.2027 pay 20.07.2027');
+      expect(result.text, 'Trip 01.08.2027 - 15.08.2027 pay');
+      expect(ymd(result.date), '2027-7-20');
+    });
+
+    test('a dash before a word is no range', () {
+      final result = parse('31.12.2026 - party');
+      expect(result.text, '- party');
+      expect(ymd(result.date), '2026-12-31');
+    });
+
+    test('a range of numbers that are no dates is no range', () {
+      final result = parse('Pages 3 - 4 9/11');
+      expect(result.text, 'Pages 3 - 4');
+      expect(ymd(result.date), '2021-9-11');
+    });
+  });
+
+  group('D38-11: a phrase removed before punctuation takes the spaces '
+      'before it (the web leaves "Call back .")', () {
+    final now = DateTime(2021, 6, 24, 12, 34);
+    final cases = {
+      'Call back tomorrow.': ('Call back.', '2021-6-25'),
+      'Call back tomorrow!': ('Call back!', '2021-6-25'),
+      'Pay rent in 2 days; then rest': ('Pay rent; then rest', '2021-6-26'),
+      'Party dec 12!': ('Party!', '2021-12-12'),
+      'Party 12th dec.': ('Party.', '2021-12-12'),
+      'Call tomorrow at 10.': ('Call.', '2021-6-25'),
+      'Call at 10 tomorrow?': ('Call?', '2021-6-25'),
+      'Call at 10:30, then rest': ('Call, then rest', '2021-6-24'),
+      'Call  tomorrow.': ('Call.', '2021-6-25'),
+      '(call tomorrow)': ('(call)', '2021-6-25'),
+      'Say "see you tomorrow" to Sam': ('Say "see you" to Sam', '2021-6-25'),
+      'Plan tomorrow\u2026': ('Plan\u2026', '2021-6-25'),
+    };
+    for (final MapEntry(key: input, value: (text, date)) in cases.entries) {
+      test(input, () {
+        final result = parse(input, now: now);
+        expect(result.text, text);
+        expect(ymd(result.date), date);
+      });
+    }
+
+    test('before a space, a letter or an apostrophe the spaces stay', () {
+      expect(parse('x tomorrow , y', now: now).text, 'x  , y');
+      expect(parse('x tomorrow-ish', now: now).text, 'x -ish');
+      expect(parse("x tomorrow's", now: now).text, "x 's");
+      expect(parse('x  tomorrow y', now: now).text, 'x   y');
+    });
+
+    test('a space the text had before punctuation stays', () {
+      expect(parse('Call back . tomorrow', now: now).text, 'Call back .');
+      expect(parse('Call back .', now: now).text, 'Call back .');
     });
   });
 
@@ -359,6 +440,33 @@ void main() {
       );
     });
 
+    test("D38-5: the user's default due time wins over the breakpoint", () {
+      for (final text in ['x 3rd', 'x 3rd jul']) {
+        expect(
+          parse(
+            text,
+            now: DateTime(2021, 6, 24, 12, 34, 56),
+            defaultTime: const ClockTime(17, 45),
+          ).date,
+          DateTime(2021, 7, 3, 17, 45),
+          reason: text,
+        );
+      }
+    });
+
+    test('in N units and calendar dates keep their own time (web parity)', () {
+      final now = DateTime(2021, 6, 24, 12, 34, 56);
+      const defaultTime = ClockTime(17, 45);
+      expect(
+        parse('x in 2 days', now: now, defaultTime: defaultTime).date,
+        DateTime(2021, 6, 26, 12, 34, 56),
+      );
+      expect(
+        parse('x 7/3/2021', now: now, defaultTime: defaultTime).date,
+        DateTime(2021, 7, 3),
+      );
+    });
+
     test('D38-5: a past ordinal and month stays past (web parity)', () {
       expect(
         parse('Something sep 17th', now: DateTime(2026, 10, 8, 10)).date,
@@ -504,10 +612,10 @@ void main() {
     test('D38-9: punctuation may follow the unit (the web wants a space)', () {
       final comma = parse('Pay rent in 2 days, then call', now: now);
       expect(comma.date, DateTime(2021, 6, 26, 12, 34, 56, 789));
-      expect(comma.text, 'Pay rent , then call');
+      expect(comma.text, 'Pay rent, then call');
       final stop = parse('Call back in 4 Hours.', now: now);
       expect(stop.date, DateTime(2021, 6, 24, 16, 34, 56, 789));
-      expect(stop.text, 'Call back .');
+      expect(stop.text, 'Call back.');
       for (final text in ['x in 1 week; y', 'x in 1 week!', 'x in 1 week)']) {
         expect(
           parse(text, now: now).date,

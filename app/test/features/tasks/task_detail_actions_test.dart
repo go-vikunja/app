@@ -555,6 +555,35 @@ void main() {
       expect(find.text('Draft'), findsOneWidget);
     });
 
+    testWidgets('a task whose create was sent without an answer is not '
+        'promised to stay out of the trash', (tester) async {
+      data.tasks.all = [...data.tasks.all, sampleTask(id: -3, title: 'Draft')];
+      data.tasks.onServer[-3] = TaskOnServer.maybe;
+      await deleteFromSheet(tester, 'Draft');
+
+      expect(
+        find.text(en.taskDeleteDialogBodyUnconfirmed('Draft')),
+        findsOneWidget,
+      );
+      expect(find.text(en.taskDeleteDialogBodyUnsent('Draft')), findsNothing);
+      await confirm(tester);
+
+      expect(data.tasks.writes, ['delete -3']);
+    });
+
+    testWidgets('a create that cannot be read is not promised to stay out of '
+        'the trash either', (tester) async {
+      data.tasks.all = [...data.tasks.all, sampleTask(id: -3, title: 'Draft')];
+      data.tasks.onServerFailure = StateError('outbox unreadable');
+      await deleteFromSheet(tester, 'Draft');
+
+      expect(
+        find.text(en.taskDeleteDialogBodyUnconfirmed('Draft')),
+        findsOneWidget,
+      );
+      expect(find.text(en.taskDeleteDialogBodyUnsent('Draft')), findsNothing);
+    });
+
     testWidgets('the snackbar goes after 10 s', (tester) async {
       await deleteFromSheet(tester, 'Bare task');
       await confirm(tester);

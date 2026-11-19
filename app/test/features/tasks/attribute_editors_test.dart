@@ -147,18 +147,24 @@ void main() {
       }, 'a change of the reminders alone to $expected');
 
   group('due date', () {
-    Future<void> open(WidgetTester tester, int id) async {
+    Future<void> open(
+      WidgetTester tester,
+      int id, {
+      DisplaySettings display = slashed,
+    }) async {
       unawaited(
         editDueDate(
           page(tester),
           repository: data.tasks,
           task: task(id),
           now: now,
-          display: slashed,
+          display: display,
         ),
       );
       await tester.pumpAndSettle();
     }
+
+    Finder dialog() => find.text(en.taskDetailDueDateCoincideTitle);
 
     testWidgets('offers Today, Tomorrow and Next week at the breakpoint time '
         'with their moments, then Pick date; no Clear without a due date', (
@@ -309,6 +315,173 @@ void main() {
 
       await open(tester, 4);
       await tapIn(tester, find.byType(BottomSheet), en.shortcutToday);
+      expect(data.tasks.updates, [
+        (
+          4,
+          TaskChanges(
+            dueDate: DateChange.set(DateTime(2026, 10, 10, 9, 30).toUtc()),
+          ),
+        ),
+      ]);
+    });
+
+    testWidgets('without a time set, the shortcuts and the time dialog take '
+        "the user's default due time", (tester) async {
+      const display = DisplaySettings(
+        dateDisplay: DateDisplay.dayMonthYearSlashed,
+        timeFormat: TimeFormat.twentyFourHour,
+        defaultDueTime: ClockTime(17, 45),
+      );
+      await pumpApp(tester);
+      await open(tester, 1, display: display);
+
+      expect(
+        [for (final option in options(tester)) option.shown],
+        ['10/10/2026 17:45', '11/10/2026 17:45', '17/10/2026 17:45', null],
+      );
+
+      await tapIn(tester, find.byType(BottomSheet), en.newTaskPickDate);
+      await tester.tap(find.text('20'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.updates, [
+        (
+          1,
+          TaskChanges(
+            dueDate: DateChange.set(DateTime(2026, 10, 20, 17, 45).toUtc()),
+          ),
+        ),
+      ]);
+
+      await open(tester, 2, display: display);
+      expect(options(tester).first.shown, '10/10/2026 09:30');
+    });
+
+    testWidgets('Cancel in the time dialog after Pick date writes nothing', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await open(tester, 2);
+
+      await tapIn(tester, find.byType(BottomSheet), en.newTaskPickDate);
+      await tester.tap(find.text('20'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      expect(find.byType(TimePickerDialog), findsOneWidget);
+      tester.takeAnnouncements();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TimePickerDialog), findsNothing);
+      expect(data.tasks.updates, isEmpty);
+      expect(task(2).dueDate, due.toUtc());
+      expect(said(tester), isEmpty);
+    });
+
+    testWidgets('a due date that puts a relative reminder on the moment of '
+        'another asks first: Cancel writes nothing, Change anyway writes it', (
+      tester,
+    ) async {
+      // A day before Today's 09:30 is when the absolute reminder fires.
+      data.tasks.all = [
+        ...data.tasks.all,
+        sampleTask(
+          id: 4,
+          title: 'Taxes',
+          due: due,
+          reminders: [
+            dayBefore,
+            TaskReminder(reminder: DateTime(2026, 10, 9, 9, 30).toUtc()),
+          ],
+        ),
+      ];
+      await pumpApp(tester);
+      await open(tester, 4);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutToday);
+
+      expect(dialog(), findsOneWidget);
+      expect(find.text(en.taskDetailDueDateCoincideBody), findsOneWidget);
+      await tester.tap(find.text(en.cancel));
+      await tester.pumpAndSettle();
+      expect(dialog(), findsNothing);
+      expect(data.tasks.updates, isEmpty);
+      expect(said(tester), isEmpty);
+
+      await open(tester, 4);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutToday);
+      await tester.tap(find.text(en.taskDetailDueDateCoincideConfirm));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.updates, [
+        (
+          4,
+          TaskChanges(
+            dueDate: DateChange.set(DateTime(2026, 10, 10, 9, 30).toUtc()),
+          ),
+        ),
+      ]);
+      expect(said(tester), [
+        en.taskDueSemantics(written('Saturday, October 10, 2026', '09:30')),
+      ]);
+    });
+
+    testWidgets('clearing the due date of two reminders relative to it asks '
+        'first; a change that keeps every reminder on a moment of its own '
+        'does not', (tester) async {
+      data.tasks.all = [
+        ...data.tasks.all,
+        sampleTask(
+          id: 4,
+          title: 'Taxes',
+          due: due,
+          reminders: [dayBefore, twoHoursBefore],
+        ),
+      ];
+      await pumpApp(tester);
+      await open(tester, 4);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutNextWeek);
+      expect(dialog(), findsNothing);
+      expect(data.tasks.updates, hasLength(1));
+
+      await open(tester, 4);
+      await tapIn(tester, find.byType(BottomSheet), en.taskEditClearDueDate);
+      expect(dialog(), findsOneWidget);
+      await tester.tap(find.text(en.taskDetailDueDateCoincideConfirm));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.updates.last, (
+        4,
+        const TaskChanges(dueDate: DateChange.clear()),
+      ));
+    });
+
+    testWidgets('reminders that already share a moment before the change do '
+        'not ask', (tester) async {
+      TaskReminder beforeStart(Duration period) => TaskReminder(
+        relativePeriod: -period,
+        relativeTo: ReminderRelativeTo.startDate,
+      );
+      // Without a start date both fall on the same unset moment.
+      data.tasks.all = [
+        ...data.tasks.all,
+        sampleTask(
+          id: 4,
+          title: 'Taxes',
+          due: due,
+          reminders: [
+            beforeStart(const Duration(days: 1)),
+            beforeStart(const Duration(hours: 2)),
+          ],
+        ),
+      ];
+      await pumpApp(tester);
+      await open(tester, 4);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutToday);
+
+      expect(dialog(), findsNothing);
       expect(data.tasks.updates, [
         (
           4,
@@ -664,6 +837,35 @@ void main() {
 
       expect(data.tasks.updates, isEmpty);
       expect(messages, isEmpty);
+    });
+
+    testWidgets('a due date that would put reminders on one moment, once the '
+        'screen that asked is gone, is not written, and that is said', (
+      tester,
+    ) async {
+      replaceRow(
+        2,
+        (row) => row.copyWith(reminders: [dayBefore, twoHoursBefore]),
+      );
+      await pumpApp(tester);
+      final screen = await ScreenToLeave.push(tester);
+      unawaited(
+        editDueDate(
+          screen.context,
+          repository: data.tasks,
+          task: task(2),
+          now: now,
+          display: slashed,
+        ),
+      );
+      await tester.pumpAndSettle();
+      await screen.leave(tester);
+
+      await tapIn(tester, find.byType(BottomSheet), en.taskEditClearDueDate);
+
+      expect(find.text(en.taskDetailDueDateCoincideBody), findsNothing);
+      expect(data.tasks.updates, isEmpty);
+      expect(said(tester), [en.taskDetailDueDateNotChanged]);
     });
 
     testWidgets('Pick date once the screen that asked is gone opens no date '

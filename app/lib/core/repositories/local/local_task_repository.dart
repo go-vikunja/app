@@ -570,6 +570,10 @@ final class LocalTaskRepository
     return deletion;
   }
 
+  @override
+  Future<TaskOnServer> taskOnServer(int taskId) =>
+      _db.outboxDao.taskOnServer(taskId);
+
   /// A delete on its way is polled for until it was answered or went back
   /// to the queue, at most [restoreWait].
   @override

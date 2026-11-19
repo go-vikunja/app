@@ -67,5 +67,20 @@ UserSettings parseUserSettings(Object? json) {
       final String kind => ProjectViewKind.fromWire(kind),
       _ => null,
     },
+    defaultDueTime: _parseDefaultDueTime(frontend['default_due_time']),
+    defaultTaskRelationType: switch (frontend['default_task_relation_type']) {
+      final String kind =>
+        TaskRelationKind.fromWire(kind) ?? TaskRelationKind.related,
+      _ => TaskRelationKind.related,
+    },
   );
 }
+
+// The web's getDateWithTime takes only two-digit hours, where the server's
+// own times also allow one.
+final _twoDigitTime = RegExp(r'^\d{2}:\d{2}$');
+
+ClockTime? _parseDefaultDueTime(Object? value) =>
+    value is String && _twoDigitTime.hasMatch(value)
+    ? ClockTime.tryParse(value)
+    : null;

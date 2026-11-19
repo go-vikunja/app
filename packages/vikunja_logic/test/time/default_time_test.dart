@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
 void main() {
@@ -56,6 +57,24 @@ void main() {
     test('after 21:00 it is 09:00 of the day, even today (D38-6)', () {
       final now = DateTime(2026, 8, 4, 22, 30);
       expect(atDefaultTime(now, now: now), DateTime(2026, 8, 4, 9));
+    });
+
+    test("the user's default due time wins over the breakpoint, at any "
+        'hour', () {
+      for (final now in [
+        DateTime(2026, 8, 4, 10, 15),
+        DateTime(2026, 8, 4, 22, 30),
+      ]) {
+        expect(
+          atDefaultTime(
+            DateTime(2026, 9, 20, 7, 33, 12, 5),
+            now: now,
+            defaultTime: const ClockTime(17, 45),
+          ),
+          DateTime(2026, 9, 20, 17, 45),
+          reason: '$now',
+        );
+      }
     });
   });
 }

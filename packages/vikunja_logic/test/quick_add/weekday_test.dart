@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
 import 'parse_helpers.dart';
@@ -123,6 +124,17 @@ void main() {
       expect(
         parse('x next mon at 3pm', now: DateTime(2021, 6, 24, 12, 34)).date,
         DateTime(2021, 6, 28, 15),
+      );
+    });
+
+    test("the user's default due time wins over the breakpoint", () {
+      expect(
+        parse(
+          'x fri',
+          now: DateTime(2021, 6, 24, 12, 34, 56),
+          defaultTime: const ClockTime(17, 45),
+        ).date,
+        DateTime(2021, 6, 25, 17, 45),
       );
     });
   });

@@ -11,7 +11,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/date_time_pic
 
 /// One date of the edit page: the row opens the picker, the trailing
 /// button clears, the chips below jump to a day and keep the time already
-/// set (else the breakpoint time for [now]).
+/// set (else the user's default due time, else the breakpoint time for
+/// [now]).
 class DateField extends ConsumerWidget {
   const new({
     required this.label,
@@ -49,6 +50,9 @@ class DateField extends ConsumerWidget {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
     final formatter = MomentFormatter.watch(context, ref);
+    final defaultTime = ref.watch(
+      displaySettingsProvider.select((display) => display.defaultDueTime),
+    );
     final local = value?.toLocal();
     final selectedDay = local == null
         ? null
@@ -81,7 +85,12 @@ class DateField extends ConsumerWidget {
           onSelected: (option) => onChanged(
             option == null
                 ? null
-                : dayWithTime(option.day, current: value, now: now),
+                : dayWithTime(
+                    option.day,
+                    current: value,
+                    now: now,
+                    defaultTime: defaultTime,
+                  ),
           ),
         ),
         const SizedBox(height: 8),

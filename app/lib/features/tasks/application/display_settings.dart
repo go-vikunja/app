@@ -6,16 +6,22 @@ import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 
 part 'display_settings.g.dart';
 
-/// The user's web settings for showing dates and times; null fields were
-/// never set, so the app's own formats apply.
+/// The user's web settings for showing and picking dates and times; null
+/// fields were never set, so the app's own formats and times apply.
 @immutable
 final class DisplaySettings {
-  const new({this.dateDisplay, this.timeFormat, this.weekStart = 0});
+  const new({
+    this.dateDisplay,
+    this.timeFormat,
+    this.weekStart = 0,
+    this.defaultDueTime,
+  });
 
   factory from(UserSettings settings) => DisplaySettings(
     dateDisplay: settings.dateDisplay,
     timeFormat: settings.timeFormat,
     weekStart: settings.weekStart,
+    defaultDueTime: settings.defaultDueTime,
   );
 
   final DateDisplay? dateDisplay;
@@ -23,6 +29,9 @@ final class DisplaySettings {
 
   /// 0 = Sunday … 6 = Saturday.
   final int weekStart;
+
+  /// The time a date picked without one takes; null for the breakpoint.
+  final ClockTime? defaultDueTime;
 
   /// The first column of a calendar grid, as `MaterialLocalizations`
   /// counts it; null for the device locale's. The server's default 0 cannot
@@ -42,10 +51,12 @@ final class DisplaySettings {
       other is DisplaySettings &&
       other.dateDisplay == dateDisplay &&
       other.timeFormat == timeFormat &&
-      other.weekStart == weekStart;
+      other.weekStart == weekStart &&
+      other.defaultDueTime == defaultDueTime;
 
   @override
-  int get hashCode => Object.hash(dateDisplay, timeFormat, weekStart);
+  int get hashCode =>
+      Object.hash(dateDisplay, timeFormat, weekStart, defaultDueTime);
 }
 
 @riverpod

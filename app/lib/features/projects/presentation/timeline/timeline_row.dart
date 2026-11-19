@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/features/common/presentation/drawn_text_style.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_days.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/selected_task_highlight.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
@@ -32,10 +33,12 @@ final class TimelineRowMetrics {
   static const chevronWidth = 48.0;
   static const labelGap = 8.0;
 
-  static TextStyle titleStyleOf(BuildContext context) =>
-      (Theme.of(context).textTheme.labelLarge ?? const TextStyle()).copyWith(
-        height: 1.3,
-      );
+  static TextStyle titleStyleOf(BuildContext context) => drawnTextStyle(
+    context,
+    (Theme.of(context).textTheme.labelLarge ?? const TextStyle()).copyWith(
+      height: 1.3,
+    ),
+  );
 }
 
 /// A row: the bar over its days with the title inside when it fits, else

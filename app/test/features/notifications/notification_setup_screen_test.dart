@@ -227,7 +227,9 @@ void main() {
       expect(onboarded(), isFalse);
       expect(location(tester), AppRoutes.notificationsSetup);
       expect(find.text(en.notificationSetupExactTitle), findsOneWidget);
-      expect(find.text(en.notificationSetupExactBody), findsOneWidget);
+      expect(find.text(en.notificationSetupExactBodyLate), findsOneWidget);
+      // Android may deliver an inexact alarm up to an hour late (D39).
+      expect(en.notificationSetupExactBodyLate, contains('up to an hour late'));
       expect(find.text(en.notificationSetupReminders), findsNothing);
 
       await tapButton(tester, en.notificationSetupExactAllow);

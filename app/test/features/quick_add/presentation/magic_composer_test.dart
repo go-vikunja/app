@@ -911,6 +911,20 @@ void main() {
       expect(find.text(en.newTaskCreated('Fix bike')), findsOneWidget);
     });
 
+    testWidgets('a title over the limit is confirmed as cut', (tester) async {
+      harness.service.result = const QuickAddResult(createdTaskIds: [-1]);
+      await harness.open(tester);
+      // Too long without a space: the title is the address's host.
+      await typeLine(
+        tester,
+        'https://example.com/${'a' * Task.maxTitleLength}',
+      );
+      await tester.tap(addButton());
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.newTaskCreated('example.com')), findsOneWidget);
+    });
+
     testWidgets('a person known here whom the server did not accept stays '
         'in the confirmed title', (tester) async {
       harness.service.result = const QuickAddResult(

@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
@@ -478,20 +479,25 @@ final class TaskOpener {
               .has(Capability.trash) ??
           false);
 
-  /// "This task is in the bin" with Restore, which brings the task back
-  /// and opens it.
-  Future<void> _offerRestore(String accountId, int taskId) =>
-      showAfterFrame((context) {
-        final l10n = context.l10n;
-        showDeletedSnackBar(
-          ScaffoldMessenger.of(context),
-          text: l10n.taskOpenInTrash,
-          undoLabel: l10n.trashRestore,
-          persist: MediaQuery.accessibleNavigationOf(context),
-          onUndo: () => unawaited(_restore(accountId, taskId)),
-        );
-      });
+  /// "This task is in the bin", or [text], with Restore, which brings the
+  /// task back and opens it.
+  Future<void> _offerRestore(
+    String accountId,
+    int taskId, {
+    String Function(AppLocalizations l10n)? text,
+  }) => showAfterFrame((context) {
+    final l10n = context.l10n;
+    showDeletedSnackBar(
+      ScaffoldMessenger.of(context),
+      text: text?.call(l10n) ?? l10n.taskOpenInTrash,
+      undoLabel: l10n.trashRestore,
+      persist: MediaQuery.accessibleNavigationOf(context),
+      onUndo: () => unawaited(_restore(accountId, taskId)),
+    );
+  });
 
+  /// A failure that may pass offers Restore again, while the account is
+  /// still the active one.
   Future<void> _restore(String accountId, int taskId) async {
     unawaited(HapticFeedback.selectionClick());
     final Task task;
@@ -503,13 +509,25 @@ final class TaskOpener {
     } on Object catch (error) {
       _log.info('Could not restore a task: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
-      await showMessage(
-        (l10n) => trashFailureText(l10n, error, TrashAction.restoreTask),
-      );
+      String text(AppLocalizations l10n) =>
+          trashFailureText(l10n, error, TrashAction.restoreTask);
+      final again =
+          _mayPass(error) && isActive(accountId) && _mayRestore(accountId);
+      await (again
+          ? _offerRestore(accountId, taskId, text: text)
+          : showMessage(text));
       return;
     }
     if (isActive(accountId)) await showTask(task);
   }
+
+  static bool _mayPass(Object error) => switch (error) {
+    TaskDeleteInFlight() ||
+    NetworkFailure() ||
+    ServerFailure() ||
+    RateLimited() => true,
+    _ => false,
+  };
 
   /// Only the active account when it has the task, else the others that
   /// have it.

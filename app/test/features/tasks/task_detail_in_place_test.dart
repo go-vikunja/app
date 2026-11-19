@@ -285,6 +285,26 @@ void main() {
       expect(inSheet(find.byType(LabelPill)), findsOneWidget);
     });
 
+    testWidgets("Today takes the default due time of the user's settings", (
+      tester,
+    ) async {
+      data.shared.settings = const UserSettings(
+        defaultDueTime: ClockTime(17, 45),
+      );
+      await pumpApp(tester);
+      await openStored(tester, 2);
+
+      await tap(tester, addButton(en.taskDetailDueDate));
+      await tap(tester, over(find.text(en.shortcutToday)));
+
+      expect(data.tasks.updates.single, (
+        2,
+        TaskChanges(
+          dueDate: DateChange.set(DateTime(2026, 10, 10, 17, 45).toUtc()),
+        ),
+      ));
+    });
+
     testWidgets('the due date, priority and reminder rows are buttons with '
         'their hints, labels have a button of their own, the other rows '
         'stay text', (tester) async {

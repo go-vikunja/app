@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/layout/readable_snack_bars.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
@@ -199,11 +200,13 @@ class _PaneEntryState extends State<_PaneEntry> {
   }
 
   @override
-  Widget build(BuildContext context) => TaskDetailSheet(
-    task: widget.entry.task,
-    scrollController: _scroll,
-    commentId: _commentId,
-    board: widget.entry.board,
-    pane: widget.host,
+  Widget build(BuildContext context) => ReadableSnackBars(
+    child: TaskDetailSheet(
+      task: widget.entry.task,
+      scrollController: _scroll,
+      commentId: _commentId,
+      board: widget.entry.board,
+      pane: widget.host,
+    ),
   );
 }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
@@ -26,7 +27,8 @@ final _log = Logger('NotificationTap');
 /// shell shows, in the notification's account, with the detail sheet over
 /// the Overview or over a page that covers the shell. An activity
 /// notification is marked read first and opens the inbox when it names no
-/// task, and so does the one that stands for several; a test notification
+/// task, a team membership its team, and the one that stands for several
+/// the inbox; a test notification
 /// and one about an ended session open the Account tab, after the pages
 /// over the shell went as if the user went back (the edit page asks
 /// first). The reminder to open the app before a session ends only opens
@@ -149,11 +151,17 @@ class _NotificationTapListenerState
     final activityId = ActivityTray.activityIdOf(payload.key);
     int? commentId;
     if (activityId != null) {
-      commentId = await _commentOf(payload.accountId, activityId);
+      final stored = await _storedActivity(payload.accountId, activityId);
+      commentId = stored == null ? null : commentIdOf(stored);
       await _markActivityRead(payload.accountId, activityId);
       if (!mounted || !_opener.isActive(payload.accountId)) return;
       if (payload.taskId == 0) {
-        _openInbox();
+        switch (_teamOf(stored)) {
+          case final teamId?:
+            _openTeam(teamId);
+          case null:
+            _openInbox();
+        }
         return;
       }
     }
@@ -177,19 +185,27 @@ class _NotificationTapListenerState
     await _opener.showTask(found, commentId: commentId);
   }
 
-  /// The comment the stored notification names, which the payload does not
-  /// carry; null when there is none or it cannot be read.
-  Future<int?> _commentOf(String accountId, int activityId) async {
+  /// The stored notification, for the comment or team it names, which the
+  /// payload does not carry; null when it cannot be read.
+  Future<ServerNotification?> _storedActivity(
+    String accountId,
+    int activityId,
+  ) async {
     try {
-      final stored = await _opener.withAccount(
+      return await _opener.withAccount(
         accountActivityRepositoryProvider(accountId),
         (activity) => activity.find(activityId),
       );
-      return stored == null ? null : commentIdOf(stored);
     } on Object catch (error) {
       _log.fine('Could not read the tapped notification: ${error.runtimeType}');
       return null;
     }
+  }
+
+  static int? _teamOf(ServerNotification? stored) {
+    if (stored == null) return null;
+    final item = ActivityItem.fromNotification(stored);
+    return item.kind == ActivityKind.teamMemberAdded ? item.teamId : null;
   }
 
   /// Read on the notification's account, which need not be active yet; a
@@ -207,11 +223,15 @@ class _NotificationTapListenerState
     }
   }
 
-  void _openInbox() {
+  void _openInbox() => _push(AppRoutes.inbox);
+
+  void _openTeam(int teamId) => _push(AppRoutes.team(teamId));
+
+  void _push(String location) {
     ref.read(rootModalRoutesProvider).closeAll();
     final router = _opener.router;
-    if (router.routerDelegate.state.matchedLocation != AppRoutes.inbox) {
-      unawaited(router.push(AppRoutes.inbox));
+    if (router.routerDelegate.state.matchedLocation != location) {
+      unawaited(router.push(location));
     }
   }
 

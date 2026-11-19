@@ -23,6 +23,7 @@ import 'package:vikunja_mobile/features/connection/application/certificate_check
 import 'package:vikunja_mobile/features/connection/application/certificate_file.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_texts.dart';
 import 'package:vikunja_mobile/features/connection/presentation/fingerprint_view.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
 
 final _log = Logger('CertificatePage');
 
@@ -33,7 +34,8 @@ const _fingerprintCommand =
 /// The certificate [origin] presents now, fetched without sending a byte
 /// of HTTP, to trust it or a CA certificate for exactly that address.
 /// With a trusted certificate that the server no longer presents, a review
-/// of the trusted, the recorded and the current certificate.
+/// of the trusted, the recorded and the current certificate. Leaving while
+/// a picked CA certificate still waits for a choice asks first.
 class CertificatePage extends ConsumerStatefulWidget {
   const new({required this.origin, super.key});
 
@@ -82,6 +84,18 @@ class _CertificatePageState extends ConsumerState<CertificatePage> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  bool get _caPending =>
+      _caOutcome is _CaUnchecked || _caOutcome is _CaLeafNotTrusted;
+
+  Future<void> _leaveIfConfirmed() async {
+    final navigator = Navigator.of(context);
+    final discard = await confirmDiscardChanges(
+      context,
+      body: context.l10n.connectionCaDiscardBody,
+    );
+    if (discard && mounted) navigator.pop();
   }
 
   void _say(String message) => ScaffoldMessenger.of(context)
@@ -162,7 +176,7 @@ class _CertificatePageState extends ConsumerState<CertificatePage> {
       _ => pin != null && profile?.lastPinMismatch != null,
     };
 
-    return Scaffold(
+    final page = Scaffold(
       appBar: AppBar(
         title: ScreenTitle(
           review
@@ -207,6 +221,14 @@ class _CertificatePageState extends ConsumerState<CertificatePage> {
           ),
         ),
       ),
+    );
+    return PopScope(
+      // A save under way stores the choice either way.
+      canPop: _busy || !_caPending,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) unawaited(_leaveIfConfirmed());
+      },
+      child: page,
     );
   }
 

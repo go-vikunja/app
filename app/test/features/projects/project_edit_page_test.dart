@@ -134,9 +134,7 @@ void main() {
     await pumpEdit(tester, 9);
 
     expect(find.text(en.projectTitleTooLong), findsOneWidget);
-    await tester.tap(
-      find.bySemanticsLabel(en.taskEditColourSemantics('#0072b2')),
-    );
+    await tester.tap(find.bySemanticsLabel(en.colorNameBlue));
     await tester.pump();
     expect(saveButton(tester, en).onPressed, isNull);
 
@@ -313,9 +311,7 @@ void main() {
       'trying another', (tester) async {
     await pumpEdit(tester, 1);
 
-    await tester.tap(
-      find.bySemanticsLabel(en.taskEditColourSemantics('#e69f00')),
-    );
+    await tester.tap(find.bySemanticsLabel(en.colorNameOrange));
     await tester.pump();
     expect(saveButton(tester, en).onPressed, isNotNull);
     await tester.tap(

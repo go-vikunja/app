@@ -27,6 +27,7 @@ ParsedTaskText fakeParse(
   String text, {
   required DateTime now,
   required QuickAddMagicMode mode,
+  ClockTime? defaultTime,
 }) {
   final prefixes = fakePrefixes(mode);
   if (prefixes == null) return ParsedTaskText(text: text);

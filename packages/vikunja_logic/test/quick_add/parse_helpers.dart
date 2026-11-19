@@ -8,7 +8,13 @@ ParsedTaskText parse(
   String text, {
   DateTime? now,
   QuickAddMagicMode mode = QuickAddMagicMode.vikunja,
-}) => parseTaskText(text, now: now ?? tableNow, mode: mode);
+  ClockTime? defaultTime,
+}) => parseTaskText(
+  text,
+  now: now ?? tableNow,
+  mode: mode,
+  defaultTime: defaultTime,
+);
 
 String ymd(DateTime? date) =>
     date == null ? 'null' : '${date.year}-${date.month}-${date.day}';

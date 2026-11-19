@@ -419,7 +419,7 @@ const guestActionInventory = <String, GuestActionEntry>{
     uses: {'labelRepositoryProvider'},
   ),
   'features/notifications/presentation/notification_tap_listener.dart '
-      '_NotificationTapListenerState._commentOf': (
+      '_NotificationTapListenerState._storedActivity': (
     _activityTap,
     uses: {'accountActivityRepositoryProvider'},
   ),

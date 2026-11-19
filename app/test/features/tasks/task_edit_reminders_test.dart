@@ -381,6 +381,25 @@ void main() {
       );
     });
 
+    testWidgets("picks tomorrow at the user's default due time when set", (
+      tester,
+    ) async {
+      data.shared.settings = const UserSettings(
+        defaultDueTime: ClockTime(17, 45),
+      );
+      await openTask(tester, sampleTask(id: 1, title: 'Report'));
+      await openAddSheet(tester);
+
+      await tester.tap(inSheet(find.text(en.reminderPickerDateTime)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Oct 11, 2026 5:45 PM'), findsOneWidget);
+    });
+
     testWidgets("editing one keeps its instant as the picker's start", (
       tester,
     ) async {

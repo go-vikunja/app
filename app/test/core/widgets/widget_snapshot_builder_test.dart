@@ -683,6 +683,34 @@ void main() {
         'Create one on the Projects tab first.',
       );
     });
+
+    test('tells a read-only guest why, not to create a project', () async {
+      await db.projectsDao.upsertAll([
+        sampleProject(
+          id: 1,
+          title: 'Inbox',
+        ).copyWith(maxPermission: Permission.read),
+      ]);
+
+      final quickAdd = await one(
+        const QuickAddKind(),
+        account: const WidgetAccount(
+          id: accountId,
+          title: 'Helper',
+          host: 'vikunja.example.com',
+          isGuest: true,
+          sessionEnded: false,
+          supportsV2: true,
+        ),
+      );
+
+      expect(quickAdd.newTaskLink, isNull);
+      expect(
+        quickAdd.empty?.title,
+        "You can't add tasks through this shared link: it is read-only, or "
+        'the project is archived.',
+      );
+    });
   });
 
   group('catalog', () {

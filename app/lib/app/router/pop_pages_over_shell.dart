@@ -29,28 +29,25 @@ enum LeaveOutcome {
 /// or a sheet asks before its unsaved changes go; `go` or closing them would
 /// drop those without asking. A question one shows is waited for: null or
 /// false (Keep editing, a tap beside it) stays, any other answer waits for
-/// the page or sheet to go. A dialog or sheet that would not ask closes
-/// without an exit animation, as an account switch closes them.
+/// the page or sheet to go, and a sheet or dialog also for the end of its
+/// exit animation. A dialog or sheet that would not ask closes without an
+/// exit animation, as an account switch closes them.
 Future<LeaveOutcome> popPagesOverShell(GoRouter router) => _popPages(
   router,
   done: (location, modal) => modal == null && AppRoutes.isTab(location),
 );
 
 /// Like [popPagesOverShell], but only the pages outside `/home` that cover
-/// the shell, such as About and Connection, with the dialogs and sheets
-/// over them; the pages, dialogs and sheets under `/home` stay. A
-/// Connection editor stays too, with what is over it: it would drop typed
-/// values without asking.
+/// the shell, such as About, Connection and its editors, with the dialogs
+/// and sheets over them; the pages, dialogs and sheets under `/home` stay.
 Future<LeaveOutcome> popPagesOutsideHome(GoRouter router) => _popPages(
   router,
   done: (location, _) => location.startsWith(AppRoutes.home),
-  stays: (top) => AppRoutes.connectionEditorIn(top.uri) != null,
 );
 
 Future<LeaveOutcome> _popPages(
   GoRouter router, {
   required bool Function(String location, Route<Object?>? modal) done,
-  bool Function(GoRouterState top)? stays,
 }) async {
   final delegate = router.routerDelegate;
   final modals = router.observers?.whereType<RootModalRoutes>().firstOrNull;
@@ -63,7 +60,6 @@ Future<LeaveOutcome> _popPages(
         (modal == null && !navigator.canPop())) {
       return LeaveOutcome.left;
     }
-    if (stays?.call(top) ?? false) return LeaveOutcome.stayed;
     // A page pushed from a sheet covers it and goes first.
     final shown = modal != null && modal.isCurrent ? modal : null;
     if (shown != null && shown.popDisposition != RoutePopDisposition.doNotPop) {
@@ -83,6 +79,11 @@ Future<LeaveOutcome> _popPages(
     final answer = await question.popped;
     if (answer == null || answer == false) return LeaveOutcome.stayed;
     if (!await _goes(delegate, shown, gone)) return LeaveOutcome.slow;
+    // Sliding out during a switch, a sheet would show the next account's
+    // data.
+    if (shown is TransitionRoute<Object?>) {
+      await shown.completed.timeout(_leaveTimeout, onTimeout: () => null);
+    }
   }
 }
 

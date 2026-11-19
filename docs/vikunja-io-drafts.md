@@ -162,6 +162,8 @@ While you are offline, a banner says so. On the **Account** tab, **Pending chang
 
 The app creates reminders on your device from its copy of your tasks, at each reminder and at the due time, so they come without a connection too. A task created on the web reaches your device with the next sync: about every 30 minutes on Android while the app is closed, and when iOS allows it on iPhone and iPad. Opening the app syncs at once.
 
+On Vikunja 2.8.0 and later, reminders and due dates come for the tasks you follow: the ones you create or are assigned to, and those in projects you follow. To follow a task or stop its notifications, tap the bell at the top of the task (**Follow task** or **Unfollow task**), or choose **Follow project** in a project's menu; this needs a connection.
+
 The **Notifications** section of the **Account** tab sets, for each account, which notifications you get, and has **Send a test notification**.
 
 ## Widgets

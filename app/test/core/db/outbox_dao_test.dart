@@ -1094,6 +1094,43 @@ void main() {
       expect(await db.tasksDao.find(id), isNull);
     });
 
+    test(
+      'whether the server has the task, for the delete confirmation',
+      () async {
+        expect(await db.outboxDao.taskOnServer(1), TaskOnServer.yes);
+
+        final unsent = await create();
+        expect(await db.outboxDao.taskOnServer(unsent), TaskOnServer.no);
+
+        final inFlight = await create();
+        await db.outboxDao.markSending((await createOp(inFlight)).id, at: now);
+        expect(await db.outboxDao.taskOnServer(inFlight), TaskOnServer.maybe);
+
+        final unanswered = await create();
+        final unansweredOp = await createOp(unanswered);
+        await db.outboxDao.markSending(unansweredOp.id, at: now);
+        await db.outboxDao.markUncertain(unansweredOp.id, sentAt: now);
+        await db.outboxDao.retry(unansweredOp.id);
+        expect(await db.outboxDao.taskOnServer(unanswered), TaskOnServer.maybe);
+
+        final refused = await create();
+        final refusedOp = await createOp(refused);
+        await db.outboxDao.markSending(refusedOp.id, at: now);
+        await db.outboxDao.markFailed(
+          refusedOp.id,
+          const DomainError(412, code: 3008),
+        );
+        expect(await db.outboxDao.taskOnServer(refused), TaskOnServer.no);
+
+        await db.outboxDao.completeCreate(
+          (await createOp(inFlight)).id,
+          sampleTask(id: 50, title: 'Buy milk', projectId: 7),
+          at: later,
+        );
+        expect(await db.outboxDao.taskOnServer(inFlight), TaskOnServer.yes);
+      },
+    );
+
     group('cancelDeletedCreate', () {
       test(
         'drops a create never sent with its queued delete and the row',

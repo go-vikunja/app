@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' as intl;
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/drawn_text_style.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_days.dart';
 
 /// The timeline's two header rows: each month's name and year, kept on
@@ -86,7 +87,7 @@ class TimelineHeader extends StatelessWidget {
     final direction = Directionality.of(context);
     double widthOf(String text, TextStyle style) {
       final painter = TextPainter(
-        text: TextSpan(text: text, style: style),
+        text: TextSpan(text: text, style: drawnTextStyle(context, style)),
         textScaler: scaler,
         textDirection: direction,
         maxLines: 1,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
@@ -30,14 +31,19 @@ import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_screen.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notifications_section.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
+import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/teams/presentation/team_page.dart';
 
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/connection_fakes.dart';
 import '../../helpers/editor_bridge_fakes.dart';
+import '../../helpers/fake_quick_add_service.dart';
 import '../../helpers/label_user_fakes.dart';
 import '../../helpers/notification_ui_fakes.dart';
 import '../../helpers/pump_app.dart';
@@ -341,10 +347,7 @@ void main() {
       expect(plantsTask(), findsOneWidget);
     });
 
-    testWidgets('a Connection editor stays with what was typed, as it '
-        'would not ask; the task opens once the user is back under /home', (
-      tester,
-    ) async {
+    Future<void> openHeadersEditor(WidgetTester tester, {String? typed}) async {
       await pumpSignedInApp(
         tester,
         auth: auth,
@@ -356,7 +359,7 @@ void main() {
         tester,
         AppRoutes.connectionFor(origin, editor: ConnectionEditor.headers),
       );
-      const typed = 'dummy-client-secret';
+      if (typed == null) return;
       await tester.enterText(
         find
             .descendant(
@@ -367,8 +370,18 @@ void main() {
         typed,
       );
       await tester.pumpAndSettle();
+    }
+
+    testWidgets('a Connection editor with a typed value asks; Keep editing '
+        'keeps it with the value, and the task opens once the user is back '
+        'under /home', (tester) async {
+      const typed = 'dummy-client-secret';
+      await openHeadersEditor(tester, typed: typed);
 
       notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+      await tester.pumpAndSettle();
+      expect(find.text(en.connectionHeadersDiscardBody), findsOneWidget);
+      await tester.tap(find.text(en.taskEditKeepEditing));
       await tester.pumpAndSettle();
 
       expect(find.byType(HeadersPage), findsOneWidget);
@@ -377,6 +390,8 @@ void main() {
 
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
       expect(find.byType(HeadersPage), findsNothing);
       expect(find.byType(ConnectionPage), findsOneWidget);
       expect(sheet, findsNothing);
@@ -384,6 +399,35 @@ void main() {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
 
+      expect(location(tester), AppRoutes.overview);
+      expect(plantsTask(), findsOneWidget);
+    });
+
+    testWidgets('Discard in a Connection editor lets it and Connection go, '
+        'and the task opens over the overview', (tester) async {
+      await openHeadersEditor(tester, typed: 'dummy-client-secret');
+
+      notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.taskEditDiscard));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HeadersPage), findsNothing);
+      expect(find.byType(ConnectionPage), findsNothing);
+      expect(location(tester), AppRoutes.overview);
+      expect(plantsTask(), findsOneWidget);
+      expect(await profilesOver(auth).metadataFor(origin), isNull);
+    });
+
+    testWidgets('a Connection editor with nothing typed goes without asking, '
+        'like Connection', (tester) async {
+      await openHeadersEditor(tester);
+
+      notifications.taps.tap(payload(accountId: activeAccountId(tester)));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(find.byType(HeadersPage), findsNothing);
       expect(location(tester), AppRoutes.overview);
       expect(plantsTask(), findsOneWidget);
     });
@@ -810,6 +854,98 @@ void main() {
       expect(bobsTask(), findsOneWidget);
     });
 
+    group('the New task sheet', () {
+      final newTask = find.byType(NewTaskSheet);
+
+      Future<void> typeNewTask(
+        WidgetTester tester, {
+        List<Override> overrides = const [],
+      }) async {
+        await accounts.pump(
+          tester,
+          notifications: notifications,
+          overrides: overrides,
+        );
+        await tester.tap(find.byType(FloatingActionButton));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.descendant(of: newTask, matching: find.byType(TextField)),
+          'Buy milk',
+        );
+        await tester.pumpAndSettle();
+      }
+
+      testWidgets('with a title typed asks; Keep editing keeps the sheet, '
+          'its title and the account', (tester) async {
+        await typeNewTask(tester);
+
+        await tapForBob(tester);
+        expect(find.text(en.newTaskDiscardTitle), findsOneWidget);
+        await tester.tap(find.text(en.taskEditKeepEditing));
+        await tester.pumpAndSettle();
+
+        expect(activeAccountId(tester), accounts.alice.id);
+        expect(newTask, findsOneWidget);
+        expect(find.widgetWithText(TextField, 'Buy milk'), findsOneWidget);
+        expect(bobsTask(), findsNothing);
+      });
+
+      testWidgets('while its add runs the sheet refuses the switch, also '
+          'with the title emptied meanwhile', (tester) async {
+        final held = Completer<void>();
+        final service = FakeQuickAddService(project: data.projects.all.first)
+          ..beforeSubmit = () => held.future;
+        await typeNewTask(
+          tester,
+          overrides: [quickAddServiceProvider.overrideWithValue(service)],
+        );
+        await tester.tap(find.text(en.newTaskAdd));
+        await tester.pump();
+        await tester.enterText(
+          find.descendant(of: newTask, matching: find.byType(TextField)),
+          '',
+        );
+        await tester.pump();
+
+        notifications.taps.tap(payload(accountId: accounts.bob.id, taskId: 31));
+        await tester.pump();
+        await tester.pump(const Duration(seconds: 1));
+        expect(find.text(en.newTaskDiscardTitle), findsNothing);
+        expect(newTask, findsOneWidget);
+
+        held.complete();
+        await tester.pumpAndSettle();
+        expect(service.submits.single.text, 'Buy milk');
+        expect(activeAccountId(tester), accounts.alice.id);
+        expect(bobsTask(), findsNothing);
+      });
+
+      testWidgets('Discard lets the switch go on once the sheet is gone, so '
+          "it never shows the next account's data", (tester) async {
+        await typeNewTask(tester);
+        expect(
+          find.descendant(of: newTask, matching: find.text('Work')),
+          findsOneWidget,
+        );
+
+        await tapForBob(tester);
+        await tester.tap(find.text(en.taskEditDiscard));
+        for (var frame = 0; frame < 40; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(
+            find.descendant(of: newTask, matching: find.text('Garden')),
+            findsNothing,
+          );
+        }
+        await tester.pumpAndSettle();
+
+        expect(activeAccountId(tester), accounts.bob.id);
+        expect(newTask, findsNothing);
+        expect(bobsTask(), findsOneWidget);
+        expect(accounts.aliceData.tasks.writes, isEmpty);
+      });
+    });
+
     testWidgets('a sheet that would not ask closes at once, never showing '
         "the next account's data", (tester) async {
       await accounts.pump(tester, notifications: notifications);
@@ -1063,6 +1199,51 @@ void main() {
       expect(location(tester), AppRoutes.inbox);
       expect(find.byType(InboxScreen), findsOneWidget);
       expect(find.text(en.notificationTestReceived), findsNothing);
+    });
+
+    testWidgets('a tap on a team membership marks it read and opens the '
+        'team', (tester) async {
+      const alice = User(id: 7, username: 'alice', name: 'Alice Example');
+      data.teams
+        ..me = alice
+        ..teams = [
+          Team(
+            id: 1,
+            name: 'Family',
+            members: const [TeamMember(user: alice)],
+          ),
+        ];
+      data.activity.notifications = [
+        inboxNotification(
+          id: 6,
+          name: 'team.member.added',
+          created: DateTime.now(),
+          payload: {
+            'doer': payloadUser(id: 2, username: 'anna', name: 'Anna'),
+            'member': payloadUser(id: 7, username: 'alice'),
+            'team': {'id': 1, 'name': 'Family'},
+          },
+        ),
+      ];
+      await pumpSignedInApp(
+        tester,
+        auth: auth,
+        sync: data,
+        notifications: notifications,
+      );
+
+      notifications.taps.tap(
+        payload(
+          accountId: activeAccountId(tester),
+          taskId: 0,
+          key: 'activity:6',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(data.activity.markedRead, [6]);
+      expect(location(tester), AppRoutes.team(1));
+      expect(find.byType(TeamPage), findsOneWidget);
     });
 
     testWidgets('a tap for a task that is not on this device says so', (

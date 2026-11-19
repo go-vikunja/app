@@ -211,6 +211,45 @@ void main() {
     expect(find.text(en.newTaskCreated('Buy milk')), findsOneWidget);
   });
 
+  testWidgets("a day chip takes the default due time of the user's "
+      'settings', (tester) async {
+    harness.settings = const UserSettings(defaultDueTime: ClockTime(17, 45));
+    await harness.open(tester, projectId: 1);
+
+    await typeLine(tester, 'Buy milk');
+    await tapInSheet(tester, en.shortcutTomorrow);
+    expect(
+      chipText(en.shortcutAtTime(en.shortcutTomorrow, '5:45 PM')),
+      findsOneWidget,
+    );
+    await tester.tap(addButton());
+    await tester.pumpAndSettle();
+
+    expect(
+      harness.service.submits.single.fallbackDueDate,
+      DateTime(2026, 10, 11, 17, 45).toUtc(),
+    );
+  });
+
+  testWidgets("a typed day and its chip agree on the user's default due "
+      'time', (tester) async {
+    harness.settings = const UserSettings(defaultDueTime: ClockTime(17, 45));
+    await harness.open(tester, projectId: 1);
+    final tomorrowAt = chipText(
+      en.shortcutAtTime(en.shortcutTomorrow, '5:45 PM'),
+    );
+
+    await typeLine(tester, 'Buy milk tomorrow');
+    await tester.pumpAndSettle();
+    expect(tomorrowAt, findsOneWidget);
+
+    await typeLine(tester, 'Buy milk');
+    await tester.pumpAndSettle();
+    expect(tomorrowAt, findsNothing);
+    await tapInSheet(tester, en.shortcutTomorrow);
+    expect(tomorrowAt, findsOneWidget);
+  });
+
   testWidgets('the headings sit above their rows, and the chosen day shows '
       'the time the due date gets', (tester) async {
     await harness.open(tester);
@@ -702,6 +741,8 @@ void main() {
     // The system's back, as the open options cover the scrim.
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
+    await tester.tap(find.text(en.taskEditDiscard));
+    await tester.pumpAndSettle();
 
     expect(find.byType(NewTaskSheet), findsNothing);
     expect(harness.labels.created, isEmpty);
@@ -730,6 +771,160 @@ void main() {
       QuickAddExtras(labels: [roadTrip], newLabels: const ['Errands']),
     );
     expect(harness.labels.created, isEmpty);
+  });
+
+  group('leaving with something typed', () {
+    final question = find.text(en.newTaskDiscardTitle);
+    final sheet = find.byType(NewTaskSheet);
+
+    Rect sheetRect(WidgetTester tester) =>
+        tester.getRect(find.byType(BottomSheet));
+
+    /// From the drag handle, past the sheet's own height.
+    Future<void> swipeDown(WidgetTester tester) async {
+      final rect = sheetRect(tester);
+      await tester.flingFrom(
+        rect.topCenter + const Offset(0, 12),
+        Offset(0, rect.height),
+        2000,
+      );
+    }
+
+    Future<void> answer(WidgetTester tester, String button) async {
+      await tester.tap(find.text(button));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('nothing typed, Back and a swipe down close the sheet '
+        'without asking; spaces alone count as nothing', (tester) async {
+      await harness.open(tester);
+      await typeLine(tester, '   ');
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(question, findsNothing);
+      expect(sheet, findsNothing);
+
+      await openSheet(tester);
+      await swipeDown(tester);
+      await tester.pumpAndSettle();
+      expect(question, findsNothing);
+      expect(sheet, findsNothing);
+    });
+
+    testWidgets('Back with a title typed asks; Keep editing keeps the sheet '
+        'and the title, Discard closes it and adds nothing', (tester) async {
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(question, findsOneWidget);
+      expect(find.text(en.newTaskDiscardBody), findsOneWidget);
+      await answer(tester, en.taskEditKeepEditing);
+      expect(sheet, findsOneWidget);
+      expect(composerText(tester), 'Buy milk');
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await answer(tester, en.taskEditDiscard);
+      expect(sheet, findsNothing);
+      expect(harness.service.submits, isEmpty);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('a tap beside the sheet and a description alone ask too', (
+      tester,
+    ) async {
+      await harness.open(tester);
+      await tapInSheet(tester, en.newTaskMoreOptions);
+      await tester.enterText(descriptionField(), 'Whole milk');
+      await tester.pump();
+      // The open options cover the scrim; closed, they keep the text.
+      await tapInSheet(tester, en.newTaskFewerOptions);
+
+      await tester.tapAt(const Offset(10, 10));
+      await tester.pumpAndSettle();
+      expect(question, findsOneWidget);
+      await answer(tester, en.taskEditKeepEditing);
+      expect(sheet, findsOneWidget);
+      await tapInSheet(tester, en.newTaskMoreOptions);
+      expect(
+        tester.widget<TextField>(descriptionField()).controller!.text,
+        'Whole milk',
+      );
+    });
+
+    testWidgets('a swipe down with a title typed brings the sheet back up '
+        'and asks; after Keep editing the next swipe asks again', (
+      tester,
+    ) async {
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+      final open = sheetRect(tester);
+
+      await swipeDown(tester);
+      await tester.pumpAndSettle();
+      expect(question, findsOneWidget);
+      expect(sheetRect(tester), open);
+      await answer(tester, en.taskEditKeepEditing);
+      expect(sheet, findsOneWidget);
+      expect(sheetRect(tester), open);
+      expect(composerText(tester), 'Buy milk');
+
+      await swipeDown(tester);
+      await tester.pumpAndSettle();
+      expect(question, findsOneWidget);
+      await answer(tester, en.taskEditDiscard);
+      expect(sheet, findsNothing);
+      expect(harness.service.submits, isEmpty);
+    });
+
+    testWidgets('while an add runs, also with the title emptied meanwhile, '
+        'Back and a swipe down neither close nor ask, and the add closes the '
+        'sheet when done', (tester) async {
+      final held = Completer<void>();
+      harness.service.beforeSubmit = () => held.future;
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+      final open = sheetRect(tester);
+      await tester.tap(addButton());
+      await tester.pump();
+
+      await tester.binding.handlePopRoute();
+      await tester.pump(const Duration(seconds: 1));
+      expect(question, findsNothing);
+      expect(sheet, findsOneWidget);
+      await tester.enterText(composerField(), '');
+      await tester.pump();
+      await tester.binding.handlePopRoute();
+      await tester.pump(const Duration(seconds: 1));
+      await swipeDown(tester);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(question, findsNothing);
+      expect(sheet, findsOneWidget);
+      expect(sheetRect(tester), open);
+
+      held.complete();
+      await tester.pumpAndSettle();
+      expect(sheet, findsNothing);
+      expect(find.text(en.newTaskCreated('Buy milk')), findsOneWidget);
+    });
+
+    testWidgets('with the pin on, the sheet an add emptied closes without '
+        'asking', (tester) async {
+      harness.data.listPreferences.newTaskKeepOpen = true;
+      await harness.open(tester);
+      await typeLine(tester, 'Buy milk');
+      await tester.tap(addButton());
+      await tester.pumpAndSettle();
+      expect(sheet, findsOneWidget);
+
+      await swipeDown(tester);
+      await tester.pumpAndSettle();
+      expect(question, findsNothing);
+      expect(sheet, findsNothing);
+    });
   });
 
   group('kept open', () {

@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 import 'package:vikunja_domain/src/project/project_view.dart';
+import 'package:vikunja_domain/src/task/task_relation_kind.dart';
 
 /// `frontend_settings.quick_add_magic_mode`; the web defaults to vikunja.
 enum QuickAddMagicMode {
@@ -144,6 +145,8 @@ final class UserSettings {
     this.timeFormat,
     this.colorSchema = ColorSchema.auto,
     this.defaultViewKind,
+    this.defaultDueTime,
+    this.defaultTaskRelationType = TaskRelationKind.related,
   });
 
   static const defaultOverdueTasksRemindersTime = ClockTime(9, 0);
@@ -194,13 +197,21 @@ final class UserSettings {
   /// first view by position.
   final ProjectViewKind? defaultViewKind;
 
+  /// `frontend_settings.default_due_time`: the time a date picked without
+  /// one takes; null when unset, for the next breakpoint.
+  final ClockTime? defaultDueTime;
+
+  /// `frontend_settings.default_task_relation_type`, the kind a new
+  /// relation starts at.
+  final TaskRelationKind defaultTaskRelationType;
+
   /// The lowest priority a task row shows; the web reads an unset value
   /// as medium.
   int get effectiveMinimumPriority => minimumPriority > 0 ? minimumPriority : 2;
 
   /// [defaultProjectId], [filterIdUsedOnOverview], [dateDisplay],
-  /// [timeFormat] and [defaultViewKind] take null to unset them; leaving one
-  /// out keeps it.
+  /// [timeFormat], [defaultViewKind] and [defaultDueTime] take null to unset
+  /// them; leaving one out keeps it.
   UserSettings copyWith({
     String? name,
     bool? emailRemindersEnabled,
@@ -221,6 +232,8 @@ final class UserSettings {
     Object? timeFormat = _unset,
     ColorSchema? colorSchema,
     Object? defaultViewKind = _unset,
+    Object? defaultDueTime = _unset,
+    TaskRelationKind? defaultTaskRelationType,
   }) => UserSettings(
     name: name ?? this.name,
     emailRemindersEnabled: emailRemindersEnabled ?? this.emailRemindersEnabled,
@@ -247,6 +260,9 @@ final class UserSettings {
     timeFormat: _or(timeFormat, this.timeFormat),
     colorSchema: colorSchema ?? this.colorSchema,
     defaultViewKind: _or(defaultViewKind, this.defaultViewKind),
+    defaultDueTime: _or(defaultDueTime, this.defaultDueTime),
+    defaultTaskRelationType:
+        defaultTaskRelationType ?? this.defaultTaskRelationType,
   );
 
   static T? _or<T>(Object? given, T? current) =>
@@ -276,7 +292,9 @@ final class UserSettings {
       other.dateDisplay == dateDisplay &&
       other.timeFormat == timeFormat &&
       other.colorSchema == colorSchema &&
-      other.defaultViewKind == defaultViewKind;
+      other.defaultViewKind == defaultViewKind &&
+      other.defaultDueTime == defaultDueTime &&
+      other.defaultTaskRelationType == defaultTaskRelationType;
 
   @override
   int get hashCode => Object.hashAll([
@@ -299,6 +317,8 @@ final class UserSettings {
     timeFormat,
     colorSchema,
     defaultViewKind,
+    defaultDueTime,
+    defaultTaskRelationType,
   ]);
 
   static bool _sameDurations(List<Duration> a, List<Duration> b) {

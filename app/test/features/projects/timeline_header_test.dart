@@ -18,7 +18,8 @@ void main() {
     to: CalendarDate(2026, 10, 25),
   );
 
-  Future<List<String>> weekdaysShown(
+  /// Each day's texts, its weekday and, where shown, its number.
+  Future<List<List<String>>> dayTexts(
     WidgetTester tester, {
     required Locale locale,
     required double dayWidth,
@@ -49,17 +50,58 @@ void main() {
     await tester.pumpAndSettle();
     return [
       for (var day = 19; day <= 25; day++)
-        tester
-            .widget<Text>(
-              find
-                  .descendant(
-                    of: find.byKey(ValueKey(day - 19)),
-                    matching: find.byType(Text),
-                  )
-                  .first,
-            )
-            .data!,
+        [
+          for (final text in tester.widgetList<Text>(
+            find.descendant(
+              of: find.byKey(ValueKey(day - 19)),
+              matching: find.byType(Text),
+            ),
+          ))
+            text.data!,
+        ],
     ];
+  }
+
+  Future<List<String>> weekdaysShown(
+    WidgetTester tester, {
+    required Locale locale,
+    required double dayWidth,
+  }) async => [
+    for (final texts in await dayTexts(
+      tester,
+      locale: locale,
+      dayWidth: dayWidth,
+    ))
+      texts.first,
+  ];
+
+  /// The narrowest day width, to a hundredth, at which [shows] holds of the
+  /// days' texts; it holds at every wider one.
+  Future<double> narrowestDayShowing(
+    WidgetTester tester,
+    bool Function(List<List<String>> days) shows,
+  ) async {
+    var (narrow, wide) = (8.0, 80.0);
+    while (wide - narrow > 0.01) {
+      final middle = (narrow + wide) / 2;
+      final days = await dayTexts(
+        tester,
+        locale: const Locale('en'),
+        dayWidth: middle,
+      );
+      if (shows(days)) {
+        wide = middle;
+      } else {
+        narrow = middle;
+      }
+    }
+    return wide;
+  }
+
+  void useBoldText(WidgetTester tester) {
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(boldText: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
   }
 
   testWidgets('the days show their short weekday names where the widest of '
@@ -109,5 +151,46 @@ void main() {
       await weekdaysShown(tester, locale: const Locale('de'), dayWidth: 20),
       ['M', 'D', 'M', 'D', 'F', 'S', 'S'],
     );
+  });
+
+  testWidgets('with Bold Text the weekdays shorten at a wider day, as they '
+      'are measured bold', (tester) async {
+    if (!robotoLoaded) {
+      markTestSkipped("the Flutter SDK's Roboto is needed to measure");
+      return;
+    }
+    bool shortNames(List<List<String>> days) => days.first.first == 'Mon';
+    final plain = await narrowestDayShowing(tester, shortNames);
+    useBoldText(tester);
+    final bold = await narrowestDayShowing(tester, shortNames);
+
+    expect(bold, greaterThan(plain));
+    expect(
+      await weekdaysShown(tester, locale: const Locale('en'), dayWidth: plain),
+      ['M', 'T', 'W', 'T', 'F', 'S', 'S'],
+    );
+  });
+
+  testWidgets('with Bold Text at 150 % every day keeps its number only where '
+      'the bold numbers fit', (tester) async {
+    if (!robotoLoaded) {
+      markTestSkipped("the Flutter SDK's Roboto is needed to measure");
+      return;
+    }
+    tester.platformDispatcher.textScaleFactorTestValue = 1.5;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    bool everyNumber(List<List<String>> days) =>
+        days.every((texts) => texts.length == 2);
+    final plain = await narrowestDayShowing(tester, everyNumber);
+    useBoldText(tester);
+    final bold = await narrowestDayShowing(tester, everyNumber);
+
+    expect(bold, greaterThan(plain));
+    final days = await dayTexts(
+      tester,
+      locale: const Locale('en'),
+      dayWidth: plain,
+    );
+    expect([for (final texts in days) texts.length], [2, 1, 2, 1, 2, 1, 2]);
   });
 }

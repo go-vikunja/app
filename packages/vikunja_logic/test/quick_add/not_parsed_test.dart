@@ -107,7 +107,7 @@ void main() {
       final after = parse('buy dec 12', now: now);
       expect(after.text, 'buy');
       expect(after.date, DateTime(2021, 12, 12));
-      expect(parse('buy 12 dec, quick', now: now).text, 'buy , quick');
+      expect(parse('buy 12 dec, quick', now: now).text, 'buy, quick');
     });
 
     test('D38-9: a day no month has stays text (the web drops it)', () {

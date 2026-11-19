@@ -6,6 +6,7 @@ typedef TaskTextParser = ParsedTaskText Function(
   String text, {
   required DateTime now,
   required QuickAddMagicMode mode,
+  ClockTime? defaultTime,
 });
 
 typedef ItemCleanup = String Function(

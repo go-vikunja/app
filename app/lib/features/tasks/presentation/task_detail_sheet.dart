@@ -941,7 +941,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
   /// The sheet closes, so its "Task deleted" lands on what is below it; in
   /// the pane it shows on the screen beside it. On a server with the bin a
   /// queued delete can be undone from there; a task with a temporary id
-  /// may never reach the server, so it is not said to go to the bin.
+  /// is said to go to the bin only as far as the server may have it.
   Future<void> _delete(TaskRepository repository, Task task) async {
     final trash = ref.read(activeServerHasTrashProvider);
     final guest = ref.read(activeAccountIsGuestProvider);
@@ -949,12 +949,16 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     final navigator = Navigator.of(context);
     final screenMessenger = ScaffoldMessenger.of(context);
     final persist = MediaQuery.accessibleNavigationOf(context);
+    final onServer = trash && task.id < 0
+        ? await _onServer(repository, task.id)
+        : TaskOnServer.yes;
+    if (!mounted) return;
     final confirmed = await confirmDeleteTask(
       context,
       title: task.title,
       trash: trash,
       guest: guest,
-      unsent: task.id < 0,
+      onServer: onServer,
     );
     if (!confirmed || !mounted) return;
     late final TaskDeletion deletion;
@@ -1000,6 +1004,20 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
             )
           : null,
     );
+  }
+
+  /// A create that cannot be read counts as one the server may have: that
+  /// text promises nothing.
+  static Future<TaskOnServer> _onServer(
+    TaskRepository repository,
+    int taskId,
+  ) async {
+    try {
+      return await repository.taskOnServer(taskId);
+    } on Object catch (error) {
+      _log.warning('Reading a create failed: ${error.runtimeType}');
+      return TaskOnServer.maybe;
+    }
   }
 
   Future<void> _duplicate(TaskRepository repository, Task task) async {

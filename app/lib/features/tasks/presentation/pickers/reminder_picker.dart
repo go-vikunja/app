@@ -112,19 +112,21 @@ class _ReminderPickerState extends ConsumerState<ReminderPicker> {
 
   Future<void> _pickAbsolute() async {
     final now = widget.now;
+    final display = ref.read(displaySettingsProvider);
     final current = switch (widget.editing) {
       TaskReminder(isRelative: false, reminder: final moment?) => moment,
       _ => dayWithTime(
         DateTime(now.year, now.month, now.day + 1),
         current: null,
         now: now,
+        defaultTime: display.defaultDueTime,
       ),
     };
     final picked = await pickDateTime(
       context,
       current: current,
       now: now,
-      display: ref.read(displaySettingsProvider),
+      display: display,
     );
     if (picked == null || !mounted) return;
     Navigator.of(context).pop(TaskReminder(reminder: picked.toUtc()));

@@ -294,6 +294,16 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     return TaskDeletion.queued;
   });
 
+  /// Follows a temporary id whose create was answered meanwhile.
+  Future<TaskOnServer> taskOnServer(int localOrServerId) async {
+    final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
+    if (taskId > 0) return TaskOnServer.yes;
+    final create = await _createOf(taskId);
+    return create == null || _neverReachedServer(create)
+        ? TaskOnServer.no
+        : TaskOnServer.maybe;
+  }
+
   /// Takes the task's queued delete back while it is pending or failed:
   /// the op goes and the row shows again, with its `pending_changes`. One
   /// on its way is left alone. Follows a temporary id whose create was

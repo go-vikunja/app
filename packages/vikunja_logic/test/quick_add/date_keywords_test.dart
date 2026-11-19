@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 
 import 'parse_helpers.dart';
 
@@ -214,9 +215,10 @@ void main() {
       expect(ymd(result.date), '2021-6-24');
     });
 
-    test('punctuation is a boundary, as on the web', () {
+    test('punctuation is a boundary, as on the web (D38-11: without the '
+        'space before it)', () {
       final result = parse('Buy milk today, urgent');
-      expect(result.text, 'Buy milk , urgent');
+      expect(result.text, 'Buy milk, urgent');
       expect(ymd(result.date), '2021-6-24');
       expect(parse("x today's").text, "x 's");
     });
@@ -224,6 +226,50 @@ void main() {
     test('the web turned next weekend into next week and left "end"', () {
       // D19-3: the web gives 2021-7-1 and the text "Plan end trip".
       expect(parse('Plan next weekend trip').text, 'Plan next weekend trip');
+    });
+  });
+
+  group("the user's default due time, as the web's getDateWithTime", () {
+    // Thursday 12:34:56, whose breakpoint would be 15:00.
+    final now = DateTime(2021, 6, 24, 12, 34, 56);
+    const defaultTime = ClockTime(17, 45);
+    final expected = {
+      'today': DateTime(2021, 6, 24, 17, 45),
+      'tonight': DateTime(2021, 6, 24, 21),
+      'tomorrow': DateTime(2021, 6, 25, 17, 45),
+      'next monday': DateTime(2021, 6, 28, 17, 45),
+      'this weekend': DateTime(2021, 6, 26, 17, 45),
+      'later this week': DateTime(2021, 6, 26, 17, 45),
+      'later next week': DateTime(2021, 7, 3, 17, 45),
+      'next week': DateTime(2021, 7, 1, 17, 45),
+      'next month': DateTime(2021, 7, 1, 17, 45),
+      'end of month': DateTime(2021, 6, 30, 17, 45),
+    };
+    for (final MapEntry(key: keyword, value: date) in expected.entries) {
+      test(keyword, () {
+        expect(
+          parse('x $keyword', now: now, defaultTime: defaultTime).date,
+          date,
+        );
+      });
+    }
+
+    test('after 21:00 too', () {
+      expect(
+        parse(
+          'x today',
+          now: DateTime(2021, 6, 24, 22, 30),
+          defaultTime: defaultTime,
+        ).date,
+        DateTime(2021, 6, 24, 17, 45),
+      );
+    });
+
+    test('an explicit time still wins', () {
+      expect(
+        parse('x tomorrow at 8:15', now: now, defaultTime: defaultTime).date,
+        DateTime(2021, 6, 25, 8, 15),
+      );
     });
   });
 

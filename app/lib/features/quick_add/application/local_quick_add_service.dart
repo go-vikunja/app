@@ -76,7 +76,13 @@ final class LocalQuickAddService implements QuickAddService {
     final settings = _snapshot.settings;
     final mode = settings.quickAddMagicMode;
     final now = _now().toLocal();
-    var parsed = _grammar.parse(line, now: now, mode: mode);
+    final defaultTime = settings.defaultDueTime;
+    var parsed = _grammar.parse(
+      line,
+      now: now,
+      mode: mode,
+      defaultTime: defaultTime,
+    );
     final fallback = defaultProjectFor(
       _snapshot.projects,
       currentProjectId: fallbackProjectId,
@@ -108,7 +114,14 @@ final class LocalQuickAddService implements QuickAddService {
         unmatchedProject != null &&
         projectsNamed(unmatchedProject, _unarchivedProjects).isNotEmpty;
     if (unmatchedProject != null) {
-      parsed = _parsedKeepingProject(line, parsed, now, mode, prefixes.project);
+      parsed = _parsedKeepingProject(
+        line,
+        parsed,
+        now,
+        mode,
+        defaultTime,
+        prefixes.project,
+      );
     }
 
     final labels = <Label>[];
@@ -136,7 +149,9 @@ final class LocalQuickAddService implements QuickAddService {
     final dueDate =
         parsed.date?.toUtc() ??
         fallbackDueDate?.toUtc() ??
-        (parsed.repeats == null ? null : atDefaultTime(now, now: now).toUtc());
+        (parsed.repeats == null
+            ? null
+            : atDefaultTime(now, now: now, defaultTime: defaultTime).toUtc());
     return QuickAddPlan(
       input: line,
       parsed: parsed,
@@ -438,6 +453,7 @@ final class LocalQuickAddService implements QuickAddService {
     ParsedTaskText first,
     DateTime now,
     QuickAddMagicMode mode,
+    ClockTime? defaultTime,
     String projectPrefix,
   ) {
     final prefix = RegExp.escape(projectPrefix);
@@ -464,7 +480,12 @@ final class LocalQuickAddService implements QuickAddService {
           : restored.replaceAll(_hiddenProject, tokenText);
     }
 
-    final second = _grammar.parse(hidden, now: now, mode: mode);
+    final second = _grammar.parse(
+      hidden,
+      now: now,
+      mode: mode,
+      defaultTime: defaultTime,
+    );
     return ParsedTaskText(
       text: restore(second.text),
       date: second.date,

@@ -28,7 +28,9 @@ QuickAddPrefixes? quickAddPrefixes(QuickAddMagicMode mode) => switch (mode) {
 };
 
 /// The web's `parseTaskText`, with the deviations of D19 and D38. [now] is
-/// local wall-clock time; every relative date is computed from it.
+/// local wall-clock time; every relative date is computed from it. A day
+/// without a time takes the user's `default_due_time` ([defaultTime]), else
+/// the breakpoint for [now] (`atDefaultTime`).
 ///
 /// Where it parts from the web on purpose (D38):
 /// - Repeat keywords and units match in any case (`Daily`, `Every Day`).
@@ -46,10 +48,13 @@ QuickAddPrefixes? quickAddPrefixes(QuickAddMagicMode mode) => switch (mode) {
 ///   of [now].
 /// - Amounts above 100000 (`every 999999 years`) are text, and so is an
 ///   `in …` date after the year 9999 (`in 9000 years`).
+/// - A date phrase removed before punctuation takes the spaces before it
+///   along: `Call back tomorrow.` becomes `Call back.`, not `Call back .`.
 ParsedTaskText parseTaskText(
   String text, {
   required DateTime now,
   QuickAddMagicMode mode = QuickAddMagicMode.vikunja,
+  ClockTime? defaultTime,
 }) {
   if (_isQuoted(text)) {
     return ParsedTaskText(text: text.substring(1, text.length - 1));
@@ -67,7 +72,7 @@ ParsedTaskText parseTaskText(
   rest = cleanupItemText(rest, priorities, prefixes.priority);
   final assignees = _itemsFromPrefix(rest, prefixes.assignee);
   final repeat = parseRepeat(rest);
-  final date = parseDate(repeat.text, now.toLocal());
+  final date = parseDate(repeat.text, now.toLocal(), defaultTime: defaultTime);
 
   rest = cleanupItemText(date.text, labels, prefixes.label);
   rest = cleanupItemText(rest, projects, prefixes.project);

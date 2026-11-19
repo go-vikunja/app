@@ -341,6 +341,51 @@ void main() {
       expect(await profilesOver(auth).metadataFor(origin), isNull);
     });
 
+    for (final (what, check) in [
+      (
+        'could not be checked',
+        const CaCheckFailed(CertificateProbeProblem.timeout),
+      ),
+      ('did not issue the server certificate', CaNotTrusted(thirdCertificate)),
+    ]) {
+      testWidgets('that $what: Back asks; Keep editing stays, Discard leaves '
+          'and stores nothing', (tester) async {
+        picker.files = [pickedCopyOf('ca.pem', directory: directory)];
+        checks.caCheck = check;
+        await pumpCertificatePage(tester);
+        await tapWithFiles(tester, find.text(en.connectionUseCa));
+
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        expect(find.text(en.connectionCaDiscardBody), findsOneWidget);
+        await tester.tap(find.text(en.taskEditKeepEditing));
+        await tester.pumpAndSettle();
+        expect(find.byType(CertificatePage), findsOneWidget);
+
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(en.taskEditDiscard));
+        await tester.pumpAndSettle();
+        expect(find.byType(CertificatePage), findsNothing);
+        expect(await profilesOver(auth).metadataFor(origin), isNull);
+      });
+    }
+
+    testWidgets('a refused file leaves nothing to lose: Back does not ask', (
+      tester,
+    ) async {
+      picker.files = [pickedCopyOf('client.key', directory: directory)];
+      checks.caCheck = const CaFileInvalid();
+      await pumpCertificatePage(tester);
+      await tapWithFiles(tester, find.text(en.connectionUseCa));
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.connectionCaDiscardBody), findsNothing);
+      expect(find.byType(CertificatePage), findsNothing);
+    });
+
     testWidgets('a cancelled pick changes nothing', (tester) async {
       await pumpCertificatePage(tester);
 

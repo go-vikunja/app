@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,6 +9,8 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
@@ -19,6 +23,7 @@ import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 import '../../helpers/test_database.dart';
+import '../accounts/accounts_harness.dart' show seedUser;
 
 const String _scheme = oauthCallbackScheme;
 
@@ -105,7 +110,94 @@ void main() {
 
     expect(data.tasks.writes, ['restore 7']);
     expect(find.text(en.trashRestoreArchived), findsOneWidget);
+    expect(find.text(en.trashRestore), findsNothing);
     expect(sheet, findsNothing);
+  });
+
+  testWidgets('a Restore that may work later offers Restore again', (
+    tester,
+  ) async {
+    data.resolver.failures[const TaskById(7)] = inTrash();
+    data.tasks.restoreFailure = const NetworkFailure(
+      NetworkProblem.unreachable,
+    );
+    await pumpUser(tester);
+    await open(tester);
+
+    await tester.tap(find.text(en.trashRestore));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.trashRestoreNeedsConnection), findsOneWidget);
+    final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+    expect(snackBar.duration, deletedSnackBarDuration);
+    expect(sheet, findsNothing);
+
+    data.tasks.restoreFailure = null;
+    await tester.tap(find.text(en.trashRestore));
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.writes, ['restore 7', 'restore 7']);
+    expect(
+      find.descendant(of: sheet, matching: find.text('Water the plants')),
+      findsOneWidget,
+    );
+  });
+
+  for (final failure in [
+    const ServerFailure(503),
+    const RateLimited(),
+    const TaskDeleteInFlight(7),
+  ]) {
+    testWidgets('after ${failure.runtimeType} Restore is offered again', (
+      tester,
+    ) async {
+      data.resolver.failures[const TaskById(7)] = inTrash();
+      data.tasks.restoreFailure = failure;
+      await pumpUser(tester);
+      await open(tester);
+
+      await tester.tap(find.text(en.trashRestore));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.trashRestore), findsOneWidget);
+    });
+  }
+
+  testWidgets('a Restore that fails after a switch to another account only '
+      'says why: no Restore for a task the active account cannot open', (
+    tester,
+  ) async {
+    final auth = AuthFakes();
+    final bob = await seedUser(
+      auth,
+      oauthServer230(),
+      userId: 8,
+      username: 'bob',
+      displayName: 'Bob',
+    );
+    data.accounts[bob.id] = AccountDataFakes(now: DateTime.now());
+    data.resolver.failures[const TaskById(7)] = inTrash();
+    data.tasks.restoreFailure = const TaskDeleteInFlight(7);
+    final held = Completer<void>();
+    data.tasks.beforeRestore = (_) => held.future;
+    await pumpSignedInApp(
+      tester,
+      auth: auth,
+      sync: data,
+      connection: fullServer280(),
+    );
+    await open(tester);
+    await tester.tap(find.text(en.trashRestore));
+    await tester.pumpAndSettle();
+
+    await containerOf(tester).read(accountSwitcherProvider).switchTo(bob.id);
+    await tester.pumpAndSettle();
+    held.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.trashDeleteStillSending), findsOneWidget);
+    expect(find.text(en.trashRestore), findsNothing);
+    expect(data.tasks.writes, ['restore 7']);
   });
 
   for (final (name, failure) in [
