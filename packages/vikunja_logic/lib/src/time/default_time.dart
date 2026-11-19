@@ -3,8 +3,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 const _breakpointHours = [9, 12, 15, 18, 21];
 
 /// The web's `calculateNearestHours`: the next of 9, 12, 15, 18 and 21, a
-/// full hour counting as its own breakpoint; after 21:00 it is 9, on the
-/// same day (D38-6).
+/// full hour counting as its own breakpoint; after 21:00 it is 9, which
+/// [atDefaultTime] moves to 23:59 on today (D102-9).
 int nearestBreakpointHour(DateTime now) {
   for (final hour in _breakpointHours) {
     if (now.hour < hour || (now.hour == hour && now.minute == 0)) return hour;
@@ -13,12 +13,13 @@ int nearestBreakpointHour(DateTime now) {
 }
 
 /// The date of [day] at the web's `getDateWithTime`: the user's
-/// `default_due_time` ([defaultTime]), else the breakpoint for [now].
+/// `default_due_time` ([defaultTime]), else the breakpoint for [now]; on
+/// today never a time that has passed ([notPassedToday]).
 DateTime atDefaultTime(
   DateTime day, {
   required DateTime now,
   ClockTime? defaultTime,
-}) => switch (defaultTime) {
+}) => notPassedToday(switch (defaultTime) {
   ClockTime(:final hour, :final minute) => DateTime(
     day.year,
     day.month,
@@ -27,4 +28,15 @@ DateTime atDefaultTime(
     minute,
   ),
   null => DateTime(day.year, day.month, day.day, nearestBreakpointHour(now)),
-};
+}, now: now);
+
+/// [date], or 23:59 of today when [date] is a time of today that has
+/// passed: a date the user gave without a time is never overdue the
+/// moment it is set (D102-9; the web keeps the passed time).
+DateTime notPassedToday(DateTime date, {required DateTime now}) =>
+    date.isBefore(now) &&
+        date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day
+    ? DateTime(now.year, now.month, now.day, 23, 59)
+    : date;

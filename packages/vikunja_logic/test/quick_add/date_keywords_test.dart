@@ -46,22 +46,22 @@ void main() {
       'later next week': DateTime(2026, 11, 7, 18),
       'next week': DateTime(2026, 11, 7, 18),
       'next month': DateTime(2026, 11, 1, 18),
-      // Web parity: the default time of the last day's midnight.
-      'end of month': DateTime(2026, 10, 31, 9),
+      // The web's 09:00 has passed today (D102-9).
+      'end of month': DateTime(2026, 10, 31, 23, 59),
     },
-    // Sunday 22:30 on the last of the year: D38-6, after 21:00 the
-    // default time is 09:00 of the same day.
+    // Sunday 22:30 on the last of the year: after 21:00 the default time
+    // is 09:00, which on today has passed, so 23:59 (D102-9).
     DateTime(2028, 12, 31, 22, 30): {
-      'today': DateTime(2028, 12, 31, 9),
-      'tonight': DateTime(2028, 12, 31, 21),
+      'today': DateTime(2028, 12, 31, 23, 59),
+      'tonight': DateTime(2028, 12, 31, 23, 59),
       'tomorrow': DateTime(2029, 1, 1, 9),
       'next monday': DateTime(2029, 1, 1, 9),
-      'this weekend': DateTime(2028, 12, 31, 9),
-      'later this week': DateTime(2028, 12, 31, 9),
+      'this weekend': DateTime(2028, 12, 31, 23, 59),
+      'later this week': DateTime(2028, 12, 31, 23, 59),
       'later next week': DateTime(2029, 1, 7, 9),
       'next week': DateTime(2029, 1, 7, 9),
       'next month': DateTime(2029, 1, 1, 9),
-      'end of month': DateTime(2028, 12, 31, 9),
+      'end of month': DateTime(2028, 12, 31, 23, 59),
     },
   };
 
@@ -256,14 +256,35 @@ void main() {
       });
     }
 
-    test('after 21:00 too', () {
+    test('on today only while it has not passed, then 23:59 (D102-9)', () {
       expect(
         parse(
           'x today',
-          now: DateTime(2021, 6, 24, 22, 30),
+          now: DateTime(2021, 6, 24, 17, 45),
           defaultTime: defaultTime,
         ).date,
         DateTime(2021, 6, 24, 17, 45),
+      );
+      for (final keyword in ['today', 'thu', 'end of month']) {
+        expect(
+          parse(
+            'x $keyword',
+            now: DateTime(2021, 6, 24, 17, 46),
+            defaultTime: defaultTime,
+          ).date,
+          keyword == 'end of month'
+              ? DateTime(2021, 6, 30, 17, 45)
+              : DateTime(2021, 6, 24, 23, 59),
+          reason: keyword,
+        );
+      }
+      expect(
+        parse(
+          'x tomorrow',
+          now: DateTime(2021, 6, 24, 22, 30),
+          defaultTime: defaultTime,
+        ).date,
+        DateTime(2021, 6, 25, 17, 45),
       );
     });
 

@@ -94,7 +94,11 @@ post_json_waiting_out_429() {
   fi
 }
 
+# jq filters: jq reads the values from the environment, so the password
+# never appears in an argument list.
+# shellcheck disable=SC2016
 register_body='{username: $ENV.E2E_USERNAME, email: $ENV.E2E_EMAIL, password: $ENV.E2E_PASSWORD}'
+# shellcheck disable=SC2016
 login_body='{username: $ENV.E2E_USERNAME, password: $ENV.E2E_PASSWORD}'
 
 # Sets result, and ok=0 when the server does not end up with a usable user.

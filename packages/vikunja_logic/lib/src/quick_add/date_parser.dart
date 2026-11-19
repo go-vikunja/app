@@ -36,7 +36,11 @@ typedef _DateFor = DateTime Function(DateTime now, ClockTime? defaultTime);
 
 final _keywordDates = <(RegExp, _DateFor)>[
   (_keyword('today'), (now, time) => _inDays(now, 0, time)),
-  (_keyword('tonight'), (now, _) => DateTime(now.year, now.month, now.day, 21)),
+  (
+    _keyword('tonight'),
+    (now, _) =>
+        notPassedToday(DateTime(now.year, now.month, now.day, 21), now: now),
+  ),
   (_keyword('tomorrow'), (now, time) => _inDays(now, 1, time)),
   (
     _keyword('next monday'),
@@ -414,7 +418,10 @@ int _monthNumber(String name) =>
 // midnight, so 09:00.
 DateTime _endOfMonth(DateTime now, ClockTime? defaultTime) {
   final lastDay = DateTime(now.year, now.month + 1, 0);
-  return atDefaultTime(lastDay, now: lastDay, defaultTime: defaultTime);
+  return notPassedToday(
+    atDefaultTime(lastDay, now: lastDay, defaultTime: defaultTime),
+    now: now,
+  );
 }
 
 DateTime _inDays(DateTime now, int days, ClockTime? defaultTime) =>

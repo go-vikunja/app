@@ -86,18 +86,18 @@ List<DateShortcutOption> buildDateShortcuts(DateTime now) {
 }
 
 /// [day] at a time of day: the one [current] already has, else the user's
-/// [defaultTime], else the breakpoint for [now] (local time, seconds
-/// dropped).
+/// [defaultTime], else the breakpoint for [now]; on today never one that
+/// has passed, which becomes 23:59 (`notPassedToday`, D102-9; local time,
+/// seconds dropped).
 DateTime dayWithTime(
   DateTime day, {
   required DateTime? current,
   required DateTime now,
   required ClockTime? defaultTime,
-}) {
-  final (hour, minute) = switch ((current?.toLocal(), defaultTime)) {
-    (final local?, _) => (local.hour, local.minute),
-    (null, final time?) => (time.hour, time.minute),
-    (null, null) => (nearestBreakpointHour(now), 0),
-  };
-  return DateTime(day.year, day.month, day.day, hour, minute);
-}
+}) => switch (current?.toLocal()) {
+  final local? => notPassedToday(
+    DateTime(day.year, day.month, day.day, local.hour, local.minute),
+    now: now,
+  ),
+  null => atDefaultTime(day, now: now, defaultTime: defaultTime),
+};

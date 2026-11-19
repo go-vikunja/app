@@ -336,21 +336,17 @@ void main() {
         expect(plan.reminders.single.relativePeriod, const Duration(hours: -1));
       });
 
-      test('the default time follows the breakpoints, after 21:00 the '
-          'same day at 9', () {
+      test('the default time follows the breakpoints, after 21:00 today '
+          'at 23:59 (D102-9)', () {
         for (final (hour, minute, expected) in [
-          (8, 59, 9),
-          (12, 0, 12),
-          (12, 1, 15),
-          (21, 30, 9),
+          (8, 59, DateTime(2026, 10, 12, 9)),
+          (12, 0, DateTime(2026, 10, 12, 12)),
+          (12, 1, DateTime(2026, 10, 12, 15)),
+          (21, 30, DateTime(2026, 10, 12, 23, 59)),
         ]) {
           final plan = service(at: DateTime(2026, 10, 12, hour, minute))
               .plan('Water plants every week');
-          expect(
-            plan.dueDate,
-            DateTime(2026, 10, 12, expected).toUtc(),
-            reason: '$hour:$minute',
-          );
+          expect(plan.dueDate, expected.toUtc(), reason: '$hour:$minute');
         }
       });
 

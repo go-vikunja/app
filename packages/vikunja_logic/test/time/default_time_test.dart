@@ -54,9 +54,38 @@ void main() {
       );
     });
 
-    test('after 21:00 it is 09:00 of the day, even today (D38-6)', () {
+    test('after 21:00 it is 09:00 of another day, 23:59 of today '
+        '(D102-9)', () {
       final now = DateTime(2026, 8, 4, 22, 30);
-      expect(atDefaultTime(now, now: now), DateTime(2026, 8, 4, 9));
+      expect(atDefaultTime(now, now: now), DateTime(2026, 8, 4, 23, 59));
+      expect(
+        atDefaultTime(DateTime(2026, 8, 5), now: now),
+        DateTime(2026, 8, 5, 9),
+      );
+      expect(
+        atDefaultTime(DateTime(2026, 8, 3), now: now),
+        DateTime(2026, 8, 3, 9),
+      );
+    });
+
+    test("the user's default due time on today, once passed, is 23:59", () {
+      const defaultTime = ClockTime(17, 45);
+      expect(
+        atDefaultTime(
+          DateTime(2026, 8, 4),
+          now: DateTime(2026, 8, 4, 17, 45),
+          defaultTime: defaultTime,
+        ),
+        DateTime(2026, 8, 4, 17, 45),
+      );
+      expect(
+        atDefaultTime(
+          DateTime(2026, 8, 4),
+          now: DateTime(2026, 8, 4, 17, 45, 1),
+          defaultTime: defaultTime,
+        ),
+        DateTime(2026, 8, 4, 23, 59),
+      );
     });
 
     test("the user's default due time wins over the breakpoint, at any "
@@ -74,6 +103,39 @@ void main() {
           DateTime(2026, 9, 20, 17, 45),
           reason: '$now',
         );
+      }
+    });
+  });
+
+  group('notPassedToday', () {
+    final now = DateTime(2026, 8, 4, 14, 30);
+
+    test('keeps a time of today still ahead, or now itself', () {
+      expect(
+        notPassedToday(DateTime(2026, 8, 4, 15), now: now),
+        DateTime(2026, 8, 4, 15),
+      );
+      expect(notPassedToday(now, now: now), now);
+    });
+
+    test('moves a passed time of today to 23:59', () {
+      expect(
+        notPassedToday(DateTime(2026, 8, 4, 9), now: now),
+        DateTime(2026, 8, 4, 23, 59),
+      );
+      expect(
+        notPassedToday(DateTime(2026, 8, 4), now: now),
+        DateTime(2026, 8, 4, 23, 59),
+      );
+    });
+
+    test('leaves other days alone, past ones too', () {
+      for (final date in [
+        DateTime(2026, 8, 3, 9),
+        DateTime(2026, 8, 5, 9),
+        DateTime(2025, 8, 4, 9),
+      ]) {
+        expect(notPassedToday(date, now: now), date, reason: '$date');
       }
     });
   });

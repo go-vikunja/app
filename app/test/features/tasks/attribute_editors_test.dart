@@ -208,7 +208,8 @@ void main() {
             (option.label, option.shown, option.selected),
         ],
         [
-          (en.shortcutToday, '10/10/2026 09:30', false),
+          // 09:30 has passed today (D102-9).
+          (en.shortcutToday, '10/10/2026 23:59', false),
           (en.shortcutTomorrow, '11/10/2026 09:30', true),
           (en.shortcutNextWeek, '17/10/2026 09:30', false),
           (en.newTaskPickDate, null, false),
@@ -319,7 +320,7 @@ void main() {
         (
           4,
           TaskChanges(
-            dueDate: DateChange.set(DateTime(2026, 10, 10, 9, 30).toUtc()),
+            dueDate: DateChange.set(DateTime(2026, 10, 10, 23, 59).toUtc()),
           ),
         ),
       ]);
@@ -357,7 +358,7 @@ void main() {
       ]);
 
       await open(tester, 2, display: display);
-      expect(options(tester).first.shown, '10/10/2026 09:30');
+      expect(options(tester).first.shown, '10/10/2026 23:59');
     });
 
     testWidgets('Cancel in the time dialog after Pick date writes nothing', (
@@ -385,7 +386,7 @@ void main() {
         'another asks first: Cancel writes nothing, Change anyway writes it', (
       tester,
     ) async {
-      // A day before Today's 09:30 is when the absolute reminder fires.
+      // A day before Next week's 09:30 is when the absolute reminder fires.
       data.tasks.all = [
         ...data.tasks.all,
         sampleTask(
@@ -394,13 +395,13 @@ void main() {
           due: due,
           reminders: [
             dayBefore,
-            TaskReminder(reminder: DateTime(2026, 10, 9, 9, 30).toUtc()),
+            TaskReminder(reminder: DateTime(2026, 10, 16, 9, 30).toUtc()),
           ],
         ),
       ];
       await pumpApp(tester);
       await open(tester, 4);
-      await tapIn(tester, find.byType(BottomSheet), en.shortcutToday);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutNextWeek);
 
       expect(dialog(), findsOneWidget);
       expect(find.text(en.taskDetailDueDateCoincideBody), findsOneWidget);
@@ -411,7 +412,7 @@ void main() {
       expect(said(tester), isEmpty);
 
       await open(tester, 4);
-      await tapIn(tester, find.byType(BottomSheet), en.shortcutToday);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutNextWeek);
       await tester.tap(find.text(en.taskDetailDueDateCoincideConfirm));
       await tester.pumpAndSettle();
 
@@ -419,12 +420,12 @@ void main() {
         (
           4,
           TaskChanges(
-            dueDate: DateChange.set(DateTime(2026, 10, 10, 9, 30).toUtc()),
+            dueDate: DateChange.set(DateTime(2026, 10, 17, 9, 30).toUtc()),
           ),
         ),
       ]);
       expect(said(tester), [
-        en.taskDueSemantics(written('Saturday, October 10, 2026', '09:30')),
+        en.taskDueSemantics(written('Saturday, October 17, 2026', '09:30')),
       ]);
     });
 
@@ -479,14 +480,14 @@ void main() {
       ];
       await pumpApp(tester);
       await open(tester, 4);
-      await tapIn(tester, find.byType(BottomSheet), en.shortcutToday);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutNextWeek);
 
       expect(dialog(), findsNothing);
       expect(data.tasks.updates, [
         (
           4,
           TaskChanges(
-            dueDate: DateChange.set(DateTime(2026, 10, 10, 9, 30).toUtc()),
+            dueDate: DateChange.set(DateTime(2026, 10, 17, 9, 30).toUtc()),
           ),
         ),
       ]);

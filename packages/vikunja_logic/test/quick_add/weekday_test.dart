@@ -126,10 +126,11 @@ void main() {
       expect(result.date, DateTime(2021, 6, 25, 15));
     });
 
-    test('the day itself after 21:00 is today at 09:00 (D38-6)', () {
+    test('the day itself after 21:00 is today at 23:59, as 09:00 has '
+        'passed (D102-9)', () {
       expect(
         parse('x thu', now: DateTime(2021, 6, 24, 22)).date,
-        DateTime(2021, 6, 24, 9),
+        DateTime(2021, 6, 24, 23, 59),
       );
     });
 

@@ -189,6 +189,53 @@ void main() {
       );
     });
 
+    test('gives today no time that has passed: 23:59 instead (D102-9)', () {
+      for (final (now, defaultTime, expected) in [
+        (DateTime(2026, 9, 15, 22), null, DateTime(2026, 9, 15, 23, 59)),
+        (
+          DateTime(2026, 9, 15, 10, 15),
+          const ClockTime(9, 0),
+          DateTime(2026, 9, 15, 23, 59),
+        ),
+        (
+          DateTime(2026, 9, 15, 8),
+          const ClockTime(9, 0),
+          DateTime(2026, 9, 15, 9),
+        ),
+      ]) {
+        expect(
+          dayWithTime(
+            DateTime(2026, 9, 15),
+            current: null,
+            now: now,
+            defaultTime: defaultTime,
+          ),
+          expected,
+          reason: '$now $defaultTime',
+        );
+      }
+      expect(
+        dayWithTime(
+          DateTime(2026, 9, 15),
+          current: DateTime(2026, 9, 11, 8),
+          now: DateTime(2026, 9, 15, 7),
+          defaultTime: null,
+        ),
+        DateTime(2026, 9, 15, 8),
+        reason: 'a time already set is kept while it is ahead',
+      );
+      expect(
+        dayWithTime(
+          DateTime(2026, 9, 15),
+          current: DateTime(2026, 9, 11, 8),
+          now: DateTime(2026, 9, 15, 22),
+          defaultTime: null,
+        ),
+        DateTime(2026, 9, 15, 23, 59),
+        reason: 'a time already set that has passed today',
+      );
+    });
+
     test('keeps the time already set, in local time, over the default due '
         'time', () {
       final current = DateTime(2026, 9, 11, 17, 45).toUtc();
