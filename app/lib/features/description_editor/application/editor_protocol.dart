@@ -130,7 +130,8 @@ final class EditorLinks {
 }
 
 /// The page's texts in the app's language: [label] names the editor for
-/// screen readers, [imageLabel] marks the images it does not show, and
+/// screen readers, [imageLabel] marks the images it does not show,
+/// [shownImageLabel] names a shown one without an alt text, and
 /// [locale] (a language tag) is the page's language, so that they are read
 /// with its voice.
 @immutable
@@ -143,6 +144,7 @@ final class EditorInit {
     required this.imageLabel,
     required this.locale,
     required this.links,
+    this.shownImageLabel = '',
   });
 
   final String html;
@@ -150,6 +152,7 @@ final class EditorInit {
   final String placeholder;
   final String label;
   final String imageLabel;
+  final String shownImageLabel;
   final String locale;
   final EditorLinks links;
 }
@@ -349,6 +352,14 @@ final class EditorHtml extends EditorEvent {
   final EditorDocument document;
 }
 
+/// The page's attachment images, by URL, in order; sent whenever that
+/// list changes.
+final class EditorImagesWanted extends EditorEvent {
+  const new(this.urls);
+
+  final List<String> urls;
+}
+
 /// The page failed; [message] carries no content of the document.
 final class EditorFailed extends EditorEvent {
   const new(this.message);
@@ -384,6 +395,7 @@ abstract final class EditorMessages {
       'placeholder': init.placeholder,
       'label': init.label,
       'image': init.imageLabel,
+      'imageShown': init.shownImageLabel,
       'locale': init.locale,
     },
     'links': init.links.toJson(),
@@ -411,6 +423,12 @@ abstract final class EditorMessages {
 
   static String setTheme(EditorTheme theme, {required String token}) =>
       _script({'type': 'setTheme', 'token': token, 'theme': theme.toJson()});
+
+  static String imagePreviews(
+    Map<String, String> previews, {
+    required String token,
+  }) =>
+      _script({'type': 'imagePreviews', 'token': token, 'previews': previews});
 
   static String focus({required String token}) =>
       _script({'type': 'focus', 'token': token});
@@ -459,6 +477,13 @@ EditorEvent? decodeEditorMessage(String message, {required String? token}) {
       _ => '',
     }),
     'mentionEnd' => const MentionEnd(),
+    'images' => switch (decoded['urls']) {
+      final List<Object?> urls => EditorImagesWanted([
+        for (final url in urls)
+          if (url is String) url,
+      ]),
+      _ => null,
+    },
     'html' => switch ((decoded['requestId'], decoded['html'])) {
       (final int requestId, final String html) => EditorHtml(
         requestId,

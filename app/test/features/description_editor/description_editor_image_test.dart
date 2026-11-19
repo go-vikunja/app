@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
@@ -94,6 +96,31 @@ void main() {
           .widget<TextButton>(find.widgetWithText(TextButton, en.taskEditSave))
           .onPressed !=
       null;
+
+  testWidgets("the page's images get their previews from the app, once "
+      'each', (tester) async {
+    await openEditor(tester);
+    final bridge = bridges.last;
+    final apiRoot = bridge.init!.links.apiRoot;
+    final image = '$apiRoot/tasks/1/attachments/9';
+    data.attachmentImages.images[(
+      1,
+      9,
+      AttachmentPreviewSize.extraLarge,
+    )] = AttachmentImage(
+      bytes: Uint8List.fromList([1, 2, 3]),
+      contentType: 'image/jpeg',
+    );
+
+    bridge.emit(EditorImagesWanted([image]));
+    await tester.pumpAndSettle();
+    bridge.emit(EditorImagesWanted([image]));
+    await tester.pumpAndSettle();
+
+    expect(bridge.imagePreviews, [
+      {image: 'data:image/jpeg;base64,AQID'},
+    ]);
+  });
 
   testWidgets('a photo is uploaded to the task, then inserted the way the '
       'web writes it', (tester) async {

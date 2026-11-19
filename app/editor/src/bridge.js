@@ -3,7 +3,7 @@
 // the token the app chose for this load, both ways.
 import {Editor} from '@tiptap/core'
 import {isAllowedUri} from '@tiptap/extension-link'
-import {createExtensions, linkProtocols} from './extensions.js'
+import {createExtensions, imageUrl, linkProtocols} from './extensions.js'
 import {httpBases, normalizeApiRoot, parseAttachmentUrl} from './links.js'
 import {applyTheme} from './theme.js'
 
@@ -12,6 +12,8 @@ const stateDelay = 50
 const maxTableSize = 20
 const languageTag = /^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/
 const hasOwn = (object, key) => Object.prototype.hasOwnProperty.call(object, key)
+// What the app may send as an image preview: a raster image, base64.
+const previewUrl = /^data:image\/(?:png|jpeg|gif|webp);base64,[A-Za-z0-9+/]+=*$/
 const textOf = value => (typeof value === 'string' ? value : '')
 
 export function createBridge({mount, post, root}) {
@@ -26,12 +28,16 @@ export function createBridge({mount, post, root}) {
   let stateTimer = null
   let focused = false
   let pending = []
+  let lastImages = ''
 
   const context = {
     taskLinkBases: [],
     apiRoot: '',
     placeholder: '',
     imageLabel: '',
+    shownImageLabel: '',
+    previews: new Map(),
+    imageViews: new Set(),
     mention: {
       onStart: props => showMention(props),
       onUpdate: props => showMention(props),
@@ -104,12 +110,44 @@ export function createBridge({mount, post, root}) {
     clearTimeout(stateTimer)
     stateTimer = null
     if (editor === null) return
+    sendImages()
     const message = stateMessage()
     lastDirty = message.dirty
     const key = JSON.stringify(message)
     if (!force && key === lastState) return
     lastState = key
     send(message)
+  }
+
+  // The attachment images in the document, each once, in order, whenever
+  // that list changes: the app answers with their previews.
+  function sendImages() {
+    if (editor === null) return
+    const urls = []
+    editor.state.doc.descendants(node => {
+      if (node.type.name !== 'image') return
+      const url = imageUrl(node)
+      if (parseAttachmentUrl(url, context.apiRoot) !== null && !urls.includes(url)) urls.push(url)
+    })
+    const key = JSON.stringify(urls)
+    if (key === lastImages) return
+    lastImages = key
+    if (urls.length > 0) send({type: 'images', urls})
+  }
+
+  function setImagePreviews(message) {
+    const previews = message.previews
+    if (previews === null || typeof previews !== 'object') return
+    const changed = new Set()
+    for (const [url, preview] of Object.entries(previews)) {
+      if (typeof preview !== 'string' || !previewUrl.test(preview)) continue
+      if (parseAttachmentUrl(url, context.apiRoot) === null) continue
+      context.previews.set(url, preview)
+      changed.add(url)
+    }
+    for (const view of context.imageViews) {
+      if (changed.has(view.url)) view.render()
+    }
   }
 
   // A change of `dirty` goes at once: the app decides on it whether leaving
@@ -129,6 +167,7 @@ export function createBridge({mount, post, root}) {
     const l10n = message.l10n ?? {}
     context.placeholder = textOf(l10n.placeholder)
     context.imageLabel = textOf(l10n.image)
+    context.shownImageLabel = textOf(l10n.imageShown)
     if (languageTag.test(textOf(l10n.locale))) root.lang = l10n.locale
     context.taskLinkBases = httpBases(message.links?.taskLinkBases)
     context.apiRoot = normalizeApiRoot(message.links?.apiRoot)
@@ -139,6 +178,8 @@ export function createBridge({mount, post, root}) {
     mentionProps = null
     lastMention = null
     lastDirty = false
+    lastImages = ''
+    context.previews.clear()
     revision = 0
     focused = false
     const created = new Editor({
@@ -268,6 +309,7 @@ export function createBridge({mount, post, root}) {
   const handlers = {
     command,
     insertMention,
+    imagePreviews: setImagePreviews,
     getHtml: message =>
       send({type: 'html', requestId: message.requestId, html: editor.getHTML(), dirty: isDirty()}),
     setTheme: message => applyTheme(root, message.theme),

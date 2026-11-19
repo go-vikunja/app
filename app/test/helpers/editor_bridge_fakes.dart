@@ -100,6 +100,13 @@ final class FakeEditorBridge implements EditorBridge {
   @override
   Future<void> setTheme(EditorTheme theme) async => themes.add(theme);
 
+  /// Every [setImagePreviews] call, in order.
+  final imagePreviews = <Map<String, String>>[];
+
+  @override
+  Future<void> setImagePreviews(Map<String, String> previews) async =>
+      imagePreviews.add(previews);
+
   @override
   Future<void> focus() async => focusCalls++;
 

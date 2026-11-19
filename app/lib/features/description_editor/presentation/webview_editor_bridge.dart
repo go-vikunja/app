@@ -192,6 +192,10 @@ final class WebViewEditorBridge implements EditorBridge {
       _run(EditorMessages.setTheme(theme, token: _token));
 
   @override
+  Future<void> setImagePreviews(Map<String, String> previews) =>
+      _run(EditorMessages.imagePreviews(previews, token: _token));
+
+  @override
   Future<void> focus() => _run(EditorMessages.focus(token: _token));
 
   @override

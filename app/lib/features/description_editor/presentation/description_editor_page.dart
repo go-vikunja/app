@@ -11,6 +11,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -30,6 +31,7 @@ import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_bridge.dart';
+import 'package:vikunja_mobile/features/description_editor/application/editor_image_previews.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
 import 'package:vikunja_mobile/features/description_editor/application/mention_suggestions.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/editor_theme.dart';
@@ -190,6 +192,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
 
   /// What the current page load recognises attachment images by.
   EditorLinks? _links;
+  EditorImagePreviews? _previews;
 
   /// What the page shows of the editor's state; the revision is in
   /// [_revision].
@@ -376,6 +379,13 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       _revision = 0;
     });
     _syncDraft();
+    _previews = switch (ref.read(attachmentImagesProvider)) {
+      final images? => EditorImagePreviews(
+        images: images,
+        apiRoot: Uri.parse(links.apiRoot),
+      ),
+      null => null,
+    };
     _events = bridge.events.listen(_onEvent);
     _loadTimer = Timer(DescriptionEditorPage.loadTimeout, _fail);
     unawaited(
@@ -389,6 +399,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
                   : l10n.descriptionEditorPlaceholder,
               label: _title(l10n),
               imageLabel: l10n.descriptionEditorImage,
+              shownImageLabel: l10n.descriptionEditorImageShown,
               locale: Localizations.localeOf(context).toLanguageTag(),
               links: links,
             ),
@@ -443,6 +454,18 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         _mentions.query(query);
       case MentionEnd():
         _mentions.end();
+      case EditorImagesWanted(:final urls):
+        final bridge = _bridge;
+        if (bridge != null) {
+          // A page load that has given way to another gets nothing more.
+          unawaited(
+            _previews?.provide(urls, (previews) async {
+              if (identical(_bridge, bridge)) {
+                await bridge.setImagePreviews(previews);
+              }
+            }),
+          );
+        }
       case EditorStopped():
         _copyTimer?.cancel();
         _mentions.end();

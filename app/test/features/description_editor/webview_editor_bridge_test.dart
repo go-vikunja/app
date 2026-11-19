@@ -184,6 +184,7 @@ void main() {
         'placeholder': 'Write a description…',
         'label': 'Description',
         'image': 'Image (not shown while editing)',
+        'imageShown': '',
         'locale': 'en',
       },
       'links': {

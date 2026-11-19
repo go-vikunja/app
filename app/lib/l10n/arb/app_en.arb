@@ -4716,7 +4716,11 @@
   "descriptionEditorStoppedLost": "The editor stopped, and your latest changes are lost. Reload it to go on.",
   "descriptionEditorImage": "Image (not shown while editing)",
   "@descriptionEditorImage": {
-    "description": "Stands in for an image in the editor, which does not load images."
+    "description": "Stands in for an image in the editor whose preview the app could not load (offline, an SVG, too many images)."
+  },
+  "descriptionEditorImageShown": "Image",
+  "@descriptionEditorImageShown": {
+    "description": "Screen reader name of an image shown in the editor that has no alt text."
   },
   "descriptionEditorRestoreTitle": "Restore unsaved changes?",
   "descriptionEditorRestoreBody": "You left this description with changes that were not saved.",

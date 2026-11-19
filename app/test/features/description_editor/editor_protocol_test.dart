@@ -56,6 +56,7 @@ void main() {
           'placeholder': 'Beschreibung schreiben …',
           'label': 'Beschreibung',
           'image': 'Bild (beim Bearbeiten nicht sichtbar)',
+          'imageShown': '',
           'locale': 'de',
         },
         'links': {

@@ -198,8 +198,10 @@ function attachmentImageAttributes(url, {taskId, attachmentId}, {alt, title}) {
   return {'data-src': url, src: '#', alt, title, id: `tiptap-image-${taskId}-${attachmentId}`}
 }
 
-// Images are never loaded here (the page has no session and no network);
-// the node keeps its attributes and shows a placeholder that says so.
+// Images are never loaded here (the page has no session and no network):
+// the app sends a preview of an attachment image as a data: URL, which the
+// node shows; until then, and for any other image, a placeholder says
+// what it is. The node's attributes, and so the HTML, stay as they were.
 function createImage(context) {
   return Image.extend({
     addAttributes() {
@@ -216,17 +218,55 @@ function createImage(context) {
     addNodeView() {
       return ({node}) => {
         const dom = document.createElement('div')
-        dom.className = 'image-placeholder'
-        dom.setAttribute('role', 'img')
-        const alt = node.attrs.alt == null ? '' : String(node.attrs.alt).trim()
-        const label = context.imageLabel ?? ''
-        const name = [alt, label].filter(part => part !== '').join(', ')
-        if (name !== '') dom.setAttribute('aria-label', name)
-        dom.textContent = alt || label
-        return {dom}
+        let current = node
+        const view = {
+          url: imageUrl(node),
+          render() {
+            const alt = current.attrs.alt == null ? '' : String(current.attrs.alt).trim()
+            const label = context.imageLabel ?? ''
+            const preview = context.previews.get(view.url)
+            dom.replaceChildren()
+            dom.setAttribute('role', 'img')
+            if (preview === undefined) {
+              dom.className = 'image-placeholder'
+              const name = [alt, label].filter(part => part !== '').join(', ')
+              if (name !== '') dom.setAttribute('aria-label', name)
+              else dom.removeAttribute('aria-label')
+              dom.textContent = alt || label
+              return
+            }
+            dom.className = 'image-preview'
+            const shown = alt || (context.shownImageLabel ?? '')
+            if (shown !== '') dom.setAttribute('aria-label', shown)
+            else dom.removeAttribute('aria-label')
+            const img = document.createElement('img')
+            img.src = preview
+            img.alt = ''
+            dom.append(img)
+          },
+        }
+        view.render()
+        context.imageViews.add(view)
+        return {
+          dom,
+          update(updated) {
+            if (updated.type !== current.type) return false
+            current = updated
+            view.url = imageUrl(updated)
+            view.render()
+            return true
+          },
+          destroy() {
+            context.imageViews.delete(view)
+          },
+        }
       }
     },
   })
+}
+
+export function imageUrl(node) {
+  return node.attrs['data-src'] ?? node.attrs.src ?? ''
 }
 
 // TipTap's own label is an English sentence. The item's text reads in any

@@ -421,11 +421,68 @@ describe('images', () => {
     assert.equal(editor.getHTML(), `<img data-src="${src}" src="#" alt="plan" id="tiptap-image-3-9"><p></p>`)
   })
 
-  test('the inserted image is a placeholder, never loaded', async () => {
+  test('the inserted image is a placeholder until the app sends a preview', async () => {
     const editor = await open('<p></p>')
     command('insertImage', {src, alt: 'plan'})
     assert.equal(editor.view.dom.querySelectorAll('img').length, 0)
     assert.equal(editor.view.dom.querySelectorAll('.image-placeholder').length, 1)
+  })
+
+  const pixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg=='
+
+  test('the page names its attachment images once, and again only when they change', async () => {
+    const other = 'https://vikunja.example.com/api/v2/tasks/4/attachments/2'
+    await open(`<img data-src="${src}" src="#"><img data-src="${src}" src="#"><img src="https://images.example.com/x.png">`)
+    await tick(80)
+    assert.deepEqual(posted.filter(message => message.type === 'images').map(message => message.urls), [[src]])
+
+    posted.length = 0
+    command('insertImage', {src: other})
+    await tick(80)
+    assert.deepEqual(posted.filter(message => message.type === 'images').map(message => message.urls), [[src, other]])
+    assert.equal(posted.find(message => message.type === 'images').token, token)
+  })
+
+  test('a preview from the app shows as the image, and the HTML stays the same', async () => {
+    const editor = await open(`<p>a</p><img data-src="${src}" src="#" alt="plan">`)
+    const before = await html()
+    send({type: 'imagePreviews', previews: {[src]: pixel}})
+
+    const shown = [...editor.view.dom.querySelectorAll('.image-preview img')]
+    assert.deepEqual(shown.map(image => image.getAttribute('src')), [pixel])
+    assert.equal(editor.view.dom.querySelector('.image-preview').getAttribute('aria-label'), 'plan')
+    assert.equal(editor.view.dom.querySelectorAll('.image-placeholder').length, 0)
+    assert.equal(await html(), before)
+    assert.equal((await latestState()).dirty, false)
+  })
+
+  test('a preview that is no raster data: URL, or for no attachment of this server, is ignored', async () => {
+    const editor = await open(`<img data-src="${src}" src="#">`)
+    send({
+      type: 'imagePreviews',
+      previews: {
+        [src]: 'https://images.example.com/x.png',
+        'https://elsewhere.example.org/api/v2/tasks/3/attachments/9': pixel,
+      },
+    })
+    send({type: 'imagePreviews', previews: {[src]: 'data:image/svg+xml;base64,PHN2Zz4='}})
+    send({type: 'imagePreviews', previews: null})
+    assert.equal(editor.view.dom.querySelectorAll('img').length, 0)
+    assert.equal(editor.view.dom.querySelectorAll('.image-placeholder').length, 1)
+    assert.equal(posted.some(message => message.type === 'error'), false)
+  })
+
+  test('a shown image without an alt text is named with the shown label, not the placeholder one', async () => {
+    const editor = await open(`<img data-src="${src}" src="#">`, {l10n: {image: 'Image (not shown while editing)', imageShown: 'Image'}})
+    send({type: 'imagePreviews', previews: {[src]: pixel}})
+    assert.equal(editor.view.dom.querySelector('.image-preview').getAttribute('aria-label'), 'Image')
+  })
+
+  test('an image inserted after its preview came shows it at once', async () => {
+    const editor = await open('<p></p>')
+    send({type: 'imagePreviews', previews: {[src]: pixel}})
+    command('insertImage', {src})
+    assert.equal(editor.view.dom.querySelectorAll('.image-preview img').length, 1)
   })
 
   test('only an attachment of this server with its own id goes in', async () => {

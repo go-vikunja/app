@@ -288,6 +288,21 @@ th {
   background: var(--selection);
 }
 
+.image-preview {
+  margin: 0.5em 0;
+}
+
+.image-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 400px;
+  border-radius: 8px;
+}
+
+.ProseMirror-selectednode.image-preview img {
+  outline: 2px solid var(--primary);
+}
+
 .image-placeholder {
   box-sizing: border-box;
   min-height: 4rem;

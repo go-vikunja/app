@@ -22,6 +22,11 @@ abstract interface class EditorBridge {
 
   Future<void> setTheme(EditorTheme theme);
 
+  /// Previews of attachment images as `data:` URLs, by the URL the page
+  /// named in [EditorImagesWanted]; the page shows them in place of their
+  /// placeholders and stores nothing of them.
+  Future<void> setImagePreviews(Map<String, String> previews);
+
   Future<void> focus();
 
   /// While [readOnly], neither typing nor commands change the document.
