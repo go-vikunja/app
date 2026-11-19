@@ -3804,3 +3804,31 @@ Limits:
 - After 21:00 `today` still gives 09:00 of the same day, which has passed, as on the web ([D38](#d38-quick-add-the-webs-grammar-with-fixes-through-the-outbox) point 6); the owner may decide another time.
 - The version words are English and a fixed list; `Release 1.2` in another language still reads as a date.
 - `Fix today's build` keeps `today's` in the title; a user who meant today types `today`.
+
+## D103: Test hygiene, dead code and shared helpers
+
+*Accepted 2026-11-19 (step 40r).*
+
+Step 40r takes findings W3, E4, part of E3 and E2, and part of E5 of the code review (2026-11-17). Nothing a user sees changes.
+
+**Tests (W3):**
+- The three time budgets (the filter evaluation of 5,000 tasks, 300 ms; the Gantt layout, 50 ms; the timeline's layout and first frame, 40 and 600 ms) are checked only with `VIKUNJA_BENCHMARK=1` (`expectWithinBudget`); otherwise the tests print the time and check everything else. A busy CI runner had failed the first one. The ReDoS guards with budgets of seconds stay as they were.
+- The realtime test that waited for two frames without end gives up after 5 s.
+- The contract test "v1 and v2 agree" (lists) reads once two reads in a row agree: an assignment bumps `updated` asynchronously, which under load landed between the two versions' reads.
+- `shellcheck` checks `tool/*.sh` as well as `tool/ci/*.sh` where it is installed (the `checks` job).
+
+**Dead code (E4):**
+- `LocalFilter.compileWithRequest` merges the request's filter with a view's or a saved filter's at the expression level, through `mergeSavedFilter` for a saved filter, instead of joining the texts as `(request) && (own)`; the special case of a saved filter's include-nulls is that function's ([D51](#d51-filter-engine-on-the-device-saved-filters-filter-builder-offline-search)). A view's search builds its matcher once, not once per task.
+- `matchesFilter` and `parseFilterDate`, which only tests used, moved into the tests' helpers; `isShownInApp`, which was always true, and the editor's `highlight` command and state, which did nothing, are gone.
+
+**Shared helpers (E3, E2):**
+- The requests and the realtime socket add a server's stored headers by one rule (`withProfileHeaders`) and record a pin mismatch through one `PinMismatchRecorder`, which writes it once per origin and certificate: the socket wrote it on every reconnect ([D65](#d65-connection-settings-per-server-address-applied-in-the-apps-transport)).
+- One `CreateTimer` (`core/time/timers.dart`) in place of six identical typedefs; one `sameSecond` and one `calendarDaysBetween` (`core/time/moments.dart`) in place of two and three copies.
+- One `SensitiveSelectableText` holds the rule that copying a secret goes only through the sensitive clipboard, for the link share's address and the one-time secrets.
+- `CONTRIBUTING.md` says why `tool/ci/play_upload.py` uses the standard library only, and how to check the time budgets.
+
+Limits (moved to step 40q, which restructures the code with K3 to K7):
+- Not merged yet: the router's 30 routes over the shell, the board's drop helpers, the title-with-hint widgets and chips, `confirmDeleteTask`, the refresh guard of the detail and comment controllers, the repositories' copies, the full run's lease wrappers, `TasksDao`'s chunk loops, the API's JWT and error-body reading, the second JSON codec of the user settings, and the sign-in's duplicated tokens and share error codes.
+- The realtime socket still tells a refused client certificate by the error's text, where the requests try a second handshake.
+- The fixture scripts' helpers stay copied: their copies differ (8 variants of `_send`, 12 of `capture`), and merging them would change what they record, which only a new recording against the server could check. The two Python dev tools keep a `credentials` and a `call` each.
+- No scenario suite yet runs the same cases against the fakes and the real server.

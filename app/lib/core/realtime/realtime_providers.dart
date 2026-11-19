@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/network/platform_network.dart';
 import 'package:vikunja_mobile/core/network/profile_http_client.dart';
+import 'package:vikunja_mobile/core/network/profile_transport.dart';
 import 'package:vikunja_mobile/core/network/secret_scrubbing.dart';
 
 part 'realtime_providers.g.dart';
@@ -44,6 +45,7 @@ final class ProfileRealtimeConnector implements RealtimeConnector {
   final NetworkProfiles _profiles;
   final String _userAgent;
   final PlatformNetwork? _platformNetwork;
+  late final _mismatches = PinMismatchRecorder(_profiles);
 
   @override
   Future<RealtimeSocket> connect(
@@ -55,15 +57,15 @@ final class ProfileRealtimeConnector implements RealtimeConnector {
     if (!origin.isSecure && !(profile?.hasCleartextConsent ?? false)) {
       throw CleartextBlockedException(origin.toString());
     }
+    _mismatches.sync(origin, profile);
     final sent = <String, String>{
-      for (final MapEntry(:key, :value) in headers.entries)
-        if (key.toLowerCase() != 'user-agent') key: value,
+      for (final MapEntry(:key, :value) in withProfileHeaders({
+        for (final MapEntry(:key, :value) in headers.entries)
+          if (key.toLowerCase() != 'user-agent') key: value,
+      }, profile?.headers ?? const {}).entries)
+        key: '$value',
+      'User-Agent': _userAgent,
     };
-    final present = {for (final name in sent.keys) name.toLowerCase()};
-    for (final MapEntry(:key, :value) in (profile?.headers ?? {}).entries) {
-      if (!present.contains(key.toLowerCase())) sent[key] = value;
-    }
-    sent['User-Agent'] = _userAgent;
     final connector = profile == null || !profile.needsDartIo
         ? switch (await readPlatformNetwork(_platformNetwork, url)) {
             final settings? => IoRealtimeConnector(
@@ -112,14 +114,7 @@ final class ProfileRealtimeConnector implements RealtimeConnector {
       createHttpClient: () => profileHttpClient(
         profile,
         context: context,
-        onPinMismatch: (seen) => unawaited(
-          _profiles
-              .recordPinMismatch(profile.origin, seen)
-              .catchError(
-                (Object error) =>
-                    _log.info('Mismatch not recorded: ${error.runtimeType}'),
-              ),
-        ),
+        onPinMismatch: (seen) => _mismatches.record(profile.origin, seen),
       ),
     );
   }

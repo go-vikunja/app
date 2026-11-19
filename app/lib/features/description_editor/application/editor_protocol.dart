@@ -13,7 +13,6 @@ enum EditorCommandName {
   underline,
   strike,
   code,
-  highlight,
   heading,
   bulletList,
   orderedList,
@@ -187,7 +186,6 @@ final class EditorActive {
     this.underline = false,
     this.strike = false,
     this.code = false,
-    this.highlight = false,
     this.heading = 0,
     this.bulletList = false,
     this.orderedList = false,
@@ -208,7 +206,6 @@ final class EditorActive {
       underline: flag('underline'),
       strike: flag('strike'),
       code: flag('code'),
-      highlight: flag('highlight'),
       heading: heading is num ? heading.toInt().clamp(0, 6) : 0,
       bulletList: flag('bulletList'),
       orderedList: flag('orderedList'),
@@ -229,7 +226,6 @@ final class EditorActive {
   final bool underline;
   final bool strike;
   final bool code;
-  final bool highlight;
 
   /// 0 for a paragraph; the toolbar offers levels 1 to 3, the web's text
   /// may hold up to 6.
@@ -253,7 +249,6 @@ final class EditorActive {
       other.underline == underline &&
       other.strike == strike &&
       other.code == code &&
-      other.highlight == highlight &&
       other.heading == heading &&
       other.bulletList == bulletList &&
       other.orderedList == orderedList &&
@@ -271,7 +266,6 @@ final class EditorActive {
     underline,
     strike,
     code,
-    highlight,
     heading,
     bulletList,
     orderedList,

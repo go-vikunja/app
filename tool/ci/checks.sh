@@ -28,7 +28,7 @@ python3 -I tool/ci/desugar_source.py --check-manifest
 flutter analyze
 python3 -I -m unittest discover -s tool/ci -p 'test_*.py'
 if command -v shellcheck >/dev/null 2>&1; then
-  shellcheck -x tool/ci/*.sh
+  shellcheck -x tool/ci/*.sh tool/*.sh
 else
   echo "shellcheck is not installed; skipped."
 fi

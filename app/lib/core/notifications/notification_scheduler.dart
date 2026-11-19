@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/notifications/notification_plan.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/time/timers.dart';
 
 final _log = Logger('Notifications');
 
@@ -30,11 +31,6 @@ typedef NotificationPresentation = ({
   NotificationDescriber describe,
   NotificationPrivacy privacy,
 });
-
-typedef CreateTimer = Timer Function(
-  Duration duration,
-  void Function() callback,
-);
 
 /// Keeps the OS notifications of one account in step with its database.
 /// Headless: the database, the gateway, the preferences, the presentation,

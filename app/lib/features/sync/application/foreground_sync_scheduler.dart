@@ -4,14 +4,10 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/core/time/timers.dart';
 import 'package:vikunja_mobile/features/sync/application/sync_status_queries.dart';
 
 final _log = Logger('ForegroundSync');
-
-typedef TimerFactory = Timer Function(
-  Duration duration,
-  void Function() callback,
-);
 
 /// Keeps one account fresh while the app is in front: an incremental sync
 /// [wait] after the last run ended, whoever started that run, and one on
@@ -47,7 +43,7 @@ final class ForegroundSyncScheduler {
 
   final SyncEngine _engine;
   final DateTime Function() _clock;
-  final TimerFactory _createTimer;
+  final CreateTimer _createTimer;
   final void Function({required bool timed})? _onForeground;
   final Duration interval;
   final Duration maxInterval;

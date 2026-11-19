@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/core/platform/copy_confirmation.dart';
 import 'package:vikunja_mobile/core/platform/sensitive_clipboard.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/sensitive_selectable_text.dart';
 
 final _log = Logger('LinkShareClipboard');
 
@@ -48,60 +49,17 @@ Future<void> copyLinkShareText(
   }
 }
 
-/// A link share's URL as selectable text whose Copy, from the selection
-/// menu or the keyboard, goes through [copyLinkShareText]: the plain
-/// clipboard would show the secret in previews and keyboard histories.
-class LinkShareText extends ConsumerStatefulWidget {
+/// A link share's URL as selectable text whose Copy goes through
+/// [copyLinkShareText].
+class LinkShareText extends ConsumerWidget {
   const new(this.url, {super.key});
 
   final String url;
 
   @override
-  ConsumerState<LinkShareText> createState() => _LinkShareTextState();
-}
-
-class _LinkShareTextState extends ConsumerState<LinkShareText> {
-  TextSelection _selection = const TextSelection.collapsed(offset: -1);
-
-  void _copySelection() {
-    if (!_selection.isValid || _selection.isCollapsed) return;
-    unawaited(
-      copyLinkShareText(context, ref, _selection.textInside(widget.url)),
-    );
-  }
-
-  Widget _selectionMenu(BuildContext context, EditableTextState editable) =>
-      AdaptiveTextSelectionToolbar.buttonItems(
-        anchors: editable.contextMenuAnchors,
-        buttonItems: [
-          for (final item in editable.contextMenuButtonItems)
-            if (item.type == ContextMenuButtonType.copy)
-              item.copyWith(
-                onPressed: () {
-                  editable.hideToolbar();
-                  _copySelection();
-                },
-              )
-            else if (item.type == ContextMenuButtonType.selectAll)
-              item,
-        ],
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Actions(
-      actions: {
-        CopySelectionTextIntent: CallbackAction<CopySelectionTextIntent>(
-          onInvoke: (_) => _copySelection(),
-        ),
-      },
-      child: SelectableText(
-        widget.url,
-        style: theme.textTheme.bodyMedium?.merge(AppTheme.monospace),
-        onSelectionChanged: (selection, _) => _selection = selection,
-        contextMenuBuilder: _selectionMenu,
-      ),
-    );
-  }
+  Widget build(BuildContext context, WidgetRef ref) => SensitiveSelectableText(
+    url,
+    style: Theme.of(context).textTheme.bodyMedium?.merge(AppTheme.monospace),
+    onCopy: (selected) => copyLinkShareText(context, ref, selected),
+  );
 }

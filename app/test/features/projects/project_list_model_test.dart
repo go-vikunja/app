@@ -401,10 +401,17 @@ void main() {
     });
 
     test('every kind is shown', () {
-      expect(
-        ProjectViewKind.values.where(isShownInApp),
-        ProjectViewKind.values,
-      );
+      final views = [
+        for (final (index, kind) in ProjectViewKind.values.indexed)
+          ProjectView(
+            id: index + 1,
+            projectId: 1,
+            title: kind.name,
+            kind: kind,
+            position: index.toDouble(),
+          ),
+      ];
+      expect(shownViewsOf(Project(id: 1, title: 'p', views: views)), views);
     });
 
     test('the first view without a default kind', () {

@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/text/title_order.dart';
+import 'package:vikunja_mobile/core/time/moments.dart';
 
 final _log = Logger('SyncEngine');
 
@@ -63,15 +64,8 @@ SavedFilterRef savedFilterRefOf(SavedFilter filter) => SavedFilterRef(
 bool needsDefinition(SavedFilterRef filter) {
   final definition = filter.definition;
   if (definition == null) return true;
-  return !_sameSecond(definition.updated, filter.updated);
+  return !sameSecond(definition.updated, filter.updated);
 }
-
-bool _sameSecond(DateTime? a, DateTime? b) => switch ((a, b)) {
-  (null, null) => true,
-  (final a?, final b?) =>
-    a.millisecondsSinceEpoch ~/ 1000 == b.millisecondsSinceEpoch ~/ 1000,
-  _ => false,
-};
 
 String encodeSavedFilters(List<SavedFilterRef> filters) => jsonEncode([
   for (final filter in filters)

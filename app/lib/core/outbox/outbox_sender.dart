@@ -20,13 +20,10 @@ import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/sync/task_filters.dart';
+import 'package:vikunja_mobile/core/time/moments.dart';
+import 'package:vikunja_mobile/core/time/timers.dart';
 
 final _log = Logger('Outbox');
-
-typedef CreateTimer = Timer Function(
-  Duration duration,
-  void Function() callback,
-);
 
 enum OutboxSenderState {
   /// Nothing queued, or the queue has not been looked at since the last
@@ -814,14 +811,10 @@ final class OutboxSender {
       ((base.dueDate == null &&
               base.startDate == null &&
               base.endDate == null) ||
-          !_sameSecond(task.dueDate, base.dueDate) ||
-          !_sameSecond(task.startDate, base.startDate) ||
-          !_sameSecond(task.endDate, base.endDate)) &&
-      !_sameSecond(task.doneAt, base.doneAt);
-
-  static bool _sameSecond(DateTime? a, DateTime? b) => a == null || b == null
-      ? a == b
-      : a.millisecondsSinceEpoch ~/ 1000 == b.millisecondsSinceEpoch ~/ 1000;
+          !sameSecond(task.dueDate, base.dueDate) ||
+          !sameSecond(task.startDate, base.startDate) ||
+          !sameSecond(task.endDate, base.endDate)) &&
+      !sameSecond(task.doneAt, base.doneAt);
 
   /// The update of [op], sent once more with the cover cleared when the
   /// task still points at a deleted cover attachment (code 4020): every

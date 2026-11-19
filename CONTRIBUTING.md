@@ -47,6 +47,8 @@ flutter analyze
 - After a change to the description editor (`app/editor/`), run `tool/build_editor.sh` and commit the page it builds and its notices.
 - After a change to the Android dependencies, write the Gradle lockfile, the verification metadata and the Android libraries' notices again (`python3 -I tool/build_android_notices.py`, see the [README](README.md#common-commands)), and read the verification metadata's diff before committing it.
 - After a change to the store texts (`fastlane/metadata/`), run `python3 -I tool/check_store_metadata.py`; the `checks` job runs it through its tests.
+- Tests that measure time print it and check their budget only with `VIKUNJA_BENCHMARK=1` (`VIKUNJA_BENCHMARK=1 flutter test`), as a busy machine can take several times as long.
+- `tool/ci/play_upload.py` talks to Google Play's publishing API with Python's standard library only, on purpose: the release job holds the Play credentials, and a client library would bring a dependency tree into that job.
 
 ## Rules for the code
 

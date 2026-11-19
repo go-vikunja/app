@@ -115,9 +115,11 @@ void main() {
         .firstWhere((state) => state == RealtimeState.live)
         .timeout(const Duration(seconds: 5));
     final socket = await serverSide.future;
-    while (frames.length < 2) {
+    final deadline = DateTime.now().add(const Duration(seconds: 5));
+    while (frames.length < 2 && DateTime.now().isBefore(deadline)) {
       await Future<void>.delayed(const Duration(milliseconds: 10));
     }
+    expect(frames, hasLength(2), reason: 'auth and subscribe within 5 s');
     realtime.onPause();
     await socket.done.timeout(const Duration(seconds: 5));
 

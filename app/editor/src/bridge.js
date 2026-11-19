@@ -92,7 +92,6 @@ export function createBridge({mount, post, root}) {
         underline: editor.isActive('underline'),
         strike: editor.isActive('strike'),
         code: editor.isActive('code'),
-        highlight: false,
         heading,
         bulletList: editor.isActive('bulletList'),
         orderedList: editor.isActive('orderedList'),
@@ -254,8 +253,6 @@ export function createBridge({mount, post, root}) {
     underline: chain => chain.toggleUnderline(),
     strike: chain => chain.toggleStrike(),
     code: chain => chain.toggleCode(),
-    // The web's schema has no highlight mark: the web would drop it.
-    highlight: () => null,
     heading: (chain, args) => {
       const level = Number(args?.level)
       if (level === 0) return chain.setParagraph()

@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/features/projects/presentation/timeline/project_t
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_chart.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_row.dart';
 
+import '../../helpers/budgets.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 
@@ -123,18 +124,16 @@ void main() {
     final layout = tester
         .widget<TimelineChart>(find.byType(TimelineChart))
         .layout;
-    // The number the step reports.
-    // ignore: avoid_print
-    print(
-      'Timeline of ${layout.rows.length} rows laid out in $model ms, its '
-      'first frame in ${watch.elapsedMilliseconds} ms',
-    );
     expect(layout.rows.length, greaterThan(800));
     expect(layout.arrows, isNotEmpty);
     expect(find.byType(TimelineRow).evaluate().length, lessThan(30));
-    expect(model, lessThan(40));
+    expectWithinBudget(
+      model,
+      40,
+      'Timeline layout of ${layout.rows.length} rows',
+    );
     // Debug mode: building every row instead would take seconds.
-    expect(watch.elapsedMilliseconds, lessThan(600));
+    expectWithinBudget(watch.elapsedMilliseconds, 600, 'Timeline first frame');
 
     await tester.pumpWidget(app(source, dayWidth: 54));
     await tester.pumpAndSettle();

@@ -304,16 +304,6 @@ describe('commands', () => {
     assert.equal(editor.getHTML(), '<p>bold title</p><p></p>')
   })
 
-  test('highlight does nothing, the schema has no such mark', async () => {
-    const editor = await open('<p>word</p>')
-    editor.commands.selectAll()
-    command('highlight')
-    assert.equal(editor.getHTML(), '<p>word</p>')
-    const state = await latestState()
-    assert.equal(state.active.highlight, false)
-    assert.equal(posted.some(message => message.type === 'error'), false)
-  })
-
   test('an unknown command or message is reported without content', async () => {
     await open('<p>secret</p>')
     command('format-disk')

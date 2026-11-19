@@ -168,20 +168,3 @@ bool _usesRelativeDates(FilterGroup group) => group.items.any(
 
 bool _comparesRelative(FilterCondition condition) =>
     condition.values.any((value) => value is FilterDate && value.isRelative);
-
-final Expando<BoundFilter> _lastBound = Expando('lastBound');
-
-/// Whether [task] matches [expression] the way the server decides it.
-/// Repeated calls with the same [context] reuse its resolved dates.
-bool matchesFilter(
-  FilterExpression expression,
-  FilterableTask task,
-  FilterContext context,
-) {
-  var bound = _lastBound[expression.root];
-  if (bound == null || bound.context != context) {
-    bound = expression.bind(context);
-    _lastBound[expression.root] = bound;
-  }
-  return bound.matches(task);
-}

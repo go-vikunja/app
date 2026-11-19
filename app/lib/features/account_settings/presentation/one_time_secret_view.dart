@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/platform/secure_display.dart';
 import 'package:vikunja_mobile/core/platform/sensitive_clipboard.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
+import 'package:vikunja_mobile/features/common/presentation/sensitive_selectable_text.dart';
 
 final _log = Logger('OneTimeSecret');
 
@@ -44,7 +45,6 @@ class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
   late final SecureHold _secureHold;
   bool _copied = false;
   bool _askedBeforeLeaving = false;
-  TextSelection _selection = const TextSelection.collapsed(offset: -1);
 
   @override
   void initState() {
@@ -76,30 +76,6 @@ class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
     unawaited(HapticFeedback.selectionClick());
     announce(context, l10n.copiedToClipboard);
   }
-
-  // The selection's own Copy, Share and keyboard shortcut would use the
-  // plain clipboard, which Android previews and keyboards remember.
-  void _copySelection() {
-    if (!_selection.isValid || _selection.isCollapsed) return;
-    unawaited(_copy(_selection.textInside(widget.secret)));
-  }
-
-  Widget _selectionMenu(BuildContext context, EditableTextState editable) =>
-      AdaptiveTextSelectionToolbar.buttonItems(
-        anchors: editable.contextMenuAnchors,
-        buttonItems: [
-          for (final item in editable.contextMenuButtonItems)
-            if (item.type == ContextMenuButtonType.copy)
-              item.copyWith(
-                onPressed: () {
-                  editable.hideToolbar();
-                  _copySelection();
-                },
-              )
-            else if (item.type == ContextMenuButtonType.selectAll)
-              item,
-        ],
-      );
 
   Future<void> _confirmLeave() async {
     final l10n = context.l10n;
@@ -141,18 +117,10 @@ class _OneTimeSecretViewState extends ConsumerState<OneTimeSecretView> {
     // is captured.
     return Opacity(
       opacity: _display.hidesSecrets ? 0 : 1,
-      child: Actions(
-        actions: {
-          CopySelectionTextIntent: CallbackAction<CopySelectionTextIntent>(
-            onInvoke: (_) => _copySelection(),
-          ),
-        },
-        child: SelectableText(
-          widget.secret,
-          style: theme.textTheme.titleMedium?.merge(AppTheme.monospace),
-          onSelectionChanged: (selection, _) => _selection = selection,
-          contextMenuBuilder: _selectionMenu,
-        ),
+      child: SensitiveSelectableText(
+        widget.secret,
+        style: theme.textTheme.titleMedium?.merge(AppTheme.monospace),
+        onCopy: _copy,
       ),
     );
   }

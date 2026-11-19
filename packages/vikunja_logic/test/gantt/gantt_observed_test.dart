@@ -14,6 +14,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
+import '../filter/filter_test_helpers.dart';
 import '../helpers/tasks.dart';
 import 'gantt_test_support.dart';
 

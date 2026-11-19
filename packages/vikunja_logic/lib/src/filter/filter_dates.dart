@@ -4,15 +4,6 @@ import 'package:vikunja_logic/src/filter/go_values.dart';
 import 'package:vikunja_logic/src/time/datemath_expression.dart';
 import 'package:vikunja_logic/src/time/wall_clock.dart';
 
-/// A date value of a filter (`due_date < now/d+1d`, `2026-10-20`,
-/// `2026-10-20 22:00`, …) as the instant the server compares with, in UTC,
-/// or null when the server refuses it (4019).
-DateTime? parseFilterDate(
-  String value, {
-  required DateTime now,
-  required Location location,
-}) => FilterDate.tryParse(value)?.resolve(now, location);
-
 /// A filter's date value, parsed without its context: go-datemath first,
 /// then RFC 3339, `2006-01-02 15:04`, `2006-01-02` and a lenient `Y-M-D`
 /// that rolls over (`2023-02-30` is March 2), as the server tries them.

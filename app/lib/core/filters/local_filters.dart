@@ -12,12 +12,30 @@ import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 /// the server's rules: the filter text through the engine with the
 /// include-nulls flag, and the search as the server applies a view's `s`.
 final class LocalFilter {
-  const new _(
-    this._filter,
-    this._search, {
-    required this.onlyOpenTasks,
-    this._also,
-  });
+  const new _(this._filter, this._search, {required this.onlyOpenTasks});
+
+  factory _bound(
+    FilterExpression expression, {
+    required bool includeNulls,
+    required String search,
+    required tz.Location location,
+    required DateTime now,
+  }) {
+    final trimmed = search.trim();
+    return LocalFilter._(
+      expression.isEmpty
+          ? null
+          : expression.bind(
+              FilterContext(
+                now: now,
+                location: location,
+                includeNulls: includeNulls,
+              ),
+            ),
+      trimmed.isEmpty ? null : TaskSearchMatcher(trimmed),
+      onlyOpenTasks: expression.matchesOnlyOpenTasks,
+    );
+  }
 
   /// Null when the device cannot evaluate [filter]: the engine refuses its
   /// text, or the text names `bucket_id`, which needs a board's download.
@@ -26,26 +44,22 @@ final class LocalFilter {
     required tz.Location location,
     required DateTime now,
   }) {
-    final expression = switch (parseTaskFilter(filter.filter)) {
-      final FilterExpression parsed when !parsed.usesBucketId => parsed,
-      _ => null,
-    };
+    final expression = _parse(filter.filter);
     if (expression == null) return null;
-    final search = filter.search.trim();
-    return LocalFilter._(
-      expression.isEmpty
-          ? null
-          : expression.bind(
-              FilterContext(
-                now: now,
-                location: location,
-                includeNulls: filter.includeNulls,
-              ),
-            ),
-      search.isEmpty ? null : search,
-      onlyOpenTasks: expression.matchesOnlyOpenTasks,
+    return LocalFilter._bound(
+      expression,
+      includeNulls: filter.includeNulls,
+      search: filter.search,
+      location: location,
+      now: now,
     );
   }
+
+  static FilterExpression? _parse(String text) =>
+      switch (parseTaskFilter(text)) {
+        final FilterExpression parsed when !parsed.usesBucketId => parsed,
+        _ => null,
+      };
 
   /// What the server's tasks endpoint evaluates when a request with
   /// [request] (filter and include-nulls) meets the [own] filter of a view
@@ -63,37 +77,30 @@ final class LocalFilter {
     bool savedFilter = false,
   }) {
     final base = own ?? const ViewFilter();
-    LocalFilter? compiled(ViewFilter filter) =>
-        compile(filter, location: location, now: now);
-    if (request.filter.isEmpty) return compiled(base);
-    if (base.filter.isEmpty) {
-      return compiled(
-        ViewFilter(
-          filter: request.filter,
-          search: base.search,
-          includeNulls: base.includeNulls || request.includeNulls,
-        ),
-      );
-    }
-    if (savedFilter && request.includeNulls && !base.includeNulls) {
-      final nullable = compiled(
-        ViewFilter(filter: request.filter, includeNulls: true),
-      );
-      final rest = compiled(base);
-      if (nullable == null || rest == null) return null;
-      return LocalFilter._(
-        nullable._filter,
-        null,
-        onlyOpenTasks: nullable.onlyOpenTasks || rest.onlyOpenTasks,
-        also: rest,
-      );
-    }
-    return compiled(
-      ViewFilter(
-        filter: '(${request.filter}) && (${base.filter})',
-        search: base.search,
-        includeNulls: base.includeNulls || request.includeNulls,
-      ),
+    final ownExpression = _parse(base.filter);
+    final requestExpression = _parse(request.filter);
+    if (ownExpression == null || requestExpression == null) return null;
+    final merged = savedFilter
+        ? mergeSavedFilter(
+            saved: ownExpression,
+            savedIncludesNulls: base.includeNulls,
+            request: requestExpression,
+            requestIncludesNulls: request.includeNulls,
+          )
+        : (
+            expression: requestExpression.isEmpty
+                ? ownExpression
+                : ownExpression.isEmpty
+                ? requestExpression
+                : requestExpression.and(ownExpression),
+            includeNulls: base.includeNulls || request.includeNulls,
+          );
+    return LocalFilter._bound(
+      merged.expression,
+      includeNulls: merged.includeNulls,
+      search: base.search,
+      location: location,
+      now: now,
     );
   }
 
@@ -103,16 +110,13 @@ final class LocalFilter {
       (filter.filter.isNotEmpty || filter.search.trim().isNotEmpty);
 
   final BoundFilter? _filter;
-  final String? _search;
-  final LocalFilter? _also;
+  final TaskSearchMatcher? _search;
 
   /// No done task can match, so the candidates can leave them out.
   final bool onlyOpenTasks;
 
   bool matches(FilterableTask task) =>
-      (_search == null || matchesTaskSearch(_search, task)) &&
-      (_filter?.matches(task) ?? true) &&
-      (_also?.matches(task) ?? true);
+      (_search?.matches(task) ?? true) && (_filter?.matches(task) ?? true);
 
   Set<int> matchingIds(Iterable<FilterRow> rows) => {
     for (final row in rows)

@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 
+import '../../helpers/budgets.dart';
 import '../../helpers/fake_sync_client.dart';
 import '../../helpers/fake_timers.dart';
 import '../../helpers/fake_write_client.dart';
@@ -843,9 +844,8 @@ void main() {
     );
     await filters.matchingInProject(11, filter, timezoneSetting: 'UTC');
 
-    // The fastest of five runs, as a single one on a busy CI runner took
-    // three times the test machine's 50 ms. 300 ms leaves that runner room
-    // and still fails a query per task, which takes over 500 ms in all.
+    // The fastest of five runs; 300 ms still fails a query per task, which
+    // takes over 500 ms in all.
     final runs = <int>[];
     Set<int>? matching;
     for (var run = 0; run < 5; run++) {
@@ -859,10 +859,7 @@ void main() {
     }
     final fastest = runs.reduce(min);
 
-    // The number the step reports.
-    // ignore: avoid_print
-    print('Evaluated 5000 tasks in $fastest ms, the fastest of $runs');
     expect(matching, isNotEmpty);
-    expect(fastest, lessThan(300));
+    expectWithinBudget(fastest, 300, 'Evaluating 5000 tasks, fastest of $runs');
   });
 }

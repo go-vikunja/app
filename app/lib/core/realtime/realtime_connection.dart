@@ -8,13 +8,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/repositories/activity_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/core/time/timers.dart';
 
 final _log = Logger('Realtime');
-
-typedef RealtimeTimerFactory = Timer Function(
-  Duration duration,
-  void Function() callback,
-);
 
 /// `waiting`: for a retry, the end of a rate limit or the network.
 /// `unavailable`: given up until a resume (a rejected session, a TLS
@@ -93,7 +89,7 @@ final class RealtimeConnection {
   final SyncEngine _engine;
   final ActivityRepository _activity;
   final DateTime Function() _clock;
-  final RealtimeTimerFactory _createTimer;
+  final CreateTimer _createTimer;
   final Random _random;
   final _changes = StreamController<RealtimeState>.broadcast(sync: true);
   late final StreamSubscription<SyncStatus> _engineStatus;

@@ -1,4 +1,5 @@
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/time/moments.dart';
 
 /// "in 3 days" / "2 days ago", with the web's (dayjs) rounding thresholds
 /// below a day. From a day on the count follows the local calendar, like the
@@ -20,7 +21,7 @@ String formatRelativeTime(
         : l10n.relativeMinutesAgo(minutes);
   }
   final hours = (seconds / 3600).round();
-  final days = _calendarDaysBetween(now, moment).abs();
+  final days = calendarDaysBetween(now, moment).abs();
   if (hours < 22 || days == 0) {
     return future ? l10n.relativeInHours(hours) : l10n.relativeHoursAgo(hours);
   }
@@ -40,12 +41,3 @@ String formatRelativeTime(
 /// Close enough to [now] for [formatRelativeTime] to say "now".
 bool isJustNow(DateTime moment, {required DateTime now}) =>
     moment.difference(now).abs().inSeconds < 45;
-
-int _calendarDaysBetween(DateTime from, DateTime to) =>
-    _localDate(to).difference(_localDate(from)).inDays;
-
-// A UTC date, so that a daylight-saving change does not shorten a day.
-DateTime _localDate(DateTime moment) {
-  final local = moment.toLocal();
-  return DateTime.utc(local.year, local.month, local.day);
-}

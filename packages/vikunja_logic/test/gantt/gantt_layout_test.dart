@@ -4,6 +4,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
+import '../helpers/budgets.dart';
 import '../helpers/tasks.dart';
 import 'gantt_test_support.dart';
 
@@ -862,6 +863,6 @@ void main() {
 
     expect(layout.rows.length, greaterThan(500));
     expect(layout.arrows, isNotEmpty);
-    expect(stopwatch.elapsedMilliseconds, lessThan(50));
+    expectWithinBudget(stopwatch.elapsedMilliseconds, 50, 'Gantt layout');
   });
 }

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
+import 'filter_test_helpers.dart';
 import 'filter_test_support.dart';
 
 void main() {

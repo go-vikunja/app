@@ -4,6 +4,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
 import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
+import 'package:vikunja_mobile/core/time/moments.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
@@ -74,18 +75,6 @@ final class WidgetTexts {
       };
 
   String priority(TaskPriority priority) => priorityLabel(l10n, priority);
-}
-
-/// Whole local calendar days from [from] to [to], unaffected by a
-/// daylight-saving change in between.
-int calendarDaysBetween(DateTime from, DateTime to) {
-  final a = from.toLocal();
-  final b = to.toLocal();
-  return DateTime.utc(
-    b.year,
-    b.month,
-    b.day,
-  ).difference(DateTime.utc(a.year, a.month, a.day)).inDays;
 }
 
 /// The local midnight that starts the day after [now].

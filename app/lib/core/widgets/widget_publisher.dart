@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/time/timers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_host.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
@@ -15,11 +16,6 @@ typedef BuildWidgets = Future<WidgetBuild> Function(
   Set<WidgetKind> kinds, {
   required bool withCatalog,
 });
-
-typedef CreateTimer = Timer Function(
-  Duration duration,
-  void Function() callback,
-);
 
 /// Keeps one account's home-screen widgets in step with its database.
 /// Headless: the database, the host, the build, a clock and a timer

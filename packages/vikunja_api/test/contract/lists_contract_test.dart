@@ -179,6 +179,23 @@ void main() {
           );
 
           final perPage = connection.info.maxItemsPerPage;
+          // An assignment bumps `updated` asynchronously; under load that
+          // landed between the v1 and the v2 reads. Read once two reads in
+          // a row agree.
+          List<Task>? settled;
+          for (var attempt = 0; attempt < 20; attempt++) {
+            final items = (await readClient(ApiVersion.v2).tasks.listInView(
+              projectId,
+              listViewId,
+              TaskQuery(
+                sort: const [TaskSort(TaskSortField.position)],
+                perPage: perPage,
+              ),
+            )).items;
+            if (settled != null && _sameTasks(settled, items)) break;
+            settled = items;
+            await Future<void>.delayed(const Duration(milliseconds: 250));
+          }
           reads = {};
           for (final apiVersion in connection.apiVersions) {
             final client = readClient(apiVersion);
@@ -350,3 +367,7 @@ void main() {
     }
   });
 }
+
+bool _sameTasks(List<Task> a, List<Task> b) =>
+    a.length == b.length &&
+    [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((same) => same);

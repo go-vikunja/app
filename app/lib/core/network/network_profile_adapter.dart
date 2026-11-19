@@ -8,11 +8,11 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart'
     show mentionsClientCertificateRefusal, preConsentProbeKey;
 import 'package:vikunja_domain/vikunja_domain.dart';
-import 'package:vikunja_mobile/core/network/certificate_info.dart';
 import 'package:vikunja_mobile/core/network/network_profile.dart';
 import 'package:vikunja_mobile/core/network/network_profiles.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/network/profile_http_client.dart';
+import 'package:vikunja_mobile/core/network/profile_transport.dart';
 import 'package:vikunja_mobile/core/network/secret_scrubbing.dart';
 
 final _log = Logger('NetworkProfileAdapter');
@@ -53,7 +53,7 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
 
   final _dartIo = <OriginKey, _IoAdapter>{};
   final _refusalChecks = <OriginKey, (DateTime, bool)>{};
-  final _recordedMismatches = <OriginKey, String>{};
+  late final _mismatches = PinMismatchRecorder(_profiles);
 
   @override
   Future<ResponseBody> fetch(
@@ -72,8 +72,7 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
       if (!_isConnectionSettingsError(error)) rethrow;
       throw _connectionError(options, error);
     }
-    // Recording again once the stored record is gone ("Keep current").
-    if (profile?.lastPinMismatch == null) _recordedMismatches.remove(origin);
+    _mismatches.sync(origin, profile);
     if (!origin.isSecure && !(profile?.hasCleartextConsent ?? false)) {
       if (!_isPreConsentProbe(options)) {
         throw _connectionError(
@@ -162,26 +161,13 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
       () => profileHttpClient(
         profile,
         context: context,
-        onPinMismatch: (seen) => _onPinMismatch(origin, seen),
+        onPinMismatch: (seen) => _mismatches.record(origin, seen),
       ),
     );
     return _dartIo[origin] = _IoAdapter(key, adapter, context);
   }
 
   void _dropDartIo(OriginKey origin) => _dartIo.remove(origin)?.close();
-
-  void _onPinMismatch(OriginKey origin, CertificateInfo seen) {
-    if (_recordedMismatches[origin] == seen.sha256) return;
-    _recordedMismatches[origin] = seen.sha256;
-    unawaited(
-      _profiles
-          .recordPinMismatch(origin, seen)
-          .catchError(
-            (Object error) =>
-                _log.info('Mismatch not recorded: ${error.runtimeType}'),
-          ),
-    );
-  }
 
   /// A TLS 1.3 server refuses a client certificate only after the client
   /// finished its handshake, so the request just sees the connection end;
@@ -307,16 +293,10 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
   static RequestOptions _withProfileHeaders(
     RequestOptions options,
     Map<String, String> profileHeaders,
-  ) {
-    final present = {
-      for (final name in options.headers.keys) name.toLowerCase(),
-    };
-    final headers = <String, dynamic>{...options.headers};
-    for (final MapEntry(:key, :value) in profileHeaders.entries) {
-      if (!present.contains(key.toLowerCase())) headers[key] = value;
-    }
-    return options.copyWith(headers: headers, followRedirects: false);
-  }
+  ) => options.copyWith(
+    headers: withProfileHeaders(options.headers, profileHeaders),
+    followRedirects: false,
+  );
 
   /// Only the `/info` probes, which carry no credentials, reach an http
   /// origin before the user allowed unencrypted connections to it.

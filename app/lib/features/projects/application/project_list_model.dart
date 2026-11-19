@@ -4,22 +4,11 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 
-/// Whether the app shows views of [kind]: every kind it knows. A view of a
-/// kind it does not know is never stored (`ProjectViewKind.fromWire`), and
-/// a kind added later is decided here.
-bool isShownInApp(ProjectViewKind kind) => switch (kind) {
-  ProjectViewKind.list ||
-  ProjectViewKind.gantt ||
-  ProjectViewKind.table ||
-  ProjectViewKind.kanban => true,
-};
-
-/// The project's views the app shows, as the web orders its view tabs.
+/// The project's views, as the web orders its view tabs. The app shows
+/// every kind it knows, and a view of a kind it does not know is never
+/// stored (`ProjectViewKind.fromWire`).
 List<ProjectView> shownViewsOf(Project? project) =>
-    [
-      for (final view in project?.views ?? const <ProjectView>[])
-        if (isShownInApp(view.kind)) view,
-    ]..sort((a, b) {
+    [...?project?.views]..sort((a, b) {
       final byPosition = a.position.compareTo(b.position);
       return byPosition != 0 ? byPosition : a.id.compareTo(b.id);
     });

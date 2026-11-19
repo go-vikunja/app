@@ -16,17 +16,13 @@ import 'package:vikunja_mobile/core/repositories/activity_repository_providers.d
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
+import 'package:vikunja_mobile/core/time/timers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_taps.dart';
 
 final _log = Logger('BackgroundSync');
 
 typedef BackgroundContainerFactory = Future<ProviderContainer> Function();
-
-typedef CreateTimer = Timer Function(
-  Duration duration,
-  void Function() callback,
-);
 
 enum BackgroundRunKind {
   /// The periodic run: every account's outbox sent first, then every
