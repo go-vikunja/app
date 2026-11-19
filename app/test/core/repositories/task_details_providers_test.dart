@@ -215,6 +215,35 @@ void main() {
     expect(client.requests, ['attachment 4 2 md']);
   });
 
+  test("another account's activation empties the attachment images in "
+      'memory', () async {
+    final alice = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: noon),
+    );
+    final bob = await auth.seedAccount(
+      fullServer270(),
+      tokens: issueTokens(issuedAt: noon, userId: 8, username: 'bob'),
+      activate: false,
+    );
+    await container.read(accountsProvider.future);
+    final client =
+        container.read(readClientProvider(alice.id)) as FakeSyncClient;
+    client.attachmentBlobs[(4, 2, null)] = AttachmentBlob(
+      bytes: Uint8List(3),
+      contentType: 'image/png',
+    );
+    container.listen(inactiveAttachmentImagesProvider, (_, _) {});
+    final images = container.read(accountAttachmentImagesProvider(alice.id));
+    await images.load(4, 2);
+    expect(images.peek(4, 2), isNotNull);
+
+    await container.read(accountRegistryProvider).setActive(bob.id);
+    await pumpEventQueue();
+
+    expect(images.peek(4, 2), isNull);
+  });
+
   test('signing out drops the account avatars and attachment images from '
       'memory', () async {
     final alice = await auth.seedAccount(

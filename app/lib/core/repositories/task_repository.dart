@@ -17,6 +17,9 @@ abstract interface class TaskRepository {
   /// or relations: enough to search titles and identifiers.
   Stream<List<Task>> watchSearchableTasks();
 
+  /// How many tasks the lists show in [projectIds], done ones included.
+  Future<int> countInProjects(Set<int> projectIds);
+
   /// Open tasks outside archived projects and their subprojects, nearest
   /// due date first (none last), then newest first: Upcoming's source.
   Stream<List<Task>> watchActiveOpenTasks();

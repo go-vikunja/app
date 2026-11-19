@@ -278,6 +278,15 @@ void main() {
       expect(await db.tasksDao.idsInProject(5), [1, 2, 3]);
     });
 
+    test('counts what the lists show in several projects, without a queued '
+        'deletion', () async {
+      expect(await db.tasksDao.countVisibleInProjects({5, 6}), 4);
+      await db.outboxDao.queueDelete(2, now: monday);
+      expect(await db.tasksDao.countVisibleInProjects({5, 6}), 3);
+      expect(await db.tasksDao.countVisibleInProjects({5}), 2);
+      expect(await db.tasksDao.countVisibleInProjects({}), 0);
+    });
+
     test(
       "a project's progress counts its own tasks and the done ones",
       () async {

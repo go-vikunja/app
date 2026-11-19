@@ -168,6 +168,10 @@ final class LocalTaskRepository
       _db.tasksDao.watchSearchableTasks();
 
   @override
+  Future<int> countInProjects(Set<int> projectIds) =>
+      _db.tasksDao.countVisibleInProjects(projectIds);
+
+  @override
   Stream<List<Task>> watchActiveOpenTasks() => _activeOpenTasks.stream;
 
   @override

@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/bootstrap/appearance_start.dart';
 import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
 import 'package:vikunja_mobile/bootstrap/previous_app_start.dart';
 import 'package:vikunja_mobile/bootstrap/start_values.dart';
+import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/background/background_entry_point.dart';
@@ -80,7 +81,9 @@ Future<void> bootstrap() async {
   runApp(
     UncontrolledProviderScope(container: container, child: const VikunjaApp()),
   );
-  container.listen(screenProtectionProvider, (_, _) {});
+  container
+    ..listen(screenProtectionProvider, (_, _) {})
+    ..listen(inactiveAttachmentImagesProvider, (_, _) {});
   unawaited(_initializeNotifications(container));
   unawaited(_initializeBackground(container));
   unawaited(_finishSignOuts(container));

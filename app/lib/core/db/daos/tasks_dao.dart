@@ -857,6 +857,15 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     return query.map((row) => row.read(count)!).getSingle();
   }
 
+  /// What [loadSearchableTasks] would list of [projectIds], counted.
+  Future<int> countVisibleInProjects(Set<int> projectIds) {
+    final count = tasks.id.count();
+    final query = selectOnly(tasks)
+      ..addColumns([count])
+      ..where(tasks.projectId.isIn(projectIds) & _visible);
+    return query.map((row) => row.read(count)!).getSingle();
+  }
+
   Future<int> countInProject(int projectId) {
     final count = tasks.id.count();
     final query = selectOnly(tasks)

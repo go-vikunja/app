@@ -668,6 +668,10 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
         (_) => [for (final task in _all) task.copyWith(relatedTasks: const {})],
       );
 
+  @override
+  Future<int> countInProjects(Set<int> projectIds) async =>
+      _all.where((task) => projectIds.contains(task.projectId)).length;
+
   /// The archived projects whose tasks `watchActiveOpenTasks` leaves out;
   /// the test lists their subprojects too.
   Set<int> get archivedProjectIds => _archivedProjectIds;

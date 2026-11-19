@@ -5,8 +5,9 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 
 part 'attachment_image_providers.g.dart';
 
-/// Kept for the session and dropped when the account signs out. The read
-/// client is looked up per request, like the avatar cache does.
+/// Kept for the session and dropped when the account signs out or another
+/// becomes active ([inactiveAttachmentImages]). The read client is looked
+/// up per request, like the avatar cache does.
 @Riverpod(keepAlive: true)
 AttachmentImages accountAttachmentImages(Ref ref, String accountId) {
   final cache = AttachmentImageCache(
@@ -17,6 +18,19 @@ AttachmentImages accountAttachmentImages(Ref ref, String accountId) {
   );
   ref.onDispose(cache.clear);
   return cache;
+}
+
+/// Drops the previous account's images when another becomes active: only
+/// the active account shows images, and each cache holds up to 32 MB.
+/// Listened to from the start, as a provider nobody listens to is paused
+/// with its listeners.
+@Riverpod(keepAlive: true)
+void inactiveAttachmentImages(Ref ref) {
+  ref.listen(activeAccountIdProvider, (previous, next) {
+    if (previous != null && previous != next) {
+      ref.invalidate(accountAttachmentImagesProvider(previous));
+    }
+  });
 }
 
 /// The active account's; null while nobody is signed in.

@@ -3832,3 +3832,28 @@ Limits (moved to step 40q, which restructures the code with K3 to K7):
 - The realtime socket still tells a refused client certificate by the error's text, where the requests try a second handshake.
 - The fixture scripts' helpers stay copied: their copies differ (8 variants of `_send`, 12 of `capture`), and merging them would change what they record, which only a new recording against the server could check. The two Python dev tools keep a `credentials` and a `call` each.
 - No scenario suite yet runs the same cases against the fakes and the real server.
+
+## D104: Performance on large accounts
+
+*Accepted 2026-11-19 (step 40s).*
+
+Step 40s takes finding W2 of the code review (2026-11-17): measure with 5,000 tasks first, then change only what stutters.
+
+**Measured** (`test/performance/large_account_test.dart`: 5,000 tasks in 20 projects with labels and assignees, a quarter done, in a real Drift database; the fastest of three runs in the test VM on the development Mac, debug mode; a mid-range phone may take three to five times as long):
+- the open tasks of the active projects (Overview, Upcoming): 29 ms;
+- every searchable task (search): 21 ms;
+- favourites and projects: under 1 ms;
+- a write until a watched list has reloaded, once: 32 ms.
+Since step 40j a full run no longer writes unchanged pages ([D99](#d99-battery-and-data)), so the lists reload only for real changes. None of this stutters; the test keeps the numbers in view, with budgets that hold only with `VIKUNJA_BENCHMARK=1` ([D103](#d103-test-hygiene-dead-code-and-shared-helpers)).
+
+**Changed, as plain waste:**
+- Deleting a project counts its tasks with one query (`TaskRepository.countInProjects`, `TasksDao.countVisibleInProjects`) instead of loading every task of the account.
+- When another account becomes active, the previous account's attachment images, up to 32 MB, leave the memory (`inactiveAttachmentImages`, listened to from the start, as a provider nobody listens to is paused with its listeners).
+
+**Left as they are:**
+- The five steps before `runApp` run in their order on purpose: the app lock must hold before the first frame, and the previous app's import before the accounts load; the rest already runs side by side. Measuring them needs a device.
+- The detail sheet reads its details again after the user's own change, as the server may have changed what was sent (merged reminders, a moved done date); it costs a request, not a frame.
+- The foreground heartbeat's write every 30 s and the board's per-card work, which the review itself left out.
+
+Limits:
+- Nothing was measured on a device, nor with the widget tree of such an account.

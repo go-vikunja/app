@@ -165,15 +165,8 @@ mixin ProjectManagementActions<W extends ConsumerStatefulWidget>
     );
     int? taskCount;
     try {
-      final tasks =
-          await ref
-              .read(taskRepositoryProvider)
-              ?.watchSearchableTasks()
-              .first ??
-          const <Task>[];
-      taskCount = tasks
-          .where((task) => subtree.contains(task.projectId))
-          .length;
+      taskCount =
+          await ref.read(taskRepositoryProvider)?.countInProjects(subtree) ?? 0;
     } on Object catch (error) {
       _log.warning('Counting tasks failed: ${error.runtimeType}');
     }
