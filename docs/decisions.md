@@ -3693,7 +3693,7 @@ Limits:
 - The date-range rule is built from D38's note that the web keeps `31.12.2026 - 01.01.2027` in the title, not from the web's code, which was not read. Beyond the note: a hyphen and an en dash count, an em dash and `to` do not; chains of three or more dates count; `1.3.` with a trailing dot counts. Whether the web takes the time of `1.3 - 4.3 at 10:00` is not checked; here the range gives no date and the time alone dates the task today at 10:00.
 - No space before punctuation is a new deviation from the web: the roadmap asked for it, while D38's limit had kept the web's space; it is for the owner to confirm. A name resolved after the date can still leave a space before punctuation: `Call @bob tomorrow.` gives `Call .` once Bob is assigned, as names leave the title in the web's cleanup.
 - Snackbars are capped at 640 dp on every screen, not at each screen's band, and with a task in the pane the shell's snackbar is centred across list and pane and crosses the divider. A new scaffold narrower than the window that shows its own snackbars needs a `ReadableSnackBars` around it, or its snackbars take the 610 dp width and draw edge to edge; today those are the shell and the task pane, and nothing checks for a new one.
-- Three other widths are still measured without Bold Text: the project view tabs' scroll decision (`widthOf` in `project_header.dart`), the trash page's tab widths (`trash_page.dart`) and the Appearance section's theme segments (`appearance_section.dart`); `task_detail_sheet.dart`'s `_Attribute.nameStyle` repeats the bold merge. They could use `drawnTextStyle`.
+- Three other widths are still measured without Bold Text: the project view tabs' scroll decision (`widthOf` in `project_header.dart`), the trash page's tab widths (`trash_page.dart`) and the Appearance section's theme segments (`appearance_section.dart`); `details/attribute_card.dart`'s `_Attribute.nameStyle` (in `task_detail_sheet.dart` until step 40l) repeats the bold merge. They could use `drawnTextStyle`.
 - The Account settings page neither shows nor edits `default_due_time` and `default_task_relation_type`.
 - The opener's Restore is offered again after a server error and the rate limit too, while Undo keeps D79's narrower rule; making them the same would change Undo.
 - A team notification's tap without the install's link key, from an older notification or a forged one, still opens the inbox. The Projects tab's empty state, "Create your first project to start adding tasks.", can still show to a guest whose shared project is archived.
@@ -3940,4 +3940,26 @@ Limits:
 - A second snoozed notification behind a full window is still forgotten: iOS keeps room under its cap for one per account.
 - Once the editor's 16 MiB are used up, the images after still load before they are left out; an animated GIF or WebP up to 1,024 px wide now goes whole, also over 1 MiB.
 - Seen while fixing, not changed: an ordinal's month word is removed at every occurrence, as on the web; an absolute date removed elsewhere is cut out of a longer date (`9/11/2022`); `*'kid's'` is read as the label `kid` while its token stays; `Ask @bob @bob,` with `bob` resolved loses `@bob` from `@bob,`.
+
+## D108: The task detail sheet and the project screen in smaller parts
+
+*Accepted 2026-11-19 (step 40l).*
+
+Step 40l takes findings K1 and K2 of the code review (2026-11-17): the two largest screens were the hardest way in for new maintainers. The step restructures them without a visible change: texts, keys, semantics, focus order, announcements, timing and writes stay as they were, the existing tests pass unchanged, and only three test lookups of moved private names follow them (the overlay inventory's key of the detail's More menu, the heading guideline's lookup of the title, the guest inventory's keys of the moved flows). Each screen was split in a worktree of its own and compared line by line with the old code by a second reviewer.
+
+**The task detail sheet** (K1):
+- `build()` hands each section to a widget or section function under `features/tasks/presentation/details/`: `TaskDetailHeader`, `TaskDetailMenu` (with `TaskDetailMenuAction`), `TaskDetailTitle`, `TaskStatusLine`, `TaskDoneButton`, `attributeSection`, `descriptionSection`, `CommentsNote`, and `InheritedFollowNote` beside the follow button. The list keeps exactly the same children in the same order, so its scroll and screen reader positions stay.
+- The action flows moved out of the State into `TaskDetailActions`, a `ChangeNotifier` the sheet owns: done with the hand-over of its Undo, a subtask's done, delete with the bin's Undo, duplicate, follow and reactions. It still takes the sheet's context for its dialogs and messages.
+- The State went from about 1,650 to about 1,220 lines, `build()` from about 800 to about 455.
+
+**The project screen** (K2):
+- What a view shows is a sealed type, `ProjectViewContent` (`ListViewContent`, `TableViewContent`, `TimelineViewContent`, `BoardViewContent`), in place of `Object` and the casts; `WatchedViewSource.show` makes the shown-while-loading decision on the typed source. In the rare state of a failed load retried while another kind's view still shows, it builds no content of the wrong kind.
+- Each kind's provider choice, listeners, controls (with the sort and column sheets) and body are in `ProjectViewDelegate` and its four subclasses (`project_view_kinds.dart`).
+- The refresh state (the queued-positions follow-up, the stale and quiet downloads, their failures) is one mixin, `ProjectViewDownloads`, keyed by view id: a view keeps its id when its kind changes, and one follow-up spans list and board views.
+- The screen went from about 1,250 to about 740 lines; the app bar, the tabs, the menu, the project management actions and the selection (D106) stay in it.
+
+Limits, left for the later steps the review suggests:
+- No controller per account and task yet: the sheet's State still holds the comments, the draft, links, relations, the edit pages and the checklist ticks, and `TaskDetailActions` needs a widget tree to be tested.
+- No widget per view kind with its own refresh state: the selection and the view shown while the next one loads need the content in the screen's build, and per-kind refresh state would change when downloads run.
+- `build()` of each screen is still long: the sheet's permission logic and editor wiring, the screen's view resolution and app bar.
 

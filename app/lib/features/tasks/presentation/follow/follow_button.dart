@@ -43,3 +43,70 @@ class FollowButton extends StatelessWidget {
     );
   }
 }
+
+/// That the user follows the task through a project's subscription, named
+/// by [projectTitles] when they hold it; nothing otherwise.
+class InheritedFollowNote extends StatelessWidget {
+  const new({
+    required this.follow,
+    required this.taskId,
+    required this.projectTitles,
+    super.key,
+  });
+
+  final FollowController follow;
+  final int taskId;
+  final Map<int, String> projectTitles;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: follow,
+    builder: (context, state, _) => switch (state) {
+      FollowKnown(:final subscription?)
+          when taskId > 0 && follow.inherits(subscription) =>
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: _InheritedFollowNote(
+            projectTitle: projectTitles[subscription.entityId],
+          ),
+        ),
+      _ => const SizedBox.shrink(),
+    },
+  );
+}
+
+class _InheritedFollowNote extends StatelessWidget {
+  const new({required this.projectTitle});
+
+  final String? projectTitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final style = theme.textTheme.bodySmall?.copyWith(
+      color: colors.onSurfaceVariant,
+    );
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.notifications_active_outlined,
+            size: 16,
+            color: colors.onSurfaceVariant,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(switch (projectTitle) {
+              final title? => l10n.followingViaProject(title),
+              null => l10n.followingViaSomeProject,
+            }, style: style),
+          ),
+        ],
+      ),
+    );
+  }
+}

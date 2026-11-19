@@ -4,6 +4,7 @@ import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/detail_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 /// The nodes a screen reader can reach: neither merged into a parent, nor
@@ -223,9 +224,7 @@ final List<(Finder, String)> headingControls = [
   (
     find.descendant(
       of: find.byType(TaskDetailSheet),
-      matching: find.byWidgetPredicate(
-        (widget) => widget.runtimeType.toString() == '_Title',
-      ),
+      matching: find.byType(TaskDetailTitle),
     ),
     "The task sheet's title is its level-1 heading and, where the task "
         'can be changed, opens the edit page, as a tap on it does.',

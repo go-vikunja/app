@@ -242,6 +242,11 @@ const overlayInventory = <String, OverlayCoverage>{
     '$_menuOfTextItems; opened at 200 % in '
     'test/app/accessibility_smoke_test.dart',
   ),
+  'features/tasks/presentation/details/detail_menu.dart '
+      'TaskDetailMenu.build PopupMenuButton': Exempt(
+    '$_menuOfTextItems; opened at 200 % in '
+    'test/app/accessibility_smoke_test.dart',
+  ),
   'features/tasks/presentation/edit/discard_changes_dialog.dart '
       'confirmDiscardChanges showAdaptiveDialog': Exempt(
     '$_sameAlertAsDelete; opened at 200 % in '
@@ -306,11 +311,6 @@ const overlayInventory = <String, OverlayCoverage>{
   'features/tasks/presentation/task_detail_sheet.dart '
       'showTaskDetail showModalBottomSheet': Swept(
     'detail sheet',
-  ),
-  'features/tasks/presentation/task_detail_sheet.dart '
-      '_TaskDetailSheetState.build PopupMenuButton': Exempt(
-    '$_menuOfTextItems; opened at 200 % in '
-    'test/app/accessibility_smoke_test.dart',
   ),
   'features/teams/presentation/team_confirmations.dart '
       'explainOnlyAdmin showAdaptiveDialog': Exempt(

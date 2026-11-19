@@ -143,6 +143,37 @@ class _Inset extends StatelessWidget {
   );
 }
 
+/// Why there is no comment field.
+class CommentsNote extends StatelessWidget {
+  const new({required this.text, super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock_outline, size: 16, color: colors.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 String commentsFailureText(AppLocalizations l10n, Object failure) =>
     failure is NetworkFailure
     ? l10n.commentsNeedConnection

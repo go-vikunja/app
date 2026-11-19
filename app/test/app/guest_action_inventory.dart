@@ -616,6 +616,32 @@ const guestActionInventory = <String, GuestActionEntry>{
     _serverSearch,
     uses: {'userRepositoryProvider'},
   ),
+  'features/tasks/presentation/details/task_detail_actions.dart '
+      'TaskDetailActions.delete': (
+    Open(
+      'the Undo of a delete restores the task by id from the bin, which a '
+      'write guest may (D79)',
+    ),
+    uses: {'restoreTask'},
+  ),
+  'features/tasks/presentation/details/task_detail_actions.dart '
+      'TaskDetailActions._react': (
+    Gated(
+      'the reaction chips of the task and its comments take no taps from a '
+      'guest and offer it no Add reaction',
+      checkIn: ['features/tasks/presentation/task_detail_sheet.dart'],
+    ),
+    uses: {'addReaction', 'removeReaction'},
+  ),
+  'features/tasks/presentation/details/task_detail_actions.dart '
+      'TaskDetailActions._subscriptions': (
+    Gated(
+      'only the Follow button reads or writes through it, and a guest gets '
+      'none; the sheet takes the state from the task details',
+      checkIn: ['features/tasks/presentation/task_detail_sheet.dart'],
+    ),
+    uses: {'subscriptionRepositoryProvider'},
+  ),
   'features/tasks/presentation/bulk_task_actions.dart _restoreAll': (
     Open(
       'the Undo of a delete of several selected tasks restores them by id '
@@ -653,30 +679,6 @@ const guestActionInventory = <String, GuestActionEntry>{
       '_LabelPickerState._create': (
     Gated('the picker offers a guest no new label and says why'),
     uses: {'labelRepositoryProvider'},
-  ),
-  'features/tasks/presentation/task_detail_sheet.dart '
-      '_TaskDetailSheetState._delete': (
-    Open(
-      'the Undo of a delete restores the task by id from the bin, which a '
-      'write guest may (D79)',
-    ),
-    uses: {'restoreTask'},
-  ),
-  'features/tasks/presentation/task_detail_sheet.dart '
-      '_TaskDetailSheetState._react': (
-    Gated(
-      'the reaction chips of the task and its comments take no taps from a '
-      'guest and offer it no Add reaction',
-    ),
-    uses: {'addReaction', 'removeReaction'},
-  ),
-  'features/tasks/presentation/task_detail_sheet.dart '
-      '_TaskDetailSheetState._subscriptions': (
-    Gated(
-      'only the Follow button reads or writes through it, and a guest gets '
-      'none; the sheet takes the state from the task details',
-    ),
-    uses: {'subscriptionRepositoryProvider'},
   ),
   'features/tasks/presentation/task_write_feedback.dart writeTaskFavorite': (
     Gated(
