@@ -1152,6 +1152,60 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     await _matchInverseRows(ids.toSet(), relationRows, queuedRelations);
   });
 
+  /// [upsertAll] for a page of a full sync run: a task that equals its
+  /// stored row and children and has no queued change only takes the run's
+  /// mark, without notifying the watchers, as none of them reads the mark.
+  /// So a page that brings nothing new leaves the lists on screen alone.
+  Future<void> upsertRunPage(List<Task> all, {required String syncRunId}) =>
+      transaction(() async {
+        final ids = [for (final task in all) task.id];
+        final rows = {
+          for (final row in await (select(
+            tasks,
+          )..where((t) => t.id.isIn(ids))).get())
+            row.id: row,
+        };
+        final stored = await findAll(ids);
+        final unchanged = <int>[];
+        final changed = <Task>[];
+        for (final task in all) {
+          if (_storedAs(rows[task.id], stored[task.id], task)) {
+            unchanged.add(task.id);
+          } else {
+            changed.add(task);
+          }
+        }
+        if (changed.isNotEmpty) {
+          await upsertAll(
+            changed,
+            syncRunId: syncRunId,
+            withCommentState: true,
+          );
+        }
+        if (unchanged.isEmpty) return;
+        final marks = List.filled(unchanged.length, '?').join(', ');
+        await customUpdate(
+          'UPDATE ${tasks.actualTableName} SET ${tasks.syncRunId.name} = ? '
+          'WHERE ${tasks.id.name} IN ($marks)',
+          variables: [
+            Variable.withString(syncRunId),
+            for (final id in unchanged) Variable.withInt(id),
+          ],
+        );
+      });
+
+  static bool _storedAs(TaskRow? row, Task? stored, Task incoming) =>
+      row != null &&
+      stored != null &&
+      row.pendingChanges == null &&
+      !row.pendingDelete &&
+      taskRow(
+            incoming,
+            syncRunId: row.syncRunId,
+          ).copyWith(ownSubscription: Value(row.ownSubscription)) ==
+          row &&
+      deepTaskEquals(stored, incoming);
+
   /// The child rows of the task stored as [row], which already carries the
   /// rest of [changes]: the label, assignee and relation changes applied,
   /// the reminder list replaced, and the instants of relative reminders

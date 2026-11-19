@@ -1,11 +1,13 @@
 import 'dart:async';
 
+import 'package:drift/drift.dart' show TableUpdateQuery;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/connection_refresh.dart';
+import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
@@ -36,6 +38,7 @@ ForegroundSyncScheduler? foregroundSyncScheduler(Ref ref) {
   final scheduler = ForegroundSyncScheduler(
     engine: ref.watch(syncEngineProvider(accountId)),
     clock: ref.watch(clockProvider),
+    dataWrites: ref.watch(accountDataWritesProvider(accountId)),
     // The activity sync (step 16) and the re-read of /info (step 37e) ride
     // on its ticks.
     onForeground: ({required timed}) {
@@ -71,3 +74,25 @@ ForegroundSyncScheduler? foregroundSyncScheduler(Ref ref) {
   if (inFront()) scheduler.start();
   return scheduler;
 }
+
+/// What a run that found something new stores, and every local write:
+/// the account's tasks, projects, labels and queued changes. A run that
+/// finds nothing new writes none of them (D33), so the foreground sync can
+/// wait longer then.
+@Riverpod(keepAlive: true)
+Raw<Stream<void>> accountDataWrites(Ref ref, String accountId) =>
+    dataWritesOf(ref.watch(appDatabaseProvider(accountId)));
+
+/// A fresh subscription for every listener, as a rebuilt scheduler listens
+/// again to the provider's kept stream.
+Stream<void> dataWritesOf(AppDatabase db) => everyListener(
+  () => db.tableUpdates(
+    TableUpdateQuery.onAllTables([db.tasks, db.projects, db.labels, db.outbox]),
+  ),
+);
+
+Stream<void> everyListener(Stream<Object?> Function() source) =>
+    Stream<void>.multi((listener) {
+      final subscription = source().listen((_) => listener.add(null));
+      listener.onCancel = subscription.cancel;
+    });

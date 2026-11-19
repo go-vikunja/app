@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/core/repositories/activity_repository_providers.d
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/time/clock_provider.dart';
 
 part 'activity_providers.g.dart';
 
@@ -30,6 +31,7 @@ ActivityNotifier activityNotices(Ref ref) => ActivityNotifier(
 ForegroundActivity foregroundActivity(Ref ref) => ForegroundActivity(
   syncActive: () => _syncActiveAccount(ref),
   syncInactive: () => _syncInactiveAccounts(ref),
+  clock: ref.watch(clockProvider),
 );
 
 Future<void> _syncActiveAccount(Ref ref) async {

@@ -74,4 +74,111 @@ final class ForegroundSyncSchedulerProvider
 }
 
 String _$foregroundSyncSchedulerHash() =>
-    r'c6aaa7b358e784c1b662c53e3e93f9d2434ae785';
+    r'12bf2cb53be899517ac9a89a07955505dc9e6d21';
+
+/// What a run that found something new stores, and every local write:
+/// the account's tasks, projects, labels and queued changes. A run that
+/// finds nothing new writes none of them (D33), so the foreground sync can
+/// wait longer then.
+
+@ProviderFor(accountDataWrites)
+final accountDataWritesProvider = AccountDataWritesFamily._();
+
+/// What a run that found something new stores, and every local write:
+/// the account's tasks, projects, labels and queued changes. A run that
+/// finds nothing new writes none of them (D33), so the foreground sync can
+/// wait longer then.
+
+final class AccountDataWritesProvider
+    extends
+        $FunctionalProvider<
+          Raw<Stream<void>>,
+          Raw<Stream<void>>,
+          Raw<Stream<void>>
+        >
+    with $Provider<Raw<Stream<void>>> {
+  /// What a run that found something new stores, and every local write:
+  /// the account's tasks, projects, labels and queued changes. A run that
+  /// finds nothing new writes none of them (D33), so the foreground sync can
+  /// wait longer then.
+  AccountDataWritesProvider._({
+    required AccountDataWritesFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountDataWritesProvider',
+         isAutoDispose: false,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountDataWritesHash();
+
+  @override
+  String toString() {
+    return r'accountDataWritesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $ProviderElement<Raw<Stream<void>>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  Raw<Stream<void>> create(Ref ref) {
+    final argument = this.argument as String;
+    return accountDataWrites(ref, argument);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Raw<Stream<void>> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Raw<Stream<void>>>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountDataWritesProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountDataWritesHash() => r'afd2b1b72d8a189658e3fd2ae1291e601e0e2219';
+
+/// What a run that found something new stores, and every local write:
+/// the account's tasks, projects, labels and queued changes. A run that
+/// finds nothing new writes none of them (D33), so the foreground sync can
+/// wait longer then.
+
+final class AccountDataWritesFamily extends $Family
+    with $FunctionalFamilyOverride<Raw<Stream<void>>, String> {
+  AccountDataWritesFamily._()
+    : super(
+        retry: null,
+        name: r'accountDataWritesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: false,
+      );
+
+  /// What a run that found something new stores, and every local write:
+  /// the account's tasks, projects, labels and queued changes. A run that
+  /// finds nothing new writes none of them (D33), so the foreground sync can
+  /// wait longer then.
+
+  AccountDataWritesProvider call(String accountId) =>
+      AccountDataWritesProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountDataWritesProvider';
+}

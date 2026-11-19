@@ -4,6 +4,7 @@ import 'package:drift/drift.dart'
         QueryExecutor,
         QueryExecutorUser,
         SqlDialect,
+        TableUpdateQuery,
         TransactionExecutor;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -718,6 +719,162 @@ void main() {
         expect(await db.tasksDao.count(), 155);
       },
     );
+  });
+
+  group('daily full run', () {
+    const fullPull = 'tasks done = false && id > 0 ';
+
+    Future<int> countTaskWrites(Future<void> Function() body) async {
+      var writes = 0;
+      final subscription = db
+          .tableUpdates(TableUpdateQuery.onAllTables([db.tasks]))
+          .listen((_) => writes++);
+      addTearDown(subscription.cancel);
+      await body();
+      await pumpEventQueue();
+      return writes;
+    }
+
+    test('a run that finds nothing new writes no task, and keeps them all '
+        'for the purge', () async {
+      final sync = engine();
+      await sync.ensureInitialSync();
+      now = now.add(const Duration(days: 1, hours: 1));
+
+      final writes = await countTaskWrites(sync.refresh);
+
+      expect(writes, 0);
+      expect(await db.tasksDao.count(), 155);
+      final runs = (await db.select(db.tasks).get())
+          .map((row) => row.syncRunId)
+          .toSet();
+      expect(runs, hasLength(1));
+      expect(
+        DateTime.parse((await state())[SyncStateKeys.lastFullSyncAt]!),
+        now,
+      );
+    });
+
+    test('a changed task is written', () async {
+      final sync = engine();
+      await sync.ensureInitialSync();
+      client.allTasks = [
+        for (final task in client.allTasks)
+          if (task.id == 7) sampleTask(id: 7, title: 'Renamed') else task,
+      ];
+      now = now.add(const Duration(days: 1, hours: 1));
+
+      final writes = await countTaskWrites(sync.refresh);
+
+      expect(writes, greaterThan(0));
+      expect((await db.tasksDao.find(7))!.title, 'Renamed');
+    });
+
+    test('a refresh the user starts stays incremental when the full run is '
+        'due; the next timed refresh runs it', () async {
+      final sync = engine();
+      await sync.ensureInitialSync();
+      final firstFull = (await state())[SyncStateKeys.lastFullSyncAt];
+      now = now.add(const Duration(days: 1, hours: 1));
+      final requests = client.requests.length;
+
+      await sync.refreshInNewRun();
+      await sync.refreshAfterWrite();
+
+      final after = client.requests.skip(requests);
+      expect(after.where((r) => r.startsWith(fullPull)), isEmpty);
+      expect((await state())[SyncStateKeys.lastFullSyncAt], firstFull);
+      expect(DateTime.parse((await state())[SyncStateKeys.lastSyncedAt]!), now);
+
+      await sync.refresh();
+      expect(
+        client.requests.skip(requests).where((r) => r.startsWith(fullPull)),
+        hasLength(1),
+      );
+    });
+
+    test('a write during a full run queues an incremental run, so '
+        'everything is pulled once', () async {
+      final sync = engine();
+      await sync.ensureInitialSync();
+      now = now.add(const Duration(days: 1, hours: 1));
+      final requests = client.requests.length;
+      final gate = RequestGate()..pattern = 'projects page 1';
+      client.beforeRequest = gate.call;
+
+      final full = sync.refresh();
+      while (!gate.isHolding) {
+        await pumpEventQueue();
+      }
+      final queued = sync.refresh();
+      final afterWrite = sync.refreshAfterWrite();
+      client.beforeRequest = null;
+      gate.release();
+      await Future.wait([full, queued, afterWrite]);
+
+      expect(
+        client.requests.skip(requests).where((r) => r.startsWith(fullPull)),
+        hasLength(1),
+      );
+    });
+
+    test('a stopped full run continues from its checkpoint, also after an '
+        'incremental run', () async {
+      final sync = engine();
+      await sync.ensureInitialSync();
+      now = now.add(const Duration(days: 1, hours: 1));
+      client.beforeRequest = (request) async {
+        if (request.startsWith('tasks done = false && id > 50')) {
+          throw const NetworkFailure(NetworkProblem.timeout);
+        }
+      };
+      await expectLater(sync.refresh(), throwsA(isA<NetworkFailure>()));
+      client.beforeRequest = null;
+      await sync.refreshInNewRun();
+      expect(SyncCheckpoint.fromState(await state())?.lastId, 50);
+      final requests = client.requests.length;
+
+      await sync.refresh();
+
+      final after = client.requests.skip(requests).toList();
+      expect(after.where((r) => r.startsWith('projects')), isEmpty);
+      expect(
+        after.where((r) => r.startsWith('tasks done = false')).first,
+        'tasks done = false && id > 50 per_page=50 page=1',
+      );
+      expect(await db.tasksDao.count(), 155);
+      expect(SyncCheckpoint.fromState(await state()), isNull);
+    });
+
+    test('a full run stopped more than a day ago starts over', () async {
+      final sync = engine();
+      await sync.ensureInitialSync();
+      now = now.add(const Duration(days: 1, hours: 1));
+      client.beforeRequest = (request) async {
+        if (request.startsWith('tasks done = false && id > 50')) {
+          throw const NetworkFailure(NetworkProblem.timeout);
+        }
+      };
+      await expectLater(sync.refresh(), throwsA(isA<NetworkFailure>()));
+      client.beforeRequest = null;
+      now = now.add(const Duration(days: 1, hours: 1));
+      final requests = client.requests.length;
+
+      await sync.refresh();
+
+      final after = client.requests.skip(requests);
+      expect(after.where((r) => r.startsWith('projects page')), isNotEmpty);
+      expect(after.where((r) => r.startsWith(fullPull)), hasLength(1));
+      expect(await db.tasksDao.count(), 155);
+    });
+
+    test('runStartedAt reads the time a run id starts with', () {
+      final at = DateTime.utc(2026, 11, 19, 8, 30);
+      final id = '${at.millisecondsSinceEpoch.toRadixString(36)}-k3j9';
+      expect(runStartedAt(id), at);
+      expect(runStartedAt('not an id'), isNull);
+      expect(runStartedAt(null), isNull);
+    });
   });
 
   test('dispose ends a run quietly', () async {

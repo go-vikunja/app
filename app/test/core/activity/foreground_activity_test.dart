@@ -6,31 +6,38 @@ import 'package:vikunja_mobile/core/activity/foreground_activity.dart';
 void main() {
   late List<String> syncs;
   late ForegroundActivity activity;
+  late DateTime now;
   Completer<void>? gate;
 
   setUp(() {
     syncs = [];
     gate = null;
+    now = DateTime.utc(2026, 11, 19, 9);
     activity = ForegroundActivity(
       syncActive: () async {
         syncs.add('active');
         await gate?.future;
       },
       syncInactive: () async => syncs.add('inactive'),
+      clock: () => now,
     );
   });
 
-  test('start and resume sync at once, the timer every fifth tick', () async {
+  test('start and resume sync at once, a tick once five minutes have '
+      'passed, however far apart the ticks are', () async {
     activity.onForeground(timed: false);
     await pumpEventQueue();
     expect(syncs, ['active', 'inactive']);
 
-    for (var tick = 1; tick <= 4; tick++) {
+    final started = now;
+    for (final minutes in [1, 3, 4]) {
+      now = started.add(Duration(minutes: minutes));
       activity.onForeground(timed: true);
     }
     await pumpEventQueue();
     expect(syncs, hasLength(2));
 
+    now = started.add(const Duration(minutes: 5));
     activity.onForeground(timed: true);
     await pumpEventQueue();
     expect(syncs, hasLength(4));

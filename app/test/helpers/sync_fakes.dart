@@ -48,6 +48,7 @@ import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
+import 'package:vikunja_mobile/features/sync/application/foreground_sync_scheduler_providers.dart';
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
 import 'account_security_fakes.dart';
@@ -2138,6 +2139,15 @@ final class SyncFakes {
     accountOutboxesProvider.overrideWithValue(outboxes),
     syncEngineProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).engine,
+    ),
+    // Every run writes, as one that finds something new does, so the
+    // foreground sync keeps its one-minute wait in screen tests.
+    accountDataWritesProvider.overrideWith(
+      (ref, accountId) => everyListener(
+        () =>
+            forAccount(accountId).engine.status
+                .where((status) => status is SyncRunning),
+      ),
     ),
     accountProjectRepositoryProvider.overrideWith(
       (ref, accountId) => forAccount(accountId).projects,

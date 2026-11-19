@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -164,24 +165,30 @@ final class DefaultSyncEngine implements SyncEngine {
   /// What a run stored in another isolate meanwhile is adopted with the
   /// lease; a full pull that became due while waiting for it runs instead.
   @override
-  Future<SyncOutcome> refresh() => _refresh(newRun: false);
+  Future<SyncOutcome> refresh() => _refresh(newRun: false, dailyFull: true);
+
+  /// Incremental whenever it can be: a pull to refresh or a write must not
+  /// wait for the daily full run, which the next [refresh] starts.
+  @override
+  Future<void> refreshInNewRun() => _refresh(newRun: true, dailyFull: false);
 
   @override
-  Future<void> refreshInNewRun() => _refresh(newRun: true);
+  Future<void> refreshAfterWrite() => _refresh(newRun: true, dailyFull: false);
 
-  @override
-  Future<void> refreshAfterWrite() => _refresh(newRun: true);
-
-  Future<SyncOutcome> _refresh({required bool newRun}) async {
+  /// The kind of run is decided when it starts, so a refresh queued behind
+  /// a full run does not pull everything again.
+  Future<SyncOutcome> _refresh({
+    required bool newRun,
+    required bool dailyFull,
+  }) async {
     await _ensureRestored();
-    final full = !_canRunIncrementally;
+    bool fullDue() =>
+        !(dailyFull ? _canRunIncrementally : _hasIncrementalState);
     return await _join(
       () => _leased(
-        () => full || !_canRunIncrementally
-            ? _runFull(resume: false)
-            : _runIncremental(),
+        () => fullDue() ? _runFull(resume: _resumable) : _runIncremental(),
       ),
-      full: full,
+      full: fullDue(),
       newRun: newRun,
     );
   }
@@ -202,10 +209,21 @@ final class DefaultSyncEngine implements SyncEngine {
   /// incremental sync existed, and, unless [headless], not once the last
   /// full run is a day old.
   bool get _canRunIncrementally {
-    if (_lastSyncedAt == null || _watermark == null) return false;
-    final lastFull = _lastFullSyncAt;
-    if (lastFull == null) return false;
-    return headless || _now().toUtc().difference(lastFull) < fullResyncInterval;
+    if (!_hasIncrementalState) return false;
+    return headless ||
+        _now().toUtc().difference(_lastFullSyncAt!) < fullResyncInterval;
+  }
+
+  bool get _hasIncrementalState =>
+      _lastSyncedAt != null && _watermark != null && _lastFullSyncAt != null;
+
+  /// A full run that stopped (killed, offline, failed) continues from its
+  /// checkpoint, unless it began more than [fullResyncInterval] ago.
+  bool get _resumable {
+    final startedAt = runStartedAt(_checkpoint?.runId);
+    if (startedAt == null) return false;
+    final age = _now().toUtc().difference(startedAt);
+    return !age.isNegative && age < fullResyncInterval;
   }
 
   Future<SyncOutcome> _leased(Future<SyncOutcome> Function() run) async {
@@ -695,7 +713,9 @@ final class DefaultSyncEngine implements SyncEngine {
       watermarkFloor,
     ].nonNulls.reduce((a, b) => a.isAfter(b) ? a : b);
     await _db.syncStateDao.write({
-      ...SyncCheckpoint.cleared,
+      // An incremental run leaves a stopped full run's checkpoint, which
+      // the next full run continues from (see _resumable).
+      if (full) ...SyncCheckpoint.cleared,
       SyncStateKeys.pendingWholePull: null,
       SyncStateKeys.lastSyncedAt: finishedAt.toIso8601String(),
       if (full) SyncStateKeys.lastFullSyncAt: finishedAt.toIso8601String(),
@@ -705,7 +725,7 @@ final class DefaultSyncEngine implements SyncEngine {
     _lastSyncedAt = finishedAt;
     if (full) _lastFullSyncAt = finishedAt;
     _watermark = watermark;
-    _checkpoint = null;
+    if (full) _checkpoint = null;
   }
 
   Future<SyncCheckpoint> _pullBothFilters(
@@ -764,11 +784,7 @@ final class DefaultSyncEngine implements SyncEngine {
         }
         previousId = item.id;
       }
-      await _db.tasksDao.upsertAll(
-        items,
-        syncRunId: current.runId,
-        withCommentState: true,
-      );
+      await _db.tasksDao.upsertRunPage(items, syncRunId: current.runId);
       current = current.copyWith(
         lastId: previousId,
         done: current.done + items.length,
@@ -862,6 +878,14 @@ final class DefaultSyncEngine implements SyncEngine {
     final nonce = _random.nextInt(1 << 32).toRadixString(36);
     return '$time-$nonce';
   }
+}
+
+/// When the run named [runId] began, from the time the id starts with.
+@visibleForTesting
+DateTime? runStartedAt(String? runId) {
+  final millis = int.tryParse(runId?.split('-').first ?? '', radix: 36);
+  if (millis == null) return null;
+  return DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
 }
 
 /// Ends a run quietly after `dispose()`.

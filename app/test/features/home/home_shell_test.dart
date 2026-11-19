@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
+import 'package:vikunja_mobile/features/sync/application/quiet_sync_indicator.dart';
 import 'package:vikunja_mobile/features/sync/application/realtime_connection_providers.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
@@ -444,9 +445,8 @@ void main() {
   });
 
   group('quiet sync', () {
-    testWidgets('a sync after the first shows a slim bar at the top', (
-      tester,
-    ) async {
+    testWidgets('a sync after the first shows a slim bar at the top once it '
+        'has run for a second', (tester) async {
       await pumpSignedInApp(tester, sync: data, now: now);
       final run = Completer<void>();
       data.engine.onRefresh = () => run.future;
@@ -456,7 +456,10 @@ void main() {
         containerOf(tester).read(taskRepositoryProvider)!.refreshOpenTasks(),
       );
       await pumpFrames(tester, 2);
+      expect(progressBar(find.byType(OverviewScreen)), findsNothing);
 
+      await tester.pump(QuietSyncIndicator.showAfter);
+      await pumpFrames(tester, 2);
       expect(progressBar(find.byType(OverviewScreen)), findsOneWidget);
       final bar = tester.widget<LinearProgressIndicator>(
         progressBar(find.byType(OverviewScreen)),
@@ -471,6 +474,24 @@ void main() {
 
       run.complete();
       await tester.pumpAndSettle();
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+    });
+
+    testWidgets('a sync that ends within a second shows no bar', (
+      tester,
+    ) async {
+      await pumpSignedInApp(tester, sync: data, now: now);
+      final run = Completer<void>();
+      data.engine.onRefresh = () => run.future;
+
+      unawaited(
+        containerOf(tester).read(taskRepositoryProvider)!.refreshOpenTasks(),
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      run.complete();
+      await pumpFrames(tester, 2);
+      await tester.pump(QuietSyncIndicator.showAfter);
+
       expect(find.byType(LinearProgressIndicator), findsNothing);
     });
 

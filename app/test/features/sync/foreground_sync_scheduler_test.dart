@@ -59,9 +59,12 @@ void main() {
     timers = FakeTimers();
   });
 
+  /// Unless [writes] is given, every run writes, as one that finds
+  /// something new does, so the wait stays at a minute.
   ForegroundSyncScheduler buildScheduler({
     SyncStatus? status,
     void Function({required bool timed})? onForeground,
+    Stream<void>? writes,
   }) {
     engine = FakeSyncEngine(
       initialStatus: status ?? SyncIdle(lastSyncedAt: start),
@@ -70,6 +73,9 @@ void main() {
     final scheduler = ForegroundSyncScheduler(
       engine: engine,
       clock: () => current,
+      dataWrites:
+          writes ??
+          engine.status.where((status) => status is SyncRunning).map((_) {}),
       createTimer: timers.create,
       onForeground: onForeground,
     );
@@ -169,15 +175,99 @@ void main() {
     expect(scheduler.wait, minute);
   });
 
+  test('server errors back off like network failures', () async {
+    final scheduler = buildScheduler()..start();
+    engine.onRefresh = () async => throw const ServerFailure(503);
+
+    for (final seconds in [120, 240]) {
+      timers.fire();
+      await pumpEventQueue();
+      expect(scheduler.wait, Duration(seconds: seconds));
+    }
+  });
+
+  test('a rate limit waits at least its Retry-After, also on resume', () async {
+    final scheduler = buildScheduler()..start();
+    engine.onRefresh = () async =>
+        throw const RateLimited(retryAfter: Duration(minutes: 4));
+
+    timers.fire();
+    await pumpEventQueue();
+    expect(pendingWait(), const Duration(minutes: 4));
+
+    engine.onRefresh = null;
+    scheduler.onPause();
+    current = current.add(const Duration(minutes: 2));
+    scheduler.onResume();
+    await pumpEventQueue();
+    expect(engine.refreshCalls, 1);
+    expect(pendingWait(), const Duration(minutes: 2));
+  });
+
   test('other failures keep the wait', () async {
     buildScheduler().start();
-    engine.onRefresh = () async => throw const ServerFailure(500);
+    engine.onRefresh = () async =>
+        throw const UnexpectedResponse(null, message: 'odd');
 
     timers.fire();
     await pumpEventQueue();
 
     expect(engine.currentStatus, isA<SyncFailed>());
     expect(pendingWait(), minute);
+  });
+
+  group('adaptive wait', () {
+    late StreamController<void> writes;
+
+    setUp(() {
+      writes = StreamController<void>.broadcast(sync: true);
+      addTearDown(writes.close);
+    });
+
+    test('runs that find nothing new double the wait up to five minutes; a '
+        'run after a write brings it back to a minute', () async {
+      final scheduler = buildScheduler(writes: writes.stream)..start();
+      expect(pendingWait(), minute);
+
+      for (final seconds in [120, 240, 300, 300]) {
+        timers.fire();
+        await pumpEventQueue();
+        expect(scheduler.wait, Duration(seconds: seconds));
+      }
+
+      engine.onRefresh = () async => writes.add(null);
+      timers.fire();
+      await pumpEventQueue();
+      expect(scheduler.wait, minute);
+    });
+
+    test('a write during a long wait shortens it to a minute after the last '
+        'run', () async {
+      final scheduler = buildScheduler(writes: writes.stream)..start();
+      timers.fire();
+      await pumpEventQueue();
+      timers.fire();
+      await pumpEventQueue();
+      expect(pendingWait(), const Duration(minutes: 4));
+
+      current = current.add(const Duration(seconds: 20));
+      writes.add(null);
+
+      expect(scheduler.wait, minute);
+      expect(pendingWait(), const Duration(seconds: 40));
+    });
+
+    test('a write does not shorten the wait after a server error', () async {
+      buildScheduler(writes: writes.stream).start();
+      engine.onRefresh = () async => throw const ServerFailure(500);
+      timers.fire();
+      await pumpEventQueue();
+      expect(pendingWait(), const Duration(minutes: 2));
+
+      writes.add(null);
+
+      expect(pendingWait(), const Duration(minutes: 2));
+    });
   });
 
   group('resume', () {

@@ -109,4 +109,4 @@ final class ForegroundActivityProvider
 }
 
 String _$foregroundActivityHash() =>
-    r'1138e8c3676d78b48c3a7c0fc10a135891462b57';
+    r'0a528216c9826949f804f7c7aa7a5beea20a854b';

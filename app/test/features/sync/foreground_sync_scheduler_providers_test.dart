@@ -8,8 +8,10 @@ import 'package:vikunja_mobile/features/sync/application/foreground_sync_schedul
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/pump_app.dart';
+import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/test_database.dart';
 
 void main() {
   final now = DateTime(2026, 10, 10, 12);
@@ -90,5 +92,27 @@ void main() {
 
     shell.close();
     container.dispose();
+  });
+
+  test('the data writes fire on task writes, not on the sync state, for '
+      'every listener', () async {
+    final db = testDatabase();
+    addTearDown(db.close);
+    final writes = dataWritesOf(db);
+    var first = 0;
+    var second = 0;
+    final a = writes.listen((_) => first++);
+    await a.cancel();
+    final b = writes.listen((_) => second++);
+    addTearDown(b.cancel);
+
+    await db.syncStateDao.write({'watermark': '2026-11-19T09:00:00Z'});
+    await pumpEventQueue();
+    expect(second, 0);
+
+    await db.tasksDao.upsertAll([sampleTask(id: 1, title: 'A')]);
+    await pumpEventQueue();
+    expect(second, greaterThan(0));
+    expect(first, 0);
   });
 }
