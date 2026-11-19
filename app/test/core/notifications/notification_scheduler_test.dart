@@ -697,6 +697,37 @@ void main() {
       expect(stored.exact, isTrue);
     });
 
+    test('until tomorrow behind a full window stays, and is still there once '
+        'the window has fired', () async {
+      final notifications = scheduler(window: 1);
+      await notifications.reconcile();
+      now = reminderAt.add(const Duration(minutes: 1));
+      gateway.fire(reminderId);
+      await notifications.reconcile();
+      expect((await rows()).map((r) => r.key), ['1:due']);
+
+      await notifications.snoozeUntilTomorrow(
+        key: '1:reminder:0',
+        taskId: 1,
+        shown: reminderAt,
+      );
+
+      final until = tomorrowAt(now, null).toUtc();
+      expect(until.isAfter(dueAt), isTrue);
+      expect(gateway.pending[reminderId]?.fireAt, until);
+      final stored = await db.scheduledNotificationsDao.find('1:reminder:0');
+      expect(stored?.snoozedUntil, until);
+      expect(stored?.snoozeOriginalFireAt, reminderAt);
+
+      now = dueAt.add(const Duration(minutes: 1));
+      gateway.fire(dueId);
+      await notifications.reconcile();
+
+      expect((await rows()).map((r) => r.key), ['1:reminder:0']);
+      expect(gateway.pending.keys, [reminderId]);
+      expect(gateway.pending[reminderId]?.fireAt, until);
+    });
+
     test('a key of a temporary id follows the task to its server id', () async {
       await db.tasksDao.upsertAll([
         water(reminders: [TaskReminder(reminder: reminderAt)], withDue: false),

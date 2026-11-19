@@ -778,6 +778,32 @@ void main() {
       expect(result.labelsKept, ['**bike']);
     });
 
+    test('D102-7: online, a doubled prefix and a quoted label before a comma '
+        'leave the title with their labels', () async {
+      final result = await service(grammar: const QuickAddGrammar())
+          .submit('Fix **bike\nPlan trip *"New York", then book');
+
+      expect(tasks.creates.map((task) => task.title), [
+        'Fix',
+        'Plan trip , then book',
+      ]);
+      expect(labels.created.map((label) => label.title), ['bike', 'New York']);
+      expect(result.labelsKept, isEmpty);
+    });
+
+    test('D102-7: a name found leaves the title before punctuation and with '
+        'a doubled prefix', () async {
+      final result = await service(grammar: const QuickAddGrammar())
+          .submit('Call @bob tomorrow.\nAsk @@alice');
+
+      expect(tasks.creates.map((task) => task.title), ['Call .', 'Ask']);
+      expect(tasks.updates, [
+        (-1, const TaskChanges(assignees: IdSetChange(added: {21}))),
+        (-2, const TaskChanges(assignees: IdSetChange(added: {20}))),
+      ]);
+      expect(result.unresolvedAssignees, isEmpty);
+    });
+
     test("in Todoist mode a label stays with Todoist's prefix", () async {
       labels.createFailure = const ServerFailure(500);
 

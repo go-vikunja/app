@@ -241,20 +241,21 @@ void main() {
           'reminders the device plans', () async {
         if (skippedBelow28()) return;
         // The cron runs at second 00 and sends what is due within the next
-        // minute; the half minute keeps the reminder inside one run. The
-        // earliest such moment at least 45 s away leaves time for the
-        // writes and the syncs below.
+        // minute; half a minute after a run keeps the reminder inside that
+        // one run. The writes below have to reach the server before it, so
+        // the run is the first one at least 45 s away.
         final now = DateTime.now().toUtc();
-        var fire = DateTime.utc(
+        var cronRun = DateTime.utc(
           now.year,
           now.month,
           now.day,
           now.hour,
           now.minute,
-        ).add(const Duration(minutes: 1, seconds: 30));
-        if (fire.difference(now) < const Duration(seconds: 45)) {
-          fire = fire.add(const Duration(minutes: 1));
+        ).add(const Duration(minutes: 1));
+        if (cronRun.difference(now) < const Duration(seconds: 45)) {
+          cronRun = cronRun.add(const Duration(minutes: 1));
         }
+        final fire = cronRun.add(const Duration(seconds: 30));
         final reminder = TaskChanges(reminders: [TaskReminder(reminder: fire)]);
         for (final (side, ids) in [
           (
@@ -322,7 +323,7 @@ void main() {
           };
         }
 
-        await _sleepUntil(fire.subtract(const Duration(seconds: 30)));
+        await _sleepUntil(cronRun);
         final deadline = fire.add(const Duration(seconds: 40));
         final remindedOwner = <int>{};
         final remindedFollower = <int>{};

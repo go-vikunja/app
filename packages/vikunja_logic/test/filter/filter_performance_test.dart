@@ -3,13 +3,14 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
+import '../helpers/budgets.dart';
 import 'filter_test_helpers.dart';
 import 'filter_test_support.dart';
 
 void main() {
   setUpAll(loadTimeZones);
 
-  test('5,000 tasks evaluate well under 150 ms', () {
+  test('5,000 tasks evaluate within the budget', () {
     final random = Random(24);
     final now = utc('2026-10-20T08:05:00Z');
     final tasks = [
@@ -68,11 +69,14 @@ void main() {
 
     // ignore: avoid_print, the step's report quotes these numbers.
     print(
-      'filter over ${tasks.length} tasks: $cold match; parse, bind and the '
-      'first pass ${(coldTime / 1000).toStringAsFixed(1)} ms, then '
+      'filter over ${tasks.length} tasks: $cold match; after the first pass '
       '${(warmTime / 10000).toStringAsFixed(1)} ms per pass',
     );
-    expect(coldTime, lessThan(150000));
     expect(cold, greaterThan(0));
+    expectWithinBudget(
+      coldTime ~/ 1000,
+      150,
+      'Filter over ${tasks.length} tasks: parse, bind and the first pass',
+    );
   });
 }

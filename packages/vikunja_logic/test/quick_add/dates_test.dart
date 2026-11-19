@@ -438,6 +438,12 @@ void main() {
       expect(parse('5th mar Remark').text, 'Remark');
     });
 
+    test("D102-1: the month word is not removed out of `may's`", () {
+      final result = parse("Plan may's party 5th may");
+      expect(result.text, "Plan may's party");
+      expect(result.date, DateTime(2022, 5, 5, 12));
+    });
+
     test('D102-3: a month word elsewhere in the text stays there (the web '
         'takes it)', () {
       final result = parse('Ask if we may move 3rd');
@@ -769,6 +775,20 @@ void main() {
       final result = parse('x at 25 y at 10', now: now);
       expect(result.date, DateTime(2021, 6, 24, 10));
       expect(result.text, 'x at 25 y');
+    });
+
+    test('D102-2: a later time leaves an earlier number that starts like it '
+        'whole', () {
+      for (final (text, title, hour) in [
+        ('Visit at 221B Baker street at 22', 'Visit at 221B Baker street', 22),
+        ('Call at 90 min mark at 9', 'Call at 90 min mark', 9),
+        ('x at 22:5 y at 22', 'x at 22:5 y', 22),
+        ('x at 9 y at 9 pm', 'x y at 9 pm', 9),
+      ]) {
+        final result = parse(text, now: now);
+        expect(result.text, title, reason: text);
+        expect(result.date, DateTime(2021, 6, 24, hour), reason: text);
+      }
     });
 
     test('am and pm', () {

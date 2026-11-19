@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -19,6 +20,32 @@ void main() {
   );
   AttachmentImage png(Uint8List bytes) =>
       AttachmentImage(bytes: bytes, contentType: 'image/png');
+  // A 1×1 GIF, which a decode would turn into a PNG.
+  final gif = base64Decode(
+    'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
+  );
+
+  Future<Uint8List> pngOf(int width, int height) async {
+    final recorder = ui.PictureRecorder();
+    ui.Canvas(recorder).drawRect(
+      ui.Rect.fromLTWH(0, 0, width.toDouble(), height.toDouble()),
+      ui.Paint()..color = const ui.Color(0xFF2196F3),
+    );
+    final image = await recorder.endRecording().toImage(width, height);
+    try {
+      final data = await image.toByteData(format: ui.ImageByteFormat.png);
+      return data!.buffer.asUint8List();
+    } finally {
+      image.dispose();
+    }
+  }
+
+  int pngWidth(String? dataUrl) {
+    expect(dataUrl, startsWith('data:image/png;base64,'));
+    final bytes = base64Decode(dataUrl!.split(',').last);
+    expect(bytes.sublist(1, 4), utf8.encode('PNG'));
+    return ByteData.sublistView(bytes, 16, 20).getUint32(0);
+  }
 
   test('the page names its images; the app sends previews by URL', () {
     expect(
@@ -70,43 +97,109 @@ void main() {
     expect(images.loads, ['1 2 xl', '1 3 xl', '1 3 original', '1 9 xl']);
   });
 
-  test('previews over the budget are left out', () async {
+  test('a preview over the budget is left out for good, and those after it '
+      'that fit are still sent', () async {
     final images = FakeAttachmentImages()..fallback = png(pixel);
+    images.images[(1, 3, AttachmentPreviewSize.extraLarge)] = png(
+      Uint8List(300),
+    );
+    // Two of the pixel's previews (118 characters each), not the large one.
     final previews = EditorImagePreviews(
       images: images,
       apiRoot: apiRoot,
-      maxTotalChars: 150,
+      maxTotalChars: 250,
     );
+    final sent = <Map<String, String>>[];
+    Iterable<String> sentUrls() => sent.map((preview) => preview.keys.single);
+
+    await previews.provide([
+      url(1, 2),
+      url(1, 3),
+      url(1, 4),
+    ], (preview) async => sent.add(preview));
+    expect(sentUrls(), [url(1, 2), url(1, 4)]);
+
+    await previews.provide([
+      url(1, 2),
+      url(1, 3),
+      url(1, 4),
+      url(1, 5),
+    ], (preview) async => sent.add(preview));
+    expect(sentUrls(), [url(1, 2), url(1, 4)]);
+    expect(images.loads, ['1 2 xl', '1 3 xl', '1 4 xl', '1 5 xl']);
+  });
+
+  test('once closed, nothing more is loaded, and an image still loading is '
+      'not sent', () async {
+    final images = FakeAttachmentImages()..fallback = png(pixel);
+    final previews = EditorImagePreviews(images: images, apiRoot: apiRoot);
+    images.beforeLoad = (_) async => previews.close();
     final sent = <Map<String, String>>[];
 
     await previews.provide([
       url(1, 2),
       url(1, 3),
     ], (preview) async => sent.add(preview));
+    await previews.provide([url(1, 4)], (preview) async => sent.add(preview));
 
-    expect(sent.map((preview) => preview.keys.single), [url(1, 2)]);
+    expect(sent, isEmpty);
+    expect(images.loads, ['1 2 xl']);
   });
 
-  test('an SVG gets no preview', () async {
+  testWidgets('an SVG or what is no image gets no preview, however it '
+      'decodes', (tester) async {
+    for (final image in [
+      AttachmentImage(
+        bytes: Uint8List.fromList(utf8.encode('<svg/>')),
+        contentType: 'image/svg+xml',
+      ),
+      AttachmentImage(bytes: pixel, contentType: 'application/octet-stream'),
+      AttachmentImage(bytes: pixel, contentType: 'text/plain'),
+    ]) {
+      expect(
+        await tester.runAsync(() => editorPreviewDataUrl(image)),
+        isNull,
+        reason: image.contentType,
+      );
+    }
+  });
+
+  testWidgets('an image too large to pass but no wider than maxWidth passes '
+      'as it came, as a PNG of it would be no smaller', (tester) async {
     expect(
-      await editorPreviewDataUrl(
-        AttachmentImage(
-          bytes: Uint8List.fromList(utf8.encode('<svg/>')),
-          contentType: 'image/svg+xml',
+      await tester.runAsync(
+        () => editorPreviewDataUrl(
+          AttachmentImage(bytes: gif, contentType: 'image/gif'),
+          maxBytes: 0,
         ),
       ),
-      isNull,
+      'data:image/gif;base64,${base64Encode(gif)}',
     );
   });
 
-  testWidgets('an image too large to pass is decoded into a PNG', (
-    tester,
-  ) async {
-    final preview = await tester.runAsync(
-      () => editorPreviewDataUrl(png(pixel), maxBytes: 0),
-    );
-    expect(preview, startsWith('data:image/png;base64,'));
-    final decoded = base64Decode(preview!.split(',').last);
-    expect(decoded.sublist(1, 4), utf8.encode('PNG'));
+  testWidgets('an image too large to pass and wider than maxWidth is decoded '
+      'maxWidth wide into a PNG', (tester) async {
+    final preview = await tester.runAsync(() async {
+      final wide = await pngOf(4, 2);
+      return await editorPreviewDataUrl(png(wide), maxBytes: 0, maxWidth: 2);
+    });
+    expect(pngWidth(preview), 2);
+  });
+
+  testWidgets('an image type the page does not take is decoded into a PNG, '
+      'at most maxWidth wide', (tester) async {
+    final previews = await tester.runAsync(() async {
+      final wide = await pngOf(4, 2);
+      return [
+        await editorPreviewDataUrl(
+          AttachmentImage(bytes: pixel, contentType: 'image/bmp'),
+        ),
+        await editorPreviewDataUrl(
+          AttachmentImage(bytes: wide, contentType: 'image/bmp'),
+          maxWidth: 2,
+        ),
+      ];
+    });
+    expect(previews!.map(pngWidth), [1, 2]);
   });
 }

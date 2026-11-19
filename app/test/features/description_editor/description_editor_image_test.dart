@@ -122,6 +122,39 @@ void main() {
     ]);
   });
 
+  testWidgets('a page load that gave way to a reload gets no more previews, '
+      'and its other images are not loaded', (tester) async {
+    await openEditor(tester);
+    final bridge = bridges.last;
+    final apiRoot = bridge.init!.links.apiRoot;
+    final images = data.attachmentImages
+      ..fallback = AttachmentImage(
+        bytes: Uint8List.fromList([1, 2, 3]),
+        contentType: 'image/jpeg',
+      );
+    final held = Completer<void>();
+    images.beforeLoad = (_) => held.future;
+
+    bridge.emit(
+      EditorImagesWanted([
+        '$apiRoot/tasks/1/attachments/9',
+        '$apiRoot/tasks/1/attachments/10',
+      ]),
+    );
+    await tester.pump();
+    bridge.emit(const EditorStopped());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(en.descriptionEditorReload));
+    await tester.pumpAndSettle();
+    images.beforeLoad = null;
+    held.complete();
+    await tester.pumpAndSettle();
+
+    expect(bridges.created, hasLength(2));
+    expect(bridge.imagePreviews, isEmpty);
+    expect(images.loads, ['1 9 xl']);
+  });
+
   testWidgets('a photo is uploaded to the task, then inserted the way the '
       'web writes it', (tester) async {
     await openEditor(tester);

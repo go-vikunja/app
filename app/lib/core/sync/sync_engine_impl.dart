@@ -443,12 +443,13 @@ final class DefaultSyncEngine implements SyncEngine {
   }
 
   Future<SyncOutcome> _runFull({required bool resume}) async {
+    final resumed = resume && _checkpoint != null;
     var checkpoint =
         (resume ? _checkpoint : null) ??
         SyncCheckpoint(runId: _newRunId(), phase: SyncPhase.account);
     final runId = _runId = checkpoint.runId;
     _log.info(
-      '${resume && _checkpoint != null ? 'Resuming' : 'Starting'} '
+      '${resumed ? 'Resuming' : 'Starting'} '
       'sync run $runId at ${checkpoint.phase.name}',
     );
     return await _guarded(runId, () => checkpoint.phase.name, () async {
@@ -468,7 +469,7 @@ final class DefaultSyncEngine implements SyncEngine {
       if (checkpoint.phase == SyncPhase.archivedTasks) {
         checkpoint = await _syncArchivedTasks(checkpoint);
       }
-      await _finish(checkpoint);
+      await _finish(checkpoint, resumed: resumed);
     });
   }
 
@@ -649,8 +650,13 @@ final class DefaultSyncEngine implements SyncEngine {
   /// clock plays no part. Tasks of archived projects cannot change. That
   /// newest `updated` is also the watermark, not what the pass reads: it
   /// walks by id, so a later page can lie above an edit to an id it has
-  /// passed, or one made before a resumed pass started.
-  Future<void> _finish(SyncCheckpoint checkpoint) async {
+  /// passed, or one made before a resumed pass started. A resumed run keeps
+  /// the watermark of the incremental runs completed since it began, which
+  /// read every change below it.
+  Future<void> _finish(
+    SyncCheckpoint checkpoint, {
+    required bool resumed,
+  }) async {
     _report(checkpoint);
     final since = switch (checkpoint.newestUpdatedAtStart) {
       final newest? => newest.subtract(catchUpOverlap),
@@ -663,7 +669,10 @@ final class DefaultSyncEngine implements SyncEngine {
       report: false,
     );
     final newest = _newestUpdatedTracker()
-      ..addAll([checkpoint.newestUpdatedAtStart]);
+      ..addAll([
+        checkpoint.newestUpdatedAtStart,
+        if (resumed && _completedSince(checkpoint.runId)) _watermark,
+      ]);
     await downloadOverviewFilter(
       db: _db,
       client: _client,
@@ -688,6 +697,13 @@ final class DefaultSyncEngine implements SyncEngine {
     _emit(SyncIdle(lastSyncedAt: finishedAt));
   }
 
+  /// Only an incremental run can complete while a full run is stopped.
+  bool _completedSince(String runId) {
+    final startedAt = runStartedAt(runId);
+    final last = _lastSyncedAt;
+    return startedAt != null && last != null && last.isAfter(startedAt);
+  }
+
   NewestUpdated _newestUpdatedTracker() =>
       NewestUpdated(now: _now, tolerance: clockTolerance);
 
@@ -695,7 +711,9 @@ final class DefaultSyncEngine implements SyncEngine {
   /// in `(updated, id)` order, for a full run the newest when its task
   /// phase began; the next incremental run starts [catchUpOverlap] below
   /// it. An incremental run never lowers it, a full run sets it afresh, so
-  /// a value a fast clock once stored goes with the daily full pull.
+  /// a value a fast clock once stored goes with the daily full pull (a
+  /// resumed one keeps what incremental runs read meanwhile, see
+  /// [_finish]).
   Future<void> _writeCompletion(
     DateTime finishedAt, {
     required bool full,
@@ -714,7 +732,8 @@ final class DefaultSyncEngine implements SyncEngine {
     ].nonNulls.reduce((a, b) => a.isAfter(b) ? a : b);
     await _db.syncStateDao.write({
       // An incremental run leaves a stopped full run's checkpoint, which
-      // the next full run continues from (see _resumable).
+      // the next full run continues from (see _resumable), unless it found
+      // a project newly live (IncrementalRun).
       if (full) ...SyncCheckpoint.cleared,
       SyncStateKeys.pendingWholePull: null,
       SyncStateKeys.lastSyncedAt: finishedAt.toIso8601String(),

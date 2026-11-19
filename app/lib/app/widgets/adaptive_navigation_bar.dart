@@ -45,6 +45,9 @@ class AdaptiveNavigationBar extends StatelessWidget {
         destinations: destinations,
         onDestinationSelected: onDestinationSelected,
         maxBarScale: 1.3,
+        labelSize:
+            CupertinoTheme.of(context).textTheme.tabLabelTextStyle.fontSize ??
+            10,
         child: MediaQuery.withClampedTextScaling(
           maxScaleFactor: 1.3,
           child: CupertinoTabBar(
@@ -70,6 +73,7 @@ class AdaptiveNavigationBar extends StatelessWidget {
         destinations: destinations,
         onDestinationSelected: onDestinationSelected,
         maxBarScale: 1.15,
+        labelSize: _materialLabelSize(context),
         child: MediaQuery.withClampedTextScaling(
           maxScaleFactor: 1.15,
           child: NavigationBar(
@@ -82,7 +86,9 @@ class AdaptiveNavigationBar extends StatelessWidget {
                   selectedIcon: Icon(destination.selectedIcon),
                   label: destination.label,
                   // Its tooltip would show the label at the bar's size.
-                  tooltip: _beyond(context, 1.15) ? '' : null,
+                  tooltip: _beyond(context, 1.15, _materialLabelSize(context))
+                      ? ''
+                      : null,
                 ),
             ],
           ),
@@ -129,8 +135,15 @@ class AdaptiveNavigationRail extends StatelessWidget {
   }
 }
 
-bool _beyond(BuildContext context, double maxBarScale) =>
-    MediaQuery.textScalerOf(context).scale(100) / 100 > maxBarScale;
+// At the label's own size: Android 14 and later scale small text more than
+// large text, and 100 sp not at all. Android computes in float, so the bar's
+// own 115 % comes out a hair above 1.15 times the size.
+bool _beyond(BuildContext context, double maxBarScale, double labelSize) =>
+    MediaQuery.textScalerOf(context).scale(labelSize) >
+    labelSize * maxBarScale + 0.01;
+
+double _materialLabelSize(BuildContext context) =>
+    Theme.of(context).textTheme.labelMedium?.fontSize ?? 12;
 
 /// At a text size the bar does not follow, a long press shows the
 /// destination's icon and label at the full size in the middle of the
@@ -141,12 +154,14 @@ class _LargeLabels extends StatefulWidget {
     required this.destinations,
     required this.onDestinationSelected,
     required this.maxBarScale,
+    required this.labelSize,
     required this.child,
   });
 
   final List<AdaptiveDestination> destinations;
   final ValueChanged<int> onDestinationSelected;
   final double maxBarScale;
+  final double labelSize;
   final Widget child;
 
   @override
@@ -189,7 +204,9 @@ class _LargeLabelsState extends State<_LargeLabels> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_beyond(context, widget.maxBarScale)) return widget.child;
+    if (!_beyond(context, widget.maxBarScale, widget.labelSize)) {
+      return widget.child;
+    }
     return LayoutBuilder(
       builder: (context, constraints) => GestureDetector(
         behavior: HitTestBehavior.translucent,

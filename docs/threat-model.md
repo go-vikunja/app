@@ -143,7 +143,7 @@ B8 is inside the app's own trust domain. It is listed because the headless parts
 | E13 | Server answers: JSON, `/info` (`frontend_url`, notices, legal links), HTML descriptions and comments, attachments, avatars, WebSocket frames, error bodies | both | the server, the network | typed decoding, HTML budgets, link allowlist, no remote images, failures by type; since step 40h the `/info` probe, which runs before any trust check, reads at most 256 KiB and ends after 10 s | the database and the screens | M9–M15, M48 |
 | E14 | Pasted or shared links and addresses: server addresses, share links, invite links | both | the user; text another app shares | the link parsers, which since step 40h refuse a link with user info; a probe; the unencrypted-connection question, since step 40h "No encrypted connection" every time an address typed without a scheme falls back to `http`; a question before a stored server that only claims a share link's host | the Connect screen, the guest sign-in, the invite check | M6, M10, M48 |
 | E15 | Files the user picks: attachments, a PKCS#12 file, a CA certificate | both | the user | size caps, validated before saving, the picked copy deleted; since step 40h a picture's location removed, and a file that kept it uploaded only after the user's Upload | uploads, connection settings | M9, M43 |
-| E16 | Editor page messages (page → app) | both | the page in the WebView | the per-load token; a fixed set of message types | the editor's state | M27 |
+| E16 | Editor page messages (page → app) | both | the page in the WebView | the per-load token; a fixed set of message types; since step 40n `images` names attachment images, of which the app takes only attachment URLs of the account's server, each once per page load, within a budget | the editor's state; the account's attachment images, which the app loads with its session and sends back to the page as raster `data:` URLs ([D101]) | M27 |
 | E17 | A restored backup | iOS (Android transfers nothing) | the backup's owner | the install marker; Keychain items `ThisDeviceOnly` | the preferences come back | M3, M35, M36 |
 
 ## 5. STRIDE per boundary
@@ -198,7 +198,7 @@ Repudiation does not apply to a client: the server records who wrote what, and t
 |---|---|---|---|---|
 | S | A frame or script posing as the page | an injected iframe calling the channel | per-load token, CSP without frames (M27) | R30 |
 | T | Script inside a description | `<img onerror>`, `<script>` | hashed-script CSP, the editor's schema (M27) | — |
-| I | The page sending content away | `fetch`, an image URL with data | `default-src 'none'`; images drawn as placeholders, so no token reaches the page (M27) | — |
+| I | The page sending content away | `fetch`, an image URL with data | `default-src 'none'`; the page loads no image: since step 40n the app loads the attachment images the page names and sends them as raster `data:` URLs, any other image stays a placeholder, so the page still has no network and no token (M27, [D101]) | — |
 | E | Navigation, new windows, file access | `window.open`, `location =`, `file://` | navigation delegate, file and content access off (M27) | R30 |
 
 ### B5: The app ↔ OS surfaces
@@ -319,7 +319,7 @@ Every row names where the control lives and what tests it. "Manual" marks a cont
 
 | ID | Mitigation | Code | Tests | Decisions |
 |---|---|---|---|---|
-| M27 | The editor page loads from the app's assets under a CSP (`default-src 'none'; script-src 'sha256-…'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'`): no network, no frames. The navigation delegate allows only the first main-frame load of the asset, so `window.open` and links are refused. Messages carry a per-load 24-byte token both ways. File and content access are off; debugging only in debug builds. | `features/description_editor/presentation/webview_editor_bridge.dart` (`_decide`, `isEditorPage`, `lockDownWebView`); `app/assets/editor/editor.html`; `app/editor/src/bridge.js` | `app/test/features/description_editor/webview_editor_bridge_test.dart` (incl. "a window.open main-frame navigation after ready is prevented"), `editor_page_policy_test.dart`; `app/editor/test/bridge.test.mjs`, `page.test.mjs`; `tool/build_editor.sh --check` | [D52] |
+| M27 | The editor page loads from the app's assets under a CSP (`default-src 'none'; script-src 'sha256-…'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'`): no network, no frames. The navigation delegate allows only the first main-frame load of the asset, so `window.open` and links are refused. Messages carry a per-load 24-byte token both ways. File and content access are off; debugging only in debug builds. Since step 40n the page names its attachment images (`images`) and the app loads them with the account's session (`EditorImagePreviews`, one per page load, closed with it): only attachment URLs of the account's server, each once, up to 16 MiB in all, through the cache's byte and pixel limits; it sends a PNG, JPEG, GIF or WebP as a `data:` URL, never an SVG or what is no image by its type, and the page accepts only such a URL for an attachment of its server. | `features/description_editor/presentation/webview_editor_bridge.dart` (`_decide`, `isEditorPage`, `lockDownWebView`); `features/description_editor/application/editor_image_previews.dart` (`EditorImagePreviews`, `editorPreviewDataUrl`); `app/assets/editor/editor.html`; `app/editor/src/bridge.js` (`setImagePreviews`) | `app/test/features/description_editor/webview_editor_bridge_test.dart` (incl. "a window.open main-frame navigation after ready is prevented"), `editor_page_policy_test.dart`, `editor_image_previews_test.dart`, `description_editor_image_test.dart`; `app/editor/test/bridge.test.mjs`, `page.test.mjs`; `tool/build_editor.sh --check` | [D52], [D101] |
 
 ### 6.6 OS surfaces and the person holding the device
 
@@ -662,3 +662,4 @@ The support details of step 37l ([D20], M45) are built from stored state when th
 [D94]: decisions.md#d94-fixes-from-the-code-review-outbox-notifications-diagnostics-sessions
 [D97]: decisions.md#d97-fixes-from-the-code-review-security-and-release
 [D100]: decisions.md#d100-small-things-users-notice-part-2
+[D101]: decisions.md#d101-images-in-the-editor

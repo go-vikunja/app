@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/core/network/network_profiles.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/network/platform_network.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_providers.dart';
+import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -34,6 +35,27 @@ final class _LockedSecureStore implements SecureStore {
 
   @override
   Future<void> deleteAll() => inner.deleteAll();
+}
+
+final class _CountingPreferences implements PreferencesStore {
+  final _inner = MemoryPreferencesStore();
+  int reads = 0;
+  int writes = 0;
+
+  @override
+  Future<String?> getString(String key) {
+    if (key == NetworkProfiles.storageKey) reads++;
+    return _inner.getString(key);
+  }
+
+  @override
+  Future<void> setString(String key, String value) {
+    if (key == NetworkProfiles.storageKey) writes++;
+    return _inner.setString(key, value);
+  }
+
+  @override
+  Future<void> remove(String key) => _inner.remove(key);
 }
 
 /// Upgrades every request and records its headers.
@@ -262,6 +284,15 @@ void main() {
     });
     tearDown(() => server.close());
 
+    Future<PinMismatch?> recordedIn(NetworkProfiles store) async {
+      PinMismatch? mismatch;
+      for (var i = 0; i < 40 && mismatch == null; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 25));
+        mismatch = (await store.metadataFor(origin))?.lastPinMismatch;
+      }
+      return mismatch;
+    }
+
     test('the pinned client upgrades with the headers', () async {
       await profiles.trustCertificate(
         origin,
@@ -284,13 +315,64 @@ void main() {
 
         await expectLater(open(url), throwsA(isA<HandshakeException>()));
 
-        PinMismatch? mismatch;
-        for (var i = 0; i < 40 && mismatch == null; i++) {
-          await Future<void>.delayed(const Duration(milliseconds: 25));
-          mismatch = (await profiles.metadataFor(origin))?.lastPinMismatch;
-        }
+        final mismatch = await recordedIn(profiles);
         expect(mismatch?.sha256, tlsFixtureSha256('selfsigned.pem'));
         expect(server.requests, isEmpty);
+      },
+    );
+
+    test('reconnects that meet the same certificate leave the stored '
+        'settings alone', () async {
+      final counted = _CountingPreferences();
+      final store = NetworkProfiles(
+        preferences: counted,
+        secureStore: MemorySecureStore(),
+        // Keeps the read settings cached, so any read is the recorder's.
+        clock: () => DateTime.utc(2026, 11, 19, 12),
+      );
+      final socket = ProfileRealtimeConnector(
+        profiles: store,
+        userAgent: 'Vikunja-App/test',
+      );
+      await store.trustCertificate(origin, tlsFixtureCertificate('server.pem'));
+      await expectLater(
+        socket.connect(url),
+        throwsA(isA<HandshakeException>()),
+      );
+      expect(await recordedIn(store), isNotNull);
+      counted
+        ..reads = 0
+        ..writes = 0;
+
+      for (var i = 0; i < 2; i++) {
+        await expectLater(
+          socket.connect(url),
+          throwsA(isA<HandshakeException>()),
+        );
+      }
+      await pumpEventQueue();
+
+      expect(counted.reads, 0);
+      expect(counted.writes, 0);
+    });
+
+    test(
+      'after "Keep current" the same certificate is recorded again',
+      () async {
+        await profiles.trustCertificate(
+          origin,
+          tlsFixtureCertificate('server.pem'),
+        );
+        await expectLater(open(url), throwsA(isA<HandshakeException>()));
+        expect(await recordedIn(profiles), isNotNull);
+
+        await profiles.dismissPinMismatch(origin);
+        await expectLater(open(url), throwsA(isA<HandshakeException>()));
+
+        expect(
+          (await recordedIn(profiles))?.sha256,
+          tlsFixtureSha256('selfsigned.pem'),
+        );
       },
     );
 

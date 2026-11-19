@@ -158,17 +158,23 @@ List<MagicSpan> magicSpansForLine(
     }
   }
   if (parsed.priority case final priority?) {
-    for (final token in prefixedTokens(line, prefixes.priority)) {
-      if (token.quoted) continue;
-      final digits = RegExp(r'^\d+').stringMatch(token.item);
-      if (digits == '$priority') {
-        spans.add(
-          MagicSpan(
-            token.start,
-            token.itemStart + digits!.length,
-            MagicSpanKind.priority,
-          ),
-        );
+    // As the parser: the first whole number from 0 to 5 outside the labels
+    // and the project, and every token of that number (`!03`, not `!3abc`).
+    final numbers = [
+      for (final token in prefixedTokens(line, prefixes.priority))
+        if (_wholeNumber.hasMatch(token.item) &&
+            !spans.any((s) => s.start < token.end && token.start < s.end))
+          token,
+    ];
+    final item = numbers
+        .map((token) => token.item)
+        .where((item) => (int.tryParse(item) ?? 6) <= 5)
+        .firstOrNull;
+    if (item != null && int.parse(item) == priority) {
+      for (final token in numbers) {
+        if (token.item == item) {
+          spans.add(MagicSpan(token.start, token.end, MagicSpanKind.priority));
+        }
       }
     }
   }
@@ -203,6 +209,15 @@ List<MagicSpan> magicSpansOf(
         span.shifted(line.offset),
 ];
 
+final _wholeNumber = RegExp(r'^[0-9]+$');
+
+// Where the parser removes a phrase (D102-1, D102-2): a time not out of
+// `at 221B`, `at 22:5` or, for `at 9`, `at 9 pm`; a word not out of
+// `today's`.
+final _timePhrase = RegExp('^(?:at|@) ', caseSensitive: false);
+const _timeEnd = r'(?![\w:]| ?[ap]m(?![\w:]))';
+const _wordEnd = r"(?!\w|['\u2019]\w)";
+
 /// The repeat phrase where it first stands as words, the date phrases
 /// wherever they do (the parser removed every occurrence), outside of
 /// [taken]; neighbours of a kind with only spaces between them are one.
@@ -216,8 +231,9 @@ List<MagicSpan> _phraseSpans(
       !taken.any((span) => span.start < end && start < span.end);
   void mark(String phrase, MagicSpanKind kind, {required bool everywhere}) {
     if (phrase.isEmpty) return;
+    final end = _timePhrase.hasMatch(phrase) ? _timeEnd : _wordEnd;
     final pattern = RegExp(
-      '(?<!\\S)${RegExp.escape(phrase)}(?!\\w)',
+      '(?<!\\S)${RegExp.escape(phrase)}$end',
       caseSensitive: false,
     );
     for (final match in pattern.allMatches(line)) {

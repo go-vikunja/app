@@ -303,6 +303,8 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   void _stop() {
     _loadTimer?.cancel();
     unawaited(_events?.cancel());
+    _previews?.close();
+    _previews = null;
     _bridge?.dispose();
     _bridge = null;
   }
@@ -455,16 +457,8 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       case MentionEnd():
         _mentions.end();
       case EditorImagesWanted(:final urls):
-        final bridge = _bridge;
-        if (bridge != null) {
-          // A page load that has given way to another gets nothing more.
-          unawaited(
-            _previews?.provide(urls, (previews) async {
-              if (identical(_bridge, bridge)) {
-                await bridge.setImagePreviews(previews);
-              }
-            }),
-          );
+        if (_bridge case final bridge?) {
+          unawaited(_previews?.provide(urls, bridge.setImagePreviews));
         }
       case EditorStopped():
         _copyTimer?.cancel();

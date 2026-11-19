@@ -1337,6 +1337,25 @@ void main() {
       );
     });
 
+    test('a full resync takes no stored watermark, also one within the '
+        "clock's tolerance; only a resumed run keeps what incremental runs "
+        'read meanwhile', () async {
+      await synced();
+      await db.syncStateDao.write({
+        SyncStateKeys.watermark: newest
+            .add(const Duration(minutes: 1))
+            .toIso8601String(),
+      });
+      final sync = engine();
+
+      await sync.fullResync();
+
+      expect(
+        (await state())[SyncStateKeys.watermark],
+        newest.toIso8601String(),
+      );
+    });
+
     test('a full resync asked for during an incremental run follows it, '
         'even when that one fails', () async {
       final sync = await synced();

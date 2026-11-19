@@ -24,7 +24,7 @@ typedef TaskRepeatOf = ({Duration repeatAfter, RepeatMode mode}) Function(
 final class QuickAddGrammar {
   const new({
     this.parse = parseTaskText,
-    this.cleanup = cleanupItemText,
+    this.cleanup = _cleanupNames,
     this.prefixes = quickAddPrefixes,
     this.repeatOf = _taskRepeat,
     this.subtasks = parseSubtasksViaIndention,
@@ -36,6 +36,11 @@ final class QuickAddGrammar {
   final TaskRepeatOf repeatOf;
   final SubtaskParser subtasks;
 }
+
+// The names are taken out after the dates, which can leave punctuation
+// right behind one: `Call @bob tomorrow.` becomes `Call @bob.`.
+String _cleanupNames(String text, Iterable<String> items, String prefix) =>
+    cleanupItemText(text, items, prefix, beforePunctuation: true);
 
 ({Duration repeatAfter, RepeatMode mode}) _taskRepeat(QuickAddRepeat repeat) =>
     repeat.toTaskRepeat();

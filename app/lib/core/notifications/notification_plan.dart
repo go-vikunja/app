@@ -218,6 +218,10 @@ int _byFireAtThenKey(DesiredNotification a, DesiredNotification b) {
 /// count of [desired], leaving out a late entry (not after [now]) unless
 /// [scheduled] holds its key at that very instant: the OS has not shown it
 /// yet, and scheduling it anew would show one that has fired once more.
+/// The first snoozed entry after those joins the window too: the snooze
+/// lives only in the entry's row, which the caller keeps only for the
+/// window, and the task alone cannot bring it back. Only one, as iOS keeps
+/// room under its cap for one snooze per account beside the windows.
 ///
 /// Only what left the window is cancelled. A key still wanted is scheduled
 /// again under its id, which replaces it, when anything differs (instant,
@@ -250,14 +254,16 @@ diffSchedule({
   bool everything = false,
 }) {
   final scheduledByKey = {for (final entry in scheduled) entry.key: entry};
-  final wanted = desired
-      .where(
-        (entry) =>
-            entry.fireAt.isAfter(now) ||
-            scheduledByKey[entry.key]?.fireAt.toUtc() == entry.fireAt,
-      )
-      .take(window < 0 ? 0 : window)
-      .toList();
+  final candidates = desired.where(
+    (entry) =>
+        entry.fireAt.isAfter(now) ||
+        scheduledByKey[entry.key]?.fireAt.toUtc() == entry.fireAt,
+  );
+  final first = window < 0 ? 0 : window;
+  final wanted = [
+    ...candidates.take(first),
+    ...candidates.skip(first).where((entry) => entry.snooze != null).take(1),
+  ];
   final wantedByKey = {for (final entry in wanted) entry.key: entry};
   final unchangedKeys = <String>{};
   final cancelOsIds = <int>[];

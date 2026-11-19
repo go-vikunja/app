@@ -25,8 +25,8 @@ Map<String, Object?> withProfileHeaders(
 
 /// Records a certificate that did not match a server's pin, once per
 /// origin and certificate until the stored record is cleared ("Keep
-/// current"): a reconnecting socket or a retrying request would write it
-/// every time.
+/// current"): a reconnecting socket or a retrying request would otherwise
+/// read the stored settings under their write lock every time.
 final class PinMismatchRecorder {
   new(this._profiles);
 

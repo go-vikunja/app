@@ -19,8 +19,9 @@ final _log = Logger('ForegroundSync');
 /// write while a longer wait runs shortens it to [interval] after the last
 /// run. Failures of reach or load, a [NetworkFailure], a [ServerFailure]
 /// (5xx) or [RateLimited] (429), double the wait up to [maxInterval] as
-/// well, a 429 waiting at least its Retry-After, also on resume; writes do
-/// not shorten that wait, only a completed run ends it.
+/// well, a 429 waiting at least its Retry-After (up to [maxRetryAfter]),
+/// also on resume; writes do not shorten that wait, only a completed run
+/// ends it.
 ///
 /// No second run starts while one is in progress: the timer waits for its
 /// end, which starts the next wait. `onForeground` hears the start, every
@@ -47,6 +48,10 @@ final class ForegroundSyncScheduler {
   final void Function({required bool timed})? _onForeground;
   final Duration interval;
   final Duration maxInterval;
+
+  /// The outbox's bound: a Retry-After from a misconfigured proxy must not
+  /// stop the timed runs for hours.
+  static const maxRetryAfter = Duration(minutes: 15);
 
   late final StreamSubscription<SyncStatus> _subscription;
   StreamSubscription<void>? _writes;
@@ -143,12 +148,12 @@ final class ForegroundSyncScheduler {
   void _backOff({Duration? retryAfter}) {
     _backingOff = true;
     final doubled = _doubled(_wait);
-    _wait = retryAfter != null && retryAfter > doubled
-        ? _capped(retryAfter)
-        : doubled;
-    _resumeAfter = retryAfter != null && retryAfter > interval
-        ? _capped(retryAfter)
-        : interval;
+    final limited = switch (retryAfter) {
+      final after? when after > maxRetryAfter => maxRetryAfter,
+      final after => after,
+    };
+    _wait = limited != null && limited > doubled ? limited : doubled;
+    _resumeAfter = limited != null && limited > interval ? limited : interval;
   }
 
   void _onDataWrite() {

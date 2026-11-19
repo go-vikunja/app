@@ -204,6 +204,31 @@ void main() {
     expect(pendingWait(), const Duration(minutes: 2));
   });
 
+  test('a Retry-After beyond five minutes is waited out too, up to '
+      'fifteen', () async {
+    final scheduler = buildScheduler()..start();
+    engine.onRefresh = () async =>
+        throw const RateLimited(retryAfter: Duration(minutes: 12));
+
+    timers.fire();
+    await pumpEventQueue();
+    expect(pendingWait(), const Duration(minutes: 12));
+
+    scheduler.onPause();
+    current = current.add(const Duration(minutes: 6));
+    scheduler.onResume();
+    await pumpEventQueue();
+    expect(engine.refreshCalls, 1);
+    expect(pendingWait(), const Duration(minutes: 6));
+
+    engine.onRefresh = () async =>
+        throw const RateLimited(retryAfter: Duration(days: 1));
+    timers.fire();
+    await pumpEventQueue();
+    expect(engine.refreshCalls, 2);
+    expect(pendingWait(), ForegroundSyncScheduler.maxRetryAfter);
+  });
+
   test('other failures keep the wait', () async {
     buildScheduler().start();
     engine.onRefresh = () async =>

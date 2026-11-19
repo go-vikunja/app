@@ -107,16 +107,37 @@ String? parseQuickAddProject(
 /// The web's `cleanupItemText`: removes `<prefix>item` (quoted or not, with
 /// one trailing space) for each of [items], case-insensitively. D102-7:
 /// only as a whole token, at the start or after a space and ending at a
-/// space or the end; the web also cut `*bug` out of `*bugfix`.
-String cleanupItemText(String text, Iterable<String> items, String prefix) {
+/// space or the end; the web also cut `*bug` out of `*bugfix`. A quoted
+/// item may also end before punctuation (`*"New York",`), as the parser
+/// reads it there; an unquoted one only with [beforePunctuation], for
+/// names read before a date was removed behind them (`@bob.` out of
+/// `@bob tomorrow.`): read alone, `!3,` is no `!3`. Like
+/// [_itemsFromPrefix], it takes one repeated prefix along (`**bike`).
+String cleanupItemText(
+  String text,
+  Iterable<String> items,
+  String prefix, {
+  bool beforePunctuation = false,
+}) {
   final escapedPrefix = RegExp.escape(prefix);
   var result = text;
-  for (final item in items.where((item) => item.isNotEmpty)) {
+  // Longest first, so that `*bug` is not cut out of `*bug.` before `bug.`
+  // is removed.
+  final sorted = items.where((item) => item.isNotEmpty).toList()
+    ..sort((a, b) => b.length.compareTo(a.length));
+  for (final item in sorted) {
     final escapedItem = RegExp.escape(item);
-    for (final token in ["'$escapedItem'", '"$escapedItem"', escapedItem]) {
+    for (final (token, quoted) in [
+      ("'$escapedItem'", true),
+      ('"$escapedItem"', true),
+      (escapedItem, false),
+    ]) {
+      final end = quoted || beforePunctuation
+          ? '(?: |(?=$punctuationClass*(?!\\S)))'
+          : r'(?: |(?!\S))';
       result = result.replaceAll(
         RegExp(
-          '(?<!\\S)$escapedPrefix$token(?: |(?!\\S))',
+          '(?<!\\S)$escapedPrefix(?:$escapedPrefix)?$token$end',
           caseSensitive: false,
         ),
         '',

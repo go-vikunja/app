@@ -11,7 +11,8 @@ final _log = Logger('EditorImagePreviews');
 /// editor page, loaded by the app with the account's session, as the page
 /// itself loads nothing (D52). Each image is sent once, at the preview size
 /// the detail sheet shows, its original where the server has no preview;
-/// an image that cannot be had keeps its placeholder.
+/// an image that cannot be had keeps its placeholder. [close] ends it with
+/// the page load.
 final class EditorImagePreviews {
   new({
     required this._images,
@@ -22,12 +23,16 @@ final class EditorImagePreviews {
   final AttachmentImages _images;
   final Uri _apiRoot;
 
-  /// What one page load gets in all; the images after it keep their
-  /// placeholders.
+  /// What one page load gets in all; an image that would go past it keeps
+  /// its placeholder.
   final int maxTotalChars;
 
   final _sent = <String>{};
   var _total = 0;
+  var _closed = false;
+
+  /// Loads nothing more and sends nothing more, also of a load running.
+  void close() => _closed = true;
 
   /// Loads the images of [urls] not sent yet and hands each to [send] as
   /// it arrives.
@@ -36,6 +41,7 @@ final class EditorImagePreviews {
     Future<void> Function(Map<String, String> previews) send,
   ) async {
     for (final url in urls) {
+      if (_closed) return;
       if (!_sent.add(url)) continue;
       final attachment = parseAttachmentUrl(url, apiRoot: _apiRoot);
       if (attachment == null) continue;
@@ -43,10 +49,11 @@ final class EditorImagePreviews {
         attachment.taskId,
         attachment.attachmentId,
       );
+      if (_closed) return;
       if (preview == null) continue;
       if (_total + preview.length > maxTotalChars) {
-        _log.info('Image previews over the budget are left out');
-        return;
+        _log.info('An image preview over the budget is left out');
+        continue;
       }
       _total += preview.length;
       await send({url: preview});
@@ -79,23 +86,26 @@ final class EditorImagePreviews {
 const _passedAsIs = {'image/png', 'image/jpeg', 'image/gif', 'image/webp'};
 
 /// [image] as a `data:` URL the page's content security policy allows: a
-/// raster image of at most [maxBytes] as it came, a larger one decoded at
-/// most [maxWidth] wide as PNG, and null for an SVG or what does not
-/// decode.
+/// PNG, JPEG, GIF or WebP as it came when it is at most [maxBytes] or at
+/// most [maxWidth] wide, else decoded [maxWidth] wide as PNG; another image
+/// type decoded as PNG at most [maxWidth] wide; null for an SVG, what is no
+/// image and what does not decode.
 Future<String?> editorPreviewDataUrl(
   AttachmentImage image, {
   int maxBytes = 1024 * 1024,
   int maxWidth = 1024,
 }) async {
-  if (image.isSvg) return null;
-  if (_passedAsIs.contains(image.contentType) &&
-      image.bytes.length <= maxBytes) {
-    return 'data:${image.contentType};base64,${base64Encode(image.bytes)}';
-  }
+  // The cache counts the pixels of `image/*` only; anything else could
+  // decode to gigabytes.
+  if (!image.contentType.startsWith('image/') || image.isSvg) return null;
+  final passable = _passedAsIs.contains(image.contentType);
+  if (passable && image.bytes.length <= maxBytes) return _asIs(image);
   final buffer = await ui.ImmutableBuffer.fromUint8List(image.bytes);
   try {
     final descriptor = await ui.ImageDescriptor.encoded(buffer);
     try {
+      // As a PNG of the same width it would be no smaller.
+      if (passable && descriptor.width <= maxWidth) return _asIs(image);
       final codec = await descriptor.instantiateCodec(
         targetWidth: descriptor.width > maxWidth ? maxWidth : null,
       );
@@ -121,3 +131,6 @@ Future<String?> editorPreviewDataUrl(
     buffer.dispose();
   }
 }
+
+String _asIs(AttachmentImage image) =>
+    'data:${image.contentType};base64,${base64Encode(image.bytes)}';

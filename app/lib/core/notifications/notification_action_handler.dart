@@ -23,8 +23,8 @@ import 'package:vikunja_mobile/core/support/session_end_log.dart';
 
 final _log = Logger('NotificationAction');
 
-/// The Done, Snooze 10 min and Snooze 1 h actions, in the isolate the
-/// plugin starts for them: a container like bootstrap's, with session
+/// The Done, Snooze 10 min, Snooze 1 h and Tomorrow actions, in the isolate
+/// the plugin starts for them: a container like bootstrap's, with session
 /// managers that never refresh, the action, then the account's scheduler
 /// brought in step. Never throws; the container is disposed at the end.
 ///
@@ -101,9 +101,11 @@ final class NotificationActionHandler {
   /// notifications cancelled, the drain awaited up to [drainTimeout], then
   /// a reconcile; ignored for a task done or moved past the occurrence the
   /// payload names. A snooze moves the notification to now plus 10 min or
-  /// 1 h ([NotificationScheduler.snooze]), unless the key's instant is no
-  /// longer the one the payload names. A payload or account that is not
-  /// understood is ignored. Errors are logged, never thrown.
+  /// 1 h ([NotificationScheduler.snooze]) or, with Tomorrow, to the next
+  /// day at the user's default due time, else 9:00
+  /// ([NotificationScheduler.snoozeUntilTomorrow]), unless the key's
+  /// instant is no longer the one the payload names. A payload or account
+  /// that is not understood is ignored. Errors are logged, never thrown.
   Future<void> handle(NotificationResponse response) async {
     try {
       await _handle(response);

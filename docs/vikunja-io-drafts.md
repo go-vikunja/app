@@ -207,12 +207,14 @@ The app uses your device's language when it has a translation, and English other
 
 ### A server behind a sign-in proxy
 
-If your Vikunja sits behind Authelia, Authentik, oauth2-proxy or another proxy that asks everyone to sign in first, the app's requests cannot pass it: they carry Vikunja's own token, not the proxy's cookie. Let the API through and keep the web pages behind the proxy. Vikunja checks every API request itself, and the app's sign-in still runs through the web pages, so the proxy's sign-in still applies there. Everything the app needs is under `/api/`.
+If your Vikunja sits behind Authelia, Authentik, oauth2-proxy or another proxy that asks everyone to sign in first, the app's requests cannot pass it: they carry Vikunja's own token, not the proxy's cookie. Let the API through and keep the web pages behind the proxy. Vikunja checks every API request itself, and the app's sign-in runs through the web pages, where the proxy still asks first. Everything the app needs is under `/api/`.
 
 - **Authelia:** a rule before your other rules for the domain, with `policy: bypass` and `resources: ['^/api/.*$']`.
 - **Authentik** (proxy provider): add `^/api/.*` to **Unauthenticated Paths**.
 - **oauth2-proxy:** `--skip-auth-route='^/api/'`.
 - **Traefik with forwardAuth:** a second router for `Host(`tasks.example.com`) && PathPrefix(`/api/`)` with the same service and without the forwardAuth middleware.
+
+The API also holds Vikunja's own password sign-in and, when it is open, registration: once `/api/` is let through, anyone who reaches your server can try a username and password there without passing the proxy. If the proxy was your only second factor, have everyone who signs in with a password turn on two-factor authentication in Vikunja's settings. If everyone signs in through OpenID Connect, you can turn off password sign-in (`auth.local.enabled: false`) and registration (`service.enableregistration: false`) in Vikunja's configuration.
 
 A proxy that only checks a header, such as Cloudflare Access with a service token, works without this: add the header under **Connection options**.
 

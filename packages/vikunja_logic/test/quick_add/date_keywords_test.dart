@@ -225,6 +225,22 @@ void main() {
       expect(parse("x today'").date, isNotNull);
     });
 
+    test("D102-1: a keyword elsewhere leaves `today's` whole (the web "
+        "gives `Fix 's build`)", () {
+      final result = parse("Fix today's build today");
+      expect(result.text, "Fix today's build");
+      expect(ymd(result.date), '2021-6-24');
+      for (final (text, title) in [
+        ("Prepare tomorrow's talk tomorrow", "Prepare tomorrow's talk"),
+        ('Fix today\u2019s build today', 'Fix today\u2019s build'),
+        ("Fix monday's build monday", "Fix monday's build"),
+      ]) {
+        final parsed = parse(text);
+        expect(parsed.text, title, reason: text);
+        expect(parsed.date, isNotNull, reason: text);
+      }
+    });
+
     test('the web turned next weekend into next week and left "end"', () {
       // D19-3: the web gives 2021-7-1 and the text "Plan end trip".
       expect(parse('Plan next weekend trip').text, 'Plan next weekend trip');

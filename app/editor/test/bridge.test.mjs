@@ -468,6 +468,25 @@ describe('images', () => {
     assert.equal(editor.view.dom.querySelector('.image-preview').getAttribute('aria-label'), 'Image')
   })
 
+  test('an image selected when its preview comes stays selected, and so does a placeholder whose node changes', async () => {
+    const editor = await open('<p></p>')
+    command('insertImage', {src, alt: 'plan'})
+    assert.equal(editor.state.selection.node?.type.name, 'image')
+    const selected = () => editor.view.dom.querySelectorAll('.ProseMirror-selectednode')
+    assert.equal(selected().length, 1)
+
+    send({type: 'imagePreviews', previews: {[src]: pixel}})
+    assert.equal(selected().length, 1)
+    assert.equal(selected()[0].classList.contains('image-preview'), true)
+
+    const other = 'https://vikunja.example.com/api/v2/tasks/4/attachments/2'
+    command('insertImage', {src: other})
+    editor.commands.updateAttributes('image', {alt: 'map'})
+    assert.equal(selected().length, 1)
+    assert.equal(selected()[0].classList.contains('image-placeholder'), true)
+    assert.equal(selected()[0].classList.contains('image-preview'), false)
+  })
+
   test('an image inserted after its preview came shows it at once', async () => {
     const editor = await open('<p></p>')
     send({type: 'imagePreviews', previews: {[src]: pixel}})

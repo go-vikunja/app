@@ -20,13 +20,15 @@ typedef SyncProgress = void Function(SyncPhase phase, {int done, int? total});
 /// for projects new to this device or un-archived since its last run: for
 /// projects the app stored itself from a write's answer, which the run then
 /// finds unchanged. A completed run clears the mark, a full one pulls
-/// everything anyway.
+/// everything anyway; a stopped full run starts over (see
+/// [IncrementalRun]).
 Future<void> pullWholeOnNextRun(AppDatabase db, Set<int> projectIds) =>
     db.transaction(() async {
       final stored = (await db.syncStateDao
           .readAll())[SyncStateKeys.pendingWholePull];
       final ids = {...IncrementalRun._parseIds(stored), ...projectIds};
       await db.syncStateDao.write({
+        ...SyncCheckpoint.cleared,
         SyncStateKeys.pendingWholePull: (ids.toList()..sort()).join(','),
       });
     });
@@ -163,6 +165,11 @@ final class IncrementalRun {
   /// archived (itself or through a parent, which takes its tasks out of
   /// `GET /tasks`), gets its delta through the project. Only rows that
   /// differ from the local ones are written.
+  ///
+  /// A project new here or no longer archived (itself or through a parent)
+  /// clears a stopped full run's checkpoint with the project rows: that run
+  /// may have passed the project's tasks while they were out of its reach,
+  /// and continuing it would purge them.
   Future<_ProjectDiff> _syncProjects() async {
     final local = {for (final p in await _db.projectsDao.loadAll()) p.id: p};
     final pendingBefore = _parseIds(
@@ -219,7 +226,13 @@ final class IncrementalRun {
         changed.add(project);
       }
     }
+    final newlyLive =
+        pulledWhole.isNotEmpty ||
+        archivedBefore.any(
+          (id) => remote.containsKey(id) && !archived.contains(id),
+        );
     await _db.transaction(() async {
+      if (newlyLive) await _db.syncStateDao.write(SyncCheckpoint.cleared);
       if (changed.isNotEmpty) await _db.projectsDao.upsertAll(changed);
       await storeSavedFilters(_db, savedFiltersIn(pseudo));
       if (removed.isNotEmpty) {

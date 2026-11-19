@@ -98,6 +98,27 @@ void main() {
       expect(result.text, 'x');
       expect(parse('x *bug *bugfix y').text, 'x y');
     });
+
+    test('D102-7: a doubled prefix inside a line leaves with its label', () {
+      final result = parse('Fix **bike');
+      expect(result.labels, ['bike']);
+      expect(result.text, 'Fix');
+    });
+
+    test('D102-7: a quoted label before punctuation leaves the text', () {
+      final result = parse('Plan trip *"New York", then book');
+      expect(result.labels, ['New York']);
+      // The web's cleanup leaves the space before the comma (D38's limits).
+      expect(result.text, 'Plan trip , then book');
+    });
+
+    test('D102-7: punctuation ends a token only before a space or the end, '
+        'and a longer label is not cut', () {
+      final result = parse('x *bug *bug.');
+      expect(result.labels, ['bug', 'bug.']);
+      expect(result.text, 'x');
+      expect(cleanupItemText('x *bug.x', ['bug'], '*'), 'x *bug.x');
+    });
   });
 
   group('project', () {
@@ -142,6 +163,12 @@ void main() {
       final result = parse('+Other');
       expect(result.text, '');
       expect(result.project, 'Other');
+    });
+
+    test('D102-7: a doubled prefix inside a line leaves with its project', () {
+      final result = parse('x ++p');
+      expect(result.project, 'p');
+      expect(result.text, 'x');
     });
   });
 
@@ -221,6 +248,12 @@ void main() {
         expect(result.priority, 1);
         expect(result.text, 'x !12');
       });
+
+      test('D102-7: a doubled prefix inside a line leaves with it', () {
+        final result = parse('x !!3');
+        expect(result.priority, 3);
+        expect(result.text, 'x');
+      });
     });
   });
 
@@ -253,6 +286,50 @@ void main() {
       final result = parse('Lorem Ipsum @"user with long name"');
       expect(result.text, 'Lorem Ipsum @"user with long name"');
       expect(result.assignees, ['user with long name']);
+    });
+
+    test('D102-7: a resolved name leaves before punctuation and with a '
+        'doubled prefix', () {
+      final result = parse('Call @bob tomorrow.');
+      expect(result.text, 'Call @bob.');
+      expect(
+        cleanupItemText(
+          result.text,
+          result.assignees,
+          '@',
+          beforePunctuation: true,
+        ),
+        'Call .',
+      );
+      final doubled = parse('Ask @@alice');
+      expect(doubled.assignees, ['alice']);
+      expect(cleanupItemText(doubled.text, doubled.assignees, '@'), 'Ask ');
+    });
+
+    test('an unquoted item before punctuation is the item the parser read '
+        'there, not the one without it: `!3,` and `+work,` stay', () {
+      expect(parse('Fix !3 now !3,').text, 'Fix now !3,');
+      expect(parse('Fix +work now +work,').text, 'Fix now +work,');
+      expect(cleanupItemText('Ask @bob @bob,', ['bob'], '@'), 'Ask @bob,');
+      // Quoted, the item ends at its quote, also before punctuation.
+      expect(parse('Plan trip *"New York", then book').labels, ['New York']);
+      expect(
+        parse('Plan trip *"New York", then book').text,
+        'Plan trip , then book',
+      );
+    });
+
+    test('a month word before an apostrophe is no date, as it stays in the '
+        'title (D102-1)', () {
+      for (final text in [
+        "Book venue for dec 12's party",
+        "Book venue for 12 dec's party",
+        "Prep 5th may's launch",
+      ]) {
+        final result = parse(text);
+        expect(result.date, isNull, reason: text);
+        expect(result.text, text, reason: text);
+      }
     });
 
     test('an assignee called like a date is an assignee, not a date', () {

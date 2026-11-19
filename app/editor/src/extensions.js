@@ -227,15 +227,17 @@ function createImage(context) {
             const preview = context.previews.get(view.url)
             dom.replaceChildren()
             dom.setAttribute('role', 'img')
+            // Only its own classes: ProseMirror marks a selected node with one
+            // of its own, which a render outside a transaction must keep.
+            dom.classList.toggle('image-placeholder', preview === undefined)
+            dom.classList.toggle('image-preview', preview !== undefined)
             if (preview === undefined) {
-              dom.className = 'image-placeholder'
               const name = [alt, label].filter(part => part !== '').join(', ')
               if (name !== '') dom.setAttribute('aria-label', name)
               else dom.removeAttribute('aria-label')
               dom.textContent = alt || label
               return
             }
-            dom.className = 'image-preview'
             const shown = alt || (context.shownImageLabel ?? '')
             if (shown !== '') dom.setAttribute('aria-label', shown)
             else dom.removeAttribute('aria-label')

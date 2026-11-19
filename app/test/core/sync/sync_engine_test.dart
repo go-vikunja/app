@@ -12,6 +12,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/settings/user_profile_json.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
+import 'package:vikunja_mobile/core/sync/incremental_run.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -735,6 +736,23 @@ void main() {
       return writes;
     }
 
+    /// The daily full run stops after its first page of open tasks.
+    Future<void> stopAfterFirstPage(DefaultSyncEngine sync) async {
+      now = now.add(const Duration(days: 1, hours: 1));
+      client.beforeRequest = (request) async {
+        if (request.startsWith(RegExp('tasks done = false && id > [1-9]'))) {
+          throw const NetworkFailure(NetworkProblem.timeout);
+        }
+      };
+      await expectLater(sync.refresh(), throwsA(isA<NetworkFailure>()));
+      client.beforeRequest = null;
+    }
+
+    void moveOnServer(Set<int> ids, {required int to}) => client.allTasks = [
+      for (final task in client.allTasks)
+        if (ids.contains(task.id)) task.copyWith(projectId: to) else task,
+    ];
+
     test('a run that finds nothing new writes no task, and keeps them all '
         'for the purge', () async {
       final sync = engine();
@@ -768,6 +786,50 @@ void main() {
 
       expect(writes, greaterThan(0));
       expect((await db.tasksDao.find(7))!.title, 'Renamed');
+    });
+
+    test('related tasks the server nests without identifier, comment count '
+        'and unread flag leave an unchanged pair alone; a removed relation '
+        'is written', () async {
+      Task nested(int id) => Task(
+        id: id,
+        title: 'Open $id',
+        projectId: id.isEven ? 2 : 1,
+        index: id,
+      );
+      List<Task> related({required bool withRelation}) => [
+        for (final task in client.allTasks)
+          switch (task.id) {
+            13 => task.copyWith(
+              commentCount: 2,
+              isUnread: true,
+              relatedTasks: {
+                if (withRelation) TaskRelationKind.subtask: [nested(14)],
+              },
+            ),
+            14 => task.copyWith(
+              commentCount: 1,
+              relatedTasks: {
+                if (withRelation) TaskRelationKind.parentTask: [nested(13)],
+              },
+            ),
+            _ => task,
+          },
+      ];
+      client.allTasks = related(withRelation: true);
+      final sync = engine();
+      await sync.ensureInitialSync();
+      now = now.add(const Duration(days: 1, hours: 1));
+
+      expect(await countTaskWrites(sync.refresh), 0);
+      final parent = (await db.tasksDao.find(13))!;
+      expect(parent.relatedTasks[TaskRelationKind.subtask]!.single.id, 14);
+
+      client.allTasks = related(withRelation: false);
+      now = now.add(const Duration(days: 1, hours: 1));
+      expect(await countTaskWrites(sync.refresh), greaterThan(0));
+      expect((await db.tasksDao.find(13))!.relatedTasks, isEmpty);
+      expect((await db.tasksDao.find(14))!.relatedTasks, isEmpty);
     });
 
     test('a refresh the user starts stays incremental when the full run is '
@@ -822,14 +884,7 @@ void main() {
         'incremental run', () async {
       final sync = engine();
       await sync.ensureInitialSync();
-      now = now.add(const Duration(days: 1, hours: 1));
-      client.beforeRequest = (request) async {
-        if (request.startsWith('tasks done = false && id > 50')) {
-          throw const NetworkFailure(NetworkProblem.timeout);
-        }
-      };
-      await expectLater(sync.refresh(), throwsA(isA<NetworkFailure>()));
-      client.beforeRequest = null;
+      await stopAfterFirstPage(sync);
       await sync.refreshInNewRun();
       expect(SyncCheckpoint.fromState(await state())?.lastId, 50);
       final requests = client.requests.length;
@@ -846,17 +901,118 @@ void main() {
       expect(SyncCheckpoint.fromState(await state()), isNull);
     });
 
+    test('a project shared or un-archived meanwhile has a stopped full run '
+        'start over, so its tasks below the cursor stay', () async {
+      // Open tasks 10 and 12 lie in the archived project 3, and 20 and 22
+      // in project 5, which is not shared yet.
+      moveOnServer({10, 12}, to: 3);
+      moveOnServer({20, 22}, to: 5);
+      final unshared = client.allTasks;
+      client.allTasks = [
+        for (final task in unshared)
+          if (task.projectId != 5) task,
+      ];
+      final sync = engine();
+      await sync.ensureInitialSync();
+      await stopAfterFirstPage(sync);
+      client
+        ..allProjects = [
+          for (final project in projects)
+            if (project.id == 3)
+              project.copyWith(isArchived: false)
+            else
+              project,
+          sampleProject(id: 5, title: 'Shared', position: 5),
+        ]
+        ..allTasks = unshared;
+      await sync.refreshInNewRun();
+      expect(SyncCheckpoint.fromState(await state()), isNull);
+
+      await sync.refresh();
+
+      expect(await db.tasksDao.findAll([10, 12, 20, 22]), hasLength(4));
+      expect(await db.tasksDao.count(), 155);
+    });
+
+    test('a project no longer archived through its parent has a stopped '
+        'full run start over too', () async {
+      // Open tasks 10 and 12 lie in project 4, a child of the archived 3.
+      moveOnServer({10, 12}, to: 4);
+      final sync = engine();
+      await sync.ensureInitialSync();
+      await stopAfterFirstPage(sync);
+      // Project 3 is no longer shared; its child 4 still is.
+      client
+        ..allProjects = [
+          for (final project in projects)
+            if (project.id != 3) project,
+        ]
+        ..allTasks = [
+          for (final task in client.allTasks)
+            if (task.projectId != 3) task,
+        ];
+      await sync.refreshInNewRun();
+
+      await sync.refresh();
+
+      expect(await db.tasksDao.findAll([10, 12]), hasLength(2));
+    });
+
+    test('a project un-archived in the app has a stopped full run start '
+        'over too', () async {
+      moveOnServer({10, 12}, to: 3);
+      final sync = engine();
+      await sync.ensureInitialSync();
+      await stopAfterFirstPage(sync);
+      client.allProjects = [
+        for (final project in projects)
+          if (project.id == 3) project.copyWith(isArchived: false) else project,
+      ];
+      // What the project repository stores from the server's answer.
+      await db.transaction(() async {
+        final cascaded = await db.projectsDao.setArchived(3, archived: false);
+        await pullWholeOnNextRun(db, cascaded);
+      });
+
+      await sync.refresh();
+
+      expect(await db.tasksDao.findAll([10, 12]), hasLength(2));
+    });
+
+    test('a resumed full run keeps the watermark of the incremental runs '
+        'since it began', () async {
+      client.allTasks = [
+        for (final task in client.allTasks)
+          if (task.id == 1)
+            task.copyWith(updated: now.subtract(const Duration(days: 2)))
+          else
+            task,
+      ];
+      final sync = engine();
+      await sync.ensureInitialSync();
+      await stopAfterFirstPage(sync);
+      now = now.add(const Duration(minutes: 10));
+      final edited = now.subtract(const Duration(minutes: 1));
+      client.allTasks = [
+        for (final task in client.allTasks)
+          if (task.id == 7)
+            task.copyWith(title: 'Renamed', updated: edited)
+          else
+            task,
+      ];
+      await sync.refreshInNewRun();
+      expect(DateTime.parse((await state())[SyncStateKeys.watermark]!), edited);
+
+      await sync.refresh();
+
+      expect(SyncCheckpoint.fromState(await state()), isNull);
+      expect(DateTime.parse((await state())[SyncStateKeys.watermark]!), edited);
+    });
+
     test('a full run stopped more than a day ago starts over', () async {
       final sync = engine();
       await sync.ensureInitialSync();
-      now = now.add(const Duration(days: 1, hours: 1));
-      client.beforeRequest = (request) async {
-        if (request.startsWith('tasks done = false && id > 50')) {
-          throw const NetworkFailure(NetworkProblem.timeout);
-        }
-      };
-      await expectLater(sync.refresh(), throwsA(isA<NetworkFailure>()));
-      client.beforeRequest = null;
+      await stopAfterFirstPage(sync);
       now = now.add(const Duration(days: 1, hours: 1));
       final requests = client.requests.length;
 

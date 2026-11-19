@@ -79,9 +79,44 @@ void main() {
     ]);
   });
 
+  /// The spans of [line] by where they start, for a part that also stands
+  /// elsewhere in the line.
+  List<(int, String, MagicSpanKind)> startsOf(String line) => [
+    for (final span in magicSpansForLine(
+      line,
+      planOf(line),
+      quickAddPrefixes(QuickAddMagicMode.vikunja)!,
+    ))
+      (span.start, line.substring(span.start, span.end), span.kind),
+  ];
+
   test('D102-8: a priority is a whole number, so !3abc is none', () {
     expect(spansOf('Fix !3abc'), isEmpty);
     expect(spansOf('Fix !3 abc'), [('!3', MagicSpanKind.priority)]);
+  });
+
+  test('D102-8: the priority is the token the parser removes, whole', () {
+    expect(spansOf('Lorem !03 x'), [('!03', MagicSpanKind.priority)]);
+    expect(startsOf('Fix !3abc !3'), [(10, '!3', MagicSpanKind.priority)]);
+    expect(startsOf('Fix !03 !3'), [(4, '!03', MagicSpanKind.priority)]);
+    expect(spansOf('x !!3'), [('!!3', MagicSpanKind.priority)]);
+    expect(spansOf("x !'3'"), [("!'3'", MagicSpanKind.priority)]);
+    expect(spansOf('x *"a !2 b" !3'), [
+      ('*"a !2 b"', MagicSpanKind.label),
+      ('!3', MagicSpanKind.priority),
+    ]);
+  });
+
+  test('D102-1, D102-2: a date phrase where the parser removes it, not '
+      "out of `today's` or a longer time", () {
+    expect(startsOf("Fix today's build today"), [
+      (18, 'today', MagicSpanKind.date),
+    ]);
+    expect(spansOf("Plan may's party 5th may"), [
+      ('5th may', MagicSpanKind.date),
+    ]);
+    expect(startsOf('x at 22:5 y at 22'), [(12, 'at 22', MagicSpanKind.date)]);
+    expect(startsOf('x at 9 y at 9 pm'), [(2, 'at 9', MagicSpanKind.date)]);
   });
 
   test('a repeat without a date', () {

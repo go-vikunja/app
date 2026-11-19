@@ -694,6 +694,73 @@ void main() {
       expect(diff.window.map((d) => d.key), ['a', 'b']);
     });
 
+    test('a snoozed entry beyond the window stays in it, as its row is all '
+        'that remembers the snooze', () {
+      final tomorrow = now.add(const Duration(days: 1));
+      final snoozed = DesiredNotification(
+        key: 'snoozed',
+        taskId: 2,
+        kind: ScheduledNotificationKind.reminder,
+        fireAt: tomorrow,
+        title: 'T',
+        body: 'B',
+        snooze: Snooze(
+          key: 'snoozed',
+          until: tomorrow,
+          originalFireAt: anHourAgo,
+        ),
+      );
+      final diff = diffSchedule(
+        desired: [
+          desired('a', inAnHour),
+          desired('b', inTwoHours),
+          snoozed,
+          desired('c', tomorrow.add(const Duration(hours: 1))),
+        ],
+        scheduled: [
+          scheduled('snoozed', 40, tomorrow),
+          scheduled('c', 41, tomorrow.add(const Duration(hours: 1))),
+        ],
+        window: 1,
+        exact: true,
+        privacy: const NotificationPrivacy(),
+        now: now,
+      );
+
+      expect(diff.cancelOsIds, [41]);
+      expect(diff.schedule.map((d) => d.key), ['a']);
+      expect(diff.window.map((d) => d.key), ['a', 'snoozed']);
+    });
+
+    test('only the first snoozed entry beyond the window stays, so iOS '
+        'keeps under its cap', () {
+      DesiredNotification snoozed(String key, DateTime at) =>
+          DesiredNotification(
+            key: key,
+            taskId: key.length,
+            kind: ScheduledNotificationKind.reminder,
+            fireAt: at,
+            title: 'T',
+            body: 'B',
+            snooze: Snooze(key: key, until: at, originalFireAt: anHourAgo),
+          );
+      final tomorrow = now.add(const Duration(days: 1));
+      final diff = diffSchedule(
+        desired: [
+          desired('a', inAnHour),
+          snoozed('s1', tomorrow),
+          snoozed('s22', tomorrow.add(const Duration(hours: 1))),
+        ],
+        scheduled: const [],
+        window: 1,
+        exact: true,
+        privacy: const NotificationPrivacy(),
+        now: now,
+      );
+
+      expect(diff.window.map((d) => d.key), ['a', 's1']);
+    });
+
     test('nothing to do when the OS already holds the window', () {
       final diff = diffSchedule(
         desired: [desired('a', inAnHour)],

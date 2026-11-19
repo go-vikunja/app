@@ -58,7 +58,7 @@ void main() {
     expectWithinBudget(
       await fastestOf(db.tasksDao.loadSearchableTasks),
       300,
-      'Every searchable task (search, the project delete count)',
+      'Every searchable task (search)',
     );
     expectWithinBudget(
       await fastestOf(db.tasksDao.loadFavoriteTasks),
@@ -75,17 +75,24 @@ void main() {
       reloads.add(watch.elapsedMilliseconds);
     });
     addTearDown(subscription.cancel);
-    while (reloads.isEmpty) {
-      await Future<void>.delayed(const Duration(milliseconds: 5));
+    Future<void> nextReload() async {
+      final deadline = DateTime.now().add(const Duration(seconds: 5));
+      while (reloads.isEmpty && DateTime.now().isBefore(deadline)) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
+      }
+      expect(reloads, isNotEmpty, reason: 'a reload within 5 s');
     }
+
+    await nextReload();
     reloads.clear();
     watch = Stopwatch()..start();
     await db.tasksDao.upsertAll([
       sampleTask(id: 3, title: 'Renamed', projectId: 4),
     ], syncRunId: 'run');
-    while (reloads.isEmpty) {
-      await Future<void>.delayed(const Duration(milliseconds: 5));
-    }
+    await nextReload();
+    // A second reload would follow the first one's load.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
     expect(reloads, hasLength(1));
     expectWithinBudget(reloads.single, 300, 'A write until the list reloaded');
   });

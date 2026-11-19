@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:flutter/foundation.dart' show mapEquals;
+import 'package:flutter/foundation.dart' show listEquals, mapEquals;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart'
     show OwnTaskSubscription, ownTaskSubscriptionFrom;
@@ -1175,10 +1175,23 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
             row.id: row,
         };
         final stored = await findAll(ids);
+        final edges = <int, List<TaskRelationRow>>{};
+        for (final edge
+            in await (select(taskRelations)
+                  ..where((r) => r.taskId.isIn(ids))
+                  ..orderBy([(r) => OrderingTerm.asc(r.rowId)]))
+                .get()) {
+          edges.putIfAbsent(edge.taskId, () => []).add(edge);
+        }
         final unchanged = <int>[];
         final changed = <Task>[];
         for (final task in all) {
-          if (_storedAs(rows[task.id], stored[task.id], task)) {
+          if (_storedAs(
+            rows[task.id],
+            stored[task.id],
+            edges[task.id] ?? const [],
+            task,
+          )) {
             unchanged.add(task.id);
           } else {
             changed.add(task);
@@ -1203,7 +1216,14 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         );
       });
 
-  static bool _storedAs(TaskRow? row, Task? stored, Task incoming) =>
+  /// Relations are compared as the edges [edges] stores: the server nests a
+  /// related task without its identifier, comment count and unread flag.
+  static bool _storedAs(
+    TaskRow? row,
+    Task? stored,
+    List<TaskRelationRow> edges,
+    Task incoming,
+  ) =>
       row != null &&
       stored != null &&
       row.pendingChanges == null &&
@@ -1213,7 +1233,11 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
             syncRunId: row.syncRunId,
           ).copyWith(ownSubscription: Value(row.ownSubscription)) ==
           row &&
-      deepTaskEquals(stored, incoming);
+      listEquals(edges, taskRelationRows(incoming)) &&
+      deepTaskEquals(
+        stored.copyWith(relatedTasks: const {}),
+        incoming.copyWith(relatedTasks: const {}),
+      );
 
   /// The child rows of the task stored as [row], which already carries the
   /// rest of [changes]: the label, assignee and relation changes applied,
