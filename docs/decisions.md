@@ -3617,7 +3617,7 @@ Limits:
 
 ## D98: Fixes from the review of the decision log's limits
 
-*Step 40i, in review.*
+*Accepted 2026-11-19 (step 40i).*
 
 Step 40i takes the points of the review of the decision log's limits (2026-11-18) that the roadmap first gave to step 40f and that the owner moved here on 2026-11-18 ([D95](#d95-fixes-from-the-code-review-small-things-users-notice)). Each closes a limit that named step 40i. The owner reviews the step as a whole; nothing here is marked as the owner's decision yet, and no (owner) decision is reversed. There is no change of the Drift schema.
 
