@@ -27,9 +27,10 @@ const _monthAbbreviations = [
 const _weekdayAbbreviations = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
 // D19-3: the web has no trailing boundary, so `todays` was today and
-// `next weekend` next week.
+// `next weekend` next week; D102-1: an apostrophe followed by a letter
+// does not end the word either, so `today's` stays text.
 RegExp _keyword(String phrase) =>
-    RegExp('(^| )($phrase)\\b', caseSensitive: false);
+    RegExp("(^| )($phrase)(?!\\w|['\u2019]\\w)", caseSensitive: false);
 
 typedef _DateFor = DateTime Function(DateTime now, ClockTime? defaultTime);
 
@@ -39,7 +40,11 @@ final _keywordDates = <(RegExp, _DateFor)>[
   (_keyword('tomorrow'), (now, time) => _inDays(now, 1, time)),
   (
     _keyword('next monday'),
-    (now, time) => _after(DayInterval.nextMonday, now, time),
+    (now, time) => _inDays(
+      now,
+      _nextWeekday(calculateDayInterval(DayInterval.nextMonday, now)),
+      time,
+    ),
   ),
   (
     _keyword('this weekend'),
@@ -69,7 +74,7 @@ final _keywordDates = <(RegExp, _DateFor)>[
 ];
 
 final _weekday = RegExp(
-  '(^| )((?:next )?(monday|mon|tuesday|tue|wednesday|wed|thursday|thu'
+  '(^| )((?:(next|this) )?(monday|mon|tuesday|tue|wednesday|wed|thursday|thu'
   r'|friday|fri|saturday|sat|sunday|sun))(?:$| )',
   caseSensitive: false,
 );
@@ -82,7 +87,10 @@ final _ordinalDay = RegExp(
   caseSensitive: false,
 );
 
-final _monthWord = RegExp('\\b($_months)\\b', caseSensitive: false);
+// D102-3: the web takes a month word from anywhere in the text, so `Ask if
+// we may move 5th` was 5 May; here only one right beside the ordinal.
+final _monthAfter = RegExp(' ($_months)\\b', caseSensitive: false);
+final _monthBefore = RegExp('(?:^| )($_months) \$', caseSensitive: false);
 
 // D38-9: the web needs a space or the end after the unit; here punctuation
 // may follow (`in 2 days,`) but no apostrophe (`in a day's work`).
@@ -133,8 +141,16 @@ final _monthDay = RegExp(
   caseSensitive: false,
 );
 
+// D102-2: the web reads any one or two digits after `at` as a time, also
+// out of a longer number (`at 221B`) and beyond the clock (`at 90`).
 final _time = RegExp(
-  ' (?:at|@) ([0-9][0-9]?)(?::([0-9][0-9]))?(?: ?([ap])m)?',
+  r' (?:at|@) ([0-9][0-9]?)(?::([0-9][0-9]))?(?: ?([ap])m)?(?![\w:])',
+  caseSensitive: false,
+);
+
+// D102-5: the web reads `Release 1.2` as 1 February.
+final _versionWord = RegExp(
+  r'(?:^|\s)(?:v|ver|version|release|rel|build|update|patch|rc|beta|alpha) $',
   caseSensitive: false,
 );
 
@@ -152,12 +168,12 @@ final _time = RegExp(
       _weekdayDate(text, now, defaultTime) ??
       _ordinalDate(text, now, defaultTime) ??
       _inAmountDate(text, now) ??
-      _absoluteDate(text, now) ??
-      _monthDayDate(text, now);
+      _absoluteDate(text, now, defaultTime) ??
+      _monthDayDate(text, now, defaultTime);
   var rest = found?.text ?? text;
   var date = found?.date;
   final phrases = [...?found?.phrases];
-  final time = _time.firstMatch(rest);
+  final time = _time.allMatches(rest).where(_isClockTime).firstOrNull;
   if (time != null) {
     final day = date ?? now;
     date = DateTime(
@@ -190,28 +206,47 @@ _FoundDate? _weekdayDate(String text, DateTime now, ClockTime? defaultTime) {
   final match = _weekday.firstMatch(text);
   if (match == null) return null;
   final weekday = _weekdayAbbreviations.indexOf(
-    match[3]!.substring(0, 3).toLowerCase(),
+    match[4]!.substring(0, 3).toLowerCase(),
   );
   final days = (weekday - now.weekday % DateTime.daysPerWeek) % 7;
+  final next = match[3]?.toLowerCase() == 'next';
   // D38-5: the web keeps the clock time of now.
-  return _found(text, _inDays(now, days, defaultTime), match[2]!);
+  return _found(
+    text,
+    _inDays(now, next ? _nextWeekday(days) : days, defaultTime),
+    match[2]!,
+  );
 }
+
+// D102-4: on the weekday itself, `next` means a week ahead, not today.
+int _nextWeekday(int days) => days == 0 ? DateTime.daysPerWeek : days;
 
 _FoundDate? _ordinalDate(String text, DateTime now, ClockTime? defaultTime) {
   final match = _ordinalDay.firstMatch(text);
   if (match == null) return null;
   final day = int.parse(match[3]!);
-  var date = DateTime(now.year, now.month, day);
-  if (date.isBefore(DateTime(now.year, now.month, now.day))) {
-    date = DateTime(date.year, date.month + 1, date.day);
+  final end = match.end;
+  final start = match.start + match[1]!.length;
+  final month =
+      _monthAfter.matchAsPrefix(text, end) ??
+      _monthBefore.firstMatch(text.substring(0, start));
+  DateTime date;
+  if (month != null) {
+    // D102-3: a day the month does not have is no date (the web rolls it
+    // into the next month), and a passed one is next year's.
+    final next = _nextRealDate(_monthNumber(month[1]!), day, now);
+    if (next == null) return null;
+    date = next;
+  } else {
+    date = DateTime(now.year, now.month, day);
+    if (date.isBefore(DateTime(now.year, now.month, now.day))) {
+      date = DateTime(date.year, date.month + 1, date.day);
+    }
+    if (date.day != day) date = DateTime(date.year, date.month, day);
   }
-  if (date.day != day) date = DateTime(date.year, date.month, day);
   final phrases = [match[2]!];
   var rest = _removeWords(text, match[2]!);
-  final month = _monthWord.firstMatch(rest);
   if (month != null) {
-    // May lie in the past and overflows like JS `setMonth` (web parity).
-    date = DateTime(date.year, _monthNumber(month[1]!), date.day);
     phrases.add(month[1]!);
     rest = _withoutPhrase(
       rest,
@@ -255,7 +290,7 @@ _FoundDate? _inAmountDate(String text, DateTime now) {
   return _found(text, date, match[2]!);
 }
 
-_FoundDate? _absoluteDate(String text, DateTime now) {
+_FoundDate? _absoluteDate(String text, DateTime now, ClockTime? defaultTime) {
   final ranges = _absoluteDateRange.allMatches(text).toList();
   bool inRange(RegExpMatch match) {
     final start = match.start + match[1]!.length;
@@ -271,7 +306,9 @@ _FoundDate? _absoluteDate(String text, DateTime now) {
               (match.start == 0 ||
                   match.end == text.length ||
                   _timeAhead.matchAsPrefix(text, match.end) != null) &&
-              !inRange(match),
+              !inRange(match) &&
+              !(match.namedGroup('year') == null &&
+                  _versionWord.hasMatch(text.substring(0, match.start + 1))),
         )
         .firstOrNull;
     if (match == null) continue;
@@ -282,23 +319,31 @@ _FoundDate? _absoluteDate(String text, DateTime now) {
       year: year == null ? null : int.parse(year),
       now: now,
     );
-    if (date != null) return _found(text, date, match.namedGroup('date')!);
+    if (date != null) {
+      return _found(
+        text,
+        atDefaultTime(date, now: now, defaultTime: defaultTime),
+        match.namedGroup('date')!,
+      );
+    }
   }
   return null;
 }
 
-_FoundDate? _monthDayDate(String text, DateTime now) {
+_FoundDate? _monthDayDate(String text, DateTime now, ClockTime? defaultTime) {
   final match = _monthDay.firstMatch(text);
   if (match == null) return null;
   final month = _monthNumber(
     match.namedGroup('month1') ?? match.namedGroup('month2')!,
   );
   final day = int.parse(match.namedGroup('day1') ?? match.namedGroup('day2')!);
-  // D38-9: the web drops such a phrase from the title without a date.
-  if (day < 1 || day > 31) return null;
+  // D38-9: the web drops such a phrase from the title without a date;
+  // D102-6: nor is a day the month does not have one (`apr 31`).
+  final date = _nextRealDate(month, day, now);
+  if (date == null) return null;
   return _found(
     text,
-    _nextOccurrence(DateTime(now.year, month, day), now),
+    atDefaultTime(date, now: now, defaultTime: defaultTime),
     match[2]!,
   );
 }
@@ -311,30 +356,47 @@ DateTime? _calendarDate({
   required int? year,
   required DateTime now,
 }) {
-  final monthDay = _isCalendarDay(month, day)
-      ? (month, day)
-      : _isCalendarDay(day, month)
-      ? (day, month)
-      : null;
-  if (monthDay == null) return null;
-  final (m, d) = monthDay;
-  if (year == null) return _nextOccurrence(DateTime(now.year, m, d), now);
   // V8 reads 0–49 as 20xx and 50–99 as 19xx.
-  final fullYear = year < 50
-      ? 2000 + year
-      : year < 100
-      ? 1900 + year
-      : year;
-  return DateTime(fullYear, m, d);
+  final fullYear = switch (year) {
+    null => null,
+    final year when year < 50 => 2000 + year,
+    final year when year < 100 => 1900 + year,
+    final year => year,
+  };
+  // D102-6: a day the month does not have is no date; JS rolls it into the
+  // next month.
+  DateTime? dateOf(int m, int d) => switch (fullYear) {
+    final year? => _isRealDay(year, m, d) ? DateTime(year, m, d) : null,
+    null => _nextRealDate(m, d, now),
+  };
+  return dateOf(month, day) ?? dateOf(day, month);
 }
 
-// JS accepts any day up to 31 and lets it overflow into the next month.
-bool _isCalendarDay(int month, int day) =>
-    month >= 1 && month <= 12 && day >= 1 && day <= 31;
+bool _isRealDay(int year, int month, int day) =>
+    month >= 1 &&
+    month <= 12 &&
+    day >= 1 &&
+    DateTime(year, month, day).day == day;
 
-// At midnight, so today's date is already in the past (web parity).
-DateTime _nextOccurrence(DateTime date, DateTime now) =>
-    date.isBefore(now) ? DateTime(date.year + 1, date.month, date.day) : date;
+// D102-5: from today on, so today's date is today (the web compares it at
+// midnight with the clock time of now and moves it to next year), and a
+// 29 February waits for a leap year.
+DateTime? _nextRealDate(int month, int day, DateTime now) {
+  final today = DateTime(now.year, now.month, now.day);
+  for (var year = now.year; year <= now.year + 4; year++) {
+    if (!_isRealDay(year, month, day)) continue;
+    final date = DateTime(year, month, day);
+    if (!date.isBefore(today)) return date;
+  }
+  return null;
+}
+
+bool _isClockTime(RegExpMatch time) {
+  final hour = int.parse(time[1]!);
+  final minute = int.parse(time[2] ?? '0');
+  final meridiem = time[3] != null;
+  return minute <= 59 && (meridiem ? hour >= 1 && hour <= 12 : hour <= 23);
+}
 
 int _hour(RegExpMatch time) {
   final hour = int.parse(time[1]!);

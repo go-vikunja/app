@@ -5,84 +5,85 @@ import 'parse_helpers.dart';
 
 void main() {
   group('date from text (the web table, now 2021-06-24)', () {
-    // A clock time with a default time of its own (15:00) shows which rule
-    // gave the time: absolute and day-and-month dates are at 00:00,
-    // ordinal days at the default time (D38-5; the web keeps 12:34).
+    // Every date takes the default time (15:00): ordinal days since D38-5
+    // (the web keeps 12:34), absolute and day-and-month dates since D102-5
+    // (the web leaves them at 00:00).
     final now = DateTime(2021, 6, 24, 12, 34);
     final cases = <String, DateTime?>{
-      '06/08/2021': DateTime(2021, 6, 8),
-      '6/7/21': DateTime(2021, 6, 7),
+      '06/08/2021': DateTime(2021, 6, 8, 15),
+      '6/7/21': DateTime(2021, 6, 7, 15),
       '27/07/2021,': null,
-      '2021/07/06': DateTime(2021, 7, 6),
-      '2021-07-06': DateTime(2021, 7, 6),
-      '27 jan': DateTime(2022, 1, 27),
-      '27/1': DateTime(2022, 1, 27),
-      '27/01': DateTime(2022, 1, 27),
-      '16/12': DateTime(2021, 12, 16),
-      '01/27': DateTime(2022, 1, 27),
-      '1/27': DateTime(2022, 1, 27),
-      'jan 27': DateTime(2022, 1, 27),
-      'Jan 27': DateTime(2022, 1, 27),
-      'january 27': DateTime(2022, 1, 27),
-      'January 27': DateTime(2022, 1, 27),
-      'feb 21': DateTime(2022, 2, 21),
-      'Feb 21': DateTime(2022, 2, 21),
-      'february 21': DateTime(2022, 2, 21),
-      'February 21': DateTime(2022, 2, 21),
-      'mar 21': DateTime(2022, 3, 21),
-      'Mar 21': DateTime(2022, 3, 21),
-      'march 21': DateTime(2022, 3, 21),
-      'March 21': DateTime(2022, 3, 21),
-      'apr 21': DateTime(2022, 4, 21),
-      'Apr 21': DateTime(2022, 4, 21),
-      'april 21': DateTime(2022, 4, 21),
-      'April 21': DateTime(2022, 4, 21),
-      'may 21': DateTime(2022, 5, 21),
-      'May 21': DateTime(2022, 5, 21),
-      'jun 21': DateTime(2022, 6, 21),
-      'Jun 21': DateTime(2022, 6, 21),
-      'june 21': DateTime(2022, 6, 21),
-      'June 21': DateTime(2022, 6, 21),
-      // Ordinals: D38-5, and a past date stays past (web parity).
-      '21st June': DateTime(2021, 6, 21, 15),
-      '2nd March': DateTime(2021, 3, 2, 15),
-      '2nd march': DateTime(2021, 3, 2, 15),
-      '3rd April': DateTime(2021, 4, 3, 15),
-      '1st January': DateTime(2021, 1, 1, 15),
+      '2021/07/06': DateTime(2021, 7, 6, 15),
+      '2021-07-06': DateTime(2021, 7, 6, 15),
+      '27 jan': DateTime(2022, 1, 27, 15),
+      '27/1': DateTime(2022, 1, 27, 15),
+      '27/01': DateTime(2022, 1, 27, 15),
+      '16/12': DateTime(2021, 12, 16, 15),
+      '01/27': DateTime(2022, 1, 27, 15),
+      '1/27': DateTime(2022, 1, 27, 15),
+      'jan 27': DateTime(2022, 1, 27, 15),
+      'Jan 27': DateTime(2022, 1, 27, 15),
+      'january 27': DateTime(2022, 1, 27, 15),
+      'January 27': DateTime(2022, 1, 27, 15),
+      'feb 21': DateTime(2022, 2, 21, 15),
+      'Feb 21': DateTime(2022, 2, 21, 15),
+      'february 21': DateTime(2022, 2, 21, 15),
+      'February 21': DateTime(2022, 2, 21, 15),
+      'mar 21': DateTime(2022, 3, 21, 15),
+      'Mar 21': DateTime(2022, 3, 21, 15),
+      'march 21': DateTime(2022, 3, 21, 15),
+      'March 21': DateTime(2022, 3, 21, 15),
+      'apr 21': DateTime(2022, 4, 21, 15),
+      'Apr 21': DateTime(2022, 4, 21, 15),
+      'april 21': DateTime(2022, 4, 21, 15),
+      'April 21': DateTime(2022, 4, 21, 15),
+      'may 21': DateTime(2022, 5, 21, 15),
+      'May 21': DateTime(2022, 5, 21, 15),
+      'jun 21': DateTime(2022, 6, 21, 15),
+      'Jun 21': DateTime(2022, 6, 21, 15),
+      'june 21': DateTime(2022, 6, 21, 15),
+      'June 21': DateTime(2022, 6, 21, 15),
+      // Ordinals: D38-5, and a passed one with its month is next year's
+      // (D102-3; the web keeps it in the past).
+      '21st June': DateTime(2022, 6, 21, 15),
+      '2nd March': DateTime(2022, 3, 2, 15),
+      '2nd march': DateTime(2022, 3, 2, 15),
+      '3rd April': DateTime(2022, 4, 3, 15),
+      '1st January': DateTime(2022, 1, 1, 15),
       '22nd December': DateTime(2021, 12, 22, 15),
       '23rd October': DateTime(2021, 10, 23, 15),
       '4th July': DateTime(2021, 7, 4, 15),
       '15th August': DateTime(2021, 8, 15, 15),
       '31st December': DateTime(2021, 12, 31, 15),
-      '5th Mar': DateTime(2021, 3, 5, 15),
+      '5th Mar': DateTime(2022, 3, 5, 15),
       '12th Sep': DateTime(2021, 9, 12, 15),
-      'jul 21': DateTime(2021, 7, 21),
-      'Jul 21': DateTime(2021, 7, 21),
-      'july 21': DateTime(2021, 7, 21),
-      'July 21': DateTime(2021, 7, 21),
-      'aug 21': DateTime(2021, 8, 21),
-      'Aug 21': DateTime(2021, 8, 21),
-      'august 21': DateTime(2021, 8, 21),
-      'August 21': DateTime(2021, 8, 21),
-      'sep 21': DateTime(2021, 9, 21),
-      'Sep 21': DateTime(2021, 9, 21),
-      'september 21': DateTime(2021, 9, 21),
-      'September 21': DateTime(2021, 9, 21),
-      'oct 21': DateTime(2021, 10, 21),
-      'Oct 21': DateTime(2021, 10, 21),
-      'october 21': DateTime(2021, 10, 21),
-      'October 21': DateTime(2021, 10, 21),
-      'nov 21': DateTime(2021, 11, 21),
-      'Nov 21': DateTime(2021, 11, 21),
-      'november 21': DateTime(2021, 11, 21),
-      'November 21': DateTime(2021, 11, 21),
-      'dec 21': DateTime(2021, 12, 21),
-      'Dec 21': DateTime(2021, 12, 21),
-      'december 21': DateTime(2021, 12, 21),
-      '01.02.2021': DateTime(2021, 2),
-      '01.02': DateTime(2022, 2),
-      '01.10': DateTime(2021, 10),
-      '01.02.25': DateTime(2025, 2),
+      'jul 21': DateTime(2021, 7, 21, 15),
+      'Jul 21': DateTime(2021, 7, 21, 15),
+      'july 21': DateTime(2021, 7, 21, 15),
+      'July 21': DateTime(2021, 7, 21, 15),
+      'aug 21': DateTime(2021, 8, 21, 15),
+      'Aug 21': DateTime(2021, 8, 21, 15),
+      'august 21': DateTime(2021, 8, 21, 15),
+      'August 21': DateTime(2021, 8, 21, 15),
+      'sep 21': DateTime(2021, 9, 21, 15),
+      'Sep 21': DateTime(2021, 9, 21, 15),
+      'september 21': DateTime(2021, 9, 21, 15),
+      'September 21': DateTime(2021, 9, 21, 15),
+      'oct 21': DateTime(2021, 10, 21, 15),
+      'Oct 21': DateTime(2021, 10, 21, 15),
+      'october 21': DateTime(2021, 10, 21, 15),
+      'October 21': DateTime(2021, 10, 21, 15),
+      'nov 21': DateTime(2021, 11, 21, 15),
+      'Nov 21': DateTime(2021, 11, 21, 15),
+      'november 21': DateTime(2021, 11, 21, 15),
+      'November 21': DateTime(2021, 11, 21, 15),
+      'dec 21': DateTime(2021, 12, 21, 15),
+      'Dec 21': DateTime(2021, 12, 21, 15),
+      'december 21': DateTime(2021, 12, 21, 15),
+      '01.02.2021': DateTime(2021, 2, 1, 15),
+      '01.02': DateTime(2022, 2, 1, 15),
+      '01.10': DateTime(2021, 10, 1, 15),
+      '01.02.25': DateTime(2025, 2, 1, 15),
     };
 
     for (final MapEntry(key: phrase, value: expected) in cases.entries) {
@@ -123,22 +124,22 @@ void main() {
     test('a date in the middle needs at or @ after it, in any case', () {
       expect(parse('x 9/11 AT 10:00 y').date, DateTime(2021, 9, 11, 10));
       expect(parse('x 1.2 @ 9 y').date, DateTime(2022, 2, 1, 9));
-      expect(parse('x 9/11 at y').date, DateTime(2021, 9, 11));
+      expect(parse('x 9/11 at y').date, DateTime(2021, 9, 11, 12));
       expect(parse('x 9/11 atx y').date, isNull);
       expect(parse('x 9/11  y').date, isNull);
       expect(parse('x 10/12 y').date, isNull);
     });
 
     test('one space before counts as the start, one after as the end', () {
-      expect(parse(' 9/11 x').date, DateTime(2021, 9, 11));
+      expect(parse(' 9/11 x').date, DateTime(2021, 9, 11, 12));
       expect(parse('  9/11 x').date, isNull);
-      expect(parse('x 9/11 ').date, DateTime(2021, 9, 11));
+      expect(parse('x 9/11 ').date, DateTime(2021, 9, 11, 12));
     });
 
     test('the first date at a boundary wins', () {
       final result = parse('9/11 x 10/12');
       expect(result.text, 'x 10/12');
-      expect(result.date, DateTime(2021, 9, 11));
+      expect(result.date, DateTime(2021, 9, 11, 12));
     });
 
     test('the first accepted M/D wins even when it is impossible', () {
@@ -146,14 +147,14 @@ void main() {
     });
 
     test('an impossible date falls back to the next format', () {
-      expect(parse('13/13 x 01.02').date, DateTime(2022, 2));
-      expect(parse('13/13 x jan 27').date, DateTime(2022, 1, 27));
+      expect(parse('13/13 x 01.02').date, DateTime(2022, 2, 1, 12));
+      expect(parse('13/13 x jan 27').date, DateTime(2022, 1, 27, 12));
     });
 
     test('formats are tried in order: M/D, Y/M/D, Y-M-D, D.M', () {
-      expect(parse('1/2 x 2021-06-30').date, DateTime(2022, 1, 2));
-      expect(parse('x 2021-06-24 2021/06/25').date, DateTime(2021, 6, 25));
-      expect(parse('x 1/2/2021 3.4.2021').date, DateTime(2021, 4, 3));
+      expect(parse('1/2 x 2021-06-30').date, DateTime(2022, 1, 2, 12));
+      expect(parse('x 2021-06-24 2021/06/25').date, DateTime(2021, 6, 25, 12));
+      expect(parse('x 1/2/2021 3.4.2021').date, DateTime(2021, 4, 3, 12));
     });
 
     test('every occurrence of the date is removed', () {
@@ -231,7 +232,8 @@ void main() {
     test('before a space, a letter or an apostrophe the spaces stay', () {
       expect(parse('x tomorrow , y', now: now).text, 'x  , y');
       expect(parse('x tomorrow-ish', now: now).text, 'x -ish');
-      expect(parse("x tomorrow's", now: now).text, "x 's");
+      // D102-1: an apostrophe after a keyword keeps it text.
+      expect(parse("x tomorrow's", now: now).text, "x tomorrow's");
       expect(parse('x  tomorrow y', now: now).text, 'x   y');
     });
 
@@ -241,45 +243,45 @@ void main() {
     });
   });
 
-  group('what JS Date makes of the numbers', () {
+  group('what the numbers make', () {
+    // Dates take the default time, 12:00 at the tables' noon (D102-5).
     final cases = <String, DateTime?>{
-      // Days up to 31 overflow into the next month.
-      'x 02/30/2021': DateTime(2021, 3, 2),
-      'x 02/31/2021': DateTime(2021, 3, 3),
+      // D102-6: a day the month lacks is no date (JS rolls it over).
+      'x 02/30/2021': null,
+      'x 02/31/2021': null,
       'x 02/32/2021': null,
       'x 1/0/2021': null,
       'x 0/0': null,
       'x 00/12': null,
       'x 12/00': null,
       // An impossible month swaps day and month.
-      'x 13/12/2021': DateTime(2021, 12, 13),
-      'x 2021/13/12': DateTime(2021, 12, 13),
-      'x 1.13': DateTime(2022, 1, 13),
-      'x 13.1': DateTime(2022, 1, 13),
+      'x 13/12/2021': DateTime(2021, 12, 13, 12),
+      'x 2021/13/12': DateTime(2021, 12, 13, 12),
+      'x 1.13': DateTime(2022, 1, 13, 12),
+      'x 13.1': DateTime(2022, 1, 13, 12),
       'x 13/13': null,
       // Two-digit years: 0-49 are 20xx, 50-99 19xx; so are 4-digit ones.
-      'x 6/7/49': DateTime(2049, 6, 7),
-      'x 6/7/50': DateTime(1950, 6, 7),
-      'x 6/7/99': DateTime(1999, 6, 7),
-      'x 01.02.50': DateTime(1950, 2),
-      'x 12/12/12': DateTime(2012, 12, 12),
-      'x 1/1/0049': DateTime(2049),
-      'x 0049-01-01': DateTime(2049),
-      'x 202-07-06': DateTime(202, 7, 6),
+      'x 6/7/49': DateTime(2049, 6, 7, 12),
+      'x 6/7/50': DateTime(1950, 6, 7, 12),
+      'x 6/7/99': DateTime(1999, 6, 7, 12),
+      'x 01.02.50': DateTime(1950, 2, 1, 12),
+      'x 12/12/12': DateTime(2012, 12, 12, 12),
+      'x 1/1/0049': DateTime(2049, 1, 1, 12),
+      'x 0049-01-01': DateTime(2049, 1, 1, 12),
+      'x 202-07-06': DateTime(202, 7, 6, 12),
       // Years have 2 or 4 digits, Y/M/D days 2.
       'x 1/1/1': null,
       'x 1/1/123': null,
       'x 1/1/12345': null,
       'x 1.1.1': null,
-      'x 2021-7-06': DateTime(2021, 7, 6),
+      'x 2021-7-06': DateTime(2021, 7, 6, 12),
       'x 2021-07-6': null,
-      'x 2021/7/06': DateTime(2021, 7, 6),
+      'x 2021/7/06': DateTime(2021, 7, 6, 12),
       'x 2021/07/6': null,
       'x 21-07-06': null,
       'x 20210-07-06': null,
-      // Day-and-month names overflow too.
-      'x feb 31': DateTime(2022, 3, 3),
-      'x 31 feb': DateTime(2022, 3, 3),
+      'x feb 31': null,
+      'x 31 feb': null,
     };
     for (final MapEntry(key: input, value: expected) in cases.entries) {
       test(input, () {
@@ -289,29 +291,45 @@ void main() {
       });
     }
 
-    test('a leap day without a year rolls on from the overflowed date', () {
+    test('D102-6: a leap day without a year is the next 29 February', () {
       final now = DateTime(2023, 6, 1, 10);
-      expect(parse('x 2/29', now: now).date, DateTime(2024, 3));
-      expect(parse('x feb 29', now: now).date, DateTime(2024, 3));
-      expect(parse('x 29.2', now: now).date, DateTime(2024, 3));
+      for (final text in ['x 2/29', 'x feb 29', 'x 29.2']) {
+        expect(parse(text, now: now).date, DateTime(2024, 2, 29, 12));
+      }
+    });
+
+    test('D102-5: a version number is no date', () {
+      for (final text in [
+        'Release 1.2',
+        'Ship version 2.10',
+        'Install v 1.3',
+        'Build 12.4',
+      ]) {
+        final result = parse(text);
+        expect(result.date, isNull, reason: text);
+        expect(result.text, text, reason: text);
+      }
+      expect(parse('Release 1.2.2022').date, DateTime(2022, 2, 1, 12));
+      expect(parse('Pay rent 1.7').date, DateTime(2021, 7, 1, 12));
     });
   });
 
   group('without a year the next such date', () {
     test('a later date is this year', () {
-      expect(parse('x 06/25').date, DateTime(2021, 6, 25));
-      expect(parse('x jun 25').date, DateTime(2021, 6, 25));
+      expect(parse('x 06/25').date, DateTime(2021, 6, 25, 12));
+      expect(parse('x jun 25').date, DateTime(2021, 6, 25, 12));
     });
 
-    test('web parity: today at midnight is already past, so next year', () {
-      expect(parse('x 06/24').date, DateTime(2022, 6, 24));
-      expect(parse('x jun 24 at 13:00').date, DateTime(2022, 6, 24, 13));
-      expect(parse('x 24.6').date, DateTime(2022, 6, 24));
+    test("D102-5: today's date is today (the web moves it to next year)", () {
+      expect(parse('x 06/24').date, DateTime(2021, 6, 24, 12));
+      expect(parse('x jun 24 at 13:00').date, DateTime(2021, 6, 24, 13));
+      expect(parse('x 24.6').date, DateTime(2021, 6, 24, 12));
+      expect(parse('x 23.6').date, DateTime(2022, 6, 23, 12));
     });
 
     test('a given year never rolls', () {
-      expect(parse('x 6/24/2021').date, DateTime(2021, 6, 24));
-      expect(parse('x 1/1/2020').date, DateTime(2020));
+      expect(parse('x 6/24/2021').date, DateTime(2021, 6, 24, 12));
+      expect(parse('x 1/1/2020').date, DateTime(2020, 1, 1, 12));
     });
   });
 
@@ -357,18 +375,18 @@ void main() {
       final cases = <(DateTime, String), String>{
         (DateTime(2022, 1, 31), '30th'): '2022-3-30',
         (DateTime(2022, 1, 31), '31st'): '2022-1-31',
-        (DateTime(2022, 1, 31), '31st feb'): '2022-3-3',
+        (DateTime(2022, 1, 31), '31st feb'): 'null',
         (DateTime(2022, 1, 31), '30th apr'): '2022-4-30',
         (DateTime(2021, 2, 28), '30th'): '2021-3-30',
         (DateTime(2021, 2, 28), '15th'): '2021-3-15',
-        (DateTime(2021, 2, 28), '15th jan'): '2021-1-15',
+        (DateTime(2021, 2, 28), '15th jan'): '2022-1-15',
         (DateTime(2021, 3, 31), '30th'): '2021-4-30',
-        (DateTime(2021, 3, 31), '31st feb'): '2021-3-3',
+        (DateTime(2021, 3, 31), '31st feb'): 'null',
         (DateTime(2021, 12, 31), '30th'): '2022-1-30',
         (DateTime(2021, 12, 31), '15th jan'): '2022-1-15',
-        (DateTime(2021, 12, 31), '31st feb'): '2021-3-3',
+        (DateTime(2021, 12, 31), '31st feb'): 'null',
         (DateTime(2021, 2, 15), '31st'): '2021-3-31',
-        (DateTime(2021, 6, 24), '30th feb'): '2021-3-2',
+        (DateTime(2021, 6, 24), '30th feb'): 'null',
       };
       for (final MapEntry(key: (now, phrase), value: expected)
           in cases.entries) {
@@ -397,14 +415,17 @@ void main() {
       expect(parse('x 1. sep').date, DateTime(2021, 9, 1, 12));
     });
 
-    test('the month may stand anywhere and goes with the first one', () {
-      final anywhere = parse('x 3rd at 10:00 jan');
-      expect(anywhere.text, 'x');
-      expect(anywhere.date, DateTime(2021, 1, 3, 10));
-      expect(anywhere.datePhrases, ['3rd', 'jan', 'at 10:00']);
-      final first = parse('x 3rd jan feb');
-      expect(first.text, 'x   feb');
-      expect(first.date, DateTime(2021, 1, 3, 12));
+    test('D102-3: only a month right beside the day joins it', () {
+      final apart = parse('x 3rd at 10:00 jan');
+      expect(apart.text, 'x  jan');
+      expect(apart.date, DateTime(2021, 7, 3, 10));
+      expect(apart.datePhrases, ['3rd', 'at 10:00']);
+      final after = parse('x 3rd jan feb');
+      expect(after.text, 'x   feb');
+      expect(after.date, DateTime(2022, 1, 3, 12));
+      final before = parse('x feb 3rd');
+      expect(before.text, 'x');
+      expect(before.date, DateTime(2022, 2, 3, 12));
     });
 
     test('every occurrence of the month word is removed', () {
@@ -417,17 +438,19 @@ void main() {
       expect(parse('5th mar Remark').text, 'Remark');
     });
 
-    test('web parity: a month anywhere in the text joins the day', () {
-      final result = parse('I may do it 3rd');
-      expect(result.text, 'I  do it');
-      expect(result.date, DateTime(2021, 5, 3, 12));
+    test('D102-3: a month word elsewhere in the text stays there (the web '
+        'takes it)', () {
+      final result = parse('Ask if we may move 3rd');
+      expect(result.text, 'Ask if we may move');
+      expect(result.date, DateTime(2021, 7, 3, 12));
     });
 
     test('the web vectors: replace in title case and lower case', () {
-      // D38-5: noon is its own default time, so the web's 12:00 holds.
+      // D38-5: noon is its own default time, so the web's 12:00 holds;
+      // D102-3: the passed 8 March is next year's.
       for (final text in ['Some task Mar 8th', 'Some task mar 8th']) {
         final result = parse(text, now: DateTime(2021, 6, 24, 12));
-        expect(result.date, DateTime(2021, 3, 8, 12));
+        expect(result.date, DateTime(2022, 3, 8, 12));
         expect(result.text, 'Some task');
       }
     });
@@ -454,7 +477,8 @@ void main() {
       }
     });
 
-    test('in N units and calendar dates keep their own time (web parity)', () {
+    test('in N units keep their own time (web parity), calendar dates take '
+        'the default time (D102-5; the web leaves them at 00:00)', () {
       final now = DateTime(2021, 6, 24, 12, 34, 56);
       const defaultTime = ClockTime(17, 45);
       expect(
@@ -463,22 +487,25 @@ void main() {
       );
       expect(
         parse('x 7/3/2021', now: now, defaultTime: defaultTime).date,
-        DateTime(2021, 7, 3),
+        DateTime(2021, 7, 3, 17, 45),
       );
     });
 
-    test('D38-5: a past ordinal and month stays past (web parity)', () {
+    test("D102-3: a past ordinal and month is next year's (the web keeps "
+        'it past)', () {
       expect(
         parse('Something sep 17th', now: DateTime(2026, 10, 8, 10)).date,
-        DateTime(2026, 9, 17, 12),
+        DateTime(2027, 9, 17, 12),
       );
     });
 
-    test('web parity: a day a month lacks overflows', () {
-      expect(
-        parse('x 29th feb', now: DateTime(2026, 1, 10, 10)).date,
-        DateTime(2026, 3, 1, 12),
-      );
+    test('D102-6: a day the month never has is no date (the web rolls it '
+        'over); 29 February waits for a leap year', () {
+      final now = DateTime(2026, 1, 10, 10);
+      final none = parse('x 30th feb', now: now);
+      expect(none.date, isNull);
+      expect(none.text, 'x 30th feb');
+      expect(parse('x 29th feb', now: now).date, DateTime(2028, 2, 29, 12));
     });
 
     test('D19-4: a month word must be whole', () {
@@ -506,13 +533,14 @@ void main() {
       'Something at 10:00 in 5 days': DateTime(2021, 6, 29, 10),
       'Something at 10:00 17th': DateTime(2021, 7, 17, 10),
       'Something at 10:00 sep 17th': DateTime(2021, 9, 17, 10),
-      '2nd March at 5': DateTime(2021, 3, 2, 5),
-      '2nd March at 5pm': DateTime(2021, 3, 2, 17),
-      '2nd March @ 14:00': DateTime(2021, 3, 2, 14),
-      '3rd April at 10:30': DateTime(2021, 4, 3, 10, 30),
+      // D102-3: a passed ordinal date is next year's.
+      '2nd March at 5': DateTime(2022, 3, 2, 5),
+      '2nd March at 5pm': DateTime(2022, 3, 2, 17),
+      '2nd March @ 14:00': DateTime(2022, 3, 2, 14),
+      '3rd April at 10:30': DateTime(2022, 4, 3, 10, 30),
       '15th August @ 9am': DateTime(2021, 8, 15, 9),
-      '21st June at 18:45': DateTime(2021, 6, 21, 18, 45),
-      '5th Mar at 3pm': DateTime(2021, 3, 5, 15),
+      '21st June at 18:45': DateTime(2022, 6, 21, 18, 45),
+      '5th Mar at 3pm': DateTime(2022, 3, 5, 15),
     };
     for (final MapEntry(key: input, value: expected) in cases.entries) {
       test(input, () {
@@ -720,14 +748,30 @@ void main() {
       expect(parse('x at 9', now: now).date, DateTime(2021, 6, 24, 9));
     });
 
-    test('overflowing hours and minutes roll on', () {
-      expect(parse('x at 25:00', now: now).date, DateTime(2021, 6, 25, 1));
-      expect(parse('x at 10:75', now: now).date, DateTime(2021, 6, 24, 11, 15));
-      expect(parse('x at 13pm', now: now).date, DateTime(2021, 6, 25, 1));
+    test('D102-2: what is no clock time stays in the text without a date '
+        '(the web rolls it over or cuts a longer number)', () {
+      for (final text in [
+        'x at 25:00',
+        'x at 10:75',
+        'x at 13pm',
+        'x at 0am',
+        'x at 90',
+        'x at 1230',
+        'Meet at 221B Baker street',
+      ]) {
+        final result = parse(text, now: now);
+        expect(result.date, isNull, reason: text);
+        expect(result.text, text, reason: text);
+      }
+    });
+
+    test('D102-2: a later valid time counts after an invalid one', () {
+      final result = parse('x at 25 y at 10', now: now);
+      expect(result.date, DateTime(2021, 6, 24, 10));
+      expect(result.text, 'x at 25 y');
     });
 
     test('am and pm', () {
-      expect(parse('x at 0am', now: now).date, DateTime(2021, 6, 24));
       expect(parse('x at 12am', now: now).date, DateTime(2021, 6, 24));
       expect(parse('x at 12 pm', now: now).date, DateTime(2021, 6, 24, 12));
       expect(parse('x AT 3PM', now: now).date, DateTime(2021, 6, 24, 15));
@@ -763,10 +807,10 @@ void main() {
         expect(result.date, DateTime(2021, 6, 24, 10));
       });
 
-      test('minutes need two digits', () {
+      test('D102-2: one-digit minutes are no time', () {
         final result = parse('x at 3:5', now: now);
-        expect(result.text, 'x:5');
-        expect(result.date, DateTime(2021, 6, 24, 3));
+        expect(result.text, 'x at 3:5');
+        expect(result.date, isNull);
       });
     });
   });

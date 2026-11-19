@@ -660,7 +660,7 @@ Limits:
   3. **A trailing word boundary** for `today`, `tonight`, `tomorrow`, `next week`, `next month`, `this weekend`, `later this week`, `later next week`, `end of month`, `next monday`: `todays`, `tomorrows`, `next weekend` stay text (D19 item 3).
   4. **Day and month as whole words:** `12 decorations` stays text, `12 dec` and `dec 12` parse (D19 item 4).
   5. **Weekday and ordinal dates get the default time** (the next of 9, 12, 15, 18 and 21 o'clock, seconds zero), not the clock time of `now`; `at …` wins; `end of month` is 09:00 of the last day. As on the web, an ordinal with a month may lie in the past and `in N …` adds to `now`. Since step 40i the default time is the user's `default_due_time` when set, as the web's `getDateWithTime` has it, for the date keywords (not `tonight`, which stays 21:00), the weekdays, the ordinals, `end of month` and a repeat without a date alike (`parseTaskText(…, defaultTime:)`, `atDefaultTime`; [D35](#d35-task-creates-through-the-outbox-under-temporary-negative-ids), [D98](#d98-fixes-from-the-review-of-the-decision-logs-limits)).
-  6. **`next monday` on a Monday is today; after 21:00 the default time is 09:00 the same day**, as on the web.
+  6. **`next monday` on a Monday is today; after 21:00 the default time is 09:00 the same day**, as on the web. Since step 40p `next` on the weekday itself is a week ahead ([D102](#d102-quick-add-parser-fixes-beyond-the-web)).
   7. **An unmatched `+project` stays in the title** (why: the web drops it and silently uses another project). Archived projects are not matched (a create there fails with 3008), and since step 40g neither are projects the user may only read ([D60](#d60-labels-teams-and-shares-online-the-stored-project-permission-shapes-every-screen), [D96](#d96-fixes-from-the-code-review-robustness)).
   8. **Lines that are only magic** never get labels created.
   9. **Whole words elsewhere:** the `in …` rule needs a space or the line start before it (`within 2 days` stays text); it takes digits, `a`/`an` and one to twelve in any case, with the units minute to year, and repeats take `eleven` and `twelve` (Vikunja 2.8.0's phrases, owner). After the unit a word boundary ends it, so punctuation still gives a date (`in 2 days,`), unlike the web's space or end (owner); an apostrophe keeps it text (`in a day's work`), as on the web. Date phrases and an ordinal's month word are removed only as whole words (the web turns `fri frisbee` into `sbee`); a day no month has (`dec 45`, `dec 0`) stays in the title; amounts above 100000 in `every N …` and `in N …`, and `in …` dates after the year 9999, stay text.
@@ -690,7 +690,7 @@ Limits:
 
 Limits:
 - A new label needs a connection; offline the task is created without it, and the word stays at the end of the title, not where it was typed: labels are created at Add, after the title was worked out, and keeping the word in place would need a second parse.
-- A doubled prefix inside a line (`Fix **bike`) leaves one `*` in the text, as the web's parser does, so a label kept there reads `Fix * **bike`.
+- Fixed in step 40p ([D102](#d102-quick-add-parser-fixes-beyond-the-web)): a doubled prefix inside a line (`Fix **bike`) left one `*` in the text, as the web's parser does, so a label kept there read `Fix * **bike`; it now reads `Fix **bike`.
 - Fixed in step 40i ([D98](#d98-fixes-from-the-review-of-the-decision-logs-limits)): a date phrase removed before punctuation left a space (`Call back .`), as on the web. Point 11 is a deviation from the web, proposed for the owner to confirm. A name resolved later can still leave one: `Call @bob tomorrow.` becomes `Call @bob.` and then `Call .`, as names leave the title in the web's cleanup, after the date.
 - Fixed in step 40i ([D98](#d98-fixes-from-the-review-of-the-decision-logs-limits)): the parser took the first date of a range such as `31.12.2026 - 01.01.2027` as the due date and left `- 01.01.2027` in the title, where the web keeps the range in the title. Point 10's rule is built from that example, not from the web's code: that an en dash, a chain and `1.3.` with a trailing dot count, and an em dash and `to` do not, is the app's choice; whether the web takes the time of `1.3 - 4.3 at 10:00` is not checked, and here the range gives no date and the time alone dates the task today at 10:00.
 
@@ -3784,3 +3784,23 @@ Limits:
 - An attachment of a task the user cannot read keeps its placeholder.
 - Tried in tests only: the previews in a real WebView on Android and iOS, and how a large one scrolls.
 - The German text of `descriptionEditorImageShown` comes through Crowdin ([D88](#d88-translations-through-vikunjas-crowdin-project)).
+
+## D102: Quick add: parser fixes beyond the web
+
+*Accepted 2026-11-19 (step 40p).*
+
+Step 40p takes finding B10 of the code review (2026-11-17) and two fixes from the web's open pull requests (#4421, #4424). The grammar stays the web's ([D19](#d19-quick-add-keeps-the-web-grammar-and-fixes-four-parser-bugs), [D38](#d38-quick-add-the-webs-grammar-with-fixes-through-the-outbox)); these are bugs the web has too, documented as deviations (`D102-n` in the code and tests) and proposed to the web team in the upstream draft "Quick Add Magic misreads dates and removes text".
+
+1. **An apostrophe and a letter end no keyword:** `today's` and `tomorrow's` stay text; an apostrophe that closes a quote (`today'`) still ends it. The web read `Fix today's build` as today with the title `Fix 's build`.
+2. **A time is a clock time:** after `at` or `@` the number must end there (no digit, letter or `:` after it) and be a time: hours 0–23, or 1–12 with am/pm, and minutes 0–59 in two digits. Anything else stays in the title and sets no time; a later valid time still counts. The web turned `Meet at 221B Baker street` into `Meet1B Baker street` at 22:00, `at 90` into a time days later, and `at 1230` into 12:00 with `30` glued to the title (#4425 fixes part of it).
+3. **An ordinal joins only the month beside it** (`5th may`, `may 5th`), and with a month it lies today or ahead, else next year; a day that month never has is no date. The web took a month word from anywhere in the text (`Ask if we may move 5th` became 5 May and lost `may`) and left a passed date in the past (#4418 fixes the year).
+4. **`next` on the weekday itself is a week ahead**, for the weekdays and `next monday`; without `next` the weekday itself is today, as before. `this` goes with the weekday (`this friday`), as in #4424.
+5. **Calendar dates:** today's date is today, where the web compared it at midnight with the clock time and moved it to next year (`Pay rent 19.11` typed on 19 November). Absolute dates and day-and-month dates take the default time like every other date phrase ([D38](#d38-quick-add-the-webs-grammar-with-fixes-through-the-outbox) point 5), not 00:00. A number after `v`, `version`, `release`, `build`, `update`, `patch`, `rc`, `beta` or `alpha` without a year is no date (`Release 1.2` was 1 February).
+6. **A day the month never has is no date** (`apr 31`, `2/30`, `31.04`, `31st feb`), where JS rolled it into the next month (#4426 for the web); `29 February` without a year is the next leap year's.
+7. **Labels, projects and priorities leave the title only as whole tokens**, at the start or after a space and up to a space or the end: removing `*bug` no longer cuts `*bugfix` to `fix`, and `Fix **bike` keeps its label as typed.
+8. **A priority is a whole number from 0 to 5:** `!2fa` is none and stays in the title, `!03` is 3. The web read it with `parseInt` (#4421).
+
+Limits:
+- After 21:00 `today` still gives 09:00 of the same day, which has passed, as on the web ([D38](#d38-quick-add-the-webs-grammar-with-fixes-through-the-outbox) point 6); the owner may decide another time.
+- The version words are English and a fixed list; `Release 1.2` in another language still reads as a date.
+- `Fix today's build` keeps `today's` in the title; a user who meant today types `today`.

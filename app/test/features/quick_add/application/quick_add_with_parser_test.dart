@@ -208,8 +208,8 @@ void main() {
     ).plan('Dentist next monday at 15:00');
 
     expect(plan.title, 'Dentist');
-    // D38-6: on a Monday, next monday is today.
-    expect(plan.dueDate, DateTime(2026, 10, 12, 15).toUtc());
+    // D102-4: on a Monday, next monday is a week ahead.
+    expect(plan.dueDate, DateTime(2026, 10, 19, 15).toUtc());
     expect(plan.reminders, const [
       TaskReminder(
         relativePeriod: Duration(minutes: -10),

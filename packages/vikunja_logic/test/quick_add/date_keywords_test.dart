@@ -12,8 +12,8 @@ void main() {
       'today': DateTime(2026, 9, 14, 9),
       'tonight': DateTime(2026, 9, 14, 21),
       'tomorrow': DateTime(2026, 9, 15, 9),
-      // D38-6: next Monday is today on a Monday.
-      'next monday': DateTime(2026, 9, 14, 9),
+      // D102-4: next Monday is a week ahead on a Monday (the web: today).
+      'next monday': DateTime(2026, 9, 21, 9),
       'this weekend': DateTime(2026, 9, 19, 9),
       'later this week': DateTime(2026, 9, 16, 9),
       'later next week': DateTime(2026, 9, 23, 9),
@@ -220,7 +220,9 @@ void main() {
       final result = parse('Buy milk today, urgent');
       expect(result.text, 'Buy milk, urgent');
       expect(ymd(result.date), '2021-6-24');
-      expect(parse("x today's").text, "x 's");
+      // D102-1: an apostrophe and a letter keep the keyword text.
+      expect(parse("x today's").text, "x today's");
+      expect(parse("x today'").date, isNotNull);
     });
 
     test('the web turned next weekend into next week and left "end"', () {

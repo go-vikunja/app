@@ -79,8 +79,9 @@ void main() {
     ]);
   });
 
-  test('only the digits of a priority count', () {
-    expect(spansOf('Fix !3abc'), [('!3', MagicSpanKind.priority)]);
+  test('D102-8: a priority is a whole number, so !3abc is none', () {
+    expect(spansOf('Fix !3abc'), isEmpty);
+    expect(spansOf('Fix !3 abc'), [('!3', MagicSpanKind.priority)]);
   });
 
   test('a repeat without a date', () {

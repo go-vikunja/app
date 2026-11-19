@@ -67,8 +67,9 @@ ParsedTaskText parseTaskText(
   final project = _itemsFromPrefix(rest, prefixes.project).firstOrNull;
   final projects = [?project];
   rest = cleanupItemText(rest, projects, prefixes.project);
-  final priority = _priority(rest, prefixes.priority);
-  final priorities = [if (priority != null) '$priority'];
+  final found = _priority(rest, prefixes.priority);
+  final priority = found?.value;
+  final priorities = [?found?.item];
   rest = cleanupItemText(rest, priorities, prefixes.priority);
   final assignees = _itemsFromPrefix(rest, prefixes.assignee);
   final repeat = parseRepeat(rest);
@@ -104,22 +105,20 @@ String? parseQuickAddProject(
 }
 
 /// The web's `cleanupItemText`: removes `<prefix>item` (quoted or not, with
-/// one trailing space) for each of [items], case-insensitively.
+/// one trailing space) for each of [items], case-insensitively. D102-7:
+/// only as a whole token, at the start or after a space and ending at a
+/// space or the end; the web also cut `*bug` out of `*bugfix`.
 String cleanupItemText(String text, Iterable<String> items, String prefix) {
   final escapedPrefix = RegExp.escape(prefix);
   var result = text;
   for (final item in items.where((item) => item.isNotEmpty)) {
     final escapedItem = RegExp.escape(item);
-    for (final token in [
-      "'$escapedItem' ",
-      "'$escapedItem'",
-      '"$escapedItem" ',
-      '"$escapedItem"',
-      '$escapedItem ',
-      escapedItem,
-    ]) {
+    for (final token in ["'$escapedItem'", '"$escapedItem"', escapedItem]) {
       result = result.replaceAll(
-        RegExp('$escapedPrefix$token', caseSensitive: false),
+        RegExp(
+          '(?<!\\S)$escapedPrefix$token(?: |(?!\\S))',
+          caseSensitive: false,
+        ),
         '',
       );
     }
@@ -150,21 +149,16 @@ List<String> _itemsFromPrefix(String text, String prefix) {
   return items.toList();
 }
 
-final _leadingInteger = RegExp(r'^\s*([+-]?)(?:0[xX]([0-9a-fA-F]*)|([0-9]+))');
+final _wholeNumber = RegExp(r'^[0-9]+$');
 
-/// The first item that JS `parseInt` reads as 0 to 5.
-int? _priority(String text, String prefix) {
+/// The first item that is a whole number from 0 to 5. D102-8: the web
+/// reads it with JS `parseInt`, so `!2fa` was priority 2 while the title
+/// kept `!2fa`.
+({int value, String item})? _priority(String text, String prefix) {
   for (final item in _itemsFromPrefix(text, prefix)) {
-    final match = _leadingInteger.firstMatch(item);
-    if (match == null) continue;
-    final hex = match[2];
-    // Without a radix, parseInt reads `0x…` as hex, and `0x` alone as NaN.
-    final value = hex == null
-        ? int.tryParse(match[3]!)
-        : int.tryParse(hex, radix: 16);
-    if (value != null && value <= 5 && (value == 0 || match[1] != '-')) {
-      return value;
-    }
+    if (!_wholeNumber.hasMatch(item)) continue;
+    final value = int.tryParse(item);
+    if (value != null && value <= 5) return (value: value, item: item);
   }
   return null;
 }

@@ -103,10 +103,10 @@ void main() {
       final now = DateTime(2021, 6, 24, 12);
       final before = parse('buy 12 dec', now: now);
       expect(before.text, 'buy');
-      expect(before.date, DateTime(2021, 12, 12));
+      expect(before.date, DateTime(2021, 12, 12, 12));
       final after = parse('buy dec 12', now: now);
       expect(after.text, 'buy');
-      expect(after.date, DateTime(2021, 12, 12));
+      expect(after.date, DateTime(2021, 12, 12, 12));
       expect(parse('buy 12 dec, quick', now: now).text, 'buy, quick');
     });
 

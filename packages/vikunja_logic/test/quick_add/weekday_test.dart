@@ -48,21 +48,30 @@ void main() {
     DateTime(2026, 9, 20, 23, 30),
   ];
 
-  // The web's distance: today when the day is today; `next` changes
-  // nothing. D38-5: at the default time, not the clock time of now.
-  DateTime expectedFor(DateTime now, int weekday) => atDefaultTime(
-    DateTime(now.year, now.month, now.day + (weekday - now.weekday) % 7),
-    now: now,
-  );
+  // The web's distance: today when the day is today. D102-4: `next` on
+  // the day itself is a week ahead (the web changes nothing); `this` goes
+  // with the weekday, as in the web's open fix. D38-5: at the default
+  // time, not the clock time of now.
+  DateTime expectedFor(DateTime now, int weekday, {required bool next}) {
+    final days = (weekday - now.weekday) % 7;
+    return atDefaultTime(
+      DateTime(now.year, now.month, now.day + (next && days == 0 ? 7 : days)),
+      now: now,
+    );
+  }
 
-  for (final prefix in ['next ', '']) {
+  for (final prefix in ['next ', 'this ', '']) {
     group('$prefix<weekday>', () {
       for (final MapEntry(key: name, value: weekday) in days.entries) {
         test('$prefix$name at the end', () {
           for (final now in nows) {
             final result = parse('Lorem Ipsum $prefix$name', now: now);
             expect(result.text, 'Lorem Ipsum', reason: '$now');
-            expect(result.date, expectedFor(now, weekday), reason: '$now');
+            expect(
+              result.date,
+              expectedFor(now, weekday, next: prefix == 'next '),
+              reason: '$now',
+            );
             expect(result.datePhrases, ['$prefix$name'], reason: '$now');
           }
         });
@@ -71,7 +80,11 @@ void main() {
           for (final now in nows) {
             final result = parse('$prefix$name Lorem Ipsum', now: now);
             expect(result.text, 'Lorem Ipsum', reason: '$now');
-            expect(result.date, expectedFor(now, weekday), reason: '$now');
+            expect(
+              result.date,
+              expectedFor(now, weekday, next: prefix == 'next '),
+              reason: '$now',
+            );
           }
         });
       }

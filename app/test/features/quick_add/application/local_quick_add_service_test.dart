@@ -776,8 +776,9 @@ void main() {
       final result = await service(grammar: const QuickAddGrammar())
           .submit('Fix **bike');
 
-      // The parser takes the label without one prefix, the web's rule.
-      expect(tasks.creates.single.title, 'Fix * **bike');
+      // The parser takes the label without one prefix, the web's rule;
+      // D102-7: the cleanup no longer leaves one `*` behind.
+      expect(tasks.creates.single.title, 'Fix **bike');
       expect(result.labelsKept, ['**bike']);
     });
 

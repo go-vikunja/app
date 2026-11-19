@@ -70,29 +70,31 @@ void main() {
       );
     });
 
-    test('D38-5: Something sep 17th on Oct 8 is Sep 17, in the past', () {
+    test("D102-3: Something sep 17th on Oct 8 is next year's Sep 17 (the web "
+        'keeps it past)', () {
       expect(
         parse('Something sep 17th', now: DateTime(2026, 10, 8, 10, 30, 12)),
         ParsedTaskText(
           text: 'Something',
-          date: DateTime(2026, 9, 17, 12),
+          date: DateTime(2027, 9, 17, 12),
           datePhrases: const ['17th', 'sep'],
         ),
       );
     });
 
-    test('x 29th feb in 2026 is Mar 1 (web parity)', () {
+    test('D102-6: x 29th feb in 2026 is 29 Feb 2028 (the web says Mar 1)', () {
       expect(
         ymd(parse('x 29th feb', now: DateTime(2026, 10, 8, 10)).date),
-        '2026-3-1',
+        '2028-2-29',
       );
     });
 
-    test('D38-6: next monday on a Monday is today', () {
+    test('D102-4: next monday on a Monday is a week ahead (the web says '
+        'today)', () {
       final monday = DateTime(2026, 10, 12, 10, 30);
       expect(
         parse('x next monday', now: monday).date,
-        DateTime(2026, 10, 12, 12),
+        DateTime(2026, 10, 19, 12),
       );
     });
 

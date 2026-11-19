@@ -92,10 +92,11 @@ void main() {
       expect(result.text, 'x');
     });
 
-    test('web parity: removing a label also cuts it out of a longer one', () {
+    test('D102-7: removing a label leaves a longer one (the web cut it)', () {
       final result = parse('x *a *abc');
       expect(result.labels, ['a', 'abc']);
-      expect(result.text, 'x bc');
+      expect(result.text, 'x');
+      expect(parse('x *bug *bugfix y').text, 'x y');
     });
   });
 
@@ -190,55 +191,35 @@ void main() {
       expect(parse('x !99999999999999999999999').priority, isNull);
     });
 
-    group('web parity: JS parseInt reads the leading number', () {
-      test('!3abc is 3 and leaves abc', () {
-        final result = parse('Lorem !3abc');
-        expect(result.priority, 3);
-        expect(result.text, 'Lorem abc');
+    group('D102-8: only a whole number (the web reads it with parseInt)', () {
+      test('!2fa is no priority and stays in the text', () {
+        final result = parse('Set up !2fa for the admin');
+        expect(result.priority, isNull);
+        expect(result.text, 'Set up !2fa for the admin');
       });
 
-      test('!03 is 3 but stays in the text', () {
+      test('!2fa !4 is 4', () {
+        final result = parse('Set up !2fa !4');
+        expect(result.priority, 4);
+        expect(result.text, 'Set up !2fa');
+      });
+
+      test('!03 is 3 and leaves the text', () {
         final result = parse('Lorem !03 x');
         expect(result.priority, 3);
-        expect(result.text, 'Lorem !03 x');
+        expect(result.text, 'Lorem x');
       });
 
-      test('!+3 is 3 but stays in the text', () {
-        final result = parse('Lorem !+3 x');
-        expect(result.priority, 3);
-        expect(result.text, 'Lorem !+3 x');
+      test('signs, hex, quoted spaces are no priority', () {
+        for (final text in ['x !+3', 'x !-0', "x !' 3'", 'x !0x3', 'x !0x']) {
+          expect(parse(text).priority, isNull, reason: text);
+        }
       });
 
-      test('!-0 is 0', () {
-        expect(parse('x !-0').priority, 0);
-      });
-
-      test("!' 3' is 3", () {
-        expect(parse("x !' 3'").priority, 3);
-      });
-
-      test('!0x3 is hex 3 and stays in the text', () {
-        final result = parse('Task !0x3');
-        expect(result.priority, 3);
-        expect(result.text, 'Task !0x3');
-      });
-
-      test('!0x9 is hex 9, no priority, so the next one counts', () {
-        final result = parse('Task !0x9 !2');
-        expect(result.priority, 2);
-        expect(result.text, 'Task !0x9');
-      });
-
-      test('!0x and !0xg are NaN, no priority', () {
-        expect(parse('Task !0x').priority, isNull);
-        expect(parse('Task !0xg').priority, isNull);
-        expect(parse('Task !-0X0').priority, 0);
-      });
-
-      test('removing !1 also cuts it out of !12', () {
+      test('removing !1 leaves !12 (D102-7)', () {
         final result = parse('x !1 !12');
         expect(result.priority, 1);
-        expect(result.text, 'x 2');
+        expect(result.text, 'x !12');
       });
     });
   });
@@ -358,8 +339,9 @@ void main() {
       expect(cleanupItemText('x @ y', [''], '@'), 'x @ y');
     });
 
-    test('web parity: also cuts the item out of a longer one', () {
-      expect(cleanupItemText('x @al @alice', ['al'], '@'), 'x ice');
+    test('D102-7: only a whole token (the web cut `ice` out of `@alice`)', () {
+      expect(cleanupItemText('x @al @alice', ['al'], '@'), 'x @alice');
+      expect(cleanupItemText('mail@al.com @al', ['al'], '@'), 'mail@al.com ');
     });
   });
 }
