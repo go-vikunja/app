@@ -46,7 +46,7 @@ Future<void> main(List<String> args) async {
   final dio = Dio(
     BaseOptions(
       baseUrl: root,
-      headers: {'User-Agent': 'Rurana fixture capture'},
+      headers: {'User-Agent': 'Vikunja app fixture capture'},
       responseType: ResponseType.plain,
     ),
   );

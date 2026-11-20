@@ -33,7 +33,7 @@ Future<void> main(List<String> args) async {
   final dio = Dio(
     BaseOptions(
       baseUrl: root,
-      headers: {'User-Agent': 'Rurana fixture capture'},
+      headers: {'User-Agent': 'Vikunja app fixture capture'},
       responseType: ResponseType.plain,
     ),
   );
@@ -144,7 +144,7 @@ Future<void> main(List<String> args) async {
       'frontend_settings': {
         'play_sound_when_done': false,
         'sidebar_width': 320,
-        'rurana_unknown_key': {
+        'sample_unknown_key': {
           'nested': [1, 2],
         },
         'date_display': 'yyyy-mm-dd',

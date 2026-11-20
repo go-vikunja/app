@@ -10,28 +10,28 @@ import '../helpers/server_connection.dart';
 
 // The answers were captured by tool/capture_account_security_fixtures.dart
 // from one user with three sessions: a password login, an OAuth sign-in
-// with a Rurana User-Agent and a password login as Firefox. Token values
+// with the app's User-Agent and a password login as Firefox. Token values
 // are replaced by zeros, TOTP secrets by `<redacted>`.
 const _v1 = '$testServerRoot/api/v1';
 const _v2 = '$testServerRoot/api/v2';
 const _page = '?page=1&per_page=50';
 const _fixtureToken = 'tk_0000000000000000000000000000000000000000';
-const _ruranaSession = '99392678-be79-4a08-97f7-5f08f10e230e';
+const _appSession = '99392678-be79-4a08-97f7-5f08f10e230e';
 const _loginSession = '4fba43b8-d48d-479f-894b-9d9f21f8b421';
 const _firefoxSession = '27c9b42b-0ce4-4774-a234-ef842636a84e';
 
 final _created = DateTime.utc(2026, 10, 21, 6, 19, 9);
 final _sessions = [
   UserSession(
-    id: _ruranaSession,
-    deviceInfo: 'Rurana/0.31.0+42 (android 15)',
+    id: _appSession,
+    deviceInfo: 'Vikunja-App/0.31.0+42 (android 15)',
     ipAddress: '172.20.0.1',
     created: _created,
     lastActive: _created,
   ),
   UserSession(
     id: _loginSession,
-    deviceInfo: 'Rurana fixture capture',
+    deviceInfo: 'Vikunja app fixture capture',
     ipAddress: '172.20.0.1',
     created: _created,
     lastActive: _created,

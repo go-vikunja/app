@@ -25,7 +25,7 @@ void main() {
 
         final certificate = (result as ProbedCertificate).certificate;
         expect(certificate.sha256, tlsFixtureSha256('selfsigned.pem'));
-        expect(certificate.subject, contains('Rurana test self-signed'));
+        expect(certificate.subject, contains('Vikunja app test self-signed'));
         expect(certificate.selfSigned, isTrue);
         expect(certificate.der, isNotEmpty);
         expect(result.deviceTrusted, isFalse);
@@ -187,7 +187,7 @@ void main() {
       }
 
       expect(check, isA<CaTrusted>());
-      expect(server.clientSubjects.single, contains('Rurana test client'));
+      expect(server.clientSubjects.single, contains('Vikunja app test client'));
     });
 
     test('a file with a private key, without certificates or with other '

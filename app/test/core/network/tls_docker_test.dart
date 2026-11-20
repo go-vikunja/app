@@ -115,7 +115,7 @@ void main() {
 
   Dio dio({HttpClientAdapter? platform}) {
     final dio = createDio(
-      userAgent: 'Rurana/tls-docker',
+      userAgent: 'Vikunja-App/tls-docker',
       httpClientAdapter: platform ?? IOHttpClientAdapter(),
       profiles: profiles,
       logRequests: false,
@@ -156,7 +156,7 @@ void main() {
   Future<void> expectRealtimeOpens(ServerConnection connection) async {
     final socket = await ProfileRealtimeConnector(
       profiles: profiles,
-      userAgent: 'Rurana/tls-docker',
+      userAgent: 'Vikunja-App/tls-docker',
     ).connect(realtimeUri(connection));
     await socket.close();
   }
@@ -208,8 +208,8 @@ void main() {
         _origin(34528),
         CertificateInfo(
           sha256: 'AB' * 32,
-          subject: '/CN=Rurana test renewed (dummy)',
-          issuer: '/CN=Rurana test renewed (dummy)',
+          subject: '/CN=Vikunja app test renewed (dummy)',
+          issuer: '/CN=Vikunja app test renewed (dummy)',
           notBefore: DateTime.utc(2026),
           notAfter: DateTime.utc(2027),
         ),
@@ -235,7 +235,7 @@ void main() {
       await expectLater(
         ProfileRealtimeConnector(
           profiles: profiles,
-          userAgent: 'Rurana/tls-docker',
+          userAgent: 'Vikunja-App/tls-docker',
         ).connect(Uri.parse('wss://localhost:34528/api/v2/ws')),
         throwsA(isA<TlsException>()),
       );
@@ -301,7 +301,7 @@ void main() {
       await expectLater(
         ProfileRealtimeConnector(
           profiles: profiles,
-          userAgent: 'Rurana/tls-docker',
+          userAgent: 'Vikunja-App/tls-docker',
         ).connect(Uri.parse('wss://localhost:34529/api/v2/ws')),
         throwsA(isA<ClientCertificateRefusedException>()),
       );
@@ -366,7 +366,7 @@ void main() {
       await expectLater(
         ProfileRealtimeConnector(
           profiles: profiles,
-          userAgent: 'Rurana/tls-docker',
+          userAgent: 'Vikunja-App/tls-docker',
         ).connect(realtimeUri(connection)),
         throwsA(isA<TlsException>()),
       );
@@ -412,7 +412,7 @@ void main() {
       await expectLater(
         ProfileRealtimeConnector(
           profiles: profiles,
-          userAgent: 'Rurana/tls-docker',
+          userAgent: 'Vikunja-App/tls-docker',
         ).connect(realtimeUri(connection)),
         throwsA(isA<CleartextBlockedException>()),
       );

@@ -129,7 +129,7 @@ new_key() {
 }
 
 subject() {
-  printf '/O=Rurana tests (dummy)/CN=%s' "$1"
+  printf '/O=Vikunja app tests (dummy)/CN=%s' "$1"
 }
 
 # name, common name, days, extension section
@@ -159,7 +159,7 @@ pkcs12() {
   shift 3
   VIKUNJA_APP_P12_PASSWORD="$p12_password" ossl pkcs12 -export "$@" \
     -inkey "${work}/${source}.key" -in "${work}/${source}.pem" \
-    -certfile "${work}/${ca}.pem" -name "Rurana test client (dummy)" \
+    -certfile "${work}/${ca}.pem" -name "Vikunja app test client (dummy)" \
     -passout env:VIKUNJA_APP_P12_PASSWORD -out "${work}/${name}.p12"
 }
 
@@ -232,7 +232,7 @@ if [[ "$mode" == renew ]]; then
       exit 1
     fi
   done
-  self_signed selfsigned "Rurana test self-signed (dummy)" "$selfsigned_days" selfsigned_ext
+  self_signed selfsigned "Vikunja app test self-signed (dummy)" "$selfsigned_days" selfsigned_ext
   cp "${out_dir}/ca.pem" "${out_dir}/server.pem" "${out_dir}/client-ca.pem" \
     "${out_dir}/client.pem" "${out_dir}/wrong-client.pem" "$work/"
   write_manifest "$work"
@@ -255,13 +255,13 @@ else
   access_secret="$(ossl rand -hex 32)"
 fi
 
-self_signed selfsigned "Rurana test self-signed (dummy)" "$selfsigned_days" selfsigned_ext
-self_signed ca "Rurana test CA (dummy)" "$ca_days" ca_ext
-ca_signed server "Rurana test server (dummy)" "$server_days" server_ext ca
-self_signed client-ca "Rurana test client CA (dummy)" "$ca_days" ca_ext
-ca_signed client "Rurana test client (dummy)" "$client_days" client_ext client-ca
-self_signed wrong-client-ca "Rurana test other client CA (dummy)" "$ca_days" ca_ext
-ca_signed wrong-client "Rurana test wrong client (dummy)" "$client_days" client_ext wrong-client-ca
+self_signed selfsigned "Vikunja app test self-signed (dummy)" "$selfsigned_days" selfsigned_ext
+self_signed ca "Vikunja app test CA (dummy)" "$ca_days" ca_ext
+ca_signed server "Vikunja app test server (dummy)" "$server_days" server_ext ca
+self_signed client-ca "Vikunja app test client CA (dummy)" "$ca_days" ca_ext
+ca_signed client "Vikunja app test client (dummy)" "$client_days" client_ext client-ca
+self_signed wrong-client-ca "Vikunja app test other client CA (dummy)" "$ca_days" ca_ext
+ca_signed wrong-client "Vikunja app test wrong client (dummy)" "$client_days" client_ext wrong-client-ca
 
 pkcs12 client client-ca client
 pkcs12 client-legacy client-ca client -legacy

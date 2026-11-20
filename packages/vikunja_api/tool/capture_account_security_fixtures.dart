@@ -3,7 +3,7 @@
 //   dart run tool/capture_account_security_fixtures.dart \
 //     [http://localhost:34527] [2.8.0]
 // The user signs in three times: a password login (the bearer of every
-// capture), an OAuth sign-in whose code exchange sends a Rurana User-Agent
+// capture), an OAuth sign-in whose code exchange sends the app's User-Agent
 // and a password login as Firefox. Then: the sessions on both versions, whole
 // and two to a page, revoked (the Firefox one on v1, the OAuth one on v2)
 // and an unknown one; `/routes`; API tokens listed, created, refused (no
@@ -30,7 +30,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 
 typedef _User = ({String username, String email, String password, String jwt});
 
-const _ruranaAgent = 'Rurana/0.31.0+42 (android 15)';
+const _appAgent = 'Vikunja-App/0.31.0+42 (android 15)';
 const _firefoxAgent =
     'Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0';
 const _fakeApiToken = 'tk_0000000000000000000000000000000000000000';
@@ -42,8 +42,8 @@ final _secretPattern = RegExp('"secret":"([^"]+)"');
 final _otpauthSecretPattern = RegExp('secret=([A-Za-z0-9]+)');
 
 final _client = OAuthClientConfig(
-  clientId: 'dev.coderoftime.rurana',
-  redirectUri: Uri.parse('vikunja-dev.coderoftime.rurana://oauth/callback'),
+  clientId: 'vikunja-io.vikunja.app',
+  redirectUri: Uri.parse('vikunja-io.vikunja.app://oauth/callback'),
 );
 
 Future<void> main(List<String> args) async {
@@ -52,16 +52,16 @@ Future<void> main(List<String> args) async {
   final dio = Dio(
     BaseOptions(
       baseUrl: root,
-      headers: {'User-Agent': 'Rurana fixture capture'},
+      headers: {'User-Agent': 'Vikunja app fixture capture'},
       responseType: ResponseType.plain,
     ),
   );
   final user = await _register(dio, 'fixtureus');
   final secrets = <String>{user.password, user.jwt};
 
-  final ruranaDio = Dio(BaseOptions(headers: {'User-Agent': _ruranaAgent}));
-  final connection = await DioServerConnector(ruranaDio).connect(root);
-  final oauth = await _oauthSignIn(ruranaDio, connection, user.jwt);
+  final appDio = Dio(BaseOptions(headers: {'User-Agent': _appAgent}));
+  final connection = await DioServerConnector(appDio).connect(root);
+  final oauth = await _oauthSignIn(appDio, connection, user.jwt);
   secrets.addAll([oauth.accessToken, oauth.refreshToken]);
   final firefoxJwt = await _login(dio, user, userAgent: _firefoxAgent);
   secrets.add(firefoxJwt);
@@ -424,7 +424,7 @@ Future<void> main(List<String> args) async {
   }
 
   dio.close();
-  ruranaDio.close();
+  appDio.close();
 }
 
 Future<TokenSet> _oauthSignIn(

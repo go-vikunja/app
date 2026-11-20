@@ -283,17 +283,17 @@ final List<_Vector> _others = [
   _v('Dart/3.13 (dart:io)', DeviceKind.dartClient, app: '3.13'),
   _v('', DeviceKind.other),
   _v('   ', DeviceKind.other),
-  _v('Rurana contract tests', DeviceKind.other),
-  _v('Rurana fixture capture', DeviceKind.other),
-  _v('rurana-step31-probe', DeviceKind.other),
+  _v('Vikunja app contract tests', DeviceKind.other),
+  _v('Vikunja app fixture capture', DeviceKind.other),
+  _v('vikunja-app-step31-probe', DeviceKind.other),
   _v('curl/8.7.1', DeviceKind.other),
   _v('python-requests/2.32.3', DeviceKind.other),
   _v('Vikunja-App/', DeviceKind.other),
   _v('Vikunja-App/(android 15)', DeviceKind.other),
   _v('Vikunja-App/1.0 (a (b) c)', DeviceKind.other),
-  // Not this app: its unreleased earlier name, the previous official app and
-  // a form that reads as the server's own requests.
-  _v('Rurana/0.31.0+42 (android 15)', DeviceKind.other),
+  // Not this app: another app in its format, the previous official app and a
+  // form that reads as the server's own requests.
+  _v('Other-App/0.31.0+42 (android 15)', DeviceKind.other),
   _v('Vikunja Mobile App', DeviceKind.other),
   _v('Vikunja/1.0.0', DeviceKind.other),
   _v('Dart/', DeviceKind.other),

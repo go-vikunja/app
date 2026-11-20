@@ -52,16 +52,16 @@ NetworkProfiles profilesOver(AuthFakes auth) => NetworkProfiles(
 /// would be.
 final CertificateInfo renewedCertificate = CertificateInfo(
   sha256: 'AB' * 32,
-  subject: '/CN=Rurana test renewed (dummy)',
-  issuer: '/CN=Rurana test renewed (dummy)',
+  subject: '/CN=Vikunja app test renewed (dummy)',
+  issuer: '/CN=Vikunja app test renewed (dummy)',
   notBefore: DateTime.utc(2026, 10),
   notAfter: DateTime.utc(2027, 10),
 );
 
 final CertificateInfo thirdCertificate = CertificateInfo(
   sha256: 'CD' * 32,
-  subject: '/CN=Rurana test other (dummy)',
-  issuer: '/CN=Rurana test other CA (dummy)',
+  subject: '/CN=Vikunja app test other (dummy)',
+  issuer: '/CN=Vikunja app test other CA (dummy)',
   notBefore: DateTime.utc(2026, 9),
   notAfter: DateTime.utc(2027, 9),
 );

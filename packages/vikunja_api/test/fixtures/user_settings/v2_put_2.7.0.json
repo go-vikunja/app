@@ -16,7 +16,7 @@
       "color_schema": "dark",
       "minimum_priority": 4,
       "play_sound_when_done": false,
-      "rurana_unknown_key": {
+      "sample_unknown_key": {
         "nested": [
           1,
           2

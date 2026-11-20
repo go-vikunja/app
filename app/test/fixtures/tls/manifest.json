@@ -1,46 +1,46 @@
 {
   "certificates": {
     "selfsigned.pem": {
-      "subject": "/O=Rurana tests (dummy)/CN=Rurana test self-signed (dummy)",
-      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test self-signed (dummy)",
-      "sha256": "DBB4880289DA8F050664A7F68AA9AA073DB6A03AE7EE2C3C01D5018DE6F4F564",
-      "notBefore": "2026-10-27T11:00:02Z",
-      "notAfter": "2046-10-22T11:00:02Z"
+      "subject": "/O=Vikunja app tests (dummy)/CN=Vikunja app test self-signed (dummy)",
+      "issuer": "/O=Vikunja app tests (dummy)/CN=Vikunja app test self-signed (dummy)",
+      "sha256": "9BB4E9EE9868B5C106337E94FDB1C7A563E7A6B9DA684F9CAC8EB4749435E89C",
+      "notBefore": "2026-11-20T21:48:37Z",
+      "notAfter": "2046-11-15T21:48:37Z"
     },
     "ca.pem": {
-      "subject": "/O=Rurana tests (dummy)/CN=Rurana test CA (dummy)",
-      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test CA (dummy)",
-      "sha256": "EE66892EF672FAC1E7EA3756FF3EA169EB83EECAFC23B44395D188741AF851D6",
-      "notBefore": "2026-10-27T11:00:02Z",
-      "notAfter": "2046-10-22T11:00:02Z"
+      "subject": "/O=Vikunja app tests (dummy)/CN=Vikunja app test CA (dummy)",
+      "issuer": "/O=Vikunja app tests (dummy)/CN=Vikunja app test CA (dummy)",
+      "sha256": "7D1122BA3EA749ECEB051D52F61801B982C4EFD76325F6ABF51E8DF471F6F2D2",
+      "notBefore": "2026-11-20T21:48:37Z",
+      "notAfter": "2046-11-15T21:48:37Z"
     },
     "server.pem": {
-      "subject": "/O=Rurana tests (dummy)/CN=Rurana test server (dummy)",
-      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test CA (dummy)",
-      "sha256": "5F48E4EA545E0B035126DD72A025C1B5A12B9B8D1F3BA9ECBA7A0B36B444826C",
-      "notBefore": "2026-10-27T11:00:03Z",
-      "notAfter": "2029-01-24T11:00:03Z"
+      "subject": "/O=Vikunja app tests (dummy)/CN=Vikunja app test server (dummy)",
+      "issuer": "/O=Vikunja app tests (dummy)/CN=Vikunja app test CA (dummy)",
+      "sha256": "4BC0C9D6235C2D7338C6216D9DE9C90D68D275360F4A50C0D6678D9AC72D95CE",
+      "notBefore": "2026-11-20T21:48:37Z",
+      "notAfter": "2029-02-17T21:48:37Z"
     },
     "client-ca.pem": {
-      "subject": "/O=Rurana tests (dummy)/CN=Rurana test client CA (dummy)",
-      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test client CA (dummy)",
-      "sha256": "C681D3941F2106BED9CCD68439B0C7E3CA15B4482A043B2C09333FD153D0FD2F",
-      "notBefore": "2026-10-27T11:00:03Z",
-      "notAfter": "2046-10-22T11:00:03Z"
+      "subject": "/O=Vikunja app tests (dummy)/CN=Vikunja app test client CA (dummy)",
+      "issuer": "/O=Vikunja app tests (dummy)/CN=Vikunja app test client CA (dummy)",
+      "sha256": "79CE90E1A10221CA6029FE7BC576B4AEB3AB45300533D235DC6929419DF90CAC",
+      "notBefore": "2026-11-20T21:48:37Z",
+      "notAfter": "2046-11-15T21:48:37Z"
     },
     "client.pem": {
-      "subject": "/O=Rurana tests (dummy)/CN=Rurana test client (dummy)",
-      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test client CA (dummy)",
-      "sha256": "0F540FC7C5DC273D0A069524C140A04C432FFA567445D71271BE4AC9F3E7334D",
-      "notBefore": "2026-10-27T11:00:03Z",
-      "notAfter": "2046-10-22T11:00:03Z"
+      "subject": "/O=Vikunja app tests (dummy)/CN=Vikunja app test client (dummy)",
+      "issuer": "/O=Vikunja app tests (dummy)/CN=Vikunja app test client CA (dummy)",
+      "sha256": "952BB40A889037BB922A7F554A5554BA0B6334C67C702A4C1B116A90B709144D",
+      "notBefore": "2026-11-20T21:48:37Z",
+      "notAfter": "2046-11-15T21:48:37Z"
     },
     "wrong-client.p12": {
-      "subject": "/O=Rurana tests (dummy)/CN=Rurana test wrong client (dummy)",
-      "issuer": "/O=Rurana tests (dummy)/CN=Rurana test other client CA (dummy)",
-      "sha256": "1C4BDB2A56C06101008B8CA7A7FECD47712409607DAF051DA110C5450E8986D6",
-      "notBefore": "2026-10-27T11:00:03Z",
-      "notAfter": "2046-10-22T11:00:03Z"
+      "subject": "/O=Vikunja app tests (dummy)/CN=Vikunja app test wrong client (dummy)",
+      "issuer": "/O=Vikunja app tests (dummy)/CN=Vikunja app test other client CA (dummy)",
+      "sha256": "D4FA1C12F1837968A48163C175EC2E9339AD6CEFBC3EE09F23E060DB6ED586B0",
+      "notBefore": "2026-11-20T21:48:37Z",
+      "notAfter": "2046-11-15T21:48:37Z"
     }
   }
 }

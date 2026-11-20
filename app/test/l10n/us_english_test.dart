@@ -76,16 +76,6 @@ void main() {
     expect(british, isEmpty);
   });
 
-  test('no message or description names Rurana', () {
-    final named = [
-      for (final locale in ['en', 'de'])
-        for (final MapEntry(:key, :value) in _arbTexts(locale).entries)
-          if (value.contains('Rurana')) '$locale $key',
-    ];
-
-    expect(named, isEmpty);
-  });
-
   test('no message calls the app unofficial', () {
     final unofficial = [
       for (final locale in ['en', 'de'])
@@ -96,14 +86,14 @@ void main() {
     expect(unofficial, isEmpty);
   });
 
-  test('the native English texts use US spelling and the name', () {
+  test('the native English texts use US spelling', () {
     final widgets = _widgetStrings('en');
     expect(widgets, isNotEmpty);
 
     final offenders = _offenders([
       File('android/app/src/main/res/values/strings.xml'),
       ...widgets,
-    ], (text) => _isBritish(text) || text.contains('Rurana'));
+    ], _isBritish);
 
     expect(offenders, isEmpty);
   });
@@ -130,18 +120,5 @@ void main() {
       entry.paragraphs.map((paragraph) => paragraph.text).where(_isBritish),
       isEmpty,
     );
-  });
-
-  test('the native German texts use the name', () {
-    final widgets = _widgetStrings('de');
-    expect(widgets, isNotEmpty);
-
-    final offenders = _offenders([
-      File('android/app/src/main/res/values-de/strings.xml'),
-      File('ios/Runner/de.lproj/InfoPlist.strings'),
-      ...widgets,
-    ], (text) => text.contains('Rurana'));
-
-    expect(offenders, isEmpty);
   });
 }

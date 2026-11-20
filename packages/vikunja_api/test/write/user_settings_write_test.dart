@@ -12,13 +12,13 @@ import '../helpers/server_connection.dart';
 
 // The answers were captured by tool/capture_user_settings_fixtures.dart from
 // one user (id 898) whose frontend settings carry keys other clients wrote:
-// play_sound_when_done, sidebar_width and rurana_unknown_key.
+// play_sound_when_done, sidebar_width and sample_unknown_key.
 const _v1 = '$testServerRoot/api/v1';
 const _v2 = '$testServerRoot/api/v2';
 const Map<String, Object?> _foreignKeys = {
   'play_sound_when_done': false,
   'sidebar_width': 320,
-  'rurana_unknown_key': {
+  'sample_unknown_key': {
     'nested': [1, 2],
   },
 };
@@ -155,8 +155,8 @@ void main() {
           containsPair('play_sound_when_done', false),
           containsPair('sidebar_width', 320),
           containsPair(
-            'rurana_unknown_key',
-            _foreignKeys['rurana_unknown_key'],
+            'sample_unknown_key',
+            _foreignKeys['sample_unknown_key'],
           ),
         ),
       );

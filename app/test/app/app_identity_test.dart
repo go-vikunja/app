@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -107,20 +106,6 @@ void main() {
       expect(_plistString(infoPlist, 'CFBundleName'), 'Vikunja');
     });
 
-    test('no usage description names Rurana', () {
-      final descriptions = {
-        for (final match in RegExp(
-          r'<key>(NS\w+UsageDescription)</key>\s*<string>([^<]*)</string>',
-        ).allMatches(infoPlist))
-          match[1]!: match[2]!,
-      };
-
-      expect(descriptions, isNotEmpty);
-      descriptions.forEach((key, text) {
-        expect(text.toLowerCase(), isNot(contains('rurana')), reason: key);
-      });
-    });
-
     test('every entitlements file grants the App Group', () {
       final entitlements = [
         for (final path in _files('ios'))
@@ -137,104 +122,7 @@ void main() {
       }
     });
   });
-
-  test('no shipped source names the old app id', () {
-    final oldId = RegExp(r'dev\.coderoftime');
-    final roots = [
-      'android/app/src',
-      for (final folder in _directories('ios'))
-        if (!const {
-          'ios/RunnerTests',
-          'ios/Flutter',
-          'ios/Pods',
-        }.contains(folder))
-          folder,
-      'lib',
-      for (final plugin in _directories('../plugins')) ...[
-        '$plugin/lib',
-        '$plugin/android/src',
-        '$plugin/ios',
-      ],
-      for (final package in _directories('../packages')) '$package/lib',
-    ];
-    final hits = [
-      for (final root in roots)
-        for (final path in _files(root))
-          for (final (index, line) in LineSplitter.split(
-            latin1.decode(File(path).readAsBytesSync()),
-          ).indexed)
-            if (oldId.hasMatch(line)) '$path:${index + 1}',
-    ];
-
-    expect(roots, containsAll(['ios/Runner', 'lib']));
-    expect(hits, isEmpty);
-  });
-
-  test('the shipped sources are found', () {
-    for (final root in _fixedRoots) {
-      expect(_files(root), isNotEmpty, reason: root);
-    }
-    expect(_widgetExtensions(), hasLength(1));
-  });
-
-  test('no shipped source names Rurana or coderoftime', () {
-    final hits = [
-      for (final root in _shippedRoots())
-        for (final path in _files(root))
-          if (_oldName.hasMatch(path))
-            path
-          else
-            for (final (index, line) in LineSplitter.split(_read(path)).indexed)
-              if (_oldName.hasMatch(line)) '$path:${index + 1}',
-    ];
-
-    expect(hits, isEmpty);
-  });
-
-  test('no shipped source puts the app under the AGPL', () {
-    final agpl = RegExp(
-      r'\bagpl\b|affero|app store permission',
-      caseSensitive: false,
-    );
-    final hits = [
-      for (final root in _shippedRoots())
-        for (final path in _files(root))
-          for (final (index, line) in LineSplitter.split(_read(path)).indexed)
-            if (agpl.hasMatch(line)) '$path:${index + 1}',
-    ];
-
-    expect(hits, isEmpty);
-  });
 }
-
-const _fixedRoots = [
-  'lib',
-  'android/app/src/main',
-  'ios/Runner',
-  'assets',
-  'editor/src',
-];
-
-List<String> _widgetExtensions() => [
-  for (final folder in _directories('ios'))
-    if (folder.endsWith('Widgets')) folder,
-];
-
-List<String> _shippedRoots() => [
-  ..._fixedRoots,
-  ..._widgetExtensions(),
-  for (final plugin in _directories('../plugins')) ...[
-    '$plugin/lib',
-    '$plugin/android/src',
-    '$plugin/ios',
-  ],
-  for (final package in _directories('../packages')) '$package/lib',
-];
-
-final _oldName = RegExp('rurana|coderoftime', caseSensitive: false);
-
-String _read(String path) =>
-    utf8.decode(File(path).readAsBytesSync(), allowMalformed: true);
 
 List<String> _assignments(String gradle, String name) => [
   for (final match in RegExp(

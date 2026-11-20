@@ -37,7 +37,7 @@ import '../helpers/sync_fakes.dart';
 
 final Uri _root = Uri.parse('https://vikunja.example.com');
 const _userId = 5;
-const _username = 'taskuna-e2e';
+const _username = 'vikunja-app-e2e';
 const _name = 'Vikunja Tester';
 
 Map<String, Object?> _fixture(String path) => jsonDecode(
@@ -486,6 +486,8 @@ void main() {
       server.rejectIssuedAccessTokens();
       final beforeSignOut = server.seen.length;
       // Below the device's own sections, past what the list builds ahead.
+      // scrollUntilVisible ends with a jump that only the next frame lays
+      // out.
       await tester.scrollUntilVisible(
         find.widgetWithText(OutlinedButton, en.homeSignOut),
         200,
@@ -496,6 +498,7 @@ void main() {
             )
             .first,
       );
+      await tester.pump();
       await tester.tap(find.widgetWithText(OutlinedButton, en.homeSignOut));
       await tester.pumpAndSettle();
       await tester.tap(

@@ -211,7 +211,7 @@ void main() {
       );
 
       expect(body, 'ok');
-      expect(server.clientSubjects.single, contains('Rurana test client'));
+      expect(server.clientSubjects.single, contains('Vikunja app test client'));
     });
 
     test('the legacy PKCS#12 encryption works too', () async {
