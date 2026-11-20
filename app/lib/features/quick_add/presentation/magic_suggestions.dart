@@ -228,7 +228,6 @@ class _SuggestionChip extends StatelessWidget {
     avatar: IconTheme.merge(data: const IconThemeData(size: 18), child: avatar),
     label: Text(label),
     tooltip: tooltip,
-    visualDensity: VisualDensity.compact,
     onPressed: onPressed,
   );
 }

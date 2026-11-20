@@ -71,7 +71,6 @@ class ProjectBreadcrumb extends StatelessWidget {
               avatar: ProjectIcon(hexColor: project.hexColor),
               label: Text(project.displayTitle(l10n)),
               labelStyle: theme.textTheme.labelMedium,
-              visualDensity: VisualDensity.compact,
               onPressed: () => onOpen(project),
             ),
           ),

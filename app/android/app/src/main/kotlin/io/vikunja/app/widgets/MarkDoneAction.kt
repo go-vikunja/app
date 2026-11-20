@@ -15,8 +15,8 @@ import kotlinx.coroutines.withContext
 
 class MarkDoneAction : ActionCallback {
     override suspend fun onAction(context: Context, glanceId: GlanceId, parameters: ActionParameters) {
-        // Android 12+ runs this on every toggle of the launcher's checkbox;
-        // unticking it is no Done.
+        // A widget drawn before the Done box became a button still has a
+        // checkbox until it is drawn again; unticking that is no Done.
         if (parameters[ToggleableStateKey] == false) return
         val accountId = parameters[accountKey] ?: return
         val taskId = parameters[taskKey] ?: return

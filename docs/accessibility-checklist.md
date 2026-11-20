@@ -4,7 +4,7 @@ This is the manual accessibility pass of the Vikunja app, the Android and iOS cl
 
 A sign-off goes through section 1 on the tree being signed off, section 2 on Android (TalkBack, Switch Access, Accessibility Scanner) for every area the change touched (all of it before a release), and section 3 once in the final iOS phase (VoiceOver). The results and the date go into the step's decision: per flow, what TalkBack (German and English), Switch Access and the Scanner showed, and each finding with its screen and severity, fixed or a follow-up.
 
-**Status:** not yet run. On 2026-10-28 the pass could not be performed on the emulator ([D68]); it is open for the owner on the tablet emulator, or for the final device phase together with VoiceOver ([Q19]). *Note 2026-11-02, step 37d ([D77]): both passes come before 1.0.0 ([beta.md](beta.md#before-100)); App Store Connect's Accessibility Nutrition Labels stay blank until they confirm a feature ([store-listing.md](store-listing.md#app-store-connect)).*
+**Status:** sections 2 and 3 not yet run. On 2026-10-28 the pass could not be performed on the emulator ([D68]); since step 40w TalkBack and Switch Access run in the device phase together with VoiceOver, and the Accessibility Scanner is not used: in its place step 40w scanned the release build's screens on an emulator from `uiautomator` dumps and fixed what it found ([D112]; owner, 2026-11-20; [Q19]). *Note 2026-11-02, step 37d ([D77]): both passes come before 1.0.0 ([beta.md](beta.md#before-100)); App Store Connect's Accessibility Nutrition Labels stay blank until they confirm a feature ([store-listing.md](store-listing.md#app-store-connect)).*
 
 ## 1. Automated
 
@@ -176,3 +176,4 @@ Once, on a device (the simulator for what it can show):
 [Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass
 [D106]: decisions.md#d106-faster-work-in-lists-swipes-selecting-several-tasks-reschedule
 [D109]: decisions.md#d109-offline-details-stored-task-details-images-on-disk-labels-created-offline
+[D112]: decisions.md#d112-accessibility-pass-on-an-emulator-a-scan-of-the-real-screens-48-dp-chips-and-widget-targets

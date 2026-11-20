@@ -322,7 +322,6 @@ class _PartChip extends StatelessWidget {
       labelStyle: foreground == null ? null : TextStyle(color: foreground),
       backgroundColor: warning ? colors.errorContainer : null,
       side: warning ? BorderSide.none : null,
-      visualDensity: VisualDensity.compact,
       deleteIcon: const Icon(Icons.close, size: 18),
       deleteIconColor: foreground,
       deleteButtonTooltipMessage: context.l10n.quickAddRemovePart(

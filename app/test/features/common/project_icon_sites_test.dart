@@ -80,6 +80,12 @@ void main() {
 
     expect(marks(tester), [blue, colors.onSurfaceVariant]);
     expect(find.byType(ColorDot), findsNothing);
+    // Step 40w: the chip's compact density had shrunk it to 40 dp; the
+    // tap-target guideline skips it as a link.
+    for (final chip in find.byType(ActionChip).evaluate()) {
+      final size = tester.getSize(find.byWidget(chip.widget));
+      expect(size.height, greaterThanOrEqualTo(48), reason: '$size');
+    }
   });
 
   testWidgets("the new task's project field, unless the text names the "

@@ -17,8 +17,6 @@ import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.clickable
-import androidx.glance.appwidget.CheckBox
-import androidx.glance.appwidget.CheckboxDefaults
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
@@ -162,22 +160,26 @@ private fun Header(content: ListContent.Shown, link: Uri) {
     val context = LocalContext.current
     val colors = GlanceTheme.colors
     Row(GlanceModifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Column(
-            // No full height here: in a wrap-height row it stretches the row,
-            // and the header then takes the list's height.
+        // No full height here: in a wrap-height row it stretches the row, and
+        // the header then takes the list's height. The spacer keeps the title's
+        // tap target at least 48 dp tall.
+        Row(
             modifier = GlanceModifier
                 .defaultWeight()
                 .clickable(open(context, link))
                 .padding(horizontal = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                content.title,
-                maxLines = 1,
-                style = TextStyle(color = colors.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Medium),
-            )
-            content.subtitle?.let {
-                Text(it, maxLines = 1, style = TextStyle(color = colors.onSurfaceVariant, fontSize = 12.sp))
+            MinimumHeight(GlanceModifier.width(1.dp))
+            Column(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    content.title,
+                    maxLines = 1,
+                    style = TextStyle(color = colors.onSurface, fontSize = 16.sp, fontWeight = FontWeight.Medium),
+                )
+                content.subtitle?.let {
+                    Text(it, maxLines = 1, style = TextStyle(color = colors.onSurfaceVariant, fontSize = 12.sp))
+                }
             }
         }
         if (content.listed) {
@@ -254,18 +256,26 @@ private fun TaskRow(shown: ShownRow, content: ListContent.Shown, wide: Boolean) 
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (row.canDone) {
-            CheckBox(
-                checked = false,
-                onCheckedChange = actionRunCallback<MarkDoneAction>(
-                    MarkDoneAction.parameters(accountId, row.taskId, content.generatedAt, row.dueAt),
-                ),
-                modifier = GlanceModifier.size(touchTarget).semantics { contentDescription = row.doneLabel },
-                colors = if (LocalSystemPalette.current) {
-                    CheckboxDefaults.colors()
-                } else {
-                    CheckboxDefaults.colors(checkedColor = colors.primary, uncheckedColor = colors.onSurfaceVariant)
-                },
-            )
+            // Not Glance's CheckBox: it takes taps only on its own 32 dp box,
+            // without the label, which stays on the 48 dp frame around it.
+            Box(
+                modifier = GlanceModifier
+                    .size(touchTarget)
+                    .clickable(
+                        actionRunCallback<MarkDoneAction>(
+                            MarkDoneAction.parameters(accountId, row.taskId, content.generatedAt, row.dueAt),
+                        ),
+                    )
+                    .semantics { contentDescription = row.doneLabel },
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    ImageProvider(R.drawable.widget_checkbox),
+                    contentDescription = null,
+                    modifier = GlanceModifier.size(24.dp),
+                    colorFilter = ColorFilter.tint(colors.onSurfaceVariant),
+                )
+            }
         } else {
             MinimumHeight(GlanceModifier.width(12.dp))
         }

@@ -147,6 +147,11 @@ void main() {
       ]) {
         expect(chip(label), findsOneWidget, reason: label);
       }
+      // Step 40w: the chips' compact density had shrunk them to 40 dp.
+      for (final chip in find.byType(Chip).evaluate()) {
+        final size = tester.getSize(find.byWidget(chip.widget));
+        expect(size.height, greaterThanOrEqualTo(48), reason: '$size');
+      }
     });
 
     testWidgets('people not known here are looked up when adding', (
@@ -337,6 +342,11 @@ void main() {
       await harness.open(tester);
       await typeLine(tester, 'Pack *ro');
       await tester.pump();
+      // Step 40w: the chips' compact density had shrunk them to 40 dp.
+      for (final chip in find.byType(ActionChip).evaluate()) {
+        final size = tester.getSize(find.byWidget(chip.widget));
+        expect(size.height, greaterThanOrEqualTo(48), reason: '$size');
+      }
 
       expect(suggestion('urgent'), findsNothing);
       await tester.tap(suggestion('Road trip'));
