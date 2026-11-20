@@ -58,6 +58,12 @@ abstract interface class TasksPort {
   /// index are `NotFound`, an unreadable project `Forbidden`. The
   /// identifiers `.` and `..` cannot be put in a path and are `NotFound`
   /// without a request.
+  ///
+  /// Vikunja 2.3 has no such route: there a [project] of digits is the
+  /// project id, else the one project that `namedByIdentifier` finds among
+  /// all the user's projects (archived ones too; none for several, and an
+  /// unreadable project's identifier is `NotFound` as well), and the task
+  /// comes from that project's tasks filtered by `index`.
   Future<Task> readByIndex(String project, int index);
 }
 

@@ -32,16 +32,21 @@ abstract interface class BucketRepository {
   /// plan needs a new default first, it is set before the delete, and when
   /// setting it fails the delete is not sent: a refusal is a
   /// [NewDefaultRefused], and a new default the server no longer has is a
-  /// [NewDefaultGone]. When the delete then fails, the old default is put
-  /// back; when that fails too, a [DeleteFailedAfterNewDefault] is thrown.
+  /// [NewDefaultGone]. When the delete then fails, or before 2.5 the board
+  /// read that confirms the new default, the old default is put back; when
+  /// that fails too, a [DeleteFailedAfterNewDefault] is thrown.
   /// A bucket the tasks would fall back to that looks empty here is checked
   /// with a board download first: tasks created elsewhere since the last
-  /// one are only in the server's count.
+  /// one are only in the server's count. Before 2.5 (or of an unknown
+  /// version) a default the server no longer has, which another client set
+  /// after its delete, is checked with a board read and counts as none.
   Future<void> delete(int projectId, int viewId, int bucketId);
 
-  /// Null clears it. Changes no task's done state.
+  /// Null clears it. Changes no task's done state. A bucket the server no
+  /// longer has is stored as none.
   Future<void> setDoneBucket(int projectId, int viewId, int? bucketId);
 
+  /// Null clears it. A bucket the server no longer has is stored as none.
   Future<void> setDefaultBucket(int projectId, int viewId, int? bucketId);
 }
 
@@ -53,9 +58,9 @@ final class NewDefaultRefused implements Exception {
 
 /// [newDefault], which was to become the view's default before [bucket]'s
 /// delete, was deleted elsewhere since the last board download; the server
-/// stores a default it does not have as none, so the delete would have
-/// left [bucket]'s tasks in no bucket. Nothing was deleted, the old
-/// default is back, and the board downloads quietly.
+/// stores a default it does not have as none (before 2.5 as sent), so the
+/// delete would have left [bucket]'s tasks in no bucket. Nothing was
+/// deleted, the old default is back, and the board downloads quietly.
 final class NewDefaultGone implements Exception {
   const new({required this.bucket, required this.newDefault});
 
@@ -79,33 +84,38 @@ final class DeleteFailedAfterNewDefault implements Exception {
 /// bucket, or the leftmost remaining one when none is set (or the default
 /// is the deleted bucket, which the server then clears).
 ///
-/// `isFallback` marks a server bug: while no other default is set, the
-/// server moves the tasks to the leftmost bucket counted before the
-/// delete, so deleting the leftmost bucket strands its tasks outside every
-/// bucket. `defaultFirst`: such a bucket holds tasks, so `tasksGoTo` must
-/// become the default before the delete, a change of the view that needs
-/// admin permission.
+/// `isFallback` marks where the server would not put them there itself.
+/// While no other default is set, it moves the tasks to the leftmost
+/// bucket counted before the delete, so deleting the leftmost bucket
+/// strands its tasks outside every bucket; and before 2.5 it moves them to
+/// a default it stored after that bucket's delete. `defaultFirst`: such a
+/// bucket holds tasks, so `tasksGoTo` must become the default before the
+/// delete, a change of the view that needs admin permission.
 typedef BucketDeletion = ({
   Bucket tasksGoTo,
   bool isFallback,
   bool defaultFirst,
 });
 
-/// [defaultBucketId] is the view's (0: none); [holdsTasks] by
-/// [columnHoldsTasks]. Null for the last bucket (the server refuses to
-/// delete it) or one that is not in [buckets].
+/// [defaultBucketId] is the view's (0: none), which the server no longer
+/// has when [defaultGone]; [holdsTasks] by [columnHoldsTasks]. Null for the
+/// last bucket (the server refuses to delete it) or one that is not in
+/// [buckets].
 BucketDeletion? planBucketDeletion(
   List<Bucket> buckets,
   int bucketId, {
   required int defaultBucketId,
   required bool holdsTasks,
+  bool defaultGone = false,
 }) {
   final ordered = [...buckets]..sort(compareBucketOrder);
   final doomed = ordered.where((bucket) => bucket.id == bucketId).firstOrNull;
   if (doomed == null) return null;
   final remaining = [
     for (final bucket in ordered)
-      if (bucket.id != bucketId) bucket,
+      if (bucket.id != bucketId &&
+          !(defaultGone && bucket.id == defaultBucketId))
+        bucket,
   ];
   if (remaining.isEmpty) return null;
   final keptDefault = remaining
@@ -114,7 +124,7 @@ BucketDeletion? planBucketDeletion(
   if (keptDefault != null) {
     return (tasksGoTo: keptDefault, isFallback: false, defaultFirst: false);
   }
-  final isFallback = identical(ordered.first, doomed);
+  final isFallback = defaultGone || identical(ordered.first, doomed);
   return (
     tasksGoTo: remaining.first,
     isFallback: isFallback,

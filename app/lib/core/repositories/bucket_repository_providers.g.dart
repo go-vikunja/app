@@ -73,7 +73,7 @@ final class AccountBucketRepositoryProvider
 }
 
 String _$accountBucketRepositoryHash() =>
-    r'9208a272760652591b6a84b5ea4a7172e438ab6f';
+    r'ca9277952a800b377a331b17f38e39a24e61184a';
 
 final class AccountBucketRepositoryFamily extends $Family
     with $FunctionalFamilyOverride<BucketRepository, String> {

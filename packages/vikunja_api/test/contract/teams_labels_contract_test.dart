@@ -97,7 +97,7 @@ void main() {
           tearDownAll(() => dio.close(force: true));
 
           for (final apiVersion in ApiVersion.values) {
-            group(apiVersion.pathSegment, () {
+            group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
               late LabelsWritePort labels;
               late LabelsWritePort memberLabels;
               late VikunjaReadClient reads;
@@ -283,10 +283,13 @@ void main() {
                   expect(team.description, '<p>Hello</p>');
                   expect(team.isExternal, isFalse);
                   expect(asMember.maxPermission, Permission.read);
-                  expect(asOwner.members.map((m) => m.user.id), [
-                    owner.id,
-                    member.id,
-                  ]);
+                  // 2.3 lists the members in another order.
+                  expect(
+                    asOwner.members.map((m) => m.user.id),
+                    connection.info.version!.isAtLeast(2, 4)
+                        ? [owner.id, member.id]
+                        : unorderedEquals([owner.id, member.id]),
+                  );
                   final listed = await teams.list(query: 'Team $suffix');
                   expect(listed.map((t) => t.id), [team.id]);
                   expect(listed.single.members, hasLength(2));

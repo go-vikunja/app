@@ -16,10 +16,12 @@ enum AppGroupStore {
   static let hostFile = "host.json"
   static let pendingFile = "ios-pending.json"
 
+  /// The tests (app/ios/RunnerTests) put a folder of their own here.
+  nonisolated(unsafe) static var container = FileManager.default.containerURL(
+    forSecurityApplicationGroupIdentifier: groupIdentifier)
+
   private static var root: URL? {
-    FileManager.default
-      .containerURL(forSecurityApplicationGroupIdentifier: groupIdentifier)?
-      .appendingPathComponent("widgets", isDirectory: true)
+    container?.appendingPathComponent("widgets", isDirectory: true)
   }
 
   private static let decoder: JSONDecoder = {

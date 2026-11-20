@@ -70,17 +70,7 @@ void main() {
       String path,
       Map<String, Object> query,
     ) async {
-      final v2 = connection.apiBaseUri(ApiVersion.v2);
-      final response = await despiteWriteRaces(
-        () => dio.getUri<Map<String, Object?>>(
-          v2.replace(path: '${v2.path}$path', queryParameters: query),
-          options: Options(headers: {'Authorization': 'Bearer ${user.jwt}'}),
-        ),
-      );
-      return [
-        for (final item in response.data!['items']! as List<Object?>)
-          item! as Map<String, Object?>,
-      ];
+      return await rawItems(dio, connection, user, path, query);
     }
 
     Future<int> task(
@@ -104,6 +94,7 @@ void main() {
           .connect('http://localhost:$contractServerPort');
       user = await registerAndLogin(dio, connection);
       seeder = Seeder(dio, connection, user);
+      await ensureMyOpenTasks(seeder, user);
       final now = DateTime.now();
 
       final listsId = await seeder.create('/projects', {'title': 'Lists'});
@@ -229,7 +220,7 @@ void main() {
 
     tearDownAll(() => dio.close(force: true));
 
-    for (final apiVersion in ApiVersion.values) {
+    for (final apiVersion in contractApiVersions) {
       group('synced over ${apiVersion.pathSegment}', () {
         late VikunjaReadClient reads;
         late AppDatabase db;
@@ -280,6 +271,11 @@ void main() {
         test(
           "the project's List view nests and orders like the web's",
           () async {
+            if (!connection.info.version!.isAtLeast(2, 4)) {
+              // 2.3 lists the subtasks flat.
+              markTestSkipped('the list nests like the web of 2.4 and newer');
+              return;
+            }
             final project = (await db.projectsDao.loadAll()).firstWhere(
               (project) => project.id == seed.listsId,
             );

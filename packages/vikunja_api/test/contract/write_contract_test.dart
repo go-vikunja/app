@@ -25,11 +25,10 @@ typedef _Seed = ({
 });
 
 final class _Seeder {
-  new(this._dio, ServerConnection connection, this._user)
-    : _v2 = connection.apiBaseUri(ApiVersion.v2);
+  new(this._dio, this._connection, this._user);
 
   final Dio _dio;
-  final Uri _v2;
+  final ServerConnection _connection;
   final TestUser _user;
 
   Future<Map<String, Object?>> post(
@@ -38,10 +37,13 @@ final class _Seeder {
   ) async {
     try {
       final response = await despiteWriteRaces(
-        () => _dio.postUri<Map<String, Object?>>(
-          _v2.replace(path: '${_v2.path}$path'),
+        () => seedRequest<Map<String, Object?>>(
+          _dio,
+          _connection,
+          _user.jwt,
+          'POST',
+          path,
           data: body,
-          options: Options(headers: {'Authorization': 'Bearer ${_user.jwt}'}),
         ),
       );
       return response.data!;
@@ -59,10 +61,7 @@ final class _Seeder {
       (await post(path, body))['id']! as int;
 
   Future<void> delete(String path) => despiteWriteRaces(
-    () => _dio.deleteUri<Object?>(
-      _v2.replace(path: '${_v2.path}$path'),
-      options: Options(headers: {'Authorization': 'Bearer ${_user.jwt}'}),
-    ),
+    () => seedRequest<Object?>(_dio, _connection, _user.jwt, 'DELETE', path),
   );
 
   Future<_Seed> tasks(int projectId, int labelId) async {
@@ -157,7 +156,7 @@ void main() {
             isA<NotFound>().having((f) => f.code, 'code', code);
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             late _Seed seed;
             late TasksWritePort writes;
             late TasksPort reads;

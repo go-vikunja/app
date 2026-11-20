@@ -283,6 +283,44 @@ void main() {
       });
     }
 
+    for (final (what, renewal, ends) in [
+      ('is gone', const LinkShareGone(code: 3006) as VikunjaFailure?, true),
+      ('is still there', null, false),
+    ]) {
+      test('on 2.3, whose share $what, answers its pseudo user with a 500, '
+          'and a renewal tells whether the share is gone', () async {
+        final token = issueLinkShareToken(issuedAt: now);
+        final guest = await auth.seedGuest(oauthServer230(), token: token);
+        auth.accountGateway.onCurrentUser = (_) async =>
+            throw const ServerFailure(500);
+        auth.linkShareGateway.onRenew = (_) async => switch (renewal) {
+          final failure? => throw failure,
+          null => issueLinkShareToken(issuedAt: now),
+        };
+
+        await check.check(guest);
+        await pumpEventQueue();
+
+        expect(auth.linkShareGateway.renewedTokens, [token.jwt]);
+        expect(await needsReauth(guest.id), ends);
+      });
+    }
+
+    test('from 2.7 a 500 to its pseudo user asks nothing more', () async {
+      final guest = await auth.seedGuest(
+        v1OnlyServer270(),
+        token: issueLinkShareToken(issuedAt: now),
+      );
+      auth.accountGateway.onCurrentUser = (_) async =>
+          throw const ServerFailure(500);
+
+      await check.check(guest);
+      await pumpEventQueue();
+
+      expect(auth.linkShareGateway.renewedTokens, isEmpty);
+      expect(await needsReauth(guest.id), isFalse);
+    });
+
     test(
       'is not ended by a refusal that is about the guest being no user',
       () async {

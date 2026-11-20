@@ -75,6 +75,7 @@ final class TaskDetailActions extends ChangeNotifier {
     read: (id) => _subscriptions().forTask(id),
     write: (id, {required subscribed}) =>
         _subscriptions().setTaskSubscribed(id, subscribed: subscribed),
+    optOuts: () => _ref.read(activeServerHasFollowOptOutsProvider),
   );
   final _pendingTaskReactions = <String>{};
   final _pendingCommentReactions = <int, Set<String>>{};

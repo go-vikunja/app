@@ -36,7 +36,7 @@ void main() {
 
       tearDownAll(() => dio.close(force: true));
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         group('over ${apiVersion.pathSegment}', () {
           final name = apiVersion.pathSegment;
           late ServerConnection only;
@@ -209,7 +209,8 @@ void main() {
             final hidden = (await colleagueSharing.teamShares(projectId))
                 .single;
             expect(hidden.teamId, team.id);
-            expect(hidden.isHidden, isTrue);
+            // Before 2.6 the server names the team to every admin.
+            expect(hidden.isHidden, connection.info.version!.isAtLeast(2, 6));
             expect(hidden.permission, Permission.admin);
 
             await sharing.removeTeamShare(projectId, team.id);

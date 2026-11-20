@@ -153,7 +153,7 @@ if [[ "$(icon_value pixelWidth)x$(icon_value pixelHeight)" != 1024x1024 || "$(ic
   "$(icon_value space)" != RGB || ("$icon_profile" != '<nil>' && "$icon_profile" != *sRGB*) ]]; then
   echo "$icon_info" >&2
   echo "error: the App Store icon must be 1024 x 1024 sRGB without an alpha channel: run branding/build-icons.sh" \
-    "and flutter_launcher_icons (README)" >&2
+    "and flutter_launcher_icons (docs/development.md, Generated code)" >&2
   exit 1
 fi
 

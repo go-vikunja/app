@@ -17,6 +17,7 @@ export 'src/project/new_project.dart';
 export 'src/project/permission.dart';
 export 'src/project/project.dart';
 export 'src/project/project_changes.dart';
+export 'src/project/project_identifier.dart';
 export 'src/project/project_view.dart';
 export 'src/project/saved_filter.dart';
 export 'src/project/view_draft.dart';

@@ -1,16 +1,19 @@
 # Local Vikunja server for the vikunja_api contract tests and manual sign-in
-# tests. Only the latest release is tested (owner decision, 2026-10-09):
+# tests. CI's job `contract` tests the latest release (owner decision,
+# 2026-10-09):
 #   34527  2.8.0  latest release
 #   34528-34531  the same release behind TLS, opt-in profile `tls` (below)
 # The image is pinned by its tag and the digest of its multi-platform index,
 # so a tag that is moved on Docker Hub fails the pull instead of testing
-# another build. Bump both when a new Vikunja release comes out, here and in
-# defaultTestServerImage of packages/vikunja_api/test/contract/helpers.dart;
+# another build. Bump both when a new Vikunja release comes out, here, in
+# defaultTestServerImage of packages/vikunja_api/test/contract/helpers.dart
+# and as the last entry of .github/workflows/contract-matrix.yaml;
 # after a pull, `docker image inspect --format '{{index .RepoDigests 0}}'
 # vikunja/vikunja:<tag>` prints the digest.
 # VIKUNJA_APP_TEST_VIKUNJA_IMAGE runs another release instead, for example
-# vikunja/vikunja:2.7.1 before a tag (docs/releasing.md); the contract tests
-# then expect the version of its tag.
+# vikunja/vikunja:2.7.1 (docs/releasing.md); the contract tests then expect
+# the version of its tag. The workflow "Contract matrix" runs them that way
+# at night and for each tag against the releases from the support floor up.
 # The host port is referenced by the contract tests, tool/*.sh and the docs;
 # do not change it. It is published on 127.0.0.1 only, because the server
 # allows open registration with a public JWT secret. An Android emulator
@@ -19,7 +22,8 @@
 # Start: docker compose -f test_servers/docker-compose.yaml up -d
 #        (docker-compose takes the same arguments)
 # Wait:  tool/wait_for_test_servers.sh
-# Seed:  tool/seed_e2e_user.sh (the sign-in test user, see the README)
+# Seed:  tool/seed_e2e_user.sh (the sign-in test user, see docs/development.md,
+#        "Sign in on a device")
 # Stop:  docker compose -f test_servers/docker-compose.yaml down
 #
 # The images are built FROM scratch, so there is no shell for a healthcheck;
@@ -48,7 +52,12 @@ x-vikunja-env: &vikunja-env
   # should the server exit with "Failed to begin database transaction", drop
   # _txlock=immediate, keep the raised limit and run the vikunja_api contract
   # files one at a time.
-  VIKUNJA_DATABASE_PATH: "/tmp/vikunja.db?_txlock=immediate&_busy_timeout=30000&_x="
+  # VIKUNJA_APP_TEST_DATABASE_PATH replaces the path: releases before 2.7
+  # exit that way, their event listeners waiting on their own transaction,
+  # 2.3.0 at a comment's notifications, so the workflow "Contract matrix"
+  # runs it without _txlock=immediate, and 2.4.0 to 2.6.0 only at a data
+  # export, which the contract tests skip there.
+  VIKUNJA_DATABASE_PATH: "${VIKUNJA_APP_TEST_DATABASE_PATH:-/tmp/vikunja.db?_txlock=immediate&_busy_timeout=30000&_x=}"
   # The contract tests and tool/seed_e2e_user.sh create users through /register.
   VIKUNJA_SERVICE_ENABLEREGISTRATION: "true"
   # All test traffic comes from one IP. The general limit is off; the limit

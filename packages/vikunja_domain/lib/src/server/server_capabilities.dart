@@ -42,6 +42,8 @@ final class ServerCapabilities {
       ],
       if (hasV2 && atLeast(2, 5)) Capability.bulkCreateTasks,
       if (hasV2 && atLeast(2, 6)) Capability.pendingEmail,
+      if (atLeast(2, 6) || (hasV2 && version == null))
+        Capability.subscriptionOptOuts,
       if (hasV2 && atLeast(2, 7)) ...[
         Capability.byIndexRedirect,
         Capability.userSettingsMergePatch,

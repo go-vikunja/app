@@ -1,22 +1,25 @@
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
-/// A link-share guest's reads. The project list sends no permission to a
-/// guest (null even with `expand=permissions`), so the shared project's
-/// is read from its single read (`x-max-permission` on v1, the body on
-/// v2) whenever a list brings it without one: one request per sync run,
-/// and the stored permission shapes the screens as for users (D60). The
-/// shared project's title in a list goes to `onSharedProjectTitle`, for
-/// the name of a guest whose share has none.
+/// A link-share guest's reads. The project list sends a guest no permission
+/// (null even with `expand=permissions`), and before 2.6.0 read whatever
+/// the share's permission, so the shared project's is read from its single
+/// read (`x-max-permission` on v1, the body on v2) whenever a list brings
+/// it without one or the server is older than 2.6.0 or of an unknown
+/// version: one request per sync run, and the stored permission shapes the
+/// screens as for users (D60). The shared project's title in a list goes
+/// to `onSharedProjectTitle`, for the name of a guest whose share has none.
 final class GuestReadClient implements VikunjaReadClient {
   new(
     this._client, {
     required int sharedProjectId,
+    required ServerVersion? serverVersion,
     Future<void> Function(String title)? onSharedProjectTitle,
   }) : projects = _GuestProjects(
          _client.projects,
          sharedProjectId,
          onSharedProjectTitle,
+         listsPermission: serverVersion?.isAtLeast(2, 6) ?? false,
        );
 
   final VikunjaReadClient _client;
@@ -56,11 +59,17 @@ final class GuestReadClient implements VikunjaReadClient {
 }
 
 final class _GuestProjects implements ProjectsPort {
-  new(this._projects, this._sharedProjectId, this._onSharedProjectTitle);
+  new(
+    this._projects,
+    this._sharedProjectId,
+    this._onSharedProjectTitle, {
+    required this._listsPermission,
+  });
 
   final ProjectsPort _projects;
   final int _sharedProjectId;
   final Future<void> Function(String title)? _onSharedProjectTitle;
+  final bool _listsPermission;
 
   @override
   Future<Page<Project>> list({
@@ -103,16 +112,16 @@ final class _GuestProjects implements ProjectsPort {
 
   /// Null when the list already has it, or does not hold the project.
   Future<Permission?> _missingPermission(List<Project> projects) async {
-    final needsIt = projects.any(
-      (project) =>
-          project.id == _sharedProjectId && project.maxPermission == null,
-    );
-    if (!needsIt) return null;
+    if (!projects.any(_needsPermission)) return null;
     return (await _projects.read(_sharedProjectId)).maxPermission;
   }
 
+  bool _needsPermission(Project project) =>
+      project.id == _sharedProjectId &&
+      (project.maxPermission == null || !_listsPermission);
+
   Project _withPermission(Project project, Permission permission) =>
-      project.id == _sharedProjectId && project.maxPermission == null
+      _needsPermission(project)
       ? project.copyWith(maxPermission: permission)
       : project;
 }

@@ -42,12 +42,21 @@ typedef SubscriptionWriter = Future<Subscription?> Function(
 /// state only comes with a single read, so it is loaded when the screen
 /// opens and written straight through.
 final class FollowController extends ValueNotifier<FollowState> {
-  new({required this.entity, required this._read, required this._write})
-    : super(const FollowUnknown());
+  new({
+    required this.entity,
+    required this._read,
+    required this._write,
+    bool Function()? optOuts,
+  }) : _optOuts = optOuts ?? _always,
+       super(const FollowUnknown());
 
   final SubscriptionEntity entity;
   final SubscriptionReader _read;
   final SubscriptionWriter _write;
+
+  /// Whether the server can opt one task or project out of a parent's
+  /// follow.
+  final bool Function() _optOuts;
   int? _id;
   int _generation = 0;
   bool _disposed = false;
@@ -57,6 +66,15 @@ final class FollowController extends ValueNotifier<FollowState> {
   /// True when [subscription] covers the entity through a parent project.
   bool inherits(Subscription subscription) =>
       subscription.entity != entity || subscription.entityId != _id;
+
+  /// True while the user follows through a parent project that the server
+  /// cannot opt this one out of: only unfollowing that project stops it.
+  bool get fixed => switch (value) {
+    FollowKnown(:final subscription?) => inherits(subscription) && !_optOuts(),
+    _ => false,
+  };
+
+  static bool _always() => true;
 
   /// Reads the state, or takes it from [pending] when another read of the
   /// entity carries it, like the detail sheet's.
@@ -135,7 +153,8 @@ Future<bool> confirmStopFollowingInherited(
 
 /// A tap on the follow toggle of [id]: while the state is unknown it loads
 /// again and returns why it cannot toggle; an inherited subscription asks
-/// before opting out. Returns the message to show, null when there is none.
+/// before opting out, or where the server cannot, says how to stop it.
+/// Returns the message to show, null when there is none.
 Future<String?> toggleFollowing(
   BuildContext context,
   FollowController controller, {
@@ -149,6 +168,8 @@ Future<String?> toggleFollowing(
     case FollowUnknown(:final failure):
       unawaited(controller.load(id));
       return followFailureText(l10n, failure);
+    case FollowKnown(:final subscription?) when controller.fixed:
+      return l10n.followInheritedFixed(projectTitle(subscription.entityId));
     case FollowKnown(:final subscription?)
         when controller.inherits(subscription):
       final confirmed = await confirmStopFollowingInherited(

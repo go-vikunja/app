@@ -8,7 +8,8 @@ import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
 
 // The iOS extension decodes the app's JSON by property name and finds the
 // app's notifications by their payload; a name that drifts decodes as nil
-// or matches nothing, without an error. Swift has no test target here.
+// or matches nothing, without an error. The XCTests (ios/RunnerTests) run
+// only on a Mac, so the contract with the Dart side is checked here.
 void main() {
   const extensionFolder = 'ios/VikunjaWidgets';
   final widgetData = File('$extensionFolder/WidgetData.swift')

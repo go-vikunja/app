@@ -25,10 +25,10 @@ How to set up, build and test the app, and where everything is. [CONTRIBUTING.md
 | `plugins/vikunja_storage_flush/` | In-repo Flutter plugin, Android only (Dart and Kotlin): waits until secure storage's pending writes are on disk after a token write ([D59](decisions.md#d59-sessions-kept-through-lost-refresh-answers-and-storage-errors-a-record-of-why-one-ended)). A workspace member, not a pure-Dart package |
 | `branding/` | Vikunja's logo as the source and the scripts that derive the icon PNGs and the two Google Play graphics from it; the terms for the name and the logo are in [NOTICE.md](../NOTICE.md#name-and-logo) |
 | `fastlane/` | The store listings' texts and screenshots in fastlane's layout, copied into the consoles by hand; fastlane itself is not used ([store-listing.md](store-listing.md)) |
-| `test_servers/` | Docker Compose stack with one Vikunja 2.8.0, pinned by its digest (the service `vikunja`; another release through `VIKUNJA_APP_TEST_VIKUNJA_IMAGE`), for the contract tests and manual sign-in ([D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only)). `seed/e2e-user.env` holds the throwaway sign-in test user; the opt-in profile `tls` adds the TLS test servers ([test_servers/tls/README.md](../test_servers/tls/README.md)) |
-| `tool/` | Scripts for CI and local work: the format and pure-Dart checks; `check_exported_components.py`, which checks the exported Android components of the release build against its allowlist; `add_widget_extension.rb`, which adds the iOS widget extension to the Xcode project and keeps its file list in sync; `gen_tls_test_certs.sh`, `tls_e2e.py` and `wait_for_test_servers.sh --tls` for the TLS test servers; `build_android_notices.py`, which writes the Android libraries' notices for the licence page (`app/assets/legal/android.md`) from the Gradle lockfile, with the licence texts in `android_notices/` and those of the embedded Cronet AARs in `android_notices/cronet/`; `check_store_metadata.py`, which checks the store listings; `seed_demo_data.py`, which fills a test account with demo data in German or English; `store_screenshots.sh`, which takes the store screenshots on an emulator or a simulator; `l10n_progress.py`, which prints how much of the English each ARB file translates. `tool/ci/` holds the scripts of the CI jobs, their pins (`pins.sh`), the release version (`release_version.py`), the desugar_jdk_libs source (`desugar_source.py`), the release's build, signing and publish steps (`release_build.sh`, `release_sign.sh`, `release_publish.sh` with `play_upload.py`, `key_properties.py` and `release_certificates.txt`), the local dry run `release.sh`, the iOS release from a Mac (`ios_release.sh`) with the checks of its required-reason APIs (`required_reason_apis.py`) and licence notices (`ios_notices.py`), and their Python tests |
+| `test_servers/` | Docker Compose stack with one Vikunja 2.8.0, pinned by its digest (the service `vikunja`; another release through `VIKUNJA_APP_TEST_VIKUNJA_IMAGE`, another database path through `VIKUNJA_APP_TEST_DATABASE_PATH`), for the contract tests and manual sign-in ([D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only)). `seed/e2e-user.env` holds the throwaway sign-in test user; the opt-in profile `tls` adds the TLS test servers ([test_servers/tls/README.md](../test_servers/tls/README.md)) |
+| `tool/` | Scripts for CI and local work: the format and pure-Dart checks; `check_exported_components.py`, which checks the exported Android components of the release build against its allowlist; `add_widget_extension.rb`, which adds the iOS widget extension to the Xcode project and keeps its file list in sync; `add_runner_tests.rb`, which sets up the target `RunnerTests` of the native iOS tests and its shared scheme and keeps the Runner target's Swift files in sync; `gen_tls_test_certs.sh`, `tls_e2e.py` and `wait_for_test_servers.sh --tls` for the TLS test servers; `build_android_notices.py`, which writes the Android libraries' notices for the licence page (`app/assets/legal/android.md`) from the Gradle lockfile, with the licence texts in `android_notices/` and those of the embedded Cronet AARs in `android_notices/cronet/`; `check_store_metadata.py`, which checks the store listings; `seed_demo_data.py`, which fills a test account with demo data in German or English; `store_screenshots.sh`, which takes the store screenshots on an emulator or a simulator; `l10n_progress.py`, which prints how much of the English each ARB file translates. `tool/e2e/` holds the update test from the old app and the smoke test of a fresh install on an emulator ([below](#update-and-smoke-tests-on-an-emulator)). `tool/ci/` holds the scripts of the CI jobs, their pins (`pins.sh`), the release version (`release_version.py`), the desugar_jdk_libs source (`desugar_source.py`), the release's build, signing and publish steps (`release_build.sh`, `release_sign.sh`, `release_publish.sh` with `play_upload.py`, `key_properties.py` and `release_certificates.txt`), the local dry run `release.sh`, the iOS release from a Mac (`ios_release.sh`) with the checks of its required-reason APIs (`required_reason_apis.py`) and licence notices (`ios_notices.py`), and their Python tests |
 | `docs/` | Architecture, decisions, roadmap, open questions, the threat model, the release checklist, the store listings, research |
-| `.github/workflows/` | GitHub Actions: `ci.yaml` with the jobs `checks`, `editor`, `contract`, `android`, `osv` and `ios` (GitHub's macOS runner with Xcode 27); `release.yaml` for `v*` tags, which builds unsigned, then signs and publishes in go-vikunja/app after a reviewer's approval ([releasing.md](releasing.md)); `upstream.yaml`, weekly, which fails when Flutter or Cronet is newer than the pins. Each job runs a script of `tool/ci/` |
+| `.github/workflows/` | GitHub Actions: `ci.yaml` with the jobs `checks`, `editor`, `contract`, `android`, `osv` and `ios` (GitHub's macOS runner with Xcode 27); `release.yaml` for `v*` tags, which builds unsigned, then signs and publishes in go-vikunja/app after a reviewer's approval ([releasing.md](releasing.md)); `upstream.yaml`, weekly, which fails when Flutter or Cronet is newer than the pins; `contract-matrix.yaml`, the contract tests against every supported minor line of Vikunja, nightly in go-vikunja/app, on `v*` tags and by hand ([contract tests](#contract-tests)). Each job runs a script of `tool/ci/` |
 | `.github/dependabot.yml` | Weekly pull requests for the GitHub Actions, pinned by SHA |
 | `.github/ISSUE_TEMPLATE/`, `.github/PULL_REQUEST_TEMPLATE.md` | The issue forms for bugs and features (blank issues off; links to the forum, Matrix, the security policy and Crowdin) and the pull request template |
 | `crowdin.yml` | What Crowdin's GitHub integration syncs with Vikunja's Crowdin project: the English ARB file as the source, the name of each language's file, only approved translations; no token ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)) |
@@ -96,6 +96,12 @@ The iOS widget extension is a target of `app/ios/Runner.xcodeproj` that `tool/ad
 ruby tool/add_widget_extension.rb
 ```
 
+The native iOS tests are the target `RunnerTests` of the same project, a test bundle without a host app that compiles the Swift files it tests itself, with the shared scheme `RunnerTests`. `tool/add_runner_tests.rb` sets them up and keeps the Runner target's Swift files in sync with `app/ios/Runner`. Run it after `add_widget_extension.rb` whenever you add or remove a Swift file in `app/ios/Runner` or `app/ios/RunnerTests`, or change which files the tests compile; with nothing to change it says so:
+
+```sh
+ruby tool/add_runner_tests.rb
+```
+
 The in-app logo (`app/assets/branding/logo.png`) and the status bar icon (`ic_notification.png`) are separate exports of `branding/png/`; see [branding/README.md](../branding/README.md#using-the-assets-in-the-app).
 
 ### Tests
@@ -109,6 +115,12 @@ The in-app logo (`app/assets/branding/logo.png`) and the status bar icon (`ic_no
 (cd plugins/vikunja_widgets && flutter test)
 (cd plugins/vikunja_storage_flush && flutter test)
 (cd app/android && ./gradlew :app:testDebugUnitTest -x compileFlutterBuildDebug)   # the Kotlin code, on the JVM
+```
+
+On a Mac, the XCTests of the native iOS code (`app/ios/RunnerTests`: the photo location removal and the widgets' Done queue) run on a simulator, after an iOS build has generated `app/ios/Flutter/ephemeral` (for example `cd app && flutter build ios --no-codesign`), as the project needs the Swift package it holds; `xcrun simctl list devices available` names the simulators:
+
+```sh
+xcodebuild test -project app/ios/Runner.xcodeproj -scheme RunnerTests -destination 'platform=iOS Simulator,name=<an iPhone>' CODE_SIGNING_ALLOWED=NO
 ```
 
 The pure packages also use `flutter test` (see [D9](decisions.md#d9-flutter_test-instead-of-packagetest-in-pure-packages)). The app's tests run on an in-memory SQLite, so they need no server and no device.
@@ -145,13 +157,13 @@ python3 -I tool/build_android_notices.py --refresh-cronet
 CI runs on GitHub Actions ([D86](decisions.md#d86-ci-and-releases-on-github-actions)). `.github/workflows/` only says when each job runs; each job runs one script of `tool/ci/`, and every script runs the same way on a Mac, with the Flutter on PATH (a version other than the pinned one is only a warning there):
 
 ```sh
-tool/ci/checks.sh                   # generated code, format, pure-Dart packages, the Android notices, analyze, the Python tests of tool/ci/
+tool/ci/checks.sh                   # generated code, format, pure-Dart packages, the Android notices, analyze, the Python tests of tool/ci/, ShellCheck, the self-test of tool/e2e/ui.py
 tool/ci/test.sh                     # the tests of the app, the packages and the plugins, without the contract tests
 tool/ci/editor.sh                   # npm audit of the shipped packages, the editor's tests and the committed page
 tool/ci/android.sh                  # the release APK with the debug key, the exported components, the Kotlin tests
 tool/ci/osv.sh                      # the vulnerability scan of the three lockfiles; the editor's test-only packages warn only
 tool/ci/contract.sh                 # the test servers in your Docker, then the contract tests of vikunja_api and the app
-tool/ci/ios.sh                      # on a Mac: the unsigned iOS build, its licence notices and required-reason APIs
+tool/ci/ios.sh                      # on a Mac: the unsigned iOS build, its licence notices and required-reason APIs, then the XCTests on a simulator
 tool/ci/upstream.sh                 # whether Flutter's stable release or Google Maven's cronet-bundled is newer than the pins
 ```
 
@@ -181,19 +193,21 @@ tool/wait_for_test_servers.sh
 (cd app && VIKUNJA_CONTRACT=1 TZ=Europe/Berlin flutter test --tags contract --concurrency=1 test/contract)  # the sync engine and the outbox against the live server
 (cd app && VIKUNJA_CONTRACT=1 flutter test --tags contract test/contract/outbox_contract_test.dart)   # only the outbox
 (cd app && VIKUNJA_CONTRACT=1 VIKUNJA_CONTRACT_PORT=34551 flutter test --tags contract test/contract/outbox_contract_test.dart)   # the same against a server on another port
+(cd packages/vikunja_api && VIKUNJA_CONTRACT=1 VIKUNJA_CONTRACT_PORT=34551 flutter test --tags contract test/contract/write_contract_test.dart)   # vikunja_api's take the port too
 docker compose -f test_servers/docker-compose.yaml down
 VIKUNJA_APP_TEST_VIKUNJA_IMAGE=vikunja/vikunja:2.7.1 tool/ci/contract.sh   # both sets against another release, on a new, empty server
+VIKUNJA_APP_TEST_VIKUNJA_IMAGE=vikunja/vikunja:2.3.0 VIKUNJA_APP_TEST_DATABASE_PATH='/tmp/vikunja.db?_busy_timeout=30000&_x=' tool/ci/contract.sh   # 2.3.0, without immediate transactions
 ```
 
 With the standalone binary (for example colima with Homebrew's docker-compose), use `docker-compose` with the same arguments. The servers listen on `127.0.0.1` only.
 
-The app's contract files run one at a time, as they have not been tried in parallel, and in Europe/Berlin, as the task-list test compares Upcoming with the server's filter strings in that zone. Naming `test/contract` (`tool/contract_tests.sh` does so when given no test file) spares compiling the other test files only to skip them. `tool/ci/contract.sh` runs both sets as CI does, in about 10 to 11 minutes on a Mac, and stops at the first set that fails.
+The app's contract files run one at a time, as they have not been tried in parallel, and in Europe/Berlin, as the task-list test compares Upcoming with the server's filter strings in that zone. Naming `test/contract` (`tool/contract_tests.sh` does so when given no test file) spares compiling the other test files only to skip them. `tool/ci/contract.sh` runs both sets as CI does, in about 10 to 11 minutes on a Mac, and fails once both have run, naming the sets that failed.
 
-With `VIKUNJA_APP_TEST_VIKUNJA_IMAGE` set to another release's image, `tool/ci/contract.sh` starts the server on 34527 again with it, empty, and the `vikunja_api` tests expect the version of its tag; an image without a release tag is refused. `tool/contract_tests.sh` does not switch a server that is already running. Afterwards `docker compose -f test_servers/docker-compose.yaml up -d` brings the latest release back, also empty, so seed the sign-in test users again (`tool/seed_e2e_user.sh` and `E2E_USER_ENV=test_servers/seed/e2e-user-2.env tool/seed_e2e_user.sh`).
+With `VIKUNJA_APP_TEST_VIKUNJA_IMAGE` set to another release's image, `tool/ci/contract.sh` starts the server on 34527 again with it, empty, and the `vikunja_api` tests expect the version of its tag; an image without a release tag is refused. `tool/contract_tests.sh` runs `up -d` too, which recreates a running server whose image or settings differ from the variables and leaves one that matches them. `VIKUNJA_APP_TEST_DATABASE_PATH` replaces the server's database path; with it set, `tool/ci/contract.sh` runs the `vikunja_api` files one at a time, as parallel writes fail without immediate transactions. 2.3.0 needs the path above, as it exits under immediate transactions at a comment's notifications; 2.4.0 to 2.6.0 exit that way only at a data export, which the tests skip before 2.7, and run with the default. Afterwards `docker compose -f test_servers/docker-compose.yaml up -d`, without the variables, brings the latest release and the default path back, also empty, so seed the sign-in test users again (`tool/seed_e2e_user.sh` and `E2E_USER_ENV=test_servers/seed/e2e-user-2.env tool/seed_e2e_user.sh`).
 
 The `vikunja_api` contract tests cover, on both API versions, the negotiation, the OAuth flow, the read client and the write client (task creates, updates, moves, repeats, deletes, labels, assignees and reminders, with the v1 full-replace regressions), the user settings, the server notifications, labels, teams and sharing, and the link-share sign-ins. The app's contract tests register their own users, seed projects and tasks and run the app's code against the server: the initial and incremental sync (the database must mirror the server, and a sync with nothing new costs exactly 5 requests), the outbox (writes, replays after a lost answer, repeating tasks, creates and edits made offline), quick add, the activity sync, the stored project permission, the timeline and the table, link-share guests and the parity suite. All are tagged `contract` and skipped without `VIKUNJA_CONTRACT=1`.
 
-CI tests only the latest Vikunja release: one server, 2.8.0 on port 34527 (`/api/v2`, full tier). Before each release is tagged, the contract tests run once locally against the newest release of the previous minor version, today 2.7.1 ([releasing.md](releasing.md#cutting-a-release)). Older servers down to 2.3.0 stay supported in code and are covered by unit tests with recorded `/info`, error and entity responses ([D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only)). Each contract test file registers its own throwaway users. Vikunja allows 10 sign-ins, registrations, link-share sign-ins and WebSocket upgrades per minute per IP and cannot turn that limit off, so the test server raises it to 1000; it also opens its SQLite with immediate transactions, so that parallel test files wait for each other's writes instead of failing with "database is locked" (both in `test_servers/docker-compose.yaml`). The contract tests never touch the fixed sign-in user of `test_servers/seed/e2e-user.env`.
+CI's job `contract` tests the latest Vikunja release on every push and pull request: one server, 2.8.0 on port 34527 (`/api/v2`, full tier). The workflow "Contract matrix" (`.github/workflows/contract-matrix.yaml`) runs `tool/ci/contract.sh` against the newest release of each minor line from the 2.3.0 floor, 2.3.0, 2.4.0, 2.5.0, 2.6.0, 2.7.1 and 2.8.0, each pinned by its digest: every night in go-vikunja/app, on every `v*` tag and by hand under Actions. Its run on a tag replaces the local run against the previous minor version before a release ([releasing.md](releasing.md#cutting-a-release)). The tests take the release from the image's tag and assert what differs between releases from its first release, skipping it or asserting the old way before ([D13](decisions.md#d13-support-floor-230) lists them): `vikunja_api`'s helpers `contractServerHasV2`, `skipWithout` and `contractApiVersions` skip the v2 groups on 2.3, and `seedRequest` and the app's `Seeder` send seeding written for v2 to v1 there. A new contract test that meets such a difference gates it the same way, or the matrix fails on the older releases ([D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only)). Older servers are also covered by unit tests with recorded `/info`, error and entity responses. Each contract test file registers its own throwaway users. Vikunja allows 10 sign-ins, registrations, link-share sign-ins and WebSocket upgrades per minute per IP and cannot turn that limit off, so the test server raises it to 1000; it also opens its SQLite with immediate transactions, so that parallel test files wait for each other's writes instead of failing with "database is locked" (both in `test_servers/docker-compose.yaml`; the database path can be replaced, above). The contract tests never touch the fixed sign-in user of `test_servers/seed/e2e-user.env`.
 
 The connection settings have opt-in test servers of their own: the compose profile `tls` puts a second 2.8.0 (`vikunja-tls`) behind Caddy on 34528 (a self-signed certificate), 34529 (a client certificate required) and 34530 (an access-header gate like Cloudflare Access), with 34531 in plain HTTP for seeding. CI, a plain `up -d` and `tool/contract_tests.sh` never start it. [test_servers/tls/README.md](../test_servers/tls/README.md) has the certificate script, the start, seed and stop commands, the emulator steps and the test matrix; with the profile up, `(cd app && VIKUNJA_APP_TLS_DOCKER=1 flutter test --tags tls-docker)` runs the Docker tests.
 
@@ -240,17 +254,50 @@ The app's minimum is iOS 15.0. Below iOS 17.4, flutter_web_auth_2 falls back to 
 4. Sign in with the username and password from the env file. To enter the password without printing it, copy it to the clipboard and paste it into the field (the emulator and the simulator share the host clipboard), or type it into the focused field on the emulator:
 
    ```sh
-   # copy to the macOS clipboard
+   # copy to the macOS clipboard; after pasting, empty it with: pbcopy </dev/null
    sed -n 's/^E2E_PASSWORD=//p' test_servers/seed/e2e-user.env | tr -d '\n' | pbcopy
-   # or type into the focused field on the emulator
-   adb shell input text "$(sed -n 's/^E2E_PASSWORD=//p' test_servers/seed/e2e-user.env)"
+   # or type into the focused field of one emulator, named by its serial from `adb devices`
+   adb -s emulator-5554 shell input text "$(sed -n 's/^E2E_PASSWORD=//p' test_servers/seed/e2e-user.env)"
    ```
+
+   The second puts the password on the command line, where `ps` on the Mac and on the emulator shows it while it runs: acceptable only for this throwaway local test password.
 
 5. The sheet closes, the first-sync screen pulls the account, and the app shows the Overview tab. The Account tab shows initials, display name, `@` username, server host and version, when the account was last synced, and **Sync now**; **Sign out** there, after a confirmation, deletes the local data and returns to onboarding. To see tasks and projects, create some in the web app at `http://localhost:34527` with the same user, then pull to refresh, tap Sync now or wait for the minute timer. Tap a task's circle to mark it done: the web app shows it done after a reload. "New task" on the Overview creates one; Edit in its detail sheet changes the rest. Turn the network off afterwards: the lists stay, with an "Offline" notice on refresh; a task checked off, created or edited offline stays that way, the Account tab counts the pending changes, and they are sent as soon as a sync reaches the server again (within a minute while the app is in front, or on "Send now"). Signing out with changes still queued loses them; the sign-out dialog says so.
 
 The server overview also shows **Create account** and **Forgot password?**, because the test server allows registration and has local accounts; it sends no mail, so a new account works at once and a reset mail never arrives. To try a guest, create a link share of a project in the app (Share in the project's menu) or on the web, then paste the link into "Open a shared link" on the Connect screen, or share it to the app from the emulator's browser; the test server's links point to `http://localhost:34527`, so the unencrypted-connection question comes first.
 
 Every sign-in starts with an empty browser session and shows the login form ([D23](decisions.md#d23-browser-sign-in-through-flutter_web_auth_2-in-an-ephemeral-session)). On Android, Chrome before 141 (the emulator image ships 133) gets a regular Custom Tab instead, which can reuse a web login in Chrome; to see the form again there, sign out in Chrome or clear its data for the server.
+
+## Update and smoke tests on an emulator
+
+`tool/e2e/update_test.sh` checks the update over the old app on Android: the first start after it, the first sync and a new start ([D85](decisions.md#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept); [threat model 8.2](threat-model.md#82-manual-on-the-android-emulator), item 13). `tool/e2e/smoke_test.sh` checks a fresh install: Connect, the sign-in through the browser, the first sync and a new start. They run before a release ([releasing.md](releasing.md#cutting-a-release)) and after a change to the update from the old app (`app/lib/core/previous_app/`), onboarding, sign-in or the first sync, never in CI: you do every sign-in, and they ask you about what a screen dump cannot show.
+
+```sh
+tool/e2e/smoke_test.sh emulator-5554 <new.apk> <output folder>
+tool/e2e/update_test.sh emulator-5554 <old.apk> <new.apk> <output folder>      # over http on the Docker test server: sign in again
+tool/e2e/update_test.sh --server https://try.vikunja.io emulator-5554 <old.apk> <new.apk> <output folder>   # over https, a throwaway account: stay signed in
+```
+
+- **The emulator:** only the AVDs `Vikunja_Screens` and `Vikunja_Tablet`, the project's own emulators ([store-listing.md](store-listing.md#screenshots)), never your own or a physical device, as the scripts uninstall `io.vikunja.app` with its data; they refuse any other serial before they install anything, and ask before they wipe. Start the emulator yourself; the scripts never start or stop one. They ignore `ANDROID_SERIAL`, send every command to the adb transport they checked at the start, and check it and the AVD's name again after each of your answers and before each install, so they stop when another emulator has taken over the serial.
+- **The server:** `--server` defaults to `http://localhost:34527`, the Docker test server, for which the scripts set `adb reverse`. Start it and seed both sign-in users and the demo data first; the first sync must show one of the demo's open tasks, or the tasks named with `--task`:
+
+  ```sh
+  docker compose -f test_servers/docker-compose.yaml up -d && tool/wait_for_test_servers.sh
+  tool/seed_e2e_user.sh && E2E_USER_ENV=test_servers/seed/e2e-user-2.env tool/seed_e2e_user.sh
+  python3 -I tool/seed_demo_data.py
+  ```
+
+  On a new emulator, go through Chrome's first-run screens once.
+- **The APKs:** one package, a higher version code for the new one and one signing certificate for both, or `adb install -r` fails; the update test checks all three first. The old app is built from a clone of go-vikunja/app at `legacy-final` (`cdbc6e3`), as 0.1.8-beta with version code 490; its release build wants an `android/key.properties` (its `storeFile` relative to `android/app`), and any key does, as both APKs are signed again. This app is built unsigned, with a higher version code such as the 1000001 of `v1.0.0-beta.1`:
+
+  ```sh
+  (cd <the old app's clone> && flutter build apk --release --target-platform android-arm64 --build-number=490 --build-name=0.1.8-beta)
+  (cd app && VIKUNJA_APP_UNSIGNED=true flutter build apk --release --target-platform android-arm64 --build-number=1000001)
+  ```
+
+  Then align both with the build-tools' `zipalign -P 16 4` and sign them with `apksigner sign` and one throwaway key (`keytool -genkeypair`), its passwords passed from the environment or a private file (`--ks-pass env:…`), never on the command line; `apksigner verify --print-certs` shows that key as the only signer.
+- **The run:** each check prints PASS, FAIL or SKIP; a script exits 1 when a check failed and 2 when the test could not run. The output folder gets the log, the screen dumps, the screenshots and, from the update test, a recording of the first start, which stops once a browser has the focus or Connect takes input, so it never holds a sign-in. For a sign-in the scripts print only the clipboard route for the E2E user's password, as [above](#sign-in-on-a-device-end-to-end). They read the screen by the app's own English and German texts from the ARB files (`tool/e2e/ui.py`), so a text they look for that is renamed or gone stops them early, naming its key; `python3 -I tool/e2e/ui.py --self-test` checks the matching and runs in `tool/ci/checks.sh`.
+- **Needs:** macOS's bash 3.2 or newer, `adb` and the build-tools of the Android SDK, python3 and curl; with ImageMagick 7 (`magick`) the scripts judge the dark theme from a screenshot themselves, else they ask.
 
 ## Documentation
 

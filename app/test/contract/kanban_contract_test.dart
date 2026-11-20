@@ -55,10 +55,13 @@ void main() {
       await _pace();
     }
 
+    // v1 answers a board's buckets on the view's tasks.
+    String boardPath() => connection.apiVersions.contains(ApiVersion.v2)
+        ? '/projects/$projectId/views/$viewId/buckets/tasks'
+        : '/projects/$projectId/views/$viewId/tasks';
+
     Future<List<String>> serverBoard() async {
-      final board = await seeder.get(
-        '/projects/$projectId/views/$viewId/buckets/tasks',
-      );
+      final board = await seeder.get(boardPath());
       return [
         for (final bucket
             in (board['items']! as List<Object?>).cast<Map<String, Object?>>())
@@ -73,10 +76,7 @@ void main() {
 
     Future<_ServerTask> serverTask(int taskId) async {
       for (final bucket
-          in ((await seeder.get(
-                    '/projects/$projectId/views/$viewId/buckets/tasks',
-                  ))['items']!
-                  as List<Object?>)
+          in ((await seeder.get(boardPath()))['items']! as List<Object?>)
               .cast<Map<String, Object?>>()) {
         for (final task
             in (bucket['tasks'] as List<Object?>? ?? const [])
@@ -119,7 +119,7 @@ void main() {
           .map((bucket) => bucket['id']! as int)
           .firstWhere((id) => id != todoId && id != doneId);
 
-      for (final version in ApiVersion.values) {
+      for (final version in contractApiVersions) {
         tasksOf[version] = [
           await task('Stays ${version.pathSegment}'),
           await task('Moves ${version.pathSegment}'),
@@ -133,7 +133,7 @@ void main() {
 
     tearDownAll(() => dio.close(force: true));
 
-    for (final apiVersion in ApiVersion.values) {
+    for (final apiVersion in contractApiVersions) {
       group('over ${apiVersion.pathSegment}', () {
         late AppDatabase db;
         late LocalTaskRepository tasks;

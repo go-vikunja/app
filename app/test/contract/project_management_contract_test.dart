@@ -86,7 +86,7 @@ void main() {
 
       tearDownAll(() => dio.close(force: true));
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         group('over ${apiVersion.pathSegment}', () {
           final name = apiVersion.pathSegment;
           late ServerConnection only;
@@ -205,9 +205,12 @@ void main() {
               ),
             );
 
+            // 2.3 keeps an identifier as written.
             expect(
               (await local(gardenId)).identifier,
-              identifier.toUpperCase(),
+              connection.info.version!.isAtLeast(2, 4)
+                  ? identifier.toUpperCase()
+                  : identifier,
             );
             await expectLikeFreshSync();
 
@@ -289,9 +292,13 @@ void main() {
             );
             final sprint = (await local(gardenId)).views
                 .singleWhere((v) => v.id == sprintId);
+            // Before 2.5 a board without a mode gets none; the app's form
+            // always sends one.
             expect(
               sprint.bucketConfigurationMode,
-              BucketConfigurationMode.manual,
+              connection.info.version!.isAtLeast(2, 5)
+                  ? BucketConfigurationMode.manual
+                  : BucketConfigurationMode.none,
             );
             await expectLikeFreshSync();
 
@@ -343,7 +350,10 @@ void main() {
               (onServer['filter']! as Map<String, Object?>)['filter'],
               'priority >= 3',
             );
-            expect(onServer['bucket_configuration_mode'], 'manual');
+            expect(
+              onServer['bucket_configuration_mode'],
+              connection.info.version!.isAtLeast(2, 5) ? 'manual' : 'none',
+            );
             final stored = (await local(gardenId)).views[1];
             expect(stored.id, sprintId);
             expect(stored.title, 'Columns');

@@ -38,14 +38,23 @@ Future<Map<String, Object?>> _send(
   final base = connection.apiBaseUri(version);
   try {
     final response = await despiteWriteRaces(
-      () => dio.requestUri<Map<String, Object?>>(
-        base.replace(path: '${base.path}$path'),
-        data: body,
-        options: Options(
-          method: method,
-          headers: {'Authorization': 'Bearer ${user.jwt}'},
-        ),
-      ),
+      () => version == ApiVersion.v2
+          ? seedRequest<Map<String, Object?>>(
+              dio,
+              connection,
+              user.jwt,
+              method,
+              path,
+              data: body,
+            )
+          : dio.requestUri<Map<String, Object?>>(
+              base.replace(path: '${base.path}$path'),
+              data: body,
+              options: Options(
+                method: method,
+                headers: {'Authorization': 'Bearer ${user.jwt}'},
+              ),
+            ),
     );
     return response.data ?? const {};
   } on DioException catch (error) {
@@ -130,6 +139,16 @@ void main() {
             body: {'title': 'Repot the fern $runId'},
           );
           taskId = task['id']! as int;
+          if (!connection.info.version!.isAtLeast(2, 6)) {
+            // Servers before 2.6 do not subscribe a task's creator.
+            await _send(
+              dio,
+              connection,
+              reader,
+              'POST',
+              '/subscriptions/task/$taskId',
+            );
+          }
           await _send(
             dio,
             connection,
@@ -158,7 +177,7 @@ void main() {
           );
           apiToken = token['token']! as String;
 
-          for (final apiVersion in ApiVersion.values) {
+          for (final apiVersion in contractApiVersions) {
             final inbox = inboxes[apiVersion] = _Inbox(
               await _connect(connection, apiVersion),
             );
@@ -178,34 +197,38 @@ void main() {
         });
 
         for (final apiVersion in ApiVersion.values) {
-          group('/api/${apiVersion.pathSegment}/ws', () {
-            test('a subscription before auth is answered auth_required', () {
-              expect(
-                repliesBeforeAuth[apiVersion],
-                const RealtimeError(RealtimeError.authRequired),
-              );
-            });
-
-            test('a user JWT authenticates', () {
-              expect(authReplies[apiVersion], isA<RealtimeAuthSucceeded>());
-            });
-
-            test(
-              'an API token is answered invalid_token, then closed with 1000',
-              () async {
-                final inbox = _Inbox(await _connect(connection, apiVersion));
-
-                inbox.socket.authenticate(apiToken);
-
+          group(
+            '/api/${apiVersion.pathSegment}/ws',
+            skip: skipWithout(apiVersion),
+            () {
+              test('a subscription before auth is answered auth_required', () {
                 expect(
-                  await inbox.next(),
-                  const RealtimeError(RealtimeError.invalidToken),
+                  repliesBeforeAuth[apiVersion],
+                  const RealtimeError(RealtimeError.authRequired),
                 );
-                await inbox.closed;
-                expect(inbox.socket.closeCode, 1000);
-              },
-            );
-          });
+              });
+
+              test('a user JWT authenticates', () {
+                expect(authReplies[apiVersion], isA<RealtimeAuthSucceeded>());
+              });
+
+              test(
+                'an API token is answered invalid_token, then closed with 1000',
+                () async {
+                  final inbox = _Inbox(await _connect(connection, apiVersion));
+
+                  inbox.socket.authenticate(apiToken);
+
+                  expect(
+                    await inbox.next(),
+                    const RealtimeError(RealtimeError.invalidToken),
+                  );
+                  await inbox.closed;
+                  expect(inbox.socket.closeCode, 1000);
+                },
+              );
+            },
+          );
         }
 
         test("another user's comment reaches every socket as the notifications "
@@ -225,14 +248,14 @@ void main() {
           );
 
           final pushed = {
-            for (final apiVersion in ApiVersion.values)
+            for (final apiVersion in contractApiVersions)
               apiVersion:
                   (await inboxes[apiVersion]!.nextWhere<RealtimeNotification>(
                     (m) => m.notification.taskId == taskId,
                   )).notification,
           };
-          final notification = pushed[ApiVersion.v2]!;
-          expect(pushed[ApiVersion.v1], notification);
+          final notification = pushed[contractApiVersions.last]!;
+          expect(pushed.values, everyElement(notification));
           expect(notification.name, 'task.comment');
           expect(notification.readAt, isNull);
           expect(notification.payload['doer'], containsPair('id', doer.id));
@@ -241,7 +264,7 @@ void main() {
             containsPair('id', comment['id']),
           );
 
-          for (final apiVersion in ApiVersion.values) {
+          for (final apiVersion in contractApiVersions) {
             final only = onlyVersion(connection, apiVersion);
             final page = await createReadClient(
               dio: createAuthenticatedDio(
@@ -266,6 +289,12 @@ void main() {
         test(
           "signing out closes the session's sockets with 1008 session revoked",
           () async {
+            if (!connection.info.version!.isAtLeast(2, 7)) {
+              markTestSkipped(
+                'servers before 2.7 keep the sockets open after a logout',
+              );
+              return;
+            }
             await _send(
               dio,
               connection,

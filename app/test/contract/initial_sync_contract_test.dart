@@ -96,7 +96,7 @@ void main() {
 
     tearDownAll(() => dio.close(force: true));
 
-    for (final apiVersion in ApiVersion.values) {
+    for (final apiVersion in contractApiVersions) {
       test('pulls the whole account over ${apiVersion.pathSegment}', () async {
         final only = onlyApiVersion(connection, apiVersion);
         final requests = <Uri>[];
@@ -211,24 +211,26 @@ void main() {
           hasLength(_liveOpen),
         );
         // Last run, last full run, the watermark, the user's settings and
-        // the saved filter every new user gets; no checkpoint.
+        // the saved filter every new user gets from 2.4; no checkpoint.
         final state = await db.syncStateDao.readAll();
+        final withSavedFilter = connection.info.version!.isAtLeast(2, 4);
         expect(state.keys.toSet(), {
           SyncStateKeys.lastSyncedAt,
           SyncStateKeys.lastFullSyncAt,
           SyncStateKeys.watermark,
           SyncStateKeys.userSettings,
-          SyncStateKeys.savedFilters,
+          if (withSavedFilter) SyncStateKeys.savedFilters,
         });
         expect(decodeSavedFilters(state[SyncStateKeys.savedFilters]), [
-          isA<SavedFilterRef>()
-              .having((f) => f.projectId, 'pseudo project', lessThan(-1))
-              .having((f) => f.title, 'title', 'My Open Tasks')
-              .having(
-                (f) => f.definition?.filter.filter,
-                'filter',
-                startsWith('done = false && assignees = '),
-              ),
+          if (withSavedFilter)
+            isA<SavedFilterRef>()
+                .having((f) => f.projectId, 'pseudo project', lessThan(-1))
+                .having((f) => f.title, 'title', 'My Open Tasks')
+                .having(
+                  (f) => f.definition?.filter.filter,
+                  'filter',
+                  startsWith('done = false && assignees = '),
+                ),
         ]);
         expect(
           decodeUserSettings(state[SyncStateKeys.userSettings]),

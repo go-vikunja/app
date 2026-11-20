@@ -17,13 +17,15 @@ Future<int> _createProject(
   TestUser user,
   Map<String, Object?> body,
 ) async {
-  final v2 = connection.apiBaseUri(ApiVersion.v2);
   try {
     final response = await despiteWriteRaces(
-      () => dio.postUri<Map<String, Object?>>(
-        v2.replace(path: '${v2.path}/projects'),
+      () => seedRequest<Map<String, Object?>>(
+        dio,
+        connection,
+        user.jwt,
+        'POST',
+        '/projects',
         data: body,
-        options: Options(headers: {'Authorization': 'Bearer ${user.jwt}'}),
       ),
     );
     return response.data!['id']! as int;
@@ -43,11 +45,13 @@ Future<void> _deleteProject(
   TestUser user,
   int projectId,
 ) async {
-  final v2 = connection.apiBaseUri(ApiVersion.v2);
   await despiteWriteRaces(
-    () => dio.deleteUri<Object?>(
-      v2.replace(path: '${v2.path}/projects/$projectId'),
-      options: Options(headers: {'Authorization': 'Bearer ${user.jwt}'}),
+    () => seedRequest<Object?>(
+      dio,
+      connection,
+      user.jwt,
+      'DELETE',
+      '/projects/$projectId',
     ),
   );
 }
@@ -139,7 +143,7 @@ void main() {
               connection.info.version!.isAtLeast(2, 8) ? 4040 : 4002;
 
           for (final apiVersion in ApiVersion.values) {
-            group(apiVersion.pathSegment, () {
+            group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
               late TasksWritePort rawWrites;
               late TasksWritePort writes;
               late TasksPort reads;
@@ -595,7 +599,11 @@ void main() {
                   final task = await newTask('Followed');
                   final ownTask = own(SubscriptionEntity.task, task.id);
 
-                  expect(await subscriptions.forTask(task.id), ownTask);
+                  // Servers before 2.6 do not subscribe a task's creator.
+                  expect(
+                    await subscriptions.forTask(task.id),
+                    connection.info.version!.isAtLeast(2, 6) ? ownTask : isNull,
+                  );
                   await subscriptionWrites.subscribe(
                     SubscriptionEntity.task,
                     task.id,
@@ -620,8 +628,17 @@ void main() {
                   expect(await subscriptions.forTask(task.id), ownTask);
                 });
 
+                bool beforeOptOuts() {
+                  if (connection.info.version!.isAtLeast(2, 6)) return false;
+                  // 2.4 and 2.5 refuse to unfollow what a project covers
+                  // (403).
+                  markTestSkipped('servers before 2.6 store no opt-outs');
+                  return true;
+                }
+
                 test('a project subscription covers its tasks and child '
                     'projects; unfollowing a task stores an opt-out', () async {
+                  if (beforeOptOuts()) return;
                   final ownProject = own(SubscriptionEntity.project, projectId);
                   final task = await newTask('Covered');
                   // Without the creator's own subscription, the task shows
@@ -682,6 +699,7 @@ void main() {
 
                 test('the project lists carry the resolved subscription; a '
                     "child's opt-out shows nothing", () async {
+                  if (beforeOptOuts()) return;
                   final ownProject = own(SubscriptionEntity.project, projectId);
                   final ownChild = own(
                     SubscriptionEntity.project,

@@ -48,16 +48,18 @@ typedef _Reads = ({
 });
 
 Future<_Seed> _seed(Dio dio, ServerConnection connection, TestUser user) async {
-  final v2 = connection.apiBaseUri(ApiVersion.v2);
   Future<Map<String, Object?>> post(
     String path,
     Map<String, Object?> body,
   ) async {
     try {
-      final response = await dio.postUri<Map<String, Object?>>(
-        v2.replace(path: '${v2.path}$path'),
+      final response = await seedRequest<Map<String, Object?>>(
+        dio,
+        connection,
+        user.jwt,
+        'POST',
+        path,
         data: body,
-        options: Options(headers: {'Authorization': 'Bearer ${user.jwt}'}),
       );
       return response.data!;
     } on DioException catch (error) {
@@ -219,7 +221,7 @@ void main() {
         tearDownAll(() => dio.close(force: true));
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             test('projects list has the tree and no duplicates', () {
               final projects = reads[apiVersion]!.projects;
               final byId = {for (final p in projects) p.id: p};
@@ -235,9 +237,10 @@ void main() {
                 (p) => p.isFavoritesPseudo,
               );
               expect(favorites.isFavorite, isTrue);
+              // 2.3 gives a new user no saved filter.
               expect(
                 projects.where((p) => p.savedFilterId != null),
-                hasLength(1),
+                hasLength(contractServerHasV2 ? 1 : 0),
               );
               expect(projects.any((p) => p.isArchived), isFalse);
             });
@@ -420,59 +423,63 @@ void main() {
           });
         }
 
-        test('v1 and v2 agree except for Page.total', () {
-          final v1 = reads[ApiVersion.v1]!;
-          final v2 = reads[ApiVersion.v2]!;
+        test(
+          'v1 and v2 agree except for Page.total',
+          skip: skipWithout(ApiVersion.v2),
+          () {
+            final v1 = reads[ApiVersion.v1]!;
+            final v2 = reads[ApiVersion.v2]!;
 
-          expect(v1.projects, v2.projects);
-          expect(
-            v1.projects.map((p) => p.isFavorite),
-            v2.projects.map((p) => p.isFavorite),
-          );
-          expect(v1.firstProjectsPage.items, v2.firstProjectsPage.items);
-          expect(
-            v1.firstProjectsPage.totalPages,
-            v2.firstProjectsPage.totalPages,
-          );
-          expect(v1.firstProjectsPage.total, isNull);
-          expect(v2.firstProjectsPage.total, isNotNull);
-          expect(v1.project, v2.project);
-          expect(v1.project.views, v2.project.views);
-          _expectSameViewFilters(v1.project.views, v2.project.views);
-          expect(v1.labels, v2.labels);
-          for (final (a, b) in [
-            (v1.openInProject, v2.openInProject),
-            (v1.allInProject, v2.allInProject),
-            (v1.openByDueDate, v2.openByDueDate),
-          ]) {
-            expect(a.items, b.items);
-            expect(a.totalPages, b.totalPages);
-            expect(a.perPage, b.perPage);
-            expect(a.total, isNull);
-            expect(b.total, b.items.length);
-            for (var i = 0; i < a.items.length; i++) {
-              expect(a.items[i].labels, b.items[i].labels);
-              expect(a.items[i].reminders, b.items[i].reminders);
-              expect(a.items[i].assignees, b.items[i].assignees);
-              _expectSameRelations(a.items[i], b.items[i]);
+            expect(v1.projects, v2.projects);
+            expect(
+              v1.projects.map((p) => p.isFavorite),
+              v2.projects.map((p) => p.isFavorite),
+            );
+            expect(v1.firstProjectsPage.items, v2.firstProjectsPage.items);
+            expect(
+              v1.firstProjectsPage.totalPages,
+              v2.firstProjectsPage.totalPages,
+            );
+            expect(v1.firstProjectsPage.total, isNull);
+            expect(v2.firstProjectsPage.total, isNotNull);
+            expect(v1.project, v2.project);
+            expect(v1.project.views, v2.project.views);
+            _expectSameViewFilters(v1.project.views, v2.project.views);
+            expect(v1.labels, v2.labels);
+            for (final (a, b) in [
+              (v1.openInProject, v2.openInProject),
+              (v1.allInProject, v2.allInProject),
+              (v1.openByDueDate, v2.openByDueDate),
+            ]) {
+              expect(a.items, b.items);
+              expect(a.totalPages, b.totalPages);
+              expect(a.perPage, b.perPage);
+              expect(a.total, isNull);
+              expect(b.total, b.items.length);
+              for (var i = 0; i < a.items.length; i++) {
+                expect(a.items[i].labels, b.items[i].labels);
+                expect(a.items[i].reminders, b.items[i].reminders);
+                expect(a.items[i].assignees, b.items[i].assignees);
+                _expectSameRelations(a.items[i], b.items[i]);
+              }
             }
-          }
-          for (var i = 0; i < v1.allInProjectByTwo.length; i++) {
-            final (a, b) = (v1.allInProjectByTwo[i], v2.allInProjectByTwo[i]);
-            expect(a.items, b.items);
-            expect(a.totalPages, b.totalPages);
-            expect(a.perPage, b.perPage);
-          }
-          expect(v1.first, v2.first);
-          expect(v1.today, v2.today);
-          expect(v1.future, v2.future);
-          expect(v1.labelled, v2.labelled);
-          expect(v1.labelled.labels, v2.labelled.labels);
-          expect(v1.labelled.assignees, v2.labelled.assignees);
-          _expectSameRelations(v1.labelled, v2.labelled);
-          _expectSameRelations(v1.future, v2.future);
-          expect(v1.today.reminders, v2.today.reminders);
-        });
+            for (var i = 0; i < v1.allInProjectByTwo.length; i++) {
+              final (a, b) = (v1.allInProjectByTwo[i], v2.allInProjectByTwo[i]);
+              expect(a.items, b.items);
+              expect(a.totalPages, b.totalPages);
+              expect(a.perPage, b.perPage);
+            }
+            expect(v1.first, v2.first);
+            expect(v1.today, v2.today);
+            expect(v1.future, v2.future);
+            expect(v1.labelled, v2.labelled);
+            expect(v1.labelled.labels, v2.labelled.labels);
+            expect(v1.labelled.assignees, v2.labelled.assignees);
+            _expectSameRelations(v1.labelled, v2.labelled);
+            _expectSameRelations(v1.future, v2.future);
+            expect(v1.today.reminders, v2.today.reminders);
+          },
+        );
       });
     }
   });

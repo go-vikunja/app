@@ -593,6 +593,7 @@ final class _TasksApi implements TasksPort {
     // A URI drops a `.` or `..` segment even when escaped, so such an
     // identifier cannot be named in a path; the project id still works.
     if (project == '.' || project == '..') throw const NotFound(code: 3001);
+    if (!_byIndexRoute) return await _filteredByIndex(project, index);
     final response = await _transport.get(
       '/projects/${Uri.encodeComponent(project)}/tasks/by-index/$index',
       allowTemporaryRedirect: _transport.version == ApiVersion.v2,
@@ -623,6 +624,41 @@ final class _TasksApi implements TasksPort {
   static final _byIndexLocation = RegExp(
     r'^/api/v2(/projects/\d+/tasks/by-index/\d+)(?:\?(.*))?$',
   );
+
+  // Vikunja 2.3 has no by-index route; it answers every such path with a
+  // 404 that cannot be told from an unknown project.
+  bool get _byIndexRoute => _transport.serverVersion?.isAtLeast(2, 4) ?? true;
+
+  Future<Task> _filteredByIndex(String project, int index) async {
+    final projectId = _digits.hasMatch(project)
+        ? int.tryParse(project) ?? (throw const NotFound(code: 3001))
+        : await _projectIdentified(project);
+    final found = await listInProject(
+      projectId,
+      TaskQuery(
+        filter: 'index = $index',
+        sort: const [TaskSort(TaskSortField.id)],
+        perPage: 1,
+      ),
+    );
+    return found.items.firstOrNull ?? (throw const NotFound(code: 4002));
+  }
+
+  static final _digits = RegExp(r'^[0-9]+$');
+
+  /// A project the user cannot read is not listed, so its identifier is
+  /// `NotFound` too; an identifier that names several projects (2.3 keeps
+  /// `ab` and `AB` apart) names none.
+  Future<int> _projectIdentified(String identifier) async {
+    final projects = await _ProjectsApi(_transport)
+        .listAll(includeArchived: true);
+    final named = namedByIdentifier(
+      identifier,
+      projects.where((project) => !project.isPseudo),
+      identifierOf: (project) => project.identifier,
+    );
+    return named.singleOrNull?.id ?? (throw const NotFound(code: 3001));
+  }
 
   Future<Page<Task>> _listTasks(
     String path,

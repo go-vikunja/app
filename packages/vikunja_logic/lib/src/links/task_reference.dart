@@ -25,8 +25,9 @@ final class TaskById extends TaskReference {
 
 final class TaskByIdentifier extends TaskReference {
   /// [identifier] as typed; the server upper-cases with Go's rules, which
-  /// keep `ß`, so compare it case-insensitively by lower-casing both sides
-  /// and send it unchanged. [index] is above 0.
+  /// keep `ß`, so compare it with `namedByIdentifier`, which lower-cases
+  /// both sides when no identifier is exactly it, and send it unchanged.
+  /// [index] is above 0.
   const new(this.identifier, this.index);
 
   final String identifier;

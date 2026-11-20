@@ -22,6 +22,26 @@ final String? contractSkip = Platform.environment['VIKUNJA_CONTRACT'] != '1'
 final int contractServerPort =
     int.tryParse(Platform.environment['VIKUNJA_CONTRACT_PORT'] ?? '') ?? 34527;
 
+/// The API versions the test server serves, known before the tests run:
+/// v1 only when VIKUNJA_APP_TEST_VIKUNJA_IMAGE names a release before
+/// 2.4.0, which brought /api/v2 (2.3 is the support floor, D13).
+final List<ApiVersion> contractApiVersions = [
+  ApiVersion.v1,
+  if (_imageHasV2(Platform.environment['VIKUNJA_APP_TEST_VIKUNJA_IMAGE']))
+    ApiVersion.v2,
+];
+
+bool _imageHasV2(String? image) {
+  final name = image ?? '';
+  final lastSegment = name.substring(name.lastIndexOf('/') + 1);
+  final colon = lastSegment.indexOf(':');
+  if (colon < 0) return true;
+  final version = ServerVersion.tryParse(
+    lastSegment.substring(colon + 1).split('@').first,
+  );
+  return version == null || version.isAtLeast(2, 4);
+}
+
 Dio contractDio() => Dio(
   BaseOptions(
     connectTimeout: const Duration(seconds: 5),
@@ -149,7 +169,12 @@ final class StaticJwt implements AccessTokenSource {
 }
 
 /// Raw v2 writes for seeding, with the server's message on failure (error
-/// bodies carry no secrets).
+/// bodies carry no secrets). A server without /api/v2 (2.3) gets them on
+/// /api/v1 in v1's verbs: a create (POST) is a PUT there and a replace (PUT)
+/// a POST. Before 2.7 a merge patch goes the v1 way too, a read of the
+/// object posted back whole with the patch applied: 2.4.0's v2 refuses a
+/// patch of a followed task (subscription.entity) and has none for the
+/// settings.
 final class Seeder {
   new(this._dio, this._connection, this._user);
 
@@ -157,7 +182,13 @@ final class Seeder {
   final ServerConnection _connection;
   final TestUser _user;
 
-  Uri get _v2 => _connection.apiBaseUri(ApiVersion.v2);
+  bool get _hasV2 => _connection.apiVersions.contains(ApiVersion.v2);
+
+  Uri get _newest =>
+      _connection.apiBaseUri(_hasV2 ? ApiVersion.v2 : ApiVersion.v1);
+
+  bool get _patchesOnV2 =>
+      _hasV2 && (_connection.info.version?.isAtLeast(2, 7) ?? true);
 
   Future<Map<String, Object?>> get(String path) => _send('GET', path, null);
 
@@ -178,7 +209,7 @@ final class Seeder {
     try {
       await despiteWriteRaces(
         () => _dio.deleteUri<Object?>(
-          _v2.replace(path: '${_v2.path}$path'),
+          _newest.replace(path: '${_newest.path}$path'),
           options: Options(headers: {'Authorization': 'Bearer ${_user.jwt}'}),
         ),
       );
@@ -196,10 +227,42 @@ final class Seeder {
     Map<String, Object?>? body, {
     String contentType = Headers.jsonContentType,
   }) async {
+    if (method == 'PATCH' && !_patchesOnV2) {
+      const v1 = ApiVersion.v1;
+      final current = path == '/user/settings/general'
+          ? (await _request('GET', '/user', null, over: v1))['settings']!
+                as Map<String, Object?>
+          : await _request('GET', path, null, over: v1);
+      return await _request(
+        'POST',
+        path,
+        mergePatched(current, body!),
+        over: v1,
+      );
+    }
+    if (!_hasV2) {
+      switch (method) {
+        case 'POST':
+          return await _request('PUT', path, body);
+        case 'PUT':
+          return await _request('POST', path, body);
+      }
+    }
+    return await _request(method, path, body, contentType: contentType);
+  }
+
+  Future<Map<String, Object?>> _request(
+    String method,
+    String path,
+    Map<String, Object?>? body, {
+    String contentType = Headers.jsonContentType,
+    ApiVersion? over,
+  }) async {
+    final base = over == null ? _newest : _connection.apiBaseUri(over);
     try {
       final response = await despiteWriteRaces(
-        () => _dio.requestUri<Map<String, Object?>>(
-          _v2.replace(path: '${_v2.path}$path'),
+        () => _dio.requestUri<Object?>(
+          base.replace(path: '${base.path}$path'),
           data: body == null ? null : jsonEncode(body),
           options: Options(
             method: method,
@@ -208,7 +271,11 @@ final class Seeder {
           ),
         ),
       );
-      return response.data!;
+      // v1 answers a list bare, v2 in a page.
+      return switch (response.data) {
+        final List<Object?> items => {'items': items},
+        final data => data! as Map<String, Object?>,
+      };
     } on DioException catch (error) {
       throw StateError(
         '$method $path failed with ${error.response?.statusCode}: '
@@ -216,4 +283,62 @@ final class Seeder {
       );
     }
   }
+}
+
+/// [patch] applied to [target] as a JSON merge patch (RFC 7396).
+Map<String, Object?> mergePatched(
+  Map<String, Object?> target,
+  Map<String, Object?> patch,
+) => {
+  for (final MapEntry(:key, :value) in target.entries)
+    if (!patch.containsKey(key)) key: value,
+  for (final MapEntry(:key, :value) in patch.entries)
+    if (value != null)
+      key: switch ((target[key], value)) {
+        (final Map<String, Object?> current, final Map<String, Object?> v) =>
+          mergePatched(current, v),
+        _ => value,
+      },
+};
+
+/// The items of a raw list read: v2's `items`, or v1's bare array on a
+/// server without /api/v2, which takes the same path and query.
+Future<List<Map<String, Object?>>> rawItems(
+  Dio dio,
+  ServerConnection connection,
+  TestUser user,
+  String path,
+  Map<String, Object> query,
+) async {
+  final base = connection.apiBaseUri(
+    connection.apiVersions.contains(ApiVersion.v2)
+        ? ApiVersion.v2
+        : ApiVersion.v1,
+  );
+  final response = await despiteWriteRaces(
+    () => dio.getUri<Object?>(
+      base.replace(path: '${base.path}$path', queryParameters: query),
+      options: Options(headers: {'Authorization': 'Bearer ${user.jwt}'}),
+    ),
+  );
+  final items = switch (response.data) {
+    final Map<String, Object?> page => page['items'],
+    final other => other,
+  };
+  return [
+    for (final item in items! as List<Object?>) item! as Map<String, Object?>,
+  ];
+}
+
+/// The saved filter "My Open Tasks" that every new user gets from 2.4; on
+/// 2.3, which makes none, the seeder makes it.
+Future<void> ensureMyOpenTasks(Seeder seeder, TestUser user) async {
+  final projects = (await seeder.get('/projects'))['items']! as List<Object?>;
+  if (projects.any((p) => (p! as Map)['id']! as int < Project.favoritesId)) {
+    return;
+  }
+  await seeder.post('/filters', {
+    'title': 'My Open Tasks',
+    'filters': {'filter': 'done = false && assignees = ${user.username}'},
+  });
 }

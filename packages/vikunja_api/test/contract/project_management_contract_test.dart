@@ -97,7 +97,7 @@ void main() {
         tearDownAll(() => dio.close(force: true));
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             final segment = apiVersion.pathSegment;
             late int studio;
             late int sketches;
@@ -226,9 +226,15 @@ void main() {
                 }
 
                 final identifier = 'p$segment$identifierSuffix';
+                // 2.3 keeps an identifier as written.
                 await change(
                   ProjectChanges(identifier: identifier),
-                  (p) => _with(p, identifier: identifier.toUpperCase()),
+                  (p) => _with(
+                    p,
+                    identifier: connection.info.version!.isAtLeast(2, 4)
+                        ? identifier.toUpperCase()
+                        : identifier,
+                  ),
                 );
                 await change(
                   const ProjectChanges(title: 'Drafts'),
@@ -266,6 +272,12 @@ void main() {
 
             test('an identifier any project uses is refused with 3007 and '
                 'changes nothing', () async {
+              if (!connection.info.version!.isAtLeast(2, 4)) {
+                markTestSkipped(
+                  '2.3 neither upper-cases nor checks identifiers',
+                );
+                return;
+              }
               final taken = 'q$segment$identifierSuffix';
               await update(studio, ProjectChanges(identifier: taken));
               final before = await read(sketches);
@@ -319,13 +331,19 @@ void main() {
               expect(archived.isArchived, isTrue);
               expect((await read(sketches)).isArchived, isTrue);
               expect((await read(deep)).isArchived, isTrue);
-              await expectLater(
-                writes().projects.update(
-                  sketches,
-                  const ProjectChanges(isArchived: false),
-                ),
-                throwsA(isA<DomainError>().having((f) => f.code, 'code', 3016)),
-              );
+              // Before 2.6 the server does not refuse to unarchive a child of
+              // an archived parent; the app refuses that itself.
+              if (connection.info.version!.isAtLeast(2, 6)) {
+                await expectLater(
+                  writes().projects.update(
+                    sketches,
+                    const ProjectChanges(isArchived: false),
+                  ),
+                  throwsA(
+                    isA<DomainError>().having((f) => f.code, 'code', 3016),
+                  ),
+                );
+              }
               await expectLater(
                 writes().projects.update(
                   studio,
@@ -486,13 +504,19 @@ void main() {
                 BucketConfigurationMode.none,
               );
               expect(openView.position, openView.id * 65536);
+              // Before 2.5 a board without a mode gets none; the app always
+              // sends one.
               expect(
                 boardView.bucketConfigurationMode,
-                BucketConfigurationMode.manual,
+                connection.info.version!.isAtLeast(2, 5)
+                    ? BucketConfigurationMode.manual
+                    : BucketConfigurationMode.none,
               );
               expect(boardView.position, 150);
-              expect(boardView.defaultBucketId, isNot(0));
-              expect(boardView.doneBucketId, isNot(0));
+              if (connection.info.version!.isAtLeast(2, 5)) {
+                expect(boardView.defaultBucketId, isNot(0));
+                expect(boardView.doneBucketId, isNot(0));
+              }
               final stored = {
                 for (final view in await viewsOf(viewsProject)) view.id: view,
               };

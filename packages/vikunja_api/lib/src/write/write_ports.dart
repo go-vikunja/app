@@ -193,7 +193,8 @@ abstract interface class ProjectViewsWritePort {
   /// and returns the view as stored. Project admin permission (403 for
   /// write shares too); allowed on an archived project. Setting or clearing
   /// the done bucket changes no task. A bucket of another view is a
-  /// `DomainError` code 10002; an id that does not exist is stored as 0.
+  /// `DomainError` code 10002; an id that does not exist is stored as 0,
+  /// before 2.5 as sent.
   ///
   /// v2 sends a merge-patch with only these ids (an unchanged view answers
   /// 304 and is read). v1 has only a full replace, which turns a view sent

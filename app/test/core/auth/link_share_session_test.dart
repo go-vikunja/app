@@ -389,6 +389,131 @@ void main() {
     });
   });
 
+  group("a 500, v1's answer to a gone share's token before 2.7,", () {
+    test('is confirmed as gone by a renewal of the token, which ends the '
+        'session', () async {
+      final token = issuedAgo(const Duration(hours: 1));
+      final guest = await seed(token);
+      gateway.onRenew = (_) async => throw const LinkShareGone(code: 3006);
+      final session = sessions().forAccount(guest.id);
+
+      final gone = await session.confirmGone(token.jwt);
+
+      expect(gone?.code, 3006);
+      expect(gateway.renewedTokens, [token.jwt]);
+      expect(await needsReauth(guest.id), isTrue);
+      await expectLater(
+        session.validAccessToken(),
+        throwsA(isA<LinkShareGone>()),
+      );
+      expect(await session.confirmGone(token.jwt), same(gone));
+      expect(gateway.renewedTokens, hasLength(1));
+    });
+
+    test('ends nothing while the share is there, keeps the renewed token, '
+        'and is asked about again only after a pause', () async {
+      final token = issuedAgo(const Duration(hours: 1));
+      final guest = await seed(token);
+      final fresh = issueLinkShareToken(issuedAt: now);
+      gateway.onRenew = (_) async => fresh;
+      final session = sessions().forAccount(guest.id);
+
+      expect(await session.confirmGone(token.jwt), isNull);
+      expect(await session.validAccessToken(), fresh.jwt);
+      expect(await storedToken(guest.id), fresh.jwt);
+      expect(await session.confirmGone(fresh.jwt), isNull);
+      expect(gateway.renewedTokens, [token.jwt]);
+
+      now = now.add(LinkShareSession.goneCheckBackoff);
+      gateway.onRenew = (_) async => throw const LinkShareGone(code: 3006);
+
+      expect(await session.confirmGone(fresh.jwt), isA<LinkShareGone>());
+      expect(await needsReauth(guest.id), isTrue);
+    });
+
+    test('is asked about once for requests at the same time', () async {
+      final token = issuedAgo(const Duration(hours: 1));
+      final guest = await seed(token);
+      final answer = Completer<LinkShareToken>();
+      gateway.onRenew = (_) => answer.future;
+      final session = sessions().forAccount(guest.id);
+
+      final checks = [
+        for (var i = 0; i < 3; i++) session.confirmGone(token.jwt),
+      ];
+      await pumpEventQueue();
+      answer.completeError(const LinkShareGone(code: 3006));
+
+      expect(await Future.wait(checks), everyElement(isA<LinkShareGone>()));
+      expect(gateway.renewedTokens, hasLength(1));
+    });
+
+    test('stays unconfirmed when the renewal fails otherwise', () async {
+      final token = issuedAgo(const Duration(hours: 1));
+      final guest = await seed(token);
+      final session = sessions().forAccount(guest.id);
+
+      for (final failure in [
+        const ServerFailure(500),
+        const NetworkFailure(NetworkProblem.unreachable),
+      ]) {
+        gateway.onRenew = (_) async => throw failure;
+        expect(await session.confirmGone(token.jwt), isNull);
+        now = now.add(LinkShareSession.goneCheckBackoff);
+      }
+
+      expect(gateway.renewedTokens, hasLength(2));
+      expect(await needsReauth(guest.id), isFalse);
+      expect(await session.validAccessToken(), token.jwt);
+    });
+
+    test('is asked about only on a server the app reads over v1 before '
+        '2.7', () {
+      expect(serverErrorMayMeanShareGone(oauthServer230()), isTrue);
+      expect(
+        serverErrorMayMeanShareGone(unknownVersionServer(version: 'v2.5.0')),
+        isTrue,
+      );
+      expect(serverErrorMayMeanShareGone(unknownVersionServer()), isTrue);
+      expect(serverErrorMayMeanShareGone(v1OnlyServer270()), isFalse);
+      expect(serverErrorMayMeanShareGone(insecureServer()), isFalse);
+      expect(serverErrorMayMeanShareGone(fullServer270()), isFalse);
+    });
+
+    for (final (name, connection, ends) in [
+      ('2.3', oauthServer230(), true),
+      ('2.7 without v2', v1OnlyServer270(), false),
+    ]) {
+      test(
+        "through the guest's client on $name ${ends ? 'ends' : 'does not '
+                  'end'} the session",
+        () async {
+          final token = issuedAgo(const Duration(hours: 1));
+          final guest = await fakes.seedGuest(connection, token: token);
+          gateway.onRenew = (_) async => throw const LinkShareGone(code: 3006);
+          final all = sessions();
+          final dio = createAuthenticatedDio(
+            base: Dio()
+              ..httpClientAdapter = _CountingAdapter(
+                status: 500,
+                body: '{"message":"Could not determine the current user."}',
+              ),
+            connection: connection,
+            tokens: all.forAccount(guest.id),
+            interceptors: [all.goneInterceptor(guest.id, connection)],
+          );
+
+          await expectLater(
+            createReadClient(dio: dio, connection: connection).projects.list(),
+            throwsA(ends ? isA<LinkShareGone>() : isA<ServerFailure>()),
+          );
+          expect(gateway.renewedTokens, ends ? [token.jwt] : isEmpty);
+          expect(await needsReauth(guest.id), ends);
+        },
+      );
+    }
+  });
+
   group("every end of a guest's session is recorded before the guest is "
       'marked (D59)', () {
     late SessionDiagnostics diagnostics;
@@ -576,6 +701,10 @@ void main() {
 }
 
 final class _CountingAdapter implements HttpClientAdapter {
+  new({this.status = 200, this.body = '{}'});
+
+  final int status;
+  final String body;
   int requests = 0;
 
   @override
@@ -585,7 +714,13 @@ final class _CountingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     requests++;
-    return ResponseBody.fromString('{}', 200);
+    return ResponseBody.fromString(
+      body,
+      status,
+      headers: {
+        Headers.contentTypeHeader: ['application/json'],
+      },
+    );
   }
 
   @override

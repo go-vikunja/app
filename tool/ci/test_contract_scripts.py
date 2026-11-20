@@ -62,7 +62,8 @@ class ContractScriptsTest(unittest.TestCase):
         with open(os.path.join(ROOT, 'tool/ci/pins.sh'), encoding='utf-8') as f:
             flutter = re.search(r'^FLUTTER_VERSION=(\S+)$', f.read(), re.MULTILINE).group(1)
         self.env = {name: value for name, value in os.environ.items()
-                    if name not in ('GITHUB_ACTIONS', 'RUNNER_ENVIRONMENT', 'VIKUNJA_APP_TEST_VIKUNJA_IMAGE')}
+                    if name not in ('GITHUB_ACTIONS', 'RUNNER_ENVIRONMENT', 'VIKUNJA_APP_TEST_VIKUNJA_IMAGE',
+                                    'VIKUNJA_APP_TEST_DATABASE_PATH')}
         self.env.update({'PATH': bin_dir + os.pathsep + os.environ.get('PATH', os.defpath), 'FAKE_LOG': self.log,
                          'FAKE_FLUTTER_VERSION': flutter})
 
@@ -106,6 +107,14 @@ class ContractScriptsTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         compose = [call['argv'][2:] for call in self.calls('docker-compose')]
         self.assertEqual(compose, [['up', '-d', '--quiet-pull']])
+        api = [call['argv'] for call in self.calls('flutter') if call['cwd'] == 'vikunja_api']
+        self.assertEqual(api, [['test', '--tags', 'contract', 'test/contract']])
+
+    def test_contract_runs_api_files_one_at_a_time_without_immediate_transactions(self):
+        result = self.run_script('tool/ci/contract.sh', VIKUNJA_APP_TEST_DATABASE_PATH='/tmp/vikunja.db?_x=')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        api = [call['argv'] for call in self.calls('flutter') if call['cwd'] == 'vikunja_api']
+        self.assertEqual(api, [['test', '--tags', 'contract', '--concurrency=1', 'test/contract']])
 
 
 if __name__ == '__main__':

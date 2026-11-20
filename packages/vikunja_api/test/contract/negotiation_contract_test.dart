@@ -27,11 +27,11 @@ void main() {
   group('local Docker servers', skip: contractSkip, () {
     for (final (port, version, apiVersions, tier, concurrentWrites) in [
       (
-        34527,
+        contractPort,
         contractServerVersion,
-        {ApiVersion.v1, ApiVersion.v2},
-        SupportTier.full,
-        false,
+        contractApiVersions.toSet(),
+        contractServerHasV2 ? SupportTier.full : SupportTier.oauth,
+        contractServerHasV2 ? false : null,
       ),
     ]) {
       test('${version.display} on :$port', () async {
@@ -58,9 +58,11 @@ void main() {
     }
 
     test('flags equal the raw /info body', () async {
-      final connection = await connector.connect('http://localhost:34527');
+      final connection = await connector.connect(
+        'http://localhost:$contractPort',
+      );
       final raw = await dio.get<Map<String, Object?>>(
-        'http://localhost:34527/api/v2/info',
+        'http://localhost:$contractPort/api/${contractApiVersions.last.pathSegment}/info',
       );
       final body = raw.data!;
       final info = connection.info;
@@ -79,7 +81,7 @@ void main() {
       expect(info.availableMigrators, body['available_migrators']);
       expect(
         info.enabledProFeatures,
-        (body['enabled_pro_features']! as List).toSet(),
+        ((body['enabled_pro_features'] as List?) ?? const []).toSet(),
       );
       expect(info.concurrentWrites, body['concurrent_writes']);
       final legal = body['legal']! as Map<String, Object?>;
@@ -103,7 +105,9 @@ void main() {
     });
 
     test('the test server lists its terms as its one legal link', () async {
-      final connection = await connector.connect('http://localhost:34527');
+      final connection = await connector.connect(
+        'http://localhost:$contractPort',
+      );
       if (!connection.info.version!.isAtLeast(2, 8)) {
         markTestSkipped('servers before 2.8.0 list no legal links');
         return;
@@ -121,23 +125,23 @@ void main() {
     });
 
     test('scheme-less input falls back to http after https fails', () async {
-      final connection = await connector.connect('localhost:34527');
+      final connection = await connector.connect('localhost:$contractPort');
 
-      expect(connection.rootUri, Uri.parse('http://localhost:34527'));
+      expect(connection.rootUri, Uri.parse('http://localhost:$contractPort'));
       expect(connection.isInsecure, isTrue);
-      expect(connection.apiVersions, {ApiVersion.v1, ApiVersion.v2});
+      expect(connection.apiVersions, contractApiVersions.toSet());
     });
 
     test(
       'an explicit https:// to a plain-http port is a TLS failure',
       () async {
         await expectLater(
-          connector.connect('https://localhost:34527'),
+          connector.connect('https://localhost:$contractPort'),
           throwsA(
             isA<TlsFailure>().having(
               (f) => f.uri,
               'uri',
-              Uri.parse('https://localhost:34527'),
+              Uri.parse('https://localhost:$contractPort'),
             ),
           ),
         );
@@ -146,19 +150,31 @@ void main() {
 
     test('a pasted API URL is normalised', () async {
       final connection = await connector.connect(
-        'HTTP://LOCALHOST:34527/api/v1/',
+        'HTTP://LOCALHOST:$contractPort/api/v1/',
       );
 
-      expect(connection.rootUri, Uri.parse('http://localhost:34527'));
-      expect(connection.apiVersions, {ApiVersion.v1, ApiVersion.v2});
+      expect(connection.rootUri, Uri.parse('http://localhost:$contractPort'));
+      expect(connection.apiVersions, contractApiVersions.toSet());
     });
 
     for (final (input, root) in [
-      ('localhost:34527/api/v1/info', 'http://localhost:34527'),
-      ('http://localhost:34527/vikunja', 'http://localhost:34527'),
-      ('http://localhost:34527/login', 'http://localhost:34527'),
-      ('http://localhost:34527/projects/1/1', 'http://localhost:34527'),
-      ('http://localhost:34527/tasks/by/upcoming', 'http://localhost:34527'),
+      ('localhost:$contractPort/api/v1/info', 'http://localhost:$contractPort'),
+      (
+        'http://localhost:$contractPort/vikunja',
+        'http://localhost:$contractPort',
+      ),
+      (
+        'http://localhost:$contractPort/login',
+        'http://localhost:$contractPort',
+      ),
+      (
+        'http://localhost:$contractPort/projects/1/1',
+        'http://localhost:$contractPort',
+      ),
+      (
+        'http://localhost:$contractPort/tasks/by/upcoming',
+        'http://localhost:$contractPort',
+      ),
     ]) {
       test('a pasted browser or API URL connects: $input', () async {
         final connection = await connector.connect(input);
@@ -177,7 +193,7 @@ void main() {
     test('cancellation surfaces as a DioException', () async {
       final cancelToken = CancelToken();
       final connecting = connector.connect(
-        'http://localhost:34527',
+        'http://localhost:$contractPort',
         cancelToken: cancelToken,
       );
       cancelToken.cancel();

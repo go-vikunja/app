@@ -1,4 +1,6 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_bucket_repository.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -12,6 +14,12 @@ BucketRepository accountBucketRepository(Ref ref, String accountId) {
   return LocalBucketRepository(
     ref.watch(appDatabaseProvider(accountId)),
     ref.watch(writeClientProvider(accountId)),
+    read: ref.watch(readClientProvider(accountId)),
+    serverVersion: ref.watch(
+      accountsProvider.select(
+        (accounts) => accounts.value?.find(accountId)?.connection.info.version,
+      ),
+    ),
     // After a bucket write: a sync that read before it would put it back.
     refreshBoard: (projectId, viewId) =>
         tasks.refreshBoard(projectId, viewId, inNewRun: true),

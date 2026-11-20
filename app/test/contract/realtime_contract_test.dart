@@ -70,11 +70,15 @@ void main() {
         'username': doer.username,
         'permission': 1,
       });
+      if (!connection.info.version!.isAtLeast(2, 6)) {
+        // Servers before 2.6 do not subscribe a task's creator.
+        await asReader.post('/subscriptions/project/$projectId', {});
+      }
     });
 
     tearDownAll(() => dio.close(force: true));
 
-    for (final apiVersion in ApiVersion.values) {
+    for (final apiVersion in contractApiVersions) {
       test('over ${apiVersion.pathSegment}: a comment by the doer reaches '
           'the inbox of the reader within 3 s without a pull, and a sync is '
           'requested', () async {

@@ -52,17 +52,16 @@ Future<Object?> _send(
   Object? Function()? body,
   String? contentType,
 }) async {
-  final v2 = connection.apiBaseUri(ApiVersion.v2);
   try {
     final response = await despiteWriteRaces(
-      () => dio.requestUri<Object?>(
-        v2.replace(path: '${v2.path}$path'),
+      () => seedRequest<Object?>(
+        dio,
+        connection,
+        user.jwt,
+        method,
+        path,
         data: body?.call(),
-        options: Options(
-          method: method,
-          contentType: contentType,
-          headers: {'Authorization': 'Bearer ${user.jwt}'},
-        ),
+        contentType: contentType,
       ),
     );
     return response.data;
@@ -274,7 +273,7 @@ void main() {
           tearDownAll(() => dio.close(force: true));
 
           for (final apiVersion in ApiVersion.values) {
-            group(apiVersion.pathSegment, () {
+            group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
               late TasksPort reads;
               late TasksWritePort writes;
               late CommentsPort comments;
@@ -361,12 +360,15 @@ void main() {
                 final all = await comments.list(taskId);
                 expect(details.commentCount, all.items.length);
                 expect(details.commentCount, greaterThanOrEqualTo(2));
+                // A task's creator follows it from 2.6.
                 expect(
                   details.subscription,
-                  Subscription(
-                    entity: SubscriptionEntity.task,
-                    entityId: taskId,
-                  ),
+                  connection.info.version!.isAtLeast(2, 6)
+                      ? Subscription(
+                          entity: SubscriptionEntity.task,
+                          entityId: taskId,
+                        )
+                      : isNull,
                 );
               });
 
@@ -564,13 +566,14 @@ void main() {
                 await _settle();
 
                 final byOldIndex = reads.readByIndex('$projectId', oldIndex);
-                switch (apiVersion) {
-                  case ApiVersion.v2:
-                    final found = await byOldIndex;
-                    expect(found.id, moved.id);
-                    expect(found.projectId, otherProjectId);
-                  case ApiVersion.v1:
-                    await expectLater(byOldIndex, throwsA(isA<NotFound>()));
+                if (apiVersion == ApiVersion.v2 &&
+                    connection.capabilities.has(Capability.byIndexRedirect)) {
+                  final found = await byOldIndex;
+                  expect(found.id, moved.id);
+                  expect(found.projectId, otherProjectId);
+                } else {
+                  // v2 redirects from 2.7.
+                  await expectLater(byOldIndex, throwsA(isA<NotFound>()));
                 }
               });
             });

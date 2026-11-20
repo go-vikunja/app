@@ -52,14 +52,23 @@ void main() {
         ) async {
           try {
             final response = await despiteWriteRaces(
-              () => dio.requestUri<Map<String, Object?>>(
-                at(apiVersion, path),
-                data: body,
-                options: Options(
-                  method: method,
-                  headers: {'Authorization': 'Bearer ${user.jwt}'},
-                ),
-              ),
+              () => apiVersion == ApiVersion.v2
+                  ? seedRequest<Map<String, Object?>>(
+                      dio,
+                      connection,
+                      user.jwt,
+                      method,
+                      path,
+                      data: body,
+                    )
+                  : dio.requestUri<Map<String, Object?>>(
+                      at(apiVersion, path),
+                      data: body,
+                      options: Options(
+                        method: method,
+                        headers: {'Authorization': 'Bearer ${user.jwt}'},
+                      ),
+                    ),
             );
             await Future<void>.delayed(_pace);
             return response.data ?? const {};
@@ -102,7 +111,7 @@ void main() {
         tearDownAll(() => dio.close(force: true));
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             late _Seed seed;
 
             Future<List<BoardBucket>> board({int perPage = 50}) => patiently(

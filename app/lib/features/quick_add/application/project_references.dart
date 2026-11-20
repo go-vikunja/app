@@ -2,20 +2,33 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// The projects a `+project` named [name] stands for among [candidates]
 /// (the ones a task can go to, in tree order): those with that title,
-/// ignoring case, else those with that identifier. Quick add takes the
-/// first.
-List<Project> projectsNamed(String name, List<Project> candidates) {
+/// ignoring case, else the candidates among those `namedByIdentifier`
+/// finds in [known] (default [candidates]). So on Vikunja 2.3, which keeps
+/// `ab` and `AB` apart, `+AB` is the one with exactly that identifier, and
+/// none when that one is not a candidate, never its case twin. Quick add
+/// takes the first.
+List<Project> projectsNamed(
+  String name,
+  List<Project> candidates, {
+  List<Project>? known,
+}) {
   final lower = name.toLowerCase();
   final byTitle = [
     for (final project in candidates)
       if (project.title.toLowerCase() == lower) project,
   ];
   if (byTitle.isNotEmpty) return byTitle;
+  final named = {
+    for (final project in namedByIdentifier(
+      name,
+      known ?? candidates,
+      identifierOf: (project) => project.identifier,
+    ))
+      project.id,
+  };
   return [
     for (final project in candidates)
-      if (project.identifier.isNotEmpty &&
-          project.identifier.toLowerCase() == lower)
-        project,
+      if (named.contains(project.id)) project,
   ];
 }
 

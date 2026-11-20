@@ -161,6 +161,79 @@ void main() {
         expect(service().plan('a +work').project, work);
       });
 
+      test('identifiers that differ only in case (Vikunja 2.3): the exact '
+          'one; another case takes the first and says so', () {
+        final lower = sampleProject(
+          id: 8,
+          title: 'Lower',
+          identifier: 'ab',
+          position: 5,
+        );
+        final upper = sampleProject(
+          id: 9,
+          title: 'Upper',
+          identifier: 'AB',
+          position: 6,
+        );
+        final quickAdd = service(projects: [inbox, lower, upper]);
+
+        for (final (line, project) in [('a +AB', upper), ('a +ab', lower)]) {
+          final plan = quickAdd.plan(line);
+          expect(plan.project, project, reason: line);
+          expect(plan.projectAmbiguous, isFalse, reason: line);
+        }
+        final either = quickAdd.plan('a +Ab');
+        expect(either.project, lower);
+        expect(either.projectAmbiguous, isTrue);
+      });
+
+      test('an identifier only a project the task cannot go to has exactly '
+          '(Vikunja 2.3) is not taken for its case twin: the plan says so', () {
+        final upper = sampleProject(
+          id: 9,
+          title: 'Upper',
+          identifier: 'AB',
+          position: 6,
+        );
+        final lower = sampleProject(
+          id: 8,
+          title: 'Lower',
+          identifier: 'ab',
+          position: 5,
+        );
+
+        final readOnly = service(
+          projects: [
+            inbox,
+            lower.copyWith(maxPermission: Permission.read),
+            upper,
+          ],
+        ).plan('Call Bob +ab');
+        expect(readOnly.project, inbox);
+        expect(readOnly.unmatchedProject, 'ab');
+        expect(readOnly.unmatchedProjectReadOnly, isTrue);
+        expect(readOnly.projectAmbiguous, isFalse);
+        expect(readOnly.title, 'Call Bob +ab');
+
+        final archived = service(
+          projects: [inbox, lower.copyWith(isArchived: true), upper],
+        ).plan('Call Bob +ab');
+        expect(archived.project, inbox);
+        expect(archived.unmatchedProject, 'ab');
+        expect(archived.unmatchedProjectReadOnly, isFalse);
+
+        final exact = service(
+          projects: [
+            inbox,
+            lower.copyWith(maxPermission: Permission.read),
+            upper,
+          ],
+        ).plan('Call Bob +AB');
+        expect(exact.project, upper);
+        expect(exact.unmatchedProject, isNull);
+        expect(exact.projectAmbiguous, isFalse);
+      });
+
       test('the fallback: the screen, the default project, the Inbox', () {
         const settings = UserSettings(defaultProjectId: 3);
 
@@ -1202,6 +1275,31 @@ void main() {
       expect(tasks.creates.map((task) => (task.title, task.projectId)), [
         ('Car +Nowhere', 3),
         ('Tyres', 3),
+      ]);
+    });
+
+    test("a parent's identifier only a read-only project has exactly "
+        '(Vikunja 2.3) leaves the subtask in the fallback, not in its case '
+        'twin', () async {
+      final lower = sampleProject(
+        id: 8,
+        title: 'Lower',
+        identifier: 'ab',
+        position: 5,
+      ).copyWith(maxPermission: Permission.read);
+      final upper = sampleProject(
+        id: 9,
+        title: 'Upper',
+        identifier: 'AB',
+        position: 6,
+      );
+
+      await service(projects: [inbox, lower, upper])
+          .submit('Car +ab\n  Tyres', fallbackProjectId: 4);
+
+      expect(tasks.creates.map((task) => (task.title, task.projectId)), [
+        ('Car +ab', 4),
+        ('Tyres', 4),
       ]);
     });
 

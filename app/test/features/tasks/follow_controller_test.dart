@@ -56,6 +56,45 @@ void main() {
     );
   });
 
+  test('a follow through a parent is fixed only where the server cannot '
+      'opt one task out of it', () async {
+    for (final (optOuts, subscription, fixed) in [
+      (false, inherited, true),
+      (false, own, false),
+      (false, null, false),
+      (true, inherited, false),
+      (true, own, false),
+    ]) {
+      final controller = FollowController(
+        entity: SubscriptionEntity.task,
+        read: (id) async => subscription,
+        write: (id, {required subscribed}) async => null,
+        optOuts: () => optOuts,
+      );
+      addTearDown(controller.dispose);
+      expect(controller.fixed, isFalse);
+
+      await controller.load(5);
+
+      expect(controller.fixed, fixed, reason: '$optOuts, $subscription');
+    }
+  });
+
+  test(
+    'without a say about opt-outs the server is taken to have them',
+    () async {
+      final controller = FollowController(
+        entity: SubscriptionEntity.task,
+        read: (id) async => inherited,
+        write: (id, {required subscribed}) async => null,
+      );
+      addTearDown(controller.dispose);
+      await controller.load(5);
+
+      expect(controller.fixed, isFalse);
+    },
+  );
+
   test('a failed write returns the failure and keeps the state', () async {
     final controller = FollowController(
       entity: SubscriptionEntity.task,

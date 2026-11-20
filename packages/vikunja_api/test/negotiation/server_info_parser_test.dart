@@ -592,6 +592,7 @@ void main() {
         Capability.websocket,
         Capability.bulkCreateTasks,
         Capability.pendingEmail,
+        Capability.subscriptionOptOuts,
         Capability.byIndexRedirect,
         Capability.userSettingsMergePatch,
         Capability.localAuth,
@@ -606,6 +607,31 @@ void main() {
         Capability.emailReminders,
         Capability.backgroundUpload,
       });
+    });
+
+    test('a v2 server whose version cannot be read tries opt-outs, and '
+        'has none of the other versioned capabilities', () {
+      final capabilities = ServerCapabilities.derive(
+        info: parseServerInfo({
+          ...fixtureJson('info_v2_2.7.0.json'),
+          'version': 'banana',
+        }),
+        apiVersions: const {ApiVersion.v1, ApiVersion.v2},
+      );
+
+      expect(capabilities.has(Capability.subscriptionOptOuts), isTrue);
+      expect(capabilities.has(Capability.pendingEmail), isFalse);
+      expect(capabilities.has(Capability.trash), isFalse);
+      expect(
+        ServerCapabilities.derive(
+          info: parseServerInfo({
+            ...fixtureJson('info_v1_2.7.0.json'),
+            'version': 'banana',
+          }),
+          apiVersions: const {ApiVersion.v1},
+        ).has(Capability.subscriptionOptOuts),
+        isFalse,
+      );
     });
 
     test('the 2.8.0 fixture over v1 alone still reminds only subscribers '

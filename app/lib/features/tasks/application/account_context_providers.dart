@@ -39,6 +39,19 @@ User? activeUser(Ref ref) => ref.watch(
   }),
 );
 
+/// Whether the active account's server can stop a follow through a parent
+/// project for just one task or subproject.
+@riverpod
+bool activeServerHasFollowOptOuts(Ref ref) => ref.watch(
+  accountsProvider.select(
+    (accounts) =>
+        accounts.value?.activeAccount?.connection.capabilities.has(
+          Capability.subscriptionOptOuts,
+        ) ??
+        false,
+  ),
+);
+
 /// Whether the active account's server has comments switched on.
 @riverpod
 bool activeServerOffersComments(Ref ref) => ref.watch(

@@ -36,8 +36,14 @@ setup_flutter
 # Every contract test lives in test/contract; naming it spares compiling the
 # other test files only to skip them. Both suites run before a failure counts,
 # so a run against an older release shows everything that fails (D28).
+# Without immediate transactions (VIKUNJA_APP_TEST_DATABASE_PATH) parallel
+# writes fail, so the files run one at a time.
+api_flags=(--tags contract)
+if [[ -n "${VIKUNJA_APP_TEST_DATABASE_PATH:-}" ]]; then
+  api_flags+=(--concurrency=1)
+fi
 failed=()
-(cd "${repo_root}/packages/vikunja_api" && VIKUNJA_CONTRACT=1 flutter test --tags contract test/contract) ||
+(cd "${repo_root}/packages/vikunja_api" && VIKUNJA_CONTRACT=1 flutter test "${api_flags[@]}" test/contract) ||
   failed+=(vikunja_api)
 # Upcoming is compared with the server's filter strings in this zone. One
 # file at a time: the app's files have not been run in parallel since the

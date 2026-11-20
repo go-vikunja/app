@@ -703,25 +703,25 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     return {for (final task in found) task.id: task};
   }
 
-  /// The local project whose identifier equals [identifier] ignoring case,
+  /// The one local project that [identifier] names (`namedByIdentifier`),
   /// and its task with [index] unless that is not local; null without such
-  /// a project. Compared here, because SQLite's `lower()` folds ASCII only
-  /// (`ÄB`, `STRAßE`); the server stores identifiers upper-cased and unique.
+  /// a project, also when it names several (Vikunja 2.3 keeps `ab` and
+  /// `AB` apart). Compared here, because SQLite's `lower()` folds ASCII
+  /// only (`ÄB`, `STRAßE`).
   Future<({int projectId, Task? task})?> findByIdentifier(
     String identifier,
     int index,
   ) async {
-    final wanted = identifier.toLowerCase();
     final candidates = selectOnly(projects)
       ..addColumns([projects.id, projects.identifier])
       ..where(
         projects.id.isBiggerThanValue(0) & projects.identifier.equals('').not(),
       );
-    final projectId = [
-      for (final row in await candidates.get())
-        if (row.read(projects.identifier)!.toLowerCase() == wanted)
-          row.read(projects.id)!,
-    ].firstOrNull;
+    final projectId = namedByIdentifier(
+      identifier,
+      await candidates.get(),
+      identifierOf: (row) => row.read(projects.identifier)!,
+    ).singleOrNull?.read(projects.id);
     if (projectId == null) return null;
     final found = await _load(
       where:

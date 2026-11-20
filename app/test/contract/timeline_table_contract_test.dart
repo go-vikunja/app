@@ -211,7 +211,7 @@ void main() {
 
       tearDownAll(() => dio.close(force: true));
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         group('over ${apiVersion.pathSegment}', () {
           late AppDatabase db;
           late VikunjaReadClient reads;
@@ -372,9 +372,17 @@ void main() {
             );
           }
 
+          bool before24() {
+            if (connection.info.version!.isAtLeast(2, 4)) return false;
+            // 2.3 leaves q1 out, a subtask with dates under one without.
+            markTestSkipped('the timeline follows the Gantt of 2.4 and newer');
+            return true;
+          }
+
           test("the timeline lists the server's answer to the web's Gantt "
               'request, in three zones, with and without tasks without '
               'dates', () async {
+            if (before24()) return;
             var compared = 0;
             for (final zone in _zones) {
               for (final range in _ranges) {
@@ -408,6 +416,7 @@ void main() {
 
           test("a Gantt view's own filter is ANDed, include-nulls covering "
               'it too', () async {
+            if (before24()) return;
             for (final withoutDates in [false, true]) {
               final (
                 :server,
@@ -427,6 +436,11 @@ void main() {
 
           test("the table's sorts give the server's order, missing values "
               'last both ways and ties newest first', () async {
+            if (!connection.info.version!.isAtLeast(2, 5)) {
+              // 2.4.0 orders the ties of done:asc otherwise.
+              markTestSkipped('the table follows the order of 2.5 and newer');
+              return;
+            }
             final source = await tasks
                 .watchProjectList(projectId, viewId: table.id)
                 .first;

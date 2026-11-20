@@ -25,6 +25,13 @@ enum Capability {
   /// whatever the API version: the server routes the reminders itself.
   remindersToSubscribers,
 
+  /// Unfollowing a task or project that the user follows through a parent
+  /// project opts just that one out. Older servers refuse it with a 403:
+  /// only unfollowing the parent stops such a follow there. Vikunja 2.6.0
+  /// and newer, on both API versions, and a v2 server whose version cannot
+  /// be read (2.4 or newer), where a refusal only fails the unfollow.
+  subscriptionOptOuts,
+
   /// Ten wrong passwords lock a local account until its password is reset,
   /// and end all its sessions. Vikunja 2.8.0 and newer, on both API versions.
   accountLockout,

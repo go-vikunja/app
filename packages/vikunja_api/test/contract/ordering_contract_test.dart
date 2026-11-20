@@ -54,11 +54,6 @@ void main() {
             .toRadixString(16)
             .toUpperCase();
 
-        Uri at(String path) {
-          final base = connection.apiBaseUri(ApiVersion.v2);
-          return base.replace(path: '${base.path}$path');
-        }
-
         Future<Map<String, Object?>> send(
           String method,
           String path, {
@@ -67,14 +62,14 @@ void main() {
         }) async {
           try {
             final response = await despiteWriteRaces(
-              () => dio.requestUri<Map<String, Object?>>(
-                at(path),
+              () => seedRequest<Map<String, Object?>>(
+                dio,
+                connection,
+                user.jwt,
+                method,
+                path,
                 data: body,
-                options: Options(
-                  method: method,
-                  contentType: contentType,
-                  headers: {'Authorization': 'Bearer ${user.jwt}'},
-                ),
+                contentType: contentType,
               ),
             );
             if (method != 'GET') await Future<void>.delayed(_pace);
@@ -109,7 +104,7 @@ void main() {
         tearDownAll(() => dio.close(force: true));
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             late _Tasks tasks;
             late _Tree tree;
 
@@ -290,6 +285,12 @@ void main() {
             });
 
             test('a view that does not exist is NotFound 3014', () async {
+              if (!connection.info.version!.isAtLeast(2, 6)) {
+                markTestSkipped(
+                  'servers before 2.6 store a position in any view id',
+                );
+                return;
+              }
               await expectLater(
                 writes().tasks.update(
                   tasks.a,

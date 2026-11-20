@@ -547,9 +547,11 @@ final class TaskOpener {
     ];
   }
 
-  /// The task's local row, or for an identifier also a local project that
-  /// has it: identifiers are unique per server, so that account's resolver
-  /// reads the task by index when the row is not here yet.
+  /// The task's local row, or for an identifier also the one local project
+  /// it names: identifiers are unique per server, so that account's
+  /// resolver reads the task by index when the row is not here yet. One
+  /// that names several (Vikunja 2.3 keeps `ab` and `AB` apart) holds
+  /// nothing.
   Future<bool> _hasLocally(String accountId, TaskReference reference) async {
     try {
       final local = await withAccount(
@@ -558,14 +560,13 @@ final class TaskOpener {
       );
       if (local != null) return true;
       if (reference case TaskByIdentifier(:final identifier)) {
-        final wanted = identifier.toLowerCase();
         final projects = await localProjects(accountId);
-        return projects.any(
-          (project) =>
-              !project.isPseudo &&
-              project.identifier.isNotEmpty &&
-              project.identifier.toLowerCase() == wanted,
+        final named = namedByIdentifier(
+          identifier,
+          projects.where((project) => !project.isPseudo),
+          identifierOf: (project) => project.identifier,
         );
+        return named.length == 1;
       }
       return false;
     } on Object catch (error) {

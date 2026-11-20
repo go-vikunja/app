@@ -330,20 +330,21 @@ final class FakeTasksPort implements TasksPort {
         TaskDetails(subscription: _client.taskSubscriptions[id]);
   }
 
-  /// [project] is a project id when it is all digits, else an identifier
-  /// compared ignoring case; like the server, a project the user cannot
-  /// read is `Forbidden` and an unknown one `NotFound` 3001.
+  /// [project] is a project id when it is all digits, else the one
+  /// project `namedByIdentifier` finds, as the port promises; like the
+  /// server, a project the user cannot read is `Forbidden` and an unknown
+  /// one `NotFound` 3001.
   @override
   Future<Task> readByIndex(String project, int index) async {
     await _client._request('task by-index $project $index');
     final projectId = int.tryParse(project);
-    final found = _client.allProjects.where(
-      (candidate) => projectId != null
-          ? candidate.id == projectId
-          : candidate.identifier.isNotEmpty &&
-                candidate.identifier.toLowerCase() == project.toLowerCase(),
-    );
-    final match = found.firstOrNull;
+    final match = projectId != null
+        ? _client.allProjects.where((p) => p.id == projectId).firstOrNull
+        : namedByIdentifier(
+            project,
+            _client.allProjects,
+            identifierOf: (candidate) => candidate.identifier,
+          ).singleOrNull;
     if (match == null) throw const NotFound(code: 3001);
     if (_client.forbiddenProjects.contains(match.id)) {
       throw const Forbidden();

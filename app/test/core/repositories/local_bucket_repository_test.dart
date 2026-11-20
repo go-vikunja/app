@@ -25,6 +25,7 @@ import '../../helpers/test_database.dart';
 void main() {
   late AppDatabase db;
   late FakeWriteClient write;
+  late FakeSyncClient read;
   late LocalBucketRepository repository;
   late List<(int, int)> refreshes;
   late List<Task> serverTasks;
@@ -138,12 +139,19 @@ void main() {
   setUp(() async {
     db = testDatabase();
     write = FakeWriteClient(clock: () => now);
+    // The board's buckets as the fake server has them at the time.
+    read = FakeSyncClient()
+      ..beforeRequest = (_) async {
+        read.viewBuckets[80] = [...?write.serverBuckets[80]?.values];
+      };
     refreshes = [];
     serverTasks = tasks;
     onRefresh = null;
     repository = LocalBucketRepository(
       db,
       write,
+      read: read,
+      serverVersion: const ServerVersion(2, 5, 0),
       refreshBoard: (projectId, viewId) async {
         refreshes.add((projectId, viewId));
         await onRefresh?.call();
@@ -212,6 +220,13 @@ void main() {
       write.beforeRequest = (request) async {
         if (request.startsWith(pattern)) throw failure;
       };
+
+  // Doing went on the web, its task to the leftmost column, after the
+  // device's last download.
+  void deleteDoingElsewhere() {
+    write.serverBuckets[80]!.remove(2);
+    write.bucketSlots[80]![3] = (bucketId: 1, position: 32768);
+  }
 
   group('creating', () {
     test('sends the title with a position right of the last bucket, adds '
@@ -682,6 +697,7 @@ void main() {
       await repository.delete(7, 80, 1);
 
       expect(write.requests, ['read view 80', 'delete bucket 1 view 80']);
+      expect(read.requests, isEmpty);
       expect((await db.kanbanDao.load(80)).slots[1]?.bucketId, 3);
       expect((await db.projectsDao.loadView(80))?.defaultBucketId, 3);
       await expectLikeFreshDownload();
@@ -725,13 +741,6 @@ void main() {
 
     group('when the column to become the default was deleted elsewhere, the '
         'server keeps none,', () {
-      // Doing went on the web, its task to the leftmost column, after the
-      // device's last download.
-      void deleteDoingElsewhere() {
-        write.serverBuckets[80]!.remove(2);
-        write.bucketSlots[80]![3] = (bucketId: 1, position: 32768);
-      }
-
       for (final (label, defaultBucketId) in [
         ('while no default is set', 0),
         ('with the leftmost the default, which is put back', 1),
@@ -764,6 +773,7 @@ void main() {
           );
           expect(idsOf(await db.kanbanDao.buckets(80)), [1, 2, 3]);
           expect(refreshes, [(7, 80)]);
+          expect(read.requests, isEmpty);
         });
       }
 
@@ -891,6 +901,7 @@ void main() {
       );
       expect(refreshes, hasLength(4));
       expect((await db.kanbanDao.load(80)).slots, slots);
+      expect(read.requests, isEmpty);
     });
 
     test("store the server's answer: an unknown bucket becomes none", () async {
@@ -928,6 +939,286 @@ void main() {
     });
   });
 
+  group('before 2.5, where the server stores a done or default bucket it no '
+      'longer has as sent,', () {
+    LocalBucketRepository olderServer([
+      ServerVersion? version = const ServerVersion(2, 4, 0),
+    ]) => LocalBucketRepository(
+      db,
+      write,
+      read: read,
+      serverVersion: version,
+      refreshBoard: (projectId, viewId) async =>
+          refreshes.add((projectId, viewId)),
+    );
+
+    setUp(() => write.storesUnknownBuckets = true);
+
+    for (final (label, defaultBucketId) in [
+      ('while no default is set', 0),
+      ('with the leftmost the default', 1),
+    ]) {
+      test('a delete whose new default was deleted elsewhere $label reads '
+          'the board, deletes nothing, puts the old default back and '
+          'downloads the board', () async {
+        await seed(defaultBucketId: defaultBucketId);
+        deleteDoingElsewhere();
+        final serverSlots = {...?write.bucketSlots[80]};
+
+        await expectLater(
+          olderServer().delete(7, 80, 1),
+          throwsA(
+            isA<NewDefaultGone>()
+                .having((e) => e.bucket, 'bucket', todo)
+                .having((e) => e.newDefault, 'newDefault', doing),
+          ),
+        );
+
+        expect(write.requests, [
+          'read view 80',
+          'view 80 buckets done null default 2',
+          'view 80 buckets done null default $defaultBucketId',
+        ]);
+        expect(read.requests, ['board project 7 view 80 per_page=1']);
+        expect(write.bucketSlots[80], serverSlots);
+        expect(write.kanbanViews[80]?.defaultBucketId, defaultBucketId);
+        expect(
+          (await db.projectsDao.loadView(80))?.defaultBucketId,
+          defaultBucketId,
+        );
+        expect(idsOf(await db.kanbanDao.buckets(80)), [1, 2, 3]);
+        expect(refreshes, [(7, 80)]);
+      });
+    }
+
+    test(
+      'a delete whose new default the board read finds goes ahead',
+      () async {
+        await seed(defaultBucketId: 0);
+
+        await olderServer().delete(7, 80, 1);
+
+        expect(write.requests, [
+          'read view 80',
+          'view 80 buckets done null default 2',
+          'delete bucket 1 view 80',
+        ]);
+        expect(read.requests, ['board project 7 view 80 per_page=1']);
+        expect(write.bucketSlots[80]?[1]?.bucketId, 2);
+        expect((await db.projectsDao.loadView(80))?.defaultBucketId, 2);
+        await expectLikeFreshDownload();
+      },
+    );
+
+    test('a failed board read sends no delete, puts the old default back '
+        'and is thrown', () async {
+      await seed(defaultBucketId: 0);
+      read.beforeRequest = (_) async =>
+          throw const NetworkFailure(NetworkProblem.timeout);
+
+      await expectLater(
+        olderServer().delete(7, 80, 1),
+        throwsA(isA<NetworkFailure>()),
+      );
+
+      expect(write.requests, [
+        'read view 80',
+        'view 80 buckets done null default 2',
+        'view 80 buckets done null default 0',
+      ]);
+      expect(write.kanbanViews[80]?.defaultBucketId, 0);
+      expect((await db.projectsDao.loadView(80))?.defaultBucketId, 0);
+      expect(await db.kanbanDao.buckets(80), [todo, doing, doneBucket]);
+      expect(write.bucketSlots[80], slots);
+      expect(refreshes, isEmpty);
+    });
+
+    test('a failed board read whose old default cannot be put back either '
+        'names the new default with the failure', () async {
+      await seed(defaultBucketId: 0);
+      read.beforeRequest = (_) async =>
+          throw const NetworkFailure(NetworkProblem.timeout);
+      failRequests(
+        'view 80 buckets done null default 0',
+        const NetworkFailure(NetworkProblem.unreachable),
+      );
+
+      await expectLater(
+        olderServer().delete(7, 80, 1),
+        throwsA(
+          isA<DeleteFailedAfterNewDefault>()
+              .having(
+                (e) => e.failure,
+                'failure',
+                isA<NetworkFailure>().having(
+                  (f) => f.problem,
+                  'problem',
+                  NetworkProblem.timeout,
+                ),
+              )
+              .having((e) => e.newDefault, 'newDefault', doing),
+        ),
+      );
+
+      expect(write.requests, isNot(contains('delete bucket 1 view 80')));
+      expect(write.kanbanViews[80]?.defaultBucketId, 2);
+    });
+
+    test('a done and a default bucket deleted elsewhere are cleared, as the '
+        'server does from 2.5 on', () async {
+      await seed();
+      deleteDoingElsewhere();
+      final older = olderServer();
+
+      await older.setDoneBucket(7, 80, 2);
+      await older.setDefaultBucket(7, 80, 2);
+
+      expect(write.requests, [
+        'view 80 buckets done 2 default null',
+        'view 80 buckets done 0 default null',
+        'view 80 buckets done null default 2',
+        'view 80 buckets done null default 0',
+      ]);
+      expect(read.requests, hasLength(2));
+      expect(write.kanbanViews[80], (doneBucketId: 0, defaultBucketId: 0));
+      final view = await db.projectsDao.loadView(80);
+      expect((view?.doneBucketId, view?.defaultBucketId), (0, 0));
+      expect(refreshes, hasLength(2));
+    });
+
+    test('a done and a default bucket the board read finds are kept; '
+        'clearing reads nothing', () async {
+      await seed();
+      final older = olderServer();
+
+      await older.setDoneBucket(7, 80, 2);
+      await older.setDefaultBucket(7, 80, 3);
+      await older.setDefaultBucket(7, 80, null);
+
+      expect(write.requests, [
+        'view 80 buckets done 2 default null',
+        'view 80 buckets done null default 3',
+        'view 80 buckets done null default 0',
+      ]);
+      expect(read.requests, hasLength(2));
+      final view = await db.projectsDao.loadView(80);
+      expect((view?.doneBucketId, view?.defaultBucketId), (2, 0));
+    });
+
+    test('a server of an unknown version is checked too', () async {
+      await seed();
+      deleteDoingElsewhere();
+
+      await olderServer(null).setDefaultBucket(7, 80, 2);
+
+      expect(read.requests, hasLength(1));
+      expect((await db.projectsDao.loadView(80))?.defaultBucketId, 0);
+      expect(write.kanbanViews[80]?.defaultBucketId, 0);
+    });
+
+    group('a default another client set after its column was deleted', () {
+      // The server keeps it and would move a deleted column's tasks there.
+      void defaultGoneElsewhere(int bucketId) {
+        if (write.serverBuckets[80]!.remove(bucketId) != null) {
+          for (final MapEntry(key: taskId, value: slot)
+              in write.bucketSlots[80]!.entries.toList()) {
+            if (slot.bucketId == bucketId) {
+              write.bucketSlots[80]![taskId] = (
+                bucketId: 1,
+                position: slot.position,
+              );
+            }
+          }
+        }
+        write.kanbanViews[80] = (doneBucketId: 0, defaultBucketId: bucketId);
+      }
+
+      for (final (label, goneId) in [
+        ('one the device never saw', 99),
+        ('one the device still shows', 3),
+      ]) {
+        test('($label) counts as none: the leftmost other column becomes '
+            'the default first, so the tasks go where planned', () async {
+          await seed();
+          defaultGoneElsewhere(goneId);
+
+          await olderServer().delete(7, 80, 2);
+
+          expect(write.requests, [
+            'read view 80',
+            'view 80 buckets done null default 1',
+            'delete bucket 2 view 80',
+          ]);
+          expect(read.requests, [
+            'board project 7 view 80 per_page=1',
+            'board project 7 view 80 per_page=1',
+          ]);
+          expect(write.bucketSlots[80]?[3], (bucketId: 1, position: 32768.0));
+          expect(write.kanbanViews[80]?.defaultBucketId, 1);
+          expect((await db.projectsDao.loadView(80))?.defaultBucketId, 1);
+          expect((await db.kanbanDao.load(80)).slots[3]?.bucketId, 1);
+          if (goneId == 99) await expectLikeFreshDownload();
+        });
+      }
+
+      test('a column without tasks is deleted after a board download, '
+          'without a new default', () async {
+        const emptyDoing = Bucket(
+          id: 2,
+          viewId: 80,
+          title: 'Doing',
+          position: 200,
+        );
+        await seed(
+          buckets: [todo, emptyDoing, doneBucket],
+          cards: {1: slots[1]!, 2: slots[2]!, 4: slots[4]!},
+        );
+        defaultGoneElsewhere(99);
+
+        await olderServer().delete(7, 80, 2);
+
+        expect(write.requests, ['read view 80', 'delete bucket 2 view 80']);
+        expect(read.requests, hasLength(1));
+        expect(refreshes, [(7, 80), (7, 80)]);
+        expect(write.kanbanViews[80]?.defaultBucketId, 99);
+      });
+
+      test('a failed delete puts none back, not the gone column', () async {
+        await seed();
+        defaultGoneElsewhere(99);
+        failRequests(
+          'delete bucket',
+          const NetworkFailure(NetworkProblem.timeout),
+        );
+
+        await expectLater(
+          olderServer().delete(7, 80, 2),
+          throwsA(isA<NetworkFailure>()),
+        );
+
+        expect(write.requests, [
+          'read view 80',
+          'view 80 buckets done null default 1',
+          'delete bucket 2 view 80',
+          'view 80 buckets done null default 0',
+        ]);
+        expect(write.kanbanViews[80]?.defaultBucketId, 0);
+        expect((await db.projectsDao.loadView(80))?.defaultBucketId, 0);
+        expect(write.bucketSlots[80]?[3]?.bucketId, 2);
+      });
+
+      test('a server of an unknown version is checked too', () async {
+        await seed();
+        defaultGoneElsewhere(99);
+
+        await olderServer(null).delete(7, 80, 2);
+
+        expect(write.kanbanViews[80]?.defaultBucketId, 1);
+        expect(write.bucketSlots[80]?[3]?.bucketId, 1);
+      });
+    });
+  });
+
   group("a link-share guest's, from the account's provider,", () {
     // The server decides by the share's permission, as for a user, and so
     // does the board; the repository refuses a guest nothing of its own.
@@ -946,6 +1237,7 @@ void main() {
           ...auth.overrides,
           appDatabaseProvider.overrideWith((ref, _) => db),
           writeClientProvider.overrideWith((ref, _) => write),
+          readClientProvider.overrideWith((ref, _) => read),
           accountTaskRepositoryProvider.overrideWith(
             (ref, _) => FakeTaskRepository(engine),
           ),
@@ -1015,6 +1307,8 @@ void main() {
     final failing = LocalBucketRepository(
       db,
       write,
+      read: read,
+      serverVersion: const ServerVersion(2, 5, 0),
       refreshBoard: (_, _) async =>
           throw const NetworkFailure(NetworkProblem.unreachable),
     );

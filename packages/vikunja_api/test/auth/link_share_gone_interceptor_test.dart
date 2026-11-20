@@ -17,7 +17,12 @@ String _projects(String version) =>
     '$testServerRoot/api/$version/projects?page=1&expand=permissions';
 
 ({ProjectsPort projects, FakeTokenSource tokens, List<LinkShareGone> gone})
-_guest(String version, FakeRoute answer, {String? token}) {
+_guest(
+  String version,
+  FakeRoute answer, {
+  String? token,
+  Future<LinkShareGone?> Function(String token)? confirmGone,
+}) {
   final gone = <LinkShareGone>[];
   final connection = testConnection(hasV2: version == 'v2');
   final tokens = FakeTokenSource(current: token ?? fakeLinkShareJwt());
@@ -26,7 +31,9 @@ _guest(String version, FakeRoute answer, {String? token}) {
     connection: connection,
     tokens: tokens,
     retry: (dio) => RetryInterceptor(dio, delay: (_) async {}),
-    interceptors: [LinkShareGoneInterceptor(onGone: gone.add)],
+    interceptors: [
+      LinkShareGoneInterceptor(onGone: gone.add, confirmGone: confirmGone),
+    ],
   );
   return (
     projects: createReadClient(dio: dio, connection: connection).projects,
@@ -119,6 +126,72 @@ void main() {
       await expectLater(guest.projects.list(), throwsA(matcher));
       expect(guest.gone, isEmpty);
     }
+  });
+
+  group("v1's 500 to a gone share's token before 2.7", () {
+    final serverError = json({
+      'message': 'Could not determine the current user.',
+    }, status: 500);
+
+    test('is gone once confirmGone confirms it with that token', () async {
+      final token = fakeLinkShareJwt();
+      final asked = <String>[];
+      final guest = _guest(
+        'v1',
+        serverError,
+        token: token,
+        confirmGone: (token) async {
+          asked.add(token);
+          return const LinkShareGone(code: 3006);
+        },
+      );
+
+      await expectLater(
+        guest.projects.list(),
+        throwsA(isA<LinkShareGone>().having((f) => f.code, 'code', 3006)),
+      );
+      expect(asked, [token]);
+      expect(guest.gone, hasLength(1));
+    });
+
+    test('stays a server failure when confirmGone does not confirm '
+        'it', () async {
+      final guest = _guest('v1', serverError, confirmGone: (_) async => null);
+
+      await expectLater(
+        guest.projects.list(),
+        throwsA(isA<ServerFailure>().having((f) => f.statusCode, 's', 500)),
+      );
+      expect(guest.gone, isEmpty);
+    });
+
+    test('stays a server failure without confirmGone', () async {
+      final guest = _guest('v1', serverError);
+
+      await expectLater(guest.projects.list(), throwsA(isA<ServerFailure>()));
+      expect(guest.gone, isEmpty);
+    });
+
+    test("is never asked about for a user's token or another "
+        'status', () async {
+      final asked = <String>[];
+      Future<LinkShareGone?> confirm(String token) async {
+        asked.add(token);
+        return const LinkShareGone(code: 3006);
+      }
+
+      for (final (answer, token) in [
+        (serverError, fakeJwt()),
+        (json({'message': 'down'}, status: 501), null),
+        (json({'message': 'busy'}, status: 503), null),
+      ]) {
+        final guest = _guest('v1', answer, token: token, confirmGone: confirm);
+
+        await expectLater(guest.projects.list(), throwsA(isA<ServerFailure>()));
+        expect(guest.gone, isEmpty);
+      }
+      expect(asked, isEmpty);
+    });
   });
 
   test('a streamed error body is read to find the code', () async {

@@ -156,6 +156,57 @@ final class ActiveUserProvider extends $FunctionalProvider<User?, User?, User?>
 
 String _$activeUserHash() => r'00877f32896c0dd742d6674a467014ea4b9cb86c';
 
+/// Whether the active account's server can stop a follow through a parent
+/// project for just one task or subproject.
+
+@ProviderFor(activeServerHasFollowOptOuts)
+final activeServerHasFollowOptOutsProvider =
+    ActiveServerHasFollowOptOutsProvider._();
+
+/// Whether the active account's server can stop a follow through a parent
+/// project for just one task or subproject.
+
+final class ActiveServerHasFollowOptOutsProvider
+    extends $FunctionalProvider<bool, bool, bool>
+    with $Provider<bool> {
+  /// Whether the active account's server can stop a follow through a parent
+  /// project for just one task or subproject.
+  ActiveServerHasFollowOptOutsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'activeServerHasFollowOptOutsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$activeServerHasFollowOptOutsHash();
+
+  @$internal
+  @override
+  $ProviderElement<bool> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  bool create(Ref ref) {
+    return activeServerHasFollowOptOuts(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(bool value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<bool>(value),
+    );
+  }
+}
+
+String _$activeServerHasFollowOptOutsHash() =>
+    r'50e73a5b4a11c789105aaa5aec30955706f92a09';
+
 /// Whether the active account's server has comments switched on.
 
 @ProviderFor(activeServerOffersComments)

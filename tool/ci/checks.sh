@@ -25,10 +25,11 @@ tool/check_pure_dart_packages.sh
 python3 -I tool/build_android_notices.py --self-test
 python3 -I tool/build_android_notices.py --check
 python3 -I tool/ci/desugar_source.py --check-manifest
+python3 -I tool/e2e/ui.py --self-test
 flutter analyze
 python3 -I -m unittest discover -s tool/ci -p 'test_*.py'
 if command -v shellcheck >/dev/null 2>&1; then
-  shellcheck -x tool/ci/*.sh tool/*.sh
+  shellcheck -x tool/ci/*.sh tool/*.sh tool/e2e/*.sh
 else
   echo "shellcheck is not installed; skipped."
 fi

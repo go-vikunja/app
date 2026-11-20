@@ -141,16 +141,12 @@ void main() {
         LinkShareSessions? using,
       }) {
         final guestSessions = using ?? sessions;
+        final only = onlyApiVersion(connection, version);
         final client = createAuthenticatedDio(
           base: dio,
-          connection: onlyApiVersion(connection, version),
+          connection: only,
           tokens: guestSessions.forAccount(accountId),
-          interceptors: [
-            LinkShareGoneInterceptor(
-              onGone: (failure) =>
-                  guestSessions.forAccount(accountId).noteGone(failure),
-            ),
-          ],
+          interceptors: [guestSessions.goneInterceptor(accountId, only)],
         );
         addTearDown(client.close);
         return client;
@@ -172,6 +168,7 @@ void main() {
               connection: onlyApiVersion(connection, version),
             ),
             sharedProjectId: guest.account.projectId!,
+            serverVersion: connection.info.version,
           ),
           perPage: connection.info.maxItemsPerPage,
         );
@@ -239,6 +236,8 @@ void main() {
           buckets: LocalBucketRepository(
             db,
             createWriteClient(dio: client, connection: only),
+            read: reads,
+            serverVersion: only.info.version,
             refreshBoard: (_, _) async {},
           ),
           fresh: () {
@@ -345,7 +344,7 @@ void main() {
           (await stores.linkShareStore.read(readGuest.id))?.hash,
           readShare.hash,
         );
-        for (final version in ApiVersion.values) {
+        for (final version in contractApiVersions) {
           final (:engine, :db, dio: _) = guestSync(readGuest, version);
           await engine.ensureInitialSync();
 
@@ -380,7 +379,7 @@ void main() {
           ...stores.secureStore.values.values,
           ...stores.preferences.values.values,
         ], everyElement(isNot(contains(password))));
-        for (final version in ApiVersion.values) {
+        for (final version in contractApiVersions) {
           final (:engine, :db, dio: client) = guestSync(writeGuest, version);
           await engine.ensureInitialSync();
           final stored = (await db.projectsDao.loadAll()).single;
@@ -414,7 +413,7 @@ void main() {
 
       test("the guest's token is renewed through POST /user/token once half "
           'its lifetime has passed, on both API versions', () async {
-        for (final version in ApiVersion.values) {
+        for (final version in contractApiVersions) {
           final stored = (await stores.linkShareStore.read(writeGuest.id))!;
           final before = LinkShareClaims.tryParse(stored.token!)!;
           // 40 h later on this device: past half of the 72 h.
@@ -462,7 +461,7 @@ void main() {
         await sharing.deleteLinkShare(projectId, readShare.id);
         await _pace();
 
-        for (final version in ApiVersion.values) {
+        for (final version in contractApiVersions) {
           await stores.registry.upsert(readGuest);
           final fresh = newSessions();
           final (:engine, db: _, dio: _) = guestSync(
@@ -500,7 +499,7 @@ void main() {
         adminGuest = (opened as GuestSignedIn).account;
         expect(adminGuest.account.linkShareId, adminShare.id);
 
-        for (final version in ApiVersion.values) {
+        for (final version in contractApiVersions) {
           final board = await newBoard('Admin ${version.pathSegment}');
           final guest = await guestBoard(adminGuest, version, board.viewId);
           final stored = (await guest.db.projectsDao.loadAll()).single;
@@ -549,7 +548,7 @@ void main() {
       test('the write guest is refused the done column, and the new default '
           'that deleting the leftmost column holding tasks needs while none '
           'is set, before anything is deleted, on both API versions', () async {
-        for (final version in ApiVersion.values) {
+        for (final version in contractApiVersions) {
           final board = await newBoard('Write ${version.pathSegment}');
           await seeder.patch('/projects/$projectId/views/${board.viewId}', {
             'default_bucket_id': 0,
@@ -600,7 +599,7 @@ void main() {
       test('the write guest deletes the done and then the default column, '
           'which the server clears in the view, and their tasks move where '
           'the app puts them, on both API versions', () async {
-        for (final version in ApiVersion.values) {
+        for (final version in contractApiVersions) {
           final board = await newBoard('Columns ${version.pathSegment}');
           final compost = await seeder.create('/projects/$projectId/tasks', {
             'title': 'Turn the compost',
@@ -665,7 +664,7 @@ void main() {
           "guest's delete that needed it as the new default is a "
           'NewDefaultGone with the old default back, and setting it clears '
           'the default, on both API versions', () async {
-        for (final version in ApiVersion.values) {
+        for (final version in contractApiVersions) {
           final board = await newBoard('Gone ${version.pathSegment}');
           final guest = await guestBoard(adminGuest, version, board.viewId);
           expect(

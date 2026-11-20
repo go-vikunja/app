@@ -300,7 +300,8 @@ The test repository's trial ([part 1](#1-the-repository-and-ci)) ran the workflo
 Still to watch in go-vikunja/app, from the import's pull request on:
 - anonymous pulls from Docker Hub against its rate limits (a login is not built);
 - GitHub's macOS runners, which three times had none free for `ios` ([releasing.md](releasing.md#when-the-publish-job-fails));
-- since step 40h: `ios` on the image `xcode-27` (Xcode 27, like the releases) in place of `macos-26` with Xcode 26.6, which no run has tried yet; the per-ABI APKs in the release build and its artifact; the first runs of the workflow "Upstream versions" and of Dependabot; Gradle's dependency verification on Linux, whose `aapt2` is trusted without a checksum ([releasing.md](releasing.md#gradle-dependency-verification)).
+- since step 40h: `ios` on the image `xcode-27` (Xcode 27, like the releases) in place of `macos-26` with Xcode 26.6, which no run has tried yet; the per-ABI APKs in the release build and its artifact; the first runs of the workflow "Upstream versions" and of Dependabot; Gradle's dependency verification on Linux, whose `aapt2` is trusted without a checksum ([releasing.md](releasing.md#gradle-dependency-verification));
+- since step 40u: `ios` booting a simulator for the XCTests after the build, and the workflow "Contract matrix", whose nightly run starts with the import and which pulls six server images from Docker Hub per run ([D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only)); neither has run on GitHub yet.
 
 Each fix is a commit on `main`; the tag waits for a green run. The environment, the real signing and the publishing first run on go-vikunja/app's first tag.
 
@@ -310,11 +311,12 @@ Each beta is public: its tag publishes a GitHub release with the APK, marked as 
 
 - [ ] **Section [8.2](threat-model.md#82-manual-on-the-android-emulator) on the emulator** in full with the release build, the owner signing in the two accounts, items 5 and 10 on a Google Play image; with it the R33 check, a start of `MainActivity` from another app's activity without `FLAG_ACTIVITY_NEW_TASK` (`adb shell am start` adds that flag, so it needs a caller app), with the fix R33 describes.
 - [ ] **Section 8.1** on the tree to be tagged, with its checks of the settings of go-vikunja/app.
+- [ ] **The update and smoke tests** (step 40u, part of 8.2's item 13): `tool/e2e/smoke_test.sh` with the release candidate's APK, and `tool/e2e/update_test.sh` with the old app built from `legacy-final` (`cdbc6e3`) and the release candidate, both signed again with one throwaway key, on `Vikunja_Screens`, the owner signing in ([developer guide](development.md#update-and-smoke-tests-on-an-emulator)). Ran on 2026-11-20 with the build of step 40u: every check of the update passed, the smoke test 10 of 10 ([threat model 8.2](threat-model.md#82-manual-on-the-android-emulator), item 13); to run again with the release candidate.
 - [ ] **The owner's sign-off** in [section 8.4](threat-model.md#84-sign-off): the residual risks of section 7 accepted or reopened, and the questions that R19, R21, R33 and R36 leave to the owner answered (R17 is accepted for the beta, owner 2026-11-12). Section 8.3 waits for the device test; the row says so.
 
 ### 9. Cutting beta.1
 
-[releasing.md](releasing.md#cutting-a-release): `app/pubspec.yaml` already has `1.0.0-beta.1+1`; check Cronet, run both dry runs ([Android](releasing.md#the-dry-run), [iOS](releasing.md#the-ios-dry-run)), wait for the green CI run on `main`, tag `v1.0.0-beta.1` and push the tag. A second maintainer approves the job `publish` of the tag's release run, which uploads the bundle to Play's `beta` track, the APK to dl.vikunja.io and the GitHub release. Then check all three, and build and upload the iOS build from the Mac ([releasing.md](releasing.md#each-testflight-build)).
+[releasing.md](releasing.md#cutting-a-release): `app/pubspec.yaml` already has `1.0.0-beta.1+1`; check Cronet, run both dry runs ([Android](releasing.md#the-dry-run), [iOS](releasing.md#the-ios-dry-run)), wait for the green CI run on `main`, tag `v1.0.0-beta.1` and push the tag. German must be complete first, as for every `x.y.0` and its betas: among the English texts it still lacks is `followInheritedFixed` of step 40u, which comes through Crowdin like every other ([D88]). The tag also starts the workflow "Contract matrix" ([D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only)): before the approval, every release in it is green, or each failure is recorded in D28 and the owner accepts it. A second maintainer approves the job `publish` of the tag's release run, which uploads the bundle to Play's `beta` track, the APK to dl.vikunja.io and the GitHub release. Then check all three, and build and upload the iOS build from the Mac ([releasing.md](releasing.md#each-testflight-build)).
 
 ## The beta on Google Play
 
@@ -459,6 +461,7 @@ The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-
 - [ ] A restore (8.3 #9): an encrypted backup restored to another device brings back no tokens, connection secrets, databases or widget files.
 - [ ] The capture cover (8.3 #11) in a real screen recording, AirPlay or mirrored display.
 - [ ] Photo locations (8.3 #12): a photo from Photos, a photo and a video taken with the camera, each without its location on the server.
+- [ ] The XCTests (8.3 #14, step 40u): `xcodebuild test -scheme RunnerTests` on a simulator passes its 13 tests, the HEIC one run.
 - [ ] The held iOS plugins ([releasing.md](releasing.md#held-ios-plugins), step 40h): a build with the newest `file_selector_ios`, `image_picker_ios` and `webview_flutter_wkwebview` runs the file and photo pickers, the photo-location check above and the description editor; if they pass, one commit lifts the three pins.
 - [ ] Background refresh through BGTaskScheduler (`io.vikunja.app.sync`).
 - [ ] An account's online flows (the simulator checks had only an expired session).

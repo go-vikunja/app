@@ -71,20 +71,17 @@ Dio accountDio(Ref ref, String accountId) {
   final linkShares = _sharedProjectOf(ref, accountId) == null
       ? null
       : ref.watch(linkShareSessionsProvider);
+  final connection = _connectionOf(ref, accountId);
   final dio = createAuthenticatedDio(
     base: ref.watch(dioProvider),
-    connection: _connectionOf(ref, accountId),
+    connection: connection,
     tokens: AccountTokens(
       ref.watch(sessionManagersProvider),
       accountId,
       linkShares: linkShares,
     ),
     interceptors: [
-      if (linkShares != null)
-        LinkShareGoneInterceptor(
-          onGone: (failure) =>
-              linkShares.forAccount(accountId).noteGone(failure),
-        ),
+      if (linkShares != null) linkShares.goneInterceptor(accountId, connection),
       if (kDebugMode) RequestLogInterceptor(),
     ],
   );
@@ -94,15 +91,17 @@ Dio accountDio(Ref ref, String accountId) {
 
 @riverpod
 VikunjaReadClient readClient(Ref ref, String accountId) {
+  final connection = _connectionOf(ref, accountId);
   final client = createReadClient(
     dio: ref.watch(accountDioProvider(accountId)),
-    connection: _connectionOf(ref, accountId),
+    connection: connection,
   );
   final registry = ref.watch(accountRegistryProvider);
   return switch (_sharedProjectOf(ref, accountId)) {
     final projectId? => GuestReadClient(
       client,
       sharedProjectId: projectId,
+      serverVersion: connection.info.version,
       onSharedProjectTitle: (title) =>
           registry.updateGuestTitle(accountId, title),
     ),

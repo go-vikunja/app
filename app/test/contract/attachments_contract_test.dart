@@ -192,7 +192,7 @@ void main() {
         await files.delete(recursive: true);
       });
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         group('over ${apiVersion.pathSegment}', () {
           late VikunjaReadClient reads;
           late _SwitchableWriteClient writes;

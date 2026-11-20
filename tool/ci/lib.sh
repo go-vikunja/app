@@ -158,8 +158,9 @@ PROPERTIES
 }
 
 # Fails unless xcode-select points into an Xcode app, then prints its version.
-# The native-asset build hooks ignore DEVELOPER_DIR (README), so the selection
-# itself has to be Xcode; DEVELOPER_DIR is unset so nothing else uses another.
+# The native-asset build hooks ignore DEVELOPER_DIR (docs/development.md,
+# Prerequisites), so the selection itself has to be Xcode; DEVELOPER_DIR is
+# unset so nothing else uses another.
 use_selected_xcode() {
   local selected
   selected="$(env -u DEVELOPER_DIR xcode-select -p 2>/dev/null || true)"

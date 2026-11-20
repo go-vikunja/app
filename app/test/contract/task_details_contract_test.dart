@@ -76,14 +76,18 @@ Future<_Seed> _seed(Dio dio, ServerConnection connection, TestUser user) async {
   await _pause();
   await seeder.post('/comments/${commentIds.first}/reactions', {'value': '🎉'});
   await _pause();
-  final v2 = connection.apiBaseUri(ApiVersion.v2);
+  final hasV2 = connection.apiVersions.contains(ApiVersion.v2);
+  final base = connection.apiBaseUri(hasV2 ? ApiVersion.v2 : ApiVersion.v1);
   final upload = await despiteWriteRaces(
-    () => dio.postUri<Map<String, Object?>>(
-      v2.replace(path: '${v2.path}/tasks/$taskId/attachments'),
+    () => dio.requestUri<Map<String, Object?>>(
+      base.replace(path: '${base.path}/tasks/$taskId/attachments'),
       data: FormData.fromMap({
         'files': MultipartFile.fromBytes(_png, filename: 'pixel.png'),
       }),
-      options: Options(headers: {'Authorization': 'Bearer ${user.jwt}'}),
+      options: Options(
+        method: hasV2 ? 'POST' : 'PUT',
+        headers: {'Authorization': 'Bearer ${user.jwt}'},
+      ),
     ),
   );
   final [attachment as Map<String, Object?>] =
@@ -129,7 +133,7 @@ void main() {
 
       tearDownAll(() => dio.close(force: true));
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         group('over ${apiVersion.pathSegment}', () {
           late VikunjaReadClient reads;
           late VikunjaWriteClient writes;
@@ -193,16 +197,17 @@ void main() {
               seed.movedOldIndex,
             );
 
-            switch (apiVersion) {
-              case ApiVersion.v2:
-                final task = await resolver.resolve(reference);
-                expect(task.id, seed.movedId);
-                expect(task.projectId, seed.otherProjectId);
-              case ApiVersion.v1:
-                await expectLater(
-                  resolver.resolve(reference),
-                  throwsA(isA<NotFound>().having((f) => f.code, 'code', 4002)),
-                );
+            if (apiVersion == ApiVersion.v2 &&
+                connection.capabilities.has(Capability.byIndexRedirect)) {
+              final task = await resolver.resolve(reference);
+              expect(task.id, seed.movedId);
+              expect(task.projectId, seed.otherProjectId);
+            } else {
+              // v2 redirects from 2.7.
+              await expectLater(
+                resolver.resolve(reference),
+                throwsA(isA<NotFound>().having((f) => f.code, 'code', 4002)),
+              );
             }
           });
 
@@ -234,8 +239,13 @@ void main() {
             expect(attachment.mime, startsWith('image/png'));
             expect(attachment.size, _png.length);
             expect(read.coverImageAttachmentId, 0);
-            // The server subscribes the creator.
-            expect(read.subscription?.entity, SubscriptionEntity.task);
+            // The server subscribes the creator from 2.6.
+            expect(
+              read.subscription?.entity,
+              connection.info.version!.isAtLeast(2, 6)
+                  ? SubscriptionEntity.task
+                  : isNull,
+            );
           });
 
           test('comments come in both orders with their reactions', () async {

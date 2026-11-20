@@ -83,6 +83,12 @@ ServerConnection fullServer270({
   userDeletion: userDeletion,
 );
 
+/// [fullServer270] on 2.5.0, which cannot stop a follow through a parent
+/// project for one task or subproject.
+ServerConnection fullServer250({
+  String root = 'https://tasks.example.org/vikunja',
+}) => _fullServer(root, version: 'v2.5.0', demoMode: false, userDeletion: true);
+
 /// [fullServer270] on 2.8.0, which has the trash.
 ServerConnection fullServer280({
   String root = 'https://tasks.example.org/vikunja',
@@ -176,7 +182,11 @@ ServerConnection v1OnlyServer270({
 ServerConnection unknownVersionServer({
   String root = 'https://fork.example.com',
   String version = 'custom-2024',
-}) => _connect(root, _info(version: version), {ApiVersion.v1});
+  bool v2 = false,
+}) => _connect(root, _info(version: version), {
+  ApiVersion.v1,
+  if (v2) ApiVersion.v2,
+});
 
 ServerConnection insecureServer({String root = 'http://192.168.1.20:3456'}) =>
     _connect(root, _info(version: 'v2.4.0'), {ApiVersion.v1, ApiVersion.v2});

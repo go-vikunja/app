@@ -243,7 +243,7 @@ final class AccountDioProvider extends $FunctionalProvider<Dio, Dio, Dio>
   }
 }
 
-String _$accountDioHash() => r'd36a61c98b874f43bd96511f6a501f1d3a7c3e8e';
+String _$accountDioHash() => r'e673e5b91cf0eaf58d231089024269160d94d8f6';
 
 /// The authenticated client of one account, shared by its read and write
 /// clients. Kept alive by the sync engine and the outbox sender that use
@@ -334,7 +334,7 @@ final class ReadClientProvider
   }
 }
 
-String _$readClientHash() => r'7097ffdc6f881435a03fe76d7f6e80dcd576c57e';
+String _$readClientHash() => r'6ec6f1ab0b855d4fe4f51457c2c3f8c399b42e01';
 
 final class ReadClientFamily extends $Family
     with $FunctionalFamilyOverride<VikunjaReadClient, String> {

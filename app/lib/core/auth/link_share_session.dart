@@ -18,6 +18,13 @@ typedef LinkShareEndedHandler = Future<void> Function(SessionEnded failure);
 
 final _log = Logger('LinkShareSession');
 
+/// v1 answers a gone share's token with a 500 before 2.7, and the app reads
+/// over v1 from 2.3 and from a server whose proxy hides v2; v2 answers it
+/// with a 401 without a code.
+bool serverErrorMayMeanShareGone(ServerConnection connection) =>
+    connection.preferredApiVersion == ApiVersion.v1 &&
+    !(connection.info.version?.isAtLeast(2, 7) ?? false);
+
 /// Keeps a link-share guest's token valid, without a refresh token: the
 /// token is renewed through `POST /user/token` once half of its lifetime
 /// (72 h on a default server) has passed, and the old one stays valid, so
@@ -54,6 +61,10 @@ final class LinkShareSession implements AccessTokenSource {
   /// `service.jwtttl` of a default server, for a token without `iat`.
   static const defaultLifetime = Duration(hours: 72);
 
+  /// After [confirmGone] found the share there, or could not tell, it asks
+  /// the server again only after this long.
+  static const goneCheckBackoff = Duration(minutes: 5);
+
   final String accountId;
   final LinkShareStore _store;
   final LinkShareRenewal _renew;
@@ -69,7 +80,9 @@ final class LinkShareSession implements AccessTokenSource {
   Future<LinkShareToken>? _renewing;
   Future<LinkShareToken>? _authenticating;
   Future<void>? _pendingWrite;
+  Future<LinkShareGone?>? _confirmingGone;
   DateTime? _renewalBlockedUntil;
+  DateTime? _goneCheckBlockedUntil;
   DateTime? _authenticationBlockedUntil;
   int _authentications = 0;
   SessionEnded? _ended;
@@ -126,6 +139,48 @@ final class LinkShareSession implements AccessTokenSource {
   void noteGone(LinkShareGone failure) {
     if (_retired || _ended != null) return;
     unawaited(_end(failure).then<void>((_) {}, onError: (Object _) {}));
+  }
+
+  /// Whether the share of [token], whose request got a 500, is gone: v1
+  /// answers a gone share's token so before 2.7, but its renewal with a 404
+  /// code 3006 (v2 with a 401) on every version. The renewed token is kept;
+  /// a gone share ends the session. Null unless the share is known to be
+  /// gone, also within [goneCheckBackoff] of the last check; never throws.
+  Future<LinkShareGone?> confirmGone(String token) =>
+      _confirmingGone ??= _checkGone(token)
+          .whenComplete(() => _confirmingGone = null);
+
+  Future<LinkShareGone?> _checkGone(String token) async {
+    if (_ended case final LinkShareGone gone) return gone;
+    final now = _clock();
+    if (_retired ||
+        _ended != null ||
+        (_goneCheckBlockedUntil?.isAfter(now) ?? false)) {
+      return null;
+    }
+    _goneCheckBlockedUntil = now.add(goneCheckBackoff);
+    final LinkShareGone gone;
+    try {
+      await _keep(await _renew(token), receivedAt: now);
+      return null;
+    } on LinkShareGone catch (failure) {
+      gone = failure;
+    } on Object catch (error) {
+      _log.info(
+        'Guest $accountId: whether its share is gone is unknown: '
+        '${error.runtimeType}',
+      );
+      return null;
+    }
+    try {
+      await _end(gone);
+    } on Object catch (error) {
+      if (error is _Retired) return null;
+      _log.warning(
+        'Could not end the session of guest $accountId: ${error.runtimeType}',
+      );
+    }
+    return gone;
   }
 
   /// A token the guest sign-in has just stored.
@@ -427,6 +482,18 @@ final class LinkShareSessions {
 
   LinkShareSession forAccount(String accountId) =>
       _sessions.putIfAbsent(accountId, () => _create(accountId));
+
+  /// The [LinkShareGoneInterceptor] of [accountId]'s client on
+  /// [connection].
+  LinkShareGoneInterceptor goneInterceptor(
+    String accountId,
+    ServerConnection connection,
+  ) => LinkShareGoneInterceptor(
+    onGone: (failure) => forAccount(accountId).noteGone(failure),
+    confirmGone: serverErrorMayMeanShareGone(connection)
+        ? (token) => forAccount(accountId).confirmGone(token)
+        : null,
+  );
 
   /// The retired session stays registered, so a late request finds one
   /// that hands out nothing, until [signedIn] replaces it.

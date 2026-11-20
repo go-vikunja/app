@@ -1,0 +1,71 @@
+name: Contract matrix
+
+# The contract tests against the newest release of each supported Vikunja
+# line, from the support floor 2.3.0 (D13) to the latest, at night and for
+# every tag (D28); CI's job `contract` runs the latest release only. Each
+# image is pinned by its tag and the digest of its multi-platform index, the
+# latest one equal to the default of test_servers/docker-compose.yaml. 2.3.0
+# runs without immediate transactions, which stop it at a comment's
+# notifications; 2.4.0 to 2.6.0 stop only at a data export, which the tests
+# skip there (the compose file).
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  PUB_CACHE: ${{ github.workspace }}/.cache/pub
+
+jobs:
+  contract:
+    # The nightly run only where Linux minutes are free.
+    if: github.event_name != 'schedule' || github.repository == 'go-vikunja/app'
+    name: contract ${{ matrix.release }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - release: "2.3.0"
+            image: vikunja/vikunja:2.3.0@sha256:f6b80393c1998cd5cd0dc38d24762c59ab4c10000a6f1032ef5b554e262cab93
+            database_path: "/tmp/vikunja.db?_busy_timeout=30000&_x="
+          - release: "2.4.0"
+            image: vikunja/vikunja:2.4.0@sha256:1a5dd2d410b5359f689c77bbd1c66742cde1993f82d4adfe9aefa400ff1dd833
+          - release: "2.5.0"
+            image: vikunja/vikunja:2.5.0@sha256:22df4c1bc8843c28d383bc5f52b59e7b601bf5f6560b36b29c0a500833c77fa3
+          - release: "2.6.0"
+            image: vikunja/vikunja:2.6.0@sha256:417ada6f94e81f0267aa2f007d0a811fc82d38dd2aa58351e3ea520ca01c2ea5
+          - release: "2.7.1"
+            image: vikunja/vikunja:2.7.1@sha256:f7dc8428d10aef17f3075886d3c1c022f566ec456f88985f02c137f4fc534576
+          - release: "2.8.0"
+            image: vikunja/vikunja:2.8.0@sha256:35d937baf3b5d5803bed6b9e11d007448b7b536df9e4346dc35551e1072636c3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Cache Flutter
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/flutter
+          key: flutter-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('tool/ci/pins.sh') }}
+      - name: Cache pub
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/pub
+          key: pub-${{ runner.os }}-${{ hashFiles('pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+      - run: tool/ci/contract.sh
+        env:
+          VIKUNJA_APP_TEST_VIKUNJA_IMAGE: ${{ matrix.image }}
+          VIKUNJA_APP_TEST_DATABASE_PATH: ${{ matrix.database_path }}

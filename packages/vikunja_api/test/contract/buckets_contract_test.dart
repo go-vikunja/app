@@ -60,14 +60,14 @@ void main() {
         }) async {
           try {
             final response = await despiteWriteRaces(
-              () => dio.requestUri<Map<String, Object?>>(
-                at(path),
+              () => seedRequest<Map<String, Object?>>(
+                dio,
+                connection,
+                user.jwt,
+                method,
+                path,
                 data: body,
-                options: Options(
-                  method: method,
-                  contentType: contentType,
-                  headers: {'Authorization': 'Bearer ${user.jwt}'},
-                ),
+                contentType: contentType,
               ),
             );
             if (method != 'GET') await Future<void>.delayed(_pace);
@@ -106,7 +106,7 @@ void main() {
         tearDownAll(() => dio.close(force: true));
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             late _Seed seed;
 
             BucketsWritePort buckets() =>

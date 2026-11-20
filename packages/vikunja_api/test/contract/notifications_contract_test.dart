@@ -18,13 +18,15 @@ Future<Map<String, Object?>> _post(
   String path,
   Map<String, Object?> body,
 ) async {
-  final v2 = connection.apiBaseUri(ApiVersion.v2);
   try {
     final response = await despiteWriteRaces(
-      () => dio.postUri<Map<String, Object?>>(
-        v2.replace(path: '${v2.path}$path'),
+      () => seedRequest<Map<String, Object?>>(
+        dio,
+        connection,
+        user.jwt,
+        'POST',
+        path,
         data: body,
-        options: Options(headers: {'Authorization': 'Bearer ${user.jwt}'}),
       ),
     );
     return response.data!;
@@ -72,7 +74,7 @@ void main() {
         tearDownAll(() => dio.close(force: true));
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             late NotificationsPort notifications;
             late NotificationsWritePort writes;
             late int taskId;

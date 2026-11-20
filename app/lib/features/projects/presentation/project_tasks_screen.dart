@@ -35,6 +35,7 @@ import 'package:vikunja_mobile/features/projects/presentation/project_view_downl
 import 'package:vikunja_mobile/features/projects/presentation/project_view_kinds.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
+import 'package:vikunja_mobile/features/tasks/application/account_context_providers.dart';
 import 'package:vikunja_mobile/features/tasks/application/minimum_priority_provider.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/bulk_task_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
@@ -103,6 +104,7 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     read: (id) => _subscriptions().forProject(id),
     write: (id, {required subscribed}) =>
         _subscriptions().setProjectSubscribed(id, subscribed: subscribed),
+    optOuts: () => ref.read(activeServerHasFollowOptOutsProvider),
   );
 
   var _seen = false;
@@ -705,11 +707,13 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
   }
 
   /// Labelled by the state the menu opens with: disabled while it is read
-  /// or written, as a tap would do nothing; while it is unknown the tap
-  /// explains why and loads it again.
+  /// or written, as a tap would do nothing; while it is unknown, or a
+  /// follow through the parent that the server cannot stop for this project
+  /// alone, the tap explains why.
   PopupMenuItem<_Action> _followItem(AppLocalizations l10n) {
     final state = _follow.value;
     final following = state is FollowKnown && state.following;
+    final fixed = _follow.fixed;
     return PopupMenuItem(
       value: _Action.follow,
       enabled: switch (state) {
@@ -718,15 +722,16 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
       },
       child: Row(
         children: [
-          ProjectMenuIcon(
-            following
-                ? Icons.notifications_off_outlined
-                : Icons.notifications_outlined,
-          ),
+          ProjectMenuIcon(switch ((fixed, following)) {
+            (true, _) => Icons.notifications_active_outlined,
+            (_, true) => Icons.notifications_off_outlined,
+            _ => Icons.notifications_outlined,
+          }),
           const SizedBox(width: 12),
           Flexible(
             child: Text(switch (state) {
               FollowUnknown(loading: true) => l10n.followChecking,
+              _ when fixed => l10n.followingViaSomeProject,
               _ when following => l10n.unfollowProject,
               _ => l10n.followProject,
             }),

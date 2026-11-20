@@ -377,6 +377,30 @@ void main() {
       expect(inSheet('Mow the lawn'), findsOneWidget);
     });
 
+    testWidgets('by identifier, not the account where it names several '
+        'projects (Vikunja 2.3 keeps ab and AB apart)', (tester) async {
+      await seedAndPump(tester);
+      accounts.aliceData.projects.all = [
+        ...accounts.aliceData.projects.all,
+        sampleProject(id: 4, title: 'Lower', identifier: 'ab'),
+        sampleProject(id: 5, title: 'Upper', identifier: 'AB'),
+      ];
+      accounts.bobData.projects.all = [
+        sampleProject(id: 6, title: 'Chores', identifier: 'AB'),
+      ];
+      final sweep = sampleTask(id: 61, title: 'Sweep', projectId: 6);
+      accounts.bobData.tasks.all = [sweep];
+      accounts.bobData.resolver.online[const TaskByIdentifier('Ab', 61)] =
+          sweep;
+
+      await push(tester, '$_scheme://task/Ab-61');
+      await confirmSwitchTo(tester, 'Bob');
+
+      expect(activeAccountId(tester), accounts.bob.id);
+      expect(inSheet('Sweep'), findsOneWidget);
+      expect(accounts.aliceData.resolver.resolved, isEmpty);
+    });
+
     testWidgets('several accounts that have it: the user picks one', (
       tester,
     ) async {

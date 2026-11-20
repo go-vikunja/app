@@ -81,7 +81,7 @@ void main() {
         return response.statusCode!;
       }
 
-      for (final apiVersion in [ApiVersion.v2, ApiVersion.v1]) {
+      for (final apiVersion in contractApiVersions.reversed) {
         group('over ${apiVersion.pathSegment}', () {
           final accountId = 'contract-${apiVersion.pathSegment}';
           late AccountSecurityRepository repository;

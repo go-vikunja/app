@@ -107,6 +107,55 @@ void main() {
       expect(read.requests, isEmpty);
     });
 
+    group('identifiers that differ only in case (Vikunja 2.3)', () {
+      setUp(() async {
+        await db.projectsDao.upsertAll([
+          sampleProject(id: 20, title: 'Lower', identifier: 'ab'),
+          sampleProject(id: 21, title: 'Upper', identifier: 'AB'),
+        ]);
+        await db.tasksDao.upsertAll([
+          indexed(50, projectId: 20, index: 1),
+          indexed(51, projectId: 21, index: 1),
+        ]);
+      });
+
+      test('the exact one is local', () async {
+        expect(
+          (await resolver.resolve(const TaskByIdentifier('ab', 1))).id,
+          50,
+        );
+        expect(
+          (await resolver.resolve(const TaskByIdentifier('AB', 1))).id,
+          51,
+        );
+        expect(
+          (await db.tasksDao.findByIdentifier('AB', 2))?.projectId,
+          21,
+          reason: 'the project also without the task',
+        );
+        expect(read.requests, isEmpty);
+      });
+
+      test('another case names both and is no local project: it goes to '
+          'the server as typed', () async {
+        read.allProjects = [
+          sampleProject(id: 20, title: 'Lower', identifier: 'ab'),
+          sampleProject(id: 21, title: 'Upper', identifier: 'AB'),
+        ];
+
+        expect(await db.tasksDao.findByIdentifier('Ab', 1), isNull);
+        expect(
+          await resolver.findLocal(const TaskByIdentifier('Ab', 1)),
+          isNull,
+        );
+        await expectLater(
+          resolver.resolve(const TaskByIdentifier('Ab', 1)),
+          throwsA(isA<NotFound>().having((f) => f.code, 'code', 3001)),
+        );
+        expect(read.requests, ['task by-index Ab 1']);
+      });
+    });
+
     test('a temporary id follows its remap', () async {
       await db
           .into(db.taskIdRemaps)

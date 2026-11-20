@@ -32,7 +32,7 @@ import 'package:vikunja_mobile/core/db/tables/users.dart';
 part 'app_database.g.dart';
 
 /// One account's data. Schema changes bump [schemaVersion], get a migration
-/// and a new dump under `drift_schemas/` (see the README).
+/// and a new dump under `drift_schemas/` (docs/development.md#generated-code).
 @DriftDatabase(
   tables: [
     Projects,

@@ -24,14 +24,23 @@ final class LocalBucketRepository implements BucketRepository {
   new(
     this._db,
     this._write, {
+    required this._read,
+    required ServerVersion? serverVersion,
     required this._refreshBoard,
     DateTime Function()? now,
-  }) : _filters = LocalFilters(_db, now: now ?? DateTime.now);
+  }) : _filters = LocalFilters(_db, now: now ?? DateTime.now),
+       _storesGoneBuckets = !(serverVersion?.isAtLeast(2, 5) ?? false);
 
   final AppDatabase _db;
   final VikunjaWriteClient _write;
+  final VikunjaReadClient _read;
   final BoardRefresh _refreshBoard;
   final LocalFilters _filters;
+
+  /// Before 2.5 the server stores a done or default bucket it no longer
+  /// has as sent, where later ones store none; tasks sent there leave the
+  /// board.
+  final bool _storesGoneBuckets;
 
   @override
   Future<void> create(int projectId, int viewId, String title) async {
@@ -123,10 +132,15 @@ final class LocalBucketRepository implements BucketRepository {
     // The default may have changed on the web since the last sync.
     final view = await _write.views.setBuckets(projectId, viewId);
     await _storeView(viewId, view);
-    var plan = await _planDeletion(projectId, viewId, view, bucketId);
+    final defaultGone =
+        view.defaultBucketId != bucketId &&
+        !await _stillHas(projectId, viewId, view.defaultBucketId);
+    Future<BucketDeletion?> planned() =>
+        _planDeletion(projectId, viewId, view, bucketId, defaultGone);
+    var plan = await planned();
     if (plan != null && plan.isFallback && !plan.defaultFirst) {
       await _refreshBoard(projectId, viewId);
-      plan = await _planDeletion(projectId, viewId, view, bucketId);
+      plan = await planned();
     }
     if (plan != null && plan.defaultFirst) {
       await _deleteAfterNewDefault(
@@ -134,7 +148,7 @@ final class LocalBucketRepository implements BucketRepository {
         viewId,
         doomed,
         newDefault: plan.tasksGoTo,
-        oldDefaultId: view.defaultBucketId,
+        oldDefaultId: defaultGone ? 0 : view.defaultBucketId,
       );
     } else {
       await _write.buckets.delete(projectId, viewId, bucketId);
@@ -160,6 +174,7 @@ final class LocalBucketRepository implements BucketRepository {
     int viewId,
     ProjectView view,
     int bucketId,
+    bool defaultGone,
   ) async {
     // The column as the board shows it, its filter evaluated here.
     final source = await _db.tasksDao.loadBoard(
@@ -187,12 +202,14 @@ final class LocalBucketRepository implements BucketRepository {
       bucketId,
       defaultBucketId: view.defaultBucketId,
       holdsTasks: column != null && columnHoldsTasks(column),
+      defaultGone: defaultGone,
     );
   }
 
-  /// A failed delete puts the old default back: even when the server did
-  /// delete the bucket before the answer was lost, its tasks have moved
-  /// then and the old default changes nothing more.
+  /// A failed delete, or a failed check that the new default exists, puts
+  /// the old default back: even when the server did delete the bucket
+  /// before the answer was lost, its tasks have moved then and the old
+  /// default changes nothing more.
   Future<void> _deleteAfterNewDefault(
     int projectId,
     int viewId,
@@ -211,56 +228,72 @@ final class LocalBucketRepository implements BucketRepository {
       throw const NewDefaultRefused();
     }
     await _storeView(viewId, answered);
-    if (answered.defaultBucketId != newDefault.id) {
+    if (answered.defaultBucketId == newDefault.id) {
       try {
-        if (answered.defaultBucketId != oldDefaultId) {
-          await _storeView(
-            viewId,
-            await _write.views.setBuckets(
-              projectId,
-              viewId,
-              defaultBucketId: oldDefaultId,
-            ),
+        if (await _stillHas(projectId, viewId, newDefault.id)) {
+          await _write.buckets.delete(projectId, viewId, doomed.id);
+          return;
+        }
+      } on Object catch (failure) {
+        try {
+          await _putDefaultBack(projectId, viewId, oldDefaultId);
+        } on Object {
+          throw DeleteFailedAfterNewDefault(
+            failure,
+            bucket: doomed,
+            newDefault: newDefault,
           );
         }
-      } finally {
-        _settle(projectId, viewId, 'Bucket ${newDefault.id} is gone');
+        rethrow;
       }
-      throw NewDefaultGone(bucket: doomed, newDefault: newDefault);
     }
     try {
-      await _write.buckets.delete(projectId, viewId, doomed.id);
-    } on Object catch (failure) {
-      try {
-        await _storeView(
-          viewId,
-          await _write.views.setBuckets(
-            projectId,
-            viewId,
-            defaultBucketId: oldDefaultId,
-          ),
-        );
-      } on Object {
-        throw DeleteFailedAfterNewDefault(
-          failure,
-          bucket: doomed,
-          newDefault: newDefault,
-        );
+      if (answered.defaultBucketId != oldDefaultId) {
+        await _putDefaultBack(projectId, viewId, oldDefaultId);
       }
-      rethrow;
+    } finally {
+      _settle(projectId, viewId, 'Bucket ${newDefault.id} is gone');
     }
+    throw NewDefaultGone(bucket: doomed, newDefault: newDefault);
+  }
+
+  Future<void> _putDefaultBack(int projectId, int viewId, int oldDefaultId) =>
+      _setBuckets(projectId, viewId, defaultBucketId: oldDefaultId);
+
+  /// From 2.5 on the answer of the view write that stored [bucketId] says
+  /// so already.
+  Future<bool> _stillHas(int projectId, int viewId, int bucketId) async {
+    if (!_storesGoneBuckets || bucketId == 0) return true;
+    final board = await _read.buckets.board(projectId, viewId, perPage: 1);
+    return board.any((column) => column.bucket.id == bucketId);
+  }
+
+  Future<ProjectView> _setBuckets(
+    int projectId,
+    int viewId, {
+    int? doneBucketId,
+    int? defaultBucketId,
+  }) async {
+    final view = await _write.views.setBuckets(
+      projectId,
+      viewId,
+      doneBucketId: doneBucketId,
+      defaultBucketId: defaultBucketId,
+    );
+    await _storeView(viewId, view);
+    return view;
   }
 
   @override
   Future<void> setDoneBucket(int projectId, int viewId, int? bucketId) async {
-    await _storeView(
+    final view = await _setBuckets(
+      projectId,
       viewId,
-      await _write.views.setBuckets(
-        projectId,
-        viewId,
-        doneBucketId: bucketId ?? 0,
-      ),
+      doneBucketId: bucketId ?? 0,
     );
+    if (!await _stillHas(projectId, viewId, view.doneBucketId)) {
+      await _setBuckets(projectId, viewId, doneBucketId: 0);
+    }
     _settle(projectId, viewId, 'Set the done bucket of view $viewId');
   }
 
@@ -270,14 +303,14 @@ final class LocalBucketRepository implements BucketRepository {
     int viewId,
     int? bucketId,
   ) async {
-    await _storeView(
+    final view = await _setBuckets(
+      projectId,
       viewId,
-      await _write.views.setBuckets(
-        projectId,
-        viewId,
-        defaultBucketId: bucketId ?? 0,
-      ),
+      defaultBucketId: bucketId ?? 0,
     );
+    if (!await _stillHas(projectId, viewId, view.defaultBucketId)) {
+      await _setBuckets(projectId, viewId, defaultBucketId: 0);
+    }
     _settle(projectId, viewId, 'Set the default bucket of view $viewId');
   }
 

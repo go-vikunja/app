@@ -69,12 +69,22 @@ void main() {
         ]) async {
           try {
             final response = await despiteWriteRaces(
-              () => dio.requestUri<Map<String, Object?>>(
-                at(apiVersion, path),
-                data: body,
-                options: authorized(contentType: contentType)
-                    .copyWith(method: method),
-              ),
+              () => apiVersion == ApiVersion.v2
+                  ? seedRequest<Map<String, Object?>>(
+                      dio,
+                      connection,
+                      user.jwt,
+                      method,
+                      path,
+                      data: body,
+                      contentType: contentType,
+                    )
+                  : dio.requestUri<Map<String, Object?>>(
+                      at(apiVersion, path),
+                      data: body,
+                      options: authorized(contentType: contentType)
+                          .copyWith(method: method),
+                    ),
             );
             return response.data ?? const {};
           } on DioException catch (error) {
@@ -137,7 +147,7 @@ void main() {
             'title': 'Lists contract',
           });
           final projectId = project['id']! as int;
-          final views = await readClient(ApiVersion.v2).projects
+          final views = await readClient(contractApiVersions.last).projects
               .read(projectId)
               .then((project) => project.views);
           final listViewId = views
@@ -184,17 +194,29 @@ void main() {
           // a row agree.
           List<Task>? settled;
           for (var attempt = 0; attempt < 20; attempt++) {
-            final items = (await readClient(ApiVersion.v2).tasks.listInView(
-              projectId,
-              listViewId,
-              TaskQuery(
-                sort: const [TaskSort(TaskSortField.position)],
-                perPage: perPage,
-              ),
-            )).items;
+            final items =
+                (await readClient(contractApiVersions.last).tasks.listInView(
+                  projectId,
+                  listViewId,
+                  TaskQuery(
+                    sort: const [TaskSort(TaskSortField.position)],
+                    perPage: perPage,
+                  ),
+                )).items;
             if (settled != null && _sameTasks(settled, items)) break;
             settled = items;
             await Future<void>.delayed(const Duration(milliseconds: 250));
+          }
+          final listed = await readClient(contractApiVersions.last).projects
+              .listAll();
+          if (!listed.any((project) => project.savedFilterId != null)) {
+            // 2.3 gives a new user no saved filter; the one of 2.4 and newer.
+            await send('POST', ApiVersion.v2, '/filters', {
+              'title': 'My Open Tasks',
+              'filters': {
+                'filter': 'done = false && assignees = ${user.username}',
+              },
+            });
           }
           reads = {};
           for (final apiVersion in connection.apiVersions) {
@@ -236,7 +258,7 @@ void main() {
         tearDownAll(() => dio.close(force: true));
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             test("a new user's avatar is the initials provider's SVG", () {
               final avatar = reads[apiVersion]!.avatar;
 
@@ -307,7 +329,7 @@ void main() {
           });
         }
 
-        test('v1 and v2 agree', () {
+        test('v1 and v2 agree', skip: skipWithout(ApiVersion.v2), () {
           final v1 = reads[ApiVersion.v1]!;
           final v2 = reads[ApiVersion.v2]!;
 
@@ -321,16 +343,40 @@ void main() {
         test(
           'the two new settings, written the way the web writes them',
           () async {
-            final savedFilterId = reads[ApiVersion.v2]!.savedFilter.id;
+            final savedFilterId =
+                reads[contractApiVersions.last]!.savedFilter.id;
 
-            // The web's v2 settings form: a merge-patch of frontend_settings.
-            await send('PATCH', ApiVersion.v2, '/user/settings/general', {
-              'frontend_settings': {
-                'filter_id_used_on_overview': savedFilterId,
-                'minimum_priority': 4,
-              },
-            }, 'application/merge-patch+json');
-            for (final apiVersion in ApiVersion.values) {
+            // v1 only replaces the whole object.
+            Future<void> replaceFrontendSettings(
+              Map<String, Object?> changes,
+            ) async {
+              final current = await send('GET', ApiVersion.v1, '/user');
+              final settings = current['settings']! as Map<String, Object?>;
+              await send('POST', ApiVersion.v1, '/user/settings/general', {
+                ...settings,
+                'frontend_settings': {
+                  ...?settings['frontend_settings'] as Map<String, Object?>?,
+                  ...changes,
+                },
+              });
+            }
+
+            final written = {
+              'filter_id_used_on_overview': savedFilterId,
+              'minimum_priority': 4,
+            };
+            // The web's v2 settings form from 2.7: a merge-patch of
+            // frontend_settings.
+            if (connection.capabilities.has(
+              Capability.userSettingsMergePatch,
+            )) {
+              await send('PATCH', ApiVersion.v2, '/user/settings/general', {
+                'frontend_settings': written,
+              }, 'application/merge-patch+json');
+            } else {
+              await replaceFrontendSettings(written);
+            }
+            for (final apiVersion in contractApiVersions) {
               final settings = await settingsThrough(apiVersion);
               expect(
                 settings.filterIdUsedOnOverview,
@@ -340,18 +386,11 @@ void main() {
               expect(settings.minimumPriority, 4);
             }
 
-            // v1 only replaces the whole object.
-            final current = await send('GET', ApiVersion.v1, '/user');
-            final settings = current['settings']! as Map<String, Object?>;
-            await send('POST', ApiVersion.v1, '/user/settings/general', {
-              ...settings,
-              'frontend_settings': {
-                ...?settings['frontend_settings'] as Map<String, Object?>?,
-                'filter_id_used_on_overview': null,
-                'minimum_priority': 1,
-              },
+            await replaceFrontendSettings({
+              'filter_id_used_on_overview': null,
+              'minimum_priority': 1,
             });
-            for (final apiVersion in ApiVersion.values) {
+            for (final apiVersion in contractApiVersions) {
               final settings = await settingsThrough(apiVersion);
               expect(
                 settings.filterIdUsedOnOverview,

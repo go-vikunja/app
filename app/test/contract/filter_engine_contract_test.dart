@@ -88,6 +88,7 @@ void main() {
             .connect('http://localhost:$contractServerPort');
         user = await registerAndLogin(dio, connection);
         seeder = Seeder(dio, connection, user);
+        await ensureMyOpenTasks(seeder, user);
         // Identifiers are unique on the whole instance.
         final suffix = Random.secure()
             .nextInt(1 << 16)
@@ -356,7 +357,7 @@ void main() {
         ];
       }
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         group('over ${apiVersion.pathSegment}', () {
           late AppDatabase db;
           late DefaultSyncEngine engine;
@@ -450,11 +451,17 @@ void main() {
                     location: locationForFilters([zone]),
                     now: DateTime.now(),
                   );
-                  final server = await serverIds(
-                    filter,
-                    zone: zone,
-                    nulls: nulls,
-                  );
+                  final Set<int> server;
+                  try {
+                    server = await serverIds(filter, zone: zone, nulls: nulls);
+                  } on DomainError catch (error) {
+                    // Servers before 2.6 know no created_by filter.
+                    if (error.code != 4016 ||
+                        connection.info.version!.isAtLeast(2, 6)) {
+                      rethrow;
+                    }
+                    continue;
+                  }
                   expect(
                     local?.matchingIds(candidates),
                     server,

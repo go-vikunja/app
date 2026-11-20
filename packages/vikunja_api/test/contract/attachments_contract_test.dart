@@ -106,7 +106,7 @@ void main() {
           user = await registerAndLogin(dio, connection);
           temp = Directory.systemTemp.createTempSync('vikunja_app_attachments');
 
-          final v2 = clients(ApiVersion.v2).writes;
+          final v2 = clients(contractApiVersions.last).writes;
           projectId = (await paced(
             () => v2.projects.create(const NewProject(title: 'Attachments')),
           )).id;
@@ -138,7 +138,7 @@ void main() {
         });
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             late VikunjaReadClient reads;
             late AttachmentsWritePort attachments;
             late TasksWritePort tasks;

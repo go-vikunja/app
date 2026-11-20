@@ -83,6 +83,7 @@ class TaskDetailHeader extends StatelessWidget {
                 valueListenable: follow,
                 builder: (context, state, _) => FollowButton(
                   state: task.id < 0 ? const FollowUnknown() : state,
+                  fixed: follow.fixed,
                   onPressed: onFollow,
                 ),
               ),

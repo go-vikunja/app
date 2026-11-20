@@ -11,6 +11,9 @@ final class WriteTransport {
   new(this._dio, ServerConnection connection)
     : version = connection.preferredApiVersion,
       maxFileSizeBytes = connection.info.maxFileSizeBytes,
+      _patchRefusesSubscription =
+          connection.preferredApiVersion == ApiVersion.v2 &&
+          !(connection.info.version?.isAtLeast(2, 5) ?? true),
       _base = connection.apiBaseUri(connection.preferredApiVersion);
 
   final Dio _dio;
@@ -18,6 +21,11 @@ final class WriteTransport {
 
   /// The server's upload limit; null when `/info` names none it parses.
   final int? maxFileSizeBytes;
+
+  /// Vikunja 2.4 applies a merge-patch to the object as it answers it,
+  /// whose `subscription` it then refuses (422, an entity name where its
+  /// schema wants a number) on anything the user follows.
+  final bool _patchRefusesSubscription;
   final Uri _base;
 
   String get createMethod => switch (version) {
@@ -92,24 +100,31 @@ final class WriteTransport {
     }
   }
 
+  /// [changes] as the merge-patch of a task or project, which the user may
+  /// follow. Where the server refuses the subscription, the patch removes
+  /// it from what is merged; the server keeps it all the same.
+  Map<String, Object?> followablePatch(Map<String, Object?> changes) =>
+      _patchRefusesSubscription ? {...changes, 'subscription': null} : changes;
+
   /// Writes [changes] to the object at [path]: a v2 merge-patch, read when
   /// the server answers 304 for no change, or on v1 a read of the object
   /// posted back whole with [changes] overlaid. The v1 update is a full
   /// replace that clears or resets what it is not sent (a project's colour,
   /// identifier, favourite and archive state, and its position, which
   /// renumbers the siblings; a view's kind, which turns a board into a
-  /// list).
+  /// list). A [followable] object is patched through [followablePatch].
   Future<Response<Object?>> patchOrReplace(
     String path,
     String what,
-    Map<String, Object?> changes,
-  ) async {
+    Map<String, Object?> changes, {
+    bool followable = false,
+  }) async {
     switch (version) {
       case ApiVersion.v2:
         final response = await send(
           'PATCH',
           path,
-          body: changes,
+          body: followable ? followablePatch(changes) : changes,
           contentType: mergePatchContentType,
           acceptNotModified: true,
         );

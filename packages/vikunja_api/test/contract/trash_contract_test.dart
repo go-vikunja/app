@@ -49,15 +49,15 @@ void main() {
           String path,
           Map<String, Object?> body,
         ) async {
-          final v2 = connection.apiBaseUri(ApiVersion.v2);
           try {
             final response = await despiteWriteRaces(
-              () => dio.postUri<Map<String, Object?>>(
-                v2.replace(path: '${v2.path}$path'),
+              () => seedRequest<Map<String, Object?>>(
+                dio,
+                connection,
+                user.jwt,
+                'POST',
+                path,
                 data: body,
-                options: Options(
-                  headers: {'Authorization': 'Bearer ${user.jwt}'},
-                ),
               ),
             );
             await Future<void>.delayed(_pace);

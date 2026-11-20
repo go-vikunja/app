@@ -112,7 +112,7 @@ void main() {
 
       tearDownAll(() => dio.close(force: true));
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         test("mirrors the web's changes after one refresh over "
             '${apiVersion.pathSegment}', () async {
           final user = await registerAndLogin(dio, connection);

@@ -418,7 +418,7 @@ final class _ProjectsWriteApi implements ProjectsWritePort {
       await _transport.patchOrReplace('/projects/$projectId', 'project', {
         'position': position,
         'parent_project_id': parentProjectId,
-      }),
+      }, followable: true),
     );
   }
 
@@ -450,7 +450,14 @@ final class _ProjectsWriteApi implements ProjectsWritePort {
     if (body.isEmpty) return _parse(await _transport.send('GET', path));
     final rebase = changes.description == null ? null : rebaseDescription;
     if (rebase == null) {
-      return _parse(await _transport.patchOrReplace(path, 'project', body));
+      return _parse(
+        await _transport.patchOrReplace(
+          path,
+          'project',
+          body,
+          followable: true,
+        ),
+      );
     }
     final current = _transport.decode<Map<String, Object?>>(
       await _transport.send('GET', path),
@@ -465,6 +472,7 @@ final class _ProjectsWriteApi implements ProjectsWritePort {
         path,
         'project',
         rebased,
+        followable: true,
       ),
       ApiVersion.v1 => await _transport.send(
         'POST',
@@ -926,7 +934,7 @@ final class _TasksWriteApi implements TasksWritePort {
     final response = await _transport.send(
       'PATCH',
       '/tasks/$id',
-      body: body,
+      body: _transport.followablePatch(body),
       contentType: mergePatchContentType,
       acceptNotModified: true,
     );

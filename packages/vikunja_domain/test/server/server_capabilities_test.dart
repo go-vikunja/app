@@ -120,6 +120,7 @@ void main() {
         Capability.websocket,
         Capability.bulkCreateTasks,
         Capability.pendingEmail,
+        Capability.subscriptionOptOuts,
         Capability.byIndexRedirect,
         Capability.userSettingsMergePatch,
       });
@@ -139,6 +140,7 @@ void main() {
         Capability.websocket,
         Capability.bulkCreateTasks,
         Capability.pendingEmail,
+        Capability.subscriptionOptOuts,
         Capability.byIndexRedirect,
         Capability.userSettingsMergePatch,
         Capability.trash,
@@ -288,6 +290,54 @@ void main() {
         apiVersions: _both,
       );
       expect(capabilities.has(Capability.remindersToSubscribers), isFalse);
+    });
+  });
+
+  group('opting out of a follow through a parent project', () {
+    for (final version in ['v2.6.0', 'v2.7.1', 'v2.8.0', 'dev']) {
+      for (final (apiVersions, api) in [(_both, 'v2'), (_v1, 'only v1')]) {
+        test('$version with $api has it', () {
+          final capabilities = ServerCapabilities.derive(
+            info: _info(version),
+            apiVersions: apiVersions,
+          );
+          expect(capabilities.has(Capability.subscriptionOptOuts), isTrue);
+        });
+      }
+    }
+
+    for (final (version, apiVersions) in [
+      ('v2.3.0', _v1),
+      ('v2.4.0', _both),
+      ('v2.5.0', _both),
+      ('v2.5.9-2-gabc1234', _both),
+    ]) {
+      test('$version has none: the server refuses it with a 403', () {
+        final capabilities = ServerCapabilities.derive(
+          info: _info(version),
+          apiVersions: apiVersions,
+        );
+        expect(capabilities.has(Capability.subscriptionOptOuts), isFalse);
+      });
+    }
+
+    test('an unknown version with v2 (2.4 or newer) has it: the app tries, '
+        'and an older server refuses with a 403', () {
+      for (final info in [_info('banana'), const ServerInfo(version: null)]) {
+        final capabilities = ServerCapabilities.derive(
+          info: info,
+          apiVersions: _both,
+        );
+        expect(capabilities.has(Capability.subscriptionOptOuts), isTrue);
+      }
+    });
+
+    test('an unknown version without v2 has none', () {
+      final capabilities = ServerCapabilities.derive(
+        info: _info('banana'),
+        apiVersions: _v1,
+      );
+      expect(capabilities.has(Capability.subscriptionOptOuts), isFalse);
     });
   });
 

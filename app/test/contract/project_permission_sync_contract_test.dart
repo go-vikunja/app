@@ -46,7 +46,7 @@ void main() {
 
       tearDownAll(() => dio.close(force: true));
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         test("a share is read, raised and removed through the guest's "
             'syncs over ${apiVersion.pathSegment}', () async {
           final only = onlyApiVersion(connection, apiVersion);

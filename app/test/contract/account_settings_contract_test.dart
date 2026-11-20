@@ -134,7 +134,7 @@ void main() {
       Future<Map<String, Object?>> rawSettings() async =>
           (await seeder.get('/user'))['settings']! as Map<String, Object?>;
 
-      for (final apiVersion in [ApiVersion.v2, ApiVersion.v1]) {
+      for (final apiVersion in contractApiVersions.reversed) {
         group('over ${apiVersion.pathSegment}', () {
           final accountId = 'contract-${apiVersion.pathSegment}';
           late ProviderContainer container;
@@ -282,15 +282,19 @@ void main() {
               ),
               throwsA(isA<DomainError>().having((e) => e.code, 'code', 1025)),
             );
-            await _pace();
-            await expectLater(
-              repository.update(
-                const UserSettingsChanges(
-                  defaultProjectId: SettingChange.set(999999),
+            // Before 2.7 the server stores a default project it does not
+            // have.
+            if (connection.info.version!.isAtLeast(2, 7)) {
+              await _pace();
+              await expectLater(
+                repository.update(
+                  const UserSettingsChanges(
+                    defaultProjectId: SettingChange.set(999999),
+                  ),
                 ),
-              ),
-              throwsA(isA<DomainError>().having((e) => e.code, 'code', 3017)),
-            );
+                throwsA(isA<DomainError>().having((e) => e.code, 'code', 3017)),
+              );
+            }
             await _pace();
 
             expect(await stored(), before);

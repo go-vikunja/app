@@ -168,18 +168,31 @@ class ShareInbox(private val context: Context, messenger: BinaryMessenger) :
             return uris.take(MAX_FILES)
         }
 
-        fun isForeignContent(context: Context, uri: Uri): Boolean {
-            if (uri.scheme != ContentResolver.SCHEME_CONTENT) return false
+        fun isForeignContent(context: Context, uri: Uri): Boolean =
+            isForeignContent(uri.scheme, uri.authority, context.packageName) { authority ->
+                context.packageManager.resolveContentProvider(authority, 0)?.packageName
+            }
+
+        // providerPackage: the package of the provider with that authority,
+        // null for none the app can see.
+        internal fun isForeignContent(
+            scheme: String?,
+            uriAuthority: String?,
+            ownPackage: String,
+            providerPackage: (String) -> String?,
+        ): Boolean {
+            if (scheme != ContentResolver.SCHEME_CONTENT) return false
             // "10@authority" addresses another Android user's provider; the
             // part after the @ names the provider.
-            val authority = uri.authority?.substringAfterLast('@') ?: return false
-            if (authority.isEmpty() || authority.startsWith(context.packageName)) return false
+            val authority = uriAuthority?.substringAfterLast('@') ?: return false
+            if (authority.isEmpty() || authority.startsWith(ownPackage)) return false
+            // A lookup that fails cannot rule out the app's own provider.
             val provider = try {
-                context.packageManager.resolveContentProvider(authority, 0)
+                providerPackage(authority)
             } catch (_: RuntimeException) {
-                null
+                return false
             }
-            return provider?.packageName != context.packageName
+            return provider != ownPackage
         }
     }
 }

@@ -47,9 +47,108 @@ ServerVersion testServerVersion(String? image) {
   return version;
 }
 
+/// The test server's port; VIKUNJA_CONTRACT_PORT points the tests at a
+/// server on another port, as it does the app's.
+final int contractPort =
+    int.tryParse(Platform.environment['VIKUNJA_CONTRACT_PORT'] ?? '') ?? 34527;
+
 final List<({int port, String version})> contractServers = [
-  (port: 34527, version: contractServerVersion.display),
+  (port: contractPort, version: contractServerVersion.display),
 ];
+
+/// Vikunja serves /api/v2 from 2.4.0; 2.3, the support floor (D13), has
+/// /api/v1 only.
+final bool contractServerHasV2 = contractServerVersion.isAtLeast(2, 4);
+
+/// The skip reason of a group or test over [apiVersion] on a test server
+/// without it.
+String? skipWithout(ApiVersion apiVersion) =>
+    apiVersion == ApiVersion.v2 && !contractServerHasV2
+    ? 'servers before 2.4.0 have no /api/v2'
+    : null;
+
+final List<ApiVersion> contractApiVersions = [
+  for (final apiVersion in ApiVersion.values)
+    if (skipWithout(apiVersion) == null) apiVersion,
+];
+
+/// [path] on /api/v2, or on /api/v1 on a server without it, for a raw
+/// request that is the same on both.
+Uri newestApi(ServerConnection connection, String path) {
+  final base = connection.apiBaseUri(
+    connection.apiVersions.contains(ApiVersion.v2)
+        ? ApiVersion.v2
+        : ApiVersion.v1,
+  );
+  return base.replace(path: '${base.path}$path');
+}
+
+/// A raw seeding request written for /api/v2. A server without it (2.3)
+/// gets it on /api/v1 in v1's verbs: a create (POST) is a PUT there and a
+/// replace (PUT) a POST; a merge patch becomes a read of the object, posted
+/// back whole with the patch applied. A POST that creates nothing goes
+/// through [newestApi] instead.
+Future<Response<T>> seedRequest<T>(
+  Dio dio,
+  ServerConnection connection,
+  String jwt,
+  String method,
+  String path, {
+  Object? data,
+  String? contentType,
+}) async {
+  final hasV2 = connection.apiVersions.contains(ApiVersion.v2);
+  final uri = newestApi(connection, path);
+  Options options(String verb, [String? type]) => Options(
+    method: verb,
+    contentType: type,
+    headers: {'Authorization': 'Bearer $jwt'},
+  );
+  if (hasV2) {
+    return await dio.requestUri<T>(
+      uri,
+      data: data,
+      options: options(method, contentType),
+    );
+  }
+  if (method == 'PATCH') {
+    final current = await dio.getUri<Map<String, Object?>>(
+      uri,
+      options: options('GET'),
+    );
+    return await dio.requestUri<T>(
+      uri,
+      data: mergePatched(current.data!, data! as Map<String, Object?>),
+      options: options('POST'),
+    );
+  }
+  final verb = switch (method) {
+    'POST' => 'PUT',
+    'PUT' => 'POST',
+    _ => method,
+  };
+  return await dio.requestUri<T>(
+    uri,
+    data: data,
+    options: options(verb, contentType),
+  );
+}
+
+/// [patch] applied to [target] as a JSON merge patch (RFC 7396).
+Map<String, Object?> mergePatched(
+  Map<String, Object?> target,
+  Map<String, Object?> patch,
+) => {
+  for (final MapEntry(:key, :value) in target.entries)
+    if (!patch.containsKey(key)) key: value,
+  for (final MapEntry(:key, :value) in patch.entries)
+    if (value != null)
+      key: switch ((target[key], value)) {
+        (final Map<String, Object?> current, final Map<String, Object?> v) =>
+          mergePatched(current, v),
+        _ => value,
+      },
+};
 
 Dio contractDio() => Dio(
   BaseOptions(

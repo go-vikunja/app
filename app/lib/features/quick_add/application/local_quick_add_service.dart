@@ -105,14 +105,14 @@ final class LocalQuickAddService implements QuickAddService {
     }
 
     final named = switch (parsed.project) {
-      final name? => projectsNamed(name, _selectableProjects),
+      final name? => _projectsNamed(name, _selectableProjects),
       null => const <Project>[],
     };
     final project = named.firstOrNull;
     final unmatchedProject = project == null ? parsed.project : null;
     final unmatchedReadOnly =
         unmatchedProject != null &&
-        projectsNamed(unmatchedProject, _unarchivedProjects).isNotEmpty;
+        _projectsNamed(unmatchedProject, _unarchivedProjects).isNotEmpty;
     if (unmatchedProject != null) {
       parsed = _parsedKeepingProject(
         line,
@@ -389,7 +389,10 @@ final class LocalQuickAddService implements QuickAddService {
   /// applies.
   int? _inheritedProjectId(IndentedLine line) =>
       switch (line.inheritedProject) {
-        final name? => projectsNamed(name, _selectableProjects).firstOrNull?.id,
+        final name? => _projectsNamed(
+          name,
+          _selectableProjects,
+        ).firstOrNull?.id,
         null => null,
       };
 
@@ -511,6 +514,11 @@ final class LocalQuickAddService implements QuickAddService {
     }
     return title.contains(' ') ? '$prefix"$title"' : '$prefix$title';
   }
+
+  // An identifier is judged among all the user's projects, so that one
+  // the task cannot go to is not mistaken for its case twin on 2.3.
+  List<Project> _projectsNamed(String name, List<Project> candidates) =>
+      projectsNamed(name, candidates, known: _snapshot.projects);
 
   // Archived projects and those the user may only read would refuse the
   // task.

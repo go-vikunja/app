@@ -37,7 +37,7 @@ void main() {
 
       tearDownAll(() => dio.close(force: true));
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         test('a team made, changed, staffed, left and deleted over '
             '${apiVersion.pathSegment}', () async {
           final name = apiVersion.pathSegment;

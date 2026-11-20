@@ -101,6 +101,14 @@ final class SessionCheck {
       final gone = LinkShareGone(message: failure.message);
       session.noteGone(gone);
       throw gone;
+    } on ServerFailure catch (failure) {
+      if (failure.statusCode != 500 ||
+          !serverErrorMayMeanShareGone(entry.connection)) {
+        rethrow;
+      }
+      final gone = await session.confirmGone(await session.validAccessToken());
+      if (gone == null) rethrow;
+      throw gone;
     }
   }
 

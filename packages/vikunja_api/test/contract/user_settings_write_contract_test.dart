@@ -46,6 +46,15 @@ final List<int> _pixel = base64Decode(
 
 typedef _Path = ({String name, ServerConnection connection});
 
+/// The paths of the round trips: the v2 merge-patch from 2.7, the v2 full
+/// PUT and the v1 full POST.
+String? _skipPath(int index) => switch (index) {
+  0 when !contractServerVersion.isAtLeast(2, 7) =>
+    'servers before 2.7 have no settings merge-patch',
+  1 => skipWithout(ApiVersion.v2),
+  _ => null,
+};
+
 void main() {
   group('user settings writes on local Docker servers', skip: contractSkip, () {
     for (final (:port, :version) in contractServers) {
@@ -69,10 +78,7 @@ void main() {
               connection: over,
             );
 
-        Uri v2(String path) {
-          final base = connection.apiBaseUri(ApiVersion.v2);
-          return base.replace(path: '${base.path}$path');
-        }
+        Uri v2(String path) => newestApi(connection, path);
 
         Options authorized({String? contentType}) => Options(
           headers: {'Authorization': 'Bearer ${user.jwt}'},
@@ -128,7 +134,7 @@ void main() {
           user = await registerAndLogin(dio, connection);
           expect(
             connection.capabilities.has(Capability.userSettingsMergePatch),
-            isTrue,
+            contractServerVersion.isAtLeast(2, 7),
           );
           final writes = createWriteClient(
             dio: authenticated(connection),
@@ -159,13 +165,35 @@ void main() {
                   .firstOrNull
                   ?.id ??
               -2;
-          await paced(
-            () => dio.patchUri<Object?>(
-              v2('/user/settings/general'),
-              data: {'frontend_settings': _foreignKeys},
-              options: authorized(contentType: 'application/merge-patch+json'),
-            ),
-          );
+          if (connection.capabilities.has(Capability.userSettingsMergePatch)) {
+            await paced(
+              () => dio.patchUri<Object?>(
+                v2('/user/settings/general'),
+                data: {'frontend_settings': _foreignKeys},
+                options: authorized(
+                  contentType: 'application/merge-patch+json',
+                ),
+              ),
+            );
+          } else {
+            final settings = await rawSettings();
+            await paced(
+              () => seedRequest<Object?>(
+                dio,
+                connection,
+                user.jwt,
+                'PUT',
+                '/user/settings/general',
+                data: {
+                  ...settings,
+                  'frontend_settings': {
+                    ...?settings['frontend_settings'] as Map<String, Object?>?,
+                    ..._foreignKeys,
+                  },
+                },
+              ),
+            );
+          }
         });
 
         tearDownAll(() => dio.close(force: true));
@@ -175,175 +203,205 @@ void main() {
           'v2 full PUT',
           'v1 full POST',
         ].indexed) {
-          test('$pathName: every field round-trips and only the changed raw '
-              'settings change', () async {
-            final path = paths()[index];
-            final port = portOver(path.connection);
-            final before = await rawSettings();
-            final changes = UserSettingsChanges(
-              name: 'Dora $index',
-              emailRemindersEnabled: index.isEven,
-              discoverableByName: true,
-              discoverableByEmail: index.isOdd,
-              overdueTasksRemindersEnabled: index.isOdd,
-              overdueTasksRemindersTime: ClockTime(7 + index, 5 * index),
-              defaultProjectId: SettingChange.set(writableProjectId),
-              weekStart: index + 1,
-              timezone: [
-                'Europe/Berlin',
-                'America/New_York',
-                'Asia/Tokyo',
-              ][index],
-              language: ['de-DE', 'fr-FR', 'ja-JP'][index],
-              quickAddMagicMode: [
-                QuickAddMagicMode.todoist,
-                QuickAddMagicMode.disabled,
-                QuickAddMagicMode.vikunja,
-              ][index],
-              quickAddDefaultReminders: [Duration(minutes: -15 * (index + 1))],
-              filterIdUsedOnOverview: SettingChange.set(savedFilterPseudoId),
-              minimumPriority: index + 3,
-              commentSortOrder: index.isEven
-                  ? CommentSortOrder.newestFirst
-                  : CommentSortOrder.oldestFirst,
-              dateDisplay: SettingChange.set(DateDisplay.values[index + 1]),
-              timeFormat: SettingChange.set(
-                index.isEven
-                    ? TimeFormat.twelveHour
-                    : TimeFormat.twentyFourHour,
-              ),
-              colorSchema: ColorSchema.values[index],
-              defaultViewKind: SettingChange.set(ProjectViewKind.values[index]),
-            );
+          test(
+            '$pathName: every field round-trips and only the changed raw '
+            'settings change',
+            skip: _skipPath(index),
+            () async {
+              final path = paths()[index];
+              final port = portOver(path.connection);
+              final before = await rawSettings();
+              final changes = UserSettingsChanges(
+                name: 'Dora $index',
+                emailRemindersEnabled: index.isEven,
+                discoverableByName: true,
+                discoverableByEmail: index.isOdd,
+                overdueTasksRemindersEnabled: index.isOdd,
+                overdueTasksRemindersTime: ClockTime(7 + index, 5 * index),
+                defaultProjectId: SettingChange.set(writableProjectId),
+                weekStart: index + 1,
+                timezone: [
+                  'Europe/Berlin',
+                  'America/New_York',
+                  'Asia/Tokyo',
+                ][index],
+                language: ['de-DE', 'fr-FR', 'ja-JP'][index],
+                quickAddMagicMode: [
+                  QuickAddMagicMode.todoist,
+                  QuickAddMagicMode.disabled,
+                  QuickAddMagicMode.vikunja,
+                ][index],
+                quickAddDefaultReminders: [
+                  Duration(minutes: -15 * (index + 1)),
+                ],
+                filterIdUsedOnOverview: SettingChange.set(savedFilterPseudoId),
+                minimumPriority: index + 3,
+                commentSortOrder: index.isEven
+                    ? CommentSortOrder.newestFirst
+                    : CommentSortOrder.oldestFirst,
+                dateDisplay: SettingChange.set(DateDisplay.values[index + 1]),
+                timeFormat: SettingChange.set(
+                  index.isEven
+                      ? TimeFormat.twelveHour
+                      : TimeFormat.twentyFourHour,
+                ),
+                colorSchema: ColorSchema.values[index],
+                defaultViewKind: SettingChange.set(
+                  ProjectViewKind.values[index],
+                ),
+              );
 
-            final result = await paced(() => port.update(changes));
+              final result = await paced(() => port.update(changes));
 
-            final reread = await patiently(
-              () => AccountApi(
-                authenticated(path.connection),
-                path.connection,
-              ).currentUserWithProfile(),
-            );
-            expect(result.settings, reread.settings);
-            expect(result.profile, reread.profile);
-            expect(result.profile.name, 'Dora $index');
-            expect(result.settings, changes.applyTo(parseUserSettings(before)));
-            final after = await rawSettings();
-            expect(after.keys, unorderedEquals(before.keys));
-            expect(
-              after['extra_settings_links'],
-              before['extra_settings_links'],
-            );
-            final frontend =
-                after['frontend_settings']! as Map<String, Object?>;
-            for (final MapEntry(:key, :value) in _foreignKeys.entries) {
-              expect(frontend[key], value, reason: key);
-            }
-            for (final MapEntry(:key, :value)
-                in (before['frontend_settings']! as Map<String, Object?>)
-                    .entries) {
-              if (!_writtenFrontendKeys.contains(key)) {
+              final reread = await patiently(
+                () => AccountApi(
+                  authenticated(path.connection),
+                  path.connection,
+                ).currentUserWithProfile(),
+              );
+              expect(result.settings, reread.settings);
+              expect(result.profile, reread.profile);
+              expect(result.profile.name, 'Dora $index');
+              expect(
+                result.settings,
+                changes.applyTo(parseUserSettings(before)),
+              );
+              final after = await rawSettings();
+              expect(after.keys, unorderedEquals(before.keys));
+              expect(
+                after['extra_settings_links'],
+                before['extra_settings_links'],
+              );
+              final frontend =
+                  after['frontend_settings']! as Map<String, Object?>;
+              for (final MapEntry(:key, :value) in _foreignKeys.entries) {
                 expect(frontend[key], value, reason: key);
               }
-            }
-            expect(frontend['quick_add_default_reminders'], [
-              {
-                'relative_period': -900 * (index + 1),
-                'relative_to': 'due_date',
-              },
-            ]);
-          });
+              for (final MapEntry(:key, :value)
+                  in (before['frontend_settings']! as Map<String, Object?>)
+                      .entries) {
+                if (!_writtenFrontendKeys.contains(key)) {
+                  expect(frontend[key], value, reason: key);
+                }
+              }
+              expect(frontend['quick_add_default_reminders'], [
+                {
+                  'relative_period': -900 * (index + 1),
+                  'relative_to': 'due_date',
+                },
+              ]);
+            },
+          );
 
-          test('$pathName: clearing removes the frontend keys and the '
-              'default project; the rest stays', () async {
-            final path = paths()[index];
-            final port = portOver(path.connection);
-            final before = await rawSettings();
+          test(
+            '$pathName: clearing removes the frontend keys and the '
+            'default project; the rest stays',
+            skip: _skipPath(index),
+            () async {
+              final path = paths()[index];
+              final port = portOver(path.connection);
+              final before = await rawSettings();
 
-            final result = await paced(
-              () => port.update(
-                const UserSettingsChanges(
-                  defaultProjectId: SettingChange.clear(),
-                  filterIdUsedOnOverview: SettingChange.clear(),
-                  dateDisplay: SettingChange.clear(),
-                  timeFormat: SettingChange.clear(),
-                  defaultViewKind: SettingChange.clear(),
-                ),
-              ),
-            );
-
-            expect(result.settings.defaultProjectId, isNull);
-            expect(result.settings.filterIdUsedOnOverview, isNull);
-            expect(result.settings.dateDisplay, isNull);
-            expect(result.settings.timeFormat, isNull);
-            expect(result.settings.defaultViewKind, isNull);
-            final after = await rawSettings();
-            expect(after['default_project_id'], 0);
-            final frontend =
-                after['frontend_settings']! as Map<String, Object?>;
-            final kept =
-                {...before['frontend_settings']! as Map<String, Object?>}
-                  ..remove('filter_id_used_on_overview')
-                  ..remove('date_display')
-                  ..remove('time_format')
-                  ..remove('default_view');
-            expect(frontend, kept);
-            expect(
-              {...after}
-                ..remove('default_project_id')
-                ..remove('frontend_settings'),
-              {...before}
-                ..remove('default_project_id')
-                ..remove('frontend_settings'),
-            );
-          });
-
-          test('$pathName: refusals carry the server codes and change '
-              'nothing', () async {
-            final port = portOver(paths()[index].connection);
-            final before = await rawSettings();
-
-            await expectLater(
-              despiteWriteRaces(
+              final result = await paced(
                 () => port.update(
-                  const UserSettingsChanges(timezone: 'Mars/Phobos'),
-                ),
-              ),
-              throwsA(
-                isA<DomainError>()
-                    .having((f) => f.code, 'code', 1025)
-                    .having((f) => f.statusCode, 'status', 400),
-              ),
-            );
-            await Future<void>.delayed(_pace);
-            await expectLater(
-              despiteWriteRaces(
-                () => port.update(
-                  UserSettingsChanges(
-                    name: 'Refused',
-                    defaultProjectId: SettingChange.set(archivedProjectId),
+                  const UserSettingsChanges(
+                    defaultProjectId: SettingChange.clear(),
+                    filterIdUsedOnOverview: SettingChange.clear(),
+                    dateDisplay: SettingChange.clear(),
+                    timeFormat: SettingChange.clear(),
+                    defaultViewKind: SettingChange.clear(),
                   ),
                 ),
-              ),
-              throwsA(isA<DomainError>().having((f) => f.code, 'code', 3017)),
-            );
-            await Future<void>.delayed(_pace);
-            await expectLater(
-              despiteWriteRaces(
-                () => port.update(const UserSettingsChanges(weekStart: 7)),
-              ),
-              throwsA(
-                isA<ValidationFailed>().having(
-                  (f) => f.fieldErrors.keys,
-                  'fields',
-                  ['week_start'],
-                ),
-              ),
-            );
-            await Future<void>.delayed(_pace);
+              );
 
-            expect(await rawSettings(), before);
-          });
+              expect(result.settings.defaultProjectId, isNull);
+              expect(result.settings.filterIdUsedOnOverview, isNull);
+              expect(result.settings.dateDisplay, isNull);
+              expect(result.settings.timeFormat, isNull);
+              expect(result.settings.defaultViewKind, isNull);
+              final after = await rawSettings();
+              expect(after['default_project_id'], 0);
+              final frontend =
+                  after['frontend_settings']! as Map<String, Object?>;
+              final kept =
+                  {...before['frontend_settings']! as Map<String, Object?>}
+                    ..remove('filter_id_used_on_overview')
+                    ..remove('date_display')
+                    ..remove('time_format')
+                    ..remove('default_view');
+              expect(frontend, kept);
+              expect(
+                {...after}
+                  ..remove('default_project_id')
+                  ..remove('frontend_settings'),
+                {...before}
+                  ..remove('default_project_id')
+                  ..remove('frontend_settings'),
+              );
+            },
+          );
+
+          test(
+            '$pathName: refusals carry the server codes and change '
+            'nothing',
+            skip: _skipPath(index),
+            () async {
+              final port = portOver(paths()[index].connection);
+              final before = await rawSettings();
+
+              await expectLater(
+                despiteWriteRaces(
+                  () => port.update(
+                    const UserSettingsChanges(timezone: 'Mars/Phobos'),
+                  ),
+                ),
+                throwsA(
+                  isA<DomainError>()
+                      .having((f) => f.code, 'code', 1025)
+                      .having((f) => f.statusCode, 'status', 400),
+                ),
+              );
+              // Before 2.7 the server takes an archived default project.
+              if (connection.info.version!.isAtLeast(2, 7)) {
+                await Future<void>.delayed(_pace);
+                await expectLater(
+                  despiteWriteRaces(
+                    () => port.update(
+                      UserSettingsChanges(
+                        name: 'Refused',
+                        defaultProjectId: SettingChange.set(archivedProjectId),
+                      ),
+                    ),
+                  ),
+                  throwsA(
+                    isA<DomainError>().having((f) => f.code, 'code', 3017),
+                  ),
+                );
+              }
+              // 2.3 stores any week start.
+              if (connection.info.version!.isAtLeast(2, 4)) {
+                await Future<void>.delayed(_pace);
+                await expectLater(
+                  despiteWriteRaces(
+                    () => port.update(const UserSettingsChanges(weekStart: 7)),
+                  ),
+                  throwsA(
+                    index == 2 && !connection.info.version!.isAtLeast(2, 7)
+                        // v1 before 2.7 answers a 400 without the field.
+                        ? isA<UnexpectedResponse>()
+                        : isA<ValidationFailed>().having(
+                            (f) => f.fieldErrors.keys,
+                            'fields',
+                            ['week_start'],
+                          ),
+                  ),
+                );
+              }
+              await Future<void>.delayed(_pace);
+
+              expect(await rawSettings(), before);
+            },
+          );
         }
 
         test('an empty timezone stores the server default', () async {
@@ -360,6 +418,7 @@ void main() {
           test(
             '${apiVersion.pathSegment}: the avatar provider is read and '
             'set; an upload switches it to upload and bumps the user',
+            skip: skipWithout(apiVersion),
             () async {
               final over = onlyVersion(connection, apiVersion);
               final port = portOver(over);

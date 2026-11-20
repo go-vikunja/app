@@ -86,7 +86,7 @@ void main() {
         tearDownAll(() => dio.close(force: true));
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             late ProjectSharingPort sharing;
             late ProjectSharingPort memberSharing;
             late ProjectsPort memberProjects;
@@ -253,7 +253,19 @@ void main() {
                 ),
               ]);
               expect(await memberSharing.listTeams(project), [
-                ProjectTeamShare(teamId: team.id, permission: Permission.write),
+                // Before 2.6 a member sees the team's name too.
+                if (connection.info.version!.isAtLeast(2, 6))
+                  ProjectTeamShare(
+                    teamId: team.id,
+                    permission: Permission.write,
+                  )
+                else
+                  ProjectTeamShare(
+                    teamId: team.id,
+                    teamName: 'Sharers $suffix',
+                    memberCount: 2,
+                    permission: Permission.write,
+                  ),
               ]);
               expect((await visible(guestProjects))[project], Permission.write);
               await expectLater(
@@ -326,18 +338,24 @@ void main() {
                 memberSharing.listLinkShares(project),
                 throwsA(isA<Forbidden>()),
               );
-              await expectLater(
-                memberSharing.createLinkShare(
-                  project,
-                  const NewLinkShare(permission: Permission.read),
-                ),
-                throwsA(_forbidden()),
-              );
+              // Before 2.7 a member with write access creates them too.
+              if (connection.info.version!.isAtLeast(2, 7)) {
+                await expectLater(
+                  memberSharing.createLinkShare(
+                    project,
+                    const NewLinkShare(permission: Permission.read),
+                  ),
+                  throwsA(_forbidden()),
+                );
+              }
 
               await paced(() => sharing.deleteLinkShare(project, plain.id));
               await expectLater(
                 sharing.deleteLinkShare(project, plain.id),
-                throwsA(_notFound(3006)),
+                // Before 2.7 a second delete passes.
+                connection.info.version!.isAtLeast(2, 7)
+                    ? throwsA(_notFound(3006))
+                    : completes,
               );
               expect(
                 (await sharing.listLinkShares(project)).map((link) => link.id),

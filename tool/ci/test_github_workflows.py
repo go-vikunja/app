@@ -12,8 +12,11 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 WORKFLOWS = os.path.join(ROOT, '.github', 'workflows')
 DEPENDABOT = os.path.join(ROOT, '.github', 'dependabot.yml')
 EDITOR_NODE = os.path.join(ROOT, 'app', 'editor', '.nvmrc')
+COMPOSE = os.path.join(ROOT, 'test_servers', 'docker-compose.yaml')
+SERVER_CAPABILITIES = os.path.join(ROOT, 'packages', 'vikunja_domain', 'lib', 'src', 'server',
+                                   'server_capabilities.dart')
 
-WORKFLOW_FILES = {'ci.yaml', 'release.yaml', 'upstream.yaml'}
+WORKFLOW_FILES = {'ci.yaml', 'release.yaml', 'upstream.yaml', 'contract-matrix.yaml'}
 ALLOWED_ACTIONS = {'actions/checkout', 'actions/cache', 'actions/setup-node', 'actions/upload-artifact',
                    'actions/download-artifact'}
 RUNNERS = {'ubuntu-24.04', 'xcode-27'}
@@ -110,6 +113,7 @@ class GitHubWorkflowsTest(unittest.TestCase):
         cls.ci = cls.workflows['ci.yaml']
         cls.release = cls.workflows['release.yaml']
         cls.upstream = cls.workflows['upstream.yaml']
+        cls.matrix = cls.workflows['contract-matrix.yaml']
 
     def all_jobs(self):
         for file, workflow in self.workflows.items():
@@ -137,6 +141,11 @@ class GitHubWorkflowsTest(unittest.TestCase):
         self.assertEqual(set(upstream), {'schedule', 'workflow_dispatch'})
         self.assertEqual(len(upstream['schedule']), 1)
         self.assertIsNone(upstream['workflow_dispatch'])
+        matrix = triggers(self.matrix)
+        self.assertEqual(set(matrix), {'schedule', 'push', 'workflow_dispatch'})
+        self.assertEqual(matrix['push'], {'tags': ['v*']})
+        self.assertEqual(len(matrix['schedule']), 1)
+        self.assertIsNone(matrix['workflow_dispatch'])
         for file, workflow in self.workflows.items():
             with self.subTest(file):
                 self.assertNotIn('pull_request_target', triggers(workflow))
@@ -239,6 +248,44 @@ class GitHubWorkflowsTest(unittest.TestCase):
         self.assertEqual(kinds(job), ['actions/checkout', 'run'])
         self.assertEqual(runs(job), ['tool/ci/upstream.sh'])
         self.assertNotIn('env', job)
+
+    def test_the_contract_matrix(self):
+        self.assertEqual(list(self.matrix['jobs']), ['contract'])
+        job = self.matrix['jobs']['contract']
+        self.assertEqual(job['if'], f"github.event_name != 'schedule' || {OFFICIAL}")
+        self.assertEqual(kinds(job), ['actions/checkout', 'actions/cache', 'actions/cache', 'run'])
+        self.assertEqual(runs(job), ['tool/ci/contract.sh'])
+        self.assertEqual(step_running(job, 'tool/ci/contract.sh')['env'],
+                         {'VIKUNJA_APP_TEST_VIKUNJA_IMAGE': '${{ matrix.image }}',
+                          'VIKUNJA_APP_TEST_DATABASE_PATH': '${{ matrix.database_path }}'})
+        self.assertIs(job['strategy']['fail-fast'], False)
+        self.assertEqual(list(job['strategy']['matrix']), ['include'])
+        with open(COMPOSE, encoding='utf-8') as f:
+            compose = f.read()
+        (immediate,) = re.findall(r'\$\{VIKUNJA_APP_TEST_DATABASE_PATH:-([^}]+)\}', compose)
+        deferred = immediate.replace('_txlock=immediate&', '')
+        self.assertNotEqual(deferred, immediate)
+        releases = []
+        for entry in job['strategy']['matrix']['include']:
+            with self.subTest(entry):
+                self.assertLessEqual({'release', 'image'}, set(entry))
+                self.assertLessEqual(set(entry), {'release', 'image', 'database_path'})
+                pinned = re.fullmatch(r'vikunja/vikunja:(\d+)\.(\d+)\.(\d+)@sha256:[0-9a-f]{64}', entry['image'])
+                self.assertTrue(pinned, entry['image'])
+                self.assertEqual(entry['release'], '.'.join(pinned.groups()))
+                releases.append(tuple(map(int, pinned.groups())))
+                self.assertEqual(entry.get('database_path', deferred), deferred)
+        self.assertEqual(releases, sorted(set(releases)))
+        # One release of every minor line from the floor up.
+        for previous, release in zip(releases, releases[1:]):
+            if release[0] == previous[0]:
+                self.assertEqual(release[1], previous[1] + 1, f'{previous} -> {release}')
+        with open(SERVER_CAPABILITIES, encoding='utf-8') as f:
+            floor = re.search(r'minimumSupportedVersion = ServerVersion\((\d+), (\d+), (\d+)\)', f.read())
+        self.assertEqual(releases[0], tuple(map(int, floor.groups())))
+        defaults = set(re.findall(r'\$\{VIKUNJA_APP_TEST_VIKUNJA_IMAGE:-([^}]+)\}', compose))
+        self.assertEqual(len(defaults), 1)
+        self.assertEqual(job['strategy']['matrix']['include'][-1]['image'], defaults.pop())
 
     def test_dependabot_updates_the_actions(self):
         config = load(DEPENDABOT)
@@ -358,6 +405,7 @@ class GitHubWorkflowsTest(unittest.TestCase):
     def test_secrets_only_in_publish(self):
         self.assertNotRegex(self.texts['ci.yaml'], SECRETS_REFERENCE)
         self.assertNotRegex(self.texts['upstream.yaml'], SECRETS_REFERENCE)
+        self.assertNotRegex(self.texts['contract-matrix.yaml'], SECRETS_REFERENCE)
         others = dict(self.release, jobs={name: job for name, job in self.release['jobs'].items()
                                           if name not in ('publish', 'secret-scope')})
         self.assertNotRegex(json.dumps(others), SECRETS_REFERENCE)

@@ -27,12 +27,14 @@ void main() {
       int defaultBucketId, {
       List<Bucket>? of,
       bool holdsTasks = true,
+      bool defaultGone = false,
     }) {
       final deletion = planBucketDeletion(
         of ?? board,
         bucketId,
         defaultBucketId: defaultBucketId,
         holdsTasks: holdsTasks,
+        defaultGone: defaultGone,
       );
       return deletion == null
           ? null
@@ -89,6 +91,30 @@ void main() {
       expect(isFallback(2, 0), isFalse);
       expect(isFallback(2, 2), isFalse);
       expect(isFallback(1, 2), isFalse);
+    });
+
+    test('while the default is one the server no longer has (before 2.5 '
+        'stored as sent) needs the leftmost other bucket as the default '
+        'first: the server would move the tasks to the gone one', () {
+      expect(plan(2, 99, defaultGone: true), (1, true));
+      expect(plan(2, 99, defaultGone: true, holdsTasks: false), (1, false));
+      expect(plan(1, 99, defaultGone: true), (2, true));
+      expect(
+        planBucketDeletion(
+          board,
+          3,
+          defaultBucketId: 99,
+          holdsTasks: false,
+          defaultGone: true,
+        )?.isFallback,
+        isTrue,
+      );
+    });
+
+    test('never sends the tasks to a gone default the board still lists', () {
+      expect(plan(2, 1, defaultGone: true), (3, true));
+      expect(plan(3, 1, defaultGone: true), (2, true));
+      expect(plan(2, 3, of: const [doing, done], defaultGone: true), isNull);
     });
 
     test('follows the board order, ties by id', () {

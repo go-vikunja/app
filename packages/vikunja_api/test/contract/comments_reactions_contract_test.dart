@@ -61,17 +61,16 @@ void main() {
             Object? body,
             String? contentType,
           }) async {
-            final v2 = connection.apiBaseUri(ApiVersion.v2);
             try {
               final response = await despiteWriteRaces(
-                () => dio.requestUri<Object?>(
-                  v2.replace(path: '${v2.path}$path'),
+                () => seedRequest<Object?>(
+                  dio,
+                  connection,
+                  user.jwt,
+                  method,
+                  path,
                   data: body,
-                  options: Options(
-                    method: method,
-                    contentType: contentType,
-                    headers: {'Authorization': 'Bearer ${user.jwt}'},
-                  ),
+                  contentType: contentType,
                 ),
               );
               if (method != 'GET') await _settle();
@@ -202,7 +201,7 @@ void main() {
           tearDownAll(() => dio.close(force: true));
 
           for (final apiVersion in ApiVersion.values) {
-            group(apiVersion.pathSegment, () {
+            group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
               late _Client asOwner;
               late _Client asMember;
 

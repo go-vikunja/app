@@ -45,7 +45,7 @@ void main() {
 
     tearDownAll(() => dio.close(force: true));
 
-    for (final apiVersion in ApiVersion.values) {
+    for (final apiVersion in contractApiVersions) {
       group('over ${apiVersion.pathSegment}', () {
         late AppDatabase db;
         late VikunjaReadClient reads;
@@ -144,6 +144,8 @@ void main() {
           buckets = LocalBucketRepository(
             db,
             writes,
+            read: reads,
+            serverVersion: only.info.version,
             refreshBoard: (_, _) async {},
           );
           await engine.ensureInitialSync();
@@ -348,6 +350,8 @@ void main() {
           final checking = LocalBucketRepository(
             db,
             writes,
+            read: reads,
+            serverVersion: connection.info.version,
             refreshBoard: (projectId, viewId) {
               final download = tasks.refreshBoard(projectId, viewId);
               downloads.add(download);
@@ -382,6 +386,67 @@ void main() {
           expect(await localOrder(), [todoId]);
           await expectLikeFreshDownload();
         });
+
+        test('a done or default column deleted elsewhere since the last '
+            'download is stored as none', () async {
+          await act(() => buckets.create(projectId, viewId, 'Gone'));
+          final goneId = (await db.kanbanDao.buckets(viewId)).last.id;
+          await seeder.delete(
+            '/projects/$projectId/views/$viewId/buckets/$goneId',
+          );
+          await _pace();
+
+          await act(() => buckets.setDoneBucket(projectId, viewId, goneId));
+
+          expect(await serverView(), (done: 0, defaultId: todoId));
+          expect((await db.projectsDao.loadView(viewId))?.doneBucketId, 0);
+
+          await act(() => buckets.setDefaultBucket(projectId, viewId, goneId));
+
+          expect(await serverView(), (done: 0, defaultId: 0));
+          expect((await db.projectsDao.loadView(viewId))?.defaultBucketId, 0);
+          await tasks.refreshBoard(projectId, viewId);
+          expect(await localOrder(), [todoId]);
+          await expectLikeFreshDownload();
+        });
+
+        test(
+          'deleting a column while the default is one another client set '
+          'after it was deleted puts its tasks where the app planned',
+          () async {
+            await act(() => buckets.create(projectId, viewId, 'Doomed'));
+            final doomedId = (await db.kanbanDao.buckets(viewId)).last.id;
+            await act(() => buckets.create(projectId, viewId, 'Gone too'));
+            final goneId = (await db.kanbanDao.buckets(viewId)).last.id;
+            final moved = await task('In the doomed column');
+            await seeder.put(
+              '/projects/$projectId/views/$viewId/buckets/$doomedId/tasks',
+              {'task_id': moved},
+            );
+            await _pace();
+            await seeder.delete(
+              '/projects/$projectId/views/$viewId/buckets/$goneId',
+            );
+            await _pace();
+            await seeder.patch('/projects/$projectId/views/$viewId', {
+              'default_bucket_id': goneId,
+            });
+            await _pace();
+            final storesGone =
+                !(connection.info.version?.isAtLeast(2, 5) ?? true);
+            expect((await serverView()).defaultId, storesGone ? goneId : 0);
+            await tasks.refreshBoard(projectId, viewId);
+            expect(await localOrder(), [todoId, doomedId]);
+
+            await act(() => buckets.delete(projectId, viewId, doomedId));
+
+            expect(await localOrder(), [todoId]);
+            expect((await freshDownload()).slots[moved]?.bucketId, todoId);
+            expect(await shownIn(todoId), contains(moved));
+            expect((await serverView()).defaultId, storesGone ? todoId : 0);
+            await expectLikeFreshDownload();
+          },
+        );
       });
     }
   });

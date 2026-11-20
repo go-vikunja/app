@@ -3155,6 +3155,9 @@
     }
   },
   "followingViaSomeProject": "Following through a project",
+  "@followingViaSomeProject": {
+    "description": "Under the task title when the user follows the task through a project whose title the app does not know. On a server older than Vikunja 2.6.0 also the label of the follow bell, and of a project's follow item, for a follow through the project or a parent project, which only unfollowing that project stops there."
+  },
   "followInheritedTaskTitle": "Stop following this task?",
   "followInheritedTaskBody": "You follow the project “{project}”, which includes this task. You will stop getting notifications about this task only and keep following the project.",
   "@followInheritedTaskBody": {
@@ -3178,6 +3181,16 @@
     }
   },
   "followInheritedConfirm": "Stop following",
+  "followInheritedFixed": "You follow the project “{project}”, which includes this. This server doesn't support unfollowing just this one; unfollow “{project}” instead.",
+  "@followInheritedFixed": {
+    "description": "Shown on a tap of the follow bell of a task, or of a project's follow item, that the user follows through its project or a parent project, on a server older than Vikunja 2.6.0, which cannot stop following just one task or subproject; project is that project's title, for example Work.",
+    "placeholders": {
+      "project": {
+        "type": "String",
+        "example": "Work"
+      }
+    }
+  },
   "projectFollowed": "You follow this project now",
   "projectUnfollowed": "You no longer follow this project",
   "newTaskTreeCount": "{count, plural, one{{count} task} other{{count} tasks}}, {subtasks, plural, one{{subtasks} as a subtask} other{{subtasks} as subtasks}} · the first one:",

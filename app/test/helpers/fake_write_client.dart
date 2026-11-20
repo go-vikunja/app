@@ -81,6 +81,10 @@ final class FakeWriteClient implements VikunjaWriteClient {
   /// [buckets] and [views]; their counts are not kept.
   final Map<int, Map<int, Bucket>> serverBuckets = {};
 
+  /// [views] stores a done or default bucket that does not exist as sent,
+  /// like servers before 2.5, instead of as 0.
+  bool storesUnknownBuckets = false;
+
   /// The kanban views [views] answers with, by id; a view missing here is
   /// answered as a plain manual board.
   final Map<int, ProjectView> serverViews = {};
@@ -927,7 +931,8 @@ final class FakeBucketsWritePort implements BucketsWritePort {
 /// [setBuckets] stores the done and default bucket in
 /// [FakeWriteClient.kanbanViews] and [FakeWriteClient.serverViews]: 0
 /// clears one, a bucket of another view fails with 400 code 10002, an
-/// unknown id is stored as 0.
+/// unknown id is stored as 0 (as sent with
+/// [FakeWriteClient.storesUnknownBuckets]).
 ///
 /// The view writes change the views of [FakeWriteClient.serverProjects] like
 /// the server, without touching the project's `updated`: a new view without
@@ -1117,7 +1122,7 @@ final class FakeProjectViewsWritePort implements ProjectViewsWritePort {
         (entry) => entry.key != viewId && entry.value.containsKey(id),
       );
       if (elsewhere) throw const DomainError(400, code: 10002);
-      return 0;
+      return _client.storesUnknownBuckets ? id : 0;
     }
 
     final done = checked(doneBucketId);

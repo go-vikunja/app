@@ -37,7 +37,7 @@ void main() {
 
     tearDownAll(() => dio.close(force: true));
 
-    for (final version in ApiVersion.values) {
+    for (final version in contractApiVersions) {
       group('over ${version.pathSegment}', () {
         late ServerBackend backend;
         // One user per version: /register and /login share a rate limit.

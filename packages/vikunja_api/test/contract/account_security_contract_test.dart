@@ -70,10 +70,7 @@ void main() {
           return result;
         }
 
-        Uri api(String path) {
-          final base = connection.apiBaseUri(ApiVersion.v2);
-          return base.replace(path: '${base.path}$path');
-        }
+        Uri api(String path) => newestApi(connection, path);
 
         Future<Response<Object?>> postAsUser(
           String path,
@@ -195,7 +192,7 @@ void main() {
         test('sessions: the current sid with our User-Agent and another '
             'sign-in; revoking that one ends its refresh at once, on both '
             'versions', () async {
-          for (final apiVersion in ApiVersion.values) {
+          for (final apiVersion in contractApiVersions) {
             // "This device" and never ending it rest on a refresh keeping
             // the session id.
             final refreshed = await paced(
@@ -241,7 +238,7 @@ void main() {
 
         test('API tokens: /routes, create, list, a CalDAV PROPFIND with the '
             'caldav permission, delete, twice, on both versions', () async {
-          for (final apiVersion in ApiVersion.values) {
+          for (final apiVersion in contractApiVersions) {
             final port = portOver(apiVersion);
             final groups = await patiently(port.apiPermissions);
             expect(groups.offers('caldav', 'access'), isTrue);
@@ -343,7 +340,7 @@ void main() {
 
         test('CalDAV tokens: create, a PROPFIND with the token, list, '
             'delete, on both versions', () async {
-          for (final apiVersion in ApiVersion.values) {
+          for (final apiVersion in contractApiVersions) {
             final port = portOver(apiVersion);
             final created = await paced(port.createCaldavToken);
             expect(
@@ -383,19 +380,28 @@ void main() {
 
         test('data export: none, then a status once a request is '
             'written', () async {
-          for (final apiVersion in ApiVersion.values) {
+          for (final apiVersion in contractApiVersions) {
             expect(
               await patiently(portOver(apiVersion).dataExport),
               isNull,
               reason: '$apiVersion',
             );
           }
+          if (!connection.info.version!.isAtLeast(2, 7)) {
+            // Before 2.7 the export job keeps the database locked until the
+            // test server's immediate transactions give up after 30 s, and
+            // it exits.
+            markTestSkipped('servers before 2.7 stop on an export request');
+            return;
+          }
           await rawWrite('/user/export/request', {'password': user.password});
 
           UserDataExport? export;
           for (var attempt = 0; attempt < 30 && export == null; attempt++) {
             await Future<void>.delayed(const Duration(seconds: 1));
-            export = await patiently(portOver(ApiVersion.v2).dataExport);
+            export = await patiently(
+              portOver(contractApiVersions.last).dataExport,
+            );
           }
           expect(export, isNotNull, reason: 'the export never became ready');
           expect(export!.size, greaterThan(0));
@@ -408,12 +414,15 @@ void main() {
 
         test('TOTP: not set up, a started setup, cancelled again with the '
             'password and from 2.7.1 a code, from 2.8.0 refused', () async {
+          List<TotpStatus> each(TotpStatus status) => [
+            for (final _ in contractApiVersions) status,
+          ];
           Future<List<TotpStatus>> statuses() async => [
-            for (final apiVersion in ApiVersion.values)
+            for (final apiVersion in contractApiVersions)
               await patiently(portOver(apiVersion).totpStatus),
           ];
 
-          expect(await statuses(), [TotpStatus.notSetUp, TotpStatus.notSetUp]);
+          expect(await statuses(), each(TotpStatus.notSetUp));
           final enrolment = await rawWrite(
             '/user/settings/totp/enroll',
             since271() ? {'password': user.password} : null,
@@ -422,10 +431,7 @@ void main() {
               (jsonDecode(utf8.decode(enrolment! as List<int>))
                       as Map<String, Object?>)['secret']!
                   as String;
-          expect(await statuses(), [
-            TotpStatus.setupStarted,
-            TotpStatus.setupStarted,
-          ]);
+          expect(await statuses(), each(TotpStatus.setupStarted));
           if (since280()) {
             await expectLater(
               rawWriteWithCode(
@@ -443,10 +449,7 @@ void main() {
                 ),
               ),
             );
-            expect(await statuses(), [
-              TotpStatus.setupStarted,
-              TotpStatus.setupStarted,
-            ]);
+            expect(await statuses(), each(TotpStatus.setupStarted));
             return;
           }
           if (since271()) {
@@ -460,7 +463,7 @@ void main() {
               'password': user.password,
             });
           }
-          expect(await statuses(), [TotpStatus.notSetUp, TotpStatus.notSetUp]);
+          expect(await statuses(), each(TotpStatus.notSetUp));
         });
       });
     }

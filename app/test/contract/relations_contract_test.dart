@@ -173,7 +173,7 @@ void main() {
 
       tearDownAll(() => dio.close(force: true));
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         group('over ${apiVersion.pathSegment}', () {
           late VikunjaReadClient reads;
           late _SwitchableWriteClient writes;
@@ -388,10 +388,12 @@ void main() {
             final task = await createdOnServer('Followed $v');
             const ownProject = SubscriptionEntity.project;
 
-            // The creator follows a new task.
+            // The creator follows a new task from 2.6.
             expect(
               (await subscriptions.forTask(task))?.entity,
-              SubscriptionEntity.task,
+              connection.info.version!.isAtLeast(2, 6)
+                  ? SubscriptionEntity.task
+                  : isNull,
             );
 
             expect(
@@ -443,6 +445,10 @@ void main() {
             writes.offline = false;
             await sender.sendNow();
             final serverId = await serverIdOf(localId);
+            if (!connection.info.version!.isAtLeast(2, 6)) {
+              // Servers before 2.6 do not subscribe the creator.
+              await subscriptions.setTaskSubscribed(localId, subscribed: true);
+            }
             expect((await subscriptions.forTask(localId))?.entityId, serverId);
           });
         });

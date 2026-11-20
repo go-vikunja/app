@@ -19,11 +19,6 @@ void main() {
         late UserWithSettings before;
         late int otherProjectId;
 
-        Uri v2(String path) {
-          final base = connection.apiBaseUri(ApiVersion.v2);
-          return base.replace(path: '${base.path}$path');
-        }
-
         Options authorized() =>
             Options(headers: {'Authorization': 'Bearer ${user.jwt}'});
 
@@ -46,17 +41,21 @@ void main() {
           connection = await DioServerConnector(dio)
               .connect('http://localhost:$port');
           user = await registerAndLogin(dio, connection);
-          before = await accountApi(ApiVersion.v2).currentUserWithSettings();
+          before = await accountApi(contractApiVersions.last)
+              .currentUserWithSettings();
           final project = await despiteWriteRaces(
-            () => dio.postUri<Map<String, Object?>>(
-              v2('/projects'),
+            () => seedRequest<Map<String, Object?>>(
+              dio,
+              connection,
+              user.jwt,
+              'POST',
+              '/projects',
               data: {'title': 'Settings contract'},
-              options: authorized(),
             ),
           );
           otherProjectId = project.data!['id']! as int;
           final current = await dio.getUri<Map<String, Object?>>(
-            v2('/user'),
+            newestApi(connection, '/user'),
             options: authorized(),
           );
           // PUT replaces every field, so the whole object goes back.
@@ -81,10 +80,13 @@ void main() {
             },
           };
           await despiteWriteRaces(
-            () => dio.putUri<Object?>(
-              v2('/user/settings/general'),
+            () => seedRequest<Object?>(
+              dio,
+              connection,
+              user.jwt,
+              'PUT',
+              '/user/settings/general',
               data: settings,
-              options: authorized(),
             ),
           );
         });
@@ -110,31 +112,35 @@ void main() {
         });
 
         for (final apiVersion in ApiVersion.values) {
-          test('${apiVersion.pathSegment} reads what the web saved', () async {
-            final (user: reader, :settings) = await accountApi(apiVersion)
-                .currentUserWithSettings();
+          test(
+            '${apiVersion.pathSegment} reads what the web saved',
+            skip: skipWithout(apiVersion),
+            () async {
+              final (user: reader, :settings) = await accountApi(apiVersion)
+                  .currentUserWithSettings();
 
-            expect(reader.id, user.id);
-            expect(
-              settings,
-              UserSettings(
-                defaultProjectId: otherProjectId,
-                weekStart: 1,
-                timezone: 'Europe/Berlin',
-                language: before.settings.language,
-                quickAddMagicMode: QuickAddMagicMode.todoist,
-                quickAddDefaultReminders: const [
-                  Duration(minutes: -15),
-                  Duration(days: 1),
-                ],
-                commentSortOrder: CommentSortOrder.newestFirst,
-                dateDisplay: DateDisplay.weekdayDayMonthYear,
-                timeFormat: TimeFormat.twelveHour,
-                colorSchema: ColorSchema.dark,
-                defaultViewKind: ProjectViewKind.kanban,
-              ),
-            );
-          });
+              expect(reader.id, user.id);
+              expect(
+                settings,
+                UserSettings(
+                  defaultProjectId: otherProjectId,
+                  weekStart: 1,
+                  timezone: 'Europe/Berlin',
+                  language: before.settings.language,
+                  quickAddMagicMode: QuickAddMagicMode.todoist,
+                  quickAddDefaultReminders: const [
+                    Duration(minutes: -15),
+                    Duration(days: 1),
+                  ],
+                  commentSortOrder: CommentSortOrder.newestFirst,
+                  dateDisplay: DateDisplay.weekdayDayMonthYear,
+                  timeFormat: TimeFormat.twelveHour,
+                  colorSchema: ColorSchema.dark,
+                  defaultViewKind: ProjectViewKind.kanban,
+                ),
+              );
+            },
+          );
         }
       });
     }

@@ -80,7 +80,7 @@ void main() {
         tearDownAll(() => dio.close(force: true));
 
         for (final apiVersion in ApiVersion.values) {
-          group(apiVersion.pathSegment, () {
+          group(apiVersion.pathSegment, skip: skipWithout(apiVersion), () {
             final linkPassword = 'link-${_randomWord(16)}';
             late ServerConnection only;
             late LinkShareAuthClient client;
@@ -159,10 +159,15 @@ void main() {
               expect(claims.projectId, projectId);
               expect(claims.permission, Permission.read);
               expect(claims.sharedById, owner.id);
-              expect(
-                claims.expiresAt.difference(claims.issuedAt!),
-                const Duration(hours: 72),
-              );
+              // 2.4.0 issues the token without `iat`.
+              if (connection.info.version!.isAtLeast(2, 7)) {
+                expect(
+                  claims.expiresAt.difference(claims.issuedAt!),
+                  const Duration(hours: 72),
+                );
+              } else {
+                expect(claims.issuedAt, isNull);
+              }
             });
 
             test('a password link asks for it, refuses a wrong one and '
@@ -203,7 +208,13 @@ void main() {
                   .listAll(includeArchived: true);
 
               expect([for (final p in projects) p.id], [projectId]);
-              expect(projects.single.maxPermission, isNull);
+              // Before 2.6 the list says read to every guest.
+              expect(
+                projects.single.maxPermission,
+                connection.info.version!.isAtLeast(2, 6)
+                    ? isNull
+                    : Permission.read,
+              );
               expect(
                 (await guestProjects(readGuest.token.jwt).read(projectId))
                     .maxPermission,
@@ -242,6 +253,16 @@ void main() {
               await paced(
                 () => sharing.deleteLinkShare(projectId, readLink.id),
               );
+              if (apiVersion == ApiVersion.v1 &&
+                  !connection.info.version!.isAtLeast(2, 7)) {
+                // Servers before 2.7 answer the token of a deleted link with
+                // a 500 on v1, which tells the client nothing.
+                await expectLater(
+                  guestProjects(readGuest.token.jwt).listAll(),
+                  throwsA(isA<ServerFailure>()),
+                );
+                return;
+              }
 
               await expectLater(
                 guestProjects(readGuest.token.jwt).listAll(),
@@ -268,7 +289,15 @@ void main() {
                 connection: connection,
               ).check(_randomWord(64)),
             ),
-            throwsA(isA<NotFound>().having((f) => f.code, 'code', 2005)),
+            throwsA(
+              isA<NotFound>().having(
+                (f) => f.code,
+                'code',
+                // Older servers have no invites, and answer the 404 of an
+                // unknown route.
+                connection.info.version!.isAtLeast(2, 7) ? 2005 : isNull,
+              ),
+            ),
           );
         });
 

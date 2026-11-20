@@ -45,22 +45,16 @@ void main() {
         return id;
       }
 
-      Future<List<int>> serverOrder() async {
-        final v2 = connection.apiBaseUri(ApiVersion.v2);
-        final response = await despiteWriteRaces(
-          () => dio.getUri<Map<String, Object?>>(
-            v2.replace(
-              path: '${v2.path}/projects/$projectId/views/$viewId/tasks',
-              queryParameters: {'per_page': '50'},
-            ),
-            options: Options(headers: {'Authorization': 'Bearer ${user.jwt}'}),
-          ),
-        );
-        return [
-          for (final item in response.data!['items']! as List<Object?>)
-            (item! as Map<String, Object?>)['id']! as int,
-        ];
-      }
+      Future<List<int>> serverOrder() async => [
+        for (final item in await rawItems(
+          dio,
+          connection,
+          user,
+          '/projects/$projectId/views/$viewId/tasks',
+          {'per_page': '50'},
+        ))
+          item['id']! as int,
+      ];
 
       setUpAll(() async {
         dio = contractDio();
@@ -84,7 +78,7 @@ void main() {
           'done': true,
         });
 
-        for (final version in ApiVersion.values) {
+        for (final version in contractApiVersions) {
           final name = version.pathSegment;
           final parent = await create('/projects', {'title': 'Parent $name'});
           final first = await create('/projects', {
@@ -110,7 +104,7 @@ void main() {
 
       tearDownAll(() => dio.close(force: true));
 
-      for (final apiVersion in ApiVersion.values) {
+      for (final apiVersion in contractApiVersions) {
         group('over ${apiVersion.pathSegment}', () {
           late AppDatabase db;
           late DefaultSyncEngine engine;
