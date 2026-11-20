@@ -120,25 +120,31 @@ final class OAuthTokenClient {
       username: claims.username,
     );
   }
+
+  // The token endpoint is public, so a 401 from Vikunja is about the refresh
+  // token; 2.3.0 and 2.4.0 send no code with it. From 2.7.0 on every refusal
+  // carries one, so a bare 401 comes from something in front of the server
+  // (a proxy's own sign-in, a captive portal) and says nothing about the
+  // session.
+  VikunjaFailure _refreshFailure(VikunjaFailure failure) => switch (failure) {
+    UnexpectedResponse(statusCode: 401) when _codesRefusals => failure,
+    UnexpectedResponse(statusCode: 401) ||
+    DomainError(statusCode: 401) => SessionEnded(
+      SessionEndReason.invalidRefreshToken,
+      code: failure.code,
+      message: failure.message,
+    ),
+    // A locked account before 2.7.0; a refresh cannot hit 2.7.0's reserved
+    // username error, which reuses the code.
+    DomainError(statusCode: 412, code: 1026) => SessionEnded(
+      SessionEndReason.accountLocked,
+      code: failure.code,
+      message: failure.message,
+    ),
+    _ => failure,
+  };
+
+  bool get _codesRefusals => _connection.info.version?.isAtLeast(2, 7) ?? false;
 }
 
 bool _isSuccess(int? status) => status != null && status >= 200 && status < 300;
-
-// The token endpoint is public, so any 401 is about the refresh token. 2.3.0
-// and 2.4.0 send no code with it.
-VikunjaFailure _refreshFailure(VikunjaFailure failure) => switch (failure) {
-  UnexpectedResponse(statusCode: 401) ||
-  DomainError(statusCode: 401) => SessionEnded(
-    SessionEndReason.invalidRefreshToken,
-    code: failure.code,
-    message: failure.message,
-  ),
-  // A locked account before 2.7.0; a refresh cannot hit 2.7.0's reserved
-  // username error, which reuses the code.
-  DomainError(statusCode: 412, code: 1026) => SessionEnded(
-    SessionEndReason.accountLocked,
-    code: failure.code,
-    message: failure.message,
-  ),
-  _ => failure,
-};

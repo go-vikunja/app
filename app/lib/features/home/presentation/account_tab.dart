@@ -122,10 +122,11 @@ class AccountTab extends ConsumerWidget {
               if (entry.account.needsReauth && !signingOut)
                 Padding(
                   padding: bannerPadding,
+                  // A guest's banner tells no reason.
                   child: guest
                       ? GuestReauthBanner(entry: entry)
-                      : ReauthBanner(
-                          serverRoot: connection.rootUri,
+                      : AccountReauthBanner(
+                          entry: entry,
                           isSigningIn: isSigningIn,
                           onSignInAgain: () => unawaited(
                             signInAgainAfterHint(context, ref, entry),

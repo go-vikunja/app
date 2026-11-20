@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/auth/link_share_gateway.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -83,6 +84,7 @@ final class GuestSignIn {
     required this._landing,
     required this._projectTitle,
     AccountDatabaseFiles? files,
+    this._diagnostics,
     this._clock = DateTime.now,
   }) : _files = files ?? PathProviderAccountDatabaseFiles();
 
@@ -94,6 +96,7 @@ final class GuestSignIn {
   final GuestLandings _landing;
   final SharedProjectTitle _projectTitle;
   final AccountDatabaseFiles _files;
+  final SessionDiagnostics? _diagnostics;
   final DateTime Function() _clock;
 
   /// The server behind [link]: a stored account's server on the link's own
@@ -199,6 +202,7 @@ final class GuestSignIn {
     await settleSignedOutDatabases(_files, accountId: accountId);
     await _store.write(accountId, hash: link.hash, token: auth.token.jwt);
     await _store.writePassword(accountId, rememberPassword ? password : null);
+    await _settleEnded(accountId);
     // The old session goes only now: retired before, it would answer the
     // requests in between as ended, which pauses the outbox. A token it
     // still writes is one of the same share, which renewal does not rotate.
@@ -270,6 +274,22 @@ final class GuestSignIn {
     );
   }
 
+  /// The link reads and writes again, and an ended session is replaced
+  /// (D59). Before the guest is unmarked: a record left open would let the
+  /// session check restore a guest marked later for a gone share, which
+  /// leaves no record.
+  Future<void> _settleEnded(String accountId) async {
+    final diagnostics = _diagnostics;
+    if (diagnostics == null) return;
+    await diagnostics.noteReadable(accountId);
+    final ended = await diagnostics.lastEnd(accountId);
+    if (ended == null || ended.resolution != null) return;
+    await diagnostics.recordEnd(
+      accountId,
+      ended.resolved(SessionEndResolution.unknown),
+    );
+  }
+
   /// Only for the account's name; the guest works without it.
   Future<String?> _titleOf(
     ServerConnection connection,
@@ -333,4 +353,5 @@ GuestSignIn guestSignIn(Ref ref) => GuestSignIn(
   landing: ref.watch(guestLandingsProvider),
   projectTitle: ref.watch(sharedProjectTitleProvider),
   files: ref.watch(accountDatabaseFilesProvider),
+  diagnostics: ref.watch(sessionDiagnosticsProvider),
 );

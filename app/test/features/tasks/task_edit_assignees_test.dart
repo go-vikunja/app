@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 
@@ -366,6 +367,14 @@ void main() {
         (
           'a server error',
           const ServerFailure(500, message: 'Internal Server Error'),
+          l10n.assigneePickerSearchFailed,
+        ),
+        (
+          'a search that got no token',
+          const NetworkFailure(
+            NetworkProblem.timeout,
+            cause: RefreshDeferred.race,
+          ),
           l10n.assigneePickerSearchFailed,
         ),
       ]) {

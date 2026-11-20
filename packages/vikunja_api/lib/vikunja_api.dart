@@ -18,7 +18,7 @@ export 'src/negotiation/server_connector.dart';
 export 'src/negotiation/server_info_parser.dart';
 export 'src/negotiation/server_info_serializer.dart';
 export 'src/negotiation/transport_failure.dart'
-    show mentionsClientCertificateRefusal;
+    show mentionsClientCertificateRefusal, neverReachedServer;
 export 'src/read/read_ports.dart';
 export 'src/realtime/io_realtime_connector.dart';
 export 'src/realtime/realtime_message.dart';

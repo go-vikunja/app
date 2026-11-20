@@ -13,12 +13,14 @@ String columnChangeFailureText(
   ColumnChange change,
 ) {
   final shared = actionFailureText(l10n, error);
+  final notSent = notSentFailureText(l10n, error);
   return switch (error) {
     DeleteFailedAfterNewDefault(:final bucket, :final newDefault) =>
       l10n.boardColumnDeleteFailedNewDefault(newDefault.title, bucket.title),
     NewDefaultRefused() => l10n.boardColumnDeleteMoveTasksFirst,
     NewDefaultGone(:final bucket, :final newDefault) =>
       l10n.boardColumnDeleteNewDefaultGone(newDefault.title, bucket.title),
+    _ when notSent != null => notSent,
     // The server may have made the change before the answer was lost.
     NetworkFailure(problem: NetworkProblem.timeout) =>
       l10n.boardColumnUnconfirmed,

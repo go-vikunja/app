@@ -3,11 +3,11 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_viewer.dart';
 
 final _log = Logger('AttachmentImage');
@@ -43,7 +43,7 @@ final class AttachmentImageFailed extends AttachmentImageState {
 String attachmentImageFailureText(AppLocalizations l10n, Object failure) =>
     switch (failure) {
       AttachmentImageTooLarge() => l10n.richTextImageUnsupported,
-      NetworkFailure() => l10n.richTextImageOffline,
+      _ when failedOnTheNetwork(failure) => l10n.richTextImageOffline,
       _ => l10n.richTextImageFailed,
     };
 
@@ -248,7 +248,7 @@ class InlineAttachmentImage extends StatelessWidget {
           AttachmentImageFailed(:final failure) => _ImageNotice(
             text: attachmentImageFailureText(l10n, failure),
             icon: switch (failure) {
-              NetworkFailure() => Icons.cloud_off_outlined,
+              _ when failedOnTheNetwork(failure) => Icons.cloud_off_outlined,
               AttachmentImageTooLarge() => Icons.image_not_supported_outlined,
               _ => Icons.broken_image_outlined,
             },

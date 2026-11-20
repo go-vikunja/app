@@ -14,11 +14,13 @@ String attachmentFailureText(
   bool download = false,
 }) {
   final shared = actionFailureText(l10n, error);
+  final notSent = notSentFailureText(l10n, error);
   return switch (error) {
     UploadTooLarge(:final maxBytes) => l10n.attachmentFileTooLargeLimit(
       formatFileSize(l10n, maxBytes),
     ),
     FileTooLarge() => l10n.attachmentFileTooLarge,
+    _ when notSent != null => notSent,
     // The server may have done it before the answer was lost.
     NetworkFailure(problem: NetworkProblem.timeout) when !download =>
       l10n.attachmentUnconfirmed,

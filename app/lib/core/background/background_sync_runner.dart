@@ -7,6 +7,8 @@ import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/background/background_runner_channel.dart';
@@ -47,12 +49,16 @@ enum BackgroundRunKind {
 /// queue before any account syncs, in the same order, so the user's own
 /// changes go out even when the OS ends the run early. Each drain and turn
 /// starts only while at least [minimumTimeToStart] of the [deadline]
-/// remains, because the first request may rotate the refresh token and a
-/// rotation whose answer is lost when the OS suspends the process ends the
-/// session. At the deadline, or when the OS stops the run ([stop]), a
-/// token refresh still on its way gets up to [settleGrace] to be stored,
-/// then the container is disposed, which aborts a sync between two
-/// requests.
+/// remains and the container's `RefreshCutoff` still lets a refresh start.
+///
+/// The first request of a sync may rotate the refresh token, and a
+/// rotation whose answer is never stored ends the session (D26). So every
+/// token answer must arrive within [settleGrace] after the deadline, less
+/// [answerMargin], which bounds when a refresh may start and how long it
+/// waits; none starts once the OS stopped the run ([stop]). After every
+/// run the container waits up to [settleGrace] (after a stop [stopGrace])
+/// for a refresh on its way and for tokens still to be stored, then it is
+/// disposed, which aborts a sync between two requests (D59).
 final class BackgroundSyncRunner {
   new({
     required this._createContainer,
@@ -61,7 +67,9 @@ final class BackgroundSyncRunner {
     this._createTimer = Timer.new,
     this.heartbeatFreshness = const Duration(minutes: 2),
     this.minimumTimeToStart = const Duration(seconds: 10),
-    this.settleGrace = const Duration(seconds: 3),
+    this.settleGrace = const Duration(seconds: 5),
+    this.stopGrace = const Duration(seconds: 10),
+    this.answerMargin = const Duration(seconds: 2),
   }) : _now = now ?? DateTime.now;
 
   final BackgroundContainerFactory _createContainer;
@@ -71,16 +79,24 @@ final class BackgroundSyncRunner {
   final Duration heartbeatFreshness;
   final Duration minimumTimeToStart;
   final Duration settleGrace;
+  final Duration stopGrace;
+  final Duration answerMargin;
   final _stopped = Completer<BackgroundRunOutcome>();
   final _finished = Completer<void>();
+  RefreshCutoff? _cutoff;
+  int? _stopReason;
 
-  /// The OS stops the run: it ends as at the deadline, and this completes
-  /// once the run has noted its outcome and let go of its container (or
-  /// after a bound, as the OS tears the engine down when it returns).
-  Future<void> stop() async {
+  /// The OS stops the run, for [reason] as Android's `WorkInfo` numbers it:
+  /// no refresh starts any more, it ends as at the deadline, and this
+  /// completes once the run has noted its outcome and let go of its
+  /// container (or after a bound, as the OS tears the engine down when it
+  /// returns).
+  Future<void> stop({required int reason}) async {
+    _stopReason ??= reason;
+    _cutoff?.closeNow();
     if (!_stopped.isCompleted) _stopped.complete(BackgroundRunOutcome.stopped);
     await _finished.future.timeout(
-      settleGrace + const Duration(seconds: 1),
+      stopGrace + const Duration(seconds: 1),
       onTimeout: () {},
     );
   }
@@ -98,20 +114,29 @@ final class BackgroundSyncRunner {
   Future<BackgroundRunOutcome> _runOnce(BackgroundRunKind kind) async {
     final startedAt = _now();
     final ProviderContainer container;
+    final RefreshCutoff cutoff;
     try {
       container = await _createContainer();
+      cutoff = container.read(refreshCutoffProvider)
+        ..answerWithin(
+          deadline + settleGrace - answerMargin - _now().difference(startedAt),
+        );
     } on Object catch (error) {
       _log.severe('Could not start a background run: ${error.runtimeType}');
       return BackgroundRunOutcome.nothing;
     }
+    _cutoff = cutoff;
+    if (_stopped.isCompleted) cutoff.closeNow();
     final run = _Run(
       container: container,
       kind: kind,
       deadlineAt: startedAt.add(deadline),
       now: _now,
       minimumTimeToStart: minimumTimeToStart,
+      refreshAllowed: () => cutoff.allowsRefresh,
       appInFront: () async =>
           await _appInFront(container.read(backgroundRunLogProvider), _now()),
+      stopReason: () => _stopReason,
     );
     final channel = BackgroundRunnerChannel.open(run.release);
     final timedOut = Completer<BackgroundRunOutcome>();
@@ -138,10 +163,12 @@ final class BackgroundSyncRunner {
         ]);
       }
       run.stop();
-      if (outcome
-          case BackgroundRunOutcome.deadline || BackgroundRunOutcome.stopped) {
-        await _settle(container);
-      }
+      cutoff.closeNow();
+      await run.noteInterruptedTurn();
+      await _settle(
+        container,
+        outcome == BackgroundRunOutcome.stopped ? stopGrace : settleGrace,
+      );
       await _record(log, outcome);
     } on Object catch (error) {
       _log.warning('Background run failed: ${error.runtimeType}');
@@ -160,14 +187,16 @@ final class BackgroundSyncRunner {
   }
 
   /// A refresh whose answer is dropped ends the session (D26).
-  Future<void> _settle(ProviderContainer container) async {
+  Future<void> _settle(ProviderContainer container, Duration grace) async {
     try {
       await Future.wait([
         container.read(sessionManagersProvider).settle(),
         container.read(linkShareSessionsProvider).settle(),
-      ]).timeout(settleGrace);
+      ]).timeout(grace);
     } on Object catch (error) {
-      _log.info('A token refresh was still on its way: ${error.runtimeType}');
+      _log.warning(
+        'A token refresh or write was still pending: ${error.runtimeType}',
+      );
     }
   }
 
@@ -197,7 +226,9 @@ final class _Run {
     required this.deadlineAt,
     required this.now,
     required this.minimumTimeToStart,
+    required this.refreshAllowed,
     required this.appInFront,
+    required this.stopReason,
   });
 
   final ProviderContainer container;
@@ -205,10 +236,20 @@ final class _Run {
   final DateTime deadlineAt;
   final DateTime Function() now;
   final Duration minimumTimeToStart;
+
+  /// False once a token refresh may no longer start: a turn then could not
+  /// renew the session that its first request needs.
+  final bool Function() refreshAllowed;
   final Future<bool> Function() appInFront;
+
+  /// Null unless the OS stopped the run.
+  final int? Function() stopReason;
   final _released = <String>{};
   var _stopped = false;
   var _failed = false;
+
+  /// The account whose turn has not noted its outcome yet.
+  Account? _inTurn;
 
   void stop() => _stopped = true;
 
@@ -229,6 +270,15 @@ final class _Run {
 
   bool _goesOn(String accountId) => !_stopped && !_released.contains(accountId);
 
+  /// A turn the deadline or the OS cut short before its sync went through
+  /// notes so before the container goes; the turn itself may never get
+  /// that far.
+  Future<void> noteInterruptedTurn() async {
+    final account = _inTurn;
+    if (account == null || kind != BackgroundRunKind.sync) return;
+    await _noteOutcome(account, BackgroundAccountOutcome.stopped);
+  }
+
   Future<BackgroundRunOutcome> accounts() async {
     try {
       final state = await container.read(accountsProvider.future);
@@ -246,7 +296,7 @@ final class _Run {
       }
       for (final (entry, lastSyncedAt) in ordered) {
         if (_stopped) break;
-        if (deadlineAt.difference(now()) < minimumTimeToStart) {
+        if (_tooLate) {
           _log.info('Too little time left for account ${entry.id}');
           return BackgroundRunOutcome.deadline;
         }
@@ -255,12 +305,14 @@ final class _Run {
           return BackgroundRunOutcome.skipped;
         }
         await log.recordAttempt(entry.id, now());
+        _inTurn = entry.account;
         await _account(
           entry,
           lastSyncedAt,
           labelled: labelled,
           queueSent: sent[entry.id],
         );
+        _inTurn = null;
       }
       if (_stopped) return BackgroundRunOutcome.deadline;
       return _failed
@@ -289,7 +341,7 @@ final class _Run {
           !await _hasQueue(entry.id)) {
         continue;
       }
-      if (deadlineAt.difference(now()) < minimumTimeToStart) {
+      if (_tooLate) {
         _log.info(
           'Too little time left to send the queue of account ${entry.id}',
         );
@@ -303,6 +355,9 @@ final class _Run {
     }
     return null;
   }
+
+  bool get _tooLate =>
+      deadlineAt.difference(now()) < minimumTimeToStart || !refreshAllowed();
 
   /// An empty queue builds no sender and costs no request.
   Future<bool> _hasQueue(String accountId) async {
@@ -360,7 +415,8 @@ final class _Run {
   /// The notification window is refilled first, from what the database
   /// holds, so it is never left to the network steps' share of the time.
   /// In a sync run the queue went before the turns ([queueSent], null when
-  /// it was not sent); the turn syncs, then fetches the activity. Once the
+  /// it was not sent), a restored account's in its turn, before the sync;
+  /// the turn syncs, then fetches the activity. Once the
   /// server proved unreachable the account's other network steps are
   /// skipped, each would wait for its own timeout. A drain run only drains.
   Future<void> _account(
@@ -372,21 +428,35 @@ final class _Run {
     final account = entry.account;
     final notifier = container.read(activityNoticesProvider);
     final syncing = kind == BackgroundRunKind.sync;
-    if (account.needsReauth) {
+    if (account.needsReauth && !await _tryRestore(account)) {
       await _step(account, 'notice', () => notifier.sessionEnded(account));
       await _remindBeforeSessionEnds(account);
       await _reconcile(account);
       await _publishWidgets(account);
+      if (syncing) {
+        await _noteOutcome(account, BackgroundAccountOutcome.signInNeeded);
+      }
       return;
     }
     await _step(account, 'notice', () => notifier.sessionRestored(account.id));
     if (syncing) await _reconcile(account);
     // The first-sync screen owns an account that never completed a sync.
     if (lastSyncedAt == null) return;
+    var sent = queueSent;
+    // The queues went before the turns without the restored account's.
+    if (syncing && account.needsReauth && await _hasQueue(account.id)) {
+      if (_tooLate) {
+        _log.info(
+          'Too little time left to send the queue of account ${account.id}',
+        );
+      } else {
+        sent = await _network(account, 'drain', _drain);
+      }
+    }
     var synced = _Step.skipped;
     if (!syncing) {
       await _network(account, 'drain', _drain);
-    } else if (queueSent != _Step.unreachable) {
+    } else if (sent == null || !sent.skipsNetwork) {
       var outcome = SyncOutcome.synced;
       synced = await _network(account, 'sync', (_) async {
         outcome = await container
@@ -398,9 +468,11 @@ final class _Run {
       if (synced == _Step.done && outcome == SyncOutcome.skipped) {
         synced = _Step.skipped;
       }
+      // The deadline or the OS may still cut the activity fetch short.
+      if (synced == _Step.done) await _noteSynced(account);
       // The server keeps no activity for a guest and answers 403.
       if (synced != _Step.sessionEnded &&
-          synced != _Step.unreachable &&
+          !synced.skipsNetwork &&
           !account.isLinkShare) {
         await _network(account, 'activity', (_) async {
           final fresh = await container
@@ -418,22 +490,71 @@ final class _Run {
     }
     // The sender pauses on an ended session instead of throwing, so the
     // registry tells.
-    if (synced == _Step.sessionEnded || await _needsReauth(account.id)) {
+    final ended =
+        synced == _Step.sessionEnded || await _needsReauth(account.id);
+    if (ended) {
       _failed = true;
       await _step(account, 'notice', () => notifier.sessionEnded(account));
     }
+    // A sync another run holds says nothing about this account. An end
+    // during the settle after a stop is noted as the end, which a turn of
+    // the old session must not outlast once the account signs in again.
+    final turn = switch (synced) {
+      _ when !syncing => null,
+      _Step.done when !ended => null,
+      _ when ended => BackgroundAccountOutcome.sessionEnded,
+      _ when _stopped => BackgroundAccountOutcome.stopped,
+      _Step.skipped => switch (sent) {
+        final step? when step.skipsNetwork => step.outcome,
+        _ => null,
+      },
+      _ => synced.outcome,
+    };
+    if (turn != null) await _noteOutcome(account, turn);
     // What the sync brought (a reminder set on the web) is planned too.
     if (synced == _Step.done) await _reconcile(account);
     await _remindBeforeSessionEnds(account);
     await _publishWidgets(account);
-    if (synced == _Step.done && _goesOn(account.id)) {
-      await _step(
-        account,
-        'log',
-        () => container
-            .read(backgroundRunLogProvider)
-            .recordAccountRun(account.id, now()),
-      );
+  }
+
+  /// Another isolate may have stored a rotation after this one gave up,
+  /// and a guest's link may read again (D59).
+  Future<bool> _tryRestore(Account account) => account.isLinkShare
+      ? container.read(linkShareSessionsProvider).tryRestore(account.id)
+      : container.read(sessionManagersProvider).tryRestore(account.id);
+
+  /// Also after a stop, unlike the steps: the data did sync.
+  Future<void> _noteSynced(Account account) async {
+    await _noteOutcome(account, BackgroundAccountOutcome.synced);
+    if (_released.contains(account.id)) return;
+    try {
+      await container
+          .read(backgroundRunLogProvider)
+          .recordAccountRun(account.id, now());
+    } on Object catch (error) {
+      _log.info('Could not note the sync: ${error.runtimeType}');
+    }
+  }
+
+  Future<void> _noteOutcome(
+    Account account,
+    BackgroundAccountOutcome outcome,
+  ) async {
+    if (identical(_inTurn, account)) _inTurn = null;
+    if (_released.contains(account.id)) return;
+    try {
+      await container
+          .read(backgroundRunLogProvider)
+          .recordAccountOutcome(
+            account.id,
+            outcome,
+            at: now(),
+            stopReason: outcome == BackgroundAccountOutcome.stopped
+                ? stopReason()
+                : null,
+          );
+    } on Object catch (error) {
+      _log.info('Could not note the turn: ${error.runtimeType}');
     }
   }
 
@@ -497,12 +618,17 @@ final class _Run {
       _failed = true;
       _log.info('The session of account ${account.id} has ended');
       return _Step.sessionEnded;
-    } on NetworkFailure {
+    } on NetworkFailure catch (failure) {
       _failed = true;
+      final step = switch (failure.cause) {
+        RefreshDeferred() => _Step.deferred,
+        SecureStorageUnreadable() => _Step.storageUnreadable,
+        _ => _Step.unreachable,
+      };
       if (!_stopped) {
-        _log.info('$what of account ${account.id}: the server is unreachable');
+        _log.info('$what of account ${account.id}: ${step.reason}');
       }
-      return _Step.unreachable;
+      return step;
     } on Object catch (error) {
       _failed = true;
       if (!_stopped) {
@@ -521,4 +647,33 @@ final class _Run {
   ) => _network(account, what, (_) => action());
 }
 
-enum _Step { done, failed, unreachable, sessionEnded, skipped }
+enum _Step {
+  done,
+  failed,
+  unreachable,
+  deferred,
+  storageUnreadable,
+  sessionEnded,
+  skipped;
+
+  /// The account's other network steps would fail the same way.
+  bool get skipsNetwork => switch (this) {
+    unreachable || deferred || storageUnreadable => true,
+    done || failed || sessionEnded || skipped => false,
+  };
+
+  BackgroundAccountOutcome get outcome => switch (this) {
+    done => BackgroundAccountOutcome.synced,
+    unreachable => BackgroundAccountOutcome.unreachable,
+    deferred => BackgroundAccountOutcome.deferred,
+    storageUnreadable => BackgroundAccountOutcome.storageUnreadable,
+    sessionEnded => BackgroundAccountOutcome.sessionEnded,
+    failed || skipped => BackgroundAccountOutcome.failed,
+  };
+
+  String get reason => switch (this) {
+    deferred => 'the token renewal waits for the next run',
+    storageUnreadable => 'secure storage could not be read',
+    _ => 'the server is unreachable',
+  };
+}

@@ -141,8 +141,8 @@ class _FirstSyncScreenState extends ConsumerState<FirstSyncScreen> {
                     if (sessionEnded && entry.account.isLinkShare)
                       GuestReauthBanner(entry: entry)
                     else if (sessionEnded) ...[
-                      ReauthBanner(
-                        serverRoot: entry.connection.rootUri,
+                      AccountReauthBanner(
+                        entry: entry,
                         isSigningIn: signIn is SignInInProgress,
                         onSignInAgain: () => unawaited(
                           signInAgainAfterHint(context, ref, entry),

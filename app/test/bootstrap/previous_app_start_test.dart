@@ -225,11 +225,15 @@ final class _FailingWipe implements SecureStore {
   Future<String?> read(String key) => _inner.read(key);
 
   @override
-  Future<void> write(String key, String value) => _inner.write(key, value);
+  Future<void> write(String key, String value, {bool recoverLostKey = false}) =>
+      _inner.write(key, value);
 
   @override
   Future<void> delete(String key) => _inner.delete(key);
 
   @override
   Future<void> deleteAll() async => throw Exception('Keystore unavailable');
+
+  @override
+  Future<void> flush() async {}
 }

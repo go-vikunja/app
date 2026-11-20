@@ -1,0 +1,3 @@
+# Created when the plugin is opened on its own in Android Studio.
+android/.gradle/
+android/local.properties

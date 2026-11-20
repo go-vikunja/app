@@ -12,13 +12,20 @@ final class _LockedKeychain implements SecureStore {
   Future<String?> read(String key) async => null;
 
   @override
-  Future<void> write(String key, String value) async {}
+  Future<void> write(
+    String key,
+    String value, {
+    bool recoverLostKey = false,
+  }) async {}
 
   @override
   Future<void> delete(String key) async {}
 
   @override
   Future<void> deleteAll() async => throw PlatformException(code: '-25308');
+
+  @override
+  Future<void> flush() async {}
 }
 
 void main() {

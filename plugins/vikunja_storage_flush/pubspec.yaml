@@ -1,0 +1,24 @@
+name: vikunja_storage_flush
+description: Writes pending SharedPreferences changes to disk on Android before the caller goes on (D59).
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  sdk: ^3.13.0
+  flutter: ">=3.47.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: io.vikunja.vikunja_storage_flush
+        pluginClass: VikunjaStorageFlushPlugin

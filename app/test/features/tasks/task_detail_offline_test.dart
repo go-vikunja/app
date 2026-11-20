@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
@@ -279,6 +282,7 @@ void main() {
     for (final failure in const <VikunjaFailure>[
       ServerFailure(502),
       NotJsonResponse(200, message: 'text/html'),
+      NetworkFailure(NetworkProblem.timeout, cause: RefreshDeferred.race),
     ]) {
       testWidgets('$failure: the stored ones stay with a note that does not '
           'ask for a connection', (tester) async {
@@ -311,6 +315,21 @@ void main() {
         expect(inSheet(find.textContaining('Gate B12')), findsOneWidget);
       });
     }
+
+    testWidgets('with nothing stored, a read that got no token says they '
+        'could not be loaded, not that they need a connection', (tester) async {
+      data.details
+        ..storedDetailsByTask.clear()
+        ..storedCommentsByTask.clear()
+        ..detailsFailure = const NetworkFailure(
+          NetworkProblem.unreachable,
+          cause: SecureStorageUnreadable(PlatformException),
+        );
+      await openDetail(tester);
+
+      expect(inSheet(find.text(en.taskDetailDetailsFailed)), findsOneWidget);
+      expect(inSheet(find.text(en.taskDetailDetailsOffline)), findsNothing);
+    });
 
     testWidgets('a task that is gone shows as such, without the stored '
         'ones', (tester) async {

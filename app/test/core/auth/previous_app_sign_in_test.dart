@@ -8,7 +8,11 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/auth/previous_app_sign_in.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/sign_in_tokens.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fakes.dart';
@@ -343,6 +347,96 @@ void main() {
       expect(cancellation.cancel(), isTrue);
       expect(cancellation.cancel(), isFalse);
       expect(cancellation.isCancelled, isTrue);
+    });
+  });
+
+  group('stores its tokens like a browser sign-in (D59)', () {
+    late SessionDiagnostics diagnostics;
+    late List<Duration> sleeps;
+    late TokenSet tokens;
+
+    setUp(() {
+      diagnostics = SessionDiagnostics(fakes.preferences);
+      sleeps = [];
+      tokens = issueTokens(issuedAt: now, userId: _alice.id);
+      fakes.tokenGateway.onRefresh = (_) async => tokens;
+      fakes.accountGateway.onCurrentUser = (_) async => _alice;
+      signIn = PreviousAppSignIn(
+        connector: connector,
+        tokenGateway: fakes.tokenGateway,
+        accountGateway: fakes.accountGateway,
+        tokenStore: fakes.tokenStore,
+        registry: fakes.registry,
+        sessions: sessions,
+        diagnostics: diagnostics,
+        clock: () => now,
+        sleep: (duration) async => sleeps.add(duration),
+      );
+    });
+
+    test('a write that fails twice is tried once more, letting the platform '
+        'reset storage whose key is lost for good', () async {
+      var refusals = 2;
+      fakes.secureStore.beforeWrite = (_) async {
+        if (refusals-- > 0) throw StateError('the Keystore failed');
+      };
+
+      final entry = await keep();
+
+      expect(entry?.id, accountId);
+      expect(sleeps, [
+        SignInTokens.storageRetryDelay,
+        SignInTokens.storageRetryDelay,
+      ]);
+      expect(fakes.secureStore.recoveringWrites, [
+        TokenStore.refreshTokenKey(accountId),
+      ]);
+      expect(
+        (await fakes.tokenStore.read(accountId))?.refreshToken,
+        tokens.refreshToken,
+      );
+    });
+
+    test('a write that keeps failing logs the new session out and registers '
+        'nothing', () async {
+      fakes.secureStore.beforeWrite = (_) async =>
+          throw StateError('the Keystore failed');
+
+      await expectLater(keep(), throwsA(isA<StateError>()));
+      await pumpEventQueue();
+
+      expect(fakes.accountGateway.logoutTokens, [tokens.accessToken]);
+      await expectNothingStored();
+    });
+
+    test('a stored sign-in ends a run of unreadable reads', () async {
+      await diagnostics.noteUnreadable(accountId, now);
+
+      await keep();
+
+      expect(
+        fakes.preferences.values,
+        isNot(contains(SessionDiagnostics.unreadableSinceKey(accountId))),
+      );
+    });
+
+    test('an ended session of the account is noted as replaced', () async {
+      await diagnostics.recordEnd(
+        accountId,
+        SessionEndDiagnosis(
+          at: now,
+          cause: SessionEndCause.missingTokens,
+          part: AppPart.app,
+        ),
+      );
+
+      await keep();
+      await pumpEventQueue();
+
+      expect(
+        (await diagnostics.lastEnd(accountId))?.resolution,
+        SessionEndResolution.noTokens,
+      );
     });
   });
 

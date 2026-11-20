@@ -14,6 +14,18 @@ final class StoredTokens {
   String toString() => 'StoredTokens([redacted])';
 }
 
+/// Secure storage refused a read (a Keystore or Keychain failure): the
+/// tokens may still be there, unlike a read that finds none.
+final class SecureStorageUnreadable implements Exception {
+  const new(this.errorType);
+
+  /// Only the type: platform errors can echo stored values.
+  final Type errorType;
+
+  @override
+  String toString() => 'SecureStorageUnreadable($errorType)';
+}
+
 final class TokenStore {
   new(this._store);
 
@@ -25,22 +37,39 @@ final class TokenStore {
   static String accessTokenKey(String accountId) =>
       'account.$accountId.access_token';
 
+  /// Throws [SecureStorageUnreadable] when storage refuses to read.
   Future<StoredTokens?> read(String accountId) async {
-    final refreshToken = await _store.read(refreshTokenKey(accountId));
-    if (refreshToken == null || refreshToken.isEmpty) return null;
-    final accessToken = await _store.read(accessTokenKey(accountId));
-    return StoredTokens(
-      accessToken: accessToken ?? '',
-      refreshToken: refreshToken,
-    );
+    try {
+      final refreshToken = await _store.read(refreshTokenKey(accountId));
+      if (refreshToken == null || refreshToken.isEmpty) return null;
+      final accessToken = await _store.read(accessTokenKey(accountId));
+      return StoredTokens(
+        accessToken: accessToken ?? '',
+        refreshToken: refreshToken,
+      );
+    } on Object catch (error) {
+      throw SecureStorageUnreadable(error.runtimeType);
+    }
   }
 
   // The refresh token goes first: Vikunja has already invalidated the old one,
   // so it must survive a crash between the two writes. A stale access token
   // only costs one more refresh.
-  Future<void> write(String accountId, TokenSet tokens) async {
-    await _store.write(refreshTokenKey(accountId), tokens.refreshToken);
+  //
+  // With [recoverLostKey] secure storage may wipe everything first when its
+  // key cannot be unwrapped any more (D59): only a sign-in asks for that.
+  Future<void> write(
+    String accountId,
+    TokenSet tokens, {
+    bool recoverLostKey = false,
+  }) async {
+    await _store.write(
+      refreshTokenKey(accountId),
+      tokens.refreshToken,
+      recoverLostKey: recoverLostKey,
+    );
     await _store.write(accessTokenKey(accountId), tokens.accessToken);
+    await _store.flush();
   }
 
   Future<void> delete(String accountId) async {

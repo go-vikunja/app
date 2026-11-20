@@ -4,12 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/outbox/external_done.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
@@ -361,6 +363,27 @@ void main() {
     expect(removed.title, 'Account removed');
     expect(removed.rows, isEmpty);
     expect(host.catalogs, isEmpty);
+  });
+
+  test('an account whose session ended on this device is told so, from '
+      'its record as a headless container reads it (D59)', () async {
+    final (accountId, _) = await signedIn();
+    await SessionDiagnostics(auth.preferences).recordEnd(
+      accountId,
+      SessionEndDiagnosis(
+        at: now.toUtc(),
+        cause: SessionEndCause.storageUnreadable,
+        part: AppPart.app,
+      ),
+    );
+    await container.read(accountRegistryProvider).markNeedsReauth(accountId);
+    await pumpEventQueue();
+
+    await container.read(widgetRefresherProvider).refresh(accountId);
+
+    final today = host.snapshot('$accountId.today')!;
+    expect(today.state, WidgetSnapshotState.needsReauth);
+    expect(today.message?.title, 'Signed out on this device');
   });
 
   test('a headless container builds from the stored switch', () async {

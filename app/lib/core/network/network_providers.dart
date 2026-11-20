@@ -27,11 +27,16 @@ Dio dio(Ref ref) {
 /// timeout, because the server rotates the refresh token as soon as it
 /// receives a refresh, so an abandoned response loses the session.
 @Riverpod(keepAlive: true)
-Dio authDio(Ref ref) {
+Dio authDio(Ref ref) => createAuthDio(ref);
+
+/// [authDio] with another [connectTimeout], which the native adapters add
+/// to a request's receive timeout.
+Dio createAuthDio(Ref ref, {Duration connectTimeout = defaultConnectTimeout}) {
   final dio = createDio(
     userAgent: ref.watch(clientIdentityProvider).userAgent,
     profiles: ref.watch(networkProfilesProvider),
     receiveTimeout: const Duration(seconds: 60),
+    connectTimeout: connectTimeout,
   );
   ref.onDispose(dio.close);
   return dio;

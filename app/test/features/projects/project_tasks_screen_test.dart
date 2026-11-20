@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
@@ -680,6 +681,19 @@ void main() {
       findsOneWidget,
     );
     expect(data.tasks.projectListRefreshes, [(1, 13)]);
+  });
+
+  testWidgets('a download that got no token is no outage: such a view says '
+      'the download failed, not that it loads once online', (tester) async {
+    data.tasks.refreshProjectListFailure = const NetworkFailure(
+      NetworkProblem.timeout,
+      cause: RefreshDeferred.race,
+    );
+    await pumpProject(tester, viewId: 13);
+
+    expect(find.text(en.projectViewDownloadFailedTitle), findsOneWidget);
+    expect(find.text(en.projectViewNotLoadedTitle), findsNothing);
+    expect(find.byType(OfflineNotice), findsNothing);
   });
 
   testWidgets('offline and never downloaded, such a view downloads once '

@@ -9,8 +9,10 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/auth/link_share_account_id.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_landing.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_sign_in.dart';
 
@@ -66,6 +68,7 @@ void main() {
         return await projectTitle();
       },
       files: deletions,
+      diagnostics: SessionDiagnostics(auth.preferences),
       clock: () => now,
     );
   });
@@ -512,6 +515,78 @@ void main() {
       expect(await guestSignIn.storedLink(guest.id), isNull);
       expect(await guestSignIn.reopen(guest.id), isA<GuestLinkGone>());
       expect(gateway.authentications, isEmpty);
+    });
+
+    test('opened again, ends a run of unreadable reads and settles the ended '
+        'session (D59)', () async {
+      final diagnostics = SessionDiagnostics(auth.preferences);
+      final guest = await auth.seedGuest(
+        server,
+        token: issueLinkShareToken(issuedAt: now),
+        needsReauth: true,
+      );
+      await diagnostics.recordEnd(
+        guest.id,
+        SessionEndDiagnosis(
+          at: now,
+          cause: SessionEndCause.storageUnreadable,
+          part: AppPart.app,
+        ),
+      );
+      await diagnostics.noteUnreadable(guest.id, now);
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+
+      expect(await guestSignIn.reopen(guest.id), isA<GuestSignedIn>());
+
+      expect(
+        (await diagnostics.lastEnd(guest.id))!.resolution,
+        SessionEndResolution.unknown,
+      );
+      expect(
+        auth.preferences.values,
+        isNot(contains(SessionDiagnostics.unreadableSinceKey(guest.id))),
+      );
+    });
+
+    test("opened again after its share was gone, settles that end's record "
+        'and unmarks the guest (D59)', () async {
+      final diagnostics = SessionDiagnostics(auth.preferences);
+      final guest = await auth.seedGuest(
+        server,
+        token: issueLinkShareToken(
+          issuedAt: now.subtract(const Duration(hours: 80)),
+        ),
+      );
+      gateway.onAuthenticate = (_, _) async =>
+          throw const LinkShareGone(code: 13003);
+      await expectLater(
+        LinkShareSessions(
+          store: auth.linkShareStore,
+          gateway: gateway,
+          connectionFor: (id) async =>
+              (await auth.registry.find(id))?.connection,
+          markNeedsReauth: auth.registry.markNeedsReauth,
+          diagnostics: diagnostics,
+          clock: () => now,
+        ).forAccount(guest.id).validAccessToken(),
+        throwsA(isA<LinkShareGone>()),
+      );
+      expect(
+        (await diagnostics.lastEnd(guest.id))!.cause,
+        SessionEndCause.shareGone,
+      );
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+
+      expect(await guestSignIn.reopen(guest.id), isA<GuestSignedIn>());
+
+      expect(
+        (await diagnostics.lastEnd(guest.id))!.resolution,
+        SessionEndResolution.unknown,
+      );
+      expect(
+        (await auth.registry.find(guest.id))!.account.needsReauth,
+        isFalse,
+      );
     });
   });
 }

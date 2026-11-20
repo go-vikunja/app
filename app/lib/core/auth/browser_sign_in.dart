@@ -6,7 +6,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/sign_in_tokens.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/logging/redaction.dart';
@@ -17,6 +19,8 @@ typedef AuthorizationRequestFactory = AuthorizationRequest Function(
 );
 
 final _log = Logger('BrowserSignIn');
+
+Future<void> _delay(Duration duration) => Future<void>.delayed(duration);
 
 /// Vikunja has no consent screen, so the sign-in page decides who signs in.
 /// When it is not the account being signed in again, nothing is stored.
@@ -40,8 +44,10 @@ final class BrowserSignIn {
     required this._tokenStore,
     required this._registry,
     required this._sessions,
+    this._diagnostics,
     OAuthClientConfig? client,
     this._clock = DateTime.now,
+    this._sleep = _delay,
     this._createRequest = AuthorizationRequest.create,
     Duration previousSessionLogoutTimeout = const Duration(seconds: 20),
   }) : _client = client ?? appOAuthClient,
@@ -53,10 +59,21 @@ final class BrowserSignIn {
   final TokenStore _tokenStore;
   final AccountRegistry _registry;
   final SessionManagers _sessions;
+  final SessionDiagnostics? _diagnostics;
   final OAuthClientConfig _client;
   final Clock _clock;
+  final Sleep _sleep;
   final AuthorizationRequestFactory _createRequest;
   final Duration _logoutTimeout;
+  late final _signInTokens = SignInTokens(
+    tokenStore: _tokenStore,
+    tokenGateway: _tokenGateway,
+    accountGateway: _accountGateway,
+    diagnostics: _diagnostics,
+    clock: _clock,
+    sleep: _sleep,
+    logoutTimeout: _logoutTimeout,
+  );
 
   /// Signs in and makes the account active. Null when the user closed the
   /// browser. With [expectedAccount], only that user is accepted.
@@ -106,15 +123,24 @@ final class BrowserSignIn {
         );
       }
     } on Object {
-      unawaited(_endSession(connection, _storedFrom(tokens)));
+      unawaited(_signInTokens.abandon(connection, tokens));
       rethrow;
     }
 
     final accountId = accountIdFor(connection.rootUri, user.id);
     await _sessions.retire(accountId);
-    final previous = await _tokenStore.read(accountId);
-    await _tokenStore.write(accountId, tokens);
-    await _sessions.signedIn(accountId, tokens, receivedAt: receivedAt);
+    final ReplacedTokens replaced;
+    try {
+      replaced = await _signInTokens.store(accountId, tokens);
+    } on Object {
+      unawaited(_signInTokens.abandon(connection, tokens));
+      rethrow;
+    }
+    final session = await _sessions.signedIn(
+      accountId,
+      tokens,
+      receivedAt: receivedAt,
+    );
 
     final existing = await _registry.find(accountId);
     if (existing != null) await beforeActivatingExisting?.call(accountId);
@@ -132,38 +158,16 @@ final class BrowserSignIn {
     await _registry.upsert(entry, activate: true);
     _log.info('Signed in account $accountId');
 
-    if (previous != null && previous.refreshToken != tokens.refreshToken) {
-      unawaited(_endSession(connection, previous));
-    }
+    unawaited(
+      _signInTokens.settleReplaced(
+        connection,
+        accountId,
+        replaced,
+        session: session,
+      ),
+    );
     return entry;
   }
-
-  /// Best effort: the session is abandoned locally either way.
-  Future<void> _endSession(
-    ServerConnection connection,
-    StoredTokens tokens,
-  ) async {
-    try {
-      await _accountGateway
-          .logout(
-            connection,
-            _DetachedSession(
-              tokens,
-              refresh: (refreshToken) =>
-                  _tokenGateway.refresh(connection, refreshToken),
-              clock: _clock,
-            ),
-          )
-          .timeout(_logoutTimeout);
-    } on Object catch (error) {
-      _log.info('Could not end an abandoned session: ${error.runtimeType}');
-    }
-  }
-
-  static StoredTokens _storedFrom(TokenSet tokens) => StoredTokens(
-    accessToken: tokens.accessToken,
-    refreshToken: tokens.refreshToken,
-  );
 }
 
 /// The access token of a token response that was not persisted yet; it is
@@ -178,32 +182,4 @@ final class _IssuedTokens implements AccessTokenSource {
 
   @override
   Future<String?> refreshAfterRejection(String rejectedToken) async => null;
-}
-
-/// Tokens of a session that is being abandoned: refreshed at most once, in
-/// memory only, just to be able to log it out.
-final class _DetachedSession implements AccessTokenSource {
-  new(this._tokens, {required this._refresh, required this._clock});
-
-  final StoredTokens _tokens;
-  final RefreshCall _refresh;
-  final Clock _clock;
-  Future<String>? _refreshed;
-
-  @override
-  Future<String> validAccessToken() async {
-    final expiresAt = JwtClaims.tryParse(_tokens.accessToken)?.expiresAt;
-    final usable =
-        expiresAt != null &&
-        expiresAt.difference(_clock()) > SessionManager.refreshMargin;
-    return usable ? _tokens.accessToken : await _refreshOnce();
-  }
-
-  @override
-  Future<String?> refreshAfterRejection(String rejectedToken) async =>
-      _refreshed == null ? await _refreshOnce() : null;
-
-  Future<String> _refreshOnce() =>
-      _refreshed ??= _refresh(_tokens.refreshToken)
-          .then((tokens) => tokens.accessToken);
 }

@@ -23,6 +23,7 @@ ActivityNotifier activityNotices(Ref ref) => ActivityNotifier(
   l10n: ref.watch(deviceAppLocalizationsProvider),
   content: () async =>
       (await ref.read(privacySettingsProvider.future)).notificationContent,
+  endedOnDevice: ref.watch(sessionDiagnosticsProvider).endedOnDevice,
 );
 
 /// The foreground side of activity and background sync; the foreground

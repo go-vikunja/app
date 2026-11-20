@@ -5,6 +5,9 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/link_share_gateway.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 
 typedef LinkShareRenewal = Future<LinkShareToken> Function(String token);
 typedef LinkShareAuthentication = Future<LinkShareAuth> Function(
@@ -25,7 +28,8 @@ final _log = Logger('LinkShareSession');
 /// tries it at most that often, with the share's password when the user
 /// chose to remember it. A share that needs a password it does not have,
 /// or that is gone, ends the session: the account needs the link opened
-/// again. A remembered password the server refuses is forgotten.
+/// again. A remembered password the server refuses is forgotten. Every end
+/// is recorded before the guest is marked (D59).
 final class LinkShareSession implements AccessTokenSource {
   new({
     required this.accountId,
@@ -33,6 +37,8 @@ final class LinkShareSession implements AccessTokenSource {
     required this._renew,
     required this._authenticate,
     required this._onEnded,
+    this._diagnostics,
+    this._part = AppPart.app,
     this._clock = DateTime.now,
     this._maxAuthentications,
   });
@@ -56,6 +62,8 @@ final class LinkShareSession implements AccessTokenSource {
   final LinkShareRenewal _renew;
   final LinkShareAuthentication _authenticate;
   final LinkShareEndedHandler _onEnded;
+  final SessionDiagnostics? _diagnostics;
+  final AppPart _part;
   final DateTime Function() _clock;
   final int? _maxAuthentications;
 
@@ -170,12 +178,33 @@ final class LinkShareSession implements AccessTokenSource {
     return _token ??= stored;
   }
 
+  /// A good read ends a run of failed reads at app starts (D59). One that
+  /// fails is a network failure for every caller, like the session
+  /// manager's: the link is kept and tried again, and as a VikunjaFailure
+  /// it passes the transport's retries and error mapping unchanged.
+  Future<StoredLinkShare?> _readShare() async {
+    final StoredLinkShare? stored;
+    try {
+      stored = await _store.read(accountId);
+    } on Object catch (error) {
+      throw NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: SecureStorageUnreadable(error.runtimeType),
+      );
+    }
+    await _diagnostics?.noteReadable(accountId);
+    return stored;
+  }
+
   /// Null when only the hash is stored, or the token cannot be read.
   Future<LinkShareToken?> _readStored() async {
-    final stored = await _store.read(accountId);
+    final stored = await _readShare();
     _ensureUsable();
     if (stored == null) {
-      throw await _end(const SessionEnded(SessionEndReason.expired));
+      throw await _end(
+        const SessionEnded(SessionEndReason.expired),
+        cause: SessionEndCause.missingTokens,
+      );
     }
     final jwt = stored.token;
     if (jwt == null) return null;
@@ -208,10 +237,13 @@ final class LinkShareSession implements AccessTokenSource {
           .whenComplete(() => _authenticating = null);
 
   Future<LinkShareToken> _authenticateAgain(String? rejectedToken) async {
-    final storedShare = await _store.read(accountId);
+    final storedShare = await _readShare();
     _ensureUsable();
     if (storedShare == null) {
-      throw await _end(const SessionEnded(SessionEndReason.expired));
+      throw await _end(
+        const SessionEnded(SessionEndReason.expired),
+        cause: SessionEndCause.missingTokens,
+      );
     }
     // Another isolate may have authenticated already.
     if (storedShare.token case final jwt? when jwt != rejectedToken) {
@@ -252,6 +284,7 @@ final class LinkShareSession implements AccessTokenSource {
             code: failure.code,
             message: failure.message,
           ),
+          cause: SessionEndCause.sharePasswordNeeded,
         );
       }
       rethrow;
@@ -308,11 +341,24 @@ final class LinkShareSession implements AccessTokenSource {
     if (await _store.read(accountId) == null) await _store.delete(accountId);
   }
 
-  Future<SessionEnded> _end(SessionEnded failure) async {
+  /// Without [cause], the one of [failure]'s reason.
+  Future<SessionEnded> _end(
+    SessionEnded failure, {
+    SessionEndCause? cause,
+  }) async {
     if (_retired) throw const _Retired();
     _ended = failure;
     _token = null;
     _log.warning('Session of guest $accountId ended: $failure');
+    await _diagnostics?.recordEnd(
+      accountId,
+      SessionEndDiagnosis(
+        at: _clock(),
+        cause: cause ?? SessionEndCause.of(failure.reason),
+        part: _part,
+        code: failure.code,
+      ),
+    );
     try {
       await _onEnded(failure);
     } on Object catch (error, stackTrace) {
@@ -361,6 +407,9 @@ final class LinkShareSessions {
     required this._connectionFor,
     required this._markNeedsReauth,
     this._onSessionEnded,
+    this._clearNeedsReauth,
+    this._diagnostics,
+    this._part = AppPart.app,
     this._clock = DateTime.now,
     this._maxAuthentications,
   });
@@ -371,6 +420,9 @@ final class LinkShareSessions {
   final Future<void> Function(String accountId) _markNeedsReauth;
   final Future<void> Function(String accountId, SessionEnded failure)?
   _onSessionEnded;
+  final Future<void> Function(String accountId)? _clearNeedsReauth;
+  final SessionDiagnostics? _diagnostics;
+  final AppPart _part;
   final DateTime Function() _clock;
   final int? _maxAuthentications;
   final _sessions = <String, LinkShareSession>{};
@@ -399,6 +451,37 @@ final class LinkShareSessions {
     return session;
   }
 
+  /// A guest marked for a new sign-in only because secure storage refused
+  /// its link at app starts for a day (D59) works again once the link
+  /// reads: the server refused nothing. Not after a restore or a reopened
+  /// link, nor after any other end, which its record names. Never
+  /// throws.
+  Future<bool> tryRestore(String accountId) async {
+    final clearNeedsReauth = _clearNeedsReauth;
+    final diagnostics = _diagnostics;
+    if (clearNeedsReauth == null || diagnostics == null) return false;
+    try {
+      final ended = await diagnostics.lastEnd(accountId);
+      if (ended == null ||
+          ended.cause != SessionEndCause.storageUnreadable ||
+          ended.resolution != null ||
+          await _store.read(accountId) == null) {
+        return false;
+      }
+      await diagnostics.noteReadable(accountId);
+      await diagnostics.recordEnd(
+        accountId,
+        ended.resolved(SessionEndResolution.restored),
+      );
+      await clearNeedsReauth(accountId);
+      _log.info('Guest $accountId reads its link again');
+      return true;
+    } on Object catch (error) {
+      _log.info('Guest $accountId stays ended: ${error.runtimeType}');
+      return false;
+    }
+  }
+
   LinkShareSession _create(String accountId) {
     Future<ServerConnection> connection() async =>
         await _connectionFor(accountId) ??
@@ -416,6 +499,8 @@ final class LinkShareSessions {
         await _markNeedsReauth(accountId);
         await _onSessionEnded?.call(accountId, failure);
       },
+      diagnostics: _diagnostics,
+      part: _part,
       clock: _clock,
       maxAuthentications: _maxAuthentications,
     );

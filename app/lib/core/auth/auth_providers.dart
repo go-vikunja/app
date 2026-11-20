@@ -9,10 +9,12 @@ import 'package:vikunja_mobile/core/auth/browser_sign_in.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/auth/previous_install.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
@@ -36,6 +38,19 @@ ServerClockOffsets serverClockOffsets(Ref ref) =>
     ServerClockOffsets(ref.watch(preferencesStoreProvider));
 
 @Riverpod(keepAlive: true)
+SessionDiagnostics sessionDiagnostics(Ref ref) {
+  final registry = ref.watch(accountRegistryProvider);
+  return SessionDiagnostics(
+    ref.watch(preferencesStoreProvider),
+    accountExists: (accountId) async => await registry.find(accountId) != null,
+  );
+}
+
+/// Open in the app; a background run bounds it (see [RefreshCutoff]).
+@Riverpod(keepAlive: true)
+RefreshCutoff refreshCutoff(Ref ref) => RefreshCutoff();
+
+@Riverpod(keepAlive: true)
 AccountRegistry accountRegistry(Ref ref) {
   final registry = AccountRegistry(ref.watch(preferencesStoreProvider));
   ref.onDispose(registry.dispose);
@@ -57,6 +72,7 @@ WebAuthenticator webAuthenticator(Ref ref) =>
 @Riverpod(keepAlive: true)
 SessionManagers sessionManagers(Ref ref) {
   final registry = ref.watch(accountRegistryProvider);
+  final cutoff = ref.watch(refreshCutoffProvider);
   return SessionManagers(
     tokenStore: ref.watch(tokenStoreProvider),
     clockOffsets: ref.watch(serverClockOffsetsProvider),
@@ -65,6 +81,10 @@ SessionManagers sessionManagers(Ref ref) {
         (await registry.find(accountId))?.connection,
     markNeedsReauth: registry.markNeedsReauth,
     onSessionEnded: sessionEndRecorder(ref),
+    clearNeedsReauth: registry.clearNeedsReauth,
+    diagnostics: ref.watch(sessionDiagnosticsProvider),
+    part: ref.watch(appPartProvider),
+    mayStartRefresh: () => cutoff.allowsRefresh,
   );
 }
 
@@ -76,6 +96,7 @@ BrowserSignIn browserSignIn(Ref ref) => BrowserSignIn(
   tokenStore: ref.watch(tokenStoreProvider),
   registry: ref.watch(accountRegistryProvider),
   sessions: ref.watch(sessionManagersProvider),
+  diagnostics: ref.watch(sessionDiagnosticsProvider),
 );
 
 /// The registry as this isolate last read or wrote it.
@@ -88,15 +109,23 @@ class Accounts extends _$Accounts {
     final linkShareStore = ref.watch(linkShareStoreProvider);
     final preferences = ref.watch(preferencesStoreProvider);
     final secureStore = ref.watch(secureStoreProvider);
+    final diagnostics = ref.watch(sessionDiagnosticsProvider);
+    // A background run or notification action only uses the accounts: the
+    // purge and the check belong to the app's start, and a fresh engine's
+    // first Keystore read is where a passing failure shows (D59).
+    final headless = ref.watch(appPartProvider) != AppPart.app;
     final subscription = registry.changes.listen(
       (next) => state = AsyncData(next),
     );
     ref.onDispose(subscription.cancel);
-    await purgeSecretsLeftByPreviousInstall(
-      preferences: preferences,
-      secureStore: secureStore,
-    );
+    if (!headless) {
+      await purgeSecretsLeftByPreviousInstall(
+        preferences: preferences,
+        secureStore: secureStore,
+      );
+    }
     final loaded = await registry.load();
+    if (headless) return loaded;
     // Not awaited: the first Keystore read can be slow, and routing only
     // depends on the active account, which flagging never changes. Its
     // writes reach this provider through registry.changes.
@@ -105,6 +134,7 @@ class Accounts extends _$Accounts {
         registry,
         tokenStore,
         linkShareStore,
+        diagnostics: diagnostics,
       ).then<void>(
         (_) {},
         onError: (Object error) =>

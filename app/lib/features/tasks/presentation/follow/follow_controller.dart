@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 
 final _log = Logger('Follow');
@@ -101,6 +102,7 @@ final class FollowController extends ValueNotifier<FollowState> {
 }
 
 String followFailureText(AppLocalizations l10n, Object? failure) =>
+    notSentFailureText(l10n, failure) ??
     switch (failure) {
       NetworkFailure() || null => l10n.followNeedsConnection,
       TaskNotSyncedYet() => l10n.followTaskOnceSynced,

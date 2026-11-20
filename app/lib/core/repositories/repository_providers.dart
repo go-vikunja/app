@@ -562,6 +562,7 @@ AccountDataWiper accountDataWiper(Ref ref) => (accountId) async {
   await _disposeQuietly('Background notes', accountId, () async {
     await ref.read(backgroundRunLogProvider).forget(accountId);
     await ref.read(sessionEndLogProvider).forget(accountId);
+    await ref.read(sessionDiagnosticsProvider).forget(accountId);
     await ref
         .read(preferencesStoreProvider)
         .remove(ActivityNotifier.sessionEndedKey(accountId));

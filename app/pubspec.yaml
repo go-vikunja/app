@@ -60,6 +60,8 @@ dependencies:
     path: ../packages/vikunja_domain
   vikunja_logic:
     path: ../packages/vikunja_logic
+  vikunja_storage_flush:
+    path: ../plugins/vikunja_storage_flush
   vikunja_widgets:
     path: ../plugins/vikunja_widgets
   webview_flutter: ^4.14.1

@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -112,6 +113,7 @@ final class AccountSupport {
     required this.queue,
     required this.notifications,
     required this.lastSessionEnd,
+    required this.sessionEndDiagnosis,
   });
 
   /// Only to name the account in the log by its number; never shown.
@@ -140,6 +142,9 @@ final class AccountSupport {
   final Collected<QueueSummary> queue;
   final Collected<NotificationPreferences> notifications;
   final Collected<SessionEndRecord> lastSessionEnd;
+
+  /// The D59 record; its token fingerprints are never shown.
+  final Collected<SessionEndDiagnosis> sessionEndDiagnosis;
 }
 
 /// One queued op as the support details read it: never its payload or
@@ -326,8 +331,8 @@ Future<SyncTimes> readSyncTimes(AppDatabase db) async {
   );
 }
 
-/// A stored failure's kind and its problem or reason, code and HTTP
-/// status: never its message.
+/// A stored failure's kind and its problem or reason (or why it was never
+/// sent), code and HTTP status: never its message.
 String? failureLabel(String? json) => switch (_failureFields(json)) {
   final fields? => _labelOf(fields),
   null => null,
@@ -342,6 +347,7 @@ Map<String, Object?>? _failureFields(String? json) {
           'kind',
           'problem',
           'reason',
+          'not_sent',
           'code',
           'status_code',
         ])
@@ -359,8 +365,15 @@ String _labelOf(Map<String, Object?> fields) {
     final String kind when _word(kind).isNotEmpty => _word(kind),
     _ => 'unknown',
   };
-  final detail = switch (fields['problem'] ?? fields['reason']) {
-    final String detail when _word(detail).isNotEmpty => '/${_word(detail)}',
+  final detail = switch ((
+    fields['not_sent'],
+    fields['problem'] ?? fields['reason'],
+  )) {
+    // Only these two values, never a stored text.
+    ('deferred', _) => '/not sent (deferred)',
+    ('storage', _) => '/not sent (storage)',
+    (_, final String detail) when _word(detail).isNotEmpty =>
+      '/${_word(detail)}',
     _ => '',
   };
   final code = switch (fields['code']) {
@@ -547,6 +560,10 @@ Future<AccountSupport> _collectAccount(
     lastSessionEnd: await _collect(
       'the last session end',
       () => ref.read(sessionEndLogProvider).read(id),
+    ),
+    sessionEndDiagnosis: await _collect(
+      'the session end diagnosis',
+      () => ref.read(sessionDiagnosticsProvider).lastEnd(id),
     ),
   );
 }
@@ -810,8 +827,22 @@ List<String> _accountLines(
     ..._queueLines(account.queue),
     'Notifications: $notifications',
     'Last session end: $sessionEnd',
+    'Session end cause: ${_recorded(account.sessionEndDiagnosis, _diagnosis)}',
   ];
 }
+
+String _diagnosis(SessionEndDiagnosis end) => [
+  end.cause.name,
+  if (end.code case final code?) 'code $code',
+  _partName(end.part.name),
+  _time(end.at),
+  if (end.lostRefreshAt case final lost?)
+    [
+      'lost renewal ${_time(lost)}',
+      if (end.lostRefreshPart case final part?) 'by ${_partName(part.name)}',
+    ].join(' '),
+  if (end.resolution case final resolution?) resolution.name,
+].join(', ');
 
 List<String> _queueLines(Collected<QueueSummary> collected) {
   final queue = collected.value;

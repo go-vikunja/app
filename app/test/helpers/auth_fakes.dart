@@ -34,11 +34,25 @@ final class MemorySecureStore implements SecureStore {
   /// Lets a test hold a delete open, e.g. in the middle of a sign-out.
   Future<void> Function(String key)? beforeDelete;
 
-  @override
-  Future<String?> read(String key) async => values[key];
+  /// Lets a test make a read fail by throwing, like a Keystore failure.
+  Future<void> Function(String key)? beforeRead;
 
   @override
-  Future<void> write(String key, String value) async {
+  Future<String?> read(String key) async {
+    await beforeRead?.call(key);
+    return values[key];
+  }
+
+  /// The keys written with `recoverLostKey`.
+  final List<String> recoveringWrites = [];
+
+  @override
+  Future<void> write(
+    String key,
+    String value, {
+    bool recoverLostKey = false,
+  }) async {
+    if (recoverLostKey) recoveringWrites.add(key);
     await beforeWrite?.call(key);
     operations.add('write $key');
     values[key] = value;
@@ -56,6 +70,12 @@ final class MemorySecureStore implements SecureStore {
     operations.add('deleteAll');
     values.clear();
   }
+
+  /// How often writes were flushed to disk; not in [operations].
+  int flushes = 0;
+
+  @override
+  Future<void> flush() async => flushes++;
 }
 
 final class MemoryPreferencesStore implements PreferencesStore {
@@ -168,6 +188,10 @@ final class FakeTokenGateway implements TokenGateway {
 final class FakeAccountGateway implements AccountGateway {
   Future<User> Function(String accessToken)? onCurrentUser;
   Future<void> Function(String accessToken)? onLogout;
+
+  /// The server's sessions as `GET /user/sessions` lists them.
+  List<UserSession> serverSessions = [];
+  final List<String> revokedSessions = [];
   UserSettings settings = const UserSettings();
   UserProfile? profile;
   final List<String> currentUserTokens = [];
@@ -219,6 +243,26 @@ final class FakeAccountGateway implements AccountGateway {
     final token = await tokens.validAccessToken();
     logoutTokens.add(token);
     await onLogout?.call(token);
+  }
+
+  @override
+  Future<List<UserSession>> sessions(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+  ) async {
+    await tokens.validAccessToken();
+    return List.of(serverSessions);
+  }
+
+  @override
+  Future<void> revokeSession(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+    String sessionId,
+  ) async {
+    await tokens.validAccessToken();
+    revokedSessions.add(sessionId);
+    serverSessions.removeWhere((session) => session.id == sessionId);
   }
 }
 

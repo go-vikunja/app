@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
@@ -516,6 +517,37 @@ void main() {
         findsOneWidget,
       );
       expect(find.text(en.accountLastSynced('2 days ago')), findsOneWidget);
+    });
+
+    testWidgets('a sign-in secure storage could not read is not explained as '
+        'an unreachable server (D59)', (tester) async {
+      const failure = NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: SecureStorageUnreadable(PlatformException),
+      );
+      data = SyncFakes(
+        now: now,
+        status: SyncFailed(
+          failure: failure,
+          lastSyncedAt: now.subtract(const Duration(days: 2)),
+        ),
+      );
+      data.engine.onRefresh = () async => throw failure;
+      await pumpHome(tester);
+
+      expect(find.text(en.accountSyncFailed), findsOneWidget);
+      expect(
+        find.text(en.failureSignInUnreadableExplanation('tasks.example.org')),
+        findsOneWidget,
+      );
+      expect(
+        find.text(en.failureUnreachableExplanation('tasks.example.org')),
+        findsNothing,
+      );
+      expect(
+        find.textContaining(en.offlineNotice, findRichText: true),
+        findsNothing,
+      );
     });
 
     testWidgets('a run is announced once, not per phase, a failure when it '

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
@@ -188,7 +189,7 @@ class CommentsNote extends StatelessWidget {
 }
 
 String commentsFailureText(AppLocalizations l10n, Object failure) =>
-    failure is NetworkFailure
+    failedOnTheNetwork(failure)
     ? l10n.commentsNeedConnection
     : l10n.commentsFailed;
 
@@ -201,7 +202,7 @@ String commentsStoredText(
   required DateTime now,
 }) {
   final when = storedWhen(l10n, storedAt, now: now);
-  return failure is NetworkFailure
+  return failedOnTheNetwork(failure)
       ? l10n.commentsStored(when)
       : l10n.commentsStoredFailed(when);
 }

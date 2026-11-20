@@ -1,9 +1,12 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/projects_screen.dart';
@@ -30,6 +33,37 @@ void main() {
 
     test('a run that cannot reach the server is offline', () {
       expect(offlineAfter(null, offline), state);
+    });
+
+    test('a run whose renewal was put off got an answer, so it is no '
+        'outage', () {
+      expect(
+        offlineAfter(
+          state,
+          SyncFailed(
+            failure: const NetworkFailure(
+              NetworkProblem.timeout,
+              cause: RefreshDeferred.race,
+            ),
+            lastSyncedAt: twoHoursAgo,
+          ),
+        ),
+        isNull,
+      );
+    });
+
+    test('a run whose sign-in secure storage could not read says nothing '
+        'about the network: the last outcome stays', () {
+      final unreadable = SyncFailed(
+        failure: const NetworkFailure(
+          NetworkProblem.unreachable,
+          cause: SecureStorageUnreadable(PlatformException),
+        ),
+        lastSyncedAt: twoHoursAgo,
+      );
+
+      expect(offlineAfter(state, unreadable), state);
+      expect(offlineAfter(null, unreadable), isNull);
     });
 
     test('a run in progress or no status yet keeps the last outcome', () {

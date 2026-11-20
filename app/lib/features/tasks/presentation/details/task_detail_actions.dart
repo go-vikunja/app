@@ -289,7 +289,7 @@ final class TaskDetailActions extends ChangeNotifier {
         );
     } on Object catch (error) {
       _log.warning('Duplicating a task failed: ${error.runtimeType}');
-      if (_context.mounted) _showMessage(_duplicateFailureText(l10n, error));
+      if (_context.mounted) _showMessage(taskDuplicateFailureText(l10n, error));
     } finally {
       if (_context.mounted) {
         _duplicating = false;
@@ -433,9 +433,11 @@ Future<TaskOnServer> _onServer(TaskRepository repository, int taskId) async {
   }
 }
 
-String _duplicateFailureText(AppLocalizations l10n, Object error) {
+String taskDuplicateFailureText(AppLocalizations l10n, Object error) {
   final shared = actionFailureText(l10n, error);
+  final notSent = notSentFailureText(l10n, error);
   return switch (error) {
+    _ when notSent != null => notSent,
     NetworkFailure() => l10n.taskDuplicateNeedsConnection,
     TaskNotSyncedYet() => l10n.taskDuplicateNotSynced,
     Forbidden() => l10n.taskDuplicateForbidden,

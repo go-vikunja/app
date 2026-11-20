@@ -3,6 +3,8 @@ import 'dart:convert';
 
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
@@ -10,6 +12,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/background/background_runner_channel.dart';
 import 'package:vikunja_mobile/core/background/background_sync_runner.dart';
@@ -18,6 +22,7 @@ import 'package:vikunja_mobile/core/notifications/local_notification_gateway_pro
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
@@ -27,6 +32,7 @@ import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_host.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_snapshot.dart';
+import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';
@@ -56,6 +62,7 @@ void main() {
   late Set<String> disposedEngines;
   late List<String> order;
   late FakeWidgetHost widgets;
+  late RefreshCutoff Function() makeCutoff;
   late ProviderContainer container;
 
   FakeSyncEngine engineOf(String accountId) => engines.putIfAbsent(
@@ -93,6 +100,7 @@ void main() {
     disposedEngines = {};
     order = [];
     widgets = FakeWidgetHost();
+    makeCutoff = () => RefreshCutoff(clock: () => now);
     final files = FakeAccountDatabaseFiles();
     container = ProviderContainer(
       overrides: [
@@ -121,6 +129,7 @@ void main() {
         utcOffsetAtProvider.overrideWithValue((_) => const Duration(hours: -6)),
         notificationGatewayProvider.overrideWithValue(gateway),
         widgetHostProvider.overrideWithValue(widgets),
+        refreshCutoffProvider.overrideWith((ref) => makeCutoff()),
       ],
     );
     addTearDown(() async {
@@ -593,7 +602,7 @@ void main() {
 
     final run = background.run();
     await pumpEventQueue();
-    await background.stop();
+    await background.stop(reason: 0);
 
     expect(await run, BackgroundRunOutcome.stopped);
     expect(await lastOutcome(), BackgroundRunOutcome.stopped);
@@ -765,6 +774,29 @@ void main() {
       },
     );
 
+    test('whose link this device lost is told that it ended here, not on '
+        'the server (D59)', () async {
+      final guest = await guestSignedIn(syncedAt: monday);
+      await auth.linkShareStore.delete(guest.id);
+      engineOf(guest.id).onRefresh = () async {
+        await container
+            .read(linkShareSessionsProvider)
+            .forAccount(guest.id)
+            .validAccessToken();
+      };
+
+      expect(await runner().run(), BackgroundRunOutcome.partial);
+
+      final ended = (await SessionDiagnostics(auth.preferences)
+          .lastEnd(guest.id))!;
+      expect(ended.cause, SessionEndCause.missingTokens);
+      expect(
+        gateway.activities.single.body,
+        lookupAppLocalizations(const Locale('en'))
+            .guestAccessEndedOnDeviceNotificationBody('shared.example.org'),
+      );
+    });
+
     test('at the deadline, an authentication on its way gets the grace to '
         'store its token', () async {
       final guest = await guestSignedIn(syncedAt: monday);
@@ -876,6 +908,367 @@ void main() {
 
       expect(gateway.pending, isNot(contains(reminderId)));
       expect(gateway.scheduledActivities, isEmpty);
+    });
+  });
+
+  group('keeping sessions alive (D59)', () {
+    // The seeded tokens were issued at [monday], long expired by the real
+    // clock the session managers use, so every first request refreshes.
+    Future<void> needsToken(String accountId) => container
+        .read(sessionManagersProvider)
+        .forAccount(accountId)
+        .validAccessToken();
+
+    TokenSet renewed(int userId) =>
+        issueTokens(issuedAt: DateTime.now(), userId: userId);
+
+    Future<bool> needsReauth(String accountId) async =>
+        (await AccountRegistry(auth.preferences).find(accountId))!
+            .account
+            .needsReauth;
+
+    const log = BackgroundRunLog.new;
+
+    Future<BackgroundAccountOutcome?> turnOf(String accountId) async =>
+        (await log(auth.preferences).lastOutcome(accountId))?.outcome;
+
+    test('answers must arrive within the settle time after the deadline, '
+        'less the margin and the connect time', () async {
+      makeCutoff = () => RefreshCutoff(
+        clock: () => now,
+        connectTimeout: const Duration(seconds: 10),
+        minimumTokenTimeout: const Duration(seconds: 30),
+      );
+      final entry = await signedIn(1, syncedAt: monday);
+      final seen = <(Duration, bool)>[];
+      engineOf(entry.id).onRefresh = () async {
+        final cutoff = container.read(refreshCutoffProvider);
+        for (final at in const [
+          Duration.zero,
+          Duration(minutes: 8, seconds: 20),
+          Duration(minutes: 8, seconds: 24),
+        ]) {
+          now = monday.add(at);
+          seen.add((cutoff.tokenTimeout, cutoff.allowsRefresh));
+        }
+      };
+
+      await runner().run();
+
+      // 9 min + 5 s settle - 2 s margin - 10 s connect.
+      expect(seen, [
+        (const Duration(seconds: 60), true),
+        (const Duration(seconds: 33), true),
+        (const Duration(seconds: 29), false),
+      ]);
+    });
+
+    test('no turn starts once a token refresh could no longer start, and '
+        'none counts as its attempt', () async {
+      makeCutoff = () => RefreshCutoff(
+        clock: () => now,
+        minimumTokenTimeout: const Duration(minutes: 10),
+      );
+      final entry = await signedIn(1, syncedAt: monday);
+      auth.tokenGateway.onRefresh = (_) async => renewed(1);
+      engineOf(entry.id).onRefresh = () => needsToken(entry.id);
+
+      expect(await runner().run(), BackgroundRunOutcome.deadline);
+
+      expect(engineOf(entry.id).refreshCalls, 0);
+      expect(auth.tokenGateway.refreshedTokens, isEmpty);
+      expect(await log(auth.preferences).lastAttemptAt(entry.id), isNull);
+    });
+
+    test('a refresh the cutoff holds back is noted as deferred, not as an '
+        'unreachable server', () async {
+      makeCutoff = () => RefreshCutoff(
+        clock: () => now,
+        minimumTokenTimeout: const Duration(seconds: 30),
+      );
+      final entry = await signedIn(1, syncedAt: monday);
+      auth.tokenGateway.onRefresh = (_) async => renewed(1);
+      engineOf(entry.id).onRefresh = () async {
+        now = monday.add(const Duration(minutes: 8, seconds: 40));
+        await needsToken(entry.id);
+      };
+
+      expect(await runner().run(), BackgroundRunOutcome.partial);
+
+      expect(auth.tokenGateway.refreshedTokens, isEmpty);
+      expect(await needsReauth(entry.id), isFalse);
+      expect(await turnOf(entry.id), BackgroundAccountOutcome.deferred);
+    });
+
+    test('secure storage that refuses to read is noted as such, not as an '
+        'unreachable server', () async {
+      final entry = await signedIn(1, syncedAt: monday);
+      auth.tokenGateway.onRefresh = (_) async => renewed(1);
+      auth.secureStore.beforeRead = (_) async =>
+          throw PlatformException(code: 'keystore');
+      engineOf(entry.id).onRefresh = () => needsToken(entry.id);
+
+      expect(await runner().run(), BackgroundRunOutcome.partial);
+
+      expect(auth.tokenGateway.refreshedTokens, isEmpty);
+      expect(await needsReauth(entry.id), isFalse);
+      expect(
+        await turnOf(entry.id),
+        BackgroundAccountOutcome.storageUnreadable,
+      );
+    });
+
+    test("a guest's link that secure storage refuses to read is noted as "
+        'such, not as an unreachable server', () async {
+      final guest = await auth.seedGuest(
+        fullServer270(root: 'https://shared.example.org'),
+        token: issueLinkShareToken(issuedAt: now),
+      );
+      await databases
+          .putIfAbsent(guest.id, () => AppDatabase(NativeDatabase.memory()))
+          .syncStateDao
+          .write({SyncStateKeys.lastSyncedAt: monday.toIso8601String()});
+      auth.secureStore.beforeRead = (_) async =>
+          throw PlatformException(code: 'keystore');
+      engineOf(guest.id).onRefresh = () async {
+        await container
+            .read(linkShareSessionsProvider)
+            .forAccount(guest.id)
+            .validAccessToken();
+      };
+
+      expect(await runner().run(), BackgroundRunOutcome.partial);
+
+      expect(auth.linkShareGateway.authentications, isEmpty);
+      expect(await needsReauth(guest.id), isFalse);
+      expect(
+        await turnOf(guest.id),
+        BackgroundAccountOutcome.storageUnreadable,
+      );
+    });
+
+    test("a stop closes the gate at once and notes the system's reason for "
+        'the turn it cut short', () async {
+      final entry = await signedIn(1, syncedAt: monday);
+      final syncing = Completer<void>();
+      final release = Completer<void>();
+      engineOf(entry.id).onRefresh = () async {
+        syncing.complete();
+        await release.future;
+      };
+      final cutoff = container.read(refreshCutoffProvider);
+      final background = runner();
+
+      final run = background.run();
+      await syncing.future;
+      expect(cutoff.allowsRefresh, isTrue);
+      // Android's WorkInfo.STOP_REASON_CONSTRAINT_CONNECTIVITY, as the
+      // plugin passes it through.
+      final stopping = background.stop(reason: 7);
+      expect(cutoff.allowsRefresh, isFalse);
+
+      expect(await run, BackgroundRunOutcome.stopped);
+      await stopping;
+      release.complete();
+
+      final turn = (await log(auth.preferences).lastOutcome(entry.id))!;
+      expect(turn.outcome, BackgroundAccountOutcome.stopped);
+      expect(turn.stopReason, 7);
+      expect(
+        jsonDecode(auth.preferences.values[BackgroundRunLog.lastRunResultKey]!),
+        isNot(contains('stopReason')),
+      );
+    });
+
+    test("a turn the run's own deadline cut short is noted as stopped "
+        'without a reason of the system', () async {
+      final entry = await signedIn(1, syncedAt: monday);
+      final syncing = Completer<void>();
+      final release = Completer<void>();
+      engineOf(entry.id).onRefresh = () async {
+        syncing.complete();
+        await release.future;
+      };
+
+      final run = runner().run();
+      await syncing.future;
+      timers.fireNext();
+
+      expect(await run, BackgroundRunOutcome.deadline);
+      release.complete();
+      final turn = (await log(auth.preferences).lastOutcome(entry.id))!;
+      expect(turn.outcome, BackgroundAccountOutcome.stopped);
+      expect(turn.stopReason, isNull);
+    });
+
+    test('a session that ends during the settle after the deadline is noted '
+        'as ended, not as a turn the deadline cut short', () async {
+      final entry = await signedIn(1, syncedAt: monday);
+      final answer = Completer<TokenSet>();
+      auth.tokenGateway.onRefresh = (_) => answer.future;
+      engineOf(entry.id).onRefresh = () => needsToken(entry.id);
+
+      final run = runner().run();
+      await pumpEventQueue();
+      expect(auth.tokenGateway.refreshedTokens, hasLength(1));
+      timers.fireNext();
+      await pumpEventQueue();
+      answer.completeError(
+        const SessionEnded(SessionEndReason.expired, code: 16003),
+      );
+
+      expect(await run, BackgroundRunOutcome.deadline);
+      expect(await needsReauth(entry.id), isTrue);
+      expect(await turnOf(entry.id), BackgroundAccountOutcome.sessionEnded);
+    });
+
+    test('a turn whose sync went through counts as synced when the deadline '
+        'falls during its activity fetch', () async {
+      final entry = await signedIn(1, syncedAt: monday);
+      final fetching = Completer<void>();
+      final release = Completer<void>();
+      readOf(entry.id).beforeRequest = (request) async {
+        if (!request.startsWith('notifications')) return;
+        fetching.complete();
+        await release.future;
+      };
+      now = monday.add(const Duration(minutes: 3));
+
+      final run = runner().run();
+      await fetching.future;
+      timers.fireNext();
+
+      expect(await run, BackgroundRunOutcome.deadline);
+      release.complete();
+      expect(await turnOf(entry.id), BackgroundAccountOutcome.synced);
+      expect(await log(auth.preferences).lastRunAt(entry.id), now);
+    });
+
+    test('a run that went through still stores tokens storage refused at '
+        'first', () async {
+      final entry = await signedIn(1, syncedAt: monday);
+      final fresh = renewed(1);
+      auth.tokenGateway.onRefresh = (_) async => fresh;
+      var refusals = 1;
+      auth.secureStore.beforeWrite = (_) async {
+        if (refusals-- > 0) throw StateError('storage busy');
+      };
+      engineOf(entry.id).onRefresh = () => needsToken(entry.id);
+
+      expect(await runner().run(), BackgroundRunOutcome.completed);
+
+      expect(
+        (await auth.tokenStore.read(entry.id))!.refreshToken,
+        fresh.refreshToken,
+      );
+    });
+
+    test('each turn notes how it ended', () async {
+      final synced = await signedIn(1, syncedAt: monday);
+      final waiting = await signedIn(2, syncedAt: monday, needsReauth: true);
+      final ended = await signedIn(3, syncedAt: monday);
+      auth.tokenGateway.onRefresh = (_) async =>
+          throw const SessionEnded(SessionEndReason.expired);
+      engineOf(ended.id).onRefresh = () => needsToken(ended.id);
+
+      await runner().run();
+
+      expect(await turnOf(synced.id), BackgroundAccountOutcome.synced);
+      expect(await turnOf(waiting.id), BackgroundAccountOutcome.signInNeeded);
+      expect(await turnOf(ended.id), BackgroundAccountOutcome.sessionEnded);
+    });
+
+    test('an account waiting for a sign-in works again when another isolate '
+        'stored newer tokens after this one gave up', () async {
+      final entry = await signedIn(1, syncedAt: monday, needsReauth: true);
+      final diagnostics = SessionDiagnostics(auth.preferences);
+      await diagnostics.recordEnd(
+        entry.id,
+        SessionEndDiagnosis(
+          at: monday,
+          cause: SessionEndCause.refreshRejected,
+          part: AppPart.backgroundRun,
+          failedToken: tokenFingerprint('rotated-away'),
+        ),
+      );
+      auth.tokenGateway.onRefresh = (_) async => renewed(1);
+
+      await runner().run();
+
+      expect(await needsReauth(entry.id), isFalse);
+      expect(engineOf(entry.id).refreshCalls, 1);
+      expect(gateway.activities, isEmpty);
+      expect(await turnOf(entry.id), BackgroundAccountOutcome.synced);
+      expect(
+        (await diagnostics.lastEnd(entry.id))!.resolution,
+        SessionEndResolution.restored,
+      );
+    });
+
+    test('an account that works again sends its queue before it '
+        'syncs', () async {
+      final entry = await signedIn(1, syncedAt: monday, needsReauth: true);
+      final db = databases[entry.id]!;
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 1, title: 'Water', projectId: 7),
+      ], syncRunId: 'run');
+      await db.outboxDao.queueUpdate(
+        1,
+        const TaskChanges(done: true),
+        now: monday,
+      );
+      writeOf(entry.id)
+        ..serverTasks[1] = sampleTask(id: 1, title: 'Water')
+        ..beforeRequest = (request) async => order.add(request);
+      await SessionDiagnostics(auth.preferences).recordEnd(
+        entry.id,
+        SessionEndDiagnosis(
+          at: monday,
+          cause: SessionEndCause.refreshRejected,
+          part: AppPart.backgroundRun,
+          failedToken: tokenFingerprint('rotated-away'),
+        ),
+      );
+      auth.tokenGateway.onRefresh = (_) async => renewed(1);
+
+      await runner().run();
+
+      expect(await needsReauth(entry.id), isFalse);
+      expect(order, ['update 1', 'sync ${entry.id}']);
+      expect(writeOf(entry.id).requests, ['update 1']);
+      expect(await turnOf(entry.id), BackgroundAccountOutcome.synced);
+    });
+
+    test('a guest waiting for a sign-in only because its link could not be '
+        'read goes on once it reads', () async {
+      final guest = await auth.seedGuest(
+        fullServer270(root: 'https://shared.example.org'),
+        token: issueLinkShareToken(issuedAt: now),
+        needsReauth: true,
+      );
+      await databases
+          .putIfAbsent(guest.id, () => AppDatabase(NativeDatabase.memory()))
+          .syncStateDao
+          .write({SyncStateKeys.lastSyncedAt: monday.toIso8601String()});
+      final diagnostics = SessionDiagnostics(auth.preferences);
+      await diagnostics.recordEnd(
+        guest.id,
+        SessionEndDiagnosis(
+          at: monday,
+          cause: SessionEndCause.storageUnreadable,
+          part: AppPart.app,
+        ),
+      );
+
+      await runner().run();
+
+      expect(await needsReauth(guest.id), isFalse);
+      expect(engineOf(guest.id).refreshCalls, 1);
+      expect(await turnOf(guest.id), BackgroundAccountOutcome.synced);
+      expect(
+        (await diagnostics.lastEnd(guest.id))!.resolution,
+        SessionEndResolution.restored,
+      );
     });
   });
 }

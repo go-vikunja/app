@@ -9,6 +9,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/attachments/upload_files.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
@@ -1148,7 +1149,7 @@ final class OutboxSender {
         return;
       }
       if (failure case NetworkFailure(problem: NetworkProblem.timeout)
-          when !_disposed) {
+          when !_disposed && !failedWithoutToken(failure)) {
         await _handleUploadTimeout(op, failure);
         return;
       }
@@ -1517,6 +1518,7 @@ final class OutboxSender {
   /// without a status).
   static bool _mayHaveReachedServer(VikunjaFailure failure) =>
       switch (failure) {
+        _ when failedWithoutToken(failure) => false,
         NetworkFailure() || ServerFailure() => true,
         UnexpectedResponse(:final statusCode) =>
           statusCode == null || statusCode < 300,

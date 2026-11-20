@@ -1,11 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -780,6 +783,34 @@ void main() {
       expect(find.text(en.accountSettingsOffline), findsOneWidget);
     });
 
+    testWidgets('a change that got no token says nothing was sent and keeps '
+        'the page editable', (tester) async {
+      repository().failures['update'] = const NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: SecureStorageUnreadable(PlatformException),
+      );
+      await pumpPage(tester);
+
+      final control = find.widgetWithText(
+        SwitchListTile,
+        en.accountSettingsDiscoverableByName,
+      );
+      await scrollTo(tester, control);
+      await tester.tap(control);
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          '${en.actionFailureSignInUnreadable} '
+          '${en.failureSignInUnreadableSuggestion}',
+        ),
+        findsOneWidget,
+      );
+      expect(tester.widget<SwitchListTile>(control).value, isFalse);
+      expect(tester.widget<SwitchListTile>(control).onChanged, isNotNull);
+      expect(find.text(en.accountSettingsOffline), findsNothing);
+    });
+
     testWidgets('a lost answer may have been saved', (tester) async {
       repository().failures['update'] = const NetworkFailure(
         NetworkProblem.timeout,
@@ -827,6 +858,26 @@ void main() {
       await tapRow(tester, en.accountSettingsDefaultView);
       expect(find.byType(BottomSheet), findsNothing);
       expect(repository().changes, isEmpty);
+    });
+
+    testWidgets('a refresh that got no token leaves the page editable', (
+      tester,
+    ) async {
+      data.shared.accountSettings.failures['refresh'] = const NetworkFailure(
+        NetworkProblem.timeout,
+        cause: RefreshDeferred.race,
+      );
+      await pumpPage(tester);
+
+      expect(find.text(en.accountSettingsOffline), findsNothing);
+      expect(
+        tester
+            .widget<TextField>(
+              find.widgetWithText(TextField, en.accountSettingsName),
+            )
+            .enabled,
+        isNot(isFalse),
+      );
     });
 
     testWidgets('a refresh that gets through counts more than the last sync', (
@@ -1025,7 +1076,10 @@ void main() {
       resume(tester);
       // The session manager looks for a sibling's rotation for a few
       // seconds before it gives a 16002 up.
-      for (var i = 0; i < 5; i++) {
+      final recheckSeconds = SessionManager.raceRecheckDelays
+          .fold(Duration.zero, (sum, delay) => sum + delay)
+          .inSeconds;
+      for (var i = 0; i <= recheckSeconds + 1; i++) {
         await tester.pump(const Duration(seconds: 1));
       }
       await tester.pumpAndSettle();

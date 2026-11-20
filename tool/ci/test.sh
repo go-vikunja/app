@@ -12,3 +12,4 @@ concurrency="--concurrency=$(flutter_test_concurrency)"
 (cd "${repo_root}/packages/vikunja_logic" && flutter test "$concurrency" && TZ=Europe/Berlin flutter test "$concurrency" test/time)
 (cd "${repo_root}/packages/vikunja_api" && flutter test "$concurrency" --exclude-tags contract)
 (cd "${repo_root}/plugins/vikunja_widgets" && flutter test "$concurrency")
+(cd "${repo_root}/plugins/vikunja_storage_flush" && flutter test "$concurrency")

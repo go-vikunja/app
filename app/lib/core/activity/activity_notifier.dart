@@ -28,6 +28,7 @@ final class ActivityNotifier {
     required this._store,
     required this._l10n,
     this._content = _showEverything,
+    this._endedOnDevice = _endedOnServer,
     this.shownPerRun = 5,
     this.keptPerAccount = 10,
   }) : _tray = ActivityTray(_gateway);
@@ -37,10 +38,15 @@ final class ActivityNotifier {
   final PreferencesStore _store;
   final AppLocalizations _l10n;
   final Future<NotificationContent> Function() _content;
+
+  /// Whether the account's open session end happened on this device (D59).
+  final Future<bool> Function(String accountId) _endedOnDevice;
   final ActivityTray _tray;
 
   static Future<NotificationContent> _showEverything() async =>
       NotificationContent.all;
+
+  static Future<bool> _endedOnServer(String _) async => false;
 
   /// The newest this many of a run are shown one by one; one more
   /// notification stands for the rest.
@@ -152,7 +158,8 @@ final class ActivityNotifier {
 
   /// The account's session ended: one notification per ended session.
   /// Nothing when the OS does not let the app notify; a later call tries
-  /// again. A guest has no sign-in to do, and its username is made up.
+  /// again. A guest has no sign-in to do, and its username is made up; one
+  /// whose link this device lost is not told that the server ended it.
   Future<void> sessionEnded(Account account) async {
     final key = sessionEndedKey(account.id);
     if (await _store.getString(key) != null) return;
@@ -164,9 +171,11 @@ final class ActivityNotifier {
       title: account.isLinkShare
           ? _l10n.guestAccessEndedNotificationTitle(accountTitle(account))
           : _l10n.sessionEndedNotificationTitle(host),
-      body: account.isLinkShare
-          ? _l10n.guestAccessEndedNotificationBody(host)
-          : _l10n.sessionEndedNotificationBody(account.username),
+      body: !account.isLinkShare
+          ? _l10n.sessionEndedNotificationBody(account.username)
+          : await _endedOnDevice(account.id)
+          ? _l10n.guestAccessEndedOnDeviceNotificationBody(host)
+          : _l10n.guestAccessEndedNotificationBody(host),
       payload: NotificationPayload(
         accountId: account.id,
         taskId: 0,

@@ -7,10 +7,14 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/sign_in_tokens.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 
 final _log = Logger('PreviousAppSignIn');
+
+Future<void> _delay(Duration duration) => Future<void>.delayed(duration);
 
 enum PreviousAppSessionSkip { insecure, unsupported }
 
@@ -52,7 +56,8 @@ final class PreviousAppSignInCancellation {
 /// Keeps the session of the previous Vikunja app, which this app replaced:
 /// its refresh token is exchanged for new tokens (the server does not check
 /// which client asks), and the account is then registered and activated
-/// like a browser sign-in, in the same order as `BrowserSignIn`.
+/// like a browser sign-in, in the same order as `BrowserSignIn` and with
+/// its [SignInTokens].
 final class PreviousAppSignIn {
   new({
     required this._connector,
@@ -61,7 +66,9 @@ final class PreviousAppSignIn {
     required this._tokenStore,
     required this._registry,
     required this._sessions,
+    this._diagnostics,
     this._clock = DateTime.now,
+    this._sleep = _delay,
     this._userTimeout = const Duration(seconds: 20),
     this._logoutTimeout = const Duration(seconds: 20),
   });
@@ -72,15 +79,27 @@ final class PreviousAppSignIn {
   final TokenStore _tokenStore;
   final AccountRegistry _registry;
   final SessionManagers _sessions;
+  final SessionDiagnostics? _diagnostics;
   final Clock _clock;
+  final Sleep _sleep;
   final Duration _userTimeout;
   final Duration _logoutTimeout;
+  late final _signInTokens = SignInTokens(
+    tokenStore: _tokenStore,
+    tokenGateway: _tokenGateway,
+    accountGateway: _accountGateway,
+    diagnostics: _diagnostics,
+    clock: _clock,
+    sleep: _sleep,
+    logoutTimeout: _logoutTimeout,
+  );
 
   /// Null when [cancellation] ended it; a session the server issued anyway
   /// is logged out then. Throws [PreviousAppSessionNotKept],
-  /// `ServerConnectionFailure`, `VikunjaFailure` or a `TimeoutException`
+  /// `ServerConnectionFailure`, `VikunjaFailure`, a `TimeoutException`
   /// when `GET /user` does not answer within its own bound, also after a
-  /// cancel. Stores nothing in either case.
+  /// cancel, or what secure storage threw when it kept refusing the tokens.
+  /// Stores nothing in either case.
   Future<RegisteredAccount?> signIn({
     required String serverAddress,
     required String refreshToken,
@@ -135,8 +154,18 @@ final class PreviousAppSignIn {
 
     final accountId = accountIdFor(connection.rootUri, user.id);
     await _sessions.retire(accountId);
-    await _tokenStore.write(accountId, tokens);
-    await _sessions.signedIn(accountId, tokens, receivedAt: receivedAt);
+    final ReplacedTokens replaced;
+    try {
+      replaced = await _signInTokens.store(accountId, tokens);
+    } on Object {
+      unawaited(_endSession(connection, tokens.accessToken));
+      rethrow;
+    }
+    final session = await _sessions.signedIn(
+      accountId,
+      tokens,
+      receivedAt: receivedAt,
+    );
     final entry = RegisteredAccount(
       account: Account(
         id: accountId,
@@ -150,6 +179,14 @@ final class PreviousAppSignIn {
     );
     await _registry.upsert(entry, activate: true);
     _log.info('Kept the previous app session as account $accountId');
+    unawaited(
+      _signInTokens.settleReplaced(
+        connection,
+        accountId,
+        replaced,
+        session: session,
+      ),
+    );
     return entry;
   }
 

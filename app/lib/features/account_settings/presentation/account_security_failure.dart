@@ -5,7 +5,9 @@ import 'package:vikunja_mobile/features/common/presentation/action_failure_text.
 /// Why ending a session, or creating or deleting a token, failed.
 String accountSecurityFailureText(AppLocalizations l10n, Object error) {
   final shared = actionFailureText(l10n, error);
+  final notSent = notSentFailureText(l10n, error);
   return switch (error) {
+    _ when notSent != null => notSent,
     // The server may have done it before the answer was lost.
     NetworkFailure(problem: NetworkProblem.timeout) =>
       l10n.accountSecurityUnconfirmed,

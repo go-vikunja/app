@@ -9,6 +9,8 @@ import 'package:vikunja_mobile/core/network/request_log_interceptor.dart';
 
 final _log = Logger('DioFactory');
 
+const defaultConnectTimeout = Duration(seconds: 10);
+
 /// With [profiles], every request goes through the origin's connection
 /// profile (D65), over [httpClientAdapter] or the platform adapter.
 Dio createDio({
@@ -17,11 +19,12 @@ Dio createDio({
   NetworkProfiles? profiles,
   bool logRequests = kDebugMode,
   Duration receiveTimeout = const Duration(seconds: 15),
+  Duration connectTimeout = defaultConnectTimeout,
 }) {
   final transport = httpClientAdapter ?? createPlatformHttpAdapter();
   final dio = Dio(
     BaseOptions(
-      connectTimeout: const Duration(seconds: 10),
+      connectTimeout: connectTimeout,
       receiveTimeout: receiveTimeout,
       sendTimeout: const Duration(seconds: 15),
       headers: {'User-Agent': userAgent},

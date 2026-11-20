@@ -8,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository_providers.dart';
 import 'package:vikunja_mobile/features/account_settings/application/avatar_files.dart';
@@ -60,9 +61,11 @@ class _AvatarPageState extends ConsumerState<AvatarPage> {
     try {
       await repository.refresh();
       if (mounted) setState(() => _reachable = true);
-    } on NetworkFailure {
-      if (mounted) setState(() => _reachable = false);
     } on Object catch (error) {
+      if (failedOnTheNetwork(error)) {
+        if (mounted) setState(() => _reachable = false);
+        return;
+      }
       _log.info('Refreshing the avatar failed: ${error.runtimeType}');
     }
   }
@@ -84,7 +87,8 @@ class _AvatarPageState extends ConsumerState<AvatarPage> {
     } on Object catch (error) {
       _log.warning('Changing the avatar failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
-      if (error case NetworkFailure(problem: NetworkProblem.unreachable)) {
+      if (error case NetworkFailure(problem: NetworkProblem.unreachable)
+          when !failedWithoutToken(error)) {
         if (mounted) setState(() => _reachable = false);
       }
       _show(messenger, accountSettingsFailureText(l10n, error));

@@ -238,6 +238,21 @@ final class AccountRegistry {
     ),
   );
 
+  /// A session that ended in error works again (D59).
+  Future<AccountRegistryState> clearNeedsReauth(String accountId) => _update(
+    (state) => AccountRegistryState(
+      accounts: [
+        for (final entry in state.accounts)
+          if (entry.id == accountId)
+            entry.withAccount(entry.account.copyWith(needsReauth: false))
+          else
+            entry,
+      ],
+      activeAccountId: state.activeAccountId,
+      recentAccountIds: state.recentAccountIds,
+    ),
+  );
+
   /// [name] as the server has it: a blank one shows the username, as at
   /// sign-in. An account that already shows it is not written. Never
   /// throws: the name is only shown, and the next sync tries again.

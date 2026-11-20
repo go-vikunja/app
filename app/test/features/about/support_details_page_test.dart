@@ -44,6 +44,7 @@ final _snapshot = SupportSnapshot(
       queue: const Collected.unknown(),
       notifications: const Collected(NotificationPreferences()),
       lastSessionEnd: const Collected(null),
+      sessionEndDiagnosis: const Collected(null),
     ),
   ]),
   log: Collected([

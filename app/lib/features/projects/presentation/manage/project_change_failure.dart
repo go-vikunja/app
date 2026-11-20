@@ -42,8 +42,10 @@ String projectChangeFailureText(
     _ => false,
   };
   final shared = actionFailureText(l10n, error);
+  final notSent = notSentFailureText(l10n, error);
   return switch (error) {
     LastViewNotDeletable() => l10n.projectViewLastOne,
+    _ when notSent != null => notSent,
     // The server may have made the change before the answer was lost.
     NetworkFailure(problem: NetworkProblem.timeout) when fromProjectScreen =>
       l10n.projectChangeUnconfirmed,

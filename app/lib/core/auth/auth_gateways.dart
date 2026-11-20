@@ -36,13 +36,30 @@ abstract interface class AccountGateway {
   );
 
   Future<void> logout(ServerConnection connection, AccessTokenSource tokens);
+
+  /// `GET /user/sessions`.
+  Future<List<UserSession>> sessions(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+  );
+
+  /// `DELETE /user/sessions/{id}`; one that is gone already counts as done.
+  Future<void> revokeSession(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+    String sessionId,
+  );
 }
 
 final class ApiTokenGateway implements TokenGateway {
-  /// The Dio must not carry an auth interceptor.
-  new(this._dio);
+  /// The Dio must not carry an auth interceptor. `timeout` gives the bound
+  /// on sending and receiving each token request when it is sent.
+  new(this._dio, {this._timeout = _sixtySeconds});
+
+  static Duration _sixtySeconds() => const Duration(seconds: 60);
 
   final Dio _dio;
+  final Duration Function() _timeout;
 
   @override
   Future<TokenSet> exchangeCode(
@@ -52,11 +69,16 @@ final class ApiTokenGateway implements TokenGateway {
   }) => OAuthTokenClient(
     _dio,
     connection,
+    timeout: _timeout(),
   ).exchangeCode(code: code, request: request);
 
   @override
   Future<TokenSet> refresh(ServerConnection connection, String refreshToken) =>
-      OAuthTokenClient(_dio, connection).refresh(refreshToken);
+      OAuthTokenClient(
+        _dio,
+        connection,
+        timeout: _timeout(),
+      ).refresh(refreshToken);
 }
 
 final class ApiAccountGateway implements AccountGateway {
@@ -65,16 +87,24 @@ final class ApiAccountGateway implements AccountGateway {
   final Dio _base;
   final bool _logRequests;
 
-  AccountApi _api(ServerConnection connection, AccessTokenSource tokens) =>
-      AccountApi(
-        createAuthenticatedDio(
-          base: _base,
-          connection: connection,
-          tokens: tokens,
-          interceptors: [if (_logRequests) RequestLogInterceptor()],
-        ),
-        connection,
+  Dio _dio(ServerConnection connection, AccessTokenSource tokens) =>
+      createAuthenticatedDio(
+        base: _base,
+        connection: connection,
+        tokens: tokens,
+        interceptors: [if (_logRequests) RequestLogInterceptor()],
       );
+
+  AccountApi _api(ServerConnection connection, AccessTokenSource tokens) =>
+      AccountApi(_dio(connection, tokens), connection);
+
+  AccountSecurityPort _security(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+  ) => createAccountSecurityPort(
+    dio: _dio(connection, tokens),
+    connection: connection,
+  );
 
   @override
   Future<User> currentUser(
@@ -97,4 +127,17 @@ final class ApiAccountGateway implements AccountGateway {
   @override
   Future<void> logout(ServerConnection connection, AccessTokenSource tokens) =>
       _api(connection, tokens).logout();
+
+  @override
+  Future<List<UserSession>> sessions(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+  ) => _security(connection, tokens).sessions();
+
+  @override
+  Future<void> revokeSession(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+    String sessionId,
+  ) => _security(connection, tokens).revokeSession(sessionId);
 }

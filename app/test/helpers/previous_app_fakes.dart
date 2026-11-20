@@ -64,7 +64,11 @@ final class RecordingSecureStore implements SecureStore {
   }
 
   @override
-  Future<void> write(String key, String value) async {
+  Future<void> write(
+    String key,
+    String value, {
+    bool recoverLostKey = false,
+  }) async {
     log.add('write $key');
     values[key] = value;
   }
@@ -80,6 +84,9 @@ final class RecordingSecureStore implements SecureStore {
     log.add('deleteAll');
     values.clear();
   }
+
+  @override
+  Future<void> flush() async {}
 }
 
 /// What the previous app 0.1.8 stored in flutter_secure_storage for a

@@ -73,6 +73,23 @@ NetworkProblem _problemOf(ServerConnectionFailure failure) => switch (failure) {
   _ => NetworkProblem.unreachable,
 };
 
+/// Whether [failure] proves that its request never reached the server: the
+/// connection settings stopped it, TLS failed, or no connection could be
+/// opened (no network, an unknown host, a refused port). A timeout or a
+/// connection lost on the way may have delivered it.
+bool neverReachedServer(NetworkFailure failure) => switch (failure.problem) {
+  NetworkProblem.timeout => false,
+  NetworkProblem.unreachable => _notConnectedMarkers.hasMatch(
+    '${failure.cause ?? ''}'.toLowerCase().replaceAll(_urls, ' '),
+  ),
+  NetworkProblem.tls ||
+  NetworkProblem.clientCertificate ||
+  NetworkProblem.cleartextBlocked ||
+  NetworkProblem.profileLocked ||
+  NetworkProblem.profileIncomplete ||
+  NetworkProblem.profileDamaged => true,
+};
+
 /// Whether an error text names a refused or missing client certificate, by
 /// the same markers as [transportFailure].
 bool mentionsClientCertificateRefusal(String errorText) =>
@@ -177,6 +194,16 @@ final _clientCertificateMarkers = RegExp(
 final _timeoutMarkers = RegExp(
   'timed out|timeout|err_(connection_)?timed_out|'
   r'nsurlerrordomain.*code=-1001\b',
+);
+
+// No connection was opened: dart:io's SocketException, Chromium's net
+// errors (Cronet), NSURLErrorDomain -1003 (cannot find host), -1004 (cannot
+// connect to host) and -1009 (not connected to the internet).
+final _notConnectedMarkers = RegExp(
+  'failed host lookup|connection refused|network is unreachable|'
+  'no route to host|err_name_not_resolved|err_name_resolution_failed|'
+  'err_internet_disconnected|err_connection_refused|err_address_unreachable|'
+  r'nsurlerrordomain.*code=-100[349]\b',
 );
 
 // Host names such as ssl.example.com must not look like a TLS failure.

@@ -1,5 +1,8 @@
+import 'package:flutter/services.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
 import '../../helpers/auth_fakes.dart';
 
@@ -78,5 +81,51 @@ void main() {
 
     expect('$read', isNot(contains(tokens.refreshToken)));
     expect('$read', isNot(contains(tokens.accessToken)));
+  });
+
+  test('a write waits until both tokens are on disk (D59)', () async {
+    await store.write('a1', issueTokens(issuedAt: issuedAt));
+
+    expect(secureStore.flushes, 1);
+  });
+
+  test('only the refresh token of a write asked to recover a lost key may '
+      'let the platform reset storage (D59)', () async {
+    await store.write('a1', issueTokens(issuedAt: issuedAt));
+    await store.write(
+      'b2',
+      issueTokens(issuedAt: issuedAt),
+      recoverLostKey: true,
+    );
+
+    expect(secureStore.recoveringWrites, [TokenStore.refreshTokenKey('b2')]);
+  });
+
+  test('a read storage refuses names only the type of the failure', () async {
+    secureStore.beforeRead = (_) async =>
+        throw PlatformException(code: 'keystore', message: 'secret');
+
+    await expectLater(
+      store.read('a1'),
+      throwsA(
+        isA<SecureStorageUnreadable>()
+            .having((e) => e.errorType, 'errorType', PlatformException)
+            .having((e) => '$e', 'text', isNot(contains('secret'))),
+      ),
+    );
+  });
+
+  test('secure storage on Android reports what it cannot decrypt instead of '
+      'wiping it (D59)', () {
+    final options = FlutterSecureStore.defaultStorage.aOptions.toMap();
+
+    expect(options['resetOnError'], 'false');
+    expect(
+      options,
+      containsPair(
+        'keyCipherAlgorithm',
+        AndroidOptions.defaultOptions.toMap()['keyCipherAlgorithm'],
+      ),
+    );
   });
 }

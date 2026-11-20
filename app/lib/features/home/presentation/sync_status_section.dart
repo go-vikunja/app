@@ -122,7 +122,11 @@ class SyncStatusSection extends ConsumerWidget {
                 ],
               ),
             ),
-          BackgroundSyncLine(accountId: entry.id),
+          BackgroundSyncLine(
+            accountId: entry.id,
+            addedAt: entry.account.addedAt,
+            needsReauth: entry.account.needsReauth,
+          ),
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Wrap(

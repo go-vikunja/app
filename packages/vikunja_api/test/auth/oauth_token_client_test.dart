@@ -8,11 +8,11 @@ import '../helpers/jwt.dart';
 const _v2Endpoint = 'https://tasks.example.com/vikunja/api/v2/oauth/token';
 const _v1Endpoint = 'https://tasks.example.com/vikunja/api/v1/oauth/token';
 
-ServerConnection _connection({required bool hasV2}) {
+ServerConnection _connection({required bool hasV2, ServerVersion? version}) {
   final info = ServerInfo(
-    version: hasV2
-        ? const ServerVersion(2, 7, 0)
-        : const ServerVersion(2, 3, 0),
+    version:
+        version ??
+        (hasV2 ? const ServerVersion(2, 7, 0) : const ServerVersion(2, 3, 0)),
   );
   final apiVersions = {ApiVersion.v1, if (hasV2) ApiVersion.v2};
   return ServerConnection(
@@ -290,10 +290,14 @@ void main() {
       FakeRoute route,
       Matcher matcher, {
       bool hasV2 = true,
+      ServerVersion? version,
     }) async {
       final dio = fakeDio({hasV2 ? _v2Endpoint : _v1Endpoint: route});
       await expectLater(
-        OAuthTokenClient(dio, _connection(hasV2: hasV2)).refresh('r'),
+        OAuthTokenClient(
+          dio,
+          _connection(hasV2: hasV2, version: version),
+        ).refresh('r'),
         throwsA(matcher),
       );
     }
@@ -312,10 +316,10 @@ void main() {
       );
     });
 
-    for (final (fixture, hasV2) in [
-      ('v1_refresh_invalid_2.3.0', false),
-      ('v1_refresh_race_401_2.3.0', false),
-      ('v2_refresh_invalid_2.4.0', true),
+    for (final (fixture, hasV2, version) in [
+      ('v1_refresh_invalid_2.3.0', false, const ServerVersion(2, 3, 0)),
+      ('v1_refresh_race_401_2.3.0', false, const ServerVersion(2, 3, 0)),
+      ('v2_refresh_invalid_2.4.0', true, const ServerVersion(2, 4, 0)),
     ]) {
       test('$fixture: an uncoded 401 ends the session', () async {
         await expectRefreshFailure(
@@ -326,6 +330,24 @@ void main() {
             'Invalid or expired refresh token.',
           ),
           hasV2: hasV2,
+          version: version,
+        );
+      });
+    }
+
+    // From 2.7.0 Vikunja codes every refusal (16002 to 16005).
+    for (final (what, route) in [
+      ('without a body', status(401)),
+      ("from a proxy's sign-in page", html('<p>Sign in</p>', status: 401)),
+    ]) {
+      test('a 401 $what from 2.7.0 says nothing about the session', () async {
+        await expectRefreshFailure(
+          route,
+          isA<UnexpectedResponse>().having(
+            (f) => f.statusCode,
+            'statusCode',
+            401,
+          ),
         );
       });
     }

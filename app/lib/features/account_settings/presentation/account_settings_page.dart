@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/account_security_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository_providers.dart';
@@ -164,9 +165,11 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
       await repository.refresh();
       _readAt = startedAt;
       if (mounted) setState(() => _reachable = true);
-    } on NetworkFailure {
-      if (mounted) setState(() => _reachable = false);
     } on Object catch (error) {
+      if (failedOnTheNetwork(error)) {
+        if (mounted) setState(() => _reachable = false);
+        return;
+      }
       _log.info('Refreshing the account settings failed: ${error.runtimeType}');
     }
   }
@@ -287,8 +290,10 @@ class _AccountSettingsPageState extends ConsumerState<AccountSettingsPage> {
           case AccountSettingsRefused(:final message):
             setState(() => _errors[field] = message);
           case AccountSettingsNotSaved(
-            error: NetworkFailure(problem: NetworkProblem.unreachable),
-          ):
+                error: NetworkFailure(problem: NetworkProblem.unreachable) &&
+                    final error,
+              )
+              when !failedWithoutToken(error):
             setState(() => _reachable = false);
           case AccountSettingsNotSaved():
             break;

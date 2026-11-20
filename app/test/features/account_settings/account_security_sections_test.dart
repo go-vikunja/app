@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_deletion.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
@@ -315,7 +316,10 @@ void main() {
       resumeApp(tester);
       // The session manager looks for a sibling's rotation for a few
       // seconds before it gives a 16002 up.
-      for (var i = 0; i < 5; i++) {
+      final recheckSeconds = SessionManager.raceRecheckDelays
+          .fold(Duration.zero, (sum, delay) => sum + delay)
+          .inSeconds;
+      for (var i = 0; i <= recheckSeconds + 1; i++) {
         await tester.pump(const Duration(seconds: 1));
       }
       await tester.pumpAndSettle();

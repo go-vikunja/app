@@ -5,6 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/logging/diagnostics_log.dart';
@@ -67,6 +70,7 @@ AccountSupport _account({
   Collected<String> syncInSession = const Collected('idle'),
   Collected<String> sendingInSession = const Collected('idle'),
   Collected<SessionEndRecord>? lastSessionEnd,
+  Collected<SessionEndDiagnosis>? sessionEndDiagnosis,
 }) => AccountSupport(
   id: id,
   isGuest: guest,
@@ -91,6 +95,7 @@ AccountSupport _account({
   queue: queue ?? const Collected(QueueSummary()),
   notifications: const Collected(NotificationPreferences(activity: false)),
   lastSessionEnd: lastSessionEnd ?? const Collected(null),
+  sessionEndDiagnosis: sessionEndDiagnosis ?? const Collected(null),
 );
 
 String _render(
@@ -219,6 +224,19 @@ Last background run: completed, 2026-11-12 13:50 UTC
               at: DateTime.utc(2026, 11, 10, 8, 12),
             ),
           ),
+          sessionEndDiagnosis: Collected(
+            SessionEndDiagnosis(
+              at: DateTime.utc(2026, 11, 10, 8, 12),
+              cause: SessionEndCause.refreshRejected,
+              part: AppPart.backgroundRun,
+              code: 16002,
+              failedToken: 'MARKER-failed',
+              rotatedAwayToken: 'MARKER-rotated',
+              lostRefreshAt: DateTime.utc(2026, 11, 10, 7, 40),
+              lostRefreshPart: AppPart.app,
+              resolution: SessionEndResolution.orphanRevoked,
+            ),
+          ),
         ),
       ]);
 
@@ -244,6 +262,7 @@ Unsent changes: 3 (updateTask 2, createTask 1)
   oldest: 2026-11-12 12:00 UTC
 Notifications: reminders on, due dates on, activity off
 Last session end: expired, background run, 2026-11-10 08:12 UTC
+Session end cause: refreshRejected, code 16002, background run, 2026-11-10 08:12 UTC, lost renewal 2026-11-10 07:40 UTC by app, orphanRevoked
 
 $_noLog''');
       expect(text, isNot(contains('MARKER')));
@@ -259,6 +278,7 @@ $_noLog''');
         contains('\nAccount 1\nKind: guest\nSign-in: needs sign-in\n'),
       );
       expect(text, contains('Last session end: none recorded\n'));
+      expect(text, contains('Session end cause: none recorded\n'));
       expect(text, contains('Unsent changes: 0\nNotifications:'));
     });
 
@@ -410,6 +430,7 @@ $_noLog''');
           syncInSession: const Collected(null),
           sendingInSession: const Collected.unknown(),
           lastSessionEnd: const Collected.unknown(),
+          sessionEndDiagnosis: const Collected.unknown(),
         ),
       ]);
 
@@ -417,6 +438,7 @@ $_noLog''');
       expect(text, contains('Sending in this session: unknown\n'));
       expect(text, isNot(contains('Sync in this session')));
       expect(text, contains('Last session end: unknown\n'));
+      expect(text, contains('Session end cause: unknown\n'));
       expect(_render(null), endsWith('\nAccounts: unknown\n\n$_noLog'));
       expect(
         _render([], log: const Collected.unknown()),
@@ -693,6 +715,15 @@ Log: warnings and errors of the last 7 days: 2
         SessionEndReason.linkShareGone,
         part: AppPart.widgetAction,
       );
+      await SessionDiagnostics(auth.preferences).recordEnd(
+        alice.id,
+        SessionEndDiagnosis(
+          at: _created,
+          cause: SessionEndCause.storageUnreadable,
+          part: AppPart.app,
+          failedToken: 'MARKER-failed',
+        ),
+      );
 
       final snapshot = await container(
         background: const BackgroundState(powerSaveMode: true),
@@ -725,6 +756,13 @@ Log: warnings and errors of the last 7 days: 2
           '2026-11-12 14:03 UTC\n',
         ),
       );
+      expect(
+        text,
+        contains(
+          'Session end cause: storageUnreadable, app, 2026-11-12 14:03 UTC\n',
+        ),
+      );
+      expect(text, isNot(contains('MARKER')));
       expect(text, isNot(contains('Sync in this session')));
     });
 
@@ -877,5 +915,45 @@ Log: warnings and errors of the last 7 days: 2
       'domain_error code 3001 HTTP 400',
     );
     expect(failureLabel(null), isNull);
+  });
+
+  test('a failure whose request got no token says why it was never sent, '
+      'not that the network failed (D59)', () {
+    expect(
+      failureLabel(
+        _failure(
+          const NetworkFailure(
+            NetworkProblem.timeout,
+            cause: RefreshDeferred.race,
+          ),
+        ),
+      ),
+      'network/not sent (deferred)',
+    );
+    expect(
+      failureLabel(
+        _failure(
+          const NetworkFailure(
+            NetworkProblem.unreachable,
+            cause: SecureStorageUnreadable(StateError),
+          ),
+        ),
+      ),
+      'network/not sent (storage)',
+    );
+    expect(
+      failureLabel(
+        jsonEncode({
+          'kind': 'network',
+          'problem': 'unreachable',
+          'not_sent': 'MARKER',
+        }),
+      ),
+      'network/unreachable',
+    );
+    expect(
+      failureLabel(_failure(const NetworkFailure(NetworkProblem.unreachable))),
+      'network/unreachable',
+    );
   });
 }

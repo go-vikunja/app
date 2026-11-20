@@ -405,4 +405,81 @@ void main() {
       isA<ServerUnreachable>(),
     );
   });
+
+  group('a request that never reached the server (D59)', () {
+    for (final (transport, cause) in [
+      ('dart:io', const SocketException('Failed host lookup: tasks.example')),
+      (
+        'dart:io',
+        const SocketException(
+          'Connection refused',
+          osError: OSError('Connection refused', 61),
+        ),
+      ),
+      (
+        'Cronet',
+        _NativeClientException(
+          'net::ERR_INTERNET_DISCONNECTED, cronetInternalErrorCode=-106',
+        ),
+      ),
+      ('Cronet', _NativeClientException('net::ERR_NAME_NOT_RESOLVED')),
+      (
+        'NSURLSession',
+        _NativeClientException(
+          'Error Domain=NSURLErrorDomain Code=-1009 "The Internet connection '
+          'appears to be offline."',
+        ),
+      ),
+    ]) {
+      test('$transport: $cause', () {
+        expect(
+          neverReachedServer(
+            NetworkFailure(NetworkProblem.unreachable, cause: cause),
+          ),
+          isTrue,
+        );
+      });
+    }
+
+    for (final problem in [
+      NetworkProblem.tls,
+      NetworkProblem.clientCertificate,
+      NetworkProblem.cleartextBlocked,
+      NetworkProblem.profileLocked,
+      NetworkProblem.profileIncomplete,
+      NetworkProblem.profileDamaged,
+    ]) {
+      test(problem.name, () {
+        expect(neverReachedServer(NetworkFailure(problem)), isTrue);
+      });
+    }
+
+    for (final (what, failure) in [
+      ('a timeout', const NetworkFailure(NetworkProblem.timeout)),
+      (
+        'a connection lost on the way',
+        const NetworkFailure(
+          NetworkProblem.unreachable,
+          cause: HttpException(
+            'Connection closed before full header was '
+            'received',
+          ),
+        ),
+      ),
+      (
+        'a host name that only looks like a refusal',
+        NetworkFailure(
+          NetworkProblem.unreachable,
+          cause: _NativeClientException(
+            'net::ERR_CONNECTION_RESET https://connection-refused.example/',
+          ),
+        ),
+      ),
+      ('no cause', const NetworkFailure(NetworkProblem.unreachable)),
+    ]) {
+      test('not $what, which may have arrived', () {
+        expect(neverReachedServer(failure), isFalse);
+      });
+    }
+  });
 }

@@ -32,6 +32,7 @@ PreviousAppSignIn previousAppSignIn(Ref ref) => PreviousAppSignIn(
   tokenStore: ref.watch(tokenStoreProvider),
   registry: ref.watch(accountRegistryProvider),
   sessions: ref.watch(sessionManagersProvider),
+  diagnostics: ref.watch(sessionDiagnosticsProvider),
 );
 
 /// The try to keep the previous app's session, made at most once.

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/application/people_search.dart';
@@ -135,7 +136,7 @@ class _AssigneePickerState extends ConsumerState<AssigneePicker> {
       }
       _fallbackNotice = switch (failure) {
         null => null,
-        NetworkFailure() => l10n.assigneePickerOffline,
+        _ when failedOnTheNetwork(failure) => l10n.assigneePickerOffline,
         Forbidden() || NotFound(routeAbsent: false) =>
           l10n.assigneePickerFallback(l10n.assigneePickerNoAccess),
         ServerFailure() ||

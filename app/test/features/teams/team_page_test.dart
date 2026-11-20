@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
@@ -544,6 +546,23 @@ void main() {
     await openTeam(tester);
 
     expect(find.text(en.teamGoneTitle), findsOneWidget);
+  });
+
+  testWidgets('a read again that got no token keeps the team under a notice '
+      'of the failure, not an offline one', (tester) async {
+    harness.teams.teams = [design()];
+    await openTeam(tester);
+    harness.teams.failures['read'] = const NetworkFailure(
+      NetworkProblem.timeout,
+      cause: RefreshDeferred.race,
+    );
+
+    await tester.tap(find.byTooltip(en.refresh).last);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OfflineNotice), findsNothing);
+    expect(find.byType(DataFailureCard), findsOneWidget);
+    expect(find.text('Design'), findsWidgets);
   });
 
   testWidgets('a read that gets through after a failed sync is online: the '

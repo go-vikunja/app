@@ -10,6 +10,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/saved_filter_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
@@ -449,7 +450,7 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
                   body: l10n.smartListFilterGoneBody,
                 ),
                 (false, null)
-                    when offline || downloadFailure is NetworkFailure =>
+                    when offline || failedOnTheNetwork(downloadFailure) =>
                   EmptyState(
                     icon: Icons.cloud_download_outlined,
                     title: l10n.overviewFilterNotLoadedTitle,

@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_viewer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_text_view.dart';
 
@@ -993,6 +994,23 @@ void main() {
       expect(data.attachmentImages.loads, ['5 3 xl', '5 3 xl']);
       expect(find.byType(Image), findsOneWidget);
       semantics.dispose();
+    });
+
+    testWidgets('an image whose read got no token says it failed, not that '
+        'it needs a connection', (tester) async {
+      data.attachmentImages.failures[(
+        5,
+        3,
+        AttachmentPreviewSize.extraLarge,
+      )] = const NetworkFailure(
+        NetworkProblem.timeout,
+        cause: RefreshDeferred.race,
+      );
+      await pumpRichText(tester, const [photo]);
+
+      expect(find.text(en.richTextImageFailed), findsOneWidget);
+      expect(find.byIcon(Icons.cloud_off_outlined), findsNothing);
+      expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
     });
 
     testWidgets('a missing or too large image cannot be asked for again', (

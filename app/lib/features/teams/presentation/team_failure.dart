@@ -14,7 +14,9 @@ enum TeamChange {
 
 String teamFailureText(AppLocalizations l10n, Object error, TeamChange change) {
   final shared = actionFailureText(l10n, error);
+  final notSent = notSentFailureText(l10n, error);
   return switch (error) {
+    _ when notSent != null => notSent,
     // The server may have made the change before the answer was lost.
     NetworkFailure(problem: NetworkProblem.timeout) => l10n.teamUnconfirmed,
     NetworkFailure() when change == TeamChange.create => l10n.teamsNewOffline,

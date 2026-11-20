@@ -11,7 +11,9 @@ String savedFilterFailureText(
   required bool fromForm,
 }) {
   final shared = actionFailureText(l10n, error);
+  final notSent = notSentFailureText(l10n, error);
   return switch (error) {
+    _ when notSent != null => notSent,
     NetworkFailure(problem: NetworkProblem.timeout) when fromForm =>
       l10n.projectFormUnconfirmed,
     NetworkFailure(problem: NetworkProblem.timeout) =>

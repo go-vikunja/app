@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -387,9 +388,9 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         ? ref.watch(projectProgressProvider(widget.projectId)).value
         : null;
     final downloadFailure = downloadFailureOf(viewId);
-    final offlineOrUnreachable = offline || downloadFailure is NetworkFailure;
-    final downloadFailed =
-        downloadFailure != null && downloadFailure is! NetworkFailure;
+    final unreachable = failedOnTheNetwork(downloadFailure);
+    final offlineOrUnreachable = offline || unreachable;
+    final downloadFailed = downloadFailure != null && !unreachable;
     final archivedNote = archived
         ? ListNote(icon: Icons.archive_outlined, text: l10n.projectArchivedNote)
         : access.isReadOnly && _followable

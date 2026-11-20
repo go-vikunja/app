@@ -23,7 +23,10 @@ SessionCheck sessionCheck(Ref ref) => SessionCheck(
 /// Asks the server who is signed in when the app opens or resumes. Routing
 /// never waits for it. A session the server ended is noticed here (the
 /// session manager marks the account), and an expired access token is
-/// refreshed, which keeps an idle session alive.
+/// refreshed, which keeps an idle session alive. An account marked for a
+/// new sign-in gets its stored tokens tried again when they changed since
+/// (`SessionManagers.tryRestore`), a guest only when its storage could not
+/// be read (`LinkShareSessions.tryRestore`).
 final class SessionCheck {
   new({
     required this._sessions,
@@ -44,8 +47,9 @@ final class SessionCheck {
 
   /// Never throws.
   Future<void> check(RegisteredAccount entry) async {
-    if (entry.account.needsReauth || _running.contains(entry.id)) return;
-    final refresh = _refreshOnNextCheck.remove(entry.id);
+    final needsReauth = entry.account.needsReauth;
+    if (_running.contains(entry.id)) return;
+    final refresh = !needsReauth && _refreshOnNextCheck.remove(entry.id);
     final now = _clock();
     final last = _lastChecked[entry.id];
     if (!refresh && last != null && now.difference(last) < _minInterval) {
@@ -54,6 +58,14 @@ final class SessionCheck {
     _lastChecked[entry.id] = now;
     _running.add(entry.id);
     try {
+      if (needsReauth) {
+        if (entry.account.isLinkShare) {
+          await _linkShares.tryRestore(entry.id);
+        } else {
+          await _sessions.tryRestore(entry.id);
+        }
+        return;
+      }
       if (entry.account.isLinkShare) return await _checkGuest(entry);
       final session = _sessions.forAccount(entry.id);
       if (refresh) await session.refreshNow();

@@ -1,13 +1,14 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/avatar_crop_page.dart';
@@ -394,6 +395,27 @@ void main() {
       expect(tile(en.avatarProviderUpload), findsNothing);
     });
   }
+
+  testWidgets('a read or a change that got no token leaves the providers '
+      'on', (tester) async {
+    const noToken = NetworkFailure(
+      NetworkProblem.unreachable,
+      cause: SecureStorageUnreadable(PlatformException),
+    );
+    data.shared.accountSettings.failures['refresh'] = noToken;
+    repository().failures['setAvatarProvider'] = noToken;
+    await pumpAvatarPage(tester);
+
+    expect(find.text(en.accountSettingsOffline), findsNothing);
+    await tester.tap(tile(en.avatarProviderGravatar));
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.accountSettingsOffline), findsNothing);
+    expect(
+      tester.widget<ListTile>(tile(en.avatarProviderMarble)).enabled,
+      isTrue,
+    );
+  });
 
   testWidgets('offline the providers only show', (tester) async {
     data = SyncFakes(

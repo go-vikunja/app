@@ -28,13 +28,17 @@ final class _LockedSecureStore implements SecureStore {
   }
 
   @override
-  Future<void> write(String key, String value) => inner.write(key, value);
+  Future<void> write(String key, String value, {bool recoverLostKey = false}) =>
+      inner.write(key, value);
 
   @override
   Future<void> delete(String key) => inner.delete(key);
 
   @override
   Future<void> deleteAll() => inner.deleteAll();
+
+  @override
+  Future<void> flush() => inner.flush();
 }
 
 final class _CountingPreferences implements PreferencesStore {

@@ -1,7 +1,10 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
@@ -549,6 +552,31 @@ void main() {
         }
       });
     }
+
+    test('a request that got no token is stored as unreachable, with why it '
+        'never left, and reads back as unreachable alone (D59)', () {
+      for (final (cause, notSent) in const [
+        (RefreshDeferred.race, 'deferred'),
+        (RefreshDeferred.cutoff, 'deferred'),
+        (SecureStorageUnreadable(PlatformException), 'storage'),
+      ]) {
+        final stored = encodeFailure(
+          NetworkFailure(NetworkProblem.timeout, cause: cause),
+        );
+
+        expect(jsonDecode(stored), {
+          'kind': 'network',
+          'problem': 'unreachable',
+          'not_sent': notSent,
+        });
+        expect(
+          decodeFailure(stored),
+          isA<NetworkFailure>()
+              .having((f) => f.problem, 'problem', NetworkProblem.unreachable)
+              .having((f) => f.cause, 'cause', isNull),
+        );
+      }
+    });
 
     test('a missing related task without a code reads as 4002', () {
       expect(

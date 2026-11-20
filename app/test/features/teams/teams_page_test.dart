@@ -1,7 +1,9 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
@@ -237,6 +239,24 @@ void main() {
     );
     expect(button.onPressed, isNull);
     expect(button.tooltip, en.teamsNewOffline);
+  });
+
+  testWidgets('a read that got no token is no outage: the page stays online '
+      'and explains it', (tester) async {
+    harness.teams.failure = const NetworkFailure(
+      NetworkProblem.unreachable,
+      cause: SecureStorageUnreadable(PlatformException),
+    );
+    await harness.pump(tester, location: AppRoutes.teams);
+
+    expect(find.byType(OfflineNotice), findsNothing);
+    expect(find.byType(DataFailureCard), findsOneWidget);
+    expect(
+      tester
+          .widget<FloatingActionButton>(find.byType(FloatingActionButton))
+          .onPressed,
+      isNotNull,
+    );
   });
 
   testWidgets('a read that gets through after a failed sync shows the page '

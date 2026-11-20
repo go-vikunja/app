@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -42,6 +44,12 @@ class Offline extends _$Offline {
 
 OfflineState? offlineAfter(OfflineState? previous, SyncStatus? status) =>
     switch (status) {
+      // Storage that refused to read says nothing about the network, so an
+      // outage shown before stays; a deferred renewal got the server's
+      // answer.
+      SyncFailed(failure: NetworkFailure(cause: SecureStorageUnreadable())) =>
+        previous,
+      SyncFailed(:final failure) when failedWithoutToken(failure) => null,
       // A failure of the connection settings is no outage: retrying alone
       // never gets through.
       SyncFailed(

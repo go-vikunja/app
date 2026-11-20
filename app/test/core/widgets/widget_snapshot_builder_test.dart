@@ -566,6 +566,40 @@ void main() {
     expect(guest.subtitle, isNull);
   });
 
+  test('an end on the device is not told as a sign-out by the server '
+      '(D59)', () async {
+    const user = WidgetAccount(
+      id: accountId,
+      title: 'Alice',
+      host: 'vikunja.example.com',
+      isGuest: false,
+      sessionEnded: true,
+      supportsV2: true,
+    );
+    const guest = WidgetAccount(
+      id: accountId,
+      title: 'Helper',
+      host: 'vikunja.example.com',
+      isGuest: true,
+      sessionEnded: true,
+      supportsV2: false,
+    );
+
+    final onDevice = await one(
+      const TodayKind(),
+      account: user.withEndedOnDevice(endedOnDevice: true),
+    );
+    final guestOnDevice = await one(
+      const TodayKind(),
+      account: guest.withEndedOnDevice(endedOnDevice: true),
+    );
+
+    expect(onDevice.message?.title, 'Signed out on this device');
+    expect(onDevice.message?.action, 'Sign in again');
+    expect(guestOnDevice.message?.title, 'Guest access ended on this device');
+    expect(guestOnDevice.message?.action, 'Open the link again');
+  });
+
   group('due labels', () {
     test('use the absolute format picked on the web', () async {
       await db.syncStateDao.write({

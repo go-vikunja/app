@@ -5,6 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
@@ -142,7 +143,7 @@ class _PersonSearchSheetState extends ConsumerState<PersonSearchSheet> {
     ];
     final notice = switch (_failure) {
       _ when offline => l10n.sharePeopleSearchOffline,
-      NetworkFailure() => l10n.sharePeopleSearchOffline,
+      _ when failedOnTheNetwork(_failure) => l10n.sharePeopleSearchOffline,
       null => null,
       _ => l10n.sharePeopleSearchFailed,
     };

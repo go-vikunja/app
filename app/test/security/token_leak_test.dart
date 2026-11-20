@@ -247,10 +247,12 @@ void main() {
             if (failingRefreshes++ == 0) {
               throw ServerFailure(500, message: 'cannot use $refreshToken');
             }
+            // Not 16002: after a server error that is a race, which ends
+            // nothing (D59).
             throw SessionEnded(
-              SessionEndReason.invalidRefreshToken,
-              code: 16002,
-              message: 'refresh token $refreshToken is unknown',
+              SessionEndReason.expired,
+              code: 16003,
+              message: 'refresh token $refreshToken has expired',
             );
           }
           throw Exception(
@@ -358,9 +360,7 @@ void main() {
       });
 
       expect(errors, hasLength(6));
-      expect(ended.map((e) => e.reason), [
-        SessionEndReason.invalidRefreshToken,
-      ]);
+      expect(ended.map((e) => e.reason), [SessionEndReason.expired]);
       expect(gone, hasLength(1));
       expect(
         records.map((r) => r.loggerName).toSet(),

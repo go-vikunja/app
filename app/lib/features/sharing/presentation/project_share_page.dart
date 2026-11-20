@@ -8,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/project_sharing_repository.dart';
 import 'package:vikunja_mobile/core/repositories/project_sharing_repository_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
@@ -547,7 +548,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
                 MediaQuery.paddingOf(context).copyWith(top: 0) +
                 EdgeInsets.fromLTRB(inset, 0, inset, 32),
             children: [
-              if (failure is NetworkFailure)
+              if (failedOnTheNetwork(failure))
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
                   child: OfflineNotice(),
@@ -624,7 +625,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
                 if (showsLinks) ...[
                   if (linksFailure != null &&
                       linksFailure is! NotFound &&
-                      linksFailure is! NetworkFailure)
+                      !failedOnTheNetwork(linksFailure))
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                       child: DataFailureCard(

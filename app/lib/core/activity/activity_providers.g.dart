@@ -53,7 +53,7 @@ final class ActivityNoticesProvider
   }
 }
 
-String _$activityNoticesHash() => r'4d640a3353ed409befc6758279a8c79181f1c87d';
+String _$activityNoticesHash() => r'f02f739965ca9faefad4512505024eb3afc41a47';
 
 /// The foreground side of activity and background sync; the foreground
 /// sync scheduler reports its start, resumes and ticks here.

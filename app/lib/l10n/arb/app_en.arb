@@ -62,6 +62,34 @@
     }
   },
   "failureTimeoutSuggestion": "Try again in a moment. If it keeps happening, the server may be overloaded or a firewall may be blocking it.",
+  "failureSignInUnreadableExplanation": "This device's secure storage could not read the sign-in to {host}. The sign-in is kept and tried again.",
+  "@failureSignInUnreadableExplanation": {
+    "description": "Explanation of a failed sync or load when the device's secure storage (Keychain or Keystore) refused to read the stored sign-in, so no request was sent; this is not a network outage. host is the server's address, for example vikunja.example.com.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "failureSignInUnreadableSuggestion": "If this keeps happening, restart the device.",
+  "@failureSignInUnreadableSuggestion": {
+    "description": "Suggestion after failureSignInUnreadableExplanation."
+  },
+  "failureRenewalDeferredExplanation": "Another part of the app was renewing the sign-in to {host} at the same moment.",
+  "@failureRenewalDeferredExplanation": {
+    "description": "Explanation of a failed sync or load when the app's renewal of the sign-in had to wait for another part of the app (a background sync) that was renewing it at the same time, so no request was sent; host is the server's address, for example vikunja.example.com.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "failureRenewalDeferredSuggestion": "Try again in a moment.",
+  "@failureRenewalDeferredSuggestion": {
+    "description": "Suggestion after failureRenewalDeferredExplanation."
+  },
   "failureTlsTitle": "Secure connection failed",
   "failureTlsExplanation": "This device does not trust the certificate of {host}. It may be self-signed, issued for a different address, or expired.",
   "@failureTlsExplanation": {
@@ -508,6 +536,20 @@
   "reauthBody": "{host} ended your session. Sign in again to keep your tasks in sync. Nothing on this device is lost.",
   "@reauthBody": {
     "description": "Body of the Account tab's banner when the server ended the account's session; host is the server's address, for example vikunja.example.com.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
+  "reauthTitleOnDevice": "Signed out on this device",
+  "@reauthTitleOnDevice": {
+    "description": "Title of the Account tab's banner when the account's session ended on this device, not on the server: its secure storage held no sign-in any more or could not read it for a day (the reason follows in the banner)."
+  },
+  "reauthBodyOnDevice": "The sign-in to {host} on this device ended. Sign in again to keep your tasks in sync. Nothing on this device is lost.",
+  "@reauthBodyOnDevice": {
+    "description": "Body of the banner with reauthTitleOnDevice; host is the server's address, for example vikunja.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -1380,9 +1422,9 @@
   "accountSyncFailed": "The last sync failed.",
   "accountSyncNow": "Sync now",
   "accountFullResync": "Full resync",
-  "accountBackgroundSync": "Background sync: {when}",
-  "@accountBackgroundSync": {
-    "description": "When the background sync last ran for the account.",
+  "accountBackgroundSyncSucceeded": "Last successful background sync: {when}",
+  "@accountBackgroundSyncSucceeded": {
+    "description": "In the Account tab's Sync section: when a background sync of the account last went through; a failed attempt since follows on its own line (accountBackgroundTurn).",
     "placeholders": {
       "when": {
         "type": "String",
@@ -1390,9 +1432,191 @@
       }
     }
   },
-  "accountBackgroundSyncJustNow": "Background sync: just now",
-  "accountBackgroundSyncNever": "Background sync has not run yet",
+  "accountBackgroundSyncSucceededJustNow": "Last successful background sync: just now",
+  "@accountBackgroundSyncSucceededJustNow": {
+    "description": "accountBackgroundSyncSucceeded for a sync less than 45 seconds ago."
+  },
+  "accountBackgroundSyncNoneSucceeded": "No successful background sync yet",
+  "@accountBackgroundSyncNoneSucceeded": {
+    "description": "In the Account tab's Sync section: no background sync of the account has gone through yet, though attempts may have failed (accountBackgroundTurn follows then)."
+  },
   "accountBackgroundSyncIosHint": "iOS decides when apps may sync in the background.",
+  "accountBackgroundTurn": "Last attempt {when}: {outcome}",
+  "@accountBackgroundTurn": {
+    "description": "In the Account tab's Sync section, under accountBackgroundSyncSucceeded or accountBackgroundSyncNoneSucceeded: the background sync's last attempt for the account, when it failed after the last successful one, and how it ended (one of the accountBackgroundTurn… texts).",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "2 hours ago"
+      },
+      "outcome": {
+        "type": "String",
+        "example": "server not reachable"
+      }
+    }
+  },
+  "accountBackgroundTurnJustNow": "Last attempt just now: {outcome}",
+  "@accountBackgroundTurnJustNow": {
+    "description": "accountBackgroundTurn for an attempt less than 45 seconds ago.",
+    "placeholders": {
+      "outcome": {
+        "type": "String",
+        "example": "server not reachable"
+      }
+    }
+  },
+  "accountBackgroundTurnUnreachable": "server not reachable",
+  "@accountBackgroundTurnUnreachable": {
+    "description": "Outcome in accountBackgroundTurn: the account's server could not be reached."
+  },
+  "accountBackgroundTurnDeferred": "postponed to the next run",
+  "@accountBackgroundTurnDeferred": {
+    "description": "Outcome in accountBackgroundTurn: renewing the sign-in had to wait for the next background run, because too little of this run was left for the server's answer or another part of the app was renewing it."
+  },
+  "accountBackgroundTurnStorageUnreadable": "the sign-in could not be read on this device",
+  "@accountBackgroundTurnStorageUnreadable": {
+    "description": "Outcome in accountBackgroundTurn: the device's secure storage (Keychain or Keystore) refused to read the stored sign-in."
+  },
+  "accountBackgroundTurnFailed": "failed",
+  "@accountBackgroundTurnFailed": {
+    "description": "Outcome in accountBackgroundTurn: a step failed for another reason."
+  },
+  "accountBackgroundTurnSessionEnded": "the session ended",
+  "@accountBackgroundTurnSessionEnded": {
+    "description": "Outcome in accountBackgroundTurn: the account's session ended during this attempt (the server refused it, or no sign-in was stored any more)."
+  },
+  "accountBackgroundTurnSignInNeeded": "waiting for a new sign-in",
+  "@accountBackgroundTurnSignInNeeded": {
+    "description": "Outcome in accountBackgroundTurn: the account already needed a new sign-in, so nothing was synced."
+  },
+  "accountBackgroundTurnStopped": "stopped by the system",
+  "@accountBackgroundTurnStopped": {
+    "description": "Outcome in accountBackgroundTurn: the operating system stopped the background run, for a reason the system did not give or that the user cannot change."
+  },
+  "accountBackgroundTurnStoppedTimeout": "stopped by the system: it ran too long",
+  "@accountBackgroundTurnStoppedTimeout": {
+    "description": "Outcome in accountBackgroundTurn: Android stopped the background run because it took longer than allowed."
+  },
+  "accountBackgroundTurnStoppedDeviceState": "stopped by the system: battery saver or the device's state",
+  "@accountBackgroundTurnStoppedDeviceState": {
+    "description": "Outcome in accountBackgroundTurn: Android stopped the background run because of the device's state, for example battery saver or the device going idle (Doze)."
+  },
+  "accountBackgroundTurnStoppedBatteryLow": "stopped by the system: the battery is low",
+  "@accountBackgroundTurnStoppedBatteryLow": {
+    "description": "Outcome in accountBackgroundTurn: Android stopped the background run because the battery got low; the background sync only runs while it is not."
+  },
+  "accountBackgroundTurnStoppedConnectivity": "stopped by the system: the network connection was lost",
+  "@accountBackgroundTurnStoppedConnectivity": {
+    "description": "Outcome in accountBackgroundTurn: Android stopped the background run because the device lost its network connection; the background sync only runs with one."
+  },
+  "accountBackgroundTurnOutOfTime": "the run's time ran out",
+  "@accountBackgroundTurnOutOfTime": {
+    "description": "Outcome in accountBackgroundTurn: the background run reached its own time limit (9 minutes on Android, 25 seconds on iOS) during this account's turn; the system did not stop it."
+  },
+  "accountBackgroundSyncIdle": "The system has not let the background sync run for over a day. Open the app now and then, or allow it background activity in the battery settings.",
+  "@accountBackgroundSyncIdle": {
+    "description": "In the Account tab's Sync section on Android, when no background run came for over a day (or none since the account was added)."
+  },
+  "accountLastSessionEnd": "Session last ended {when}.",
+  "@accountLastSessionEnd": {
+    "description": "In the Account tab's Sync section for two weeks after the account's session ended, whatever ended it; its cause (a sessionEndCause… text) and what became of it (a sessionEndResolved… text) follow.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "2 days ago"
+      }
+    }
+  },
+  "accountLastSessionEndJustNow": "Session last ended just now.",
+  "@accountLastSessionEndJustNow": {
+    "description": "accountLastSessionEnd for an end less than 45 seconds ago."
+  },
+  "reauthEndedAt": "Ended {when}.",
+  "@reauthEndedAt": {
+    "description": "In the banner that asks to sign in again (reauthTitle): when the session ended, before its cause (a sessionEndCause… text).",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "3 hours ago"
+      }
+    }
+  },
+  "reauthEndedJustNow": "Ended just now.",
+  "@reauthEndedJustNow": {
+    "description": "reauthEndedAt for an end less than 45 seconds ago."
+  },
+  "sessionEndCauseRefreshRejected": "The server no longer accepted the sign-in.",
+  "@sessionEndCauseRefreshRejected": {
+    "description": "Why a session ended: the server refused the app's stored sign-in when the app renewed it."
+  },
+  "sessionEndCauseLostAnswer": "The server no longer accepted the sign-in: the answer to a renewal {when} most likely got lost on the way.",
+  "@sessionEndCauseLostAnswer": {
+    "description": "Why a session ended: the app had renewed the sign-in at that time but never received the server's answer, which replaced the stored sign-in on the server.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "4 hours ago"
+      }
+    }
+  },
+  "sessionEndCauseLostAnswerJustNow": "The server no longer accepted the sign-in: the answer to a renewal just now most likely got lost on the way.",
+  "@sessionEndCauseLostAnswerJustNow": {
+    "description": "sessionEndCauseLostAnswer for a renewal less than 45 seconds ago."
+  },
+  "sessionEndCauseExpired": "The session went unused for longer than the server allows.",
+  "@sessionEndCauseExpired": {
+    "description": "Why a session ended: the server ended it after it was not renewed for too long."
+  },
+  "sessionEndCauseDisabled": "The account is disabled on the server.",
+  "@sessionEndCauseDisabled": {
+    "description": "Why a session ended: the server reports the user account as disabled."
+  },
+  "sessionEndCauseLocked": "The account is locked on the server.",
+  "@sessionEndCauseLocked": {
+    "description": "Why a session ended: the server reports the user account as locked."
+  },
+  "sessionEndCauseMissingTokens": "No sign-in was stored on this device any more.",
+  "@sessionEndCauseMissingTokens": {
+    "description": "Why a session ended: the device's secure storage held no sign-in for the account."
+  },
+  "sessionEndCauseStorageUnreadable": "This device's secure storage could not read the sign-in for a day.",
+  "@sessionEndCauseStorageUnreadable": {
+    "description": "Why a session ended: the device's secure storage (Keychain or Keystore) kept refusing to read the stored sign-in at app starts for over a day."
+  },
+  "sessionEndCauseShareGone": "The server no longer accepted the shared link.",
+  "@sessionEndCauseShareGone": {
+    "description": "Why a link-share guest's access ended: the server no longer knows the shared link (it was deleted, or link sharing is off on the server)."
+  },
+  "sessionEndCauseSharePassword": "The shared link asked for its password again.",
+  "@sessionEndCauseSharePassword": {
+    "description": "Why a link-share guest's access ended: when the app signed in with the shared link again, the server asked for the link's password, which the app did not have or which was no longer right."
+  },
+  "sessionEndCode": "Code {code}.",
+  "@sessionEndCode": {
+    "description": "After a sessionEndCause… text: the server's error code for the ended session.",
+    "placeholders": {
+      "code": {
+        "type": "int",
+        "example": "16002"
+      }
+    }
+  },
+  "sessionEndResolvedOrphan": "The old session still existed on the server and was removed.",
+  "@sessionEndResolvedOrphan": {
+    "description": "What became of an ended session, found at the next sign-in: the server still listed it although it refused its sign-in, and the app removed it."
+  },
+  "sessionEndResolvedGone": "The old session had been deleted on the server.",
+  "@sessionEndResolvedGone": {
+    "description": "What became of an ended session, found at the next sign-in: the server no longer had it, for example after a password change."
+  },
+  "sessionEndResolvedAlive": "The old session still worked: the app had ended it by mistake.",
+  "@sessionEndResolvedAlive": {
+    "description": "What became of an ended session, found at the next sign-in: its stored sign-in still worked."
+  },
+  "sessionEndResolvedRestored": "It works again without a new sign-in.",
+  "@sessionEndResolvedRestored": {
+    "description": "What became of an ended session: the sign-in stored on the device was accepted again, so no new sign-in was needed."
+  },
   "backgroundSyncLimitedTitle": "Background sync is limited",
   "@backgroundSyncLimitedTitle": {
     "description": "Title of a note in the Account tab's Sync section and on the notification setup screen when the device keeps the app from syncing in the background, which is what keeps the user signed in."
@@ -7152,6 +7376,20 @@
       }
     }
   },
+  "guestReauthTitleOnDevice": "Guest access ended on this device",
+  "@guestReauthTitleOnDevice": {
+    "description": "Title of the Account tab's banner when a link-share guest's access ended on this device, not on the server: its secure storage held the shared link no more or could not read it for a day."
+  },
+  "guestReauthBodyOnDevice": "The guest access to {host} on this device ended. Open the shared link again to keep the project in sync. Nothing on this device is lost.",
+  "@guestReauthBodyOnDevice": {
+    "description": "Body of the banner with guestReauthTitleOnDevice; host is the server's address, for example vikunja.example.com.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "vikunja.example.com"
+      }
+    }
+  },
   "guestSwitcherButton": "Accounts, guest in {name} on {host}",
   "@guestSwitcherButton": {
     "description": "Screen reader label of the avatar button that opens the account switcher while a link-share guest is active.",
@@ -7480,6 +7718,16 @@
   "guestAccessEndedNotificationBody": "{host} ended this guest access. The app can't sync the project until you open the shared link again.",
   "@guestAccessEndedNotificationBody": {
     "description": "Body of the OS notification when the server ended a link-share guest's access; host is the server's address, for example tasks.example.com.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "tasks.example.com"
+      }
+    }
+  },
+  "guestAccessEndedOnDeviceNotificationBody": "The guest access to {host} on this device ended. The app can't sync the project until you open the shared link again.",
+  "@guestAccessEndedOnDeviceNotificationBody": {
+    "description": "Body of the OS notification (title guestAccessEndedNotificationTitle) when a link-share guest's access ended on this device, not on the server: its secure storage held the shared link no more or could not read it for a day; host is the server's address, for example tasks.example.com.",
     "placeholders": {
       "host": {
         "type": "String",
@@ -9096,6 +9344,14 @@
   "actionFailureGuestAccessEnded": "Your guest access has ended. Open the link again on the Account tab.",
   "@actionFailureGuestAccessEnded": {
     "description": "Snackbar or inline error for a guest (someone who opened a shared link) after an action failed because the shared link no longer works. Like guestDataFailureAccessEnded without the server name."
+  },
+  "actionFailureSignInUnreadable": "This device's secure storage could not read your sign-in, so nothing was sent to the server.",
+  "@actionFailureSignInUnreadable": {
+    "description": "Snackbar or inline error after an action, download or search failed because the device's secure storage (Keychain or Keystore) refused to read the stored sign-in, so the request was never sent; this is not a missing connection and the server changed nothing. The app adds failureSignInUnreadableSuggestion after it. Like failureSignInUnreadableExplanation without the server name."
+  },
+  "actionFailureRenewalDeferred": "Another part of the app was renewing your sign-in at the same moment, so nothing was sent to the server.",
+  "@actionFailureRenewalDeferred": {
+    "description": "Snackbar or inline error after an action, download or search failed because the app's renewal of the sign-in had to wait for another part of the app (a background sync) that was renewing it at the same time, so the request was never sent; this is not a missing connection and the server changed nothing. The app adds failureRenewalDeferredSuggestion after it. Like failureRenewalDeferredExplanation without the server name."
   },
   "attachmentFileMissing": "The file is missing from the server.",
   "@attachmentFileMissing": {

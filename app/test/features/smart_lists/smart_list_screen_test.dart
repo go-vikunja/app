@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
@@ -495,6 +497,18 @@ void main() {
       expect(find.text(en.smartListFilterDownloadingTitle), findsNothing);
       expect(find.text(en.smartListFilterDownloadFailedTitle), findsOneWidget);
       expect(data.tasks.savedFilterRefreshes, hasLength(1));
+    });
+
+    testWidgets('a download that got no token says it failed, not that it '
+        'loads once online', (tester) async {
+      data.tasks.refreshSavedFilterFailure = const NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: SecureStorageUnreadable(PlatformException),
+      );
+      await openList(tester, filter.projectId);
+
+      expect(find.text(en.smartListFilterDownloadFailedTitle), findsOneWidget);
+      expect(find.text(en.overviewFilterNotLoadedTitle), findsNothing);
     });
 
     testWidgets('a download the server fails says so; pulling down tries '

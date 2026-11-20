@@ -62,6 +62,19 @@ final class _StaticAccountGateway implements AccountGateway {
   @override
   Future<void> logout(ServerConnection connection, AccessTokenSource tokens) =>
       throw UnsupportedError('no logout in this test');
+
+  @override
+  Future<List<UserSession>> sessions(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+  ) => throw UnsupportedError('no sessions in this test');
+
+  @override
+  Future<void> revokeSession(
+    ServerConnection connection,
+    AccessTokenSource tokens,
+    String sessionId,
+  ) => throw UnsupportedError('no sessions in this test');
 }
 
 /// The settings minus [keys] (`frontend_settings.x` for a frontend key).

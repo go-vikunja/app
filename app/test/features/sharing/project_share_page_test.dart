@@ -1,11 +1,15 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/sharing/presentation/link_share_form_sheet.dart';
 import 'package:vikunja_mobile/features/sharing/presentation/link_share_sheet.dart';
@@ -664,6 +668,51 @@ void main() {
 
     expect(find.byType(OfflineNotice), findsNothing);
     expect(find.text('Ben Brown'), findsOneWidget);
+  });
+
+  testWidgets('a read that got no token is no outage: the failure is told, '
+      'the links too', (tester) async {
+    const noToken = NetworkFailure(
+      NetworkProblem.timeout,
+      cause: RefreshDeferred.race,
+    );
+    data.sharing.failure = noToken;
+    await pumpSharePage(tester);
+
+    expect(find.byType(OfflineNotice), findsNothing);
+    expect(find.byType(DataFailureCard), findsOneWidget);
+
+    data.sharing
+      ..failure = null
+      ..failures['linkShares'] = noToken;
+    await pullToRefresh(tester, find.byType(ListView).last);
+
+    expect(find.text('Ben Brown'), findsOneWidget);
+    expect(find.byType(DataFailureCard), findsOneWidget);
+  });
+
+  testWidgets('the people search says a search that got no token failed, '
+      'not that it needs a connection', (tester) async {
+    await pumpSharePage(tester);
+    await tester.tap(find.text(en.shareAddPerson));
+    await tester.pumpAndSettle();
+    data.users.searchFailure = const NetworkFailure(
+      NetworkProblem.unreachable,
+      cause: SecureStorageUnreadable(PlatformException),
+    );
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(TextField),
+      ),
+      'kim',
+    );
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(sheetText(en.sharePeopleSearchOffline), findsNothing);
+    expect(sheetText(en.sharePeopleSearchFailed), findsOneWidget);
   });
 
   testWidgets('after a read that found no connection, the people search '

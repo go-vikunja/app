@@ -18,6 +18,7 @@ import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
+import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
@@ -31,6 +32,7 @@ final _log = Logger('TaskOpener');
 
 /// Why a task could not be found or read, as the user reads it.
 String taskOpenFailureText(AppLocalizations l10n, Object error) =>
+    notSentFailureText(l10n, error) ??
     switch (error) {
       NotFound(code: 4040) => l10n.taskOpenInTrash,
       NotFound(code: 3018) => l10n.taskOpenProjectInTrash,

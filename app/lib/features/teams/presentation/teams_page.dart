@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
@@ -112,9 +113,8 @@ class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
     final userId = ref.watch(activeUserIdProvider);
     final publicTeams = ref.watch(activeServerHasPublicTeamsProvider);
     final notice = switch (failure) {
-      NetworkFailure(
-        problem: NetworkProblem(concernsConnectionSettings: false),
-      ) =>
+      NetworkFailure(problem: NetworkProblem(concernsConnectionSettings: false))
+          when !failedWithoutToken(failure) =>
         const OfflineNotice(),
       final failure? when teams != null => DataFailureCard(
         error: failure,
@@ -158,7 +158,7 @@ class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
                 ),
               if (teams == null &&
                   failure != null &&
-                  failure is! NetworkFailure)
+                  !failedOnTheNetwork(failure))
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: DataFailureCard(

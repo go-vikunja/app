@@ -1,11 +1,18 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/guest_fakes.dart';
@@ -382,6 +389,118 @@ void main() {
     });
   });
 
+  group("every end of a guest's session is recorded before the guest is "
+      'marked (D59)', () {
+    late SessionDiagnostics diagnostics;
+    late List<SessionEndDiagnosis?> recordedWhenMarked;
+
+    setUp(() {
+      diagnostics = SessionDiagnostics(fakes.preferences);
+      recordedWhenMarked = [];
+    });
+
+    LinkShareSessions recording() => LinkShareSessions(
+      store: fakes.linkShareStore,
+      gateway: gateway,
+      connectionFor: (id) async => (await fakes.registry.find(id))?.connection,
+      markNeedsReauth: (accountId) async {
+        recordedWhenMarked.add(await diagnostics.lastEnd(accountId));
+        await fakes.registry.markNeedsReauth(accountId);
+      },
+      clearNeedsReauth: fakes.registry.clearNeedsReauth,
+      diagnostics: diagnostics,
+      part: AppPart.backgroundRun,
+      clock: () => now,
+    );
+
+    for (final (what, failure, cause, code) in [
+      (
+        'a gone share',
+        const LinkShareGone(code: 13003),
+        SessionEndCause.shareGone,
+        13003,
+      ),
+      (
+        'a needed password',
+        const DomainError(412, code: 13001),
+        SessionEndCause.sharePasswordNeeded,
+        13001,
+      ),
+    ]) {
+      test('$what, which no restore takes back', () async {
+        final guest = await seed(issuedAgo(const Duration(hours: 80)));
+        gateway.onAuthenticate = (_, _) async => throw failure;
+        final all = recording();
+
+        await expectLater(
+          all.forAccount(guest.id).validAccessToken(),
+          throwsA(isA<SessionEnded>()),
+        );
+
+        final record = recordedWhenMarked.single!;
+        expect(record.cause, cause);
+        expect(record.code, code);
+        expect(record.part, AppPart.backgroundRun);
+        expect(record.at, now);
+        expect(record.resolution, isNull);
+        expect(await all.tryRestore(guest.id), isFalse);
+        expect(await needsReauth(guest.id), isTrue);
+      });
+    }
+
+    test('a lost link, as no link stored on this device', () async {
+      final guest = await seed(issuedAgo(const Duration(hours: 1)));
+      await fakes.linkShareStore.delete(guest.id);
+
+      await expectLater(
+        recording().forAccount(guest.id).validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+
+      expect(recordedWhenMarked.single!.cause, SessionEndCause.missingTokens);
+    });
+  });
+
+  group('a link that secure storage refuses to read (D59)', () {
+    test('fails a request through the transport as a network failure that '
+        'names the storage, without a request, and ends nothing', () async {
+      final guest = await seed(issuedAgo(const Duration(hours: 1)));
+      fakes.secureStore.beforeRead = (_) async =>
+          throw PlatformException(code: 'keystore');
+      final adapter = _CountingAdapter();
+
+      await expectLater(
+        ApiAccountGateway(
+          Dio()..httpClientAdapter = adapter,
+          logRequests: false,
+        ).currentUser(fullServer270(), sessions().forAccount(guest.id)),
+        throwsA(
+          isA<NetworkFailure>().having(
+            (f) => f.cause,
+            'cause',
+            isA<SecureStorageUnreadable>(),
+          ),
+        ),
+      );
+      expect(adapter.requests, 0);
+      expect(gateway.authentications, isEmpty);
+      expect(await needsReauth(guest.id), isFalse);
+    });
+
+    test('keeps a token in use while a renewal cannot read it', () async {
+      final old = issuedAgo(const Duration(hours: 35));
+      final guest = await seed(old);
+      final session = sessions().forAccount(guest.id);
+      expect(await session.validAccessToken(), old.jwt);
+      now = now.add(const Duration(hours: 2));
+      fakes.secureStore.beforeRead = (_) async =>
+          throw PlatformException(code: 'keystore');
+
+      expect(await session.validAccessToken(), old.jwt);
+      expect(gateway.renewedTokens, isEmpty);
+    });
+  });
+
   test('lost secrets end the session', () async {
     final guest = await seed(issuedAgo(const Duration(hours: 1)));
     await fakes.linkShareStore.delete(guest.id);
@@ -454,4 +573,21 @@ void main() {
       throwsA(isA<SessionEnded>()),
     );
   });
+}
+
+final class _CountingAdapter implements HttpClientAdapter {
+  int requests = 0;
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    requests++;
+    return ResponseBody.fromString('{}', 200);
+  }
+
+  @override
+  void close({bool force = false}) {}
 }

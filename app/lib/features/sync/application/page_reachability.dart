@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/features/sync/application/offline_state.dart';
 
 /// Whether a page that reads the server itself is offline. The page's own
@@ -19,7 +19,7 @@ mixin PageReachability<T extends ConsumerStatefulWidget> on ConsumerState<T> {
 
   /// Inside `setState`, after a request of the page failed with [error].
   void noteFailure(Object error) {
-    if (error is NetworkFailure) _reachable = false;
+    if (failedOnTheNetwork(error)) _reachable = false;
   }
 
   /// For `build`. [onBackOnline] runs when a sync run gets through again

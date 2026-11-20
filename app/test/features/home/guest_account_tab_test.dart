@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/link_share_account_id.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_button.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_tile.dart';
@@ -227,6 +230,79 @@ void main() {
       expect(guest.isLinkShare, isTrue);
       expect(guest.needsReauth, isFalse);
     });
+
+    testWidgets('is told no reason for the end (D59)', (tester) async {
+      await SessionDiagnostics(auth.preferences).recordEnd(
+        linkShareAccountIdFor(fullServer270().rootUri, 84),
+        SessionEndDiagnosis(
+          at: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+          cause: SessionEndCause.refreshRejected,
+          part: AppPart.app,
+          code: 16002,
+        ),
+      );
+      await pumpGuestTab(tester, needsReauth: true);
+
+      expect(
+        find.textContaining(en.sessionEndCauseRefreshRejected),
+        findsNothing,
+      );
+      expect(find.textContaining(en.sessionEndCode(16002)), findsNothing);
+      expect(find.byType(GuestReauthBanner), findsOneWidget);
+    });
+
+    // A link that reads again is restored at the start, so the end on the
+    // device that stays is a lost link.
+    testWidgets('is told an end on the device as such, from the first frame '
+        'on (D59)', (tester) async {
+      await SessionDiagnostics(auth.preferences).recordEnd(
+        linkShareAccountIdFor(fullServer270().rootUri, 84),
+        SessionEndDiagnosis(
+          at: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+          cause: SessionEndCause.missingTokens,
+          part: AppPart.app,
+        ),
+      );
+      await pumpGuestApp(tester, auth: auth, data: data, needsReauth: true);
+
+      await tester.tap(find.text(en.tabAccount));
+      for (var frame = 0; frame < 10; frame++) {
+        await tester.pump();
+        expect(find.text(en.guestReauthTitle), findsNothing);
+        expect(find.text(en.guestReauthBody(host)), findsNothing);
+      }
+      expect(find.text(en.guestReauthTitleOnDevice), findsOneWidget);
+      expect(find.text(en.guestReauthBodyOnDevice(host)), findsOneWidget);
+      expect(
+        find.textContaining(en.sessionEndCauseMissingTokens),
+        findsNothing,
+      );
+    });
+
+    for (final (cause, text) in [
+      (SessionEndCause.shareGone, en.sessionEndCauseShareGone),
+      (SessionEndCause.sharePasswordNeeded, en.sessionEndCauseSharePassword),
+    ]) {
+      testWidgets('once the link is opened again, the tab tells that end '
+          '(${cause.name}) in its own words (D59)', (tester) async {
+        await SessionDiagnostics(auth.preferences).recordEnd(
+          linkShareAccountIdFor(fullServer270().rootUri, 84),
+          SessionEndDiagnosis(
+            at: DateTime.now().toUtc().subtract(const Duration(hours: 1)),
+            cause: cause,
+            part: AppPart.app,
+            resolution: SessionEndResolution.unknown,
+          ),
+        );
+        await pumpGuestTab(tester);
+        await scrollTo(tester, find.textContaining(text));
+
+        expect(
+          find.textContaining(en.accountLastSessionEnd('1 hour ago')),
+          findsOneWidget,
+        );
+      });
+    }
 
     testWidgets("asks for the share's password, keeps the sheet on a wrong "
         'one and never stores it', (tester) async {

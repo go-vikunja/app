@@ -185,6 +185,100 @@ final class ServerClockOffsetsProvider
 String _$serverClockOffsetsHash() =>
     r'31c229e29bfc8afc33cf91d0ba1e9ae0fdd72042';
 
+@ProviderFor(sessionDiagnostics)
+final sessionDiagnosticsProvider = SessionDiagnosticsProvider._();
+
+final class SessionDiagnosticsProvider
+    extends
+        $FunctionalProvider<
+          SessionDiagnostics,
+          SessionDiagnostics,
+          SessionDiagnostics
+        >
+    with $Provider<SessionDiagnostics> {
+  SessionDiagnosticsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'sessionDiagnosticsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$sessionDiagnosticsHash();
+
+  @$internal
+  @override
+  $ProviderElement<SessionDiagnostics> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  SessionDiagnostics create(Ref ref) {
+    return sessionDiagnostics(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SessionDiagnostics value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SessionDiagnostics>(value),
+    );
+  }
+}
+
+String _$sessionDiagnosticsHash() =>
+    r'e3a873f7d59a3dc64c90ee02a7069caf4b08f553';
+
+/// Open in the app; a background run bounds it (see [RefreshCutoff]).
+
+@ProviderFor(refreshCutoff)
+final refreshCutoffProvider = RefreshCutoffProvider._();
+
+/// Open in the app; a background run bounds it (see [RefreshCutoff]).
+
+final class RefreshCutoffProvider
+    extends $FunctionalProvider<RefreshCutoff, RefreshCutoff, RefreshCutoff>
+    with $Provider<RefreshCutoff> {
+  /// Open in the app; a background run bounds it (see [RefreshCutoff]).
+  RefreshCutoffProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'refreshCutoffProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$refreshCutoffHash();
+
+  @$internal
+  @override
+  $ProviderElement<RefreshCutoff> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  RefreshCutoff create(Ref ref) {
+    return refreshCutoff(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(RefreshCutoff value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<RefreshCutoff>(value),
+    );
+  }
+}
+
+String _$refreshCutoffHash() => r'61c2b9b69be8bc36906f0759be285c7b7a3ff99c';
+
 @ProviderFor(accountRegistry)
 final accountRegistryProvider = AccountRegistryProvider._();
 
@@ -395,7 +489,7 @@ final class SessionManagersProvider
   }
 }
 
-String _$sessionManagersHash() => r'75852bdc36cea5f4a3d85ebf5f47995426792ed8';
+String _$sessionManagersHash() => r'e9e9b6c1847aacb8316810233d3935b1d4199b70';
 
 @ProviderFor(browserSignIn)
 final browserSignInProvider = BrowserSignInProvider._();
@@ -436,7 +530,7 @@ final class BrowserSignInProvider
   }
 }
 
-String _$browserSignInHash() => r'9257c7d31f9c372c04b4a13f2996566f0d649d5c';
+String _$browserSignInHash() => r'5b73f7a3d633d3d64c2a00d2588f89121e7bab38';
 
 /// The registry as this isolate last read or wrote it.
 
@@ -466,7 +560,7 @@ final class AccountsProvider
   Accounts create() => Accounts();
 }
 
-String _$accountsHash() => r'cd2b370de7b5672f822fe75ec3ab060676975963';
+String _$accountsHash() => r'c6dc1ff13947d95eb7ed883b8b4ab0e8a0788196';
 
 /// The registry as this isolate last read or wrote it.
 

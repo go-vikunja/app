@@ -27,13 +27,17 @@ final class _SecureStore implements SecureStore {
   }
 
   @override
-  Future<void> write(String key, String value) => inner.write(key, value);
+  Future<void> write(String key, String value, {bool recoverLostKey = false}) =>
+      inner.write(key, value);
 
   @override
   Future<void> delete(String key) => inner.delete(key);
 
   @override
   Future<void> deleteAll() => inner.deleteAll();
+
+  @override
+  Future<void> flush() => inner.flush();
 }
 
 /// Records writes in order with the secure store's operations, and can fail
@@ -67,9 +71,9 @@ final class _SecretsLog extends _SecureStore {
   final List<String> log;
 
   @override
-  Future<void> write(String key, String value) {
+  Future<void> write(String key, String value, {bool recoverLostKey = false}) {
     log.add('write $key');
-    return super.write(key, value);
+    return super.write(key, value, recoverLostKey: recoverLostKey);
   }
 
   @override

@@ -10,7 +10,9 @@ String projectMoveFailureText(
   required bool parentChanged,
 }) {
   final shared = actionFailureText(l10n, error);
+  final notSent = notSentFailureText(l10n, error);
   return switch (error) {
+    _ when notSent != null => notSent,
     // The server may have moved it before the answer was lost.
     NetworkFailure(problem: NetworkProblem.timeout) =>
       l10n.projectMoveUnconfirmed,

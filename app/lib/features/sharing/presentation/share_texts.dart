@@ -1,5 +1,6 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/features/common/presentation/action_failure_text.dart';
 
 String permissionLabel(AppLocalizations l10n, Permission permission) =>
@@ -28,7 +29,9 @@ String shareFailureText(
   ShareChange change,
 ) {
   final shared = actionFailureText(l10n, error);
+  final notSent = notSentFailureText(l10n, error);
   return switch (error) {
+    _ when notSent != null => notSent,
     // The server may have made the change before the answer was lost.
     NetworkFailure(problem: NetworkProblem.timeout) =>
       l10n.shareFailureUnconfirmed,
@@ -55,6 +58,7 @@ String shareFailureText(
 /// have made before its answer was lost.
 bool shareListOutdatedBy(Object error) => switch (error) {
   Forbidden() || NotFound() => true,
+  _ when failedWithoutToken(error) => false,
   NetworkFailure(problem: NetworkProblem.timeout) => true,
   VikunjaFailure(code: 7002 || 6004) => true,
   _ => false,

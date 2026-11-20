@@ -9,6 +9,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/trash_repository.dart';
 import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart';
@@ -515,9 +516,8 @@ class _TrashTab extends StatelessWidget {
     final items = listing.items;
     final failure = listing.failure;
     final notice = switch (failure) {
-      NetworkFailure(
-        problem: NetworkProblem(concernsConnectionSettings: false),
-      ) =>
+      NetworkFailure(problem: NetworkProblem(concernsConnectionSettings: false))
+          when !failedWithoutToken(failure) =>
         const OfflineNotice(),
       final failure? when items != null => _FailureCard(
         error: failure,

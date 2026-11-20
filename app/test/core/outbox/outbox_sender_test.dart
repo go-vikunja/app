@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:drift/drift.dart'
     show ApplyInterceptor, QueryExecutor, QueryInterceptor;
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
@@ -2040,6 +2043,33 @@ void main() {
         expect(write.requests, ['create Buy milk', 'create Buy milk']);
       },
     );
+
+    // Such a request never left the device, though it fails as a network
+    // failure (D59).
+    for (final failure in const [
+      NetworkFailure(NetworkProblem.timeout, cause: RefreshDeferred.race),
+      NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: SecureStorageUnreadable(PlatformException),
+      ),
+    ]) {
+      test('a create whose request got no token (${failure.cause}) is '
+          'certain: no lookup afterwards', () async {
+        await create();
+        write.beforeRequest = (_) => fail(failure);
+        final outbox = sender();
+        await outbox.drain();
+        final op = (await ops()).single;
+        expect(op.sentAt, isNull);
+        expect(op.state, OutboxState.pending.name);
+
+        write.beforeRequest = null;
+        await outbox.sendNow();
+
+        expect(read.requests, isEmpty);
+        expect(write.requests, ['create Buy milk', 'create Buy milk']);
+      });
+    }
 
     test('a rejected create is a problem under its title; the row stays '
         'until the user decides', () async {

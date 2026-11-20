@@ -8,11 +8,13 @@ import 'package:vikunja_mobile/core/activity/activity_item.dart';
 import 'package:vikunja_mobile/core/activity/activity_notification_texts.dart';
 import 'package:vikunja_mobile/core/activity/activity_notifier.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
@@ -707,6 +709,63 @@ void main() {
       for (final notice in gateway.activities) {
         expect('${notice.title} ${notice.body}', isNot(contains('link-share')));
       }
+    });
+
+    test('tells a guest whose link this device lost that it ended here, not '
+        'on the server (D59)', () async {
+      Account guest(String id) => Account.linkShare(
+        id: id,
+        serverRoot: Uri.parse('https://tasks.example.com'),
+        shareId: 84,
+        projectId: 1378,
+        shareName: 'Helper',
+        displayName: 'Garden',
+        addedAt: DateTime.utc(2026, 10),
+      );
+      final diagnostics = SessionDiagnostics(store);
+      final at = DateTime.utc(2026, 11, 20);
+      await diagnostics.recordEnd(
+        'lost',
+        SessionEndDiagnosis(
+          at: at,
+          cause: SessionEndCause.missingTokens,
+          part: AppPart.backgroundRun,
+        ),
+      );
+      await diagnostics.recordEnd(
+        'gone',
+        SessionEndDiagnosis(
+          at: at,
+          cause: SessionEndCause.shareGone,
+          part: AppPart.backgroundRun,
+        ),
+      );
+      await diagnostics.recordEnd(
+        'reopened',
+        SessionEndDiagnosis(
+          at: at,
+          cause: SessionEndCause.storageUnreadable,
+          part: AppPart.app,
+          resolution: SessionEndResolution.unknown,
+        ),
+      );
+      final notices = ActivityNotifier(
+        gateway: gateway,
+        preferences: preferences,
+        store: store,
+        l10n: en,
+        endedOnDevice: diagnostics.endedOnDevice,
+      );
+
+      for (final id in ['lost', 'gone', 'reopened']) {
+        await notices.sessionEnded(guest(id));
+      }
+
+      expect(gateway.activities.map((a) => a.body), [
+        en.guestAccessEndedOnDeviceNotificationBody('tasks.example.com'),
+        en.guestAccessEndedNotificationBody('tasks.example.com'),
+        en.guestAccessEndedNotificationBody('tasks.example.com'),
+      ]);
     });
 
     test('waits for the permission without remembering anything', () async {

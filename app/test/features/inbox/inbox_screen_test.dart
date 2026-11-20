@@ -6,6 +6,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
@@ -687,6 +688,20 @@ void main() {
 
       expect(inInbox(find.byType(OfflineNotice)), findsOneWidget);
       expect(inInbox(find.text(commentText)), findsOneWidget);
+    });
+
+    testWidgets('a refresh that got no token shows the failure card, not '
+        'the offline notice', (tester) async {
+      data.activity.onRefresh = () async => throw const NetworkFailure(
+        NetworkProblem.timeout,
+        cause: RefreshDeferred.cutoff,
+      );
+      await openInbox(tester);
+
+      await pullToRefresh(tester, inboxScrollable());
+
+      expect(inInbox(find.byType(OfflineNotice)), findsNothing);
+      expect(inInbox(find.byType(DataFailureCard)), findsOneWidget);
     });
 
     testWidgets('another failure shows the failure card', (tester) async {

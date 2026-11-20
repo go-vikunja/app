@@ -312,7 +312,7 @@ final class WidgetPublisherProvider
   }
 }
 
-String _$widgetPublisherHash() => r'7b910aeaa0d1588852358c7806d714e82f75f433';
+String _$widgetPublisherHash() => r'05c6f2ce061eaf2a8b23fa1e7b6c2c4b1c80a067';
 
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back to the front, when the

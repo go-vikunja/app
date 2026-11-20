@@ -41,6 +41,7 @@ flutter analyze
 (cd packages/vikunja_logic && flutter test)
 (cd packages/vikunja_api && flutter test --exclude-tags contract)
 (cd plugins/vikunja_widgets && flutter test)
+(cd plugins/vikunja_storage_flush && flutter test)
 ```
 
 - After a change to annotated providers or Drift tables, regenerate and commit the generated code (`cd app && dart run build_runner build`). After an ARB change or a pull, run `flutter pub get` at the root; the l10n code it writes is not committed.

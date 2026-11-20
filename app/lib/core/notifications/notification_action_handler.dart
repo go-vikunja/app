@@ -84,6 +84,8 @@ SessionManagers _nonRefreshingSessionManagers(Ref ref) {
         (await registry.find(accountId))?.connection,
     markNeedsReauth: registry.markNeedsReauth,
     onSessionEnded: sessionEndRecorder(ref),
+    diagnostics: ref.watch(sessionDiagnosticsProvider),
+    part: ref.watch(appPartProvider),
     refreshes: false,
   );
 }

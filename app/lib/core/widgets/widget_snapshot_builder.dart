@@ -40,6 +40,7 @@ final class WidgetAccount {
     required this.sessionEnded,
     required this.supportsV2,
     this.showsAccount = false,
+    this.endedOnDevice = false,
   });
 
   /// [showsAccount] while more than one account is signed in.
@@ -62,6 +63,22 @@ final class WidgetAccount {
   final bool supportsV2;
   final bool showsAccount;
 
+  /// The session's open end happened on this device, not on the server
+  /// (D59); read from its record, which the registry does not hold.
+  final bool endedOnDevice;
+
+  WidgetAccount withEndedOnDevice({required bool endedOnDevice}) =>
+      WidgetAccount(
+        id: id,
+        title: title,
+        host: host,
+        isGuest: isGuest,
+        sessionEnded: sessionEnded,
+        supportsV2: supportsV2,
+        showsAccount: showsAccount,
+        endedOnDevice: endedOnDevice,
+      );
+
   WidgetSnapshotState get state => switch ((sessionEnded, isGuest)) {
     (false, _) => WidgetSnapshotState.ok,
     (true, false) => WidgetSnapshotState.needsReauth,
@@ -77,7 +94,8 @@ final class WidgetAccount {
       other.isGuest == isGuest &&
       other.sessionEnded == sessionEnded &&
       other.supportsV2 == supportsV2 &&
-      other.showsAccount == showsAccount;
+      other.showsAccount == showsAccount &&
+      other.endedOnDevice == endedOnDevice;
 
   @override
   int get hashCode => Object.hash(
@@ -88,6 +106,7 @@ final class WidgetAccount {
     sessionEnded,
     supportsV2,
     showsAccount,
+    endedOnDevice,
   );
 }
 
@@ -560,11 +579,13 @@ final class _AccountBuild {
 
   WidgetText? get _sessionMessage => switch (account.state) {
     WidgetSnapshotState.needsReauth => WidgetText(
-      l10n.reauthTitle,
+      account.endedOnDevice ? l10n.reauthTitleOnDevice : l10n.reauthTitle,
       action: l10n.reauthAction,
     ),
     WidgetSnapshotState.guestEnded => WidgetText(
-      l10n.guestReauthTitle,
+      account.endedOnDevice
+          ? l10n.guestReauthTitleOnDevice
+          : l10n.guestReauthTitle,
       action: l10n.guestOpenLinkAgain,
     ),
     _ => null,

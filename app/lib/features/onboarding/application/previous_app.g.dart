@@ -102,7 +102,7 @@ final class PreviousAppSignInProvider
   }
 }
 
-String _$previousAppSignInHash() => r'a1768ad4462663d6c1e38080523ac5072a9bb2ac';
+String _$previousAppSignInHash() => r'f02cd22c4c83e1f58e3dfaecd6d33de5f79ca9fb';
 
 /// What this app took over from the previous Vikunja app it replaced on
 /// Android, for Connect and the first sync.

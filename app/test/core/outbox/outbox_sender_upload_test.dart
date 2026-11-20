@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/attachments/upload_files.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
 import 'package:vikunja_mobile/core/outbox/failure_json.dart';
@@ -323,6 +326,56 @@ void main() {
       final update = await op(OutboxOperationKind.updateTask);
       expect(update.state, OutboxState.pending.name);
       expect(update.attempts, 2 + maxUploadTimeoutsInARow - 1 + 3);
+    });
+
+    // Such a request never left the device, though it fails as a network
+    // failure (D59).
+    for (final failure in const [
+      NetworkFailure(NetworkProblem.timeout, cause: RefreshDeferred.race),
+      NetworkFailure(
+        NetworkProblem.unreachable,
+        cause: SecureStorageUnreadable(PlatformException),
+      ),
+    ]) {
+      test('an upload whose request got no token (${failure.cause}) is '
+          'neither a timeout nor possibly stored', () async {
+        await queueUpload(1);
+        write.beforeRequest = (request) async {
+          if (request.startsWith('upload')) throw failure;
+        };
+        final outbox = sender();
+
+        for (var i = 0; i <= maxUploadTimeoutsInARow; i++) {
+          await outbox.sendNow();
+        }
+
+        expect(await db.outboxDao.loadProblems(), isEmpty);
+        final op = (await db.outboxDao.all()).single;
+        expect(op.state, OutboxState.pending.name);
+        expect(op.sentAt, isNull);
+      });
+    }
+
+    test('a renewal put off between timeouts counts as none of them', () async {
+      await queueUpload(1);
+      VikunjaFailure failure = const NetworkFailure(NetworkProblem.timeout);
+      write.beforeRequest = (request) async {
+        if (request.startsWith('upload')) throw failure;
+      };
+      final outbox = sender();
+      for (var i = 1; i < maxUploadTimeoutsInARow; i++) {
+        await outbox.sendNow();
+      }
+
+      failure = const NetworkFailure(
+        NetworkProblem.timeout,
+        cause: RefreshDeferred.race,
+      );
+      await outbox.sendNow();
+      failure = const NetworkFailure(NetworkProblem.timeout);
+      await outbox.sendNow();
+
+      expect(await db.outboxDao.loadProblems(), isEmpty);
     });
 
     test(

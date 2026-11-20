@@ -9,6 +9,7 @@ workspace:
   - packages/vikunja_domain
   - packages/vikunja_api
   - packages/vikunja_logic
+  - plugins/vikunja_storage_flush
   - plugins/vikunja_widgets
 
 dev_dependencies:

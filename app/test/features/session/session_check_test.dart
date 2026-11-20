@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -297,5 +299,169 @@ void main() {
         expect(await needsReauth(guest.id), isFalse);
       },
     );
+  });
+
+  group('an account waiting for a sign-in (D59)', () {
+    late SessionDiagnostics diagnostics;
+    late SessionCheck restoring;
+
+    setUp(() {
+      diagnostics = SessionDiagnostics(auth.preferences);
+      final sessions = SessionManagers(
+        tokenStore: auth.tokenStore,
+        clockOffsets: auth.clockOffsets,
+        tokenGateway: auth.tokenGateway,
+        connectionFor: (id) async => (await auth.registry.find(id))?.connection,
+        markNeedsReauth: auth.registry.markNeedsReauth,
+        clearNeedsReauth: auth.registry.clearNeedsReauth,
+        diagnostics: diagnostics,
+        clock: () => now,
+        sleep: (_) async {},
+      );
+      restoring = SessionCheck(
+        sessions: sessions,
+        linkShares: LinkShareSessions(
+          store: auth.linkShareStore,
+          gateway: auth.linkShareGateway,
+          connectionFor: (id) async =>
+              (await auth.registry.find(id))?.connection,
+          markNeedsReauth: auth.registry.markNeedsReauth,
+          clearNeedsReauth: auth.registry.clearNeedsReauth,
+          diagnostics: diagnostics,
+          clock: () => now,
+        ),
+        accountGateway: auth.accountGateway,
+        clock: () => now,
+      );
+    });
+
+    Future<RegisteredAccount> waiting() async {
+      final entry = await seed(needsReauth: true);
+      await SessionDiagnostics(auth.preferences).recordEnd(
+        entry.id,
+        SessionEndDiagnosis(
+          at: now,
+          cause: SessionEndCause.refreshRejected,
+          part: AppPart.backgroundRun,
+          failedToken: tokenFingerprint('rotated-away'),
+        ),
+      );
+      return entry;
+    }
+
+    test(
+      'works again when storage holds newer tokens the server takes',
+      () async {
+        final entry = await waiting();
+        auth.tokenGateway.onRefresh = (_) async => issueTokens(issuedAt: now);
+
+        await restoring.check(entry);
+
+        expect(
+          (await auth.registry.find(entry.id))!.account.needsReauth,
+          isFalse,
+        );
+        expect(auth.accountGateway.currentUserTokens, isEmpty);
+      },
+    );
+
+    test('tries at most once a minute', () async {
+      final entry = await waiting();
+      auth.tokenGateway.onRefresh = (_) async =>
+          throw const NetworkFailure(NetworkProblem.unreachable);
+
+      await restoring.check(entry);
+      await restoring.check(entry);
+      now = now.add(const Duration(minutes: 1));
+      await restoring.check(entry);
+
+      expect(auth.tokenGateway.refreshedTokens, hasLength(2));
+      expect((await auth.registry.find(entry.id))!.account.needsReauth, isTrue);
+    });
+
+    test('a guest waiting for its link is left alone', () async {
+      final guest = await auth.seedGuest(
+        fullServer270(),
+        token: issueLinkShareToken(issuedAt: now),
+      );
+      await auth.registry.markNeedsReauth(guest.id);
+
+      await restoring.check((await auth.registry.find(guest.id))!);
+
+      expect(auth.linkShareGateway.renewedTokens, isEmpty);
+      expect(auth.accountGateway.currentUserTokens, isEmpty);
+      expect(auth.tokenGateway.refreshedTokens, isEmpty);
+    });
+
+    Future<RegisteredAccount> guestEnded(
+      SessionEndCause cause, {
+      SessionEndResolution? resolution,
+    }) async {
+      final guest = await auth.seedGuest(
+        fullServer270(),
+        token: issueLinkShareToken(issuedAt: now),
+        needsReauth: true,
+      );
+      await diagnostics.recordEnd(
+        guest.id,
+        SessionEndDiagnosis(
+          at: now,
+          cause: cause,
+          part: AppPart.app,
+          resolution: resolution,
+        ),
+      );
+      return guest;
+    }
+
+    test('a guest marked only because its storage could not be read works '
+        'again once its link reads', () async {
+      final guest = await guestEnded(SessionEndCause.storageUnreadable);
+      await diagnostics.noteUnreadable(guest.id, now);
+
+      await restoring.check(guest);
+
+      expect(
+        (await auth.registry.find(guest.id))!.account.needsReauth,
+        isFalse,
+      );
+      expect(
+        (await diagnostics.lastEnd(guest.id))!.resolution,
+        SessionEndResolution.restored,
+      );
+      expect(
+        auth.preferences.values,
+        isNot(contains(SessionDiagnostics.unreadableSinceKey(guest.id))),
+      );
+      expect(auth.linkShareGateway.renewedTokens, isEmpty);
+      expect(auth.linkShareGateway.authentications, isEmpty);
+    });
+
+    for (final (what, cause, resolution) in [
+      (
+        'was restored before',
+        SessionEndCause.storageUnreadable,
+        SessionEndResolution.restored,
+      ),
+      (
+        'opened its link again since',
+        SessionEndCause.storageUnreadable,
+        SessionEndResolution.unknown,
+      ),
+      ('lost its link', SessionEndCause.missingTokens, null),
+      ('lost its share on the server', SessionEndCause.shareGone, null),
+      ('was asked for a password', SessionEndCause.sharePasswordNeeded, null),
+    ]) {
+      test('a guest that $what waits for its link', () async {
+        final guest = await guestEnded(cause, resolution: resolution);
+
+        await restoring.check(guest);
+
+        expect(
+          (await auth.registry.find(guest.id))!.account.needsReauth,
+          isTrue,
+        );
+      });
+    }
   });
 }

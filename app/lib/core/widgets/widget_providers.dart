@@ -120,13 +120,20 @@ WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
       final linkKey = await readWidgetLinkKey(
         ref.read(preferencesStoreProvider),
       );
+      final endedOnDevice =
+          account.sessionEnded &&
+          await ref.read(sessionDiagnosticsProvider).endedOnDevice(accountId);
       return await WidgetSnapshotBuilder(
         db: db,
         texts: texts,
         showTaskTitles: privacy.widgetTitles,
         linkKey: linkKey,
         now: now,
-      ).build(account, kinds, withCatalog: withCatalog);
+      ).build(
+        account.withEndedOnDevice(endedOnDevice: endedOnDevice),
+        kinds,
+        withCatalog: withCatalog,
+      );
     },
     alwaysKinds: ref.watch(widgetAlwaysPublishedKindsProvider),
     refreshesAtValidity: !headless,

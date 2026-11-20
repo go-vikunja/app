@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
@@ -37,6 +39,14 @@ FailureMessage describeDataFailure(
     }
   }
   return switch (error) {
+    NetworkFailure(cause: SecureStorageUnreadable()) => message(
+      l10n.failureSignInUnreadableExplanation(host),
+      l10n.failureSignInUnreadableSuggestion,
+    ),
+    NetworkFailure(cause: RefreshDeferred()) => message(
+      l10n.failureRenewalDeferredExplanation(host),
+      l10n.failureRenewalDeferredSuggestion,
+    ),
     NetworkFailure(problem: NetworkProblem.unreachable) => message(
       l10n.failureUnreachableExplanation(host),
       l10n.failureUnreachableSuggestion,

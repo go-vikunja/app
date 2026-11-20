@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/platform/copy_confirmation.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository.dart';
@@ -1405,7 +1406,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                       child: DetailsNotice(
-                        text: (l10n) => failure is NetworkFailure
+                        text: (l10n) => failedOnTheNetwork(failure)
                             ? l10n.taskDetailDetailsOffline
                             : l10n.taskDetailDetailsFailed,
                         onRetry: () => _retryDetails(task.id),
@@ -1420,7 +1421,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                       child: DetailsNotice(
                         text: (l10n) {
                           final when = storedWhen(l10n, at, now: now);
-                          return failure is NetworkFailure
+                          return failedOnTheNetwork(failure)
                               ? l10n.taskDetailDetailsStored(when)
                               : l10n.taskDetailDetailsStoredFailed(when);
                         },

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
@@ -908,6 +909,25 @@ void main() {
         isTrue,
       );
       expect(rowOf('Call the plumber'), findsOneWidget);
+    });
+
+    testWidgets('a read over a list that got no token is no outage', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+      harness.data.trash.failures['tasks'] = const NetworkFailure(
+        NetworkProblem.timeout,
+        cause: RefreshDeferred.race,
+      );
+
+      await tester.tap(find.byTooltip(en.refresh));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(OfflineNotice), findsNothing);
+      expect(
+        tester.widget<DataFailureCard>(find.byType(DataFailureCard)).stale,
+        isTrue,
+      );
     });
 
     testWidgets('offline it says so, and reads again once the server is '

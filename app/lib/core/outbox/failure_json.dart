@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
+import 'package:vikunja_mobile/core/auth/token_store.dart';
 
 /// A `VikunjaFailure` as stored in `outbox.last_error`. The cause of a
 /// network failure is not kept: it is a platform exception without value
@@ -35,6 +37,16 @@ Map<String, Object?> failureToJson(VikunjaFailure failure) => {
   'code': ?failure.code,
   if (failure.message.isNotEmpty) 'message': failure.message,
   ...switch (failure) {
+    // Stored like a send while offline, so that it never counts toward an
+    // upload's timeouts in a row; `not_sent` tells the support details why
+    // it never left, and reads back as nothing.
+    NetworkFailure(:final cause) when failedWithoutToken(failure) => {
+      'problem': NetworkProblem.unreachable.name,
+      'not_sent': switch (cause) {
+        SecureStorageUnreadable() => 'storage',
+        _ => 'deferred',
+      },
+    },
     NetworkFailure(:final problem) => {'problem': problem.name},
     SessionEnded(:final reason) => {'reason': reason.name},
     OAuthFailure(:final problem) => {'problem': problem.name},

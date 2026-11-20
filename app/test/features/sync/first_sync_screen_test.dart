@@ -4,6 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
+import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
@@ -266,13 +269,17 @@ void main() {
     Future<AuthFakes> pumpWithReauth(
       WidgetTester tester, {
       bool needsReauth = false,
+      SessionEndDiagnosis? ended,
     }) async {
       final auth = AuthFakes();
-      await auth.seedAccount(
+      final entry = await auth.seedAccount(
         fullServer270(),
         tokens: issueTokens(issuedAt: now.toUtc()),
         needsReauth: needsReauth,
       );
+      if (ended != null) {
+        await SessionDiagnostics(auth.preferences).recordEnd(entry.id, ended);
+      }
       auth.serveUser(
         const User(id: 7, username: 'alice', name: 'Alice Example'),
         now: now,
@@ -328,6 +335,62 @@ void main() {
       expect(find.byType(FirstSyncScreen), findsOneWidget);
       expect(find.byType(DataFailureCard), findsNothing);
       expect(data.engine.ensureInitialSyncCalls, 0);
+    });
+
+    testWidgets('an end on the device during the run is told as such from '
+        "the banner's first frame (D59)", (tester) async {
+      run = Completer<void>();
+      data.engine.onEnsureInitialSync = () => run.future;
+      final auth = await pumpWithReauth(tester);
+      await pumpUntil(tester, find.text(en.syncPhaseAccount));
+      final accountId = (await auth.registry.load()).activeAccountId!;
+
+      // As a session manager does: the record, the mark, then the failure.
+      await SessionDiagnostics(auth.preferences).recordEnd(
+        accountId,
+        SessionEndDiagnosis(
+          at: now.toUtc(),
+          cause: SessionEndCause.missingTokens,
+          part: AppPart.app,
+        ),
+      );
+      await containerOf(tester)
+          .read(accountRegistryProvider)
+          .markNeedsReauth(accountId);
+      run.completeError(
+        const SessionEnded(SessionEndReason.invalidRefreshToken),
+      );
+      for (var frame = 0; frame < 10; frame++) {
+        await tester.pump();
+        expect(find.text(en.reauthTitle), findsNothing, reason: '$frame');
+      }
+
+      expect(find.text(en.reauthTitleOnDevice), findsOneWidget);
+    });
+
+    testWidgets('an end on the device is told as such, with when and why, '
+        'not as a sign-out by the server', (tester) async {
+      data.engine.onEnsureInitialSync = () => Completer<void>().future;
+      await pumpWithReauth(
+        tester,
+        needsReauth: true,
+        ended: SessionEndDiagnosis(
+          at: now.toUtc().subtract(const Duration(hours: 3)),
+          cause: SessionEndCause.storageUnreadable,
+          part: AppPart.app,
+        ),
+      );
+      await pumpUntil(tester, find.text(en.reauthTitleOnDevice));
+
+      expect(
+        find.text(en.reauthBodyOnDevice('tasks.example.org')),
+        findsOneWidget,
+      );
+      expect(find.text(en.reauthTitle), findsNothing);
+      expect(
+        find.textContaining(en.sessionEndCauseStorageUnreadable),
+        findsOneWidget,
+      );
     });
   });
 

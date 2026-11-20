@@ -12,10 +12,11 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/connecti
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/link_failure_message.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/guest/share_password_sheet.dart';
 
-/// [ReauthBanner] for a link-share guest the server no longer accepts: its
-/// action opens the stored link again, asks for the share's password when
-/// it has one, and says below why that failed. Success replaces the guest's
-/// entry, which ends the banner.
+/// [ReauthBanner] for a link-share guest the server no longer accepts, or
+/// whose link this device lost (D59): its action opens the stored link
+/// again, asks for the share's password when it has one, and says below
+/// why that failed. Success replaces the guest's entry, which ends the
+/// banner.
 class GuestReauthBanner extends ConsumerStatefulWidget {
   const new({required this.entry, super.key});
 
@@ -87,6 +88,8 @@ class _GuestReauthBannerState extends ConsumerState<GuestReauthBanner> {
 
   @override
   Widget build(BuildContext context) {
+    final open = watchOpenSessionEnd(ref, widget.entry);
+    if (open == null) return const SizedBox.shrink();
     final failure = _failure;
     final serverRoot = widget.entry.connection.rootUri;
     return Column(
@@ -97,6 +100,7 @@ class _GuestReauthBannerState extends ConsumerState<GuestReauthBanner> {
           serverRoot: serverRoot,
           isSigningIn: _opening,
           guest: true,
+          endedOnDevice: open.end?.cause.onDevice ?? false,
           onSignInAgain: () => unawaited(_openAgain()),
         ),
         if (failure != null)

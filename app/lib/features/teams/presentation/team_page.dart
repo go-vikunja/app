@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
+import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/core/text/html_to_text.dart';
 import 'package:vikunja_mobile/core/text/title_order.dart';
@@ -371,7 +372,8 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
         notice: switch (failure) {
           NetworkFailure(
             problem: NetworkProblem(concernsConnectionSettings: false),
-          ) =>
+          )
+              when !failedWithoutToken(failure) =>
             const OfflineNotice(),
           final failure? => DataFailureCard(
             error: failure,
