@@ -420,7 +420,7 @@ A sign-off goes through 8.1 on the tree being signed off, 8.2 on the Android emu
 
 ### 8.1 Automated
 
-GitHub's workflows (step 38c) have run only in the owner's test repository, green with throwaway keys and without secrets (2026-11-16, [D86](decisions.md#d86-ci-and-releases-on-github-actions)); in go-vikunja/app they first run on the import's pull request (step 38d). Until then, the jobs' scripts run locally (the [README](../README.md#common-commands) has them):
+GitHub's workflows (step 38c) have run only in the owner's test repository, green with throwaway keys and without secrets (2026-11-16, [D86](decisions.md#d86-ci-and-releases-on-github-actions)); in go-vikunja/app they first run on the import's pull request (step 38d). Until then, the jobs' scripts run locally (the [developer guide](development.md#ci-scripts) has them):
 
 ```sh
 tool/ci/checks.sh              # generated code, format, pure-Dart packages, the Android notices, analyze, the Python tests of tool/ci/

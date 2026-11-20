@@ -128,7 +128,7 @@ One Drift SQLite file per account, opened by every isolate that works for that a
 - Dates are UTC epoch milliseconds; every row keeps the server's `created` and `updated`.
 - Besides the server's entities there are the `outbox`, `list_snapshots` (the server's order for lists the device cannot compute), `scheduled_notifications` (what the OS was last given), `server_notifications` (the inbox), `imported_widget_actions` and `sync_state` (the sync's watermark and checkpoint, user settings, saved filters).
 - The task sheet's last reads of what the sync does not bring are kept per task for offline (`TaskDetailsDao`): `task_detail_loads` (when, and the cover), `task_attachments`, `task_reactions`, `task_comments` and `task_comment_reactions`, with the people in each row. A read replaces them, a write the server took changes them, and they go with their task. A read that started before such a write stores nothing, so a slow answer cannot bring back what the write changed (an in-memory count of writes per task, per isolate).
-- `schemaVersion` is 2 since step 40m (1 at the first public release). Every schema change bumps it, adds a migration and a new schema dump under `app/drift_schemas/`, from which drift_dev generates the migration tests' schemas (see the [README](../README.md)).
+- `schemaVersion` is 2 since step 40m (1 at the first public release). Every schema change bumps it, adds a migration and a new schema dump under `app/drift_schemas/`, from which drift_dev generates the migration tests' schemas (see the [developer guide](development.md#generated-code)).
 
 ### 5.2 Sync
 

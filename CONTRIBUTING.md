@@ -29,7 +29,7 @@ AI tools are allowed. If an AI wrote a meaningful part of your change, say so in
 
 ## Setup and checks
 
-Set up Flutter 3.47.9 and the other [prerequisites](README.md#prerequisites), then run `flutter pub get` at the repository root. The [README](README.md#common-commands) has every command.
+Set up Flutter 3.47.9 and the other [prerequisites](docs/development.md#prerequisites), then run `flutter pub get` at the repository root. The [developer guide](docs/development.md#common-commands) has every command.
 
 A pull request runs `.github/workflows/ci.yaml` on GitHub Actions ([D86](docs/decisions.md#d86-ci-and-releases-on-github-actions)): the checks `checks`, `editor`, `contract`, `android`, `osv` and `ios` must pass. Each runs a script of `tool/ci/` that runs the same way on your machine (`tool/ci/checks.sh`, `tool/ci/test.sh` and so on). The usual ones, from the repository root:
 
@@ -46,7 +46,7 @@ flutter analyze
 
 - After a change to annotated providers or Drift tables, regenerate and commit the generated code (`cd app && dart run build_runner build`). After an ARB change or a pull, run `flutter pub get` at the root; the l10n code it writes is not committed.
 - After a change to the description editor (`app/editor/`), run `tool/build_editor.sh` and commit the page it builds and its notices.
-- After a change to the Android dependencies, write the Gradle lockfile, the verification metadata and the Android libraries' notices again (`python3 -I tool/build_android_notices.py`, see the [README](README.md#common-commands)), and read the verification metadata's diff before committing it.
+- After a change to the Android dependencies, write the Gradle lockfile, the verification metadata and the Android libraries' notices again (`python3 -I tool/build_android_notices.py`, see the [developer guide](docs/development.md#security-checks-and-android-dependencies)), and read the verification metadata's diff before committing it.
 - After a change to the store texts (`fastlane/metadata/`), run `python3 -I tool/check_store_metadata.py`; the `checks` job runs it through its tests.
 - Tests that measure time print it and check their budget only with `VIKUNJA_BENCHMARK=1` (`VIKUNJA_BENCHMARK=1 flutter test`), as a busy machine can take several times as long.
 - The parity suite (`app/test/parity/`) runs the same cases against the unit tests' fakes and against a real server, so a fake that drifts from the server shows ([D110](docs/decisions.md#d110-structure-state-machines-one-outbox-machinery-checked-layers-one-loading-helper-a-parity-suite)). Its group against the fakes needs no server and runs with the app's tests, alone with `cd app && flutter test test/contract/parity_contract_test.dart`; the group against the server runs in `tool/ci/contract.sh`, or with the test server of `test_servers/` already up with `cd app && VIKUNJA_CONTRACT=1 TZ=Europe/Berlin flutter test --tags contract --concurrency=1 test/contract/parity_contract_test.dart`. A server rule newly taught to a fake (`app/test/helpers/fake_*.dart`) gets a case in `scenarios.dart` or a probe in `rules.dart`; a divergence the fakes keep on purpose is listed in D110.

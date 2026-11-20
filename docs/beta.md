@@ -45,7 +45,7 @@ git commit -m "chore: remove the old app before importing the new one" \
   -m "The new Vikunja app replaces it; its last commit is tagged legacy-final."
 git merge --allow-unrelated-histories --no-ff ours/main \
   -m "feat: import the new Vikunja app with its history" \
-  -m "Joins the new app's history (formerly Rurana) to the old app's, so every commit hash of both stays valid."
+  -m "Joins the new app's history to the old app's, so every commit hash of both stays valid."
 ```
 
 The removal takes everything of the old app: its workflows and `.drone.yml`, the `Makefile`, the devenv files and `.envrc`, `renovate.json` and its `crowdin.yml` (our `main` brings step 38e's own, [D88]), `.vscode`, `.metadata` and the old Flutter tree. The old tags and releases stay; there is no `legacy` branch.
@@ -85,7 +85,7 @@ This imports the new Vikunja app, announced in #343, with its whole history (D83
 
 It has two commits of its own:
 1. `chore: remove the old app before importing the new one` removes every file of the old app. Its last commit is tagged `legacy-final`; the old tags and releases stay.
-2. `feat: import the new Vikunja app with its history` merges the new app's `main` (formerly Rurana) with `--allow-unrelated-histories`. The resulting tree is exactly that `main`.
+2. `feat: import the new Vikunja app with its history` merges the new app's `main` with `--allow-unrelated-histories`. The resulting tree is exactly that `main`.
 
 **Please merge with "Create a merge commit".** Squash or rebase would rewrite or drop the imported commits, whose hashes the docs cite.
 
