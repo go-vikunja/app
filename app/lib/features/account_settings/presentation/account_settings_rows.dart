@@ -51,6 +51,42 @@ class SettingChoiceTile extends StatelessWidget {
   }
 }
 
+/// A setting that is on or off, with the server's refusal below its
+/// [subtitle].
+class SettingSwitch extends StatelessWidget {
+  const new({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+    this.error,
+    super.key,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final String? error;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final error = this.error;
+    return SwitchListTile.adaptive(
+      secondary: Icon(icon),
+      title: Text(title),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [Text(subtitle), if (error != null) SettingErrorText(error)],
+      ),
+      value: value,
+      onChanged: onChanged,
+    );
+  }
+}
+
 /// A row of a settings list that is not a plain tile: a 24 dp [icon] where
 /// the tiles have theirs, and [child] where their texts start, e.g. a
 /// status with buttons below it or a segmented button.

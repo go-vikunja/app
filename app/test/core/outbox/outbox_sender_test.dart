@@ -450,6 +450,34 @@ void main() {
       expect(await db.outboxDao.count(), 0);
     });
 
+    test('a database error fails the drain and leaves the sender idle; the '
+        'same sender drains again', () async {
+      await queue(1, done);
+      await db.customStatement(
+        'CREATE TRIGGER apply_fails BEFORE DELETE ON outbox '
+        "BEGIN SELECT RAISE(ABORT, 'disk full'); END",
+      );
+      final outbox = sender();
+      final states = record(outbox);
+
+      await expectLater(outbox.drain(), throwsA(anything));
+
+      expect(outbox.state, OutboxSenderState.idle);
+      await db.customStatement('DROP TRIGGER apply_fails');
+      now = now.add(OutboxSender.staleSendingAfter);
+      await outbox.drain();
+
+      expect(write.updates, [(1, done), (1, done)]);
+      expect(await db.outboxDao.count(), 0);
+      expect(states, [
+        OutboxSenderState.idle,
+        OutboxSenderState.draining,
+        OutboxSenderState.idle,
+        OutboxSenderState.draining,
+        OutboxSenderState.idle,
+      ]);
+    });
+
     test('a delete takes a rejected update of the same task with it', () async {
       await queue(1, done);
       final gate = RequestGate()..pattern = 'update 1';

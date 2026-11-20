@@ -220,6 +220,7 @@ final class LocalQuickAddService implements QuickAddService {
     ]);
 
     final ids = <int>[];
+    final titles = <String>[];
     final unresolved = <String>[];
     final labelsKept = <String>[];
     final labelPrefix = _grammar
@@ -286,6 +287,7 @@ final class LocalQuickAddService implements QuickAddService {
         failAt(index, error, stackTrace);
       }
       ids.add(id);
+      titles.add(cut.title);
       final labelIds = {
         for (final label in extras.labels) label.id,
         for (final title in extras.newLabels)
@@ -331,6 +333,7 @@ final class LocalQuickAddService implements QuickAddService {
     }
     return QuickAddResult(
       createdTaskIds: ids,
+      createdTitles: titles,
       labelsNotCreated: [
         for (final title in submission.labelsNotCreated)
           if (_containsIgnoringCase(extras.newLabels, title)) title,
@@ -361,12 +364,7 @@ final class LocalQuickAddService implements QuickAddService {
     if (project == null || parent == null || parent >= from || prefix == null) {
       return line.text;
     }
-    final quoted = !project.contains(RegExp(r'\s'))
-        ? project
-        : project.contains('"')
-        ? "'$project'"
-        : '"$project"';
-    final named = '${line.text} $prefix$quoted';
+    final named = '${line.text} $prefix${quoteQuickAddItem(project)}';
     final parsed = _grammar.parse(named, now: _now().toLocal(), mode: mode);
     return parsed.project?.toLowerCase() == project.toLowerCase()
         ? named
@@ -456,21 +454,20 @@ final class LocalQuickAddService implements QuickAddService {
     ClockTime? defaultTime,
     String projectPrefix,
   ) {
-    final prefix = RegExp.escape(projectPrefix);
-    final item = RegExp.escape(first.project!);
-    final token = RegExp(
-      '(^| )($prefix(?:"$item"|\'$item\'|"$item|\'$item|$item(?= |\$)))',
-    ).firstMatch(line);
-    final tokenText = token?[2];
-    var hidden = token == null
-        ? line
-        : line.replaceRange(
-            token.start + token[1]!.length,
-            token.end,
-            _hiddenProject,
-          );
+    final token = quickAddTokens(
+      line,
+      projectPrefix,
+    ).where((token) => token.item == first.project).firstOrNull;
+    final tokenText = switch (token) {
+      final token? => line.substring(token.start, token.end),
+      null => null,
+    };
+    var hidden = switch (token) {
+      final token? => line.replaceRange(token.start, token.end, _hiddenProject),
+      null => line,
+    };
     hidden = hidden.replaceAllMapped(
-      RegExp('(^| )$prefix'),
+      RegExp('(^| )${RegExp.escape(projectPrefix)}'),
       (match) => '${match[1]}$_hiddenPrefix',
     );
     String restore(String text) {
@@ -503,16 +500,16 @@ final class LocalQuickAddService implements QuickAddService {
   }
 
   /// [title]'s label as typed in [line] (`*Urgent`, `*"road trip"`, `**x`),
-  /// else [prefix] and the title, quoted when it holds a space.
+  /// where the parser read it, else [prefix] and the title, quoted when it
+  /// holds a space.
   static String _typedLabel(String line, String title, String prefix) {
-    final p = RegExp.escape(prefix);
-    final item = RegExp.escape(title);
-    final token = RegExp(
-      '(?:^| )($p(?:$p)?(?:"$item"|\'$item\'|"$item|\'$item|$item(?= |\$)))',
-      caseSensitive: false,
-    ).firstMatch(line);
-    return token?[1] ??
-        (title.contains(' ') ? '$prefix"$title"' : '$prefix$title');
+    final lower = title.toLowerCase();
+    for (final token in quickAddTokens(line, prefix)) {
+      if (token.item.toLowerCase() == lower) {
+        return line.substring(token.start, token.end);
+      }
+    }
+    return title.contains(' ') ? '$prefix"$title"' : '$prefix$title';
   }
 
   // Archived projects and those the user may only read would refuse the

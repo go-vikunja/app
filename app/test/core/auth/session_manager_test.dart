@@ -380,6 +380,65 @@ void main() {
       expect(await manager.validAccessToken(), signIn.accessToken);
     });
 
+    test('a race the replacing session then loses looks for the tokens that '
+        'replace those, without sending them again', () async {
+      final first = await store(expiresIn: Duration.zero);
+      final signIn = issueTokens(
+        issuedAt: now.subtract(const Duration(minutes: 9, seconds: 30)),
+        sessionId: 'session-2',
+      );
+      final winner = issueTokens(issuedAt: now, sessionId: 'session-2');
+      onRefresh = (refreshToken) async {
+        if (refreshToken == first.refreshToken) {
+          await tokenStore.write(_accountId, signIn);
+          throw const SessionEnded(SessionEndReason.expired, code: 16003);
+        }
+        throw _raceLost;
+      };
+      duringSleep = (index) async {
+        if (index == 2) await tokenStore.write(_accountId, winner);
+      };
+
+      expect(await createManager().validAccessToken(), winner.accessToken);
+      expect(refreshCalls, [first.refreshToken, signIn.refreshToken]);
+      expect(sleeps, SessionManager.raceRecheckDelays.take(2));
+      expect(ended, isEmpty);
+    });
+
+    test('so does one the recovery from a lost race meets', () async {
+      const stale = Duration(minutes: 9, seconds: 30);
+      final first = await store(expiresIn: Duration.zero);
+      final second = issueTokens(
+        issuedAt: now.subtract(stale),
+        sessionId: 'session-2',
+      );
+      final third = issueTokens(
+        issuedAt: now.subtract(stale),
+        sessionId: 'session-3',
+      );
+      final winner = issueTokens(issuedAt: now, sessionId: 'session-3');
+      onRefresh = (refreshToken) async {
+        if (refreshToken == second.refreshToken) {
+          await tokenStore.write(_accountId, third);
+          throw const SessionEnded(SessionEndReason.expired, code: 16003);
+        }
+        throw _raceLost;
+      };
+      duringSleep = (index) async {
+        if (index == 1) await tokenStore.write(_accountId, second);
+        if (index == 3) await tokenStore.write(_accountId, winner);
+      };
+
+      expect(await createManager().validAccessToken(), winner.accessToken);
+      expect(refreshCalls, [
+        first.refreshToken,
+        second.refreshToken,
+        third.refreshToken,
+      ]);
+      expect(sleeps, SessionManager.raceRecheckDelays.take(3));
+      expect(ended, isEmpty);
+    });
+
     test(
       'a session-end answer with unchanged storage ends the session',
       () async {
@@ -1020,29 +1079,39 @@ void main() {
       );
     });
 
-    test('an account without a stored connection fails for now and stays '
-        'signed in, with no send noted', () async {
-      await store(expiresIn: Duration.zero);
-      final diagnostics = SessionDiagnostics(preferences);
-      final elsewhere = SessionManagers(
-        tokenStore: tokenStore,
-        clockOffsets: clockOffsets,
-        tokenGateway: gateway,
-        connectionFor: (_) async => null,
-        markNeedsReauth: (accountId) async => flagged.add(accountId),
-        diagnostics: diagnostics,
-        clock: () => now,
-        sleep: (_) async {},
-      );
+    for (final (what, connectionFor)
+        in <(String, Future<ServerConnection?> Function(String))>[
+          ('without a stored connection', (_) async => null),
+          (
+            'whose registry cannot be read',
+            (_) async => throw StateError('registry'),
+          ),
+        ]) {
+      test('an account $what fails for now and stays signed in, with no send '
+          'noted and no re-reads', () async {
+        await store(expiresIn: Duration.zero);
+        final diagnostics = SessionDiagnostics(preferences);
+        final elsewhere = SessionManagers(
+          tokenStore: tokenStore,
+          clockOffsets: clockOffsets,
+          tokenGateway: gateway,
+          connectionFor: connectionFor,
+          markNeedsReauth: (accountId) async => flagged.add(accountId),
+          diagnostics: diagnostics,
+          clock: () => now,
+          sleep: (duration) async => sleeps.add(duration),
+        );
 
-      await expectLater(
-        elsewhere.forAccount(_accountId).validAccessToken(),
-        throwsA(isA<UnexpectedResponse>()),
-      );
-      expect(flagged, isEmpty);
-      expect(gateway.refreshedTokens, isEmpty);
-      expect(await diagnostics.refreshMarker(_accountId), isNull);
-    });
+        await expectLater(
+          elsewhere.forAccount(_accountId).validAccessToken(),
+          throwsA(isA<UnexpectedResponse>()),
+        );
+        expect(flagged, isEmpty);
+        expect(gateway.refreshedTokens, isEmpty);
+        expect(await diagnostics.refreshMarker(_accountId), isNull);
+        expect(sleeps, isEmpty);
+      });
+    }
 
     group('tryRestore', () {
       late SessionDiagnostics diagnostics;
@@ -1681,6 +1750,87 @@ void main() {
         throwsA(isA<SessionEnded>()),
       );
       expect(refreshCalls, [t1.refreshToken, t2.refreshToken]);
+      expect(ended, hasLength(1));
+    });
+
+    test('ends once, as missing tokens, when the tokens are gone by the time '
+        'a refresh answer is to be stored', () async {
+      final diagnostics = SessionDiagnostics(preferences);
+      final stored = await store(expiresIn: Duration.zero);
+      onRefresh = (_) async {
+        await tokenStore.delete(_accountId);
+        return issueTokens(issuedAt: now);
+      };
+
+      await expectLater(
+        createManager(diagnostics: diagnostics).validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+
+      expect(refreshCalls, [stored.refreshToken]);
+      expect(sleeps, isEmpty);
+      expect(ended, hasLength(1));
+      expect(
+        (await diagnostics.lastEnd(_accountId))!.cause,
+        SessionEndCause.missingTokens,
+      );
+      expect(await storedRefreshToken(), isNull);
+    });
+
+    test('ends once, as missing tokens, when the tokens are gone after a '
+        'server error, without noting a refusal or reading on', () async {
+      final diagnostics = SessionDiagnostics(preferences);
+      final stored = await store(expiresIn: const Duration(seconds: 30));
+      onRefresh = (_) async => throw const ServerFailure(503);
+      var readsAfterDelete = 0;
+      duringSleep = (_) async {
+        await tokenStore.delete(_accountId);
+        secureStore.beforeRead = (_) async {
+          if (++readsAfterDelete > 1) {
+            throw PlatformException(code: 'keystore');
+          }
+        };
+      };
+
+      await expectLater(
+        createManager(diagnostics: diagnostics).validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+
+      expect(refreshCalls, [stored.refreshToken]);
+      expect(sleeps, hasLength(1));
+      expect(readsAfterDelete, 1);
+      expect(ended, hasLength(1));
+      expect(
+        (await diagnostics.lastEnd(_accountId))!.cause,
+        SessionEndCause.missingTokens,
+      );
+      expect((await diagnostics.refreshMarker(_accountId))?.refusedAt, isNull);
+    });
+
+    test('ended while looking for the tokens of a race winner, throws the '
+        'end at once instead of looking on', () async {
+      final first = await store(expiresIn: Duration.zero);
+      final second = issueTokens(
+        issuedAt: now.subtract(const Duration(minutes: 9, seconds: 30)),
+        sessionId: 'session-2',
+      );
+      onRefresh = (refreshToken) async {
+        if (refreshToken == first.refreshToken) throw _raceLost;
+        await tokenStore.delete(_accountId);
+        return issueTokens(issuedAt: now, sessionId: 'session-2');
+      };
+      duringSleep = (index) async {
+        if (index == 1) await tokenStore.write(_accountId, second);
+      };
+
+      await expectLater(
+        createManager().validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+
+      expect(refreshCalls, [first.refreshToken, second.refreshToken]);
+      expect(sleeps, SessionManager.raceRecheckDelays.take(1));
       expect(ended, hasLength(1));
     });
   });

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/sync/application/startup_sync.dart';
 
@@ -89,6 +90,17 @@ void main() {
     expect(engine.refreshCalls, 1);
   });
 
+  test('a status that cannot be read ends the run without a sync', () async {
+    final engine = _UnreadableStatusEngine();
+
+    await expectLater(
+      startupSync.run(engine).timeout(const Duration(seconds: 1)),
+      completes,
+    );
+
+    expect(engine.refreshCalls, 0);
+  });
+
   test('a failing refresh is only the status', () async {
     final engine =
         engineAt(SyncIdle(lastSyncedAt: now.subtract(const Duration(hours: 1))))
@@ -99,4 +111,17 @@ void main() {
 
     expect(engine.currentStatus, isA<SyncFailed>());
   });
+}
+
+final class _UnreadableStatusEngine extends Fake implements SyncEngine {
+  int refreshCalls = 0;
+
+  @override
+  Stream<SyncStatus> get status => Stream.error(StateError('unreadable'));
+
+  @override
+  Future<SyncOutcome> refresh() async {
+    refreshCalls++;
+    return SyncOutcome.synced;
+  }
 }

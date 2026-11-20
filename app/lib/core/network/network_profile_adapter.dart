@@ -5,9 +5,9 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
-import 'package:vikunja_api/vikunja_api.dart'
-    show mentionsClientCertificateRefusal, preConsentProbeKey;
+import 'package:vikunja_api/vikunja_api.dart' show preConsentProbeKey;
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/network/client_certificate_check.dart';
 import 'package:vikunja_mobile/core/network/network_profile.dart';
 import 'package:vikunja_mobile/core/network/network_profiles.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
@@ -26,33 +26,30 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
   new(
     this._platform,
     this._profiles, {
-    this.refusalCheckTimeout = const Duration(seconds: 5),
-    this.refusalCheckWait = const Duration(seconds: 3),
+    Duration refusalCheckTimeout = const Duration(seconds: 5),
+    Duration refusalCheckWait = const Duration(seconds: 3),
     DateTime Function()? clock,
     @visibleForTesting
     HttpClientAdapter Function(CreateHttpClient create)? createDartIoAdapter,
-  }) : _clock = clock ?? DateTime.now,
+  }) : _refusals = ClientCertificateRefusalCheck(
+         _log,
+         timeout: refusalCheckTimeout,
+         wait: refusalCheckWait,
+         clock: clock,
+       ),
        _createDartIoAdapter =
            createDartIoAdapter ??
            ((create) => IOHttpClientAdapter(createHttpClient: create));
 
-  static const _refusalCheckValidFor = Duration(seconds: 10);
   static final _infoPath = RegExp(r'/api/v[12]/info$');
 
   final HttpClientAdapter _platform;
   final NetworkProfiles _profiles;
-  final DateTime Function() _clock;
+  final ClientCertificateRefusalCheck _refusals;
   final HttpClientAdapter Function(CreateHttpClient create)
   _createDartIoAdapter;
 
-  /// For the TCP connect and handshake of the client-certificate check.
-  final Duration refusalCheckTimeout;
-
-  /// How long the check waits after its handshake for the server to hang up.
-  final Duration refusalCheckWait;
-
   final _dartIo = <OriginKey, _IoAdapter>{};
-  final _refusalChecks = <OriginKey, (DateTime, bool)>{};
   late final _mismatches = PinMismatchRecorder(_profiles);
 
   @override
@@ -133,7 +130,7 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
       }
     } on Object catch (error) {
       if (!profile.origin.isSecure || !_isLostBeforeResponse(error)) rethrow;
-      if (await _clientCertificateRefused(profile, io.context)) {
+      if (await _refusals.refused(profile, io.context)) {
         throw _connectionError(
           sent,
           ClientCertificateRefusedException(profile.origin.toString()),
@@ -168,82 +165,6 @@ final class NetworkProfileAdapter implements HttpClientAdapter {
   }
 
   void _dropDartIo(OriginKey origin) => _dartIo.remove(origin)?.close();
-
-  /// A TLS 1.3 server refuses a client certificate only after the client
-  /// finished its handshake, so the request just sees the connection end;
-  /// so do a stale keep-alive connection and a network change. A second
-  /// handshake that sends no HTTP tells them apart: a server that refuses
-  /// the certificate hangs up on it at once, a healthy one waits for a
-  /// request.
-  Future<bool> _clientCertificateRefused(
-    NetworkProfile profile,
-    SecurityContext context,
-  ) async {
-    final origin = profile.origin;
-    final now = _clock();
-    if (_refusalChecks[origin] case (final checkedAt, final refused)
-        when now.difference(checkedAt) < _refusalCheckValidFor) {
-      return refused;
-    }
-    final refused = await _checkHandshake(profile, context);
-    _refusalChecks[origin] = (_clock(), refused);
-    return refused;
-  }
-
-  Future<bool> _checkHandshake(
-    NetworkProfile profile,
-    SecurityContext context,
-  ) async {
-    final origin = profile.origin;
-    // `timeout` bounds only the TCP connect, not the handshake.
-    final connecting = SecureSocket.connect(
-      origin.host,
-      origin.port,
-      context: context,
-      onBadCertificate: switch (profile.pin) {
-        final pin? => pinnedSocketCheck(origin, pin.sha256),
-        null => null,
-      },
-      timeout: refusalCheckTimeout,
-    );
-    final SecureSocket socket;
-    try {
-      socket = await connecting.timeout(refusalCheckTimeout);
-    } on TimeoutException {
-      unawaited(
-        connecting.then((orphan) => orphan.destroy(), onError: (Object _) {}),
-      );
-      _log.fine('Client-certificate check inconclusive: TimeoutException');
-      return false;
-    } on HandshakeException catch (error) {
-      return mentionsClientCertificateRefusal('$error');
-    } on Object catch (error) {
-      _log.fine('Client-certificate check inconclusive: ${error.runtimeType}');
-      return false;
-    }
-    final ended = Completer<bool>();
-    final subscription = socket.listen(
-      (_) {
-        if (!ended.isCompleted) ended.complete(false);
-      },
-      onError: (Object _) {
-        if (!ended.isCompleted) ended.complete(true);
-      },
-      onDone: () {
-        if (!ended.isCompleted) ended.complete(true);
-      },
-      cancelOnError: true,
-    );
-    try {
-      return await ended.future.timeout(
-        refusalCheckWait,
-        onTimeout: () => false,
-      );
-    } finally {
-      unawaited(subscription.cancel());
-      socket.destroy();
-    }
-  }
 
   /// Every error leaves with the caller's own options, which never held
   /// the profile's headers. One whose text quotes a secret keeps its kind

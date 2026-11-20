@@ -18,6 +18,7 @@ import 'package:vikunja_mobile/core/text/title_order.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
+import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
@@ -74,11 +75,9 @@ class TeamPage extends ConsumerStatefulWidget {
   ConsumerState<TeamPage> createState() => _TeamPageState();
 }
 
-class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
-  Team? _team;
-  Object? _failure;
-  var _loading = false;
-  var _loads = 0;
+class _TeamPageState extends ConsumerState<TeamPage>
+    with PageReachability, LatestReads {
+  final _team = LatestRead<Team>();
   _Busy? _busy;
 
   @override
@@ -87,36 +86,21 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
     unawaited(_load());
   }
 
-  /// A read that started before a change would show the team without it,
-  /// so the latest read wins.
   Future<void> _load() async {
     final repository = ref.read(teamRepositoryProvider);
     if (repository == null) return;
-    final load = ++_loads;
-    setState(() => _loading = true);
-    bool latest() => mounted && load == _loads;
-    try {
-      final team = await repository.read(widget.teamId);
-      if (latest()) {
-        setState(() {
-          _team = team;
-          _failure = null;
-          noteReached();
-        });
-      }
-    } on Object catch (error) {
-      _log.info('Reading a team failed: ${error.runtimeType}');
-      if (latest()) {
-        setState(() {
-          _failure = error;
-          noteFailure(error);
-          // The user left it elsewhere, or it was deleted.
-          if (error is Forbidden || error is NotFound) _team = null;
-        });
-      }
-    } finally {
-      if (latest()) setState(() => _loading = false);
-    }
+    await readLatest(
+      _team,
+      () => repository.read(widget.teamId),
+      log: _log,
+      what: 'a team',
+      onValue: (_) => noteReached(),
+      onFailure: (error) {
+        noteFailure(error);
+        // The user left it elsewhere, or it was deleted.
+        if (error is Forbidden || error is NotFound) _team.forget();
+      },
+    );
   }
 
   void _showMessage(String text) => ScaffoldMessenger.of(context)
@@ -217,7 +201,7 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
     final l10n = context.l10n;
     final saved = await showTeamEditSheet(context, team: team);
     if (saved == null || !mounted) return;
-    setState(() => _team = saved);
+    setState(() => _team.value = saved);
     _showMessage(l10n.teamSaved);
     await _load();
   }
@@ -323,12 +307,12 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final team = _team;
-    final failure = _failure;
+    final team = _team.value;
+    final failure = _team.failure;
     final userId = ref.watch(activeUserIdProvider);
     final offline = watchOffline(
       onBackOnline: () {
-        if (_failure is NetworkFailure) unawaited(_load());
+        if (_team.failure is NetworkFailure) unawaited(_load());
       },
     );
     final guards = team == null || userId == null
@@ -415,7 +399,9 @@ class _TeamPageState extends ConsumerState<TeamPage> with PageReachability {
               tooltip: l10n.teamEdit,
               icon: const Icon(Icons.edit_outlined),
             ),
-          RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
+          RefreshButton(
+            onPressed: _team.loading ? null : () => unawaited(_load()),
+          ),
         ],
         bottom: busy
             ? const PreferredSize(

@@ -216,6 +216,39 @@ void main() {
 
       expect(find.text(en.descriptionEditorFailed), findsOneWidget);
     });
+
+    testWidgets('a page that gets ready after the timeout shows the editor '
+        'after all, which then works as usual', (tester) async {
+      bridges.readyOnStart = false;
+      await openEditor(tester, settle: false);
+      await tester.pump(DescriptionEditorPage.loadTimeout);
+      await tester.pump();
+      expect(find.text(en.descriptionEditorFailed), findsOneWidget);
+      final bridge = bridges.last;
+      expect(bridge.focusCalls, 0);
+
+      bridge.emit(const EditorReady());
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.descriptionEditorFailed), findsNothing);
+      expect(find.text(en.retry), findsNothing);
+      expect(find.text(en.descriptionEditorLoading), findsNothing);
+      expect(
+        tester.widget<EditorToolbar>(find.byType(EditorToolbar)).enabled,
+        isTrue,
+      );
+      expect(bridge.focusCalls, 1);
+      expect(bridges.created, hasLength(1));
+
+      bridge.edit('<p>Late</p>');
+      await tester.pump();
+      expect(saveEnabled(tester), isTrue);
+      await tester.tap(saveButton());
+      await tester.pumpAndSettle();
+      expect(data.tasks.descriptionUpdates, [
+        (1, '<p>Late</p>', '<p>Numbers</p>'),
+      ]);
+    });
   });
 
   group('toolbar', () {

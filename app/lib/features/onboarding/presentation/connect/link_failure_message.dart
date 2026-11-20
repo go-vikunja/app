@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_sign_in.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/failure_message.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';
 
 const _inviteInvalid = 2005;

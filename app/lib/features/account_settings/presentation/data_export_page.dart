@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/security_l
 import 'package:vikunja_mobile/features/account_settings/presentation/web_password_note.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_settings_page_opener.dart';
 import 'package:vikunja_mobile/features/common/presentation/file_size_text.dart';
+import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
@@ -32,12 +33,10 @@ class DataExportPage extends ConsumerStatefulWidget {
   ConsumerState<DataExportPage> createState() => _DataExportPageState();
 }
 
-class _DataExportPageState extends ConsumerState<DataExportPage> {
+class _DataExportPageState extends ConsumerState<DataExportPage>
+    with LatestReads {
   late final AppLifecycleListener _lifecycle;
-  UserDataExport? _export;
-  bool _read = false;
-  Object? _failure;
-  bool _loading = false;
+  final _export = LatestRead<UserDataExport?>();
 
   @override
   void initState() {
@@ -55,23 +54,13 @@ class _DataExportPageState extends ConsumerState<DataExportPage> {
 
   Future<void> _load() async {
     final repository = ref.read(accountSecurityRepositoryProvider);
-    if (repository == null || _loading) return;
-    setState(() => _loading = true);
-    try {
-      final export = await repository.dataExport();
-      if (mounted) {
-        setState(() {
-          _export = export;
-          _read = true;
-          _failure = null;
-        });
-      }
-    } on Object catch (error) {
-      _log.info('Reading the data export failed: ${error.runtimeType}');
-      if (mounted) setState(() => _failure = error);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    if (repository == null) return;
+    await readLatest(
+      _export,
+      repository.dataExport,
+      log: _log,
+      what: 'the data export',
+    );
   }
 
   Future<void> _openWeb(WebSettingsPage page) async {
@@ -88,7 +77,8 @@ class _DataExportPageState extends ConsumerState<DataExportPage> {
     final formatter = MomentFormatter.watch(context, ref);
     final now = ref.watch(clockProvider)();
     final profile = ref.watch(accountSettingsProvider).value?.profile;
-    final export = switch (_export) {
+    final hasData = _export.hasValue;
+    final export = switch (_export.value) {
       final export? when !export.isExpiredAt(now) => export,
       _ => null,
     };
@@ -108,17 +98,17 @@ class _DataExportPageState extends ConsumerState<DataExportPage> {
     return Scaffold(
       appBar: AppBar(title: ScreenTitle(l10n.dataExportTitle)),
       body: SecurityListBody(
-        loading: _loading && !_read,
+        loading: _export.loading && !hasData,
         loadingLabel: l10n.dataExportLoading,
-        failure: _failure,
-        hasData: _read,
+        failure: _export.failure,
+        hasData: hasData,
         onRefresh: _load,
         header: Padding(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Text(l10n.dataExportIntro, style: theme.textTheme.bodyMedium),
         ),
         children: [
-          if (_read)
+          if (hasData)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: export == null

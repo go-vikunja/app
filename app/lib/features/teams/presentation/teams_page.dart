@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
+import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/online_only_fab.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
@@ -38,11 +39,9 @@ class TeamsPage extends ConsumerStatefulWidget {
   ConsumerState<TeamsPage> createState() => _TeamsPageState();
 }
 
-class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
-  List<Team>? _teams;
-  Object? _failure;
-  var _loading = false;
-  var _loads = 0;
+class _TeamsPageState extends ConsumerState<TeamsPage>
+    with PageReachability, LatestReads {
+  final _teams = LatestRead<List<Team>>();
 
   @override
   void initState() {
@@ -50,34 +49,17 @@ class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
     unawaited(_load());
   }
 
-  /// The latest read wins: one that started before a change on a team's
-  /// page would show the list without it.
   Future<void> _load() async {
     final repository = ref.read(teamRepositoryProvider);
     if (repository == null) return;
-    final load = ++_loads;
-    setState(() => _loading = true);
-    bool latest() => mounted && load == _loads;
-    try {
-      final teams = await repository.list();
-      if (latest()) {
-        setState(() {
-          _teams = teams;
-          _failure = null;
-          noteReached();
-        });
-      }
-    } on Object catch (error) {
-      _log.info('Reading the teams failed: ${error.runtimeType}');
-      if (latest()) {
-        setState(() {
-          _failure = error;
-          noteFailure(error);
-        });
-      }
-    } finally {
-      if (latest()) setState(() => _loading = false);
-    }
+    await readLatest(
+      _teams,
+      repository.list,
+      log: _log,
+      what: 'the teams',
+      onValue: (_) => noteReached(),
+      onFailure: noteFailure,
+    );
   }
 
   Future<void> _open(int teamId) async {
@@ -94,7 +76,7 @@ class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(SnackBar(content: Text(l10n.teamCreated)));
-        setState(() => _teams = [...?_teams, team]);
+        setState(() => _teams.value = [...?_teams.value, team]);
         unawaited(_open(team.id));
       },
     );
@@ -103,11 +85,11 @@ class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final teams = _teams;
-    final failure = _failure;
+    final teams = _teams.value;
+    final failure = _teams.failure;
     final offline = watchOffline(
       onBackOnline: () {
-        if (_failure is NetworkFailure) unawaited(_load());
+        if (_teams.failure is NetworkFailure) unawaited(_load());
       },
     );
     final userId = ref.watch(activeUserIdProvider);
@@ -129,7 +111,9 @@ class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
       appBar: AppBar(
         title: ScreenTitle(l10n.teamsTitle),
         actions: [
-          RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
+          RefreshButton(
+            onPressed: _teams.loading ? null : () => unawaited(_load()),
+          ),
         ],
       ),
       floatingActionButton: OnlineOnlyFab(
@@ -167,7 +151,7 @@ class _TeamsPageState extends ConsumerState<TeamsPage> with PageReachability {
                     onRetry: () => unawaited(_load()),
                   ),
                 )
-              else if (teams == null && _loading)
+              else if (teams == null && _teams.loading)
                 LoadingPlaceholder(label: l10n.teamsLoading)
               else if (teams != null && teams.isEmpty)
                 Column(

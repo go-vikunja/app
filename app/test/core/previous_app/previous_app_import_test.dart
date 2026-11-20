@@ -4,12 +4,12 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
-import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/previous_install.dart';
 import 'package:vikunja_mobile/core/previous_app/previous_app_import.dart';
 import 'package:vikunja_mobile/core/previous_app/previous_app_platform.dart';
 import 'package:vikunja_mobile/core/previous_app/previous_app_record.dart';
+import 'package:vikunja_mobile/core/settings/appearance_settings.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 
 import '../../helpers/auth_fakes.dart';

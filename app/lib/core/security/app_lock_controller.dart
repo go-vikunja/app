@@ -124,15 +124,9 @@ class AppLockController extends _$AppLockController {
   var _settingsKnown = false;
   var _visible = true;
   DateTime? _hiddenAt;
-  var _authenticating = false;
 
-  /// The first hide while the prompt runs, and the last show after it.
-  DateTime? _hiddenDuringPromptAt;
-  DateTime? _shownDuringPromptAt;
-
-  /// Ends the running prompt as cancelled when it never answers.
-  Completer<DeviceAuthResult>? _giveUp;
-  Timer? _answerGraceTimer;
+  /// The system prompt that is up.
+  _Prompt? _prompt;
   DateTime? _promptEndedOutOfSightAt;
   Timer? _settleTimer;
 
@@ -164,7 +158,7 @@ class AppLockController extends _$AppLockController {
     ref.onDispose(() {
       lifecycle.dispose();
       _settleTimer?.cancel();
-      _answerGraceTimer?.cancel();
+      _prompt?.grace?.cancel();
     });
     final excursionEnds = _excursions.ended.listen(_onExcursionEnded);
     ref.onDispose(excursionEnds.cancel);
@@ -176,9 +170,7 @@ class AppLockController extends _$AppLockController {
       _ => false,
     };
     _hiddenAt = null;
-    _authenticating = false;
-    _hiddenDuringPromptAt = null;
-    _shownDuringPromptAt = null;
+    _prompt = null;
     _promptEndedOutOfSightAt = null;
     _promptOnShow = false;
     _detached = false;
@@ -200,8 +192,16 @@ class AppLockController extends _$AppLockController {
   /// Whether the UI must wait, with the time out of sight evaluated now:
   /// a link or a notification tap can arrive before the app's show event.
   bool isLockedNow() {
-    if (!_visible && !_authenticating) _lockIfDue();
+    if (!_visible && _prompt == null) _lockIfDue();
     return state.locked;
+  }
+
+  /// Whether [limit] has passed from [since] to [now]; a clock that went
+  /// back counts as passed.
+  @visibleForTesting
+  static bool overdue(DateTime since, DateTime now, Duration limit) {
+    final elapsed = now.difference(since);
+    return elapsed.isNegative || elapsed >= limit;
   }
 
   /// Runs [action] without locking when the app goes out of sight for it,
@@ -213,7 +213,7 @@ class AppLockController extends _$AppLockController {
   /// Prompts for the device's screen lock or biometrics. A device that no
   /// longer has a screen lock turns the app lock off, with a notice.
   Future<void> unlock() async {
-    if (!state.locked || _authenticating) return;
+    if (!state.locked || _prompt != null) return;
     final l10n = ref.read(deviceAppLocalizationsProvider);
     final result = await _authenticate(
       DeviceAuthPrompt.forReason(l10n, l10n.appLockPromptReason),
@@ -254,7 +254,7 @@ class AppLockController extends _$AppLockController {
     required bool enabled,
     required DeviceAuthPrompt prompt,
   }) async {
-    if (_authenticating) return DeviceAuthResult.cancelled;
+    if (_prompt != null) return DeviceAuthResult.cancelled;
     final result = await _authenticate(prompt);
     if (!ref.mounted) return result;
     if (result == DeviceAuthResult.success ||
@@ -305,10 +305,7 @@ class AppLockController extends _$AppLockController {
   }
 
   Future<DeviceAuthResult> _authenticate(DeviceAuthPrompt prompt) async {
-    _authenticating = true;
-    _hiddenDuringPromptAt = null;
-    _shownDuringPromptAt = null;
-    final giveUp = _giveUp = Completer<DeviceAuthResult>();
+    final giveUp = (_prompt = _Prompt()).giveUp;
     state = state.copyWith(authenticating: true, covered: false, error: null);
     DeviceAuthResult result;
     try {
@@ -320,14 +317,11 @@ class AppLockController extends _$AppLockController {
       _log.warning('Authentication failed: ${error.runtimeType}');
       result = DeviceAuthResult.unavailable;
     }
-    _answerGraceTimer?.cancel();
-    _answerGraceTimer = null;
-    _giveUp = null;
-    _authenticating = false;
-    final hiddenAt = _hiddenDuringPromptAt;
-    final shownAt = _shownDuringPromptAt;
-    _hiddenDuringPromptAt = null;
-    _shownDuringPromptAt = null;
+    final ended = _prompt;
+    _prompt = null;
+    ended?.grace?.cancel();
+    final hiddenAt = ended?.hiddenAt;
+    final shownAt = ended?.shownAt;
     if (!ref.mounted) return result;
     state = state.copyWith(authenticating: false);
     // The system's PIN screen hides the app below Android 11, so after a
@@ -349,24 +343,22 @@ class AppLockController extends _$AppLockController {
       _lockIfDue();
       return;
     }
-    final elapsed = (shownAt ?? _now()).difference(hiddenAt);
     if (state.enabled &&
         !state.locked &&
-        (elapsed.isNegative || elapsed >= _lockAfter.duration)) {
+        overdue(hiddenAt, shownAt ?? _now(), _lockAfter.duration)) {
       state = state.copyWith(locked: true, error: null);
     }
   }
 
   /// Back in front from a prompt that hid the app: an answer that has not
   /// come within [answerGrace] never will.
-  void _awaitAnswer() {
-    _answerGraceTimer?.cancel();
-    _answerGraceTimer = Timer(answerGrace, () {
-      _answerGraceTimer = null;
-      final giveUp = _giveUp;
-      if (giveUp == null || giveUp.isCompleted) return;
+  void _awaitAnswer(_Prompt prompt) {
+    prompt.grace?.cancel();
+    prompt.grace = Timer(answerGrace, () {
+      prompt.grace = null;
+      if (prompt.giveUp.isCompleted) return;
       _log.info('Gave up on a prompt that did not answer');
-      giveUp.complete(DeviceAuthResult.cancelled);
+      prompt.giveUp.complete(DeviceAuthResult.cancelled);
     });
   }
 
@@ -383,19 +375,19 @@ class AppLockController extends _$AppLockController {
   void _onInactive() {
     _visible = true;
     // In front of the app, a prompt that is still up will answer.
-    if (_authenticating) {
-      _answerGraceTimer?.cancel();
-      _answerGraceTimer = null;
+    if (_prompt case final prompt?) {
+      prompt.grace?.cancel();
+      prompt.grace = null;
     }
     _cover();
   }
 
   void _onHide() {
     _visible = false;
-    if (_authenticating) {
-      _hiddenDuringPromptAt ??= _now();
-      _answerGraceTimer?.cancel();
-      _answerGraceTimer = null;
+    if (_prompt case final prompt?) {
+      prompt.hiddenAt ??= _now();
+      prompt.grace?.cancel();
+      prompt.grace = null;
       return;
     }
     _hiddenAt = _now();
@@ -408,8 +400,8 @@ class AppLockController extends _$AppLockController {
 
   void _onShow() {
     _visible = true;
-    if (_authenticating) {
-      if (_hiddenDuringPromptAt != null) _shownDuringPromptAt = _now();
+    if (_prompt case final prompt?) {
+      if (prompt.hiddenAt != null) prompt.shownAt = _now();
       return;
     }
     final wasLocked = state.locked;
@@ -441,8 +433,8 @@ class AppLockController extends _$AppLockController {
     if (_abandonPending) scheduleMicrotask(_abandonIfStillResumed);
     _visible = true;
     _uncover();
-    if (_authenticating) {
-      if (_hiddenDuringPromptAt != null) _awaitAnswer();
+    if (_prompt case final prompt?) {
+      if (prompt.hiddenAt != null) _awaitAnswer(prompt);
       return;
     }
     _scheduleAutoPrompt();
@@ -460,18 +452,15 @@ class AppLockController extends _$AppLockController {
   }
 
   void _onExcursionEnded(DateTime startedAt) {
-    if (_visible || _authenticating) return;
+    if (_visible || _prompt != null) return;
     final now = _now();
-    final elapsed = now.difference(startedAt);
-    _hiddenAt = elapsed >= _excursionGrace || elapsed.isNegative
-        ? startedAt
-        : now;
+    _hiddenAt = overdue(startedAt, now, _excursionGrace) ? startedAt : now;
     _promptOnShow = true;
     _lockIfDue();
   }
 
   void _cover() {
-    if (!state.enabled || _authenticating) return;
+    if (!state.enabled || _prompt != null) return;
     // There the system leaves the app out of Recents itself; a cover would
     // only blank the app whenever it loses focus (the shade, split screen).
     if (ref.read(recentsHiddenNativelyProvider)) return;
@@ -487,8 +476,7 @@ class AppLockController extends _$AppLockController {
     if (!state.enabled || state.locked) return;
     final since = _outOfSightSince();
     if (since == null) return;
-    final elapsed = _now().difference(since);
-    if (elapsed.isNegative || elapsed >= _lockAfter.duration) {
+    if (overdue(since, _now(), _lockAfter.duration)) {
       state = state.copyWith(locked: true, error: null);
       _promptPending = true;
       _scheduleAutoPrompt();
@@ -500,8 +488,7 @@ class AppLockController extends _$AppLockController {
   DateTime? _outOfSightSince() {
     if (!_excursions.active) return _hiddenAt;
     final startedAt = _excursions.startedAt!;
-    final elapsed = _now().difference(startedAt);
-    return elapsed >= _excursionGrace || elapsed.isNegative ? startedAt : null;
+    return overdue(startedAt, _now(), _excursionGrace) ? startedAt : null;
   }
 
   void _scheduleAutoPrompt() {
@@ -513,7 +500,7 @@ class AppLockController extends _$AppLockController {
   /// prompt before the resume risks fragment state errors on Android, and
   /// Face ID fails while the app is inactive.
   void _promptWhenSettled() {
-    if (_authenticating) return;
+    if (_prompt != null) return;
     final binding = WidgetsBinding.instance;
     if (binding.lifecycleState != AppLifecycleState.resumed) return;
     _promptPending = false;
@@ -531,10 +518,23 @@ class AppLockController extends _$AppLockController {
 
   /// When the app left meanwhile, the next resume prompts instead.
   bool _mayPromptNow() {
-    if (!ref.mounted || !state.locked || _authenticating) return false;
+    if (!ref.mounted || !state.locked || _prompt != null) return false;
     final resumed =
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
     if (!resumed) _promptPending = true;
     return resumed;
   }
+}
+
+/// What lives only while the system prompt is up.
+final class _Prompt {
+  /// Ends the prompt as cancelled when it never answers.
+  final giveUp = Completer<DeviceAuthResult>();
+
+  /// The first hide while the prompt runs, and the last show after it.
+  DateTime? hiddenAt;
+  DateTime? shownAt;
+
+  /// Gives up on an answer after [AppLockController.answerGrace].
+  Timer? grace;
 }

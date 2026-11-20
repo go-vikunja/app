@@ -24,6 +24,7 @@ import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
+import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';

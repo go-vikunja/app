@@ -264,33 +264,13 @@ class ProjectListControls extends StatelessWidget {
   final VoidCallback? onShowDoneChanged;
 
   @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final sorted = sortLabel(l10n, sort);
-    final onShowDoneChanged = this.onShowDoneChanged;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      // Scrolled, the chips run to the screen's edges.
-      clipBehavior: Clip.none,
-      child: Row(
-        spacing: 8,
-        children: [
-          if (onShowDoneChanged != null)
-            FilterChip(
-              label: Text(l10n.projectShowDoneChip),
-              selected: showDone,
-              onSelected: (_) => onShowDoneChanged(),
-            ),
-          ActionChip(
-            avatar: const Icon(Icons.sort),
-            label: Text(sorted),
-            tooltip: l10n.projectSortCurrent(sorted),
-            onPressed: onSort,
-          ),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => _viewControls(
+    context,
+    sortLabel: sortLabel(context.l10n, sort),
+    onSort: onSort,
+    showDone: showDone,
+    onShowDoneChanged: onShowDoneChanged,
+  );
 }
 
 /// Above a table view's rows: whether its done tasks show, where the view
@@ -315,35 +295,54 @@ class ProjectTableControls extends StatelessWidget {
   final VoidCallback? onShowDoneChanged;
 
   @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final onShowDoneChanged = this.onShowDoneChanged;
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      // Scrolled, the chips run to the screen's edges.
-      clipBehavior: Clip.none,
-      child: Row(
-        spacing: 8,
-        children: [
-          if (onShowDoneChanged != null)
-            FilterChip(
-              label: Text(l10n.projectShowDoneChip),
-              selected: showDone,
-              onSelected: (_) => onShowDoneChanged(),
-            ),
-          ActionChip(
-            avatar: const Icon(Icons.sort),
-            label: Text(sortLabel),
-            tooltip: l10n.projectSortCurrent(sortLabel),
-            onPressed: onSort,
+  Widget build(BuildContext context) => _viewControls(
+    context,
+    sortLabel: sortLabel,
+    onSort: onSort,
+    onColumns: onColumns,
+    showDone: showDone,
+    onShowDoneChanged: onShowDoneChanged,
+  );
+}
+
+// The two controls stay two types: under the screen's one key, a switch
+// between list and table replaces the chips instead of animating the done
+// chip's check.
+Widget _viewControls(
+  BuildContext context, {
+  required String sortLabel,
+  required VoidCallback onSort,
+  required bool showDone,
+  required VoidCallback? onShowDoneChanged,
+  VoidCallback? onColumns,
+}) {
+  final l10n = context.l10n;
+  return SingleChildScrollView(
+    scrollDirection: Axis.horizontal,
+    // Scrolled, the chips run to the screen's edges.
+    clipBehavior: Clip.none,
+    child: Row(
+      spacing: 8,
+      children: [
+        if (onShowDoneChanged != null)
+          FilterChip(
+            label: Text(l10n.projectShowDoneChip),
+            selected: showDone,
+            onSelected: (_) => onShowDoneChanged(),
           ),
+        ActionChip(
+          avatar: const Icon(Icons.sort),
+          label: Text(sortLabel),
+          tooltip: l10n.projectSortCurrent(sortLabel),
+          onPressed: onSort,
+        ),
+        if (onColumns != null)
           ActionChip(
             avatar: const Icon(Icons.view_column_outlined),
             label: Text(l10n.projectTableColumns),
             onPressed: onColumns,
           ),
-        ],
-      ),
-    );
-  }
+      ],
+    ),
+  );
 }

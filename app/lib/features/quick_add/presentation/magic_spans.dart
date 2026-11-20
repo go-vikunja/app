@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/features/quick_add/application/quick_add_lines.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 
 enum MagicSpanKind {
@@ -57,7 +58,7 @@ List<MagicLine> magicLines(String text) {
     if (line.trim().isNotEmpty) lines.add((offset: start, text: line));
   }
 
-  for (final lineBreak in _lineBreaks.allMatches(text)) {
+  for (final lineBreak in quickAddLineBreaks.allMatches(text)) {
     add(lineBreak.start);
     start = lineBreak.end;
   }
@@ -70,57 +71,10 @@ List<MagicLine> magicLines(String text) {
   ];
 }
 
-final _lineBreaks = RegExp(r'\r\n|\r|\n');
-
-/// A prefix followed by an item, quoted or up to the next space, where
-/// Quick Add Magic looks for one: at the start or after a space.
-typedef PrefixedToken = ({
-  int start,
-  int end,
-  int itemStart,
-  String item,
-  bool quoted,
-});
-
-Iterable<PrefixedToken> prefixedTokens(String line, String prefix) sync* {
-  var from = 0;
-  while (from < line.length) {
-    final at = line.indexOf(prefix, from);
-    if (at < 0) return;
-    from = at + prefix.length;
-    if (at > 0 && line[at - 1] != ' ') continue;
-    var itemStart = at + prefix.length;
-    // The web drops one repeated prefix: `@@alice` is `alice`.
-    if (line.startsWith(prefix, itemStart)) itemStart += prefix.length;
-    final quote = itemStart < line.length ? line[itemStart] : '';
-    if (quote == '"' || quote == "'") {
-      final close = line.indexOf(quote, itemStart + 1);
-      final end = close < 0 ? line.length : close + 1;
-      yield (
-        start: at,
-        end: end,
-        itemStart: itemStart + 1,
-        item: line.substring(itemStart + 1, close < 0 ? line.length : close),
-        quoted: true,
-      );
-      from = end;
-    } else {
-      var end = line.indexOf(' ', itemStart);
-      if (end < 0) end = line.length;
-      yield (
-        start: at,
-        end: end,
-        itemStart: itemStart,
-        item: line.substring(itemStart, end),
-        quoted: false,
-      );
-    }
-  }
-}
-
 /// Where [plan]'s recognised parts are in [line], the text it was planned
-/// from: prefixed tokens by their items, the date and repeat phrases where
-/// the parser's phrases stand as words outside of them.
+/// from: prefixed tokens where the parser reads them ([quickAddTokens]) by
+/// their items, the date and repeat phrases where the parser's phrases
+/// stand as words outside of them.
 List<MagicSpan> magicSpansForLine(
   String line,
   QuickAddPlan plan,
@@ -134,7 +88,7 @@ List<MagicSpan> magicSpansForLine(
 
   final labels = parsed.labels;
   if (labels.isNotEmpty) {
-    for (final token in prefixedTokens(line, prefixes.label)) {
+    for (final token in quickAddTokens(line, prefixes.label)) {
       if (token.item.isNotEmpty && labels.any((l) => same(l, token.item))) {
         spans.add(
           MagicSpan(
@@ -151,7 +105,7 @@ List<MagicSpan> magicSpansForLine(
     final kind = plan.unmatchedProject == null
         ? MagicSpanKind.project
         : MagicSpanKind.unmatchedProject;
-    for (final token in prefixedTokens(line, prefixes.project)) {
+    for (final token in quickAddTokens(line, prefixes.project)) {
       if (same(project, token.item)) {
         spans.add(MagicSpan(token.start, token.end, kind, item: token.item));
       }
@@ -160,18 +114,17 @@ List<MagicSpan> magicSpansForLine(
   if (parsed.priority case final priority?) {
     // As the parser: the first whole number from 0 to 5 outside the labels
     // and the project, and every token of that number (`!03`, not `!3abc`).
-    final numbers = [
-      for (final token in prefixedTokens(line, prefixes.priority))
-        if (_wholeNumber.hasMatch(token.item) &&
-            !spans.any((s) => s.start < token.end && token.start < s.end))
+    final tokens = [
+      for (final token in quickAddTokens(line, prefixes.priority))
+        if (!spans.any((s) => s.start < token.end && token.start < s.end))
           token,
     ];
-    final item = numbers
+    final item = tokens
         .map((token) => token.item)
-        .where((item) => (int.tryParse(item) ?? 6) <= 5)
+        .where((item) => quickAddPriority(item) != null)
         .firstOrNull;
-    if (item != null && int.parse(item) == priority) {
-      for (final token in numbers) {
+    if (item != null && quickAddPriority(item) == priority) {
+      for (final token in tokens) {
         if (token.item == item) {
           spans.add(MagicSpan(token.start, token.end, MagicSpanKind.priority));
         }
@@ -180,7 +133,7 @@ List<MagicSpan> magicSpansForLine(
   }
   final assignees = parsed.assignees;
   if (assignees.isNotEmpty) {
-    for (final token in prefixedTokens(line, prefixes.assignee)) {
+    for (final token in quickAddTokens(line, prefixes.assignee)) {
       if (token.item.isNotEmpty && assignees.any((a) => same(a, token.item))) {
         spans.add(
           MagicSpan(
@@ -209,14 +162,9 @@ List<MagicSpan> magicSpansOf(
         span.shifted(line.offset),
 ];
 
-final _wholeNumber = RegExp(r'^[0-9]+$');
-
-// Where the parser removes a phrase (D102-1, D102-2): a time not out of
-// `at 221B`, `at 22:5` or, for `at 9`, `at 9 pm`; a word not out of
-// `today's`.
+// A phrase ends where the parser removes it: a time as a time
+// (D102-2), anything else as a word (D102-1).
 final _timePhrase = RegExp('^(?:at|@) ', caseSensitive: false);
-const _timeEnd = r'(?![\w:]| ?[ap]m(?![\w:]))';
-const _wordEnd = r"(?!\w|['\u2019]\w)";
 
 /// The repeat phrase where it first stands as words, the date phrases
 /// wherever they do (the parser removed every occurrence), outside of
@@ -231,7 +179,9 @@ List<MagicSpan> _phraseSpans(
       !taken.any((span) => span.start < end && start < span.end);
   void mark(String phrase, MagicSpanKind kind, {required bool everywhere}) {
     if (phrase.isEmpty) return;
-    final end = _timePhrase.hasMatch(phrase) ? _timeEnd : _wordEnd;
+    final end = _timePhrase.hasMatch(phrase)
+        ? quickAddTimeEnd
+        : quickAddWordEnd;
     final pattern = RegExp(
       '(?<!\\S)${RegExp.escape(phrase)}$end',
       caseSensitive: false,

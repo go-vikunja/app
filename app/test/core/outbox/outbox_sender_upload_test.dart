@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logging/logging.dart';
 import 'package:path/path.dart' as p;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/attachments/upload_files.dart';
@@ -950,6 +951,170 @@ void main() {
         decodeFailure((await db.outboxDao.all()).single.lastError!).code,
         4020,
       );
+    });
+  });
+
+  group('the queue and the uploads', () {
+    void failBoth() => write.beforeRequest = (request) async {
+      if (request == 'update 2') {
+        throw const NetworkFailure(NetworkProblem.unreachable);
+      }
+      if (request.startsWith('upload')) throw const ServerFailure(503);
+    };
+
+    Future<void> queueBoth() async {
+      await queueUpload(1);
+      await db.outboxDao.queueUpdate(
+        2,
+        const TaskChanges(done: true),
+        now: now,
+      );
+    }
+
+    test('an upload waiting out its backoff while the queue is idle is what '
+        'the sender waits for, and Send now reports it; with an op of the '
+        'queue waiting too, that op is', () async {
+      await queueUpload(1);
+      failBoth();
+      read.taskDetails[1] = const TaskDetails();
+      final outbox = sender();
+
+      await outbox.drain();
+
+      expect(outbox.state, OutboxSenderState.waiting);
+      expect(outbox.blockedBy, isA<ServerFailure>());
+      expect(await outbox.sendNow(), isA<ServerFailure>());
+      expect(write.requests, ['upload 1 photo.png', 'upload 1 photo.png']);
+
+      await db.outboxDao.queueUpdate(
+        2,
+        const TaskChanges(done: true),
+        now: now,
+      );
+      write.requests.clear();
+
+      expect(await outbox.sendNow(), isA<NetworkFailure>());
+      expect(write.requests, ['update 2', 'upload 1 photo.png']);
+      expect(outbox.state, OutboxSenderState.waiting);
+      expect(timers.active, hasLength(2));
+    });
+
+    test('a database error while sending the uploads is logged, not thrown: '
+        'the drain resolves, the sender is idle and the same sender sends '
+        'the upload later', () async {
+      final id = await queueUpload(1);
+      await db.customStatement(
+        'CREATE TRIGGER claim_fails BEFORE UPDATE ON outbox '
+        "WHEN NEW.kind = 'uploadAttachment' "
+        "BEGIN SELECT RAISE(ABORT, 'disk full'); END",
+      );
+      final records = <LogRecord>[];
+      final subscription = Logger.root.onRecord.listen(records.add);
+      addTearDown(subscription.cancel);
+      final outbox = sender();
+
+      await outbox.drain();
+
+      expect(write.requests, isEmpty);
+      expect(outbox.state, OutboxSenderState.idle);
+      expect([
+        for (final record in records) record.message,
+      ], contains(startsWith('Sending the uploads failed')));
+      expect((await db.outboxDao.find(id))!.state, OutboxState.pending.name);
+
+      await db.customStatement('DROP TRIGGER claim_fails');
+      await outbox.drain();
+
+      expect(write.requests, ['upload 1 photo.png']);
+      expect(await db.outboxDao.count(), 0);
+      expect(outbox.state, OutboxSenderState.idle);
+    });
+
+    test('a drain with an edit and an upload is one stretch of draining: the '
+        'uploads start before the queue goes idle', () async {
+      await queueBoth();
+      final outbox = sender();
+      final states = <OutboxSenderState>[];
+      final subscription = outbox.states.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      await outbox.drain();
+
+      expect(write.requests, ['update 2', 'upload 1 photo.png']);
+      expect(states, [
+        OutboxSenderState.idle,
+        OutboxSenderState.draining,
+        OutboxSenderState.idle,
+      ]);
+    });
+
+    test('pause with the queue and the uploads both waiting cancels both '
+        'timers', () async {
+      await queueBoth();
+      failBoth();
+      final outbox = sender();
+      await outbox.drain();
+      expect(outbox.state, OutboxSenderState.waiting);
+      expect(timers.active, hasLength(2));
+
+      outbox.pause();
+
+      expect(timers.active, isEmpty);
+      expect(outbox.state, OutboxSenderState.paused);
+      expect(outbox.blockedBy, isNull);
+    });
+
+    test('dispose with the queue and the uploads both waiting cancels both '
+        'timers', () async {
+      await queueBoth();
+      failBoth();
+      final outbox = sender();
+      await outbox.drain();
+      expect(timers.active, hasLength(2));
+
+      await outbox.dispose();
+
+      expect(timers.active, isEmpty);
+    });
+
+    test('an upload another isolate sends names no failure, also after an '
+        'attempt here failed: the sender only waits for it', () async {
+      final id = await queueUpload(1);
+      write.beforeRequest = (request) async {
+        if (request.startsWith('upload')) throw const ServerFailure(503);
+      };
+      final outbox = sender();
+      await outbox.drain();
+      expect(outbox.blockedBy, isA<ServerFailure>());
+      now = now.add(const Duration(seconds: 3));
+      expect(await db.outboxDao.claim(id, at: now), isNotNull);
+
+      await fireNextAndSettle(outbox);
+
+      expect(outbox.state, OutboxSenderState.waiting);
+      expect(timers.pendingWait, OutboxSender.inFlightRecheck);
+      expect(outbox.blockedBy, isNull);
+      expect(await outbox.sendNow(), isNull);
+      expect(write.requests, ['upload 1 photo.png']);
+    });
+
+    test('an upload waiting out its own backoff still names its failure '
+        'while another one is in flight elsewhere', () async {
+      final first = await queueUpload(1);
+      await queueUpload(2, name: 'b.txt', bytes: const [9]);
+      write.beforeRequest = (request) async {
+        if (request.startsWith('upload')) throw const ServerFailure(503);
+      };
+      final outbox = sender();
+      await outbox.drain();
+      expect(write.requests, ['upload 1 photo.png', 'upload 2 b.txt']);
+      expect(await db.outboxDao.claim(first, at: now), isNotNull);
+
+      await fireNextAndSettle(outbox);
+
+      expect(outbox.state, OutboxSenderState.waiting);
+      expect(timers.pendingWait, OutboxSender.initialBackoff);
+      expect(outbox.blockedBy, isA<ServerFailure>());
     });
   });
 }

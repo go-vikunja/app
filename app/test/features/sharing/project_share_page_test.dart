@@ -413,6 +413,51 @@ void main() {
       expect(find.text('Support'), findsOneWidget);
     });
 
+    testWidgets('of two retries in the team list, the later one wins', (
+      tester,
+    ) async {
+      await pumpSharePage(tester);
+      data.teams.failures['list'] = const ServerFailure(502);
+      await tester.tap(find.text(en.shareAddTeam));
+      await tester.pumpAndSettle();
+      expect(sheetText(en.retry), findsOneWidget);
+      data.teams.failures.remove('list');
+      final held = Completer<void>();
+      var holding = true;
+      data.teams.beforeCall = (call) async {
+        if (call == 'list public' && holding) {
+          holding = false;
+          await held.future;
+        }
+      };
+      final before = data.teams.teams;
+
+      await tester.tap(sheetText(en.retry));
+      await tester.pump();
+      data.teams.teams = [
+        ...before,
+        Team(
+          id: 32,
+          name: 'Ops',
+          members: const [TeamMember(user: me)],
+        ),
+      ];
+      await tester.tap(sheetText(en.retry));
+      // Not pumpAndSettle: while a read is held the sheet may show a spinner.
+      await tester.pump();
+      await tester.pump();
+      expect(sheetText('Ops'), findsOneWidget);
+
+      // The held read answers as the server did before the new team.
+      data.teams.teams = before;
+      held.complete();
+      await tester.pumpAndSettle();
+
+      expect(sheetText('Ops'), findsOneWidget);
+      expect(sheetText('Support'), findsOneWidget);
+      expect(data.teams.calls, ['list public', 'list public', 'list public']);
+    });
+
     testWidgets('creates a link with a password, then shares, copies and '
         'shows it as a QR code; the hash is never logged', (tester) async {
       final records = <String>[];

@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/label_ops_dao.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/repositories/label_repository.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/text/title_order.dart';
 
@@ -174,13 +175,7 @@ final class LocalLabelRepository implements LabelRepository {
     _log.fine(done);
     final sync = _sync;
     if (sync == null) return;
-    unawaited(
-      sync.refreshAfterWrite().then<void>(
-        (_) {},
-        onError: (Object error) =>
-            _log.fine('Sync after a label change failed: ${error.runtimeType}'),
-      ),
-    );
+    unawaited(refreshQuietly(sync.refreshAfterWrite, _log, 'a label change'));
   }
 
   /// The write is stored; the send reports through the outbox state and

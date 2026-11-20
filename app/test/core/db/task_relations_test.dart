@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
+import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
@@ -275,6 +277,55 @@ void main() {
         (102, 101, 'parenttask'),
         (101, 102, 'subtask'),
       });
+    });
+
+    test('the remap of the other task changes only the payload of the ops '
+        'naming it: one waiting out a backoff and one that failed keep '
+        'their state', () async {
+      final created = await create('New');
+      await queue(
+        1,
+        TaskChanges(relations: add(TaskRelationKind.related, created)),
+      );
+      await queue(
+        2,
+        TaskChanges(relations: add(TaskRelationKind.blocking, created)),
+      );
+      final [_, waiting, failed] = await ops();
+      await db.outboxDao.scheduleRetry(
+        waiting.id,
+        attempts: 2,
+        failure: const ServerFailure(502),
+        nextAttemptAt: later,
+      );
+      await db.outboxDao.scheduleRetry(
+        failed.id,
+        attempts: 3,
+        failure: const ServerFailure(502),
+        nextAttemptAt: later,
+      );
+      await db.outboxDao.markFailed(failed.id, const Forbidden());
+
+      await completeCreate(created, 101);
+
+      final [one, two] = await ops();
+      expect(one.id, waiting.id);
+      expect(one.state, OutboxState.pending.name);
+      expect(one.attempts, 2);
+      expect(one.nextAttemptAt, later);
+      expect(one.lastError, encodeFailure(const ServerFailure(502)));
+      expect(
+        decodeTaskChanges(one.payload).relations,
+        add(TaskRelationKind.related, 101),
+      );
+      expect(two.id, failed.id);
+      expect(two.state, OutboxState.failed.name);
+      expect(two.attempts, 3);
+      expect(two.lastError, encodeFailure(const Forbidden()));
+      expect(
+        decodeTaskChanges(two.payload).relations,
+        add(TaskRelationKind.blocking, 101),
+      );
     });
 
     test('a relation naming a temporary id whose create was answered names '
@@ -608,6 +659,62 @@ void main() {
       expect(await pendingOf(1), decodeTaskChanges(left.single.payload));
       expect(await pendingOf(3), isNull);
       expect(await storedEdges(), {(1, 3, 'related'), (3, 1, 'related')});
+    });
+
+    test('a task the sync forgets changes only the payload of an op waiting '
+        'out a backoff; a failed one goes back to the queue', () async {
+      await queue(
+        1,
+        TaskChanges(
+          title: 'Renamed',
+          relations: add(TaskRelationKind.related, 2),
+        ),
+      );
+      await queue(
+        3,
+        TaskChanges(
+          title: 'Three again',
+          relations: add(TaskRelationKind.related, 2),
+        ),
+      );
+      final [waiting, failed] = await ops();
+      await db.outboxDao.scheduleRetry(
+        waiting.id,
+        attempts: 2,
+        failure: const ServerFailure(502),
+        nextAttemptAt: later,
+      );
+      await db.outboxDao.scheduleRetry(
+        failed.id,
+        attempts: 3,
+        failure: const ServerFailure(502),
+        nextAttemptAt: later,
+      );
+      await db.outboxDao.markFailed(failed.id, const Forbidden());
+
+      await db.outboxDao.forgetRelatedTasks({2});
+
+      final [kept, retaken] = await ops();
+      expect(kept.id, waiting.id);
+      expect(kept.state, OutboxState.pending.name);
+      expect(kept.attempts, 2);
+      expect(kept.nextAttemptAt, later);
+      expect(kept.lastError, encodeFailure(const ServerFailure(502)));
+      expect(
+        decodeTaskChanges(kept.payload),
+        const TaskChanges(title: 'Renamed'),
+      );
+      expect(retaken.id, failed.id);
+      expect(retaken.state, OutboxState.pending.name);
+      expect(retaken.attempts, 0);
+      expect(retaken.nextAttemptAt, isNull);
+      expect(retaken.lastError, isNull);
+      expect(
+        decodeTaskChanges(retaken.payload),
+        const TaskChanges(title: 'Three again'),
+      );
+      expect(await pendingOf(1), const TaskChanges(title: 'Renamed'));
+      expect(await pendingOf(3), const TaskChanges(title: 'Three again'));
     });
 
     test('a pull of a task created here and answered keeps the inverse edge '

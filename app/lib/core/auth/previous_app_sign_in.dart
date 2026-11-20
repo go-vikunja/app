@@ -6,6 +6,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
+import 'package:vikunja_mobile/core/auth/issued_access_token.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
@@ -135,7 +136,7 @@ final class PreviousAppSignIn {
       // Its retries could take more than a minute, and the old token is
       // spent either way.
       user = await _accountGateway
-          .currentUser(connection, _IssuedTokens(tokens.accessToken))
+          .currentUser(connection, IssuedAccessToken(tokens.accessToken))
           .timeout(_userTimeout);
       if (user.id != tokens.userId) {
         throw const UnexpectedResponse(
@@ -197,24 +198,10 @@ final class PreviousAppSignIn {
   ) async {
     try {
       await _accountGateway
-          .logout(connection, _IssuedTokens(accessToken))
+          .logout(connection, IssuedAccessToken(accessToken))
           .timeout(_logoutTimeout);
     } on Object catch (error) {
       _log.info('Could not end an abandoned session: ${error.runtimeType}');
     }
   }
-}
-
-/// The access token of a token response that was not persisted yet; it is
-/// minutes old, so a rejection is final.
-final class _IssuedTokens implements AccessTokenSource {
-  const new(this._accessToken);
-
-  final String _accessToken;
-
-  @override
-  Future<String> validAccessToken() async => _accessToken;
-
-  @override
-  Future<String?> refreshAfterRejection(String rejectedToken) async => null;
 }

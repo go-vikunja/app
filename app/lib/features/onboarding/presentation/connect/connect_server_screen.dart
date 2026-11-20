@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/features/common/presentation/motion.dart';
 import 'package:vikunja_mobile/features/connection/application/connection_fix.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_navigation.dart';
@@ -34,7 +35,6 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/server_a
 import 'package:vikunja_mobile/features/onboarding/presentation/guest/share_password_sheet.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/guest/shared_link_sheet.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/previous_app_note.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 
 class ConnectServerScreen extends ConsumerStatefulWidget {

@@ -6,12 +6,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
-import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/network/dio_factory.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
+import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/server_connections.dart';

@@ -9,7 +9,7 @@ import 'package:vikunja_mobile/core/attachments/attachment_images.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/attachment_repository.dart';
-import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 
 final _log = Logger('Attachments');
 
@@ -49,7 +49,7 @@ final class LocalAttachmentRepository implements AttachmentRepository {
     int attachmentId, {
     bool isCover = false,
   }) async {
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     if (isCover) {
       await _write.tasks.update(
         id,
@@ -68,7 +68,7 @@ final class LocalAttachmentRepository implements AttachmentRepository {
 
   @override
   Future<void> setCover(int taskId, int? attachmentId) async {
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     await _write.tasks.update(
       id,
       TaskChanges(coverImageAttachmentId: attachmentId ?? 0),
@@ -82,7 +82,7 @@ final class LocalAttachmentRepository implements AttachmentRepository {
     TaskAttachment attachment, {
     CancelToken? cancel,
   }) async {
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     if (await _downloads.cached(_accountId, id, attachment) case final file?) {
       return file;
     }
@@ -104,7 +104,7 @@ final class LocalAttachmentRepository implements AttachmentRepository {
     String? mimeType,
     CancelToken? cancel,
   }) async {
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     final size = await file.length();
     if (size > maxUploadBytes) {
       throw UploadTooLarge(size: size, maxBytes: maxUploadBytes);
@@ -130,11 +130,5 @@ final class LocalAttachmentRepository implements AttachmentRepository {
         'Could not store an attachment change: ${error.runtimeType}',
       );
     }
-  }
-
-  Future<int> _serverId(int taskId) async {
-    final id = await _db.tasksDao.resolveId(taskId);
-    if (id < 0) throw TaskNotSyncedYet(taskId);
-    return id;
   }
 }

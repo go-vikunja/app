@@ -10,12 +10,12 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/accounts/application/https_twins.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/remove_account_dialog.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_texts.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
 import 'package:vikunja_mobile/features/sync/application/inactive_outboxes.dart';
 
@@ -123,7 +123,7 @@ Future<bool?> removeAccount(
 /// remove that one, whose reminders would otherwise come twice. Its unsent
 /// changes are counted first, so the question says they would be lost.
 /// Once kept, it is asked again only after changes it had unsent then have
-/// gone ([KeptHttpTwins]).
+/// gone, or after it signed out and in again ([KeptHttpTwins]).
 Future<void> offerToRemoveHttpTwin(BuildContext context, WidgetRef ref) async {
   final accounts = ref.read(accountsProvider).value;
   final entry = accounts?.activeAccount;

@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository.dart'
     show StoredRead;
+import 'package:vikunja_mobile/features/tasks/presentation/details/refresh_guard.dart';
 
 final _log = Logger('TaskDetails');
 
@@ -81,12 +82,8 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
   final Future<TaskDetails> Function(int taskId) _read;
   final Future<void> Function(int taskId) _markRead;
   final StoredDetailsReader? _stored;
+  late final _guard = RefreshGuard(refresh);
   int? _id;
-  int _generation = 0;
-  int? _refreshing;
-  int _writes = 0;
-  bool _refreshDue = false;
-  bool _disposed = false;
 
   int? get id => _id;
 
@@ -101,10 +98,10 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
       _ => null,
     };
     _id = taskId;
-    final generation = ++_generation;
+    final generation = ++_guard.generation;
     if (stored != null) {
       _set(TaskDetailsLoaded(stored.details, storedAt: stored.storedAt));
-      _refreshing = generation;
+      _guard.refreshing = generation;
     } else {
       _set(const TaskDetailsLoading());
       unawaited(_showStored(taskId, generation));
@@ -113,15 +110,15 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
     unawaited(
       request.then(
         (details) {
-          if (_refreshing == generation) _refreshing = null;
-          if (generation != _generation) return;
+          if (_guard.refreshing == generation) _guard.refreshing = null;
+          if (generation != _guard.generation) return;
           _set(TaskDetailsLoaded(details));
           if (details.isUnread) unawaited(_markReadQuietly(taskId));
         },
         onError: (Object error) {
-          if (_refreshing == generation) _refreshing = null;
+          if (_guard.refreshing == generation) _guard.refreshing = null;
           _log.fine('Loading task details failed: ${error.runtimeType}');
-          if (generation == _generation) _fail(error);
+          if (generation == _guard.generation) _fail(error);
         },
       ),
     );
@@ -136,14 +133,14 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
   Future<void> refresh() async {
     final taskId = _id;
     if (taskId == null) return;
-    if (_writes > 0) {
-      _refreshDue = true;
+    if (_guard.hasWrites) {
+      _guard.markDue();
       return;
     }
-    final generation = _refreshing = ++_generation;
+    final generation = _guard.refreshing = ++_guard.generation;
     try {
       final details = await _read(taskId);
-      if (generation != _generation) return;
+      if (generation != _guard.generation) return;
       _set(TaskDetailsLoaded(details));
       if (details.isUnread) unawaited(_markReadQuietly(taskId));
     } on Object catch (error) {
@@ -152,9 +149,9 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
         TaskDetailsLoaded(storedAt: null) => true,
         _ => false,
       };
-      if (generation == _generation && !answered) _fail(error);
+      if (generation == _guard.generation && !answered) _fail(error);
     } finally {
-      if (_refreshing == generation) _refreshing = null;
+      if (_guard.refreshing == generation) _guard.refreshing = null;
     }
   }
 
@@ -180,11 +177,11 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
       _log.warning('Reading stored task details failed: ${error.runtimeType}');
       return;
     }
-    if (stored == null || generation != _generation) return;
+    if (stored == null || generation != _guard.generation) return;
     switch (value) {
       case TaskDetailsLoading():
         _set(TaskDetailsLoaded(stored.value, storedAt: stored.readAt));
-        _refreshing = generation;
+        _guard.refreshing = generation;
       case TaskDetailsFailed(:final failure) when keepsStored(failure):
         _set(
           TaskDetailsLoaded(
@@ -199,16 +196,7 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
 
   /// Runs [write], which changes on the server what a change made here
   /// already shows: refreshes wait until it is done.
-  Future<T> writing<T>(Future<T> Function() write) async {
-    _writes++;
-    _dropRefresh();
-    try {
-      return await write();
-    } finally {
-      _writes--;
-      _refreshIfDue();
-    }
-  }
+  Future<T> writing<T>(Future<T> Function() write) => _guard.writing(write);
 
   /// An attachment the server has now, shown without a read.
   void addAttachment(TaskAttachment attachment) => _change((details) {
@@ -258,23 +246,9 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
             failure: shown.failure,
           ),
         );
-        _dropRefresh();
+        _guard.drop();
       }
     }
-  }
-
-  void _dropRefresh() {
-    if (_refreshing == null || _refreshing != _generation) return;
-    _refreshing = null;
-    _generation++;
-    _refreshDue = true;
-    _refreshIfDue();
-  }
-
-  void _refreshIfDue() {
-    if (_writes > 0 || !_refreshDue || _disposed) return;
-    _refreshDue = false;
-    unawaited(refresh());
   }
 
   static TaskDetails _withAttachments(
@@ -293,12 +267,12 @@ final class TaskDetailsController extends ValueNotifier<TaskDetailsState> {
   }
 
   void _set(TaskDetailsState state) {
-    if (!_disposed) value = state;
+    if (!_guard.disposed) value = state;
   }
 
   @override
   void dispose() {
-    _disposed = true;
+    _guard.dispose();
     super.dispose();
   }
 }

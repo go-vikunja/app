@@ -499,6 +499,26 @@ void main() {
       expect(data.tasks.savedFilterRefreshes, hasLength(1));
     });
 
+    testWidgets('tasks that go while another page covers the list download '
+        'once the list shows again', (tester) async {
+      data.tasks.setSavedFilterSnapshot(
+        filter.projectId,
+        ListSnapshot(positions: const {4: 0}, loadedAt: now),
+      );
+      await openList(tester, filter.projectId);
+      final router = containerOf(tester).read(appRouterProvider);
+      unawaited(router.push(AppRoutes.about));
+      await tester.pumpAndSettle();
+
+      data.tasks.removeSavedFilterSnapshot(filter.projectId);
+      await tester.pumpAndSettle();
+      expect(data.tasks.savedFilterRefreshes, isEmpty);
+
+      router.pop();
+      await tester.pumpAndSettle();
+      expect(data.tasks.savedFilterRefreshes, [filter.projectId]);
+    });
+
     testWidgets('a download that got no token says it failed, not that it '
         'loads once online', (tester) async {
       data.tasks.refreshSavedFilterFailure = const NetworkFailure(

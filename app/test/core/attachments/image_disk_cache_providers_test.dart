@@ -12,13 +12,13 @@ import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart'
 import 'package:vikunja_mobile/core/attachments/image_disk_cache.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
-import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_cache.dart';
 import 'package:vikunja_mobile/core/avatar/avatar_providers.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fake_sync_client.dart';

@@ -1,7 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/app/widgets/adaptive_dialog_action.dart';
 import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 
 /// Asks before a task is deleted. With [trash] (a server with the bin) it
 /// says the task moves to the bin and can be restored from there; a
@@ -15,7 +15,7 @@ Future<bool> confirmDeleteTask(
   bool trash = false,
   bool guest = false,
   TaskOnServer onServer = TaskOnServer.yes,
-}) async {
+}) {
   final l10n = context.l10n;
   final body = switch ((trash, onServer, guest)) {
     (false, _, _) => l10n.taskDeleteDialogBody(title),
@@ -28,24 +28,12 @@ Future<bool> confirmDeleteTask(
       title,
     ),
   };
-  final confirmed = await showAdaptiveDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog.adaptive(
-      scrollable: true,
-      title: Text(l10n.taskDeleteDialogTitle),
-      content: Text(body),
-      actions: [
-        AdaptiveDialogAction(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: Text(l10n.taskDeleteDialogCancel),
-        ),
-        AdaptiveDialogAction(
-          onPressed: () => Navigator.of(context).pop(true),
-          isDestructive: true,
-          child: Text(l10n.taskDeleteDialogConfirm),
-        ),
-      ],
-    ),
+  return confirmAdaptive(
+    context,
+    title: l10n.taskDeleteDialogTitle,
+    body: body,
+    confirmLabel: l10n.taskDeleteDialogConfirm,
+    cancelLabel: l10n.taskDeleteDialogCancel,
+    destructive: true,
   );
-  return confirmed ?? false;
 }

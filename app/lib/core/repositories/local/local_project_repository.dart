@@ -9,6 +9,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/project_repository.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/incremental_run.dart';
@@ -75,11 +76,10 @@ final class LocalProjectRepository implements ProjectRepository {
     );
     _log.fine('Moved project $projectId');
     unawaited(
-      _sync.refreshAfterWrite().then<void>(
-        (_) {},
-        onError: (Object error) => _log.fine(
-          'Sync after moving project $projectId failed: ${error.runtimeType}',
-        ),
+      refreshQuietly(
+        _sync.refreshAfterWrite,
+        _log,
+        'moving project $projectId',
       ),
     );
   }
@@ -88,7 +88,7 @@ final class LocalProjectRepository implements ProjectRepository {
   Future<int> createProject(NewProject project) async {
     final created = await _write.projects.create(
       NewProject(
-        title: _checkedTitle(project.title),
+        title: checkedTitle(project.title),
         parentProjectId: project.parentProjectId,
         hexColor: project.hexColor,
       ),
@@ -144,7 +144,7 @@ final class LocalProjectRepository implements ProjectRepository {
     }
     final requested = ProjectChanges(
       title: switch (changes.title) {
-        final title? => _checkedTitle(title),
+        final title? => checkedTitle(title),
         null => null,
       },
       description: changes.description,
@@ -276,14 +276,11 @@ final class LocalProjectRepository implements ProjectRepository {
     final trash = _trash ?? (throw const NotFound());
     final project = await trash.restoreProject(projectId);
     _log.fine('Restored project $projectId');
-    try {
-      await _sync.refreshAfterWrite();
-    } on Object catch (error) {
-      _log.fine(
-        'Sync after restoring project $projectId failed: '
-        '${error.runtimeType}',
-      );
-    }
+    await refreshQuietly(
+      _sync.refreshAfterWrite,
+      _log,
+      'restoring project $projectId',
+    );
     if (await _db.projectsDao.loadProject(project.id) == null) {
       await _db.transaction(() async {
         await _db.projectsDao.upsertAll([project]);
@@ -308,14 +305,11 @@ final class LocalProjectRepository implements ProjectRepository {
       copyShares: copyShares,
     );
     _log.fine('Duplicated project $projectId as ${copy.id}');
-    try {
-      await _sync.refreshAfterWrite();
-    } on Object catch (error) {
-      _log.fine(
-        'Sync after duplicating project $projectId failed: '
-        '${error.runtimeType}',
-      );
-    }
+    await refreshQuietly(
+      _sync.refreshAfterWrite,
+      _log,
+      'duplicating project $projectId',
+    );
     if (await _db.projectsDao.loadProject(copy.id) == null) {
       await _db.transaction(() async {
         await _db.projectsDao.upsertAll([copy]);
@@ -328,19 +322,8 @@ final class LocalProjectRepository implements ProjectRepository {
   void _settle(String done) {
     _log.fine(done);
     unawaited(
-      _sync.refreshAfterWrite().then<void>(
-        (_) {},
-        onError: (Object error) => _log.fine(
-          'Sync after a project change failed: ${error.runtimeType}',
-        ),
-      ),
+      refreshQuietly(_sync.refreshAfterWrite, _log, 'a project change'),
     );
-  }
-
-  static String _checkedTitle(String title) {
-    final trimmed = title.trim();
-    if (trimmed.isEmpty) throw ArgumentError.value(title, 'title');
-    return trimmed;
   }
 
   @override

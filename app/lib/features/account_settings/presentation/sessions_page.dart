@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/account_settings/presentation/security_list_body.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/session_labels.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
@@ -33,11 +34,9 @@ class SessionsPage extends ConsumerStatefulWidget {
   ConsumerState<SessionsPage> createState() => _SessionsPageState();
 }
 
-class _SessionsPageState extends ConsumerState<SessionsPage> {
-  List<UserSession>? _sessions;
-  String? _currentId;
-  Object? _failure;
-  bool _loading = false;
+class _SessionsPageState extends ConsumerState<SessionsPage> with LatestReads {
+  final _sessions =
+      LatestRead<({List<UserSession> sessions, String? currentId})>();
 
   /// The session being ended, or `*` while all others are.
   String? _busy;
@@ -52,24 +51,17 @@ class _SessionsPageState extends ConsumerState<SessionsPage> {
 
   Future<void> _load() async {
     final repository = ref.read(accountSecurityRepositoryProvider);
-    if (repository == null || _loading) return;
-    setState(() => _loading = true);
-    try {
-      final sessions = await repository.sessions();
-      final currentId = await repository.currentSessionId();
-      if (mounted) {
-        setState(() {
-          _sessions = _newestActiveFirst(sessions);
-          _currentId = currentId;
-          _failure = null;
-        });
-      }
-    } on Object catch (error) {
-      _log.info('Reading the sessions failed: ${error.runtimeType}');
-      if (mounted) setState(() => _failure = error);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    if (repository == null) return;
+    await readLatest(
+      _sessions,
+      () async {
+        final sessions = await repository.sessions();
+        final currentId = await repository.currentSessionId();
+        return (sessions: _newestActiveFirst(sessions), currentId: currentId);
+      },
+      log: _log,
+      what: 'the sessions',
+    );
   }
 
   void _showFailure(String text) => ScaffoldMessenger.of(context)
@@ -92,13 +84,20 @@ class _SessionsPageState extends ConsumerState<SessionsPage> {
     try {
       await repository.revokeSession(session.id);
       if (!mounted) return;
-      setState(
-        () => _sessions = _sessions
-            ?.where((each) => each.id != session.id)
-            .toList(),
-      );
+      setState(() {
+        if (_sessions.value case (:final sessions, :final currentId)) {
+          _sessions.value = (
+            sessions: [
+              for (final each in sessions)
+                if (each.id != session.id) each,
+            ],
+            currentId: currentId,
+          );
+        }
+      });
       unawaited(HapticFeedback.selectionClick());
       announce(context, l10n.sessionsEnded);
+      if (_sessions.loading) unawaited(_load());
     } on Object catch (error) {
       _log.warning('Ending a session failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
@@ -152,7 +151,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage> {
     UserSession session,
     DeviceDescription device,
   ) async {
-    final current = session.id == _currentId;
+    final current = session.id == _sessions.value?.currentId;
     final line = sessionDeviceLine(context.l10n, device);
     final end = await showPickerSheet<bool>(
       context,
@@ -173,23 +172,26 @@ class _SessionsPageState extends ConsumerState<SessionsPage> {
     final theme = Theme.of(context);
     final formatter = MomentFormatter.watch(context, ref);
     final now = ref.watch(clockProvider)();
-    final sessions = _sessions;
+    final sessions = _sessions.value?.sessions;
+    final currentId = _sessions.value?.currentId;
     final others = [
       for (final session in sessions ?? const <UserSession>[])
-        if (session.id != _currentId) session,
+        if (session.id != currentId) session,
     ];
     final busy = _busy != null;
     return Scaffold(
       appBar: AppBar(
         title: ScreenTitle(l10n.sessionsTitle),
         actions: [
-          RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
+          RefreshButton(
+            onPressed: _sessions.loading ? null : () => unawaited(_load()),
+          ),
         ],
       ),
       body: SecurityListBody(
-        loading: _loading && sessions == null,
+        loading: _sessions.loading && sessions == null,
         loadingLabel: l10n.sessionsLoading,
-        failure: _failure,
+        failure: _sessions.failure,
         hasData: sessions != null,
         onRefresh: _load,
         header: Padding(
@@ -239,7 +241,7 @@ class _SessionsPageState extends ConsumerState<SessionsPage> {
               key: ValueKey(session.id),
               session: session,
               device: describeUserAgent(session.deviceInfo),
-              current: session.id == _currentId,
+              current: session.id == currentId,
               lastActive: switch (session.lastActive ?? session.created) {
                 final moment? => l10n.sessionsLastActive(
                   formatter.relative(moment, now: now),

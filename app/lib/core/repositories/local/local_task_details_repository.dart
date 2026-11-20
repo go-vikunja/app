@@ -3,6 +3,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 
@@ -40,7 +41,7 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
 
   @override
   Future<TaskDetails> details(int taskId) async {
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     final version = _db.taskDetailsDao.detailsVersion(id);
     final commentsVersion = _db.taskDetailsDao.commentsVersion(id);
     final details = await _read.tasks.readDetails(id);
@@ -98,7 +99,7 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
     int page = 1,
     bool newestFirst = false,
   }) async {
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     final version = _db.taskDetailsDao.commentsVersion(id);
     final comments = await _read.comments.list(
       id,
@@ -127,7 +128,7 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
 
   @override
   Future<void> markRead(int taskId) async {
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     await _write.tasks.markRead(id);
     await _db.tasksDao.storeCommentState(id, isUnread: false);
   }
@@ -135,7 +136,7 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
   @override
   Future<TaskComment> addComment(int taskId, CommentDraft draft) async {
     _checkContent(draft);
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     final created = await _write.comments.create(id, draft.html);
     await _db.tasksDao.addToCommentCount(id, 1);
     await _keep('a comment', () => _db.taskDetailsDao.putComment(id, created));
@@ -149,7 +150,7 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
     CommentDraft draft,
   ) async {
     _checkContent(draft);
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     final stored = await _write.comments.update(id, comment.id, draft.html);
     final edited = comment.copyWith(
       html: stored.html,
@@ -169,7 +170,7 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
 
   @override
   Future<void> deleteComment(int taskId, int commentId) async {
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     await _write.comments.delete(id, commentId);
     await _db.tasksDao.addToCommentCount(id, -1);
     await _keep(
@@ -245,15 +246,9 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
 
   Future<int> _reactionTarget(ReactionEntity kind, int id) async =>
       switch (kind) {
-        ReactionEntity.task => await _serverId(id),
+        ReactionEntity.task => await serverTaskId(_db.tasksDao, id),
         ReactionEntity.comment => id,
       };
-
-  Future<int> _serverId(int taskId) async {
-    final id = await _db.tasksDao.resolveId(taskId);
-    if (id < 0) throw TaskNotSyncedYet(taskId);
-    return id;
-  }
 
   static void _checkContent(CommentDraft draft) {
     final html = draft.html.trim();

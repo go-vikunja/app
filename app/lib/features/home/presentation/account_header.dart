@@ -1,8 +1,8 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
 /// The signed-in account: its avatar, name, username and server, and Edit;
 /// the whole row opens the account's settings. A link-share guest has no

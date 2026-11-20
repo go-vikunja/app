@@ -98,6 +98,22 @@ final class SecurityHarness {
       await tester.pumpAndSettle();
     }
   }
+
+  /// Holds the next [call] of [security] until the result completes.
+  Completer<void> holdNext(String call) {
+    final held = Completer<void>();
+    var holding = true;
+    security.beforeCall = (each) async {
+      if (each == call && holding) {
+        holding = false;
+        await held.future;
+      }
+    };
+    return held;
+  }
+
+  int callsOf(String call) =>
+      security.calls.where((each) => each == call).length;
 }
 
 void resumeApp(WidgetTester tester) => [

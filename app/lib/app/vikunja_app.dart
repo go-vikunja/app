@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/system_bar_style.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/app/widgets/app_lock_gate.dart';
+import 'package:vikunja_mobile/core/settings/appearance_settings.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/deep_links/presentation/deep_link_listener.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notification_tap_listener.dart';

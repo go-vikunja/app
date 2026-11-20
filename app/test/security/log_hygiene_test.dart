@@ -28,12 +28,12 @@ const _logLevels = 'finest|finer|fine|config|info|warning|severe|shout|log';
 /// Allowed findings, by rule and path suffix, each with its reason.
 const _allowed = <String, Map<String, String>>{
   'console': {
-    'lib/bootstrap/logging_setup.dart':
+    'lib/core/logging/logging_setup.dart':
         'The debug console sink: prints only redacted records, release '
         'builds install none.',
   },
   'sink': {
-    'lib/bootstrap/logging_setup.dart':
+    'lib/core/logging/logging_setup.dart':
         'The debug console sink, and the diagnostics log of every build '
         '(DiagnosticsLog.add): from WARNING up, redacted at capture, errors '
         "by type and the stack by the app's frames, kept in the cache "
@@ -439,7 +439,7 @@ void main() {
   test('finds the sources and the log calls it checks', () {
     expect(
       dart.map((s) => s.path),
-      contains('lib/bootstrap/logging_setup.dart'),
+      contains('lib/core/logging/logging_setup.dart'),
     );
     expect([
       for (final s in dart) ..._dartLogCall.allMatches(s.text),

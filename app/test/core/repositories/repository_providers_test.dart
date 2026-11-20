@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
-import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/project_sharing_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -14,6 +13,7 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/features/overview/application/open_tasks_provider.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_hosts.dart';
+import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/sample_data.dart';

@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
-import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/outbox/outbox_sender.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_label_repository.dart';
@@ -14,6 +13,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 import 'package:vikunja_mobile/features/sync/application/outbox_providers.dart';
 
 import '../../helpers/auth_fakes.dart';

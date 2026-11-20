@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
+import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
@@ -43,20 +44,10 @@ class TrashPage extends ConsumerStatefulWidget {
   ConsumerState<TrashPage> createState() => _TrashPageState();
 }
 
-/// One tab's list and its reads.
-final class _Listing<T> {
-  new(this.read);
-
-  final Future<List<T>> Function(TrashRepository trash) read;
-  List<T>? items;
-  Object? failure;
-  bool loading = false;
-  int loads = 0;
-}
-
-class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
-  final _tasks = _Listing<TrashedTask>((trash) => trash.tasks());
-  final _projects = _Listing<TrashedProject>((trash) => trash.projects());
+class _TrashPageState extends ConsumerState<TrashPage>
+    with PageReachability, LatestReads {
+  final _tasks = LatestRead<List<TrashedTask>>();
+  final _projects = LatestRead<List<TrashedProject>>();
 
   /// The action on its way: `task <id>`, `project <id>`, `empty tasks` or
   /// `empty projects`, and `asking` while Empty bin's question is open.
@@ -69,48 +60,38 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
   }
 
   Future<void> _reload() async {
-    await Future.wait([_load(_tasks), _load(_projects)]);
+    await Future.wait([_loadTasks(), _loadProjects()]);
   }
 
-  /// The latest read of [list] wins: one that started earlier may still
-  /// hold an item that an action has taken out since.
-  Future<void> _load<T>(_Listing<T> list) async {
+  Future<void> _loadTasks() => _load(_tasks, (trash) => trash.tasks());
+
+  Future<void> _loadProjects() => _load(_projects, (trash) => trash.projects());
+
+  Future<void> _load<T>(
+    LatestRead<List<T>> list,
+    Future<List<T>> Function(TrashRepository trash) read,
+  ) async {
     final trash = ref.read(trashRepositoryProvider);
     if (trash == null) return;
-    final load = ++list.loads;
-    setState(() => list.loading = true);
-    bool latest() => mounted && load == list.loads;
-    try {
-      final items = await list.read(trash);
-      if (latest()) {
-        setState(() {
-          list
-            ..items = items
-            ..failure = null;
-          noteReached();
-        });
-      }
-    } on Object catch (error) {
-      _log.info('Reading the bin failed: ${error.runtimeType}');
-      if (latest()) {
-        setState(() {
-          list.failure = error;
-          noteFailure(error);
-        });
-      }
-    } finally {
-      if (latest()) setState(() => list.loading = false);
-    }
+    await readLatest(
+      list,
+      () => read(trash),
+      log: _log,
+      what: 'the bin',
+      onValue: (_) => noteReached(),
+      onFailure: noteFailure,
+    );
   }
 
   /// Runs [send] as the page's one action, under [busy]. Then [apply]
   /// changes [list] and [done] is said; a failure is said in a snackbar,
-  /// and a `NotFound` with a code reads [list] again: the item is no longer
-  /// where the page shows it. True when it went through.
+  /// and a `NotFound` with a code has [load] read [list] again: the item is
+  /// no longer where the page shows it. True when it went through.
   Future<bool> _act<T>(
     String busy,
     TrashAction action, {
-    required _Listing<T> list,
+    required LatestRead<List<T>> list,
+    required Future<void> Function() load,
     required Future<void> Function() send,
     required List<T> Function(List<T> items) apply,
     required String done,
@@ -123,12 +104,12 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
       await send();
       if (!mounted) return true;
       setState(() {
-        if (list.items case final items?) list.items = apply(items);
+        if (list.value case final items?) list.value = apply(items);
         noteReached();
       });
       unawaited(HapticFeedback.selectionClick());
       announcer.say(done);
-      if (list.loading) unawaited(_load(list));
+      if (list.loading) unawaited(load());
       return true;
     } on Object catch (error) {
       _log.info('A bin action failed: ${error.runtimeType}');
@@ -140,7 +121,7 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
         );
       if (mounted) {
         setState(() => noteFailure(error));
-        if (error case NotFound(routeAbsent: false)) unawaited(_load(list));
+        if (error case NotFound(routeAbsent: false)) unawaited(load());
       }
       return false;
     } finally {
@@ -156,6 +137,7 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
       'task $id',
       TrashAction.restoreTask,
       list: _tasks,
+      load: _loadTasks,
       send: () => tasks.restoreTask(id),
       apply: (items) => _withoutTask(items, id),
       done: context.l10n.taskRestored,
@@ -172,11 +154,12 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
       'project $id',
       TrashAction.restoreProject,
       list: _projects,
+      load: _loadProjects,
       send: () => projects.restoreProject(id),
       apply: (items) => _withoutProject(items, id),
       done: context.l10n.projectRestored,
     );
-    if (restored && mounted) unawaited(_load(_tasks));
+    if (restored && mounted) unawaited(_loadTasks());
   }
 
   Future<void> _deleteTaskForever(TrashedTask item) async {
@@ -196,6 +179,7 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
       'task $id',
       TrashAction.deleteTaskForever,
       list: _tasks,
+      load: _loadTasks,
       send: () => trash.deleteTaskForever(id),
       apply: (items) => _withoutTask(items, id),
       done: l10n.trashTaskDeletedForever,
@@ -221,6 +205,7 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
       'project $id',
       TrashAction.deleteProjectForever,
       list: _projects,
+      load: _loadProjects,
       send: () => trash.deleteProjectForever(id),
       apply: (items) => _withoutProject(items, id),
       done: l10n.trashProjectDeletedForever,
@@ -240,7 +225,7 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
     void say(String text) => messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(text)));
-    void readAgain() => unawaited(tasks ? _load(_tasks) : _load(_projects));
+    void readAgain() => unawaited(tasks ? _loadTasks() : _loadProjects());
     final busy = tasks ? 'empty tasks' : 'empty projects';
     setState(() => _busy = busy);
     var sent = false;
@@ -249,7 +234,7 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
       if (!mounted) return;
       final keepsOthers =
           tasks &&
-          (_tasks.items ?? const <TrashedTask>[]).any(
+          (_tasks.value ?? const <TrashedTask>[]).any(
             (item) => !item.canDeletePermanently,
           );
       if (count.total == 0) {
@@ -282,14 +267,14 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
       // stayed.
       setState(() {
         if (tasks) {
-          if (_tasks.items case final items?) {
-            _tasks.items = [
+          if (_tasks.value case final items?) {
+            _tasks.value = [
               for (final item in items)
                 if (!item.canDeletePermanently) item,
             ];
           }
-        } else if (_projects.items != null) {
-          _projects.items = const [];
+        } else if (_projects.value != null) {
+          _projects.value = const [];
         }
         noteReached();
       });
@@ -329,8 +314,8 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
     final l10n = context.l10n;
     final offline = watchOffline(
       onBackOnline: () {
-        if (_tasks.failure is NetworkFailure) unawaited(_load(_tasks));
-        if (_projects.failure is NetworkFailure) unawaited(_load(_projects));
+        if (_tasks.failure is NetworkFailure) unawaited(_loadTasks());
+        if (_projects.failure is NetworkFailure) unawaited(_loadProjects());
       },
     );
     final projects = {
@@ -338,8 +323,8 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
         project.id: project,
     };
     final busy = _busy;
-    final tasks = _tasks.items;
-    final trashedProjects = _projects.items;
+    final tasks = _tasks.value;
+    final trashedProjects = _projects.value;
 
     return DefaultTabController(
       length: 2,
@@ -371,7 +356,7 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
                   ? () => unawaited(_empty(tasks: true))
                   : null,
               onRefresh: _reload,
-              onRetry: () => unawaited(_load(_tasks)),
+              onRetry: () => unawaited(_loadTasks()),
               itemBuilder: (context, index) {
                 final item = tasks![index];
                 return TrashTaskRow(
@@ -396,7 +381,7 @@ class _TrashPageState extends ConsumerState<TrashPage> with PageReachability {
                   ? () => unawaited(_empty(tasks: false))
                   : null,
               onRefresh: _reload,
-              onRetry: () => unawaited(_load(_projects)),
+              onRetry: () => unawaited(_loadProjects()),
               itemBuilder: (context, index) {
                 final item = trashedProjects![index];
                 return TrashProjectRow(
@@ -496,7 +481,7 @@ class _TrashTab extends StatelessWidget {
 
   /// Keeps the tab's scroll offset while the other tab shows.
   final PageStorageKey<String> storageKey;
-  final _Listing<Object?> listing;
+  final LatestRead<List<Object?>> listing;
   final bool offline;
   final String emptyTitle;
   final String emptyBody;
@@ -513,7 +498,7 @@ class _TrashTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final items = listing.items;
+    final items = listing.value;
     final failure = listing.failure;
     final notice = switch (failure) {
       NetworkFailure(problem: NetworkProblem(concernsConnectionSettings: false))

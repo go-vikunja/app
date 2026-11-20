@@ -407,4 +407,23 @@ void main() {
       }
     });
   });
+
+  test('userSettingsFrom reads the account fields from the first map, the '
+      "web's from the second, and takes the reminders as given", () {
+    final settings = userSettingsFrom(
+      {'week_start': 2, 'minimum_priority': 4, 'comment_sort_order': 'desc'},
+      {'week_start': 3, 'minimum_priority': 5, 'time_format': '12h'},
+      quickAddDefaultReminders: const [Duration(minutes: 5)],
+    );
+
+    expect(
+      settings,
+      const UserSettings(
+        weekStart: 2,
+        minimumPriority: 5,
+        timeFormat: TimeFormat.twelveHour,
+        quickAddDefaultReminders: [Duration(minutes: 5)],
+      ),
+    );
+  });
 }

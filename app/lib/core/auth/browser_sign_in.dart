@@ -5,6 +5,7 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
+import 'package:vikunja_mobile/core/auth/issued_access_token.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
@@ -108,7 +109,7 @@ final class BrowserSignIn {
     try {
       user = await _accountGateway.currentUser(
         connection,
-        _IssuedTokens(tokens.accessToken),
+        IssuedAccessToken(tokens.accessToken),
       );
       if (user.id != tokens.userId) {
         throw const UnexpectedResponse(
@@ -168,18 +169,4 @@ final class BrowserSignIn {
     );
     return entry;
   }
-}
-
-/// The access token of a token response that was not persisted yet; it is
-/// minutes old, so a rejection is final.
-final class _IssuedTokens implements AccessTokenSource {
-  const new(this._accessToken);
-
-  final String _accessToken;
-
-  @override
-  Future<String> validAccessToken() async => _accessToken;
-
-  @override
-  Future<String?> refreshAfterRejection(String rejectedToken) async => null;
 }

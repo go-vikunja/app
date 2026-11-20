@@ -1,6 +1,7 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/src/quick_add/date_parser.dart';
 import 'package:vikunja_logic/src/quick_add/parsed_task_text.dart';
+import 'package:vikunja_logic/src/quick_add/quick_add_tokens.dart';
 import 'package:vikunja_logic/src/quick_add/repeat_parser.dart';
 
 /// The prefix characters of a mode; null for [QuickAddMagicMode.disabled].
@@ -152,34 +153,19 @@ bool _isQuoted(String text) =>
     (text.startsWith('"') || text.startsWith("'")) &&
     text.endsWith(text[0]);
 
-/// The web's `getItemsFromPrefix`: an item follows its prefix at the start
-/// of the text or after a space and runs to the next space, or is quoted
-/// with `'` or `"`. Duplicates collapse.
-List<String> _itemsFromPrefix(String text, String prefix) {
-  final parts = text.split(' $prefix');
-  final items = <String>{};
-  for (var part in text.startsWith(prefix) ? parts : parts.skip(1)) {
-    if (part.startsWith(prefix)) part = part.substring(prefix.length);
-    final item = part.startsWith("'")
-        ? part.split("'")[1]
-        : part.startsWith('"')
-        ? part.split('"')[1]
-        : part.split(' ').first;
-    if (item.isNotEmpty) items.add(item);
-  }
-  return items.toList();
-}
+/// The web's `getItemsFromPrefix`: the non-empty items of
+/// [quickAddTokens], duplicates collapsed.
+List<String> _itemsFromPrefix(String text, String prefix) => {
+  for (final token in quickAddTokens(text, prefix))
+    if (token.item.isNotEmpty) token.item,
+}.toList();
 
-final _wholeNumber = RegExp(r'^[0-9]+$');
-
-/// The first item that is a whole number from 0 to 5. D102-8: the web
-/// reads it with JS `parseInt`, so `!2fa` was priority 2 while the title
-/// kept `!2fa`.
+/// The first item that is a priority ([quickAddPriority]).
 ({int value, String item})? _priority(String text, String prefix) {
   for (final item in _itemsFromPrefix(text, prefix)) {
-    if (!_wholeNumber.hasMatch(item)) continue;
-    final value = int.tryParse(item);
-    if (value != null && value <= 5) return (value: value, item: item);
+    if (quickAddPriority(item) case final value?) {
+      return (value: value, item: item);
+    }
   }
   return null;
 }

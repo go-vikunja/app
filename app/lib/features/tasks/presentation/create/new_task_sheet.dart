@@ -13,7 +13,6 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
-import 'package:vikunja_mobile/core/text/task_title_limit.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
@@ -563,7 +562,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
 
     final created = result.createdTaskIds;
     final confirmation = created.length == 1
-        ? l10n.newTaskCreated(_createdTitle(plans.first, result, prefixes))
+        ? l10n.newTaskCreated(result.createdTitles.single)
         : l10n.newTaskCreatedMany(created.length);
     final warnings = [
       ?_leftInDefaultColumn(l10n, left),
@@ -702,52 +701,6 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           l10n.newTaskAddFailed(message.trim()),
         _ => l10n.newTaskAddFailedUnknown,
       };
-
-  /// [plan]'s title as created: without the names the server search
-  /// resolved, which are not always the ones the plan resolved, with the
-  /// labels that could not be created at its end, and cut to the server's
-  /// limit as the service cuts it.
-  static String _createdTitle(
-    QuickAddPlan plan,
-    QuickAddResult result,
-    QuickAddPrefixes? prefixes,
-  ) {
-    final title = _titleWithoutResolved(plan, result, prefixes);
-    return cutTaskTitle(
-      [
-        title,
-        for (final token in result.labelsKept)
-          if (!title.contains(token)) token,
-      ].join(' '),
-    ).title;
-  }
-
-  static String _titleWithoutResolved(
-    QuickAddPlan plan,
-    QuickAddResult result,
-    QuickAddPrefixes? prefixes,
-  ) {
-    if (plan.magicOnly || prefixes == null) return plan.title;
-    final unresolved = {
-      for (final name in result.unresolvedAssignees) name.toLowerCase(),
-    };
-    final resolved = {
-      for (final name in plan.parsed.assignees)
-        if (!unresolved.contains(name.toLowerCase())) name.toLowerCase(),
-    };
-    final text = plan.parsed.text.trim();
-    if (resolved.isEmpty) return text;
-    final spans = [
-      for (final token in prefixedTokens(text, prefixes.assignee))
-        if (resolved.contains(token.item.toLowerCase()))
-          MagicSpan(token.start, token.end, MagicSpanKind.assignee),
-    ];
-    final cleaned = removeMagicSpans(
-      TextEditingValue(text: text),
-      spans,
-    ).text.trim();
-    return cleaned.isEmpty ? text : cleaned;
-  }
 
   @override
   Widget build(BuildContext context) {

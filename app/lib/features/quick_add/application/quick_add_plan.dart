@@ -129,6 +129,7 @@ final class QuickAddExtras {
 final class QuickAddResult {
   const new({
     required this.createdTaskIds,
+    this.createdTitles = const [],
     this.labelsNotCreated = const [],
     this.labelsKept = const [],
     this.unresolvedAssignees = const [],
@@ -136,6 +137,11 @@ final class QuickAddResult {
 
   /// Local ids (negative until each create is sent), in input order.
   final List<int> createdTaskIds;
+
+  /// The titles the tasks of [createdTaskIds] were created with, in the
+  /// same order: without the names the server search found, with the
+  /// labels kept, cut to the server's limit.
+  final List<String> createdTitles;
 
   /// Titles of the new labels of [QuickAddExtras] whose label could not be
   /// created (a title the server would refuse); the tasks were created

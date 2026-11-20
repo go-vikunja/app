@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/auth/access_token_source.dart';
 import 'package:vikunja_api/src/errors/error_body.dart';
+import 'package:vikunja_api/src/errors/streamed_error_body.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// Adds the account's bearer token to requests for its server and, when the
@@ -24,7 +25,6 @@ final class AuthInterceptor extends Interceptor {
   static const _managedKey = 'vikunja.auth.managed';
   static const _repeatedKey = 'vikunja.auth.repeated';
   static const _tokenRejectedCode = 11;
-  static const int _maxErrorBodyBytes = 64 * 1024;
 
   final Dio _dio;
   final ServerConnection _connection;
@@ -71,7 +71,8 @@ final class AuthInterceptor extends Interceptor {
     final response = err.response;
     if (response case Response(statusCode: 401, data: final ResponseBody body)
         when options.extra[_managedKey] == true) {
-      response.data = await _readErrorBody(body);
+      // A body that breaks off is no proof of a rejected token.
+      response.data = await readErrorBody(body) ?? Uint8List(0);
     }
     final rejectedToken = _bearerToken(options);
     if (response?.statusCode != 401 ||
@@ -121,21 +122,6 @@ final class AuthInterceptor extends Interceptor {
       // The repeat already went through every interceptor.
       handler.reject(repeatError);
     }
-  }
-
-  // Error bodies are small JSON; a larger one is cut off and fails to parse.
-  static Future<Uint8List> _readErrorBody(ResponseBody body) async {
-    final bytes = BytesBuilder(copy: false);
-    try {
-      await for (final chunk in body.stream) {
-        bytes.add(chunk);
-        if (bytes.length > _maxErrorBodyBytes) break;
-      }
-    } on Object {
-      // A body that breaks off is no proof of a rejected token.
-      return Uint8List(0);
-    }
-    return bytes.takeBytes();
   }
 
   bool _isOnAccountServer(Uri uri) {

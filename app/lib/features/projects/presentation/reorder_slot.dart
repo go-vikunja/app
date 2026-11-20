@@ -1,15 +1,17 @@
 import 'package:material_ui/material_ui.dart';
 
 /// Where a dragged row would go: a bar in the gap between two rows,
-/// starting at [indent] to show the level it lands on.
+/// starting at [indent] to show the level it lands on and stopping [end]
+/// before the far side.
 class DropLine extends StatelessWidget {
-  const new({this.indent = 16, super.key});
+  const new({this.indent = 16, this.end = 16, super.key});
 
   final double indent;
+  final double end;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: EdgeInsetsDirectional.only(start: indent, end: 16),
+    padding: EdgeInsetsDirectional.only(start: indent, end: end),
     child: SizedBox(
       height: 3,
       child: DecoratedBox(
@@ -22,12 +24,72 @@ class DropLine extends StatelessWidget {
   );
 }
 
-/// A row's place in a list whose rows can be dragged: tells the list where
-/// the row is laid out, keeps it alive while it is held and scrolls away,
+/// Tells a list where a row is laid out, its context under [id] in
+/// [slots], and keeps the row alive while [keepAlive], as a held row that
+/// scrolls away must stay.
+class SlotRegistration<K extends Object> extends StatefulWidget {
+  const new({
+    required this.id,
+    required this.slots,
+    required this.keepAlive,
+    required this.child,
+    super.key,
+  });
+
+  final K id;
+  final Map<K, BuildContext> slots;
+  final bool keepAlive;
+  final Widget child;
+
+  @override
+  State<SlotRegistration<K>> createState() => _SlotRegistrationState<K>();
+}
+
+class _SlotRegistrationState<K extends Object>
+    extends State<SlotRegistration<K>>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => widget.keepAlive;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.slots[widget.id] = context;
+  }
+
+  @override
+  void didUpdateWidget(SlotRegistration<K> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.id != widget.id ||
+        !identical(oldWidget.slots, widget.slots)) {
+      _unregister(oldWidget);
+      widget.slots[widget.id] = context;
+    }
+    if (oldWidget.keepAlive != widget.keepAlive) updateKeepAlive();
+  }
+
+  @override
+  void dispose() {
+    _unregister(widget);
+    super.dispose();
+  }
+
+  void _unregister(SlotRegistration<K> slot) {
+    if (identical(slot.slots[slot.id], context)) slot.slots.remove(slot.id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
+}
+
+/// A row's place in a list whose rows can be dragged ([SlotRegistration]):
 /// fades it while it is held, and paints the drop line into the gap above
 /// or below it, or tints and outlines a row a drop goes into, without
 /// moving any row.
-class ReorderSlot<K extends Object> extends StatefulWidget {
+class ReorderSlot<K extends Object> extends StatelessWidget {
   const new({
     required this.id,
     required this.slots,
@@ -50,105 +112,86 @@ class ReorderSlot<K extends Object> extends StatefulWidget {
   final bool dropsInto;
 
   @override
-  State<ReorderSlot<K>> createState() => _ReorderSlotState<K>();
-}
-
-class _ReorderSlotState<K extends Object> extends State<ReorderSlot<K>>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => widget.held;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.slots[widget.id] = context;
-  }
-
-  @override
-  void didUpdateWidget(ReorderSlot<K> oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.id != widget.id ||
-        !identical(oldWidget.slots, widget.slots)) {
-      _unregister(oldWidget);
-      widget.slots[widget.id] = context;
-    }
-    if (oldWidget.held != widget.held) updateKeepAlive();
-  }
-
-  @override
-  void dispose() {
-    _unregister(widget);
-    super.dispose();
-  }
-
-  void _unregister(ReorderSlot<K> slot) {
-    if (identical(slot.slots[slot.id], context)) slot.slots.remove(slot.id);
-  }
-
-  @override
   Widget build(BuildContext context) {
-    super.build(context);
-    final lineAbove = widget.lineAbove;
-    final lineBelow = widget.lineBelow;
+    final lineAbove = this.lineAbove;
+    final lineBelow = this.lineBelow;
     final colors = Theme.of(context).colorScheme;
-    return Stack(
-      fit: StackFit.passthrough,
-      children: [
-        // Both always there, so that holding the row keeps its subtree.
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: widget.dropsInto ? colors.primaryContainer : null,
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-        Opacity(opacity: widget.held ? 0.4 : 1, child: widget.child),
-        if (widget.dropsInto)
+    return SlotRegistration(
+      id: id,
+      slots: slots,
+      keepAlive: held,
+      child: Stack(
+        fit: StackFit.passthrough,
+        children: [
+          // Both always there, so that holding the row keeps its subtree.
           Positioned.fill(
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  border: Border.all(color: colors.primary, width: 2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: dropsInto ? colors.primaryContainer : null,
+                borderRadius: BorderRadius.circular(12),
               ),
             ),
           ),
-        if (lineAbove != null)
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            child: DropLine(indent: lineAbove),
-          ),
-        if (lineBelow != null)
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: DropLine(indent: lineBelow),
-          ),
-      ],
+          Opacity(opacity: held ? 0.4 : 1, child: child),
+          if (dropsInto)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: colors.primary, width: 2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ),
+          if (lineAbove != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              top: 0,
+              child: DropLine(indent: lineAbove),
+            ),
+          if (lineBelow != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: DropLine(indent: lineBelow),
+            ),
+        ],
+      ),
     );
   }
 }
 
-/// Scrolls the scroll view around a context while a dragged pointer is
-/// near its top or bottom; [onScrolled] runs after each step, as the rows
-/// move under a pointer that holds still.
+/// Scrolls a scroll view while a dragged pointer is within [edge] of its
+/// start or end, along the scroll view's axis; [onScrolled] runs after each
+/// step, as the rows move under a pointer that holds still.
 final class DragEdgeScroller {
-  new({required this.onScrolled});
-
-  static const _edge = 56.0;
+  new({required this.onScrolled, this.edge = 56});
 
   final VoidCallback onScrolled;
+  final double edge;
   EdgeDraggingAutoScroller? _scroller;
 
-  void follow(BuildContext? inside, Offset pointer) {
-    final scrollable = inside == null || !inside.mounted
+  /// For the scroll view around [inside].
+  void follow(BuildContext? inside, Offset pointer) => _follow(
+    inside == null || !inside.mounted
         ? null
-        : inside.findAncestorStateOfType<ScrollableState>();
+        : inside.findAncestorStateOfType<ScrollableState>(),
+    pointer,
+  );
+
+  /// For the scroll view [controller] drives.
+  void followController(ScrollController controller, Offset pointer) {
+    if (!controller.hasClients) return;
+    _follow(switch (controller.position.context) {
+      final ScrollableState state => state,
+      _ => null,
+    }, pointer);
+  }
+
+  void _follow(ScrollableState? scrollable, Offset pointer) {
     if (scrollable == null) return;
     if (_scroller?.scrollable != scrollable) {
       _scroller?.stopAutoScroll();
@@ -158,12 +201,15 @@ final class DragEdgeScroller {
         velocityScalar: 50,
       );
     }
-    final viewport = scrollable.position.viewportDimension;
+    final position = scrollable.position;
+    final viewport = position.viewportDimension;
+    final extent = viewport < edge * 2 ? viewport : edge * 2;
+    final vertical = position.axis == Axis.vertical;
     _scroller!.startAutoScrollIfNecessary(
       Rect.fromCenter(
         center: pointer,
-        width: 1,
-        height: viewport < _edge * 2 ? viewport : _edge * 2,
+        width: vertical ? 1 : extent,
+        height: vertical ? extent : 1,
       ),
     );
   }

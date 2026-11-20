@@ -271,6 +271,26 @@ GoRouter appRouter(Ref ref) {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
   final commentEdits = _PushedTargets<CommentTarget>();
   final teamDescriptions = _PushedTargets<TeamDescriptionTarget>();
+
+  /// A page on the root navigator, which covers the tab bar; unless
+  /// [accountBound] is false it shows nothing once another account is
+  /// active.
+  GoRoute overShell(
+    String path,
+    Widget Function(GoRouterState state) page, {
+    GoRouterRedirect? redirect,
+    List<RouteBase> routes = const [],
+    bool accountBound = true,
+  }) => GoRoute(
+    path: path,
+    parentNavigatorKey: rootNavigatorKey,
+    redirect: redirect,
+    builder: accountBound
+        ? (context, state) => AccountBoundScreen(child: page(state))
+        : (context, state) => page(state),
+    routes: routes,
+  );
+
   final router = GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.splash,
@@ -358,276 +378,166 @@ GoRouter appRouter(Ref ref) {
         path: AppRoutes.home,
         redirect: (context, state) => AppRoutes.overview,
       ),
-      // On the root navigator: it covers the tab bar.
-      GoRoute(
-        path: '${AppRoutes.home}/tasks/:id/edit',
-        parentNavigatorKey: rootNavigatorKey,
-        redirect: (context, state) =>
-            _idParam(state) == null ? AppRoutes.overview : null,
-        builder: (context, state) =>
-            AccountBoundScreen(child: TaskEditPage(taskId: _idParam(state)!)),
+      overShell(
+        '${AppRoutes.home}/tasks/:id/edit',
+        (state) => TaskEditPage(taskId: _idParam(state)!),
+        redirect: _needsId(AppRoutes.overview),
       ),
-      GoRoute(
-        path: '${AppRoutes.home}/tasks/:id/description',
-        parentNavigatorKey: rootNavigatorKey,
-        redirect: (context, state) =>
-            _idParam(state) == null ? AppRoutes.overview : null,
-        builder: (context, state) => AccountBoundScreen(
-          child: DescriptionEditorPage(
-            target: TaskDescriptionTarget(_idParam(state)!),
-          ),
+      overShell(
+        '${AppRoutes.home}/tasks/:id/description',
+        (state) => DescriptionEditorPage(
+          target: TaskDescriptionTarget(_idParam(state)!),
         ),
+        redirect: _needsId(AppRoutes.overview),
       ),
-      GoRoute(
-        path: '${AppRoutes.home}/tasks/:id/comments/:commentId/edit',
-        parentNavigatorKey: rootNavigatorKey,
+      overShell(
+        '${AppRoutes.home}/tasks/:id/comments/:commentId/edit',
+        (state) =>
+            DescriptionEditorPage(target: commentEdits.targetFor(state)!),
         redirect: (context, state) =>
             commentEdits.targetFor(state) == null ? AppRoutes.overview : null,
-        builder: (context, state) => AccountBoundScreen(
-          child: DescriptionEditorPage(target: commentEdits.targetFor(state)!),
+      ),
+      overShell(
+        '${AppRoutes.home}/project/:id/description',
+        (state) => DescriptionEditorPage(
+          target: ProjectDescriptionTarget(_idParam(state)!),
         ),
+        redirect: _needsId(AppRoutes.projects),
       ),
-      GoRoute(
-        path: '${AppRoutes.home}/project/:id/description',
-        parentNavigatorKey: rootNavigatorKey,
-        redirect: (context, state) =>
-            _idParam(state) == null ? AppRoutes.projects : null,
-        builder: (context, state) => AccountBoundScreen(
-          child: DescriptionEditorPage(
-            target: ProjectDescriptionTarget(_idParam(state)!),
-          ),
-        ),
+      overShell(
+        '${AppRoutes.home}/project/:id/edit',
+        (state) => ProjectEditPage(projectId: _idParam(state)!),
+        redirect: _needsId(AppRoutes.projects),
       ),
-      GoRoute(
-        path: '${AppRoutes.home}/project/:id/edit',
-        parentNavigatorKey: rootNavigatorKey,
-        redirect: (context, state) =>
-            _idParam(state) == null ? AppRoutes.projects : null,
-        builder: (context, state) => AccountBoundScreen(
-          child: ProjectEditPage(projectId: _idParam(state)!),
-        ),
+      overShell(
+        '${AppRoutes.home}/project/:id/views',
+        (state) => ProjectViewsPage(projectId: _idParam(state)!),
+        redirect: _needsId(AppRoutes.projects),
       ),
-      GoRoute(
-        path: '${AppRoutes.home}/project/:id/views',
-        parentNavigatorKey: rootNavigatorKey,
-        redirect: (context, state) =>
-            _idParam(state) == null ? AppRoutes.projects : null,
-        builder: (context, state) => AccountBoundScreen(
-          child: ProjectViewsPage(projectId: _idParam(state)!),
-        ),
+      overShell(
+        '${AppRoutes.home}/project/:id/share',
+        (state) => ProjectSharePage(projectId: _idParam(state)!),
+        redirect: _needsId(AppRoutes.projects),
       ),
-      GoRoute(
-        path: '${AppRoutes.home}/project/:id/share',
-        parentNavigatorKey: rootNavigatorKey,
-        redirect: (context, state) =>
-            _idParam(state) == null ? AppRoutes.projects : null,
-        builder: (context, state) => AccountBoundScreen(
-          child: ProjectSharePage(projectId: _idParam(state)!),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.inbox,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            const AccountBoundScreen(child: InboxScreen()),
-      ),
-      GoRoute(
-        path: AppRoutes.search,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            const AccountBoundScreen(child: SearchPage()),
-      ),
-      GoRoute(
-        path: AppRoutes.labels,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            const AccountBoundScreen(child: LabelsPage()),
+      overShell(AppRoutes.inbox, (_) => const InboxScreen()),
+      overShell(AppRoutes.search, (_) => const SearchPage()),
+      overShell(
+        AppRoutes.labels,
+        (_) => const LabelsPage(),
         routes: [
           // Before ':id', which would take it for an id.
-          GoRoute(
-            path: 'new',
-            parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) =>
-                const AccountBoundScreen(child: LabelFormPage()),
-          ),
-          GoRoute(
-            path: ':id',
-            parentNavigatorKey: rootNavigatorKey,
-            redirect: (context, state) =>
-                _idParam(state) == null ? AppRoutes.labels : null,
-            builder: (context, state) => AccountBoundScreen(
-              child: LabelTasksScreen(labelId: _idParam(state)!),
-            ),
+          overShell('new', (_) => const LabelFormPage()),
+          overShell(
+            ':id',
+            (state) => LabelTasksScreen(labelId: _idParam(state)!),
+            redirect: _needsId(AppRoutes.labels),
             routes: [
-              GoRoute(
-                path: 'edit',
-                parentNavigatorKey: rootNavigatorKey,
-                builder: (context, state) => AccountBoundScreen(
-                  child: LabelFormPage(labelId: _idParam(state)),
-                ),
+              overShell(
+                'edit',
+                (state) => LabelFormPage(labelId: _idParam(state)),
               ),
-              GoRoute(
-                path: 'description',
-                parentNavigatorKey: rootNavigatorKey,
-                builder: (context, state) => AccountBoundScreen(
-                  child: DescriptionEditorPage(
-                    target: LabelDescriptionTarget(_idParam(state)!),
-                  ),
+              overShell(
+                'description',
+                (state) => DescriptionEditorPage(
+                  target: LabelDescriptionTarget(_idParam(state)!),
                 ),
               ),
             ],
           ),
         ],
       ),
-      GoRoute(
-        path: AppRoutes.teams,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            const AccountBoundScreen(child: TeamsPage()),
+      overShell(
+        AppRoutes.teams,
+        (_) => const TeamsPage(),
         routes: [
-          GoRoute(
-            path: ':id',
-            parentNavigatorKey: rootNavigatorKey,
-            redirect: (context, state) =>
-                _idParam(state) == null ? AppRoutes.teams : null,
-            builder: (context, state) => AccountBoundScreen(
-              child: TeamPage(
-                key: ValueKey(_idParam(state)),
-                teamId: _idParam(state)!,
-              ),
+          overShell(
+            ':id',
+            (state) => TeamPage(
+              key: ValueKey(_idParam(state)),
+              teamId: _idParam(state)!,
             ),
+            redirect: _needsId(AppRoutes.teams),
             routes: [
-              GoRoute(
-                path: 'description',
-                parentNavigatorKey: rootNavigatorKey,
+              overShell(
+                'description',
+                (state) => DescriptionEditorPage(
+                  target: teamDescriptions.targetFor(state)!,
+                ),
                 redirect: (context, state) =>
                     teamDescriptions.targetFor(state) == null
                     ? AppRoutes.team(_idParam(state)!)
                     : null,
-                builder: (context, state) => AccountBoundScreen(
-                  child: DescriptionEditorPage(
-                    target: teamDescriptions.targetFor(state)!,
-                  ),
-                ),
               ),
             ],
           ),
         ],
       ),
-      GoRoute(
-        path: AppRoutes.trash,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            const AccountBoundScreen(child: TrashPage()),
+      overShell(AppRoutes.trash, (_) => const TrashPage()),
+      overShell(AppRoutes.savedFilterNew, (_) => const SavedFilterFormPage()),
+      overShell(
+        '${AppRoutes.home}/filters/:id/edit',
+        (state) => SavedFilterFormPage(pseudoProjectId: _idParam(state)),
+        redirect: _needsId(AppRoutes.projects),
       ),
-      GoRoute(
-        path: AppRoutes.savedFilterNew,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            const AccountBoundScreen(child: SavedFilterFormPage()),
-      ),
-      GoRoute(
-        path: '${AppRoutes.home}/filters/:id/edit',
-        parentNavigatorKey: rootNavigatorKey,
-        redirect: (context, state) =>
-            _idParam(state) == null ? AppRoutes.projects : null,
-        builder: (context, state) => AccountBoundScreen(
-          child: SavedFilterFormPage(pseudoProjectId: _idParam(state)),
+      overShell(
+        '${AppRoutes.home}/filters/:id/description',
+        (state) => DescriptionEditorPage(
+          target: SavedFilterDescriptionTarget(_idParam(state)!),
         ),
+        redirect: _needsId(AppRoutes.projects),
       ),
-      GoRoute(
-        path: '${AppRoutes.home}/filters/:id/description',
-        parentNavigatorKey: rootNavigatorKey,
-        redirect: (context, state) =>
-            _idParam(state) == null ? AppRoutes.projects : null,
-        builder: (context, state) => AccountBoundScreen(
-          child: DescriptionEditorPage(
-            target: SavedFilterDescriptionTarget(_idParam(state)!),
-          ),
-        ),
-      ),
-      GoRoute(
-        path: AppRoutes.accountSettings,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            const AccountBoundScreen(child: AccountSettingsPage()),
+      overShell(
+        AppRoutes.accountSettings,
+        (_) => const AccountSettingsPage(),
         routes: [
-          GoRoute(
-            path: 'avatar',
-            parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) =>
-                const AccountBoundScreen(child: AvatarPage()),
+          overShell('avatar', (_) => const AvatarPage()),
+          overShell('sessions', (_) => const SessionsPage()),
+          overShell(
+            'api-tokens',
+            (_) => const ApiTokensPage(),
+            routes: [overShell('new', (_) => const ApiTokenFormPage())],
           ),
-          GoRoute(
-            path: 'sessions',
-            parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) =>
-                const AccountBoundScreen(child: SessionsPage()),
-          ),
-          GoRoute(
-            path: 'api-tokens',
-            parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) =>
-                const AccountBoundScreen(child: ApiTokensPage()),
-            routes: [
-              GoRoute(
-                path: 'new',
-                parentNavigatorKey: rootNavigatorKey,
-                builder: (context, state) =>
-                    const AccountBoundScreen(child: ApiTokenFormPage()),
-              ),
-            ],
-          ),
-          GoRoute(
-            path: 'caldav',
-            parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) => AccountBoundScreen(
-              child: CaldavPage(
-                knownTotp: TotpStatus.values.asNameMap()[state.extra],
-              ),
+          overShell(
+            'caldav',
+            (state) => CaldavPage(
+              knownTotp: TotpStatus.values.asNameMap()[state.extra],
             ),
           ),
-          GoRoute(
-            path: 'data-export',
-            parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) =>
-                const AccountBoundScreen(child: DataExportPage()),
-          ),
+          overShell('data-export', (_) => const DataExportPage()),
         ],
       ),
-      GoRoute(
-        path: AppRoutes.widgets,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const WidgetsPage(),
+      overShell(
+        AppRoutes.widgets,
+        (_) => const WidgetsPage(),
+        accountBound: false,
         routes: [
-          GoRoute(
-            path: 'configure',
-            parentNavigatorKey: rootNavigatorKey,
-            redirect: (context, state) =>
-                _appWidgetIdParam(state) == null ? AppRoutes.widgets : null,
-            builder: (context, state) => WidgetConfigurePage(
+          overShell(
+            'configure',
+            (state) => WidgetConfigurePage(
               key: ValueKey(_appWidgetIdParam(state)),
               appWidgetId: _appWidgetIdParam(state)!,
               fromWidget: state.uri.queryParameters['from'] == 'widget',
             ),
+            redirect: (context, state) =>
+                _appWidgetIdParam(state) == null ? AppRoutes.widgets : null,
+            accountBound: false,
           ),
         ],
       ),
-      GoRoute(
-        path: AppRoutes.privacy,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const PrivacyPage(),
+      overShell(
+        AppRoutes.privacy,
+        (_) => const PrivacyPage(),
+        accountBound: false,
       ),
-      GoRoute(
-        path: AppRoutes.addAccount,
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ConnectServerScreen(adding: true),
+      overShell(
+        AppRoutes.addAccount,
+        (_) => const ConnectServerScreen(adding: true),
+        accountBound: false,
         routes: [
-          GoRoute(
-            path: 'server',
-            parentNavigatorKey: rootNavigatorKey,
-            builder: (context, state) =>
-                const ServerOverviewScreen(adding: true),
+          overShell(
+            'server',
+            (_) => const ServerOverviewScreen(adding: true),
+            accountBound: false,
           ),
         ],
       ),
@@ -660,8 +570,7 @@ GoRouter appRouter(Ref ref) {
                 routes: [
                   GoRoute(
                     path: ':id',
-                    redirect: (context, state) =>
-                        _idParam(state) == null ? AppRoutes.projects : null,
+                    redirect: _needsId(AppRoutes.projects),
                     // The page stays when only the id or the view changes
                     // (its key is the route's path); the screen must not.
                     builder: (context, state) => switch (_idParam(state)!) {
@@ -723,6 +632,10 @@ final class _AppSchemeLinks with WidgetsBindingObserver {
 /// a saved filter).
 int? _idParam(GoRouterState state) =>
     int.tryParse(state.pathParameters['id'] ?? '');
+
+/// Sends a route whose `:id` is no number to [fallback].
+GoRouterRedirect _needsId(String fallback) =>
+    (context, state) => _idParam(state) == null ? fallback : null;
 
 int? _viewParam(GoRouterState state) =>
     int.tryParse(state.uri.queryParameters['view'] ?? '');

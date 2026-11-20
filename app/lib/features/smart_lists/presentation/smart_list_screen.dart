@@ -25,6 +25,7 @@ import 'package:vikunja_mobile/features/overview/application/due_date_groups.dar
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_actions.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
+import 'package:vikunja_mobile/features/smart_lists/application/quiet_download.dart';
 import 'package:vikunja_mobile/features/smart_lists/application/smart_list_providers.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/due_sections_list.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_failure.dart';
@@ -68,11 +69,7 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
   /// A filter's tasks older than this download again when it opens.
   static const _staleAfter = Duration(minutes: 5);
 
-  var _openingChecked = false;
-
-  /// Whether a quiet download ran since the filter's tasks last showed;
-  /// another starts by itself only once they go again.
-  var _downloadedWhileMissing = false;
+  QuietDownloads _quietDownloads = QuietDownloads.unopened;
   var _downloading = false;
   Object? _quietFailure;
   var _managing = false;
@@ -114,20 +111,19 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
   bool _isStale(DateTime loadedAt) =>
       ref.read(clockProvider)().difference(loadedAt) >= _staleAfter;
 
-  /// On opening when the tasks are missing or stale, and again whenever
-  /// they go while the filter is still listed (the sync purged them).
+  /// See [quietDownloadStep]. Decided in build, as the build reads the
+  /// tasks: a page that covers the screen pauses that read until it shows
+  /// again, and a download waits for it.
   void _downloadWhenNeeded(DateTime? loadedAt, {required bool listed}) {
-    final opening = !_openingChecked;
-    _openingChecked = true;
-    if (loadedAt != null) {
-      _downloadedWhileMissing = false;
-      if (!opening || !_isStale(loadedAt)) return;
-    } else {
-      // A filter deleted on the web: the server would only say not found.
-      if (_downloadedWhileMissing || !listed) return;
-      _downloadedWhileMissing = true;
-    }
-    if (_downloading || refreshing) return;
+    final step = quietDownloadStep(
+      _quietDownloads,
+      loaded: loadedAt != null,
+      stale: loadedAt != null && _isStale(loadedAt),
+      listed: listed,
+      busy: _downloading || refreshing,
+    );
+    _quietDownloads = step.next;
+    if (!step.start) return;
     // Within this build, so the empty state says so at once.
     _downloading = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {

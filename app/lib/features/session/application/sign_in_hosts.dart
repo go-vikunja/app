@@ -28,12 +28,15 @@ final class OtherSignInHost {
   final OriginKey? origin;
 }
 
+/// Where the browser sign-in for [connection] opens, built as the request
+/// the browser gets, with the host in punycode as settings are stored.
+Uri signInPageOf(ServerConnection connection) =>
+    withAsciiHost(AuthorizationRequest.create(connection, appOAuthClient).url);
+
 /// Where the browser sign-in for [connection] opens, when that is not the
-/// server's own origin; built as the request the browser gets.
+/// server's own origin.
 OtherSignInHost? otherSignInHost(ServerConnection connection) {
-  final page = withAsciiHost(
-    AuthorizationRequest.create(connection, appOAuthClient).url,
-  );
+  final page = signInPageOf(connection);
   final pageOrigin = OriginKey.tryOf(page);
   final serverOrigin = OriginKey.tryOf(connection.rootUri);
   if (pageOrigin != null &&

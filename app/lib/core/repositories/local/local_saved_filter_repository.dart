@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 import 'package:vikunja_mobile/core/repositories/saved_filter_repository.dart';
 import 'package:vikunja_mobile/core/sync/saved_filters.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
@@ -103,16 +104,8 @@ final class LocalSavedFilterRepository implements SavedFilterRepository {
 
   void _settle(String done) {
     _log.fine(done);
-    unawaited(_afterWrite());
-  }
-
-  Future<void> _afterWrite() async {
-    try {
-      await _sync.refreshAfterWrite();
-    } on Object catch (error) {
-      _log.fine(
-        'Sync after a saved filter change failed: ${error.runtimeType}',
-      );
-    }
+    unawaited(
+      refreshQuietly(_sync.refreshAfterWrite, _log, 'a saved filter change'),
+    );
   }
 }

@@ -5,7 +5,7 @@ import 'package:flutter/widgets.dart' show WidgetsFlutterBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:logging/logging.dart';
-import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
+import 'package:vikunja_mobile/core/logging/logging_setup.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';

@@ -7,10 +7,10 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/platform/app_part.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/home/application/background_sync_status.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 
 import '../../helpers/auth_fakes.dart';

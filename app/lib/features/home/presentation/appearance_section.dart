@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/core/platform/app_language_settings.dart';
+import 'package:vikunja_mobile/core/settings/appearance_settings.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 

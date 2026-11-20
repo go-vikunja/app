@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     show NotificationResponse;
-import 'package:vikunja_mobile/bootstrap/logging_setup.dart';
+import 'package:vikunja_mobile/core/logging/logging_setup.dart';
 import 'package:vikunja_mobile/core/notifications/notification_action_handler.dart';
 import 'package:vikunja_mobile/core/platform/app_part.dart';
 

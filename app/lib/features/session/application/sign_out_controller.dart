@@ -1,10 +1,10 @@
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
-import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
+import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 part 'sign_out_controller.g.dart';
 

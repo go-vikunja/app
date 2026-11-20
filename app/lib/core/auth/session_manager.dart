@@ -6,6 +6,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_gateways.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
+import 'package:vikunja_mobile/core/auth/session_manager_states.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/platform/app_part.dart';
 
@@ -129,10 +130,6 @@ final class SessionManager implements AccessTokenSource {
 
   static const _spentRefreshTokensKept = 8;
 
-  // The offset includes the response latency, so it jitters by about a
-  // second; smaller changes are not worth a preferences write.
-  static const _clockOffsetSaveThreshold = Duration(seconds: 5);
-
   final String accountId;
   final TokenStore _tokenStore;
   final RefreshCall _refresh;
@@ -145,52 +142,29 @@ final class SessionManager implements AccessTokenSource {
   final Sleep _sleep;
   final bool _refreshes;
 
+  late final _serverClock = _ServerClock(accountId, _clockOffsets, _clock);
   _Session? _session;
-  Duration _serverClockOffset = Duration.zero;
-  bool _clockOffsetLearned = false;
-  Future<void>? _clockOffsetLoad;
-  Duration? _savedClockOffset;
   Future<_Session>? _inFlight;
   Future<void>? _pendingWrite;
   _Unpersisted? _unpersisted;
   Future<void>? _keptWrite;
   DateTime? _refreshBlockedUntil;
-  SessionEnded? _ended;
+
+  /// None while the manager is live. A new sign-in gets a new manager, so
+  /// a retired one never comes back.
+  SessionStop? _stop;
 
   /// The latest refresh tokens the server took or refused here. Storage
   /// can still hold one whose successor it failed to store, and none of
   /// them brings an ended session back.
   final _spentRefreshTokens = <String>{};
-  bool _retired = false;
-  int _epoch = 0;
 
-  /// The diagnostics' marker for the token being sent, as it was before
-  /// this send, or the one this send wrote once a server error kept it;
-  /// whether this send wrote a new one that a failure proving the send
-  /// never reached the server takes back.
-  RefreshMarker? _markerBefore;
-  RefreshMarker? _markerWritten;
-  bool _sendMarked = false;
-
-  DateTime get _serverNow => _clock().add(_serverClockOffset);
+  SendNote _note = const Unnoted();
 
   @override
   Future<String> validAccessToken() async {
-    final epoch = _epoch;
     try {
-      await _storeKeptTokens(epoch);
-      final session = await _currentSession(epoch);
-      if (!_expiresSoon(session)) return session.accessToken;
-      if (!_refreshes) return await _withoutRefresh(session, epoch);
-      try {
-        return (await _refreshFrom(session)).accessToken;
-      } on VikunjaFailure catch (failure) {
-        // The token still works for a moment; the next call tries again.
-        if (_isTransient(failure) && !_isExpired(session)) {
-          return session.accessToken;
-        }
-        rethrow;
-      }
+      return await _unlessRetired(_validAccessToken);
     } on _Retired {
       throw const SessionEnded(SessionEndReason.invalidRefreshToken);
     }
@@ -198,17 +172,8 @@ final class SessionManager implements AccessTokenSource {
 
   @override
   Future<String?> refreshAfterRejection(String rejectedToken) async {
-    final epoch = _epoch;
     try {
-      await _storeKeptTokens(epoch);
-      final session = await _currentSession(epoch);
-      if (session.accessToken != rejectedToken) return session.accessToken;
-      if (!_refreshes) {
-        final stored = await _readStored(epoch);
-        if (stored.accessToken == rejectedToken) return null;
-        return (_session = _Session.fromStored(stored)).accessToken;
-      }
-      return (await _refreshFrom(session)).accessToken;
+      return await _unlessRetired(() => _refreshAfterRejection(rejectedToken));
     } on _Retired {
       return null;
     }
@@ -220,9 +185,8 @@ final class SessionManager implements AccessTokenSource {
   /// until it expires. Throws like a refresh, [SessionEnded] once the
   /// session is gone; without `refreshes` it does nothing.
   Future<void> refreshNow() async {
-    final epoch = _epoch;
     try {
-      final session = await _currentSession(epoch);
+      final session = await _currentSession();
       if (!_refreshes) return;
       await _refreshFrom(session);
     } on _Retired {
@@ -230,11 +194,47 @@ final class SessionManager implements AccessTokenSource {
     }
   }
 
+  /// A retired manager hands out no token, also none a refresh brings whose
+  /// write began before the retirement (D26).
+  Future<T> _unlessRetired<T>(Future<T> Function() call) async {
+    final result = await call();
+    if (_stop is RetiredStop) throw const _Retired();
+    return result;
+  }
+
+  Future<String> _validAccessToken() async {
+    await _storeKeptTokens();
+    final session = await _currentSession();
+    if (!_expiresSoon(session)) return session.accessToken;
+    if (!_refreshes) return await _withoutRefresh(session);
+    try {
+      return (await _refreshFrom(session)).accessToken;
+    } on VikunjaFailure catch (failure) {
+      // The token still works for a moment; the next call tries again.
+      if (isTransientFailure(failure) && !_isExpired(session)) {
+        return session.accessToken;
+      }
+      rethrow;
+    }
+  }
+
+  Future<String?> _refreshAfterRejection(String rejectedToken) async {
+    await _storeKeptTokens();
+    final session = await _currentSession();
+    if (session.accessToken != rejectedToken) return session.accessToken;
+    if (!_refreshes) {
+      final stored = await _readStored();
+      if (stored.accessToken == rejectedToken) return null;
+      return (_session = _Session.fromStored(stored)).accessToken;
+    }
+    return (await _refreshFrom(session)).accessToken;
+  }
+
   /// The stored token while it lasts; afterwards the request fails like a
   /// rejected token, which the outbox retries later from an isolate that
   /// refreshes. A sibling's newer token in storage is taken instead.
-  Future<String> _withoutRefresh(_Session snapshot, int epoch) async {
-    final stored = await _readStored(epoch);
+  Future<String> _withoutRefresh(_Session snapshot) async {
+    final stored = await _readStored();
     final session = stored.refreshToken == snapshot.refreshToken
         ? snapshot
         : _session = _Session.fromStored(stored);
@@ -244,19 +244,17 @@ final class SessionManager implements AccessTokenSource {
     );
   }
 
-  /// Tokens that were just persisted by a new sign-in. [receivedAt] is the
-  /// local time the token response arrived, for the server clock offset.
-  Future<void> adoptPersisted(
+  /// For a manager just created: tokens a new sign-in has persisted.
+  /// [receivedAt] is the local time the token response arrived, for the
+  /// server clock offset.
+  Future<void> _startSignedIn(
     TokenSet tokens, {
     required DateTime receivedAt,
   }) async {
-    if (_retired) return;
     final offset = tokens.issuedAt.difference(receivedAt);
-    _learnClockOffset(offset);
+    _serverClock.learn(offset);
     _session = _Session.fromTokenSet(tokens);
-    _ended = null;
-    _unpersisted = null;
-    await _track(_saveClockOffset(offset));
+    await _track(_serverClock.save(offset));
   }
 
   /// Completes once no refresh is on its way and no token write is pending,
@@ -278,10 +276,10 @@ final class SessionManager implements AccessTokenSource {
       retry <= settleWriteRetries && _unpersisted != null;
       retry++
     ) {
-      if (_retired) return;
+      if (_stop is RetiredStop) return;
       if (retry > 0) await _sleep(settleWriteRetryDelay * retry);
       try {
-        await _storeKeptTokens(_epoch);
+        await _storeKeptTokens();
       } on Object {
         // Logged by the write; the session's outcome is not settle's.
       }
@@ -293,8 +291,7 @@ final class SessionManager implements AccessTokenSource {
   /// afterwards; a refresh still on the network is abandoned and its result
   /// discarded, however long the server takes.
   Future<void> retire() async {
-    _retired = true;
-    _epoch++;
+    _stop = stopAfter(_stop, const RetireEvent());
     _session = null;
     _unpersisted = null;
     final writing = _pendingWrite;
@@ -306,11 +303,11 @@ final class SessionManager implements AccessTokenSource {
     }
   }
 
-  Future<_Session> _currentSession(int epoch) async {
-    if (_ended != null) await _reviveIfReplaced(epoch);
-    _ensureUsable(epoch);
+  Future<_Session> _currentSession() async {
+    if (_stop is EndedStop) await _reviveIfReplaced();
+    _ensureUsable();
     if (_session case final session?) return session;
-    final stored = await _readStored(epoch);
+    final stored = await _readStored();
     return _session ??= _Session.fromStored(stored);
   }
 
@@ -319,8 +316,7 @@ final class SessionManager implements AccessTokenSource {
   /// background run (D59). Only storage that names a refresh token this
   /// manager has neither seen refused nor rotated away brings the session
   /// back.
-  Future<void> _reviveIfReplaced(int epoch) async {
-    if (_retired || epoch != _epoch) return;
+  Future<void> _reviveIfReplaced() async {
     final StoredTokens? stored;
     try {
       stored = await _tokenStore.read(accountId);
@@ -330,19 +326,15 @@ final class SessionManager implements AccessTokenSource {
     if (stored == null || _spentRefreshTokens.contains(stored.refreshToken)) {
       return;
     }
-    if (_retired || epoch != _epoch || _ended == null) return;
+    if (_stop is! EndedStop) return;
     _log.info('Account $accountId has new tokens since its session ended');
-    _ended = null;
+    _stop = stopAfter(_stop, const ReviveEvent());
     _session = _Session.fromStored(stored);
   }
 
-  Future<_Session> _refreshFrom(_Session snapshot) {
-    final epoch = _epoch;
-    return _inFlight ??= _refreshExclusively(
-      snapshot.refreshToken,
-      epoch,
-    ).whenComplete(() => _inFlight = null);
-  }
+  Future<_Session> _refreshFrom(_Session snapshot) =>
+      _inFlight ??= _refreshExclusively(snapshot.refreshToken)
+          .whenComplete(() => _inFlight = null);
 
   // Background isolates of this process (sync, notification actions) refresh
   // the same accounts. RandomAccessFile.lock cannot serialise them: POSIX
@@ -351,56 +343,54 @@ final class SessionManager implements AccessTokenSource {
   // test/core/auth/file_lock_isolates_test.dart; Android and iOS use the same
   // fcntl locks). Instead, storage is read again before every refresh and
   // after a lost rotation race, and newer tokens found there are adopted.
-  Future<_Session> _refreshExclusively(String snapshot, int epoch) async {
+  Future<_Session> _refreshExclusively(String snapshot) async {
     try {
       await _keptWrite;
     } on Object {
       // The retry below meets the same failure.
     }
-    await _retryUnpersistedWrite(epoch);
+    await _retryUnpersistedWrite();
     var refreshToken = snapshot;
-    final stored = await _readStored(epoch);
+    final stored = await _readStored();
     if (stored.refreshToken != refreshToken) {
       if (_adoptable(stored) case final adopted?) return _session = adopted;
       refreshToken = stored.refreshToken;
     }
     _ensureNotRateLimited();
     try {
-      return await _rotate(refreshToken, epoch);
-    } on VikunjaFailure catch (failure) {
-      if (!_lostRotation(failure)) rethrow;
-      return await _recoverLostRotation(refreshToken, epoch, failure);
+      return await _rotate(refreshToken);
+    } on _LostRotation catch (lost) {
+      return await _recoverLostRotation(lost);
     }
   }
 
-  /// 16004 says a sibling won the race; 16002 can mean the same when the
-  /// sibling finished first. Either way its tokens should show up in storage.
-  /// When they do not, only a refusal without any sign of a race ends the
-  /// session: after a race the winner holds a live session, and the next
-  /// call finds its tokens. A race refused once more after the window has
-  /// passed is no race: no winner ever stored anything.
-  Future<_Session> _recoverLostRotation(
-    String lostRefreshToken,
-    int epoch,
-    VikunjaFailure failure,
-  ) async {
-    var usedRefreshToken = lostRefreshToken;
-    var raced = failure is RefreshRaceLost;
+  /// A sibling that won the race should store its tokens;
+  /// [lostRotationVerdict] decides when none show up.
+  Future<_Session> _recoverLostRotation(_LostRotation lost) async {
+    var usedRefreshToken = lost.refreshToken;
+    var raced = lost.failure is RefreshRaceLost;
     for (final delay in [Duration.zero, ...raceRecheckDelays]) {
       if (delay > Duration.zero) await _sleep(delay);
-      final stored = await _readStored(epoch);
+      final stored = await _readStored();
       if (stored.refreshToken == usedRefreshToken) continue;
       if (_adoptable(stored) case final adopted?) return _session = adopted;
       usedRefreshToken = stored.refreshToken;
       try {
-        return await _rotate(usedRefreshToken, epoch);
-      } on VikunjaFailure catch (retryFailure) {
+        return await _rotate(usedRefreshToken);
+      } on _LostRotation catch (again) {
         // Lost again: a third refresher may still be writing.
-        if (!_lostRotation(retryFailure)) rethrow;
-        raced = raced || retryFailure is RefreshRaceLost;
+        usedRefreshToken = again.refreshToken;
+        raced = raced || again.failure is RefreshRaceLost;
       }
     }
-    if (raced && !_refusedBeforeWindow(usedRefreshToken)) {
+    final verdict = lostRotationVerdict(
+      _note,
+      raced: raced,
+      token: tokenFingerprint(usedRefreshToken),
+      now: _clock(),
+      window: raceRecheckWindow,
+    );
+    if (verdict == LostRotationVerdict.defer) {
       _log.warning(
         'Account $accountId lost a refresh race and the winner has not '
         'stored its tokens yet',
@@ -414,28 +404,20 @@ final class SessionManager implements AccessTokenSource {
     throw await _end(
       SessionEnded(
         SessionEndReason.invalidRefreshToken,
-        code: failure.code,
-        message: failure.message,
+        code: lost.failure.code,
+        message: lost.failure.message,
       ),
-      epoch,
       failedRefreshToken: usedRefreshToken,
     );
   }
 
-  bool _refusedBeforeWindow(String refreshToken) {
-    final before = _markerBefore;
-    final refusedAt = before?.refusedAt;
-    return before?.token == tokenFingerprint(refreshToken) &&
-        refusedAt != null &&
-        _clock().difference(refusedAt) > raceRecheckWindow;
-  }
-
-  Future<_Session> _rotate(String refreshToken, int epoch) async {
+  /// Throws [_LostRotation] for a refusal that a race can explain.
+  Future<_Session> _rotate(String refreshToken) async {
     _ensureMayStartRefresh();
     await _noteRefreshSent(refreshToken);
     final TokenSet fresh;
     try {
-      fresh = await _callRefresh(refreshToken, epoch);
+      fresh = await _callRefresh(refreshToken);
       _noteSpent(refreshToken);
     } on _NoConnection {
       await _forgetUnreachedSend(refreshToken);
@@ -446,43 +428,44 @@ final class SessionManager implements AccessTokenSource {
         message: 'no server connection is stored for the account',
       );
     } on VikunjaFailure catch (failure) {
+      // An end this manager recorded meanwhile (the re-read after a 5xx found
+      // no tokens) is no refusal of the token.
+      if (failure is SessionEnded && _stop is EndedStop) rethrow;
       if (failure is RateLimited) _blockRefreshes(failure.retryAfter);
-      if (_neverProcessed(failure)) await _forgetUnreachedSend(refreshToken);
+      if (isNeverProcessed(failure)) await _forgetUnreachedSend(refreshToken);
       if (failure is! SessionEnded && failure is! RefreshRaceLost) rethrow;
       // Noted before the re-reads, which a run the OS ends may cut short.
       await _noteRefused(refreshToken);
-      if (failure is! SessionEnded || _lostRotation(failure)) rethrow;
+      if (failure is! SessionEnded || isLostRotation(failure)) {
+        throw _LostRotation(refreshToken, failure);
+      }
       // The answer is about the session this token belongs to; a sibling
       // isolate may have stored a new sign-in meanwhile.
-      final stored = await _readStored(epoch);
+      final stored = await _readStored();
       if (stored.refreshToken == refreshToken) {
-        throw await _end(failure, epoch, failedRefreshToken: refreshToken);
+        throw await _end(failure, failedRefreshToken: refreshToken);
       }
       if (_adoptable(stored) case final adopted?) return _session = adopted;
-      return await _rotate(stored.refreshToken, epoch);
+      return await _rotate(stored.refreshToken);
     }
     return await _persist(
       fresh,
       usedRefreshToken: refreshToken,
       receivedAt: _clock(),
-      epoch: epoch,
     );
   }
 
-  Future<TokenSet> _callRefresh(String refreshToken, int epoch) async {
+  Future<TokenSet> _callRefresh(String refreshToken) async {
     try {
       return await _refresh(refreshToken);
     } on ServerFailure catch (failure) {
       _log.info('Refresh failed with $failure, retrying once');
-      // The server may have rotated before failing, so the send stays
-      // noted whatever becomes of the retry, and a refusal of the retry
-      // keeps naming it.
-      _sendMarked = false;
-      _markerBefore ??= _markerWritten;
+      // A refusal of the retry keeps naming this send.
+      _note = _note.afterServerError;
       await _sleep(serverErrorRetryDelay);
       // SQLite servers answer the loser of a rotation race with a 500 instead
       // of 16004, so a sibling may have stored the rotated tokens meanwhile.
-      final stored = await _readStored(epoch);
+      final stored = await _readStored();
       if (stored.refreshToken != refreshToken) throw const RefreshRaceLost();
       _ensureMayStartRefresh();
       try {
@@ -500,28 +483,25 @@ final class SessionManager implements AccessTokenSource {
     TokenSet fresh, {
     required String usedRefreshToken,
     required DateTime receivedAt,
-    required int epoch,
   }) async {
     final StoredTokens? read;
     try {
       read = await _tokenStore.read(accountId);
     } on Object catch (error) {
-      _ensureUsable(epoch);
+      _ensureUsable();
       // Storage may hold a newer sign-in, so the tokens are not written now;
       // the write at the next call compares with storage first.
       _log.severe(
         'Could not read the tokens of account $accountId before storing the '
         'rotated ones: ${error.runtimeType}',
       );
-      _learnClockOffset(fresh.issuedAt.difference(receivedAt));
-      _unpersisted = _Unpersisted(
+      _serverClock.learn(fresh.issuedAt.difference(receivedAt));
+      return _keepUnstored(
         fresh,
-        replacedRefreshToken:
-            _unpersisted?.replacedRefreshToken ?? usedRefreshToken,
+        replacing: _unpersisted?.replacedRefreshToken ?? usedRefreshToken,
       );
-      return _session = _Session.fromTokenSet(fresh);
     }
-    final stored = await _resolveStored(read, epoch);
+    final stored = await _resolveStored(read);
     if (stored.refreshToken != usedRefreshToken) {
       // A new sign-in replaced the session while this refresh was in flight;
       // the tokens just received belong to the superseded session.
@@ -530,37 +510,40 @@ final class SessionManager implements AccessTokenSource {
     }
     final replacedRefreshToken =
         _unpersisted?.replacedRefreshToken ?? usedRefreshToken;
-    _learnClockOffset(fresh.issuedAt.difference(receivedAt));
+    _serverClock.learn(fresh.issuedAt.difference(receivedAt));
     try {
-      await _writeTokens(fresh, epoch);
+      await _writeTokens(fresh);
       _unpersisted = null;
       await _noteRefreshSettled(usedRefreshToken);
     } on _Retired {
       rethrow;
     } on Object catch (error) {
-      // The server has already invalidated the stored refresh token, so the
-      // new one is used from memory and written again at the next call.
       // Only the type is logged: platform errors can echo values.
       _log.severe(
         'Could not store the rotated tokens of account $accountId: '
         '${error.runtimeType}',
       );
-      _unpersisted = _Unpersisted(
-        fresh,
-        replacedRefreshToken: replacedRefreshToken,
-      );
+      return _keepUnstored(fresh, replacing: replacedRefreshToken);
     }
     return _session = _Session.fromTokenSet(fresh);
   }
 
-  Future<void> _retryUnpersistedWrite(int epoch) async {
+  /// The server has already invalidated the refresh token storage holds,
+  /// [replacing], so the new tokens are used from memory and written again
+  /// at the next call.
+  _Session _keepUnstored(TokenSet fresh, {required String replacing}) {
+    _unpersisted = _Unpersisted(fresh, replacedRefreshToken: replacing);
+    return _session = _Session.fromTokenSet(fresh);
+  }
+
+  Future<void> _retryUnpersistedWrite() async {
     final unpersisted = _unpersisted;
     if (unpersisted == null) return;
     // Drops the unpersisted tokens when storage holds newer ones.
-    await _readStored(epoch);
+    await _readStored();
     if (!identical(_unpersisted, unpersisted)) return;
     try {
-      await _writeTokens(unpersisted.tokens, epoch);
+      await _writeTokens(unpersisted.tokens);
       if (identical(_unpersisted, unpersisted)) _unpersisted = null;
       await _diagnostics?.refreshSettled(
         accountId,
@@ -580,15 +563,14 @@ final class SessionManager implements AccessTokenSource {
   /// only before the next refresh: until then storage holds the refresh
   /// token the server has invalidated, and a sibling isolate that refreshes
   /// with it ends the session.
-  Future<void> _storeKeptTokens(int epoch) {
+  Future<void> _storeKeptTokens() {
     if (_unpersisted == null || _inFlight != null) return Future.value();
-    return _keptWrite ??= _tryKeptWrite(epoch)
-        .whenComplete(() => _keptWrite = null);
+    return _keptWrite ??= _tryKeptWrite().whenComplete(() => _keptWrite = null);
   }
 
-  Future<void> _tryKeptWrite(int epoch) async {
+  Future<void> _tryKeptWrite() async {
     try {
-      await _retryUnpersistedWrite(epoch);
+      await _retryUnpersistedWrite();
     } on _Retired {
       rethrow;
     } on SessionEnded {
@@ -603,14 +585,14 @@ final class SessionManager implements AccessTokenSource {
 
   /// [retire] waits for this write, so nothing may be awaited between the
   /// retirement check and recording the write.
-  Future<void> _writeTokens(TokenSet tokens, int epoch) {
-    if (_retired || epoch != _epoch) throw const _Retired();
+  Future<void> _writeTokens(TokenSet tokens) {
+    if (_stop is RetiredStop) throw const _Retired();
     return _track(_storeTokensThenClockOffset(tokens));
   }
 
   Future<void> _storeTokensThenClockOffset(TokenSet tokens) async {
     await _tokenStore.write(accountId, tokens);
-    if (_clockOffsetLearned) await _saveClockOffset(_serverClockOffset);
+    await _serverClock.saveLearned();
   }
 
   Future<void> _track(Future<void> write) async {
@@ -622,8 +604,8 @@ final class SessionManager implements AccessTokenSource {
     }
   }
 
-  Future<StoredTokens> _readStored(int epoch) async {
-    await (_clockOffsetLoad ??= _loadClockOffset());
+  Future<StoredTokens> _readStored() async {
+    await _serverClock.load();
     final StoredTokens? stored;
     try {
       stored = await _tokenStore.read(accountId);
@@ -634,17 +616,16 @@ final class SessionManager implements AccessTokenSource {
       throw NetworkFailure(NetworkProblem.unreachable, cause: error);
     }
     await _diagnostics?.noteReadable(accountId);
-    return await _resolveStored(stored, epoch);
+    return await _resolveStored(stored);
   }
 
   /// When an earlier write failed and storage still holds the refresh token
   /// that was rotated away, the unpersisted tokens stand in for it.
-  Future<StoredTokens> _resolveStored(StoredTokens? stored, int epoch) async {
-    _ensureUsable(epoch);
+  Future<StoredTokens> _resolveStored(StoredTokens? stored) async {
+    _ensureUsable();
     if (stored == null) {
       throw await _end(
         const SessionEnded(SessionEndReason.invalidRefreshToken),
-        epoch,
         cause: SessionEndCause.missingTokens,
       );
     }
@@ -658,13 +639,12 @@ final class SessionManager implements AccessTokenSource {
   }
 
   Future<SessionEnded> _end(
-    SessionEnded failure,
-    int epoch, {
+    SessionEnded failure, {
     String? failedRefreshToken,
     SessionEndCause? cause,
   }) async {
-    if (_retired || epoch != _epoch) throw const _Retired();
-    _ended = failure;
+    if (_stop is RetiredStop) throw const _Retired();
+    _stop = stopAfter(_stop, EndEvent(failure));
     final rotatedAway = _unpersisted?.replacedRefreshToken;
     if (rotatedAway != null) _noteSpent(rotatedAway);
     if (failedRefreshToken != null) _noteSpent(failedRefreshToken);
@@ -694,7 +674,7 @@ final class SessionManager implements AccessTokenSource {
     final failedToken = failedRefreshToken == null
         ? null
         : tokenFingerprint(failedRefreshToken);
-    final before = _markerBefore?.token == failedToken ? _markerBefore : null;
+    final before = _note.earlierSendOf(failedToken);
     await diagnostics.recordEnd(
       accountId,
       SessionEndDiagnosis(
@@ -715,44 +695,36 @@ final class SessionManager implements AccessTokenSource {
     }
   }
 
-  /// Notes the refresh about to be sent, unless the token was sent before
-  /// without its answer being stored, or was refused: the earliest such
-  /// send is the one the server may have rotated, and a refused token
-  /// rotates no more. What was noted before is kept for this send's
-  /// verdict.
+  /// Notes the refresh about to be sent ([SendNote.forSend]).
   Future<void> _noteRefreshSent(String refreshToken) async {
-    _markerBefore = null;
-    _markerWritten = null;
-    _sendMarked = false;
+    _note = const Unnoted();
     final diagnostics = _diagnostics;
     if (diagnostics == null) return;
     final token = tokenFingerprint(refreshToken);
     final marker = await diagnostics.refreshMarker(accountId);
-    if (marker?.token == token) {
-      _markerBefore = marker;
-      return;
-    }
     final sentAt = _clock();
-    await diagnostics.refreshSent(
-      accountId,
+    final note = SendNote.forSend(
+      marker,
       token: token,
-      part: _part,
       at: sentAt,
+      part: _part,
     );
-    _markerWritten = (
-      token: token,
-      sentAt: sentAt,
-      sentBy: _part,
-      refusedAt: null,
-    );
-    _sendMarked = true;
+    if (note is NotedHere) {
+      await diagnostics.refreshSent(
+        accountId,
+        token: token,
+        part: _part,
+        at: sentAt,
+      );
+    }
+    _note = note;
   }
 
   /// A send that never reached the server, or that it answered without
   /// looking at the token, cannot have rotated it.
   Future<void> _forgetUnreachedSend(String refreshToken) async {
-    if (!_sendMarked) return;
-    _sendMarked = false;
+    if (!_note.wroteMarker) return;
+    _note = _note.afterUnreached;
     await _diagnostics?.refreshSettled(
       accountId,
       token: tokenFingerprint(refreshToken),
@@ -760,18 +732,17 @@ final class SessionManager implements AccessTokenSource {
   }
 
   Future<void> _noteRefused(String refreshToken) async {
-    _sendMarked = false;
+    _note = _note.afterRefused;
     await _diagnostics?.refreshRefused(
       accountId,
       token: tokenFingerprint(refreshToken),
       at: _clock(),
-      before: _markerBefore,
+      before: _note.earlier,
     );
   }
 
   Future<void> _noteRefreshSettled(String refreshToken) async {
-    _markerBefore = null;
-    _sendMarked = false;
+    _note = const Unnoted();
     await _diagnostics?.refreshSettled(
       accountId,
       token: tokenFingerprint(refreshToken),
@@ -795,9 +766,15 @@ final class SessionManager implements AccessTokenSource {
     );
   }
 
-  void _ensureUsable(int epoch) {
-    if (_retired || epoch != _epoch) throw const _Retired();
-    if (_ended case final ended?) throw ended;
+  void _ensureUsable() {
+    switch (_stop) {
+      case RetiredStop():
+        throw const _Retired();
+      case EndedStop(:final failure):
+        throw failure;
+      case null:
+        return;
+    }
   }
 
   void _ensureNotRateLimited() {
@@ -816,41 +793,6 @@ final class SessionManager implements AccessTokenSource {
     _refreshBlockedUntil = _clock().add(wait);
   }
 
-  void _learnClockOffset(Duration offset) {
-    _serverClockOffset = offset;
-    _clockOffsetLearned = true;
-  }
-
-  Future<void> _loadClockOffset() async {
-    final offsets = _clockOffsets;
-    if (offsets == null) return;
-    try {
-      final saved = await offsets.read(accountId);
-      _savedClockOffset ??= saved;
-      // One learned from a response in this instance is newer.
-      if (saved != null && !_clockOffsetLearned) _serverClockOffset = saved;
-    } on Object catch (error) {
-      _log.info('Could not read the server clock offset: ${error.runtimeType}');
-    }
-  }
-
-  Future<void> _saveClockOffset(Duration offset) async {
-    final offsets = _clockOffsets;
-    if (offsets == null) return;
-    final saved = _savedClockOffset;
-    if (saved != null && (offset - saved).abs() < _clockOffsetSaveThreshold) {
-      return;
-    }
-    try {
-      await offsets.write(accountId, offset);
-      _savedClockOffset = offset;
-    } on Object catch (error) {
-      _log.info(
-        'Could not store the server clock offset: ${error.runtimeType}',
-      );
-    }
-  }
-
   _Session? _adoptable(StoredTokens stored) {
     final session = _Session.fromStored(stored);
     return _expiresSoon(session) ? null : session;
@@ -859,34 +801,13 @@ final class SessionManager implements AccessTokenSource {
   bool _expiresSoon(_Session session) {
     final expiresAt = session.expiresAt;
     return expiresAt == null ||
-        expiresAt.difference(_serverNow) < refreshMargin;
+        expiresAt.difference(_serverClock.now) < refreshMargin;
   }
 
   bool _isExpired(_Session session) {
     final expiresAt = session.expiresAt;
-    return expiresAt == null || !expiresAt.isAfter(_serverNow);
+    return expiresAt == null || !expiresAt.isAfter(_serverClock.now);
   }
-
-  static bool _lostRotation(VikunjaFailure failure) =>
-      failure is RefreshRaceLost ||
-      (failure is SessionEnded &&
-          failure.reason == SessionEndReason.invalidRefreshToken);
-
-  /// Answers the server or something in front of it gave without rotating
-  /// the token, and requests that never left the device.
-  static bool _neverProcessed(VikunjaFailure failure) => switch (failure) {
-    RateLimited() || OAuthFailure() => true,
-    UnexpectedResponse(:final statusCode?) =>
-      statusCode >= 400 && statusCode < 500,
-    final NetworkFailure network => neverReachedServer(network),
-    _ => false,
-  };
-
-  static bool _isTransient(VikunjaFailure failure) =>
-      failure is NetworkFailure ||
-      failure is ServerFailure ||
-      failure is RateLimited ||
-      failure is UnexpectedResponse;
 }
 
 /// One [SessionManager] per account for this isolate. With `refreshes`
@@ -945,7 +866,7 @@ final class SessionManagers {
     final previous = _managers[accountId];
     final manager = _managers[accountId] = _create(accountId);
     if (previous != null) unawaited(previous.retire());
-    await manager.adoptPersisted(tokens, receivedAt: receivedAt);
+    await manager._startSignedIn(tokens, receivedAt: receivedAt);
     return manager;
   }
 
@@ -965,22 +886,20 @@ final class SessionManagers {
     try {
       final ended = await diagnostics.lastEnd(accountId);
       if (ended == null) return false;
-      if (ended.resolution == SessionEndResolution.restored) {
-        await clearNeedsReauth(accountId);
-        return true;
+      switch (restoreStep(ended)) {
+        case RestoreStep.none:
+          return false;
+        case RestoreStep.unmarkOnly:
+          await clearNeedsReauth(accountId);
+          return true;
+        case RestoreStep.readStorage:
+          break;
       }
-      if (ended.resolution != null) return false;
       final stored = await _tokenStore.read(accountId);
-      if (stored == null) return false;
-      final storedToken = tokenFingerprint(stored.refreshToken);
-      if (storedToken == ended.rotatedAwayToken) return false;
-      final retry = switch (ended.cause) {
-        SessionEndCause.storageUnreadable => true,
-        SessionEndCause.refreshRejected =>
-          ended.failedToken != null && ended.failedToken != storedToken,
-        _ => false,
-      };
-      if (!retry) return false;
+      if (stored == null ||
+          !restoreRetries(ended, tokenFingerprint(stored.refreshToken))) {
+        return false;
+      }
       // A live manager may have a refresh of these tokens on its way, whose
       // answer must not be dropped; an ended one takes new tokens itself.
       await forAccount(accountId).refreshNow();
@@ -1008,7 +927,16 @@ final class SessionManagers {
     part: _part,
     mayStartRefresh: _mayStartRefresh,
     refresh: (refreshToken) async {
-      final connection = await _connectionFor(accountId);
+      final ServerConnection? connection;
+      try {
+        connection = await _connectionFor(accountId);
+      } on Object catch (error) {
+        _log.warning(
+          'Could not read the server connection of account $accountId: '
+          '${error.runtimeType}',
+        );
+        throw const _NoConnection();
+      }
       if (connection == null) throw const _NoConnection();
       return await _tokenGateway.refresh(connection, refreshToken);
     },
@@ -1020,6 +948,68 @@ final class SessionManagers {
     sleep: _sleep,
     refreshes: _refreshes,
   );
+}
+
+/// The server's clock as an offset from this device's, learned from token
+/// responses and kept per account, so that a new isolate judges expiry
+/// before its first response.
+final class _ServerClock {
+  new(this._accountId, this._offsets, this._clock);
+
+  // The offset includes the response latency, so it jitters by about a
+  // second; smaller changes are not worth a preferences write.
+  static const _saveThreshold = Duration(seconds: 5);
+
+  final String _accountId;
+  final ServerClockOffsets? _offsets;
+  final Clock _clock;
+
+  Duration _offset = Duration.zero;
+  bool _learned = false;
+  Future<void>? _load;
+  Duration? _saved;
+
+  DateTime get now => _clock().add(_offset);
+
+  /// Reads the saved offset, once.
+  Future<void> load() => _load ??= _read();
+
+  void learn(Duration offset) {
+    _offset = offset;
+    _learned = true;
+  }
+
+  Future<void> saveLearned() async {
+    if (_learned) await save(_offset);
+  }
+
+  Future<void> save(Duration offset) async {
+    final offsets = _offsets;
+    if (offsets == null) return;
+    final saved = _saved;
+    if (saved != null && (offset - saved).abs() < _saveThreshold) return;
+    try {
+      await offsets.write(_accountId, offset);
+      _saved = offset;
+    } on Object catch (error) {
+      _log.info(
+        'Could not store the server clock offset: ${error.runtimeType}',
+      );
+    }
+  }
+
+  Future<void> _read() async {
+    final offsets = _offsets;
+    if (offsets == null) return;
+    try {
+      final saved = await offsets.read(_accountId);
+      _saved ??= saved;
+      // One learned from a response in this instance is newer.
+      if (saved != null && !_learned) _offset = saved;
+    } on Object catch (error) {
+      _log.info('Could not read the server clock offset: ${error.runtimeType}');
+    }
+  }
 }
 
 final class _Session {
@@ -1065,7 +1055,18 @@ final class _Retired implements Exception {
   const new();
 }
 
-/// The registry names no server for the account, so no refresh was sent.
+/// The registry names no server for the account, or could not be read, so
+/// no refresh was sent.
 final class _NoConnection implements Exception {
   const new();
+}
+
+/// The server refused [refreshToken] in a way a lost race explains
+/// ([isLostRotation]); it may be a token a session-end answer moved the
+/// refresh on to, which the recovery must start from.
+final class _LostRotation implements Exception {
+  const new(this.refreshToken, this.failure);
+
+  final String refreshToken;
+  final VikunjaFailure failure;
 }

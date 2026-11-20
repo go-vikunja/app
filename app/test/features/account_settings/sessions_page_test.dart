@@ -210,6 +210,53 @@ void main() {
     expect(find.text(en.sessionsNoOthers), findsOneWidget);
   });
 
+  group('the latest read wins', () {
+    testWidgets('a read still on its way when the other sessions end does '
+        'not keep them listed', (tester) async {
+      await pumpPage(tester);
+      // The held read has the sessions already, from before the end.
+      final held = harness.holdNext('currentSessionId');
+
+      await tester.tap(find.byTooltip(en.refresh));
+      await tester.pump();
+      await tester.tap(find.text(en.sessionsEndOthers));
+      await tester.pumpAndSettle();
+      await confirm(tester, en.sessionsEndOthers);
+      expect(rowOf(firefox), findsNothing);
+      expect(find.text(en.sessionsNoOthers), findsOneWidget);
+
+      held.complete();
+      await tester.pumpAndSettle();
+
+      expect(rowOf(firefox), findsNothing);
+      expect(rowOf(en.sessionsDartClient), findsNothing);
+      expect(find.text(en.sessionsNoOthers), findsOneWidget);
+      expect(harness.callsOf('sessions'), 3);
+    });
+
+    testWidgets('a read still on its way when a session ends does not bring '
+        'it back', (tester) async {
+      await pumpPage(tester);
+      final before = harness.security.sessionList;
+      final held = harness.holdNext('sessions');
+
+      await tester.tap(find.byTooltip(en.refresh));
+      await tester.pump();
+      await endFromMenu(tester, firefox);
+      await confirm(tester, en.sessionsEnd);
+      expect(rowOf(firefox), findsNothing);
+
+      // The held read answers as the server did before the end.
+      harness.security.sessionList = before;
+      held.complete();
+      await tester.pumpAndSettle();
+
+      expect(rowOf(firefox), findsNothing);
+      expect(rowOf(en.sessionsDartClient), findsOneWidget);
+      expect(harness.callsOf('sessions'), 3);
+    });
+  });
+
   testWidgets('is in German', (tester) async {
     useLocale(tester, const Locale('de'));
     await pumpPage(tester);

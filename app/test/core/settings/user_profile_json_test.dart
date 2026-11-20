@@ -71,4 +71,33 @@ void main() {
 
     expect(profile, const UserProfile(id: 7, username: 'alice'));
   });
+
+  test('a value stored by this version reads the same, field by field, '
+      'and the stored format stays as it is', () {
+    final everyField = UserProfile(
+      id: 7,
+      username: 'alice',
+      name: 'Alice',
+      isLocalUser: false,
+      authProvider: 'oidc-company',
+      pendingEmail: 'new@example.org',
+      updated: DateTime.utc(2026, 10, 20, 9, 30, 15),
+      deletionScheduledAt: DateTime.utc(2026, 10, 23, 9, 30, 15),
+    );
+    const stored =
+        '{"id":7,"username":"alice","name":"Alice",'
+        '"is_local_user":false,"auth_provider":"oidc-company",'
+        '"pending_email":"new@example.org",'
+        '"updated":"2026-10-20T09:30:15.000Z",'
+        '"deletion_scheduled_at":"2026-10-23T09:30:15.000Z"}';
+    const storedBare =
+        '{"id":8,"username":"bob","name":"","is_local_user":true,'
+        '"auth_provider":""}';
+    const bare = UserProfile(id: 8, username: 'bob');
+
+    expect(decodeUserProfile(stored), everyField);
+    expect(encodeUserProfile(everyField), stored);
+    expect(decodeUserProfile(storedBare), bare);
+    expect(encodeUserProfile(bare), storedBare);
+  });
 }

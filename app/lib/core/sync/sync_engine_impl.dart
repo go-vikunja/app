@@ -263,6 +263,14 @@ final class DefaultSyncEngine implements SyncEngine {
     }
   }
 
+  /// A request of the full run: not after disposal, and only while the run
+  /// still holds the lease, which it renews.
+  Future<T> _renewingLease<T>(Future<T> Function() send) async {
+    _checkDisposed();
+    await _db.transaction(_holdLease);
+    return await send();
+  }
+
   /// Inside the transaction of a write that belongs to the run: renews the
   /// lease, or ends the run when another one has taken it.
   Future<void> _holdLease() async {
@@ -545,17 +553,15 @@ final class DefaultSyncEngine implements SyncEngine {
     var current = checkpoint;
     final pseudo = <Project>[];
     final byId = await collectPages<Project>(
-      fetch: (page) async {
-        _checkDisposed();
+      fetch: (page) => _renewingLease(() {
         // A walk that starts over starts at page 1.
         if (page == 1) pseudo.clear();
-        await _db.transaction(_holdLease);
-        return await _client.projects.list(
+        return _client.projects.list(
           page: page,
           perPage: _perPage,
           includeArchived: true,
         );
-      },
+      }),
       idOf: (project) => project.id,
       skip: (project) {
         if (project.isPseudo) pseudo.add(project);
@@ -578,11 +584,7 @@ final class DefaultSyncEngine implements SyncEngine {
       db: _db,
       client: _client,
       runId: current.runId,
-      request: (send) async {
-        _checkDisposed();
-        await _db.transaction(_holdLease);
-        return await send();
-      },
+      request: _renewingLease,
     );
     _checkDisposed();
     return await _advance(current, SyncPhase.labels);
@@ -592,11 +594,9 @@ final class DefaultSyncEngine implements SyncEngine {
     var current = checkpoint;
     final remappedBefore = await _db.labelsDao.remappedServerIds();
     final byId = await collectPages<Label>(
-      fetch: (page) async {
-        _checkDisposed();
-        await _db.transaction(_holdLease);
-        return await _client.labels.list(page: page, perPage: _perPage);
-      },
+      fetch: (page) => _renewingLease(
+        () => _client.labels.list(page: page, perPage: _perPage),
+      ),
       idOf: (label) => label.id,
       onPage: (collected, page) {
         current = current.copyWith(done: collected.length, total: page.total);
@@ -692,11 +692,7 @@ final class DefaultSyncEngine implements SyncEngine {
       perPage: _perPage,
       runId: checkpoint.runId,
       now: _now,
-      request: (send) async {
-        _checkDisposed();
-        await _db.transaction(_holdLease);
-        return await send();
-      },
+      request: _renewingLease,
     );
     _checkDisposed();
     final finishedAt = _now().toUtc();

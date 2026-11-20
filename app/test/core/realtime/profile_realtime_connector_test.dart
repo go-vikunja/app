@@ -428,4 +428,52 @@ void main() {
       expect(platform.asked, isEmpty);
     });
   });
+
+  group('wss:// and a client certificate refused (TLS 1.3, dart:io)', () {
+    ProfileRealtimeConnector checking() => ProfileRealtimeConnector(
+      profiles: profiles,
+      userAgent: 'Vikunja-App/test',
+      refusalCheckTimeout: const Duration(seconds: 2),
+      refusalCheckWait: const Duration(milliseconds: 300),
+    );
+
+    Future<Uri> trustedCa(int port) async {
+      await profiles.trustCaCertificate(
+        OriginKey.fromString('https://localhost:$port'),
+        fileName: 'ca.pem',
+        pem: tlsFixtureText('ca.pem'),
+      );
+      return Uri.parse('wss://localhost:$port/api/v2/ws');
+    }
+
+    test('a server that ends the upgrade without naming the alert is '
+        'confirmed by a handshake-only check', () async {
+      final server = await MutualTlsServer.start();
+      addTearDown(server.close);
+      final url = await trustedCa(server.port);
+
+      await expectLater(
+        checking().connect(url),
+        throwsA(isA<ClientCertificateRefusedException>()),
+      );
+      expect(server.requestsReceived, 0);
+    });
+
+    test('a server that hangs up on the upgrade but not on a handshake is '
+        'not confirmed: the error stands and the socket retries', () async {
+      final server = await HangUpTlsServer.start();
+      addTearDown(server.close);
+      final url = await trustedCa(server.port);
+
+      await expectLater(
+        checking().connect(url),
+        throwsA(
+          allOf(
+            isA<IOException>(),
+            isNot(isA<ClientCertificateRefusedException>()),
+          ),
+        ),
+      );
+    });
+  });
 }

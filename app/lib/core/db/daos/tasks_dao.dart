@@ -4,6 +4,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart'
     show OwnTaskSubscription, ownTaskSubscriptionFrom;
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/db/chunks.dart';
 import 'package:vikunja_mobile/core/db/daos/kanban_dao.dart';
 import 'package:vikunja_mobile/core/db/epoch_millis.dart';
 import 'package:vikunja_mobile/core/db/mappers/label_mappers.dart';
@@ -70,9 +71,6 @@ typedef FilterRow = ({
 final class TasksDao extends DatabaseAccessor<AppDatabase>
     with _$TasksDaoMixin {
   new(super.attachedDatabase);
-
-  // Keeps every `IN (...)` list well below SQLite's variable limit.
-  static const _chunkSize = 500;
 
   late final Set<ResultSetImplementation<dynamic, dynamic>> _readTables = {
     tasks,
@@ -372,11 +370,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     final assignees = <int, Set<String>>{};
     final reminders = <int, List<DateTime>>{};
     final ids = [for (final row in rows) row.task.id];
-    for (var start = 0; start < ids.length; start += _chunkSize) {
-      final chunk = ids.sublist(
-        start,
-        (start + _chunkSize).clamp(0, ids.length),
-      );
+    for (final chunk in chunksOf(ids)) {
       final labelQuery = selectOnly(taskLabels)
         ..addColumns([taskLabels.taskId, taskLabels.labelId])
         ..where(taskLabels.taskId.isIn(chunk));
@@ -436,12 +430,8 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     final all = ids.toList();
     final open = <Task>[];
     final done = <_DoneRow>[];
-    for (var start = 0; start < all.length; start += _chunkSize) {
-      final chunk =
-          tasks.id.isIn(
-            all.sublist(start, (start + _chunkSize).clamp(0, all.length)),
-          ) &
-          _visible;
+    for (final slice in chunksOf(all)) {
+      final chunk = tasks.id.isIn(slice) & _visible;
       open.addAll(
         await _load(where: chunk & tasks.done.equals(false), orderBy: const []),
       );
@@ -649,12 +639,10 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   Future<List<Task>> _loadIds(Set<int> ids, {bool openOnly = false}) async {
     final all = ids.toList();
     return [
-      for (var start = 0; start < all.length; start += _chunkSize)
+      for (final chunk in chunksOf(all))
         ...await _load(
           where:
-              tasks.id.isIn(
-                all.sublist(start, (start + _chunkSize).clamp(0, all.length)),
-              ) &
+              tasks.id.isIn(chunk) &
               _visible &
               (openOnly ? tasks.done.equals(false) : const Constant(true)),
           orderBy: const [],
@@ -1014,11 +1002,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// them for this user.
   Future<int> _purge(List<int> gone) async {
     var purged = 0;
-    for (var start = 0; start < gone.length; start += _chunkSize) {
-      final chunk = gone.sublist(
-        start,
-        (start + _chunkSize).clamp(0, gone.length),
-      );
+    for (final chunk in chunksOf(gone)) {
       purged += await (delete(tasks)..where((t) => t.id.isIn(chunk))).go();
     }
     await attachedDatabase.outboxDao.forgetRelatedTasks(gone.toSet());
@@ -1338,11 +1322,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
   /// own edges, inverses of those, go too.
   Future<void> forgetRelatedTasks(Set<int> taskIds) async {
     final ids = taskIds.toList();
-    for (var start = 0; start < ids.length; start += _chunkSize) {
-      final chunk = ids.sublist(
-        start,
-        (start + _chunkSize).clamp(0, ids.length),
-      );
+    for (final chunk in chunksOf(ids)) {
       await (delete(
         taskRelations,
       )..where((r) => r.otherTaskId.isIn(chunk) | r.taskId.isIn(chunk))).go();
@@ -1654,11 +1634,7 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
     final remindersByTask = <int, List<TaskReminder>>{};
     final relatedByTask = <int, Map<TaskRelationKind, List<Task>>>{};
     final ids = [for (final row in rows) row.task.id];
-    for (var start = 0; start < ids.length; start += _chunkSize) {
-      final chunk = ids.sublist(
-        start,
-        (start + _chunkSize).clamp(0, ids.length),
-      );
+    for (final chunk in chunksOf(ids)) {
       await _loadLabels(chunk, labelsByTask);
       await _loadAssignees(chunk, assigneesByTask);
       await _loadReminders(chunk, remindersByTask);

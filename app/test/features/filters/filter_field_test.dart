@@ -561,6 +561,56 @@ void main() {
     expect(find.text(en.filterNotCountable), findsOneWidget);
   });
 
+  testWidgets('a rebuild that changes nothing counted counts nothing again', (
+    tester,
+  ) async {
+    await openNewSavedFilter(tester);
+    await type(tester, 'priority >= 3');
+    await tester.pump(FilterField.countDelay);
+    await tester.pump();
+    expect(find.text(en.filterMatchCount(4)), findsOneWidget);
+    final counted = data.search.counts.length;
+
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
+    await tester.enterText(
+      find.widgetWithText(TextField, en.projectTitleLabel),
+      'Mine again',
+    );
+    await tester.pump();
+    await tester.pump(FilterField.countDelay);
+    await tester.pump();
+
+    expect(data.search.counts, hasLength(counted));
+    expect(find.text(en.filterMatchCount(4)), findsOneWidget);
+  });
+
+  testWidgets('while the text is not a valid filter the count goes at once', (
+    tester,
+  ) async {
+    await openNewSavedFilter(tester);
+    await type(tester, 'priority >= 3');
+    await tester.pump(FilterField.countDelay);
+    await tester.pump();
+    expect(find.text(en.filterMatchCount(4)), findsOneWidget);
+    final counted = data.search.counts.length;
+
+    await type(tester, 'priority >= ');
+
+    expect(find.text(en.filterMatchCount(4)), findsNothing);
+    expect(find.text(en.filterErrorSyntax), findsNothing);
+    await tester.pump(FilterField.countDelay);
+    await tester.pump();
+    expect(data.search.counts, hasLength(counted));
+    expect(find.text(en.filterMatchCount(4)), findsNothing);
+
+    await type(tester, 'priority >= 4');
+    await tester.pump(FilterField.countDelay);
+    await tester.pump();
+    expect(data.search.counts.last.$1.filter, 'priority >= 4');
+    expect(find.text(en.filterMatchCount(4)), findsOneWidget);
+  });
+
   testWidgets("a view counts within its project, with its form's show done "
       'switch', (tester) async {
     await openView(tester, 'List');

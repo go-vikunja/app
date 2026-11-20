@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/project_view_repository.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 import 'package:vikunja_mobile/core/sync/list_downloads.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 
@@ -40,7 +41,7 @@ final class LocalProjectViewRepository implements ProjectViewRepository {
 
   @override
   Future<int> createView(int projectId, ViewDraft view) async {
-    final title = _checkedTitle(view.title);
+    final title = checkedTitle(view.title);
     final project = await _stored(projectId);
     final created = await _write.views.create(
       projectId,
@@ -64,7 +65,7 @@ final class LocalProjectViewRepository implements ProjectViewRepository {
 
   @override
   Future<void> updateView(int projectId, int viewId, ViewDraft view) async {
-    final title = _checkedTitle(view.title);
+    final title = checkedTitle(view.title);
     _find(await _stored(projectId), viewId);
     final updated = await _write.views.update(
       projectId,
@@ -123,23 +124,13 @@ final class LocalProjectViewRepository implements ProjectViewRepository {
       project.views.where((view) => view.id == viewId).firstOrNull ??
       (throw const NotFound(code: _viewDoesNotExist));
 
-  static String _checkedTitle(String title) {
-    final trimmed = title.trim();
-    if (trimmed.isEmpty) throw ArgumentError.value(title, 'title');
-    return trimmed;
-  }
-
   void _settle(String done, {ProjectView? download}) {
     _log.fine(done);
     unawaited(_afterWrite(download));
   }
 
   Future<void> _afterWrite(ProjectView? view) async {
-    try {
-      await _sync.refreshAfterWrite();
-    } on Object catch (error) {
-      _log.fine('Sync after a view change failed: ${error.runtimeType}');
-    }
+    await refreshQuietly(_sync.refreshAfterWrite, _log, 'a view change');
     if (view == null) return;
     try {
       if (view.kind == ProjectViewKind.kanban) {

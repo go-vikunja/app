@@ -188,6 +188,20 @@ void main() {
       expect(fieldFocused(tester), isTrue);
     });
 
+    testWidgets('step 40q: after an unclosed quote, the next label is read '
+        'and marked, and its chip removes its own token; until then the '
+        'quote swallowed it and the chip removed nothing', (tester) async {
+      await harness.open(tester);
+      await typeLine(tester, 'Buy *"milk *urgent');
+
+      expect(highlighted(tester), [
+        ('*"milk', MagicSpanKind.label, FontWeight.w700),
+        ('*urgent', MagicSpanKind.label, FontWeight.w700),
+      ]);
+      await removeChip(tester, 'urgent');
+      expect(composerText(tester), 'Buy *"milk');
+    });
+
     testWidgets('a due date from a repeat alone has nothing to remove', (
       tester,
     ) async {
@@ -872,6 +886,7 @@ void main() {
         'the sheet not created and people not found', (tester) async {
       harness.service.result = const QuickAddResult(
         createdTaskIds: [-1],
+        createdTitles: ['Fix bike @bob *neu'],
         labelsNotCreated: ['Errands'],
         labelsKept: ['*neu'],
         unresolvedAssignees: ['bob'],
@@ -912,7 +927,10 @@ void main() {
     testWidgets('names the server found leave the confirmed title', (
       tester,
     ) async {
-      harness.service.result = const QuickAddResult(createdTaskIds: [-1]);
+      harness.service.result = await harness.submitted(
+        'Fix bike @alex',
+        fallbackProjectId: inbox.id,
+      );
       await harness.open(tester);
       await typeLine(tester, 'Fix bike @alex');
       await tester.tap(addButton());
@@ -922,13 +940,14 @@ void main() {
     });
 
     testWidgets('a title over the limit is confirmed as cut', (tester) async {
-      harness.service.result = const QuickAddResult(createdTaskIds: [-1]);
+      final line = 'https://example.com/${'a' * Task.maxTitleLength}';
+      harness.service.result = await harness.submitted(
+        line,
+        fallbackProjectId: inbox.id,
+      );
       await harness.open(tester);
       // Too long without a space: the title is the address's host.
-      await typeLine(
-        tester,
-        'https://example.com/${'a' * Task.maxTitleLength}',
-      );
+      await typeLine(tester, line);
       await tester.tap(addButton());
       await tester.pumpAndSettle();
 
@@ -937,9 +956,10 @@ void main() {
 
     testWidgets('a person known here whom the server did not accept stays '
         'in the confirmed title', (tester) async {
-      harness.service.result = const QuickAddResult(
-        createdTaskIds: [-1],
-        unresolvedAssignees: ['sam'],
+      // The server finds nobody in Garage Sale.
+      harness.service.result = await harness.submitted(
+        'Fix bike @sam',
+        fallbackProjectId: garageSale.id,
       );
       await harness.open(tester);
       await typeLine(tester, 'Fix bike @sam');
@@ -948,6 +968,24 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text(en.newTaskCreated('Fix bike @sam')), findsOneWidget);
+    });
+
+    testWidgets('the confirmation names the title the service created: a '
+        'name the server found before punctuation leaves it, where the '
+        'plan kept it', (tester) async {
+      const line = 'Call @alex tomorrow.';
+      harness.service.result = await harness.submitted(
+        line,
+        fallbackProjectId: inbox.id,
+      );
+      expect(harness.service.result.createdTitles, ['Call .']);
+      await harness.open(tester);
+      await typeLine(tester, line);
+      await tester.tap(addButton());
+      await tester.pumpAndSettle();
+
+      // Until step 40q the sheet named its own reading, "Call @alex.".
+      expect(find.text(en.newTaskCreated('Call .')), findsOneWidget);
     });
 
     testWidgets('a failed add says why and keeps the text', (tester) async {

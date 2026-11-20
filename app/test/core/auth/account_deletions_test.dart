@@ -7,12 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
-import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
+import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/notification_fakes.dart';

@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/security_l
 import 'package:vikunja_mobile/features/account_settings/presentation/sign_in_provider_name.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/external_link.dart';
+import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
@@ -42,11 +43,9 @@ class CaldavPage extends ConsumerStatefulWidget {
   ConsumerState<CaldavPage> createState() => _CaldavPageState();
 }
 
-class _CaldavPageState extends ConsumerState<CaldavPage> {
-  List<CaldavToken>? _tokens;
+class _CaldavPageState extends ConsumerState<CaldavPage> with LatestReads {
+  final _tokens = LatestRead<List<CaldavToken>>();
   TotpStatus? _totp;
-  Object? _failure;
-  bool _loading = false;
   bool _creating = false;
   int? _busyTokenId;
   String? _copiedValue;
@@ -66,23 +65,14 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
 
   Future<void> _load() async {
     final repository = ref.read(accountSecurityRepositoryProvider);
-    if (repository == null || _loading) return;
-    setState(() => _loading = true);
+    if (repository == null) return;
     unawaited(_loadTotp());
-    try {
-      final tokens = await repository.caldavTokens();
-      if (mounted) {
-        setState(() {
-          _tokens = tokens;
-          _failure = null;
-        });
-      }
-    } on Object catch (error) {
-      _log.info('Reading the CalDAV tokens failed: ${error.runtimeType}');
-      if (mounted) setState(() => _failure = error);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    await readLatest(
+      _tokens,
+      repository.caldavTokens,
+      log: _log,
+      what: 'the CalDAV tokens',
+    );
   }
 
   /// Whether the account password works for CalDAV depends on it.
@@ -161,7 +151,8 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
     try {
       final created = await repository.createCaldavToken();
       if (!mounted) return;
-      setState(() => _tokens = [...?_tokens, created.token]);
+      setState(() => _tokens.value = [...?_tokens.value, created.token]);
+      if (_tokens.loading) unawaited(_load());
       unawaited(HapticFeedback.selectionClick());
       await navigator.push<void>(
         MaterialPageRoute(
@@ -202,11 +193,17 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
     try {
       await repository.deleteCaldavToken(token.id);
       if (!mounted) return;
-      setState(
-        () => _tokens = _tokens?.where((each) => each.id != token.id).toList(),
-      );
+      setState(() {
+        if (_tokens.value case final tokens?) {
+          _tokens.value = [
+            for (final each in tokens)
+              if (each.id != token.id) each,
+          ];
+        }
+      });
       unawaited(HapticFeedback.selectionClick());
       announce(context, l10n.caldavTokenDeleted);
+      if (_tokens.loading) unawaited(_load());
     } on Object catch (error) {
       _log.warning('Deleting a CalDAV token failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
@@ -229,7 +226,7 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
     if (entry == null) return const Scaffold();
     final username = entry.account.username;
     final address = caldavPrincipalUri(entry.connection, username).toString();
-    final tokens = _tokens;
+    final tokens = _tokens.value;
     final password = switch ((profile, _totp)) {
       (final profile?, _) when !profile.isLocalUser => l10n.caldavTokenProvider(
         signInProviderName(profile.authProvider),
@@ -260,13 +257,15 @@ class _CaldavPageState extends ConsumerState<CaldavPage> {
       appBar: AppBar(
         title: ScreenTitle(l10n.caldavTitle),
         actions: [
-          RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
+          RefreshButton(
+            onPressed: _tokens.loading ? null : () => unawaited(_load()),
+          ),
         ],
       ),
       body: SecurityListBody(
-        loading: _loading && tokens == null,
+        loading: _tokens.loading && tokens == null,
         loadingLabel: l10n.caldavTokensLoading,
-        failure: _failure,
+        failure: _tokens.failure,
         hasData: tokens != null,
         onRefresh: _load,
         header: Column(

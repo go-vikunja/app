@@ -14,6 +14,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/trash_repository_providers.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
+import 'package:vikunja_mobile/features/common/presentation/title_and_hint.dart';
 import 'package:vikunja_mobile/features/projects/application/project_management.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/duplicate_project_sheet.dart';
@@ -231,7 +232,7 @@ PopupMenuItem<T> projectMenuItem<T>(
       Flexible(
         child: hint == null
             ? Text(label, style: TextStyle(color: color))
-            : _LabelAndHint(label: label, hint: hint),
+            : TitleAndHint(title: label, hint: hint),
       ),
     ],
   ),
@@ -248,29 +249,4 @@ class ProjectMenuIcon extends StatelessWidget {
     icon,
     color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
   );
-}
-
-class _LabelAndHint extends StatelessWidget {
-  const new({required this.label, required this.hint});
-
-  final String label;
-  final String hint;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label),
-        const SizedBox(height: 2),
-        Text(
-          hint,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
 }

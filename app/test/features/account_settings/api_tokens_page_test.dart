@@ -200,6 +200,65 @@ void main() {
 
       expect(find.text(en.apiTokensEmptyTitle), findsOneWidget);
     });
+
+    testWidgets('a token made while a read is on its way is listed', (
+      tester,
+    ) async {
+      await harness.pump(tester, location: AppRoutes.accountApiTokens);
+      final held = harness.holdNext('apiTokens');
+
+      await tester.tap(find.byTooltip(en.refresh));
+      await tester.pump();
+      await tester.tap(find.byTooltip(en.apiTokensNew));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Home Assistant');
+      await tester.tap(find.text(en.apiTokenPresetTasks));
+      await tester.pump();
+      await tester.tap(find.text(en.apiTokenFormCreate));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.oneTimeSecretCopy));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.oneTimeSecretDone));
+      await tester.pumpAndSettle();
+      expect(find.text('Home Assistant'), findsOneWidget);
+
+      // The held read answers as the server did before the token.
+      harness.security.apiTokenList = [];
+      held.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home Assistant'), findsOneWidget);
+      expect(harness.callsOf('apiTokens'), 3);
+    });
+
+    testWidgets('a read still on its way when a token is deleted does not '
+        'bring it back', (tester) async {
+      harness.security.apiTokenList = [
+        fakeApiToken(expiresAt: harness.now.add(const Duration(days: 20))),
+      ];
+      await harness.pump(tester, location: AppRoutes.accountApiTokens);
+      final before = harness.security.apiTokenList;
+      final held = harness.holdNext('apiTokens');
+
+      await tester.tap(find.byTooltip(en.refresh));
+      await tester.pump();
+      await tester.tap(find.text('Home Assistant'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(OutlinedButton, en.apiTokensDelete));
+      await tester.pumpAndSettle();
+      await tester.tap(dialogText(en.apiTokensDelete));
+      await tester.pumpAndSettle();
+      expect(find.text('Home Assistant'), findsNothing);
+
+      // The held read answers as the server did before the delete.
+      harness.security.apiTokenList = before;
+      held.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.text('Home Assistant'), findsNothing);
+      expect(find.text(en.apiTokensEmptyTitle), findsOneWidget);
+      expect(harness.callsOf('apiTokens'), 3);
+    });
   });
 
   group('the form', () {

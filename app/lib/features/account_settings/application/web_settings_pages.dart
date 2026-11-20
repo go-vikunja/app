@@ -1,4 +1,5 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 
 /// The web's own settings pages the app sends the user to, because they ask
 /// for the password or a TOTP code, which the app never handles (D14).
@@ -19,16 +20,8 @@ enum WebSettingsPage {
 /// reports, else the server's own address, where the web usually is. An
 /// https server's pages are never opened over http, e.g. for a stale
 /// `service.publicurl` behind a TLS proxy, as for the sign-in.
-Uri webSettingsPageUri(ServerConnection connection, WebSettingsPage page) {
-  final advertised = connection.info.frontendUrl;
-  final base =
-      advertised == null ||
-          (connection.rootUri.isScheme('https') &&
-              !advertised.isScheme('https'))
-      ? connection.rootUri
-      : advertised;
-  final directory = base.path.endsWith('/')
-      ? base
-      : base.replace(path: '${base.path}/');
-  return directory.resolve(page.path);
-}
+Uri webSettingsPageUri(ServerConnection connection, WebSettingsPage page) =>
+    webFrontendBase(
+      serverRoot: connection.rootUri,
+      frontendUrl: connection.info.frontendUrl,
+    ).resolve(page.path);

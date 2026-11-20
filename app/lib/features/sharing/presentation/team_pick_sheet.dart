@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
+import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/sharing/application/share_candidates.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
@@ -50,11 +51,10 @@ class TeamPickSheet extends ConsumerStatefulWidget {
   ConsumerState<TeamPickSheet> createState() => _TeamPickSheetState();
 }
 
-class _TeamPickSheetState extends ConsumerState<TeamPickSheet> {
+class _TeamPickSheetState extends ConsumerState<TeamPickSheet>
+    with LatestReads {
   final _filter = TextEditingController();
-  List<Team>? _teams;
-  Object? _failure;
-  bool _loading = false;
+  final _teams = LatestRead<List<Team>>();
 
   @override
   void initState() {
@@ -70,25 +70,21 @@ class _TeamPickSheetState extends ConsumerState<TeamPickSheet> {
 
   Future<void> _load() async {
     final repository = ref.read(teamRepositoryProvider);
-    if (repository == null || _loading) return;
-    setState(() => _loading = true);
-    try {
-      final teams = await repository.list(includePublic: widget.includePublic);
-      if (mounted) {
-        setState(() {
-          _teams = [
-            for (final team in teams)
-              if (!widget.excludedTeamIds.contains(team.id)) team,
-          ];
-          _failure = null;
-        });
-      }
-    } on Object catch (error) {
-      _log.info('Reading the teams failed: ${error.runtimeType}');
-      if (mounted) setState(() => _failure = error);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    if (repository == null) return;
+    await readLatest(
+      _teams,
+      () async {
+        final teams = await repository.list(
+          includePublic: widget.includePublic,
+        );
+        return [
+          for (final team in teams)
+            if (!widget.excludedTeamIds.contains(team.id)) team,
+        ];
+      },
+      log: _log,
+      what: 'the teams',
+    );
   }
 
   @override
@@ -96,8 +92,8 @@ class _TeamPickSheetState extends ConsumerState<TeamPickSheet> {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
-    final teams = _teams;
-    final failure = _failure;
+    final teams = _teams.value;
+    final failure = _teams.failure;
     final shown = teams == null
         ? const <Team>[]
         : filterTeams(teams, _filter.text);
@@ -119,7 +115,7 @@ class _TeamPickSheetState extends ConsumerState<TeamPickSheet> {
                     onRetry: () => unawaited(_load()),
                   ),
                 ),
-              if (_loading && teams == null)
+              if (_teams.loading && teams == null)
                 LoadingPlaceholder(label: l10n.shareTeamsLoading),
               if (teams != null && teams.length > TeamPickSheet.filterFrom)
                 Padding(

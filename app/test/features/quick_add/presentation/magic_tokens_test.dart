@@ -73,6 +73,25 @@ void main() {
       ));
     });
 
+    test('step 40q: an open quote ends at the next label, as the parser '
+        'reads it, so that label is the one being typed; until then the '
+        'quote ran to the end of the line and the query was "milk *urg"', () {
+      expect(activeMagicToken(at('Buy *"milk *urg'), vikunja), (
+        kind: MagicTokenKind.label,
+        prefix: '*',
+        start: 11,
+        end: 15,
+        query: 'urg',
+      ));
+      expect(activeMagicToken(at('Buy *"milk *urg', 8), vikunja), (
+        kind: MagicTokenKind.label,
+        prefix: '*',
+        start: 4,
+        end: 8,
+        query: 'mi',
+      ));
+    });
+
     test('works on any line of several', () {
       expect(activeMagicToken(at('Buy milk\nCall @sa'), vikunja), (
         kind: MagicTokenKind.assignee,
@@ -134,8 +153,8 @@ void main() {
         ),
         at('Sell +"Garage Sale" '),
       );
-      expect(quoteMagicValue('Say "hi" now'), "'Say \"hi\" now'");
-      expect(quoteMagicValue('plain'), 'plain');
+      expect(quoteQuickAddItem('Say "hi" now'), "'Say \"hi\" now'");
+      expect(quoteQuickAddItem('plain'), 'plain');
     });
 
     test('an open quote is completed up to the caret', () {

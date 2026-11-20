@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/title_and_hint.dart';
 
 /// The server's limits for project and view titles and for identifiers,
 /// counted in code points.
@@ -32,8 +33,7 @@ class ParentProjectTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+    final colors = Theme.of(context).colorScheme;
     final note = lockedNote;
     return ListTile(
       enabled: onTap != null && note == null,
@@ -41,20 +41,7 @@ class ParentProjectTile extends StatelessWidget {
       title: Text(l10n.projectParentLabel),
       subtitle: note == null
           ? Text(label)
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label),
-                const SizedBox(height: 2),
-                // A disabled tile would draw it too faint to read.
-                Text(
-                  note,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
+          : TitleAndHint(title: label, hint: note),
       trailing: note == null ? const Icon(Icons.arrow_drop_down) : null,
       onTap: note == null ? onTap : null,
     );

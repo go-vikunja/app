@@ -11,7 +11,6 @@ import 'package:vikunja_mobile/core/activity/activity_providers.dart';
 import 'package:vikunja_mobile/core/activity/activity_tray.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
-import 'package:vikunja_mobile/core/auth/sign_out_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
@@ -27,6 +26,7 @@ import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/app_lock_fakes.dart';
 import '../../helpers/auth_fakes.dart';

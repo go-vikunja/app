@@ -113,9 +113,7 @@ class _FilterFieldState extends ConsumerState<FilterField>
   FilterInput? _reported;
   Timer? _countTimer;
   var _countRequest = 0;
-  int? _matches;
-  var _countable = true;
-  var _counted = false;
+  _CountShown _countShown = const _NotCounted();
   Object? _countKey;
   TextEditingValue? _lastValue;
   List<Label>? _lastLabels;
@@ -126,7 +124,16 @@ class _FilterFieldState extends ConsumerState<FilterField>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _focus.addListener(_onFocusChanged);
-    _controller.addListener(_onSelectionChanged);
+    _controller
+      ..addListener(_onSelectionChanged)
+      ..highlighted = widget.enabled;
+  }
+
+  @override
+  void didUpdateWidget(FilterField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _controller.highlighted = widget.enabled;
+    _countWhenChanged();
   }
 
   @override
@@ -222,14 +229,14 @@ class _FilterFieldState extends ConsumerState<FilterField>
       edited: _edited,
     );
     final reported = _reported;
-    if (reported != null &&
-        reported.apiText == input.apiText &&
-        reported.edited == input.edited &&
-        reported.error?.code == input.error?.code) {
-      return;
+    if (reported == null ||
+        reported.apiText != input.apiText ||
+        reported.edited != input.edited ||
+        reported.error?.code != input.error?.code) {
+      _reported = input;
+      widget.onChanged(input);
     }
-    _reported = input;
-    widget.onChanged(input);
+    _countWhenChanged();
   }
 
   void _onEdited() {
@@ -262,8 +269,12 @@ class _FilterFieldState extends ConsumerState<FilterField>
   }
 
   /// Counts again, shortly, whenever what is counted changed: the text,
-  /// the switch the views form adds to it, search or include-nulls.
-  void _countWhenChanged(FilterInput input) {
+  /// the switch the views form adds to it, search or include-nulls. Each
+  /// of them changes only before a build: an edit, the lookups adopted
+  /// after a frame, or new widget settings.
+  void _countWhenChanged() {
+    final input = _reported;
+    if (input == null) return;
     final filter = input.error == null
         ? widget.completeFilter?.call(input.apiText) ?? input.apiText
         : null;
@@ -279,7 +290,7 @@ class _FilterFieldState extends ConsumerState<FilterField>
     _countTimer?.cancel();
     final request = ++_countRequest;
     if (filter == null) {
-      _counted = false;
+      _countShown = const _NotCounted();
       return;
     }
     final search = widget.search;
@@ -324,11 +335,10 @@ class _FilterFieldState extends ConsumerState<FilterField>
     }
     // A slower count of an earlier text must not replace a newer one.
     if (!mounted || request != _countRequest) return;
-    setState(() {
-      _matches = count;
-      _countable = count != null;
-      _counted = true;
-    });
+    setState(
+      () =>
+          _countShown = count == null ? const _NotCountable() : _Counted(count),
+    );
   }
 
   void _complete(FilterCompletionContext context, String insert) {
@@ -362,7 +372,6 @@ class _FilterFieldState extends ConsumerState<FilterField>
       }
     }
     final input = _reported;
-    if (input != null) _countWhenChanged(input);
     // A fixed filter loses its message at once; a new message waits for a
     // pause in typing.
     final localError = input != null && input.edited && input.error != null
@@ -395,12 +404,16 @@ class _FilterFieldState extends ConsumerState<FilterField>
       _revealChipsAfterFrame();
     }
     _chipsShown = chips.isNotEmpty;
-    _controller.highlighted = widget.enabled;
-    final countText = errorText != null || !_counted
-        ? null
-        : _countable
-        ? l10n.filterMatchCount(_matches ?? 0)
-        : l10n.filterNotCountable;
+    final (countText, countIcon) = errorText != null
+        ? (null, null)
+        : switch (_countShown) {
+            _NotCounted() => (null, null),
+            _Counted(:final matches) => (
+              l10n.filterMatchCount(matches),
+              Icons.checklist,
+            ),
+            _NotCountable() => (l10n.filterNotCountable, Icons.cloud_outlined),
+          };
     final theme = Theme.of(context);
     final subtextStyle = theme.textTheme.bodySmall;
     return Column(
@@ -486,7 +499,7 @@ class _FilterFieldState extends ConsumerState<FilterField>
               children: [
                 ExcludeSemantics(
                   child: Icon(
-                    _countable ? Icons.checklist : Icons.cloud_outlined,
+                    countIcon,
                     size: 18,
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -673,6 +686,27 @@ class _FilterFieldState extends ConsumerState<FilterField>
       ),
     );
   }
+}
+
+/// What the field says about how many tasks match.
+sealed class _CountShown {
+  const new();
+}
+
+/// Nothing yet, or the filter is not valid.
+final class _NotCounted extends _CountShown {
+  const new();
+}
+
+final class _Counted extends _CountShown {
+  const new(this.matches);
+
+  final int matches;
+}
+
+/// The device cannot evaluate the filter, or counting it failed.
+final class _NotCountable extends _CountShown {
+  const new();
 }
 
 String _dateShortcutName(AppLocalizations l10n, String shortcut) =>

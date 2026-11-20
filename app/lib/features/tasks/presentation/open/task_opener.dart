@@ -11,6 +11,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
+import 'package:vikunja_mobile/core/async/first_value.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
@@ -256,7 +257,7 @@ final class TaskOpener {
   /// The projects [accountId] holds on this device.
   Future<List<Project>> localProjects(String accountId) => withAccount(
     accountProjectRepositoryProvider(accountId),
-    (projects) => _firstValue(projects.watchAll()),
+    (projects) => firstValue(projects.watchAll(), orElse: const []),
   );
 
   /// The task [reference] names in [accountId]: local first, else online.
@@ -591,27 +592,6 @@ final class TaskOpener {
       ..removeListener(_forgetKeptPage)
       ..removeListener(_runWhenReady);
   }
-}
-
-/// Like `Stream.first`, without waiting for the cancel, which a source may
-/// never complete (see `findLocalTask`); empty when the stream ends first.
-Future<List<T>> _firstValue<T>(Stream<List<T>> stream) {
-  final completer = Completer<List<T>>();
-  late final StreamSubscription<List<T>> subscription;
-  subscription = stream.listen(
-    (value) {
-      if (!completer.isCompleted) completer.complete(value);
-      unawaited(subscription.cancel());
-    },
-    onError: (Object error, StackTrace stack) {
-      if (!completer.isCompleted) completer.completeError(error, stack);
-      unawaited(subscription.cancel());
-    },
-    onDone: () {
-      if (!completer.isCompleted) completer.complete(const []);
-    },
-  );
-  return completer.future;
 }
 
 /// Reads a task from the server even when this device has it, and stores

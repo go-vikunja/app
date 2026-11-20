@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/app/theme/theme_providers.dart';
+import 'package:vikunja_mobile/core/settings/appearance_settings.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 
 final _log = Logger('Bootstrap');

@@ -19,6 +19,7 @@ import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/local/shared_latest.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
@@ -662,12 +663,10 @@ final class LocalTaskRepository
     _log.fine('Restored task ${task.id} from the trash');
     if (await _db.outboxDao.retryRefusedAsGone(task.id) > 0) _drainQuietly();
     unawaited(
-      _sync.refreshAfterWrite().then<void>(
-        (_) {},
-        onError: (Object error) => _log.fine(
-          'Sync after restoring task ${task.id} failed: '
-          '${error.runtimeType}',
-        ),
+      refreshQuietly(
+        _sync.refreshAfterWrite,
+        _log,
+        'restoring task ${task.id}',
       ),
     );
   }

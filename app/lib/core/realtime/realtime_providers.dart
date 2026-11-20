@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/network/client_certificate_check.dart';
 import 'package:vikunja_mobile/core/network/network_profile.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
 import 'package:vikunja_mobile/core/network/network_profiles.dart';
@@ -40,11 +41,18 @@ final class ProfileRealtimeConnector implements RealtimeConnector {
     required this._profiles,
     required this._userAgent,
     this._platformNetwork,
-  });
+    Duration refusalCheckTimeout = const Duration(seconds: 5),
+    Duration refusalCheckWait = const Duration(seconds: 3),
+  }) : _refusals = ClientCertificateRefusalCheck(
+         _log,
+         timeout: refusalCheckTimeout,
+         wait: refusalCheckWait,
+       );
 
   final NetworkProfiles _profiles;
   final String _userAgent;
   final PlatformNetwork? _platformNetwork;
+  final ClientCertificateRefusalCheck _refusals;
   late final _mismatches = PinMismatchRecorder(_profiles);
 
   @override
@@ -66,14 +74,17 @@ final class ProfileRealtimeConnector implements RealtimeConnector {
         key: '$value',
       'User-Agent': _userAgent,
     };
-    final connector = profile == null || !profile.needsDartIo
-        ? switch (await readPlatformNetwork(_platformNetwork, url)) {
-            final settings? => IoRealtimeConnector(
-              createHttpClient: () => platformHttpClient(settings),
-            ),
-            null => const IoRealtimeConnector(),
-          }
-        : _connectorFor(profile);
+    final dartIo = profile != null && profile.needsDartIo
+        ? _dartIoFor(profile)
+        : null;
+    final connector =
+        dartIo?.connector ??
+        switch (await readPlatformNetwork(_platformNetwork, url)) {
+          final settings? => IoRealtimeConnector(
+            createHttpClient: () => platformHttpClient(settings),
+          ),
+          null => const IoRealtimeConnector(),
+        };
     try {
       return await connector.connect(url, headers: sent);
     } on Object catch (error) {
@@ -89,6 +100,15 @@ final class ProfileRealtimeConnector implements RealtimeConnector {
           mentionsClientCertificateRefusal('$error')) {
         throw ClientCertificateRefusedException(origin.toString());
       }
+      // As for the requests: TLS 1.3 may end the upgrade without naming the
+      // alert.
+      if (origin.isSecure &&
+          error is HttpException &&
+          profile != null &&
+          dartIo != null &&
+          await _refusals.refused(profile, dartIo.context)) {
+        throw ClientCertificateRefusedException(origin.toString());
+      }
       if (profile != null &&
           error is! RealtimeUpgradeRefused &&
           quotesSecret(profile.secrets, [error])) {
@@ -101,7 +121,9 @@ final class ProfileRealtimeConnector implements RealtimeConnector {
     }
   }
 
-  RealtimeConnector _connectorFor(NetworkProfile profile) {
+  ({RealtimeConnector connector, SecurityContext context}) _dartIoFor(
+    NetworkProfile profile,
+  ) {
     final SecurityContext context;
     try {
       context = profileSecurityContext(profile);
@@ -110,12 +132,15 @@ final class ProfileRealtimeConnector implements RealtimeConnector {
       _log.info('Stored TLS settings refused: ${error.runtimeType}');
       throw ConnectionProfileIncompleteException(profile.origin.toString());
     }
-    return IoRealtimeConnector(
-      createHttpClient: () => profileHttpClient(
-        profile,
-        context: context,
-        onPinMismatch: (seen) => _mismatches.record(profile.origin, seen),
+    return (
+      connector: IoRealtimeConnector(
+        createHttpClient: () => profileHttpClient(
+          profile,
+          context: context,
+          onPinMismatch: (seen) => _mismatches.record(profile.origin, seen),
+        ),
       ),
+      context: context,
     );
   }
 }

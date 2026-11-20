@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_hosts.dart';
 
@@ -134,6 +135,51 @@ void main() {
       expect(other?.signInPage, 'ftp://files.example.org');
       expect(other?.origin, isNull);
     });
+  });
+
+  test('the sign-in page has the origin of the web frontend the server '
+      'reports, which the browser hint reads its settings for', () {
+    final cases = <(String, String?), String>{
+      ('https://tasks.example.org/vikunja', null):
+          'https://tasks.example.org:443',
+      ('https://tasks.example.org', 'https://web.example.org/'):
+          'https://web.example.org:443',
+      ('https://tasks.example.org', 'http://tasks.example.org:3456/'):
+          'https://tasks.example.org:443',
+      ('http://192.168.1.20:3456', 'http://192.168.1.20:3456/'):
+          'http://192.168.1.20:3456',
+      ('http://192.168.1.20:3456', 'https://tasks.example.org/'):
+          'https://tasks.example.org:443',
+      ('https://tasks.example.org', 'https://anmeldung.müller.example/'):
+          'https://anmeldung.xn--mller-kva.example:443',
+      ('https://tasks.example.org', 'https://web.example.org:8443/sub/dir'):
+          'https://web.example.org:8443',
+    };
+    for (final MapEntry(key: (root, frontend), value: origin)
+        in cases.entries) {
+      final connection = accountPagesServer270(
+        root: root,
+        frontendUrl: frontend == null ? null : Uri.parse(frontend),
+      );
+      final page = OriginKey.tryOf(signInPageOf(connection));
+      final frontendBase = OriginKey.tryOf(
+        withAsciiHost(
+          webFrontendBase(
+            serverRoot: connection.rootUri,
+            frontendUrl: connection.info.frontendUrl,
+          ),
+        ),
+      );
+
+      expect('$page', origin, reason: '$root $frontend');
+      expect(page, frontendBase, reason: '$root $frontend');
+      expect(
+        otherSignInHost(connection)?.origin ??
+            OriginKey.tryOf(connection.rootUri),
+        page,
+        reason: '$root $frontend',
+      );
+    }
   });
 
   group('confirmed hosts', () {

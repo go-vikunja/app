@@ -50,7 +50,7 @@ final class AppLockControllerProvider
   }
 }
 
-String _$appLockControllerHash() => r'849cd87ab3da321c55018eac21d25de305bd34a9';
+String _$appLockControllerHash() => r'4cbdad8e63b4563a84f4410ff5de0260cf28dc3f';
 
 /// The app lock: a gate over the UI, not encryption. Locked on every cold
 /// start while it is on, and again when the app was out of sight for the

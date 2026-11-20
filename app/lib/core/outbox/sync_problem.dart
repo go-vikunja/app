@@ -12,6 +12,11 @@ enum OutboxOperationKind {
 
   bool get isLabelOp =>
       this == createLabel || this == updateLabel || this == deleteLabel;
+
+  /// A request that may leave something on the server without an answer,
+  /// which a later attempt looks for first.
+  bool get createsOnServer =>
+      this == createTask || this == uploadAttachment || this == createLabel;
 }
 
 /// A queued change the server rejected for good. The local edit stays

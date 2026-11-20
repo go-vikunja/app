@@ -7,6 +7,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/common/presentation/count_badge.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
+import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
 
 /// One column of a kanban board: the bucket's title, done marker, count and
 /// menu pinned above its cards, then the next page's loader and "Add a task",
@@ -64,16 +65,14 @@ class BoardColumnView extends StatefulWidget {
 }
 
 class BoardColumnViewState extends State<BoardColumnView> {
-  static const _autoScrollEdge = 56.0;
-
   final _scroll = ScrollController();
   final GlobalKey _header = GlobalKey();
   final _slots = <int, BuildContext>{};
-  EdgeDraggingAutoScroller? _autoScroller;
+  DragEdgeScroller? _edgeScroller;
 
   @override
   void dispose() {
-    _autoScroller?.stopAutoScroll();
+    _edgeScroller?.stop();
     _scroll.dispose();
     super.dispose();
   }
@@ -115,33 +114,13 @@ class BoardColumnViewState extends State<BoardColumnView> {
   }
 
   /// Scrolls the cards while the global [pointer] is near the column's top
-  /// or bottom; [onScrolled] runs after each step.
-  void autoScrollNear(Offset pointer, {required VoidCallback onScrolled}) {
-    if (!_scroll.hasClients) return;
-    final scrollable = switch (_scroll.position.context) {
-      final ScrollableState state => state,
-      _ => null,
-    };
-    if (scrollable == null) return;
-    if (_autoScroller?.scrollable != scrollable) {
-      _autoScroller?.stopAutoScroll();
-      _autoScroller = EdgeDraggingAutoScroller(
-        scrollable,
-        onScrollViewScrolled: onScrolled,
-        velocityScalar: 50,
-      );
-    }
-    final viewport = _scroll.position.viewportDimension;
-    _autoScroller!.startAutoScrollIfNecessary(
-      Rect.fromCenter(
-        center: pointer,
-        width: 1,
-        height: math.min(_autoScrollEdge * 2, viewport),
-      ),
-    );
-  }
+  /// or bottom; the first [onScrolled] given runs after each step.
+  void autoScrollNear(Offset pointer, {required VoidCallback onScrolled}) =>
+      (_edgeScroller ??= DragEdgeScroller(
+        onScrolled: onScrolled,
+      )).followController(_scroll, pointer);
 
-  void stopAutoScroll() => _autoScroller?.stopAutoScroll();
+  void stopAutoScroll() => _edgeScroller?.stop();
 
   bool _onScroll(ScrollNotification notification) {
     final metrics = notification.metrics;
@@ -190,7 +169,7 @@ class BoardColumnViewState extends State<BoardColumnView> {
                 ),
               ),
               if (tasks.isEmpty && dropIndex == 0)
-                const SliverToBoxAdapter(child: _DropLine()),
+                const SliverToBoxAdapter(child: _dropLine),
               SliverList.builder(
                 itemCount: tasks.length,
                 findChildIndexCallback: (key) {
@@ -206,7 +185,7 @@ class BoardColumnViewState extends State<BoardColumnView> {
                     key: ValueKey(task.id),
                     taskId: task.id,
                     slots: _slots,
-                    keepAlive: task.id == widget.draggedTaskId,
+                    held: task.id == widget.draggedTaskId,
                     lineAbove: dropIndex == index,
                     lineBelow:
                         dropIndex == tasks.length && index == tasks.length - 1,
@@ -389,100 +368,47 @@ class _LoadMore extends StatelessWidget {
 }
 
 /// Where a dragged card would go: a bar in the gap between two cards.
-class _DropLine extends StatelessWidget {
-  const new();
+const _dropLine = DropLine(indent: 8, end: 8);
 
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 8),
-    child: SizedBox(
-      height: 3,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-    ),
-  );
-}
-
-/// A card's place in its column: tells the column where the card is laid
-/// out, keeps the dragged card alive while it scrolls away, and paints the
-/// drop line into the gap above or below without moving any card.
-class _CardSlot extends StatefulWidget {
+/// A card's place in its column ([SlotRegistration]): paints the drop
+/// line into the gap above or below without moving any card.
+class _CardSlot extends StatelessWidget {
   const new({
     required this.taskId,
     required this.slots,
-    required this.keepAlive,
+    required this.held,
     required this.lineAbove,
     required this.lineBelow,
     required this.child,
     super.key,
   });
 
+  static const _gap = 4.0;
+
   final int taskId;
   final Map<int, BuildContext> slots;
-  final bool keepAlive;
+  final bool held;
   final bool lineAbove;
   final bool lineBelow;
   final Widget child;
 
   @override
-  State<_CardSlot> createState() => _CardSlotState();
-}
-
-class _CardSlotState extends State<_CardSlot>
-    with AutomaticKeepAliveClientMixin {
-  static const _gap = 4.0;
-
-  @override
-  bool get wantKeepAlive => widget.keepAlive;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.slots[widget.taskId] = context;
-  }
-
-  @override
-  void didUpdateWidget(_CardSlot oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.taskId != widget.taskId ||
-        !identical(oldWidget.slots, widget.slots)) {
-      _unregister(oldWidget);
-      widget.slots[widget.taskId] = context;
-    }
-    if (oldWidget.keepAlive != widget.keepAlive) updateKeepAlive();
-  }
-
-  @override
-  void dispose() {
-    _unregister(widget);
-    super.dispose();
-  }
-
-  void _unregister(_CardSlot slot) {
-    if (identical(slot.slots[slot.taskId], context)) {
-      slot.slots.remove(slot.taskId);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return Stack(
+  Widget build(BuildContext context) => SlotRegistration(
+    id: taskId,
+    slots: slots,
+    keepAlive: held,
+    child: Stack(
       fit: StackFit.passthrough,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: _gap),
-          child: widget.child,
+          child: child,
         ),
-        if (widget.lineAbove)
-          const Positioned(left: 0, right: 0, top: 0, child: _DropLine()),
-        if (widget.lineBelow)
-          const Positioned(left: 0, right: 0, bottom: 0, child: _DropLine()),
+        if (lineAbove)
+          const Positioned(left: 0, right: 0, top: 0, child: _dropLine),
+        if (lineBelow)
+          const Positioned(left: 0, right: 0, bottom: 0, child: _dropLine),
       ],
-    );
-  }
+    ),
+  );
 }

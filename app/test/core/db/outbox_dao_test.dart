@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/core/outbox/new_task_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
 import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
+import 'package:vikunja_mobile/core/outbox/upload_json.dart';
 
 import '../../helpers/sample_data.dart';
 import '../../helpers/test_database.dart';
@@ -2053,5 +2054,254 @@ void main() {
 
       expect(decodeTaskChanges((await ops()).single.payload), tap);
     });
+  });
+
+  group('rewriting queued ops', () {
+    Future<void> backOff(String id) => db.outboxDao.scheduleRetry(
+      id,
+      attempts: 2,
+      failure: const ServerFailure(502),
+      nextAttemptAt: later,
+    );
+
+    void expectBackingOff(OutboxRow op) {
+      expect(op.state, OutboxState.pending.name);
+      expect(op.attempts, 2);
+      expect(op.nextAttemptAt, later);
+      expect(op.lastError, encodeFailure(const ServerFailure(502)));
+    }
+
+    test('labels a sync forgets change only the payload of an op waiting out '
+        'a backoff', () async {
+      await queue(
+        1,
+        const TaskChanges(
+          title: 'A',
+          labels: IdSetChange(added: {5}),
+        ),
+      );
+      final op = (await ops()).single;
+      await backOff(op.id);
+
+      await db.outboxDao.forgetLabels({5});
+
+      final kept = (await ops()).single;
+      expectBackingOff(kept);
+      expect(decodeTaskChanges(kept.payload), const TaskChanges(title: 'A'));
+      expect(await pendingOf(1), const TaskChanges(title: 'A'));
+    });
+
+    test('a rejected create takes the edit behind it, whose rest keeps its '
+        'state; the pending changes follow with or without a rest', () async {
+      final kept = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'Kept'),
+        now: now,
+      );
+      final gone = await db.outboxDao.queueCreate(
+        const NewTask(projectId: 7, title: 'Gone'),
+        now: now,
+      );
+      final [keptCreate, goneCreate] = await ops();
+      await db.outboxDao.markSending(keptCreate.id, at: now);
+      await db.outboxDao.markSending(goneCreate.id, at: now);
+      await queue(kept, const TaskChanges(title: 'B', done: true));
+      await queue(gone, const TaskChanges(title: 'C'));
+      final edit = (await ops()).firstWhere(
+        (op) => op.taskId == kept && op.kind == 'updateTask',
+      );
+      await backOff(edit.id);
+
+      await db.outboxDao.markFailed(keptCreate.id, const NotFound(code: 3001));
+      await db.outboxDao.markFailed(goneCreate.id, const NotFound(code: 3001));
+
+      final rest = (await db.outboxDao.find(edit.id))!;
+      expectBackingOff(rest);
+      expect(decodeTaskChanges(rest.payload), done);
+      expect(await pendingOf(kept), done);
+      expect(
+        (await ops()).where((op) => op.kind == 'updateTask'),
+        hasLength(1),
+      );
+      expect(await pendingOf(gone), isNull);
+    });
+  });
+
+  group('marking an op failed', () {
+    const upload = QueuedUpload(
+      file: '0123456789abcdef0123456789abcdef',
+      fileName: 'a.png',
+      size: 1,
+      mimeType: 'image/png',
+    );
+
+    Future<String> labelOpBehindCreate(
+      String title,
+      Future<void> Function(int labelId) queueOp,
+    ) async {
+      final label = await db.labelOpsDao.queueCreate(
+        NewLabel(title: title),
+        now: now,
+      );
+      await db.outboxDao.claim(
+        (await db.labelOpsDao.createOf(label.id))!.id,
+        at: now,
+      );
+      await queueOp(label.id);
+      return (await ops()).last.id;
+    }
+
+    final rows =
+        <
+          ({
+            String what,
+            Future<String> Function() queue,
+            VikunjaFailure failure,
+            bool givenUp,
+            bool keepsSentAt,
+          })
+        >[
+          (
+            what: 'an upload the server refused',
+            queue: () async {
+              await db.outboxDao.queueUpload(1, upload, now: now);
+              return (await ops()).last.id;
+            },
+            failure: const Forbidden(),
+            givenUp: false,
+            keepsSentAt: false,
+          ),
+          (
+            what: 'an upload that timed out',
+            queue: () async {
+              await db.outboxDao.queueUpload(1, upload, now: now);
+              return (await ops()).last.id;
+            },
+            failure: const NetworkFailure(NetworkProblem.timeout),
+            givenUp: false,
+            keepsSentAt: true,
+          ),
+          (
+            what: 'an upload with a 5xx',
+            queue: () async {
+              await db.outboxDao.queueUpload(1, upload, now: now);
+              return (await ops()).last.id;
+            },
+            failure: const ServerFailure(502),
+            givenUp: false,
+            keepsSentAt: true,
+          ),
+          (
+            what: 'a rejected create',
+            queue: () async {
+              await db.outboxDao.queueCreate(
+                const NewTask(projectId: 7, title: 'New'),
+                now: now,
+              );
+              return (await ops()).last.id;
+            },
+            failure: const DomainError(412, code: 3008),
+            givenUp: false,
+            keepsSentAt: false,
+          ),
+          (
+            what: 'a refused update',
+            queue: () async {
+              await queue(1, done);
+              return (await ops()).last.id;
+            },
+            failure: const Forbidden(),
+            givenUp: false,
+            keepsSentAt: true,
+          ),
+          (
+            what: 'a refused delete',
+            queue: () async {
+              await db.outboxDao.queueDelete(2, now: now);
+              return (await ops()).last.id;
+            },
+            failure: const Forbidden(),
+            givenUp: false,
+            keepsSentAt: true,
+          ),
+          (
+            what: 'a create given up',
+            queue: () async {
+              await db.outboxDao.queueCreate(
+                const NewTask(projectId: 7, title: 'New'),
+                now: now,
+              );
+              return (await ops()).last.id;
+            },
+            failure: const ServerFailure(502),
+            givenUp: true,
+            keepsSentAt: true,
+          ),
+          (
+            what: "a label's refused create",
+            queue: () async {
+              await db.labelOpsDao.queueCreate(
+                const NewLabel(title: 'Errand'),
+                now: now,
+              );
+              return (await ops()).last.id;
+            },
+            failure: const ValidationFailed(message: 'invalid'),
+            givenUp: false,
+            keepsSentAt: false,
+          ),
+          (
+            what: "a label's refused edit",
+            queue: () => labelOpBehindCreate(
+              'Errand',
+              (id) => db.labelOpsDao.queueUpdate(
+                id,
+                const LabelChanges(title: 'Errands'),
+                now: now,
+              ),
+            ),
+            failure: const Forbidden(),
+            givenUp: false,
+            keepsSentAt: true,
+          ),
+          (
+            what: "a label's refused delete",
+            queue: () => labelOpBehindCreate(
+              'Chores',
+              (id) => db.labelOpsDao.queueDelete(id, now: now),
+            ),
+            failure: const Forbidden(),
+            givenUp: false,
+            keepsSentAt: true,
+          ),
+        ];
+
+    for (final row in rows) {
+      test('${row.what} is a problem with its attempts and payload; its '
+          'sent_at ${row.keepsSentAt ? 'stays' : 'goes'}', () async {
+        final id = await row.queue();
+        await db.outboxDao.markUncertain(id, sentAt: now);
+        await db.outboxDao.scheduleRetry(
+          id,
+          attempts: 2,
+          failure: const NetworkFailure(NetworkProblem.unreachable),
+          nextAttemptAt: later,
+        );
+        final before = (await db.outboxDao.find(id))!;
+
+        if (row.givenUp) {
+          await db.outboxDao.markGivenUp(id, row.failure);
+        } else {
+          await db.outboxDao.markFailed(id, row.failure);
+        }
+
+        final after = (await db.outboxDao.find(id))!;
+        expect(after.state, OutboxState.failed.name);
+        expect(after.nextAttemptAt, isNull);
+        expect(after.lastError, encodeFailure(row.failure));
+        expect(after.attempts, 2);
+        expect(after.payload, before.payload);
+        expect(after.sentAt, row.keepsSentAt ? now : isNull);
+      });
+    }
   });
 }

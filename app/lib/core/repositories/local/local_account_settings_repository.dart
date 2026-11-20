@@ -8,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/attachments/upload_policy.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/account_settings_repository.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 import 'package:vikunja_mobile/core/settings/current_user_store.dart';
 import 'package:vikunja_mobile/core/settings/user_profile_json.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
@@ -189,14 +190,8 @@ final class LocalAccountSettingsRepository
 
   void _settle(String done) {
     _log.fine(done);
-    unawaited(_afterWrite());
-  }
-
-  Future<void> _afterWrite() async {
-    try {
-      await _sync.refreshAfterWrite();
-    } on Object catch (error) {
-      _log.fine('Sync after a settings change failed: ${error.runtimeType}');
-    }
+    unawaited(
+      refreshQuietly(_sync.refreshAfterWrite, _log, 'a settings change'),
+    );
   }
 }

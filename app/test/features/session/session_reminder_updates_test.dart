@@ -13,9 +13,9 @@ import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/notifications/application/os_notification_capabilities.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/session/application/session_reminder_updates.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 

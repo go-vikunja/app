@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -5,6 +6,7 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/features/accounts/application/https_twins.dart';
+import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/pump_app.dart';
@@ -79,6 +81,50 @@ void main() {
       expect(hasHttpsTwin([https, httpGuest], httpGuest), isFalse);
       expect(httpTwinOf([httpsGuest, httpGuest], httpsGuest), isNull);
       expect(hasHttpsTwin([httpsGuest, httpGuest], httpGuest), isFalse);
+    });
+  });
+
+  group('the kept http accounts', () {
+    test('forgetting one keeps the others, and the last takes the record '
+        'with it', () async {
+      final preferences = MemoryPreferencesStore();
+      final kept = KeptHttpTwins(preferences);
+      await kept.keep('a', unsent: 2, accountIds: {'a', 'b'});
+      await kept.keep('b', unsent: 0, accountIds: {'a', 'b'});
+
+      await kept.forget('a');
+      await kept.forget('unknown');
+
+      expect(await kept.unsentWhenKept('a'), isNull);
+      expect(await kept.unsentWhenKept('b'), 0);
+      await kept.forget('b');
+      expect(preferences.values, isNot(contains(KeptHttpTwins.storageKey)));
+    });
+
+    test('signing out a kept http account forgets it, so a new session is '
+        'asked again; the others stay kept', () async {
+      final auth = AuthFakes();
+      final container = ProviderContainer(
+        overrides: [...auth.overrides, ...SyncFakes().overrides],
+      );
+      addTearDown(container.dispose);
+      final tokens = issueTokens(issuedAt: DateTime.now().toUtc());
+      final http = await auth.seedAccount(insecureServer(), tokens: tokens);
+      final other = await auth.seedAccount(
+        insecureServer(root: 'http://nas.example:3456'),
+        tokens: tokens,
+        activate: false,
+      );
+      await container.read(accountsProvider.future);
+      final kept = KeptHttpTwins(auth.preferences);
+      for (final entry in [http, other]) {
+        await kept.keep(entry.id, unsent: 0, accountIds: {http.id, other.id});
+      }
+
+      await container.read(signOutProvider).call(http.id);
+
+      expect(await kept.unsentWhenKept(http.id), isNull);
+      expect(await kept.unsentWhenKept(other.id), 0);
     });
   });
 

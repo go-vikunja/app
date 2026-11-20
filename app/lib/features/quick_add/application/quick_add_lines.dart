@@ -6,7 +6,7 @@ typedef SubtaskParser = List<IndentedLine> Function(
   QuickAddMagicMode mode,
 });
 
-final _lineBreaks = RegExp(r'\r\n|\r|\n');
+final quickAddLineBreaks = RegExp(r'\r\n|\r|\n');
 
 /// The tasks a quick-add text stands for, one per line with text, each
 /// with the line it is a subtask of. A single line is taken as typed;
@@ -19,7 +19,7 @@ List<IndentedLine> quickAddTaskLines(
   SubtaskParser parse = parseSubtasksViaIndention,
 }) {
   final lines = [
-    for (final line in text.split(_lineBreaks))
+    for (final line in text.split(quickAddLineBreaks))
       if (line.trim().isNotEmpty) line,
   ];
   if (lines.length < 2) {

@@ -411,6 +411,70 @@ void main() {
     expect(find.text(en.caldavTokenName(7)), findsNothing);
   });
 
+  group('the latest read wins', () {
+    testWidgets('a read still on its way when a token is deleted does not '
+        'bring it back', (tester) async {
+      harness.security.caldavTokenList = [
+        CaldavToken(id: 7, created: harness.now),
+        CaldavToken(id: 8, created: harness.now),
+      ];
+      await pumpPage(tester);
+      final before = harness.security.caldavTokenList;
+      final held = harness.holdNext('caldavTokens');
+
+      await tester.tap(find.byTooltip(en.refresh));
+      await tester.pump();
+      await scrollTo(tester, find.byTooltip(en.caldavDeleteToken(7)));
+      await tester.tap(find.byTooltip(en.caldavDeleteToken(7)));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(Dialog),
+          matching: find.text(en.caldavDelete),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text(en.caldavTokenName(7)), findsNothing);
+
+      // The held read answers as the server did before the delete.
+      harness.security.caldavTokenList = before;
+      held.complete();
+      await tester.pumpAndSettle();
+
+      await scrollTo(tester, find.text(en.caldavTokenName(8)));
+      expect(find.text(en.caldavTokenName(8)), findsOneWidget);
+      expect(find.text(en.caldavTokenName(7)), findsNothing);
+      expect(harness.callsOf('caldavTokens'), 3);
+    });
+
+    testWidgets('a token made while a read is on its way stays listed', (
+      tester,
+    ) async {
+      await pumpPage(tester);
+      final held = harness.holdNext('caldavTokens');
+
+      await tester.tap(find.byTooltip(en.refresh));
+      await tester.pump();
+      await scrollTo(tester, find.text(en.caldavNewToken));
+      await tester.tap(find.text(en.caldavNewToken));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.oneTimeSecretCopy));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.oneTimeSecretDone));
+      await tester.pumpAndSettle();
+
+      // The held read answers as the server did before the token.
+      harness.security.caldavTokenList = [];
+      held.complete();
+      await tester.pumpAndSettle();
+
+      await scrollTo(tester, find.text(en.caldavNewToken));
+      expect(find.text(en.caldavTokenName(1)), findsOneWidget);
+      expect(find.text(en.caldavTokensEmpty), findsNothing);
+      expect(harness.callsOf('caldavTokens'), 3);
+    });
+  });
+
   group('on 2.8.0 deleting a token', () {
     final server = securityServer(version: 'v2.8.0');
 

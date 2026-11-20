@@ -226,26 +226,15 @@ final class OutboxSender {
 
   OutboxSenderState _state = OutboxSenderState.idle;
 
-  // Each lane is idle, draining or waiting; [_state] is what they come to.
-  OutboxSenderState _queueState = OutboxSenderState.idle;
-  OutboxSenderState _uploadState = OutboxSenderState.idle;
+  // [_state] is what the two lanes come to.
+  late final _queueLane = _Lane(_publish, _createTimer, _drainAfterWait);
 
-  /// What the oldest op waits out while the queue is `waiting`.
-  VikunjaFailure? _blockedBy;
-
-  /// What the next upload waits out while the uploads are `waiting`.
-  VikunjaFailure? _uploadBlockedBy;
-  Future<void>? _running;
-  var _exiting = false;
-  var _requested = false;
-  Future<void>? _uploadRunning;
-  var _uploadExiting = false;
-  var _uploadRequested = false;
+  /// Its timer drains, which first resets an upload a dead run left
+  /// `sending`.
+  late final _uploadLane = _Lane(_publish, _createTimer, _drainAfterWait);
   var _paused = false;
   var _disposed = false;
   var _refreshAfterSending = true;
-  Timer? _timer;
-  Timer? _uploadTimer;
 
   OutboxSenderState get state => _state;
 
@@ -253,7 +242,9 @@ final class OutboxSender {
   /// the next upload does; null otherwise.
   VikunjaFailure? get blockedBy => switch (_state) {
     OutboxSenderState.waiting =>
-      _queueState == OutboxSenderState.waiting ? _blockedBy : _uploadBlockedBy,
+      _queueLane.state == OutboxSenderState.waiting
+          ? _queueLane.blockedBy
+          : _uploadLane.blockedBy,
     _ => null,
   };
 
@@ -293,21 +284,7 @@ final class OutboxSender {
   /// request never does.
   Future<void> drain() {
     if (_disposed) return Future.value();
-    _requested = true;
-    final Future<void> queue;
-    // A run on its way out (paused, or just done) no longer looks at the
-    // queue; a new one does.
-    if (_running case final running? when !_exiting) {
-      queue = running;
-    } else {
-      _exiting = false;
-      late final Future<void> run;
-      run = _run().whenComplete(() {
-        if (identical(_running, run)) _running = null;
-      });
-      queue = _running = run;
-    }
-    return queue.then((_) => _uploadRunning);
+    return _queueLane.request(_run).then((_) => _uploadLane.running);
   }
 
   /// A drain that skips every backoff: "Send now". Returns the failure that
@@ -331,10 +308,8 @@ final class OutboxSender {
   void pause() {
     if (_paused || _disposed) return;
     _paused = true;
-    _cancelTimer();
-    _cancelUploadTimer();
-    _queueState = OutboxSenderState.idle;
-    _uploadState = OutboxSenderState.idle;
+    _queueLane.stop();
+    _uploadLane.stop();
     _emit(OutboxSenderState.paused);
   }
 
@@ -522,8 +497,8 @@ final class OutboxSender {
 
   Future<void> dispose() async {
     _disposed = true;
-    _cancelTimer();
-    _cancelUploadTimer();
+    _queueLane.cancelTimer();
+    _uploadLane.cancelTimer();
     for (final cancel in _uploading.values) {
       cancel.cancel();
     }
@@ -573,17 +548,13 @@ final class OutboxSender {
       await sweepUploads();
     }
     try {
-      while (_requested && !_disposed && !_paused) {
-        _requested = false;
+      while (_queueLane.requested && !_disposed && !_paused) {
+        _queueLane.requested = false;
         final sent = await _sendUntilBlocked();
         if (sent > 0 && _refreshAfterSending) await _refreshQuietly();
       }
     } finally {
-      _exiting = true;
-      // A database error left the drain: the queue has not been looked at.
-      if (_queueState == OutboxSenderState.draining) {
-        _setQueueState(OutboxSenderState.idle);
-      }
+      _queueLane.exit();
     }
   }
 
@@ -593,8 +564,7 @@ final class OutboxSender {
   /// queue has nothing ready: an upload behind a create goes once it is
   /// answered.
   Future<int> _sendUntilBlocked() async {
-    _cancelTimer();
-    _setQueueState(OutboxSenderState.draining);
+    _queueLane.begin();
     await _db.outboxDao.resetSending(
       now: _now(),
       olderThan: staleSendingAfter,
@@ -607,7 +577,7 @@ final class OutboxSender {
       Duration? wait;
       if (next != null) {
         if (next.state == OutboxState.sending.name) {
-          _blockedBy = null;
+          _queueLane.blockedBy = null;
           wait = _inFlightWait(next);
           _log.fine(
             '${next.kind} for task ${next.taskId} is in flight elsewhere',
@@ -625,13 +595,7 @@ final class OutboxSender {
       }
       // Started before the queue goes idle, so the state does not flicker.
       _startUploads();
-      if (wait == null) {
-        _blockedBy = null;
-        _setQueueState(OutboxSenderState.idle);
-        return sent;
-      }
-      _arm(wait);
-      _setQueueState(OutboxSenderState.waiting);
+      _queueLane.settle(wait);
       return sent;
     }
     if (_paused) _publish();
@@ -642,49 +606,32 @@ final class OutboxSender {
   /// look once more after the file on its way.
   void _startUploads() {
     if (_uploads == null || _headless || _disposed || _paused) return;
-    _uploadRequested = true;
-    if (_uploadRunning != null && !_uploadExiting) return;
-    _uploadExiting = false;
-    late final Future<void> run;
-    run = _runUploads().whenComplete(() {
-      if (identical(_uploadRunning, run)) _uploadRunning = null;
-    });
-    _uploadRunning = run;
+    unawaited(_uploadLane.request(_runUploads));
   }
 
   /// Never throws: a timer or an unawaited drain may have started it, so a
   /// database error is only logged.
   Future<void> _runUploads() async {
     try {
-      while (_uploadRequested && !_disposed && !_paused) {
-        _uploadRequested = false;
+      while (_uploadLane.requested && !_disposed && !_paused) {
+        _uploadLane.requested = false;
         await _sendUploadsUntilBlocked();
       }
     } on Object catch (error) {
       _log.warning('Sending the uploads failed: ${error.runtimeType}');
     } finally {
-      _uploadExiting = true;
-      if (_uploadState == OutboxSenderState.draining) {
-        _setUploadState(OutboxSenderState.idle);
-      }
+      _uploadLane.exit();
     }
   }
 
   /// Sends uploads until none is ready; a backoff or an upload in flight
   /// elsewhere arms the timer, which starts a drain.
   Future<void> _sendUploadsUntilBlocked() async {
-    _cancelUploadTimer();
-    _setUploadState(OutboxSenderState.draining);
+    _uploadLane.begin();
     while (!_disposed && !_paused) {
       final (:sent, :wait) = await _sendNextUpload();
       if (sent) continue;
-      if (wait == null) {
-        _uploadBlockedBy = null;
-        _setUploadState(OutboxSenderState.idle);
-        return;
-      }
-      _armUploads(wait);
-      _setUploadState(OutboxSenderState.waiting);
+      _uploadLane.settle(wait);
       return;
     }
     if (_paused) _publish();
@@ -693,10 +640,13 @@ final class OutboxSender {
   /// Sends the oldest upload that is ready, so one waiting out its backoff
   /// or left `sending` by a run that died holds up none of the others;
   /// else says how long until one is, no wait when there is none to send.
+  /// When only uploads in flight elsewhere are left, no failure blocks
+  /// them, as for the queue's head.
   Future<({bool sent, Duration? wait})> _sendNextUpload() async {
     if (_disposed || _paused) return (sent: false, wait: null);
     final now = _now();
     Duration? wait;
+    var backingOff = false;
     for (final upload in await _db.outboxDao.queuedUploads()) {
       final Duration until;
       if (upload.state == OutboxState.sending.name) {
@@ -711,9 +661,11 @@ final class OutboxSender {
           return (sent: true, wait: null);
         }
         until = due;
+        backingOff = true;
       }
       if (wait == null || until < wait) wait = until;
     }
+    if (wait != null && !backingOff) _uploadLane.blockedBy = null;
     return (sent: false, wait: wait);
   }
 
@@ -1138,10 +1090,7 @@ final class OutboxSender {
           );
     } on VikunjaFailure catch (failure) {
       if (_mayHaveReachedServer(failure) && !_disposed) {
-        await _db.outboxDao.markUncertain(
-          op.id,
-          sentAt: op.lastAttemptAt ?? _now(),
-        );
+        await _markUncertain(op);
       }
       if (failure case NotFound(routeAbsent: true) when !_disposed) {
         await _db.outboxDao.markFailed(op.id, failure);
@@ -1166,12 +1115,7 @@ final class OutboxSender {
       }
       // An answer the client could not decode, so the file may be stored,
       // or a bug.
-      if (!_disposed) {
-        await _db.outboxDao.markUncertain(
-          op.id,
-          sentAt: op.lastAttemptAt ?? _now(),
-        );
-      }
+      if (!_disposed) await _markUncertain(op);
       await _handleFailure(
         op,
         UnexpectedResponse(null, message: '${error.runtimeType}'),
@@ -1417,17 +1361,15 @@ final class OutboxSender {
     OutboxOperationKind kind,
     VikunjaFailure failure,
   ) async {
-    if ((kind == OutboxOperationKind.createTask ||
-            kind == OutboxOperationKind.createLabel) &&
-        _mayHaveReachedServer(failure) &&
-        !_disposed) {
-      await _db.outboxDao.markUncertain(
-        op.id,
-        sentAt: op.lastAttemptAt ?? _now(),
-      );
+    if (kind.createsOnServer && _mayHaveReachedServer(failure) && !_disposed) {
+      await _markUncertain(op);
     }
     await _handleFailure(op, failure);
   }
+
+  /// The next attempt looks for what this one may have left on the server.
+  Future<void> _markUncertain(OutboxRow op) =>
+      _db.outboxDao.markUncertain(op.id, sentAt: op.lastAttemptAt ?? _now());
 
   /// [attempts] counts the failed attempts including this one, when they
   /// are not simply one more than before. A counted failure after one that
@@ -1470,11 +1412,7 @@ final class OutboxSender {
         failure: failure,
         nextAttemptAt: _now().add(delay),
       );
-      if (op.kind == OutboxOperationKind.uploadAttachment.name) {
-        _uploadBlockedBy = failure;
-      } else {
-        _blockedBy = failure;
-      }
+      _laneOf(op).blockedBy = failure;
       _log.info(
         '${op.kind} for task ${op.taskId} failed with '
         '${failure.runtimeType}, attempt $failed; next in $delay',
@@ -1535,28 +1473,25 @@ final class OutboxSender {
   /// read, or an exception without a status, is final (a retry would only
   /// repeat it), except for a create or an upload: the server may have
   /// stored it, and the next attempt looks for it first.
-  static _Retry _retryOf(OutboxRow op, VikunjaFailure failure) =>
-      switch (failure) {
-        NetworkFailure() ||
-        NotJsonResponse() ||
-        RateLimited() ||
-        RefreshRaceLost() ||
-        TokenRejected() => _Retry.waits,
-        ServerFailure() => _Retry.counted,
-        NotFound(:final routeAbsent) =>
-          routeAbsent ? _Retry.counted : _Retry.never,
-        UnexpectedResponse(:final statusCode?) when statusCode >= 400 =>
-          _Retry.never,
-        UnexpectedResponse(:final statusCode?) when statusCode >= 300 =>
-          _Retry.counted,
-        UnexpectedResponse() =>
-          op.kind == OutboxOperationKind.createTask.name ||
-                  op.kind == OutboxOperationKind.uploadAttachment.name ||
-                  op.kind == OutboxOperationKind.createLabel.name
-              ? _Retry.counted
-              : _Retry.never,
-        _ => _Retry.never,
-      };
+  static _Retry _retryOf(
+    OutboxRow op,
+    VikunjaFailure failure,
+  ) => switch (failure) {
+    NetworkFailure() ||
+    NotJsonResponse() ||
+    RateLimited() ||
+    RefreshRaceLost() ||
+    TokenRejected() => _Retry.waits,
+    ServerFailure() => _Retry.counted,
+    NotFound(:final routeAbsent) => routeAbsent ? _Retry.counted : _Retry.never,
+    UnexpectedResponse(:final statusCode?) when statusCode >= 400 =>
+      _Retry.never,
+    UnexpectedResponse(:final statusCode?) when statusCode >= 300 =>
+      _Retry.counted,
+    UnexpectedResponse() =>
+      OutboxDao.createKinds.contains(op.kind) ? _Retry.counted : _Retry.never,
+    _ => _Retry.never,
+  };
 
   static bool _followsCounted(OutboxRow op) => switch (op.lastError) {
     final json? => _retryOf(op, decodeFailure(json)) == _Retry.counted,
@@ -1595,24 +1530,6 @@ final class OutboxSender {
     return inFlightRecheck;
   }
 
-  void _arm(Duration wait) {
-    _cancelTimer();
-    _timer = _createTimer(wait, () {
-      _timer = null;
-      _drainAfterWait();
-    });
-  }
-
-  /// Through a drain, which first resets an upload a dead run left
-  /// `sending`.
-  void _armUploads(Duration wait) {
-    _cancelUploadTimer();
-    _uploadTimer = _createTimer(wait, () {
-      _uploadTimer = null;
-      _drainAfterWait();
-    });
-  }
-
   void _drainAfterWait() => unawaited(
     drain().then<void>(
       (_) {},
@@ -1629,32 +1546,17 @@ final class OutboxSender {
     ),
   );
 
-  void _cancelTimer() {
-    _timer?.cancel();
-    _timer = null;
-  }
-
-  void _cancelUploadTimer() {
-    _uploadTimer?.cancel();
-    _uploadTimer = null;
-  }
-
   void _uploadingChanged() {
     if (!_disposed) _uploadingChanges.add({..._uploading.keys});
   }
 
-  void _setQueueState(OutboxSenderState state) {
-    _queueState = state;
-    _publish();
-  }
-
-  void _setUploadState(OutboxSenderState state) {
-    _uploadState = state;
-    _publish();
-  }
+  _Lane _laneOf(OutboxRow op) =>
+      op.kind == OutboxOperationKind.uploadAttachment.name
+      ? _uploadLane
+      : _queueLane;
 
   void _publish() {
-    final lanes = {_queueState, _uploadState};
+    final lanes = {_queueLane.state, _uploadLane.state};
     _emit(
       _paused
           ? OutboxSenderState.paused
@@ -1683,4 +1585,84 @@ enum _Retry {
 
   /// A sync problem at once.
   never,
+}
+
+/// The run of one lane, the queue or the uploads: idle, draining or
+/// waiting on its own, with the timer of its next pass.
+final class _Lane {
+  new(this._publish, this._createTimer, this._onDue);
+
+  final void Function() _publish;
+  final CreateTimer _createTimer;
+  final void Function() _onDue;
+
+  OutboxSenderState state = OutboxSenderState.idle;
+
+  /// What the lane waits out while it is `waiting`.
+  VikunjaFailure? blockedBy;
+
+  /// Set by [request]; the run clears it before each pass and passes once
+  /// more while it is set again.
+  bool requested = false;
+  Future<void>? _running;
+  var _exiting = false;
+  Timer? _timer;
+
+  Future<void>? get running => _running;
+
+  /// Starts [run], or makes the one under way pass once more. A run on its
+  /// way out (paused, or just done) no longer looks; a new one does.
+  Future<void> request(Future<void> Function() run) {
+    requested = true;
+    if (_running case final running? when !_exiting) return running;
+    _exiting = false;
+    late final Future<void> started;
+    started = run().whenComplete(() {
+      if (identical(_running, started)) _running = null;
+    });
+    return _running = started;
+  }
+
+  void begin() {
+    cancelTimer();
+    _set(OutboxSenderState.draining);
+  }
+
+  /// Idle without a [wait]; else waiting, and the timer calls `onDue` once
+  /// it is over.
+  void settle(Duration? wait) {
+    if (wait == null) {
+      blockedBy = null;
+      _set(OutboxSenderState.idle);
+      return;
+    }
+    cancelTimer();
+    _timer = _createTimer(wait, () {
+      _timer = null;
+      _onDue();
+    });
+    _set(OutboxSenderState.waiting);
+  }
+
+  /// The run ends; one that a database error left has not looked.
+  void exit() {
+    _exiting = true;
+    if (state == OutboxSenderState.draining) _set(OutboxSenderState.idle);
+  }
+
+  /// Without publishing: pause emits its own state.
+  void stop() {
+    cancelTimer();
+    state = OutboxSenderState.idle;
+  }
+
+  void cancelTimer() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  void _set(OutboxSenderState state) {
+    this.state = state;
+    _publish();
+  }
 }

@@ -12,7 +12,6 @@ import 'package:vikunja_mobile/core/db/tables/tasks.dart';
 import 'package:vikunja_mobile/core/db/tables/users.dart';
 import 'package:vikunja_mobile/core/db/watch_tables.dart';
 import 'package:vikunja_mobile/core/outbox/apply_task_changes.dart';
-import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/label_op_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
@@ -412,14 +411,14 @@ final class LabelOpsDao extends DatabaseAccessor<AppDatabase>
         await (delete(outbox)..where((o) => o.id.equals(op.id))).go();
       });
 
+  /// Only a create comes with a [payload]: a refusal says the server never
+  /// stored it.
   Future<void> _failed(String id, VikunjaFailure failure, {String? payload}) =>
       (update(outbox)..where((o) => o.id.equals(id))).write(
-        OutboxCompanion(
-          payload: Value.absentIfNull(payload),
-          state: Value(OutboxState.failed.name),
-          nextAttemptAt: const Value(null),
-          lastError: Value(encodeFailure(failure)),
-          sentAt: payload == null ? const Value.absent() : const Value(null),
+        OutboxDao.failedWith(
+          failure,
+          payload: payload,
+          forgetSentAt: payload != null,
         ),
       );
 
@@ -547,17 +546,10 @@ final class LabelOpsDao extends DatabaseAccessor<AppDatabase>
   Future<void> _rewriteTaskEdits(int from, int to) async {
     final touched = <int>{};
     for (final op in await _taskEditsNaming(from)) {
-      final changes = decodeTaskChanges(op.payload);
-      final rewritten = withLabelIdsMapped(changes, {
+      final rewritten = withLabelIdsMapped(decodeTaskChanges(op.payload), {
         from: to,
       }, carried: await _labelsOf(op.taskId));
-      if (rewritten.isEmpty) {
-        await (delete(outbox)..where((o) => o.id.equals(op.id))).go();
-      } else {
-        await (update(outbox)..where((o) => o.id.equals(op.id))).write(
-          OutboxCompanion(payload: Value(encodeTaskChanges(rewritten))),
-        );
-      }
+      await _outbox.storeRewritten(op, rewritten, retake: false);
       touched.add(op.taskId);
     }
     for (final taskId in touched) {

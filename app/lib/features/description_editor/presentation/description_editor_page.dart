@@ -32,6 +32,7 @@ import 'package:vikunja_mobile/features/description_editor/application/descripti
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_bridge.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_image_previews.dart';
+import 'package:vikunja_mobile/features/description_editor/application/editor_load.dart';
 import 'package:vikunja_mobile/features/description_editor/application/editor_protocol.dart';
 import 'package:vikunja_mobile/features/description_editor/application/mention_suggestions.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/editor_theme.dart';
@@ -172,9 +173,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   int? _projectId;
   EditorTheme? _theme;
   var _starting = false;
-  var _ready = false;
-  var _failed = false;
-  var _stopped = false;
+  EditorLoad _load = EditorLoad.loading;
   var _saving = false;
   var _closing = false;
   var _gone = false;
@@ -199,8 +198,14 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
   var _state = const EditorState();
   var _revision = 0;
 
-  bool get _unsaved =>
-      _ready ? _state.dirty || _restored != null : _copy != null;
+  bool get _ready => _load == EditorLoad.ready;
+
+  bool get _unsaved => hasUnsavedEdit(
+    load: _load,
+    dirty: _state.dirty,
+    restored: _restored,
+    copy: _copy,
+  );
 
   @override
   void initState() {
@@ -383,9 +388,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
       _restored = restored;
       _copy = restored;
       _theme = theme;
-      _ready = false;
-      _failed = false;
-      _stopped = false;
+      _load = EditorLoad.loading;
       _state = const EditorState();
       _revision = 0;
     });
@@ -425,7 +428,9 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
 
   void _fail() {
     _loadTimer?.cancel();
-    if (mounted && !_ready) setState(() => _failed = true);
+    if (!mounted) return;
+    final next = _load.next(EditorLoadEvent.failed);
+    if (next != _load) setState(() => _load = next);
   }
 
   void _onEvent(EditorEvent event) {
@@ -433,7 +438,8 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     switch (event) {
       case EditorReady():
         _loadTimer?.cancel();
-        setState(() => _ready = true);
+        setState(() => _load = _load.next(EditorLoadEvent.ready));
+        if (!_ready) return;
         _syncTheme();
         unawaited(_bridge?.focus());
       case EditorStateChanged(:final state):
@@ -473,9 +479,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
         _copyTimer?.cancel();
         _mentions.end();
         setState(() {
-          _ready = false;
-          _failed = true;
-          _stopped = true;
+          _load = _load.next(EditorLoadEvent.stopped);
           _saving = false;
           _state = const EditorState();
         });
@@ -1167,17 +1171,18 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
                               key: ObjectKey(bridge),
                               child: bridge.buildView(context),
                             ),
-                          if (_failed)
+                          if (_load
+                              case EditorLoad.failed || EditorLoad.stopped)
                             ColoredBox(
                               color: colors.surface,
                               child: CenteredScrollView(
                                 child: _LoadFailure(
-                                  message: !_stopped
+                                  message: _load == EditorLoad.failed
                                       ? l10n.descriptionEditorFailed
                                       : _copy != null
                                       ? l10n.descriptionEditorStoppedKept
                                       : l10n.descriptionEditorStoppedLost,
-                                  action: _stopped
+                                  action: _load == EditorLoad.stopped
                                       ? l10n.descriptionEditorReload
                                       : l10n.retry,
                                   onRetry: () =>
@@ -1185,7 +1190,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
                                 ),
                               ),
                             )
-                          else if (!_ready)
+                          else if (_load == EditorLoad.loading)
                             ColoredBox(
                               color: colors.surface,
                               child: CenteredScrollView(

@@ -15,6 +15,7 @@ import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/centered_scroll_view.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/empty_state.dart';
+import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_note.dart';
 import 'package:vikunja_mobile/features/common/presentation/loading_placeholder.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
@@ -54,6 +55,13 @@ enum _ShareChoice {
   final Permission? permission;
 }
 
+typedef _Shares = ({
+  List<ProjectUserShare> users,
+  List<ProjectTeamShare> teams,
+  List<LinkShare>? links,
+  Object? linksFailure,
+});
+
 /// Who a project is shared with, read from the server each time it opens:
 /// people, teams and, for admins on a server with link sharing, links.
 /// Admins change a share's permission or remove it from its row, add
@@ -70,14 +78,8 @@ class ProjectSharePage extends ConsumerStatefulWidget {
 }
 
 class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
-    with PageReachability {
-  List<ProjectUserShare>? _users;
-  List<ProjectTeamShare>? _teams;
-  List<LinkShare>? _links;
-  Object? _failure;
-  Object? _linksFailure;
-  bool _loading = false;
-  int _loads = 0;
+    with PageReachability, LatestReads {
+  final _shares = LatestRead<_Shares>();
 
   /// The row (or add row) a change is on its way for.
   String? _busy;
@@ -105,8 +107,17 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
   Future<void> _load() async {
     final repository = ref.read(projectSharingRepositoryProvider);
     if (repository == null) return;
-    final load = ++_loads;
-    setState(() => _loading = true);
+    await readLatest(
+      _shares,
+      () => _readShares(repository),
+      log: _log,
+      what: 'the shares',
+      onValue: (_) => noteReached(),
+      onFailure: noteFailure,
+    );
+  }
+
+  Future<_Shares> _readShares(ProjectSharingRepository repository) async {
     final withLinks = _offersLinks(
       _connection(),
       ref.read(projectAccessProvider(widget.projectId)),
@@ -114,32 +125,17 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
     final links = withLinks
         ? _readLinks(repository)
         : Future.value((null, null));
-    try {
-      final lists = await Future.wait<Object>([
-        repository.userShares(widget.projectId),
-        repository.teamShares(widget.projectId),
-      ]);
-      final (linkShares, linksFailure) = await links;
-      if (!mounted || load != _loads) return;
-      setState(() {
-        _users = lists[0] as List<ProjectUserShare>;
-        _teams = lists[1] as List<ProjectTeamShare>;
-        _links = linkShares;
-        _linksFailure = linksFailure;
-        _failure = null;
-        noteReached();
-      });
-    } on Object catch (error) {
-      _log.info('Reading the shares failed: ${error.runtimeType}');
-      if (mounted && load == _loads) {
-        setState(() {
-          _failure = error;
-          noteFailure(error);
-        });
-      }
-    } finally {
-      if (mounted && load == _loads) setState(() => _loading = false);
-    }
+    final lists = await Future.wait<Object>([
+      repository.userShares(widget.projectId),
+      repository.teamShares(widget.projectId),
+    ]);
+    final (linkShares, linksFailure) = await links;
+    return (
+      users: lists[0] as List<ProjectUserShare>,
+      teams: lists[1] as List<ProjectTeamShare>,
+      links: linkShares,
+      linksFailure: linksFailure,
+    );
   }
 
   Future<(List<LinkShare>?, Object?)> _readLinks(
@@ -255,7 +251,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
       context,
       title: l10n.shareAddPerson,
       excludedUserIds: peopleNotToOffer(
-        shares: _users ?? const [],
+        shares: _shares.value?.users ?? const [],
         currentUserId: ref.read(activeUserIdProvider),
         ownerId: project?.owner?.id,
       ),
@@ -346,7 +342,8 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
     final team = await pickTeam(
       context,
       excludedTeamIds: {
-        for (final share in _teams ?? const <ProjectTeamShare>[]) share.teamId,
+        for (final share in _shares.value?.teams ?? const <ProjectTeamShare>[])
+          share.teamId,
       },
       includePublic: ref.read(activeServerHasPublicTeamsProvider),
     );
@@ -461,7 +458,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
     final l10n = context.l10n;
     watchOffline(
       onBackOnline: () {
-        if (_failure is NetworkFailure) unawaited(_load());
+        if (_shares.failure is NetworkFailure) unawaited(_load());
       },
     );
     // A sync after the user's own share changed may bring other rights.
@@ -479,7 +476,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
     );
     final gone = project == null && projects.hasValue;
     if (_removedSelf &&
-        (gone || _failure is Forbidden || _failure is NotFound)) {
+        (gone || _shares.failure is Forbidden || _shares.failure is NotFound)) {
       return Scaffold(
         appBar: AppBar(title: ScreenTitle(title)),
         body: CenteredScrollView(
@@ -515,11 +512,12 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
     );
     final bases = ref.watch(activeLinkBasesProvider);
     final views = linkViewChoices(project);
-    final users = _users;
-    final teams = _teams;
-    final links = _links;
-    final failure = _failure;
-    final linksFailure = _linksFailure;
+    final shares = _shares.value;
+    final users = shares?.users;
+    final teams = shares?.teams;
+    final links = shares?.links;
+    final failure = _shares.failure;
+    final linksFailure = shares?.linksFailure;
     final hasData = users != null && teams != null;
     final busy = _busy;
     final idle = busy == null;
@@ -532,7 +530,9 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
       appBar: AppBar(
         title: ScreenTitle(title),
         actions: [
-          RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
+          RefreshButton(
+            onPressed: _shares.loading ? null : () => unawaited(_load()),
+          ),
         ],
       ),
       body: RefreshIndicator.adaptive(
@@ -562,7 +562,7 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
                     onRetry: () => unawaited(_load()),
                   ),
                 ),
-              if (_loading && !hasData)
+              if (_shares.loading && !hasData)
                 LoadingPlaceholder(label: l10n.sharePageLoading),
               if (hasData) ...[
                 if (!admin)

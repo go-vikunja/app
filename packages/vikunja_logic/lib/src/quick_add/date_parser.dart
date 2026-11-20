@@ -1,5 +1,6 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/src/quick_add/amounts.dart';
+import 'package:vikunja_logic/src/quick_add/phrase_ends.dart';
 import 'package:vikunja_logic/src/time/day_interval.dart';
 import 'package:vikunja_logic/src/time/default_time.dart';
 
@@ -26,14 +27,8 @@ const _monthAbbreviations = [
 
 const _weekdayAbbreviations = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
 
-// D19-3: the web has no trailing boundary, so `todays` was today and
-// `next weekend` next week; D102-1: an apostrophe followed by a letter
-// does not end the word either, so `today's` stays text, also where a
-// `today` elsewhere is removed.
-const _wordEnd = "(?!\\w|['\u2019]\\w)";
-
 RegExp _keyword(String phrase) =>
-    RegExp('(^| )($phrase)$_wordEnd', caseSensitive: false);
+    RegExp('(^| )($phrase)$quickAddWordEnd', caseSensitive: false);
 
 typedef _DateFor = DateTime Function(DateTime now, ClockTime? defaultTime);
 
@@ -90,14 +85,14 @@ final _weekday = RegExp(
 // day, so `13th marathon` was a date.
 final _ordinalDay = RegExp(
   r'(^| )(([1-2][0-9]|3[01]|0?[1-9])(?:st|nd|rd|th|\.))'
-  '(?=\$| at | @ | (?:$_months)$_wordEnd)',
+  '(?=\$| at | @ | (?:$_months)$quickAddWordEnd)',
   caseSensitive: false,
 );
 
 // D102-3: the web takes a month word from anywhere in the text, so `Ask if
 // we may move 5th` was 5 May; here only one right beside the ordinal.
 // D102-1: not out of `may's`, which the removal leaves too.
-final _monthAfter = RegExp(' ($_months)$_wordEnd', caseSensitive: false);
+final _monthAfter = RegExp(' ($_months)$quickAddWordEnd', caseSensitive: false);
 final _monthBefore = RegExp('(?:^| )($_months) \$', caseSensitive: false);
 
 // D38-9: the web needs a space or the end after the unit; here punctuation
@@ -145,7 +140,7 @@ final _timeAhead = RegExp('(?:at|@) ', caseSensitive: false);
 // D19-4: the web has no trailing boundary, so `12 decorations` was Dec 12.
 final _monthDay = RegExp(
   '(^| )((?<month1>$_months) (?<day1>[0-9][0-9]?)'
-  '|(?<day2>[0-9][0-9]?) (?<month2>$_months))$_wordEnd',
+  '|(?<day2>[0-9][0-9]?) (?<month2>$_months))$quickAddWordEnd',
   caseSensitive: false,
 );
 
@@ -155,10 +150,6 @@ final _time = RegExp(
   r' (?:at|@) ([0-9][0-9]?)(?::([0-9][0-9]))?(?: ?([ap])m)?(?![\w:])',
   caseSensitive: false,
 );
-
-// D102-2: a time is removed only where `_time` reads the same phrase, not
-// out of `at 221B`, `at 22:5` or, for `at 9`, `at 9 pm`.
-const _timeEnd = r'(?![\w:]| ?[ap]m(?![\w:]))';
 
 // D102-5: the web reads `Release 1.2` as 1 February.
 final _versionWord = RegExp(
@@ -198,7 +189,10 @@ final _versionWord = RegExp(
     phrases.add(time[0]!.trim());
     rest = _withoutPhrase(
       rest,
-      RegExp('( *)${RegExp.escape(time[0]!)}$_timeEnd', caseSensitive: false),
+      RegExp(
+        '( *)${RegExp.escape(time[0]!)}$quickAddTimeEnd',
+        caseSensitive: false,
+      ),
     );
   }
   return (text: rest, date: date, phrases: phrases);
@@ -263,7 +257,7 @@ _FoundDate? _ordinalDate(String text, DateTime now, ClockTime? defaultTime) {
     rest = _withoutPhrase(
       rest,
       RegExp(
-        '( *)\\b${RegExp.escape(month[1]!)}$_wordEnd',
+        '( *)\\b${RegExp.escape(month[1]!)}$quickAddWordEnd',
         caseSensitive: false,
       ),
     );
@@ -452,7 +446,10 @@ _FoundDate _found(String text, DateTime date, String phrase) =>
 // `fri frisbee` became `sbee`.
 String _removeWords(String text, String phrase) => _withoutPhrase(
   text,
-  RegExp('(^| +)${RegExp.escape(phrase)}$_wordEnd', caseSensitive: false),
+  RegExp(
+    '(^| +)${RegExp.escape(phrase)}$quickAddWordEnd',
+    caseSensitive: false,
+  ),
 );
 
 /// The characters before which a removed phrase takes its spaces along

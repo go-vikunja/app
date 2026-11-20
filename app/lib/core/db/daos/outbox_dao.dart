@@ -86,6 +86,12 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// [resetSending]).
   static const sendingProcessKey = 'outbox_sending_process';
 
+  /// The names of the kinds that [OutboxOperationKind.createsOnServer].
+  static final createKinds = Set<String>.unmodifiable({
+    for (final kind in OutboxOperationKind.values)
+      if (kind.createsOnServer) kind.name,
+  });
+
   final _random = Random.secure();
 
   /// Inserts the task under the next temporary id, with its reminders, and
@@ -632,97 +638,68 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// the edge is gone: the write client tried every other request of the
   /// op first, so it holds nothing back, and an edit merged into it later
   /// goes out without that edge.
-  Future<void> markFailed(String id, VikunjaFailure failure) =>
-      transaction(() async {
-        final op = await find(id);
-        if (op == null) return;
-        if (op.labelId != null) {
-          await attachedDatabase.labelOpsDao.markFailed(op, failure);
-          return;
-        }
-        if (op.kind == OutboxOperationKind.uploadAttachment.name) {
-          // A refusal means the server stored nothing; after a timeout a
-          // retry must look for the file first.
-          final mayBeStored =
-              failure is NetworkFailure || failure is ServerFailure;
-          await _write(
-            id,
-            OutboxCompanion(
-              state: Value(OutboxState.failed.name),
-              nextAttemptAt: const Value(null),
-              lastError: Value(encodeFailure(failure)),
-              sentAt: mayBeStored ? const Value.absent() : const Value(null),
-            ),
-          );
-          return;
-        }
-        var payload = op.payload;
-        if (failure case RelatedTaskMissing(:final otherTaskId)
-            when op.kind == OutboxOperationKind.updateTask.name) {
-          await _forgetRelatedTasks({otherTaskId}, except: op.id);
-          payload = encodeTaskChanges(
-            withoutRelatedTasks(decodeTaskChanges(payload), {otherTaskId}),
-          );
-        }
-        final newer = await _newerUnsent(op);
-        if (op.kind == OutboxOperationKind.createTask.name) {
-          if (await hasQueuedDelete(op.taskId)) {
-            await cancelCreate(op.taskId);
-            return;
-          }
-          if (newer != null) {
-            final edit = decodeTaskChanges(newer.payload);
-            payload = encodeNewTask(
-              applyChangesToNewTask(decodeNewTask(payload), edit),
-            );
-            final rest = changesAfterCreate(edit);
-            if (rest.isEmpty) {
-              await remove(newer.id);
-            } else {
-              await _write(
-                newer.id,
-                OutboxCompanion(payload: Value(encodeTaskChanges(rest))),
-              );
-              await _refreshPendingChanges(op.taskId);
-            }
-          }
-          await _write(
-            id,
-            OutboxCompanion(
-              payload: Value(payload),
-              state: Value(OutboxState.failed.name),
-              nextAttemptAt: const Value(null),
-              lastError: Value(encodeFailure(failure)),
-              sentAt: const Value(null),
-            ),
-          );
-          return;
-        }
-        if (newer == null ||
-            (newer.kind == OutboxOperationKind.updateTask.name &&
-                (op.sentAt != null || newer.sentAt != null))) {
-          await _write(
-            id,
-            OutboxCompanion(
-              payload: Value(payload),
-              state: Value(OutboxState.failed.name),
-              nextAttemptAt: const Value(null),
-              lastError: Value(encodeFailure(failure)),
-            ),
-          );
-          await _refreshPendingChanges(op.taskId);
-          return;
-        }
-        if (newer.kind == OutboxOperationKind.updateTask.name) {
-          final folded = decodeTaskChanges(payload)
-              .merge(decodeTaskChanges(newer.payload));
-          await _write(
-            newer.id,
-            OutboxCompanion(payload: Value(encodeTaskChanges(folded))),
-          );
-        }
-        await remove(op.id);
-      });
+  Future<void> markFailed(
+    String id,
+    VikunjaFailure failure,
+  ) => transaction(() async {
+    final op = await find(id);
+    if (op == null) return;
+    if (op.labelId != null) {
+      await attachedDatabase.labelOpsDao.markFailed(op, failure);
+      return;
+    }
+    if (op.kind == OutboxOperationKind.uploadAttachment.name) {
+      // A refusal means the server stored nothing; after a timeout a
+      // retry must look for the file first.
+      final mayBeStored = failure is NetworkFailure || failure is ServerFailure;
+      await _write(id, failedWith(failure, forgetSentAt: !mayBeStored));
+      return;
+    }
+    var payload = op.payload;
+    if (failure case RelatedTaskMissing(:final otherTaskId)
+        when op.kind == OutboxOperationKind.updateTask.name) {
+      await _forgetRelatedTasks({otherTaskId}, except: op.id);
+      payload = encodeTaskChanges(
+        withoutRelatedTasks(decodeTaskChanges(payload), {otherTaskId}),
+      );
+    }
+    final newer = await _newerUnsent(op);
+    if (op.kind == OutboxOperationKind.createTask.name) {
+      if (await hasQueuedDelete(op.taskId)) {
+        await cancelCreate(op.taskId);
+        return;
+      }
+      if (newer != null) {
+        final edit = decodeTaskChanges(newer.payload);
+        payload = encodeNewTask(
+          applyChangesToNewTask(decodeNewTask(payload), edit),
+        );
+        await storeRewritten(newer, changesAfterCreate(edit), retake: false);
+        await _refreshPendingChanges(op.taskId);
+      }
+      await _write(
+        id,
+        failedWith(failure, payload: payload, forgetSentAt: true),
+      );
+      return;
+    }
+    if (newer == null ||
+        (newer.kind == OutboxOperationKind.updateTask.name &&
+            (op.sentAt != null || newer.sentAt != null))) {
+      await _write(id, failedWith(failure, payload: payload));
+      await _refreshPendingChanges(op.taskId);
+      return;
+    }
+    if (newer.kind == OutboxOperationKind.updateTask.name) {
+      final folded = decodeTaskChanges(payload)
+          .merge(decodeTaskChanges(newer.payload));
+      await _write(
+        newer.id,
+        OutboxCompanion(payload: Value(encodeTaskChanges(folded))),
+      );
+    }
+    await remove(op.id);
+  });
 
   /// The sender gave up on answers that were not the server's last word
   /// (a 5xx, an answer it could not read), any of which may have reached
@@ -734,19 +711,27 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       transaction(() async {
         final op = await find(id);
         if (op == null) return;
-        if (op.sentAt == null || !_createsOnServer(op.kind)) {
+        if (op.sentAt == null || !createKinds.contains(op.kind)) {
           await markFailed(id, failure);
           return;
         }
-        await _write(
-          id,
-          OutboxCompanion(
-            state: Value(OutboxState.failed.name),
-            nextAttemptAt: const Value(null),
-            lastError: Value(encodeFailure(failure)),
-          ),
-        );
+        await _write(id, failedWith(failure));
       });
+
+  /// The op becomes a sync problem: [failure], and [payload] when given.
+  /// [forgetSentAt] drops the mark that its request may have reached the
+  /// server, for an answer that says it did not.
+  static OutboxCompanion failedWith(
+    VikunjaFailure failure, {
+    String? payload,
+    bool forgetSentAt = false,
+  }) => OutboxCompanion(
+    payload: Value.absentIfNull(payload),
+    state: Value(OutboxState.failed.name),
+    nextAttemptAt: const Value(null),
+    lastError: Value(encodeFailure(failure)),
+    sentAt: forgetSentAt ? const Value(null) : const Value.absent(),
+  );
 
   /// Labels gone from the server for this user (deleted, or no longer
   /// visible) can never be attached or detached, so their ids leave every
@@ -771,17 +756,11 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
               !labels.removed.any(labelIds.contains))) {
         continue;
       }
-      final kept = withoutLabels(changes, labelIds);
-      if (kept.isEmpty) {
-        await (delete(outbox)..where((o) => o.id.equals(op.id))).go();
-      } else if (op.state == OutboxState.failed.name) {
-        await _write(op.id, _retaken(encodeTaskChanges(kept)));
-      } else {
-        await _write(
-          op.id,
-          OutboxCompanion(payload: Value(encodeTaskChanges(kept))),
-        );
-      }
+      await storeRewritten(
+        op,
+        withoutLabels(changes, labelIds),
+        retake: op.state == OutboxState.failed.name,
+      );
       await _refreshPendingChanges(op.taskId);
     }
   });
@@ -807,17 +786,11 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     for (final op in await query.get()) {
       final changes = decodeTaskChanges(op.payload);
       if (!relatedTaskIds(changes).any(taskIds.contains)) continue;
-      final kept = withoutRelatedTasks(changes, taskIds);
-      if (kept.isEmpty) {
-        await (delete(outbox)..where((o) => o.id.equals(op.id))).go();
-      } else if (op.state == OutboxState.failed.name) {
-        await _write(op.id, _retaken(encodeTaskChanges(kept)));
-      } else {
-        await _write(
-          op.id,
-          OutboxCompanion(payload: Value(encodeTaskChanges(kept))),
-        );
-      }
+      await storeRewritten(
+        op,
+        withoutRelatedTasks(changes, taskIds),
+        retake: op.state == OutboxState.failed.name,
+      );
       await _refreshPendingChanges(op.taskId);
     }
     await attachedDatabase.tasksDao.forgetRelatedTasks(taskIds);
@@ -848,12 +821,11 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   Future<bool> dropDescription(String id) => transaction(() async {
     final op = await find(id);
     if (op == null || !_isFailedUpdate(op)) return false;
-    final rest = withoutDescription(decodeTaskChanges(op.payload));
-    if (rest.isEmpty) {
-      await (delete(outbox)..where((o) => o.id.equals(id))).go();
-    } else {
-      await _write(id, _retaken(encodeTaskChanges(rest)));
-    }
+    await storeRewritten(
+      op,
+      withoutDescription(decodeTaskChanges(op.payload)),
+      retake: true,
+    );
     await _refreshPendingChanges(op.taskId);
     return true;
   });
@@ -863,15 +835,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       op.state == OutboxState.failed.name;
 
   /// A failed op goes back to the queue with a clean slate.
-  Future<void> retry(String id) => _write(
-    id,
-    OutboxCompanion(
-      state: Value(OutboxState.pending.name),
-      attempts: const Value(0),
-      nextAttemptAt: const Value(null),
-      lastError: const Value(null),
-    ),
-  );
+  Future<void> retry(String id) => _write(id, _retaken(null));
 
   /// [retry] for each op of [ids] that is still failed; one that went
   /// meanwhile, or is on its way again, is left alone. Returns how many.
@@ -879,14 +843,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       (update(outbox)..where(
             (o) => o.id.isIn(ids) & o.state.equals(OutboxState.failed.name),
           ))
-          .write(
-            OutboxCompanion(
-              state: Value(OutboxState.pending.name),
-              attempts: const Value(0),
-              nextAttemptAt: const Value(null),
-              lastError: const Value(null),
-            ),
-          );
+          .write(_retaken(null));
 
   /// The task's failed ops the server refused because the task or its
   /// project was gone or in its trash go back to the queue, as with
@@ -948,24 +905,17 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
               millis.toSql(now.add(age)),
             )) &
         outbox.id.isNotIn(keep);
-    await (update(outbox)..where(
-          (o) =>
-              sending &
-              o.kind.isIn([
-                OutboxOperationKind.createTask.name,
-                OutboxOperationKind.uploadAttachment.name,
-                OutboxOperationKind.createLabel.name,
-              ]),
-        ))
-        .write(
-          OutboxCompanion.custom(
-            sentAt: coalesce([
-              outbox.sentAt,
-              outbox.lastAttemptAt,
-              Constant(const EpochMillis().toSql(now)),
-            ]),
-          ),
-        );
+    final creates = update(outbox)
+      ..where((o) => sending & o.kind.isIn(createKinds));
+    await creates.write(
+      OutboxCompanion.custom(
+        sentAt: coalesce([
+          outbox.sentAt,
+          outbox.lastAttemptAt,
+          Constant(const EpochMillis().toSql(now)),
+        ]),
+      ),
+    );
     return await (update(outbox)..where((o) => sending)).write(
       OutboxCompanion(state: Value(OutboxState.pending.name)),
     );
@@ -1232,14 +1182,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
               changes,
               relations.mapTaskIds((id) => id == from ? to : id),
             );
-      if (rewritten.isEmpty) {
-        await (delete(outbox)..where((o) => o.id.equals(op.id))).go();
-      } else {
-        await _write(
-          op.id,
-          OutboxCompanion(payload: Value(encodeTaskChanges(rewritten))),
-        );
-      }
+      await storeRewritten(op, rewritten, retake: false);
       touched.add(op.taskId);
     }
     for (final taskId in touched) {
@@ -1264,13 +1207,6 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   /// queue behind it.
   static bool neverReachedServer(OutboxRow create) =>
       create.state != OutboxState.sending.name && create.sentAt == null;
-
-  /// Ops whose request may leave something on the server without an
-  /// answer, which a later attempt looks for first.
-  static bool _createsOnServer(String kind) =>
-      kind == OutboxOperationKind.createTask.name ||
-      kind == OutboxOperationKind.uploadAttachment.name ||
-      kind == OutboxOperationKind.createLabel.name;
 
   /// Whether a delete of the task is queued, whatever its state.
   Future<bool> hasQueuedDelete(int taskId) async =>
@@ -1309,15 +1245,36 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   Future<void> refreshPendingChanges(int taskId) =>
       _refreshPendingChanges(taskId);
 
-  /// Back in the queue with the merged [payload] and a clean slate, like
-  /// the first time.
-  static OutboxCompanion _retaken(String payload) => OutboxCompanion(
-    payload: Value(payload),
+  /// Back in the queue with a clean slate, like the first time, and with
+  /// the merged [payload] when given.
+  static OutboxCompanion _retaken(String? payload) => OutboxCompanion(
+    payload: Value.absentIfNull(payload),
     state: Value(OutboxState.pending.name),
     attempts: const Value(0),
     nextAttemptAt: const Value(null),
     lastError: const Value(null),
   );
+
+  /// [op], a task update, with [kept] as its payload, or gone when that is
+  /// empty. With [retake] it goes back to the queue with a clean slate: a
+  /// failed op whose failure the change may fix. Otherwise its state stays:
+  /// ids that moved, or a part dropped that was never sent. The caller
+  /// refreshes `pending_changes`.
+  Future<void> storeRewritten(
+    OutboxRow op,
+    TaskChanges kept, {
+    required bool retake,
+  }) async {
+    if (kept.isEmpty) {
+      await (delete(outbox)..where((o) => o.id.equals(op.id))).go();
+      return;
+    }
+    final payload = encodeTaskChanges(kept);
+    await _write(
+      op.id,
+      retake ? _retaken(payload) : OutboxCompanion(payload: Value(payload)),
+    );
+  }
 
   Future<int> _nextLocalId() async {
     final row = await (select(
@@ -1357,15 +1314,11 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
   Future<void> _dropUnsentPlacements(int taskId) async {
     final existing = await _unsentUpdate(taskId);
     if (existing == null) return;
-    final kept = withoutPlacements(decodeTaskChanges(existing.payload));
-    if (kept.isEmpty) {
-      await (delete(outbox)..where((o) => o.id.equals(existing.id))).go();
-    } else {
-      await _write(
-        existing.id,
-        OutboxCompanion(payload: Value(encodeTaskChanges(kept))),
-      );
-    }
+    await storeRewritten(
+      existing,
+      withoutPlacements(decodeTaskChanges(existing.payload)),
+      retake: false,
+    );
   }
 
   /// Uploads are not among them: they never fold, and an upload after a

@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'package:meta/meta.dart';
+import 'package:vikunja_api/src/auth/jwt_payload.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// The payload of a Vikunja link share JWT (`type` 2). The server signs it
@@ -20,22 +19,13 @@ final class LinkShareClaims {
   /// Null unless [token] is a well-formed link share JWT (`type` 2 with
   /// `id`, `project_id` and `exp`).
   static LinkShareClaims? tryParse(String token) {
-    final parts = token.split('.');
-    if (parts.length != 3) return null;
-    final Object? payload;
-    try {
-      payload = jsonDecode(
-        utf8.decode(base64Url.decode(base64Url.normalize(parts[1]))),
-      );
-    } on FormatException {
-      return null;
-    }
-    if (payload is! Map<String, Object?>) return null;
+    final payload = jwtPayload(token);
+    if (payload == null) return null;
 
-    final shareId = _integer(payload['id']);
-    final projectId = _integer(payload['project_id']);
-    final expiresAt = _time(payload['exp']);
-    if (_integer(payload['type']) != _linkShareTokenType ||
+    final shareId = jwtInteger(payload['id']);
+    final projectId = jwtInteger(payload['project_id']);
+    final expiresAt = jwtTime(payload['exp']);
+    if (jwtInteger(payload['type']) != _linkShareTokenType ||
         shareId == null ||
         shareId <= 0 ||
         projectId == null ||
@@ -46,9 +36,9 @@ final class LinkShareClaims {
       shareId: shareId,
       projectId: projectId,
       expiresAt: expiresAt,
-      permission: Permission.fromValue(_integer(payload['permission'])),
-      sharedById: _integer(payload['sharedByID']),
-      issuedAt: _time(payload['iat']),
+      permission: Permission.fromValue(jwtInteger(payload['permission'])),
+      sharedById: jwtInteger(payload['sharedByID']),
+      issuedAt: jwtTime(payload['iat']),
     );
   }
 
@@ -73,19 +63,3 @@ final class LinkShareClaims {
   @override
   String toString() => 'LinkShareClaims(share: $shareId, project: $projectId)';
 }
-
-int? _integer(Object? value) => switch (value) {
-  final int integer => integer,
-  final double number when number == number.truncateToDouble() =>
-    number.toInt(),
-  _ => null,
-};
-
-// The range DateTime can represent.
-const _maxSeconds = 8640000000000;
-
-DateTime? _time(Object? value) => switch (value) {
-  final num seconds when seconds.isFinite && seconds.abs() <= _maxSeconds =>
-    DateTime.fromMillisecondsSinceEpoch((seconds * 1000).round(), isUtc: true),
-  _ => null,
-};

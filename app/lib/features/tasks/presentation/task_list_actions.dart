@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/common/presentation/local_change.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
@@ -21,11 +22,12 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.d
 /// snackbar undoes the latest task only.
 mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   // Done copies while the snackbar is up; after Undo the open copy, until
-  // the list has the task again.
-  final _leaving = <int, Task>{};
-  final _leaveTimers = <int, Timer>{};
+  // the list has the task again. By the id the row shows now.
+  final _leaving = <int, _LeavingRow>{};
+  // Every row whose snackbar, leave timer or id watch may still run.
+  final _rows = <_LeavingRow>{};
   List<Task> _shown = const [];
-  int? _undoTaskId;
+  _LeavingRow? _undoRow;
 
   /// [tasks] with the rows still leaving put back where they were.
   List<Task> withLeavingTasks(List<Task> tasks) {
@@ -33,10 +35,10 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
     final present = {for (final task in tasks) task.id};
     // A task the list has again needs no copy; without this an undone task
     // would come back as open from here after a later sync marked it done.
-    _leaving.removeWhere((id, _) => present.contains(id));
+    _dropWhere((row) => present.contains(row.id));
     final merged = [...tasks];
-    for (final task in _leaving.values) {
-      merged.insert(_placeOf(task.id, merged), task);
+    for (final row in _leaving.values) {
+      merged.insert(_placeOf(row.id, merged), row.copy);
     }
     return _shown = merged;
   }
@@ -60,25 +62,87 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   /// again, as a list that loads only the done tasks it shows may not have
   /// it until then.
   Map<int, Task> leavingTasksIn(Map<int, Task> listed) {
-    _leaving.removeWhere((id, copy) => !copy.done && listed[id]?.done == false);
-    return Map.unmodifiable(_leaving);
+    _dropWhere((row) => !row.copy.done && listed[row.id]?.done == false);
+    return Map.unmodifiable({
+      for (final row in _leaving.values) row.id: row.copy,
+    });
   }
 
   /// For an account switch: the copies belong to the old list.
   void clearLeavingTasks() {
     _leaving.clear();
-    for (final timer in _leaveTimers.values) {
-      timer.cancel();
+    for (final row in _rows) {
+      row.stop();
     }
-    _leaveTimers.clear();
+    _rows.clear();
   }
 
   @override
   void dispose() {
-    for (final timer in _leaveTimers.values) {
-      timer.cancel();
+    for (final row in _rows) {
+      row.stop();
     }
     super.dispose();
+  }
+
+  void _show(_LeavingRow row) {
+    final replaced = _leaving[row.id];
+    _leaving[row.id] = row;
+    if (replaced != null && !identical(replaced, row)) _settle(replaced);
+  }
+
+  void _drop(_LeavingRow row) {
+    if (identical(_leaving[row.id], row)) _leaving.remove(row.id);
+    _settle(row);
+  }
+
+  void _dropWhere(bool Function(_LeavingRow row) test) {
+    for (final row in [..._leaving.values]) {
+      if (test(row)) _drop(row);
+    }
+  }
+
+  /// Lets a row go once nothing of it runs or shows any more.
+  void _settle(_LeavingRow row) {
+    if (!row.closed || row.timer != null) return;
+    if (identical(_leaving[row.id], row)) return;
+    row.stop();
+    _rows.remove(row);
+  }
+
+  /// A task created here gets its server id once its create is answered,
+  /// which may come while the row leaves or after its Undo: the row takes
+  /// that id, so that the list's row of it replaces it.
+  void _followId(_LeavingRow row, TaskRepository repository) {
+    if (row.id >= 0) return;
+    row.watch = repository
+        .watchTask(row.id)
+        .listen(
+          (latest) {
+            if (latest == null || latest.id == row.id || !mounted) return;
+            final from = row.id;
+            setState(() {
+              row
+                ..task = latest
+                ..copy = latest.copyWith(
+                  done: row.copy.done,
+                  doneAt: row.copy.doneAt,
+                );
+              if (identical(_leaving[from], row)) {
+                _leaving.remove(from);
+                _show(row);
+              }
+              _shown = [
+                for (final task in _shown)
+                  if (task.id == from) row.copy else task,
+              ];
+            });
+            row.stopWatching();
+          },
+          // Without the server id the row leaves as it did before.
+          onError: (Object _) {},
+          cancelOnError: true,
+        );
   }
 
   Future<void> setTaskDone(Task task, {required bool done}) async {
@@ -87,11 +151,17 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
     final now = ref.read(clockProvider)();
     final messenger = ScaffoldMessenger.maybeOf(context);
     final l10n = context.l10n;
-    _leaveTimers.remove(task.id)?.cancel();
+    for (final row in [..._rows]) {
+      if (row.id != task.id) continue;
+      row.cancelTimer();
+      _settle(row);
+    }
     if (!done) {
-      setState(() => _leaving.remove(task.id));
+      setState(() {
+        if (_leaving[task.id] case final row?) _drop(row);
+      });
       // Reopened from the row: the Undo of the done it undoes is moot.
-      if (_undoTaskId == task.id) messenger?.hideCurrentSnackBar();
+      if (_undoRow?.id == task.id) messenger?.hideCurrentSnackBar();
       await saveLocalChangeIn(
         messenger,
         l10n,
@@ -100,8 +170,10 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
       );
       return;
     }
-    final copy = withDone(task, done: true, now: now);
-    setState(() => _leaving[task.id] = copy);
+    final row = _LeavingRow(task, withDone(task, done: true, now: now));
+    _rows.add(row);
+    setState(() => _show(row));
+    _followId(row, repository);
     final saved = await saveLocalChangeIn(
       messenger,
       l10n,
@@ -110,32 +182,39 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
     );
     if (!mounted) return;
     if (!saved) {
+      row.closed = true;
       // The task was never marked done; the row shows it as the list has it.
-      if (identical(_leaving[task.id], copy)) {
-        setState(() => _leaving.remove(task.id));
+      if (identical(_leaving[row.id], row)) {
+        setState(() => _drop(row));
+      } else {
+        _settle(row);
       }
       return;
     }
 
     void leave() {
-      if (mounted && identical(_leaving[task.id], copy)) {
-        setState(() => _leaving.remove(task.id));
+      if (mounted && identical(_leaving[row.id], row) && row.copy.done) {
+        setState(() => _drop(row));
       }
     }
 
-    var timeUp = false;
-    var replaced = false;
-    _leaveTimers[task.id] = Timer(markedDoneSnackBarDuration, () {
-      timeUp = true;
-      _leaveTimers.remove(task.id);
-      if (replaced) leave();
+    row.timer = Timer(markedDoneSnackBarDuration, () {
+      row
+        ..timer = null
+        ..timeUp = true;
+      if (row.replaced) leave();
+      _settle(row);
     });
-    _undoTaskId = task.id;
+    _undoRow = row;
     final reason = await showMarkedDoneSnackBar(
       context,
       onUndo: () {
-        final reopened = withDone(task, done: false, now: now);
-        if (mounted) setState(() => _leaving[task.id] = reopened);
+        if (mounted) {
+          setState(() {
+            row.copy = withDone(row.task, done: false, now: now);
+            _show(row);
+          });
+        }
         unawaited(
           saveLocalChangeIn(
             messenger,
@@ -144,28 +223,33 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
             action: 'Undoing a done',
           ).then((saved) {
             // The task stays done; the row shows it as the list has it.
-            if (!saved && mounted && identical(_leaving[task.id], reopened)) {
-              setState(() => _leaving.remove(task.id));
+            if (!saved &&
+                mounted &&
+                identical(_leaving[row.id], row) &&
+                !row.copy.done) {
+              setState(() => _drop(row));
             }
           }),
         );
       },
     );
-    if (_undoTaskId == task.id) _undoTaskId = null;
+    if (identical(_undoRow, row)) _undoRow = null;
+    row.closed = true;
     switch (reason) {
       case SnackBarClosedReason.action:
-        _leaveTimers.remove(task.id)?.cancel();
+        row.cancelTimer();
       case SnackBarClosedReason.hide:
         // Replaced by the next task's snackbar, or reopened from the row.
-        replaced = true;
-        if (timeUp) leave();
+        row.replaced = true;
+        if (row.timeUp) leave();
       case SnackBarClosedReason.timeout ||
           SnackBarClosedReason.swipe ||
           SnackBarClosedReason.dismiss ||
           SnackBarClosedReason.remove:
-        _leaveTimers.remove(task.id)?.cancel();
+        row.cancelTimer();
         leave();
     }
+    _settle(row);
   }
 
   /// The due-date choices of the task sheet, for the swipe toward the start
@@ -190,5 +274,40 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
       () => writeTaskFavorite(repository, task, favorite: favorite),
       action: 'Changing a favorite',
     );
+  }
+}
+
+/// A task marked done in the list, from the tap until its row has left.
+final class _LeavingRow {
+  new(this.task, this.copy);
+
+  /// As tapped; under its server id once a temporary one was remapped.
+  Task task;
+
+  /// What the list shows: done while Undo is offered, open after Undo.
+  Task copy;
+  Timer? timer;
+  bool timeUp = false;
+  bool replaced = false;
+
+  /// The snackbar has gone.
+  bool closed = false;
+  StreamSubscription<Task?>? watch;
+
+  int get id => task.id;
+
+  void cancelTimer() {
+    timer?.cancel();
+    timer = null;
+  }
+
+  void stopWatching() {
+    unawaited(watch?.cancel());
+    watch = null;
+  }
+
+  void stop() {
+    cancelTimer();
+    stopWatching();
   }
 }

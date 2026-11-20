@@ -72,6 +72,17 @@ final class KeptHttpTwins {
     await _preferences.setString(storageKey, jsonEncode(kept));
   }
 
+  /// For a sign-out: a new session of the account is asked again.
+  Future<void> forget(String accountId) async {
+    final kept = await _read();
+    if (kept.remove(accountId) == null) return;
+    if (kept.isEmpty) {
+      await _preferences.remove(storageKey);
+    } else {
+      await _preferences.setString(storageKey, jsonEncode(kept));
+    }
+  }
+
   Future<Map<String, int>> _read() async {
     final stored = await _preferences.getString(storageKey);
     if (stored == null) return {};

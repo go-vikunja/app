@@ -8,7 +8,10 @@ environment:
   sdk: ^3.13.0
 
 dependencies:
-  html: ^0.15.7
+  # Held: bounded_html_parser.dart subclasses its tokenizer and tree builder,
+  # so an upgrade means reading the overridden internals again against D58's
+  # budgets.
+  html: 0.15.7
   meta: ^1.16.0
   timezone: ^0.11.2
   vikunja_domain:

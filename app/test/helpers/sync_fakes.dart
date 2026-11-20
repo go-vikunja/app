@@ -1536,20 +1536,23 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
     return true;
   }
 
+  /// A temporary id that was remapped meanwhile is followed, also one
+  /// remapped by [beforeWrite].
   @override
   Future<void> setDone(int taskId, {required bool done}) => _write(
     'setDone $taskId $done',
-    (task) => task.id == taskId
+    (task) => task.id == (remaps[taskId] ?? taskId)
         ? copyTask(task, done: done, doneAt: done ? _doneAt : null)
         : task,
   );
 
   /// The previous dates come back, like the real repository restores them,
-  /// and a repeating task's reminders with them.
+  /// and a repeating task's reminders with them; a remapped temporary id
+  /// is followed like in [setDone].
   @override
   Future<void> undoDone(Task previous) => _write(
     'undoDone ${previous.id}',
-    (task) => task.id == previous.id
+    (task) => task.id == (remaps[previous.id] ?? previous.id)
         ? task.copyWith(
             done: false,
             doneAt: null,

@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:vikunja_mobile/app/theme/theme_providers.dart';
 import 'package:vikunja_mobile/bootstrap/appearance_start.dart';
 import 'package:vikunja_mobile/bootstrap/previous_app_start.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/settings/appearance_settings.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/application/previous_app.dart';
 

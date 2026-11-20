@@ -95,29 +95,35 @@ final class ComposerHarness {
   set settings(UserSettings settings) => data.shared.settings = settings;
   late final service = FakeQuickAddService(planner: _plan);
 
+  LocalQuickAddService _realService() => LocalQuickAddService(
+    snapshot: QuickAddSnapshot(
+      projects: data.projects.all,
+      labels: labels.labels,
+      knownUsers: knownUsers,
+      settings: settings,
+    ),
+    tasks: data.tasks,
+    labels: labels,
+    users: users,
+    now: () => composerNow,
+  );
+
   QuickAddPlan _plan(
     String line, {
     int? fallbackProjectId,
     DateTime? fallbackDueDate,
     int? fallbackPriority,
-  }) =>
-      LocalQuickAddService(
-        snapshot: QuickAddSnapshot(
-          projects: data.projects.all,
-          labels: labels.labels,
-          knownUsers: knownUsers,
-          settings: settings,
-        ),
-        tasks: data.tasks,
-        labels: labels,
-        users: users,
-        now: () => composerNow,
-      ).plan(
-        line,
-        fallbackProjectId: fallbackProjectId,
-        fallbackDueDate: fallbackDueDate,
-        fallbackPriority: fallbackPriority,
-      );
+  }) => _realService().plan(
+    line,
+    fallbackProjectId: fallbackProjectId,
+    fallbackDueDate: fallbackDueDate,
+    fallbackPriority: fallbackPriority,
+  );
+
+  /// What the real service's submit of [text] answers over this harness's
+  /// data, for the faked submit to answer the sheet.
+  Future<QuickAddResult> submitted(String text, {int? fallbackProjectId}) =>
+      _realService().submit(text, fallbackProjectId: fallbackProjectId);
 
   List<Override> get overrides => [
     quickAddServiceProvider.overrideWithValue(service),

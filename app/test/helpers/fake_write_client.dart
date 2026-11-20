@@ -50,6 +50,10 @@ final class FakeWriteClient implements VikunjaWriteClient {
   int nextAttachmentId = 300;
   User? uploader;
 
+  /// Who the server names as the creator of the tasks and labels created
+  /// here, as the lost-answer lookups compare it; null leaves it unset.
+  User? creator;
+
   /// The bytes of each upload by attachment id, and every upload's timeout
   /// and cancel token in order.
   final Map<int, List<int>> uploadedBytes = {};
@@ -296,7 +300,7 @@ final class FakeTasksWritePort implements TasksWritePort {
       task,
       id: id,
       now: _client._clock().toUtc(),
-    );
+    ).copyWith(createdBy: _client.creator);
     _client.serverTasks[id] = created;
     _client.creates.add(task);
     await _client.afterRequest?.call(description);
@@ -713,6 +717,7 @@ final class FakeLabelsWritePort implements LabelsWritePort {
       title: label.title,
       description: label.description,
       hexColor: label.hexColor,
+      createdBy: _client.creator,
       created: _client._clock().toUtc(),
     );
     _client.serverLabels[created.id] = created;

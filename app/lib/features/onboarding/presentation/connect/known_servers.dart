@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 
 /// Servers one tap each: those of the accounts already on this device, for
 /// adding another account on one of them, or before the first account the

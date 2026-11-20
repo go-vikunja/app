@@ -3,10 +3,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 import 'package:vikunja_mobile/features/home/application/background_sync_status.dart';
 import 'package:vikunja_mobile/features/home/presentation/session_end_text.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 

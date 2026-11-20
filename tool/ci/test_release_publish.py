@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 
+from release_version import release_version
 from test_play_upload import EMAIL, OPENSSL, FakePlay, generate_key
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -158,18 +159,15 @@ def write_env(path, values):
 def make_release(root, tag, signing='release', not_releasable=''):
     """build/release/{unsigned,signed} as release_build.sh and
     release_sign.sh leave them, with small fake files."""
-    name = tag[1:]
-    version, _, beta = name.partition('-beta.')
-    major, minor, patch = (int(part) for part in version.split('.'))
+    name, number, channel = release_version(tag)
     unsigned = os.path.join(root, 'unsigned')
     signed = os.path.join(root, 'signed')
     os.makedirs(unsigned)
     os.makedirs(signed)
     desugar = b'desugar_jdk_libs source'
     values = {
-        'TAG': tag, 'BUILD_NAME': name,
-        'BUILD_NUMBER': str(major * 1_000_000 + minor * 10_000 + patch * 100 + (int(beta) if beta else 99)),
-        'CHANNEL': 'beta' if beta else 'final', 'SOURCE_URL': f'https://github.com/go-vikunja/app/tree/{tag}',
+        'TAG': tag, 'BUILD_NAME': name, 'BUILD_NUMBER': str(number),
+        'CHANNEL': channel, 'SOURCE_URL': f'https://github.com/go-vikunja/app/tree/{tag}',
         'DESUGAR_ARCHIVE': DESUGAR, 'DESUGAR_COMMIT': COMMIT,
         'UNSIGNED_AAB_SHA256': write(os.path.join(unsigned, 'app-release.aab'), b'unsigned bundle ' + tag.encode()),
         'UNSIGNED_APK_SHA256': write(os.path.join(unsigned, 'app-release.apk'), b'unsigned apk ' + tag.encode()),
@@ -417,6 +415,25 @@ class ValidationTest(Fixture):
     def test_missing_release_env(self):
         os.remove(os.path.join(self.signed, 'release.env'))
         self.assert_refused('dl', 'signed/release.env is missing')
+
+
+class VersionSchemeTest(Fixture):
+    def test_bash_agrees_with_release_version_py(self):
+        # release_publish.sh computes the scheme again in Bash on purpose;
+        # a change in one language alone fails here.
+        for tag in ('v0.0.1-beta.1', 'v1.2.3', 'v12.34.56-beta.98', 'v2099.99.99'):
+            with self.subTest(tag=tag):
+                root = os.path.join(self.tmp, tag)
+                values = make_release(root, tag)
+                env = {'VIKUNJA_APP_RELEASE_DIR': root}
+                accepted = self.publish('--dry-run', 'dl', env=env)
+                self.assertEqual(accepted.returncode, 0, accepted.stderr)
+                self.assertIn('Not published: ', accepted.stdout)
+                edit_env(os.path.join(root, 'signed', 'release.env'),
+                         BUILD_NUMBER=str(int(values['BUILD_NUMBER']) + 1))
+                refused = self.publish('--dry-run', 'dl', env=env)
+                self.assertEqual(refused.returncode, 1)
+                self.assertIn(f'do not belong to {tag}', refused.stderr)
 
 
 class CheckTest(Fixture):

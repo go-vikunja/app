@@ -54,9 +54,6 @@ final class LinkShareSession implements AccessTokenSource {
   /// `service.jwtttl` of a default server, for a token without `iat`.
   static const defaultLifetime = Duration(hours: 72);
 
-  static const _passwordRequired = 13001;
-  static const _wrongPassword = 13002;
-
   final String accountId;
   final LinkShareStore _store;
   final LinkShareRenewal _renew;
@@ -274,7 +271,8 @@ final class LinkShareSession implements AccessTokenSource {
       _authenticationBlockedUntil = _clock().add(wait);
       rethrow;
     } on VikunjaFailure catch (failure) {
-      if (failure.code == _passwordRequired || failure.code == _wrongPassword) {
+      if (failure.code == LinkShareCodes.passwordRequired ||
+          failure.code == LinkShareCodes.wrongPassword) {
         if (storedShare.password != null) {
           await _store.writePassword(accountId, null);
         }

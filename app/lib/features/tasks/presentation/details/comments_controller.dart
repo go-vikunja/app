@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository.dart'
     show StoredRead;
+import 'package:vikunja_mobile/features/tasks/presentation/details/refresh_guard.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/task_details_controller.dart'
     show keepsStored;
 
@@ -96,14 +97,10 @@ final class CommentsController extends ValueNotifier<CommentsState> {
 
   final CommentPageReader _read;
   final StoredCommentsReader? _stored;
+  late final _guard = RefreshGuard(refreshLoaded);
   int? _taskId;
-  int _generation = 0;
-  int? _refreshing;
-  int _writes = 0;
-  bool _refreshDue = false;
   bool _changedWhileLoading = false;
   bool _orderChosen = false;
-  bool _disposed = false;
 
   /// Deleted here: a page read before the server had that gone brings
   /// them still.
@@ -165,13 +162,13 @@ final class CommentsController extends ValueNotifier<CommentsState> {
     if (taskId == null || value.loading) return;
     final stored = value.storedAt != null && value.shown;
     if (!stored && value.loadedPages == 0) return;
-    if (_writes > 0) {
-      _refreshDue = true;
+    if (_guard.hasWrites) {
+      _guard.markDue();
       return;
     }
     if (stored) return await retry();
     final pages = value.loadedPages;
-    final generation = _refreshing = ++_generation;
+    final generation = _guard.refreshing = ++_guard.generation;
     try {
       final comments = <TaskComment>[];
       var hasMore = false;
@@ -181,7 +178,7 @@ final class CommentsController extends ValueNotifier<CommentsState> {
           page: page,
           newestFirst: value.newestFirst,
         );
-        if (generation != _generation) return;
+        if (generation != _guard.generation) return;
         _perPage = result.perPage;
         final known = {for (final comment in comments) comment.id};
         comments.addAll(
@@ -203,22 +200,13 @@ final class CommentsController extends ValueNotifier<CommentsState> {
     } on Object catch (error) {
       _log.fine('Refreshing comments failed: ${error.runtimeType}');
     } finally {
-      if (_refreshing == generation) _refreshing = null;
+      if (_guard.refreshing == generation) _guard.refreshing = null;
     }
   }
 
   /// Runs [write], which changes on the server what a change made here
   /// already shows: refreshes wait until it is done.
-  Future<T> writing<T>(Future<T> Function() write) async {
-    _writes++;
-    _dropRefresh();
-    try {
-      return await write();
-    } finally {
-      _writes--;
-      _refreshIfDue();
-    }
-  }
+  Future<T> writing<T>(Future<T> Function() write) => _guard.writing(write);
 
   /// A comment written here, where the server's order puts it: first when
   /// newest first, last when oldest first, after the pages not read yet,
@@ -229,7 +217,7 @@ final class CommentsController extends ValueNotifier<CommentsState> {
   Future<void> add(TaskComment comment, {required bool wasEmpty}) async {
     if (!value.shown || value.storedAt != null) {
       if (!wasEmpty) return await _load(1, 1, toEnd: !value.newestFirst);
-      _generation++;
+      _guard.generation++;
       _set(
         CommentsState(
           shown: true,
@@ -241,7 +229,7 @@ final class CommentsController extends ValueNotifier<CommentsState> {
       return;
     }
     if (value.comments.any((known) => known.id == comment.id)) return;
-    _dropRefresh();
+    _guard.drop();
     if (value.newestFirst) {
       _set(
         value.copyWith(
@@ -283,7 +271,7 @@ final class CommentsController extends ValueNotifier<CommentsState> {
     _deleted.add(commentId);
     _noteChange();
     if (!value.comments.any((comment) => comment.id == commentId)) return;
-    _dropRefresh();
+    _guard.drop();
     if (value.hasMore) _removed++;
     _set(
       value.copyWith(
@@ -305,7 +293,7 @@ final class CommentsController extends ValueNotifier<CommentsState> {
 
   void _change(int commentId, TaskComment Function(TaskComment) change) {
     if (find(commentId) == null) return;
-    _dropRefresh();
+    _guard.drop();
     _noteChange();
     _set(
       value.copyWith(
@@ -331,23 +319,9 @@ final class CommentsController extends ValueNotifier<CommentsState> {
   }
 
   void _restart() {
-    _generation++;
+    _guard.generation++;
     _removed = 0;
     _changedWhileLoading = false;
-  }
-
-  void _dropRefresh() {
-    if (_refreshing == null || _refreshing != _generation) return;
-    _refreshing = null;
-    _generation++;
-    _refreshDue = true;
-    _refreshIfDue();
-  }
-
-  void _refreshIfDue() {
-    if (_writes > 0 || !_refreshDue || _disposed) return;
-    _refreshDue = false;
-    unawaited(refreshLoaded());
   }
 
   /// Pages [from] to [to], [toEnd] on to the last, appending what is not
@@ -357,14 +331,16 @@ final class CommentsController extends ValueNotifier<CommentsState> {
   Future<void> _load(int from, int to, {bool toEnd = false}) async {
     final taskId = _taskId;
     if (taskId == null) return;
-    final generation = ++_generation;
+    final generation = ++_guard.generation;
     final removedBefore = _removed;
     _set(value.copyWith(loading: true));
     final stored = value.loadedPages == 0 ? _readStored(taskId) : null;
     if (stored != null) {
       unawaited(
         stored.then((stored) {
-          if (stored == null || generation != _generation || !value.loading) {
+          if (stored == null ||
+              generation != _guard.generation ||
+              !value.loading) {
             return;
           }
           _set(
@@ -387,7 +363,7 @@ final class CommentsController extends ValueNotifier<CommentsState> {
           page: page,
           newestFirst: value.newestFirst,
         );
-        if (generation != _generation) return;
+        if (generation != _guard.generation) return;
         _perPage = result.perPage;
         read.addAll(result.items);
         hasMore = result.hasMore;
@@ -417,17 +393,18 @@ final class CommentsController extends ValueNotifier<CommentsState> {
       );
       if (_changedWhileLoading) {
         _changedWhileLoading = false;
-        _refreshDue = true;
-        _refreshIfDue();
+        _guard
+          ..markDue()
+          ..refreshIfDue();
       }
     } on Object catch (error) {
       _log.fine('Loading comments failed: ${error.runtimeType}');
-      if (generation != _generation) return;
+      if (generation != _guard.generation) return;
       // Nothing it read was stored, so the change has nothing to correct.
       _changedWhileLoading = false;
       if (keepsStored(error) && stored != null) {
         final kept = await stored;
-        if (generation != _generation) return;
+        if (generation != _guard.generation) return;
         if (kept != null) {
           _set(
             value.copyWith(
@@ -476,12 +453,12 @@ final class CommentsController extends ValueNotifier<CommentsState> {
   }
 
   void _set(CommentsState state) {
-    if (!_disposed) value = state;
+    if (!_guard.disposed) value = state;
   }
 
   @override
   void dispose() {
-    _disposed = true;
+    _guard.dispose();
     super.dispose();
   }
 }

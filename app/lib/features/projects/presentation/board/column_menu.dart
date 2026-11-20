@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/common/presentation/title_and_hint.dart';
 
 enum ColumnAction {
   rename,
@@ -85,7 +86,7 @@ class ColumnMenuButton extends StatelessWidget {
           CheckedPopupMenuItem(
             value: ColumnAction.done,
             checked: isDone,
-            child: _TitleAndHint(
+            child: TitleAndHint(
               title: l10n.boardDoneColumn,
               hint: l10n.boardDoneColumnHintExtended,
             ),
@@ -93,7 +94,7 @@ class ColumnMenuButton extends StatelessWidget {
           CheckedPopupMenuItem(
             value: ColumnAction.defaultColumn,
             checked: isDefault,
-            child: _TitleAndHint(
+            child: TitleAndHint(
               title: l10n.boardDefaultColumn,
               hint: l10n.boardDefaultColumnHint,
             ),
@@ -142,33 +143,8 @@ class ColumnMenuButton extends StatelessWidget {
         leading: Icon(icon, color: color),
         title: hint == null
             ? Text(label, style: TextStyle(color: color))
-            : _TitleAndHint(title: label, hint: hint),
+            : TitleAndHint(title: label, hint: hint),
       ),
     ),
   );
-}
-
-class _TitleAndHint extends StatelessWidget {
-  const new({required this.title, required this.hint});
-
-  final String title;
-  final String hint;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title),
-        const SizedBox(height: 2),
-        Text(
-          hint,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
 }

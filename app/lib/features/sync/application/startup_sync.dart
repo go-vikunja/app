@@ -1,7 +1,6 @@
-import 'dart:async';
-
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:vikunja_mobile/core/async/first_value.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
@@ -28,7 +27,14 @@ final class StartupSync {
   /// engine's first reported status, because a freshly built engine reports
   /// a placeholder until it has read its stored state.
   Future<void> run(SyncEngine engine) async {
-    switch (await _firstStatus(engine)) {
+    final SyncStatus? first;
+    try {
+      first = await firstValue<SyncStatus?>(engine.status, orElse: null);
+    } on Object catch (error) {
+      _log.info('Reading the sync status failed: ${error.runtimeType}');
+      return;
+    }
+    switch (first) {
       // Null: disposed before it reported.
       case null || SyncNeverRun() || SyncRunning():
       case SyncFailed(lastSyncedAt: null):
@@ -43,22 +49,5 @@ final class StartupSync {
           _log.info('Startup sync failed: ${error.runtimeType}');
         }
     }
-  }
-
-  // Not `first`: that resolves only after the subscription's cancel future,
-  // which a replaying stream completes outside the caller's zone.
-  Future<SyncStatus?> _firstStatus(SyncEngine engine) {
-    final first = Completer<SyncStatus?>();
-    late final StreamSubscription<SyncStatus> subscription;
-    subscription = engine.status.listen(
-      (status) {
-        if (!first.isCompleted) first.complete(status);
-        unawaited(subscription.cancel());
-      },
-      onDone: () {
-        if (!first.isCompleted) first.complete(null);
-      },
-    );
-    return first.future;
   }
 }

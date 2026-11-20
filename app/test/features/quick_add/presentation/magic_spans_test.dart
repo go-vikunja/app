@@ -260,16 +260,48 @@ void main() {
     ], splitQuickAddLines(withMarkerOnly));
   });
 
+  group('step 40q: the tokens are the ones the parser reads', () {
+    test('an unclosed quote ends at the next label, which is marked too; '
+        'until then it ran to the end of the line and neither was', () {
+      expect(spansOf('Buy *"milk *urgent'), [
+        ('*"milk', MagicSpanKind.label),
+        ('*urgent', MagicSpanKind.label),
+      ]);
+    });
+
+    test('a quoted label holding ` *` is two labels, each marked; until '
+        'then it was one token the parser did not read', () {
+      expect(planOf('x *"a *b" c').parsed.labels, ['a', 'b"']);
+      expect(spansOf('x *"a *b" c'), [
+        ('*"a', MagicSpanKind.label),
+        ('*b"', MagicSpanKind.label),
+      ]);
+    });
+
+    test('a doubled prefix at the start is marked with the label the '
+        'parser keeps there; until then it was not marked', () {
+      expect(planOf('**bike now').parsed.labels, ['*bike']);
+      expect(
+        magicSpansForLine(
+          '**bike now',
+          planOf('**bike now'),
+          quickAddPrefixes(QuickAddMagicMode.vikunja)!,
+        ),
+        [const MagicSpan(0, 6, MagicSpanKind.label, item: '*bike')],
+      );
+    });
+  });
+
   test('prefixed tokens follow the web grammar', () {
     expect(
       [
-        for (final token in prefixedTokens('*a b*c *"d e" @@x *', '*'))
+        for (final token in quickAddTokens('*a b*c *"d e" @@x *', '*'))
           token.item,
       ],
       ['a', 'd e', ''],
     );
     expect(
-      [for (final token in prefixedTokens('x @@alice', '@')) token.item],
+      [for (final token in quickAddTokens('x @@alice', '@')) token.item],
       ['alice'],
     );
   });

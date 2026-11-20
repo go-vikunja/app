@@ -16,6 +16,7 @@ import 'package:vikunja_api/src/dto/task_codec.dart';
 import 'package:vikunja_api/src/dto/task_details_codec.dart';
 import 'package:vikunja_api/src/dto/user_codec.dart';
 import 'package:vikunja_api/src/errors/normalize_error.dart';
+import 'package:vikunja_api/src/errors/streamed_error_body.dart';
 import 'package:vikunja_api/src/read/read_ports.dart';
 import 'package:vikunja_api/src/read/task_query_params.dart';
 import 'package:vikunja_api/src/transport/all_pages.dart';
@@ -841,21 +842,12 @@ final class _ReadTransport {
     final response = error.response;
     final body = response?.data;
     if (response == null || body is! ResponseBody) return error;
-    final bytes = BytesBuilder(copy: false);
-    try {
-      await for (final chunk in body.stream) {
-        bytes.add(chunk);
-        if (bytes.length > _maxErrorBodyBytes) break;
-      }
-    } on Object {
-      return error;
-    }
-    if (bytes.length > _maxErrorBodyBytes) cancel.cancel();
-    response.data = bytes.takeBytes();
+    final bytes = await readErrorBody(body);
+    if (bytes == null) return error;
+    if (bytes.length > maxErrorBodyBytes) cancel.cancel();
+    response.data = bytes;
     return error;
   }
-
-  static const int _maxErrorBodyBytes = 64 * 1024;
 
   Future<Response<List<int>>> getBytes(
     String path, {

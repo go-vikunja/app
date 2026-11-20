@@ -383,7 +383,7 @@ void main() {
             file.path,
       };
       expect(users, {
-        'lib/bootstrap/logging_setup.dart',
+        'lib/core/logging/logging_setup.dart',
         'lib/features/about/application/support_details.dart',
       });
     });

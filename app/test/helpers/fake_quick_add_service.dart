@@ -1,5 +1,6 @@
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/features/quick_add/application/quick_add_lines.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 
 typedef QuickAddPlanner = QuickAddPlan Function(
@@ -21,7 +22,8 @@ typedef QuickAddSubmit = ({
 /// Quick add for widget tests. A `planner` decides every plan (by default
 /// the line, trimmed, is the title and nothing is parsed, in [project]);
 /// every `plan` and `submit` call is recorded. A submit answers [result],
-/// or throws [submitError]; [beforeSubmit] can hold it.
+/// with each line's planned title when it names no titles, or throws
+/// [submitError]; [beforeSubmit] can hold it.
 final class FakeQuickAddService implements QuickAddService {
   new({
     this.project,
@@ -55,16 +57,28 @@ final class FakeQuickAddService implements QuickAddService {
     int? fallbackPriority,
   }) {
     plans.add((line: line, fallbackProjectId: fallbackProjectId));
-    return switch (_planner) {
-      final planner? => planner(
-        line,
-        fallbackProjectId: fallbackProjectId,
-        fallbackDueDate: fallbackDueDate,
-        fallbackPriority: fallbackPriority,
-      ),
-      null => plainPlan(line, project: project),
-    };
+    return _planned(
+      line,
+      fallbackProjectId: fallbackProjectId,
+      fallbackDueDate: fallbackDueDate,
+      fallbackPriority: fallbackPriority,
+    );
   }
+
+  QuickAddPlan _planned(
+    String line, {
+    int? fallbackProjectId,
+    DateTime? fallbackDueDate,
+    int? fallbackPriority,
+  }) => switch (_planner) {
+    final planner? => planner(
+      line,
+      fallbackProjectId: fallbackProjectId,
+      fallbackDueDate: fallbackDueDate,
+      fallbackPriority: fallbackPriority,
+    ),
+    null => plainPlan(line, project: project),
+  };
 
   @override
   Future<QuickAddResult> submit(
@@ -83,6 +97,24 @@ final class FakeQuickAddService implements QuickAddService {
     ));
     await beforeSubmit?.call();
     if (submitError case final error?) throw error;
-    return result;
+    final result = this.result;
+    if (result.createdTitles.isNotEmpty) return result;
+    return QuickAddResult(
+      createdTaskIds: result.createdTaskIds,
+      createdTitles: [
+        for (final line in splitQuickAddLines(
+          text,
+        ).take(result.createdTaskIds.length))
+          _planned(
+            line,
+            fallbackProjectId: fallbackProjectId,
+            fallbackDueDate: fallbackDueDate,
+            fallbackPriority: fallbackPriority,
+          ).title,
+      ],
+      labelsNotCreated: result.labelsNotCreated,
+      labelsKept: result.labelsKept,
+      unresolvedAssignees: result.unresolvedAssignees,
+    );
   }
 }

@@ -120,6 +120,26 @@ void main() {
   AppLockController controllerOf(ProviderContainer container) =>
       container.read(appLockControllerProvider.notifier);
 
+  test('overdue: the limit reached or a clock that went back', () {
+    final since = DateTime.utc(2026, 10, 27, 9);
+    const minute = Duration(minutes: 1);
+    for (final (now, limit, expected) in [
+      (since.add(minute), minute, true),
+      (since.add(minute * 2), minute, true),
+      (since.add(minute - const Duration(microseconds: 1)), minute, false),
+      (since, minute, false),
+      (since.subtract(const Duration(seconds: 1)), minute, true),
+      (since, Duration.zero, true),
+      (since.subtract(const Duration(microseconds: 1)), Duration.zero, true),
+    ]) {
+      expect(
+        AppLockController.overdue(since, now, limit),
+        expected,
+        reason: '${now.difference(since)} of $limit',
+      );
+    }
+  });
+
   group('a cold start', () {
     testLock('is locked while the lock is on', (tester) async {
       auth.result = DeviceAuthResult.cancelled;

@@ -9,6 +9,7 @@ import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
@@ -19,7 +20,6 @@ import 'package:vikunja_mobile/features/onboarding/application/previous_app.dart
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_header.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/previous_app_note.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/features/session/application/sign_in_controller.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_controller.dart';
 import 'package:vikunja_mobile/features/session/presentation/sign_in_failure_message.dart';

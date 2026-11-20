@@ -188,9 +188,11 @@ final class GuestSignIn {
       _log.info('The link share is gone: $failure');
       return GuestLinkGone(sharingOff: failure.code == null);
     } on VikunjaFailure catch (failure) {
-      if (failure.code case _passwordRequired || _wrongPassword) {
+      if (failure.code
+          case LinkShareCodes.passwordRequired ||
+              LinkShareCodes.wrongPassword) {
         return GuestPasswordRequired(
-          wrongPassword: failure.code == _wrongPassword,
+          wrongPassword: failure.code == LinkShareCodes.wrongPassword,
         );
       }
       _log.info('Opening the link share failed: $failure');
@@ -314,9 +316,6 @@ final class GuestSignIn {
     serverRoot: connection.rootUri,
     frontendUrl: connection.info.frontendUrl,
   );
-
-  static const _passwordRequired = 13001;
-  static const _wrongPassword = 13002;
 }
 
 /// The shared project's title, read with the guest's fresh token over

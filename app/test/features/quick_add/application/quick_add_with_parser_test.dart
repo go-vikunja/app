@@ -143,6 +143,15 @@ void main() {
       expect(priority.priority, isNull);
     });
 
+    test('step 40q: behind a doubled prefix too, so words inside it stay in '
+        'it; until then `tomorrow` there was read as the date', () {
+      final plan = service().plan('Call ++"stuff tomorrow"');
+
+      expect(plan.unmatchedProject, 'stuff tomorrow');
+      expect(plan.title, 'Call ++"stuff tomorrow"');
+      expect(plan.dueDate, isNull);
+    });
+
     test('the submitted task is the plan', () async {
       await service().submit('+nowhere at 15:00 call');
 

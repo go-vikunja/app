@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -964,6 +966,142 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
     });
+
+    testWidgets('a column scrolls while a card is held near its bottom, and '
+        'the drop follows the cards moving under the finger', (tester) async {
+      data.tasks.all = [
+        for (var id = 100; id < 112; id++)
+          sampleTask(id: id, title: 'Card $id'),
+      ];
+      storeBoard(
+        columns: [
+          bucket(21, 'To-Do', count: 12),
+          bucket(22, 'Doing'),
+          bucket(23, 'Done'),
+        ],
+        cards: {
+          for (var id = 100; id < 112; id++)
+            id: (bucketId: 21, position: id * 10.0),
+        },
+      );
+      await pumpBoard(tester, size: const Size(1100, 500));
+      final position = tester
+          .state<ScrollableState>(
+            find
+                .descendant(
+                  of: cardsOfColumn('To-Do'),
+                  matching: find.byType(Scrollable),
+                )
+                .first,
+          )
+          .position;
+      expect(position.pixels, 0);
+      expect(position.maxScrollExtent, greaterThan(0));
+
+      final from = tester.getCenter(cardOf('Card 100'));
+      final column = tester.getRect(cardsOfColumn('To-Do'));
+      final gesture = await tester.startGesture(from);
+      await tester.pump(const Duration(milliseconds: 600));
+      final to = Offset(from.dx, column.bottom - 10);
+      for (var step = 1; step <= 6; step++) {
+        await gesture.moveTo(Offset.lerp(from, to, step / 6)!);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+
+      expect(position.pixels, position.maxScrollExtent);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      final (taskId, _, placement, _) = data.tasks.placements.single;
+      expect(taskId, 100);
+      expect(placement.bucketId, 21);
+      expect(placement.position, greaterThan(1110));
+    });
+  });
+
+  group('the drop line', () {
+    Future<Rect> pumpLine(
+      WidgetTester tester, {
+      required TextDirection direction,
+      required List<Task> cards,
+      required int dropIndex,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: appLocalizationsDelegates,
+          supportedLocales: appSupportedLocales,
+          home: Directionality(
+            textDirection: direction,
+            child: Scaffold(
+              body: Align(
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  height: 400,
+                  child: BoardColumnView(
+                    column: BoardColumn(
+                      bucket: bucket(21, 'To-Do', count: cards.length),
+                      tasks: cards,
+                      shownCount: cards.length,
+                      hasMore: false,
+                    ),
+                    width: 280,
+                    isDoneColumn: false,
+                    cardBuilder: (context, task, index) =>
+                        SizedBox(height: 60, child: Text(task.title)),
+                    loadingMore: false,
+                    onLoadMore: () {},
+                    onNearEnd: () {},
+                    dropIndex: dropIndex,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final line = find.descendant(
+        of: find.byType(BoardColumnView),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is SizedBox && widget.height == 3,
+        ),
+      );
+      expect(line, findsOneWidget);
+      final column = tester.getRect(find.byType(BoardColumnView));
+      final rect = tester.getRect(line);
+      return Rect.fromLTRB(
+        rect.left - column.left,
+        rect.top,
+        column.right - rect.right,
+        rect.bottom,
+      );
+    }
+
+    for (final direction in TextDirection.values) {
+      testWidgets('keeps 8 from both sides of a column, ${direction.name}', (
+        tester,
+      ) async {
+        final between = await pumpLine(
+          tester,
+          direction: direction,
+          cards: [
+            sampleTask(id: 1, title: 'One'),
+            sampleTask(id: 2, title: 'Two'),
+          ],
+          dropIndex: 1,
+        );
+        expect((between.left, between.right), (8, 8));
+
+        final empty = await pumpLine(
+          tester,
+          direction: direction,
+          cards: const [],
+          dropIndex: 0,
+        );
+        expect((empty.left, empty.right), (8, 8));
+      });
+    }
   });
 
   group('screen reader actions', () {

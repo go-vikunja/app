@@ -3,6 +3,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/db/daos/label_ops_dao.dart';
 import 'package:vikunja_mobile/core/db/daos/outbox_dao.dart';
+import 'package:vikunja_mobile/core/outbox/failure_json.dart';
 import 'package:vikunja_mobile/core/outbox/label_op_json.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/outbox/task_changes_json.dart';
@@ -549,6 +550,49 @@ void main() {
         decodeTaskChanges((await ops()).first.payload).labels,
         const IdSetChange(removed: {50}),
       );
+    });
+
+    test('changes only the payload of the task edits naming it: one waiting '
+        'out a backoff and one that failed keep their state', () async {
+      await queueLabel('Errand');
+      await attach(1, const IdSetChange(added: {-1}));
+      await attach(2, const IdSetChange(added: {-1}));
+      final [_, waiting, failed] = await ops();
+      await db.outboxDao.scheduleRetry(
+        waiting.id,
+        attempts: 2,
+        failure: const ServerFailure(502),
+        nextAttemptAt: later,
+      );
+      await db.outboxDao.scheduleRetry(
+        failed.id,
+        attempts: 3,
+        failure: const ServerFailure(502),
+        nextAttemptAt: later,
+      );
+      await db.outboxDao.markFailed(failed.id, const Forbidden());
+
+      await answer(-1, const Label(id: 50, title: 'Errand'));
+
+      final [one, two] = await ops();
+      expect(one.id, waiting.id);
+      expect(one.state, OutboxState.pending.name);
+      expect(one.attempts, 2);
+      expect(one.nextAttemptAt, later);
+      expect(one.lastError, encodeFailure(const ServerFailure(502)));
+      expect(
+        decodeTaskChanges(one.payload).labels,
+        const IdSetChange(added: {50}),
+      );
+      expect(two.id, failed.id);
+      expect(two.state, OutboxState.failed.name);
+      expect(two.attempts, 3);
+      expect(two.lastError, encodeFailure(const Forbidden()));
+      expect(
+        decodeTaskChanges(two.payload).labels,
+        const IdSetChange(added: {50}),
+      );
+      expect((await pendingOf(2))!.labels, const IdSetChange(added: {50}));
     });
 
     test('with a label the sync stored meanwhile merges into it', () async {

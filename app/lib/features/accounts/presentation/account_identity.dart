@@ -2,8 +2,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
 export 'package:vikunja_mobile/core/auth/account_title.dart';
 

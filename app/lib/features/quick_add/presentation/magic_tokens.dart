@@ -32,11 +32,11 @@ ActiveMagicToken? activeMagicToken(
     (MagicTokenKind.project, prefixes.project),
     (MagicTokenKind.assignee, prefixes.assignee),
   ]) {
-    for (final token in prefixedTokens(line, prefix)) {
+    for (final token in quickAddTokens(line, prefix)) {
       if (column < token.itemStart || column > token.end) continue;
       final open = token.quoted && !_closed(line, token);
-      // An open quote runs to the end of the line; only the part up to the
-      // caret is being typed.
+      // An open quote runs on to the next item of its prefix; only the part
+      // up to the caret is being typed.
       final end = open ? column : token.end;
       final query = open ? line.substring(token.itemStart, column) : token.item;
       return (
@@ -51,16 +51,10 @@ ActiveMagicToken? activeMagicToken(
   return null;
 }
 
-bool _closed(String line, PrefixedToken token) =>
+bool _closed(String line, QuickAddToken token) =>
     token.end <= line.length &&
     token.end > token.itemStart &&
     line[token.end - 1] == line[token.itemStart - 1];
-
-/// [value] as an item: quoted when it contains a space.
-String quoteMagicValue(String value) {
-  if (!value.contains(RegExp(r'\s'))) return value;
-  return value.contains('"') ? "'$value'" : '"$value"';
-}
 
 /// Replaces [token] with its prefix and [item], followed by a space, and
 /// puts the caret after it.
@@ -70,7 +64,7 @@ TextEditingValue completeMagicToken(
   String item,
 ) {
   final text = value.text;
-  final replacement = '${token.prefix}${quoteMagicValue(item)}';
+  final replacement = '${token.prefix}${quoteQuickAddItem(item)}';
   final spaced = text.startsWith(' ', token.end)
       ? replacement
       : '$replacement ';

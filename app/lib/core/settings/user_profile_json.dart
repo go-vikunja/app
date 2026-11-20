@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:vikunja_api/vikunja_api.dart' show parseUserProfile;
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// `UserProfile` as the sync stores it in `sync_state`. Reading never
@@ -25,33 +26,8 @@ UserProfile? decodeUserProfile(String? stored) {
   } on FormatException {
     return null;
   }
-  if (json case {'id': final int id, 'username': final String username}
-      when username.isNotEmpty) {
-    return UserProfile(
-      id: id,
-      username: username,
-      name: switch (json['name']) {
-        final String name => name,
-        _ => '',
-      },
-      isLocalUser: json['is_local_user'] != false,
-      authProvider: switch (json['auth_provider']) {
-        final String provider => provider,
-        _ => '',
-      },
-      pendingEmail: switch (json['pending_email']) {
-        final String email when email.isNotEmpty => email,
-        _ => null,
-      },
-      updated: switch (json['updated']) {
-        final String updated => DateTime.tryParse(updated)?.toUtc(),
-        _ => null,
-      },
-      deletionScheduledAt: switch (json['deletion_scheduled_at']) {
-        final String scheduled => DateTime.tryParse(scheduled)?.toUtc(),
-        _ => null,
-      },
-    );
-  }
-  return null;
+  return switch (parseUserProfile(json)) {
+    final profile? when profile.username.isNotEmpty => profile,
+    _ => null,
+  };
 }

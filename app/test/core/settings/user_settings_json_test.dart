@@ -203,4 +203,57 @@ void main() {
 
     expect(settings, const UserSettings());
   });
+
+  test('a value stored by this version reads the same, field by field, '
+      'and the stored format stays as it is', () {
+    const everyField = UserSettings(
+      name: 'Anna',
+      emailRemindersEnabled: true,
+      discoverableByName: true,
+      discoverableByEmail: true,
+      overdueTasksRemindersEnabled: false,
+      overdueTasksRemindersTime: ClockTime(7, 5),
+      defaultProjectId: 12,
+      weekStart: 1,
+      timezone: 'Europe/Berlin',
+      language: 'de-DE',
+      quickAddMagicMode: QuickAddMagicMode.todoist,
+      quickAddDefaultReminders: [Duration(minutes: -15), Duration(days: 1)],
+      filterIdUsedOnOverview: -553,
+      minimumPriority: 4,
+      commentSortOrder: CommentSortOrder.newestFirst,
+      dateDisplay: DateDisplay.weekdayDayMonthYear,
+      timeFormat: TimeFormat.twelveHour,
+      colorSchema: ColorSchema.dark,
+      defaultViewKind: ProjectViewKind.table,
+      defaultDueTime: ClockTime(17, 45),
+      defaultTaskRelationType: TaskRelationKind.blocking,
+    );
+    const stored =
+        '{"name":"Anna","email_reminders_enabled":true,'
+        '"discoverable_by_name":true,"discoverable_by_email":true,'
+        '"overdue_tasks_reminders_enabled":false,'
+        '"overdue_tasks_reminders_time":"07:05","default_project_id":12,'
+        '"week_start":1,"timezone":"Europe/Berlin","language":"de-DE",'
+        '"quick_add_magic_mode":"todoist",'
+        '"quick_add_default_reminders":[-900,86400],'
+        '"filter_id_used_on_overview":-553,"minimum_priority":4,'
+        '"comment_sort_order":"desc","date_display":"weekdayDayMonthYear",'
+        '"time_format":"12h","color_schema":"dark","default_view":"table",'
+        '"default_due_time":"17:45","default_task_relation_type":"blocking"}';
+    const storedDefaults =
+        '{"name":"","email_reminders_enabled":false,'
+        '"discoverable_by_name":false,"discoverable_by_email":false,'
+        '"overdue_tasks_reminders_enabled":true,'
+        '"overdue_tasks_reminders_time":"09:00","week_start":0,'
+        '"timezone":"","language":"","quick_add_magic_mode":"vikunja",'
+        '"quick_add_default_reminders":[],"minimum_priority":0,'
+        '"comment_sort_order":"asc","color_schema":"auto",'
+        '"default_task_relation_type":"related"}';
+
+    expect(decodeUserSettings(stored), everyField);
+    expect(encodeUserSettings(everyField), stored);
+    expect(decodeUserSettings(storedDefaults), const UserSettings());
+    expect(encodeUserSettings(const UserSettings()), storedDefaults);
+  });
 }

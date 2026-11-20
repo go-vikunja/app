@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_identity.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_sheet.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 
 /// The active account's avatar (a guest's link) at the end of an app bar;
 /// opens the account switcher.

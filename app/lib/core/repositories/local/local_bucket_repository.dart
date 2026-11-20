@@ -7,6 +7,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/filters/local_filters.dart';
 import 'package:vikunja_mobile/core/repositories/bucket_repository.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 
 final _log = Logger('AccountData');
 
@@ -34,7 +35,7 @@ final class LocalBucketRepository implements BucketRepository {
 
   @override
   Future<void> create(int projectId, int viewId, String title) async {
-    final trimmed = _checkedTitle(title);
+    final trimmed = checkedTitle(title);
     final buckets = await _db.kanbanDao.buckets(viewId);
     final created = await _write.buckets.create(
       projectId,
@@ -61,7 +62,7 @@ final class LocalBucketRepository implements BucketRepository {
     int bucketId,
     String title,
   ) async {
-    final trimmed = _checkedTitle(title);
+    final trimmed = checkedTitle(title);
     final bucket = await _stored(viewId, bucketId);
     await _update(
       projectId,
@@ -328,12 +329,6 @@ final class LocalBucketRepository implements BucketRepository {
   static Bucket _find(List<Bucket> buckets, int bucketId) =>
       buckets.where((bucket) => bucket.id == bucketId).firstOrNull ??
       (throw const NotFound(code: _bucketDoesNotExist));
-
-  static String _checkedTitle(String title) {
-    final trimmed = title.trim();
-    if (trimmed.isEmpty) throw ArgumentError.value(title, 'title');
-    return trimmed;
-  }
 
   void _settle(int projectId, int viewId, String done) {
     _log.fine(done);

@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/theme/system_bar_style.dart';
-import 'package:vikunja_mobile/app/theme/theme_providers.dart';
+import 'package:vikunja_mobile/core/settings/appearance_settings.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 

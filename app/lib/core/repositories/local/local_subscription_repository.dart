@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
 
@@ -41,7 +42,7 @@ final class LocalSubscriptionRepository implements SubscriptionRepository {
 
   @override
   Future<Subscription?> forTask(int taskId) async {
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     final read = await _read.subscriptions.forTask(id);
     await _recordTask(id, read);
     return read;
@@ -59,7 +60,7 @@ final class LocalSubscriptionRepository implements SubscriptionRepository {
     int taskId, {
     required bool subscribed,
   }) async {
-    final id = await _serverId(taskId);
+    final id = await serverTaskId(_db.tasksDao, taskId);
     await _set(SubscriptionEntity.task, id, subscribed: subscribed);
     // An unfollow that went through always leaves none (a row deleted or an
     // opt-out stored), for a task as for a project, so a failed read-back
@@ -122,19 +123,6 @@ final class LocalSubscriptionRepository implements SubscriptionRepository {
   void _refreshQuietly() {
     final refresh = _refreshAfterWrite;
     if (refresh == null) return;
-    unawaited(
-      refresh().then<void>(
-        (_) {},
-        onError: (Object error) => _log.fine(
-          'Sync after a follow change failed: ${error.runtimeType}',
-        ),
-      ),
-    );
-  }
-
-  Future<int> _serverId(int taskId) async {
-    final id = await _db.tasksDao.resolveId(taskId);
-    if (id < 0) throw TaskNotSyncedYet(taskId);
-    return id;
+    unawaited(refreshQuietly(refresh, _log, 'a follow change'));
   }
 }

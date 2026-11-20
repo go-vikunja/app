@@ -79,6 +79,28 @@ void main() {
     expect(find.text(en.dataExportReadyTitle), findsOneWidget);
   });
 
+  testWidgets('a return while a read is on its way shows the newer answer', (
+    tester,
+  ) async {
+    await pumpPage(tester);
+    final held = harness.holdNext('dataExport');
+    resumeApp(tester);
+    await tester.pump();
+
+    harness.security.export = readyExport();
+    resumeApp(tester);
+    await tester.pumpAndSettle();
+    expect(find.text(en.dataExportReadyTitle), findsOneWidget);
+
+    // The held read answers as the server did before the export was ready.
+    harness.security.export = null;
+    held.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text(en.dataExportReadyTitle), findsOneWidget);
+    expect(harness.callsOf('dataExport'), 3);
+  });
+
   testWidgets('an expired export counts as none', (tester) async {
     harness.security.export = UserDataExport(
       id: 1,

@@ -216,16 +216,12 @@ const overlayInventory = <String, OverlayCoverage>{
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/tasks/presentation/confirm_dialog.dart '
-      'confirmAdaptive showAdaptiveDialog': Exempt(
-    _sameAlertAsDelete,
+      'confirmAdaptive showAdaptiveDialog': Swept(
+    'delete-task dialog',
   ),
   'features/tasks/presentation/create/new_task_sheet.dart '
       'showNewTaskSheet showModalBottomSheet': Swept(
     'new-task sheet',
-  ),
-  'features/tasks/presentation/delete_task_dialog.dart '
-      'confirmDeleteTask showAdaptiveDialog': Swept(
-    'delete-task dialog',
   ),
   'features/tasks/presentation/details/attachment_row.dart '
       'AttachmentRow.build PopupMenuButton': Exempt(

@@ -13,8 +13,8 @@ import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
-import 'package:vikunja_mobile/features/onboarding/presentation/server_address_display.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
 part 'session_reminders.g.dart';

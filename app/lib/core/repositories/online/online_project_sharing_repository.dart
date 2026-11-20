@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/repositories/project_sharing_repository.dart';
+import 'package:vikunja_mobile/core/repositories/repository_helpers.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
 
 final _log = Logger('AccountData');
@@ -102,12 +103,6 @@ final class OnlineProjectSharingRepository implements ProjectSharingRepository {
   /// The stored permission follows with the next run.
   void _settle(String done) {
     _log.fine(done);
-    unawaited(
-      _sync.refreshAfterWrite().then<void>(
-        (_) {},
-        onError: (Object error) =>
-            _log.fine('Sync after a share change failed: ${error.runtimeType}'),
-      ),
-    );
+    unawaited(refreshQuietly(_sync.refreshAfterWrite, _log, 'a share change'));
   }
 }

@@ -810,6 +810,42 @@ void main() {
       expect(result.unresolvedAssignees, isEmpty);
     });
 
+    test('step 40q: a label kept is the token the parser read it from, not '
+        'the start of an unclosed quote before it', () async {
+      final result = await service(
+        grammar: const QuickAddGrammar(),
+        guest: true,
+      ).submit('Plan *"a trip *a');
+
+      // Until then `*a` was found as the start of `*"a trip`, which the
+      // title holds, so the label the parser removed was lost.
+      expect(tasks.creates.single.title, 'Plan *"a trip *a');
+      expect(result.labelsKept, ['*"a trip', '*a']);
+    });
+
+    test('step 40q: the result names each title as the task was created: '
+        'without the names found, with the labels kept, cut', () async {
+      final long = 'x' * (Task.maxTitleLength + 5);
+      final result = await service(grammar: const QuickAddGrammar())
+          .submit('Call @bob tomorrow.\nAsk @@alice\nFix **bike\n$long');
+
+      expect(result.createdTitles, [
+        'Call .',
+        'Ask',
+        'Fix',
+        'x' * Task.maxTitleLength,
+      ]);
+      expect(result.createdTitles, [
+        for (final task in tasks.creates) task.title,
+      ]);
+
+      final guest = await service(
+        grammar: const QuickAddGrammar(),
+        guest: true,
+      ).submit('Fix **tyre');
+      expect(guest.createdTitles, ['Fix **tyre']);
+    });
+
     test("in Todoist mode a label stays with Todoist's prefix", () async {
       final result = await service(
         settings: const UserSettings(
@@ -1226,6 +1262,31 @@ void main() {
         ('Oil', 5),
         ('Wash', 3),
       ]);
+    });
+
+    test("the parent's project a remaining line takes is quoted when it has "
+        'a space', () async {
+      final homeGarage = sampleProject(
+        id: 8,
+        title: 'Home garage',
+        position: 5,
+      );
+      tasks.beforeWrite = () async {
+        if (tasks.creates.length == 2) throw StateError('database');
+      };
+
+      final failure =
+          await service(
+                projects: [inbox, homeGarage],
+                grammar: const QuickAddGrammar(),
+              )
+              .submit('Car +"Home garage"\n  Tyres\n  Oil')
+              .then<Object?>((_) => null, onError: (Object error) => error);
+
+      expect(
+        (failure! as QuickAddPartlyFailed).remainingText,
+        'Tyres +"Home garage"\nOil +"Home garage"',
+      );
     });
 
     test('a single indented line is one task as typed', () async {

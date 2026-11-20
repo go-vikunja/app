@@ -9,38 +9,9 @@ UserSettings parseUserSettings(Object? json) {
     final Map<String, Object?> map => map,
     _ => const <String, Object?>{},
   };
-  return UserSettings(
-    name: switch (json['name']) {
-      final String name => name,
-      _ => '',
-    },
-    emailRemindersEnabled: json['email_reminders_enabled'] == true,
-    discoverableByName: json['discoverable_by_name'] == true,
-    discoverableByEmail: json['discoverable_by_email'] == true,
-    overdueTasksRemindersEnabled:
-        json['overdue_tasks_reminders_enabled'] != false,
-    overdueTasksRemindersTime:
-        ClockTime.tryParse(json['overdue_tasks_reminders_time']) ??
-        UserSettings.defaultOverdueTasksRemindersTime,
-    defaultProjectId: switch (json['default_project_id']) {
-      final int id when id > 0 => id,
-      _ => null,
-    },
-    weekStart: switch (json['week_start']) {
-      final int day when day >= 0 && day <= 6 => day,
-      _ => 0,
-    },
-    timezone: switch (json['timezone']) {
-      final String timezone => timezone,
-      _ => '',
-    },
-    language: switch (json['language']) {
-      final String language => language,
-      _ => '',
-    },
-    quickAddMagicMode: QuickAddMagicMode.fromWire(
-      frontend['quick_add_magic_mode'],
-    ),
+  return userSettingsFrom(
+    json,
+    frontend,
     quickAddDefaultReminders: switch (frontend['quick_add_default_reminders']) {
       final List<Object?> entries => List.unmodifiable([
         for (final entry in entries)
@@ -49,32 +20,74 @@ UserSettings parseUserSettings(Object? json) {
       ]),
       _ => const [],
     },
-    // A saved filter's pseudo project id: -1 is Favorites, 0 and up real
-    // projects.
-    filterIdUsedOnOverview: switch (frontend['filter_id_used_on_overview']) {
-      final int id when id <= -2 => id,
-      _ => null,
-    },
-    minimumPriority: switch (frontend['minimum_priority']) {
-      final int priority when priority >= 1 && priority <= 5 => priority,
-      _ => 0,
-    },
-    commentSortOrder: CommentSortOrder.fromWire(frontend['comment_sort_order']),
-    dateDisplay: DateDisplay.fromWire(frontend['date_display']),
-    timeFormat: TimeFormat.fromWire(frontend['time_format']),
-    colorSchema: ColorSchema.fromWire(frontend['color_schema']),
-    defaultViewKind: switch (frontend['default_view']) {
-      final String kind => ProjectViewKind.fromWire(kind),
-      _ => null,
-    },
-    defaultDueTime: _parseDefaultDueTime(frontend['default_due_time']),
-    defaultTaskRelationType: switch (frontend['default_task_relation_type']) {
-      final String kind =>
-        TaskRelationKind.fromWire(kind) ?? TaskRelationKind.related,
-      _ => TaskRelationKind.related,
-    },
   );
 }
+
+/// The settings from the account fields in [top] and the web's in
+/// [frontend], which `GET /user` nests under `frontend_settings` and the
+/// app's stored copy keeps beside them; the reminders' shape differs, so
+/// the caller reads them.
+UserSettings userSettingsFrom(
+  Map<String, Object?> top,
+  Map<String, Object?> frontend, {
+  required List<Duration> quickAddDefaultReminders,
+}) => UserSettings(
+  name: switch (top['name']) {
+    final String name => name,
+    _ => '',
+  },
+  emailRemindersEnabled: top['email_reminders_enabled'] == true,
+  discoverableByName: top['discoverable_by_name'] == true,
+  discoverableByEmail: top['discoverable_by_email'] == true,
+  overdueTasksRemindersEnabled: top['overdue_tasks_reminders_enabled'] != false,
+  overdueTasksRemindersTime:
+      ClockTime.tryParse(top['overdue_tasks_reminders_time']) ??
+      UserSettings.defaultOverdueTasksRemindersTime,
+  defaultProjectId: switch (top['default_project_id']) {
+    final int id when id > 0 => id,
+    _ => null,
+  },
+  weekStart: switch (top['week_start']) {
+    final int day when day >= 0 && day <= 6 => day,
+    _ => 0,
+  },
+  timezone: switch (top['timezone']) {
+    final String timezone => timezone,
+    _ => '',
+  },
+  language: switch (top['language']) {
+    final String language => language,
+    _ => '',
+  },
+  quickAddMagicMode: QuickAddMagicMode.fromWire(
+    frontend['quick_add_magic_mode'],
+  ),
+  quickAddDefaultReminders: quickAddDefaultReminders,
+  // A saved filter's pseudo project id: -1 is Favorites, 0 and up real
+  // projects.
+  filterIdUsedOnOverview: switch (frontend['filter_id_used_on_overview']) {
+    final int id when id <= -2 => id,
+    _ => null,
+  },
+  minimumPriority: switch (frontend['minimum_priority']) {
+    final int priority when priority >= 1 && priority <= 5 => priority,
+    _ => 0,
+  },
+  commentSortOrder: CommentSortOrder.fromWire(frontend['comment_sort_order']),
+  dateDisplay: DateDisplay.fromWire(frontend['date_display']),
+  timeFormat: TimeFormat.fromWire(frontend['time_format']),
+  colorSchema: ColorSchema.fromWire(frontend['color_schema']),
+  defaultViewKind: switch (frontend['default_view']) {
+    final String kind => ProjectViewKind.fromWire(kind),
+    _ => null,
+  },
+  defaultDueTime: _parseDefaultDueTime(frontend['default_due_time']),
+  defaultTaskRelationType: switch (frontend['default_task_relation_type']) {
+    final String kind =>
+      TaskRelationKind.fromWire(kind) ?? TaskRelationKind.related,
+    _ => TaskRelationKind.related,
+  },
+);
 
 // The web's getDateWithTime takes only two-digit hours, where the server's
 // own times also allow one.

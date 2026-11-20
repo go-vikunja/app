@@ -155,6 +155,25 @@ void main() {
       expect(open.every((task) => task.labels.single == urgent), isTrue);
       expect(await db.tasksDao.count(), 1203);
     });
+
+    test('a set of ids longer than one chunk is loaded, and a purge longer '
+        'than one chunk deletes, every task', () async {
+      await upsert([
+        for (var id = 1; id <= 1203; id++)
+          Task(id: id, title: 'Task $id', projectId: 5, done: id > 1100),
+      ]);
+
+      final among = await db.tasksDao.loadTasksAmong({
+        for (var id = 1; id <= 1203; id++) id,
+      }, doneLimit: 200);
+
+      expect(among.tasks, hasLength(1203));
+      expect(among.tasks.map((task) => task.id).toSet(), hasLength(1203));
+      expect(among.omitsDoneTasks, isFalse);
+
+      expect(await db.tasksDao.purgeNotInRun('run-2'), 1203);
+      expect(await db.tasksDao.count(), 0);
+    });
   });
 
   group('open tasks', () {

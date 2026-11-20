@@ -18,6 +18,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/account_settings/presentation/security_list_body.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/common/presentation/external_link.dart';
+import 'package:vikunja_mobile/features/common/presentation/latest_read.dart';
 import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
@@ -36,10 +37,9 @@ class ApiTokensPage extends ConsumerStatefulWidget {
   ConsumerState<ApiTokensPage> createState() => _ApiTokensPageState();
 }
 
-class _ApiTokensPageState extends ConsumerState<ApiTokensPage> {
-  List<ApiToken>? _tokens;
-  Object? _failure;
-  bool _loading = false;
+class _ApiTokensPageState extends ConsumerState<ApiTokensPage>
+    with LatestReads {
+  final _tokens = LatestRead<List<ApiToken>>();
   int? _busyTokenId;
 
   @override
@@ -50,22 +50,13 @@ class _ApiTokensPageState extends ConsumerState<ApiTokensPage> {
 
   Future<void> _load() async {
     final repository = ref.read(accountSecurityRepositoryProvider);
-    if (repository == null || _loading) return;
-    setState(() => _loading = true);
-    try {
-      final tokens = await repository.apiTokens();
-      if (mounted) {
-        setState(() {
-          _tokens = tokens;
-          _failure = null;
-        });
-      }
-    } on Object catch (error) {
-      _log.info('Reading the API tokens failed: ${error.runtimeType}');
-      if (mounted) setState(() => _failure = error);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    if (repository == null) return;
+    await readLatest(
+      _tokens,
+      repository.apiTokens,
+      log: _log,
+      what: 'the API tokens',
+    );
   }
 
   Future<void> _create() async {
@@ -105,11 +96,17 @@ class _ApiTokensPageState extends ConsumerState<ApiTokensPage> {
     try {
       await repository.deleteApiToken(token.id);
       if (!mounted) return;
-      setState(
-        () => _tokens = _tokens?.where((each) => each.id != token.id).toList(),
-      );
+      setState(() {
+        if (_tokens.value case final tokens?) {
+          _tokens.value = [
+            for (final each in tokens)
+              if (each.id != token.id) each,
+          ];
+        }
+      });
       unawaited(HapticFeedback.selectionClick());
       announce(context, l10n.apiTokensDeleted);
+      if (_tokens.loading) unawaited(_load());
     } on Object catch (error) {
       _log.warning('Deleting an API token failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
@@ -131,7 +128,7 @@ class _ApiTokensPageState extends ConsumerState<ApiTokensPage> {
     final theme = Theme.of(context);
     final formatter = MomentFormatter.watch(context, ref);
     final now = ref.watch(clockProvider)();
-    final tokens = _tokens;
+    final tokens = _tokens.value;
     final intro = Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Column(
@@ -155,7 +152,9 @@ class _ApiTokensPageState extends ConsumerState<ApiTokensPage> {
       appBar: AppBar(
         title: ScreenTitle(l10n.apiTokensTitle),
         actions: [
-          RefreshButton(onPressed: _loading ? null : () => unawaited(_load())),
+          RefreshButton(
+            onPressed: _tokens.loading ? null : () => unawaited(_load()),
+          ),
           IconButton(
             onPressed: () => unawaited(_create()),
             tooltip: l10n.apiTokensNew,
@@ -164,9 +163,9 @@ class _ApiTokensPageState extends ConsumerState<ApiTokensPage> {
         ],
       ),
       body: SecurityListBody(
-        loading: _loading && tokens == null,
+        loading: _tokens.loading && tokens == null,
         loadingLabel: l10n.apiTokensLoading,
-        failure: _failure,
+        failure: _tokens.failure,
         hasData: tokens != null,
         onRefresh: _load,
         header: intro,

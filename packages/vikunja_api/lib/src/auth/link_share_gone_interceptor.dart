@@ -2,7 +2,9 @@ import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:vikunja_api/src/auth/link_share_claims.dart';
+import 'package:vikunja_api/src/auth/link_share_codes.dart';
 import 'package:vikunja_api/src/errors/error_body.dart';
+import 'package:vikunja_api/src/errors/streamed_error_body.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 /// Turns the answers to a request made with a link share token whose share
@@ -17,8 +19,6 @@ final class LinkShareGoneInterceptor extends Interceptor {
   final void Function(LinkShareGone failure)? onGone;
 
   static const _bearerPrefix = 'Bearer ';
-  static const _linkShareTokenInvalid = 13003;
-  static const int _maxErrorBodyBytes = 64 * 1024;
 
   @override
   Future<void> onError(
@@ -34,11 +34,11 @@ final class LinkShareGoneInterceptor extends Interceptor {
       return handler.next(err);
     }
     if (response.data case final ResponseBody body) {
-      response.data = await _readErrorBody(body);
+      response.data = await readErrorBody(body) ?? Uint8List(0);
     }
     final body = ErrorBody.tryParse(response.data);
     final gone = switch ((status, body?.code)) {
-      (400, _linkShareTokenInvalid) || (401, null) => LinkShareGone(
+      (400, LinkShareCodes.tokenInvalid) || (401, null) => LinkShareGone(
         code: body?.code,
         message: body?.message ?? '',
       ),
@@ -63,19 +63,5 @@ final class LinkShareGoneInterceptor extends Interceptor {
         header.startsWith(_bearerPrefix) &&
         LinkShareClaims.tryParse(header.substring(_bearerPrefix.length)) !=
             null;
-  }
-
-  // Error bodies are small JSON; a larger one is cut off and fails to parse.
-  static Future<Uint8List> _readErrorBody(ResponseBody body) async {
-    final bytes = BytesBuilder(copy: false);
-    try {
-      await for (final chunk in body.stream) {
-        bytes.add(chunk);
-        if (bytes.length > _maxErrorBodyBytes) break;
-      }
-    } on Object {
-      return Uint8List(0);
-    }
-    return bytes.takeBytes();
   }
 }

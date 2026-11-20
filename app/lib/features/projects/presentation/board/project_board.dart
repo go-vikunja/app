@@ -24,6 +24,7 @@ import 'package:vikunja_mobile/features/projects/presentation/board/column_chang
 import 'package:vikunja_mobile/features/projects/presentation/board/column_menu.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/column_sheets.dart';
 import 'package:vikunja_mobile/features/projects/presentation/board/new_column_tile.dart';
+import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 
@@ -128,7 +129,10 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
   _CardDrag? _dragging;
   Offset? _pointer;
   _DropTarget? _dropTarget;
-  EdgeDraggingAutoScroller? _boardScroller;
+  late final _boardScroller = DragEdgeScroller(
+    onScrolled: _followPointer,
+    edge: _autoScrollEdge,
+  );
   BoardColumnViewState? _scrollingColumn;
 
   final _loadingMore = <int>{};
@@ -267,7 +271,6 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
   /// settles on.
   void _endDrag({int? droppedOn}) {
     _stopAutoScroll();
-    _boardScroller = null;
     _scrollingColumn = null;
     _pointer = null;
     if (_snapGrid.holding) {
@@ -322,7 +325,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
   }
 
   void _stopAutoScroll() {
-    _boardScroller?.stopAutoScroll();
+    _boardScroller.stop();
     _scrollingColumn?.stopAutoScroll();
   }
 
@@ -346,7 +349,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
       _setDropTarget(null);
       return;
     }
-    _autoScrollBoard(pointer);
+    _boardScroller.followController(_horizontal, pointer);
     final (bucketId, columnState) = _columnAt(pointer);
     if (!identical(columnState, _scrollingColumn)) {
       _scrollingColumn?.stopAutoScroll();
@@ -361,26 +364,6 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
       bucketId: bucketId,
       index: columnState.insertionIndexAt(pointer),
     ));
-  }
-
-  void _autoScrollBoard(Offset pointer) {
-    if (!_horizontal.hasClients) return;
-    final scrollable = switch (_horizontal.position.context) {
-      final ScrollableState state => state,
-      _ => null,
-    };
-    if (scrollable == null) return;
-    if (_boardScroller?.scrollable != scrollable) {
-      _boardScroller?.stopAutoScroll();
-      _boardScroller = EdgeDraggingAutoScroller(
-        scrollable,
-        onScrollViewScrolled: _followPointer,
-        velocityScalar: 50,
-      );
-    }
-    _boardScroller!.startAutoScrollIfNecessary(
-      Rect.fromCenter(center: pointer, width: _autoScrollEdge * 2, height: 1),
-    );
   }
 
   /// The column under [pointer]; the gap between two columns counts half to
