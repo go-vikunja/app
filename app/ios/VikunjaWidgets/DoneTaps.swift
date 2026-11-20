@@ -72,9 +72,10 @@ enum DoneTaps {
   private static let lock = NSLock()
   private static let keptAfterImport: TimeInterval = 3 * 24 * 3600
 
-  static func record(accountId: String, taskId: Int, shown: ShownRow?) throws {
-    guard AppGroupStore.isFileSafe(accountId) else { return }
-    try lock.withLock {
+  /// False when the tap was ignored.
+  static func record(accountId: String, taskId: Int, shown: ShownRow?) throws -> Bool {
+    guard AppGroupStore.isFileSafe(accountId) else { return false }
+    return try lock.withLock {
       var pending = AppGroupStore.read(Pending.self, AppGroupStore.pendingFile) ?? Pending()
       let now = Date()
       pending.entries.removeAll {
@@ -84,7 +85,7 @@ enum DoneTaps {
       if pending.entries.contains(where: {
         $0.accountId == accountId && $0.taskId == taskId && isQueued($0)
       }) {
-        return
+        return false
       }
       let tap = DoneTap(
         id: UUID().uuidString, accountId: accountId, taskId: taskId, createdAt: now,
@@ -92,6 +93,7 @@ enum DoneTaps {
       try AppGroupStore.write(tap, to: outboxPath(tap.id))
       pending.entries.append(tap)
       try AppGroupStore.write(pending, to: AppGroupStore.pendingFile)
+      return true
     }
   }
 

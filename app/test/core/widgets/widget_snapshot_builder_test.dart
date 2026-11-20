@@ -178,8 +178,10 @@ void main() {
       expect(titles(today), ['Yesterday', 'This afternoon']);
       final [yesterday, afternoon] = today.rows;
       expect(yesterday.dueLabel, 'Yesterday, 09:00');
+      expect(yesterday.absoluteDueLabel, 'Oct 25, 09:00');
       expect(yesterday.tone, WidgetDueTone.overdue);
       expect(afternoon.dueLabel, 'Today, 15:00');
+      expect(afternoon.absoluteDueLabel, 'Oct 26, 15:00');
       expect(afternoon.tone, WidgetDueTone.today);
       expect(afternoon.priorityLabel, 'High');
       expect(afternoon.priorityLevel, 3);
@@ -189,6 +191,16 @@ void main() {
       expect(
         afternoon.semanticsLabel,
         'This afternoon\nInbox\nDue Today, 15:00\nPriority: High',
+      );
+      // Past midnight, where the iOS extension shows the dates, the
+      // afternoon has passed.
+      expect(
+        afternoon.absoluteSemanticsLabel,
+        'This afternoon\nInbox\nOverdue, due Oct 26, 15:00\nPriority: High',
+      );
+      expect(
+        yesterday.absoluteSemanticsLabel,
+        'Yesterday\nInbox\nOverdue, due Oct 25, 09:00',
       );
       expect(afternoon.doneLabel, 'Mark “This afternoon” as done');
       expect(
@@ -211,6 +223,7 @@ void main() {
       );
       expect(today.message, isNull);
       expect(today.empty?.title, 'All done');
+      expect(today.staleNotice, 'Open Vikunja to update');
     });
 
     test('moves to the next day at local midnight', () async {
@@ -263,9 +276,11 @@ void main() {
       'Tomorrow, read only',
     ]);
     expect(three.rows[2].dueLabel, 'Tomorrow, 09:00');
+    expect(three.rows[2].absoluteDueLabel, 'Oct 27, 09:00');
     expect(three.rows[2].tone, WidgetDueTone.later);
     expect(titles(fourteen).last, 'Saturday');
     expect(fourteen.rows.last.dueLabel, 'Sat, 18:00');
+    expect(fourteen.rows.last.absoluteDueLabel, 'Oct 31, 18:00');
   });
 
   test('Overdue lists only what is overdue, outside archived '
@@ -611,6 +626,65 @@ void main() {
       final today = await one(const TodayKind());
 
       expect(today.rows.last.dueLabel, '2026-10-26 15:00');
+      expect(today.rows.last.absoluteDueLabel, isNull);
+      expect(today.rows.last.absoluteSemanticsLabel, isNull);
+      expect(
+        today.rows.last.overdueSemanticsLabel,
+        'This afternoon\nInbox\nOverdue, due 2026-10-26 15:00\n'
+        'Priority: High',
+      );
+      expect(today.rows.last.absoluteOverdueSemanticsLabel, isNull);
+    });
+
+    test('are spoken as overdue wherever the iOS extension shows a row as '
+        'overdue, with the date past midnight', () async {
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 8, title: 'In nine days', due: DateTime(2026, 11, 4, 9)),
+      ], syncRunId: 'run');
+      final rows = {
+        for (final row in (await one(const UpcomingKind(14))).rows)
+          row.title: row,
+      };
+      List<String?> labels(String title) {
+        final row = rows[title]!;
+        return [
+          row.semanticsLabel,
+          row.overdueSemanticsLabel,
+          row.absoluteSemanticsLabel,
+          row.absoluteOverdueSemanticsLabel,
+        ];
+      }
+
+      expect(labels('Yesterday'), [
+        'Yesterday\nInbox\nOverdue, due Yesterday, 09:00',
+        null,
+        'Yesterday\nInbox\nOverdue, due Oct 25, 09:00',
+        null,
+      ]);
+      expect(labels('This afternoon'), [
+        'This afternoon\nInbox\nDue Today, 15:00\nPriority: High',
+        'This afternoon\nInbox\nOverdue, due Today, 15:00\nPriority: High',
+        'This afternoon\nInbox\nOverdue, due Oct 26, 15:00\nPriority: High',
+        null,
+      ]);
+      expect(labels('Tomorrow, read only'), [
+        'Tomorrow, read only\nShared\nDue Tomorrow, 09:00',
+        null,
+        'Tomorrow, read only\nShared\nDue Oct 27, 09:00',
+        'Tomorrow, read only\nShared\nOverdue, due Oct 27, 09:00',
+      ]);
+      expect(labels('In nine days'), [
+        'In nine days\nInbox\nDue Nov 4',
+        null,
+        null,
+        'In nine days\nInbox\nOverdue, due Nov 4',
+      ]);
+      expect(
+        rows['Yesterday']!.toJson().keys,
+        isNot(
+          anyOf(contains('labelOverdue'), contains('labelAbsoluteOverdue')),
+        ),
+      );
     });
 
     test("follow the device's clock, and German", () async {
@@ -630,9 +704,40 @@ void main() {
       );
 
       expect(twelveHour.rows.last.dueLabel, 'Today, 3:00 PM');
+      expect(twelveHour.rows.last.absoluteDueLabel, 'Oct 26, 3:00 PM');
       expect(german.title, 'Nächste 14 Tage');
       expect(german.rows.first.dueLabel, 'Gestern, 09:00');
+      expect(german.rows.first.absoluteDueLabel, '25. Okt., 09:00');
       expect(german.rows.last.dueLabel, 'Sa, 18:00');
+      expect(german.rows.last.absoluteDueLabel, '31. Okt., 18:00');
+    });
+
+    test('name the date for after midnight where they name a day', () {
+      final formatter = texts.formatter(const DisplaySettings());
+      String? absolute(DateTime due, {DateTime? at}) =>
+          texts.absoluteDueLabel(due, now: at ?? now, formatter: formatter);
+
+      expect(absolute(DateTime(2026, 10, 25, 9)), 'Oct 25, 09:00');
+      expect(absolute(DateTime(2026, 10, 26, 15)), 'Oct 26, 15:00');
+      expect(absolute(DateTime(2026, 10, 27, 9)), 'Oct 27, 09:00');
+      expect(absolute(DateTime(2026, 11, 1, 9)), 'Nov 1, 09:00');
+      expect(
+        absolute(DateTime(2027, 1, 2, 9), at: DateTime(2026, 12, 31, 10)),
+        'Jan 2, 2027, 09:00',
+      );
+      expect(absolute(DateTime(2026, 10, 24, 9)), isNull, reason: 'a date');
+      expect(absolute(DateTime(2026, 11, 2, 9)), isNull, reason: 'a date');
+      expect(
+        texts.absoluteDueLabel(
+          DateTime(2026, 10, 26, 15),
+          now: now,
+          formatter: texts.formatter(
+            const DisplaySettings(dateDisplay: DateDisplay.dayMonthYearDashed),
+          ),
+        ),
+        isNull,
+        reason: 'the format picked on the web',
+      );
     });
 
     test('a week ahead and beyond show the date', () {

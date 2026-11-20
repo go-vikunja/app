@@ -162,9 +162,11 @@ Once, on a device (the simulator for what it can show):
 4. **Reduce Motion:** the board, the task sheet and "Go to today" jump; page and sheet transitions still slide, as [D68] records.
 5. **The tab bar:** inactive labels readable in light and dark.
 6. **iPad** ([D69]): the task sheet and a picker as centred cards (an 11" iPad in both orientations, an iPad mini in portrait) take VoiceOver's focus, and nothing on the page beside the card is reachable; in Split View with half of a 13" iPad the sheet fills the window. At the largest text, the centred settings and forms show everything. The task pane ([D70]) on an 11" iPad in landscape and a 13" iPad in portrait: VoiceOver reads the list, then the pane; its focus moves into the pane when a task opens, and back to the row when it closes; the row reads "selected". The project tree's column ([D82]) on an 11" iPad and an iPad mini in landscape: VoiceOver reads the tree's column, the project, then the pane; the open project's rows read "selected"; a swipe from the project's own edge goes back to "No project open".
+7. **Widgets** ([D63]): VoiceOver on a Tasks widget left past midnight without the app or a background run reads the rows' dated labels (a row that showed "Tomorrow, 09:00" reads "Due Oct 27, 09:00"), and on the medium and larger sizes "Open Vikunja to update"; a row shown overdue, due earlier today or due later with its time passed, says "Overdue, due …".
 
 [D20]: decisions.md#d20-scope-cuts-and-mobile-forms-of-desktop-features
 [D38]: decisions.md#d38-quick-add-the-webs-grammar-with-fixes-through-the-outbox
+[D63]: decisions.md#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios
 [D68]: decisions.md#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep
 [D69]: decisions.md#d69-large-screens-a-window-layout-helper-readable-widths-capped-dialogs-and-sheets
 [D70]: decisions.md#d70-task-detail-pane-beside-the-list-on-two-pane-windows-the-sheet-elsewhere

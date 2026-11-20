@@ -87,6 +87,16 @@ class ListContentTest {
     }
 
     @Test
+    fun `speaks a row it turned overdue as overdue`() {
+        assertEquals("Water the plants, due today", shown(SampleJson.snapshot(), now = 4_999).rows.first().semanticsLabel)
+        assertEquals(
+            "Water the plants, overdue, due today",
+            shown(SampleJson.snapshot(), now = 5_000).rows.first().semanticsLabel,
+        )
+        assertEquals("Call the plumber", shown(SampleJson.snapshot(), now = 5_000).rows[1].semanticsLabel)
+    }
+
+    @Test
     fun `keeps the rows with a message while the session needs a new sign-in`() {
         val content = shown(
             SampleJson.snapshot(state = "needsReauth", extra = """"message":{"title":"Sign in again"}"""),

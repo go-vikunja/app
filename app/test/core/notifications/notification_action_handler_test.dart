@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +18,8 @@ import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/core/widgets/widget_host.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 
 import '../../helpers/activity_fakes.dart';
 import '../../helpers/auth_fakes.dart';
@@ -28,6 +31,7 @@ import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 import '../../helpers/trash_fakes.dart';
+import '../../helpers/widget_fakes.dart';
 
 // The handler over the real providers: an in-memory database per account,
 // the real repository, sender and scheduler, with the clients, the engine
@@ -59,6 +63,7 @@ void main() {
   late FakeSyncClient read;
   late FakeNotificationGateway gateway;
   late FakeBackgroundScheduler background;
+  late FakeWidgetHost widgets;
   late ProviderContainer container;
   late NotificationActionHandler handler;
 
@@ -72,6 +77,7 @@ void main() {
     read = FakeSyncClient();
     gateway = FakeNotificationGateway();
     background = FakeBackgroundScheduler();
+    widgets = FakeWidgetHost();
     container = ProviderContainer(
       overrides: [
         ...auth.overrides,
@@ -93,6 +99,8 @@ void main() {
         clockProvider.overrideWithValue(() => now),
         notificationGatewayProvider.overrideWithValue(gateway),
         backgroundSchedulerProvider.overrideWithValue(background),
+        widgetHostProvider.overrideWithValue(widgets),
+        widgetRefresherProvider.overrideWithValue(FakeWidgetRefresher()),
       ],
     );
     addTearDown(container.dispose);
@@ -649,6 +657,115 @@ void main() {
 
       expect(gateway.scheduled.length, 3);
     });
+  });
+
+  WidgetDoneTap tapOfFirst(String accountId) =>
+      WidgetDoneTap(id: 'tap', accountId: accountId, taskId: 1, createdAt: now);
+
+  void onIOS() {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+  }
+
+  group("the widgets' Done taps", () {
+    NotificationResponse snoozeOfSecond(String accountId) => action(
+      NotificationActionIds.snooze10Minutes,
+      accountId: accountId,
+      taskId: 2,
+      key: '2:due',
+    );
+
+    test('go in first on iOS, so that the action does not schedule again '
+        'the reminders the widget took away', () async {
+      onIOS();
+      final (accountId, db) = await signedIn();
+      final reminderId = notificationOsIdFor(accountId, '1:reminder:0');
+      final dueId = notificationOsIdFor(accountId, '1:due');
+      widgets.actions.add(tapOfFirst(accountId));
+      gateway.pending
+        ..remove(reminderId)
+        ..remove(dueId);
+
+      await handler.handle(snoozeOfSecond(accountId));
+
+      expect(gateway.calls, isNot(contains('schedule $reminderId')));
+      expect(gateway.calls, isNot(contains('schedule $dueId')));
+      expect(widgets.actions, isEmpty);
+      expect((await db.tasksDao.find(1))!.done, isTrue);
+      expect(await db.outboxDao.count(), 1);
+      expect(gateway.pending.keys, [notificationOsIdFor(accountId, '2:due')]);
+      expect((await db.scheduledNotificationsDao.all()).map((r) => r.key), [
+        '2:due',
+      ]);
+    });
+
+    test('stay for the widget worker on Android, which imports them within '
+        'seconds', () async {
+      final (accountId, _) = await signedIn();
+      widgets.actions.add(tapOfFirst(accountId));
+
+      await handler.handle(snoozeOfSecond(accountId));
+
+      expect(widgets.calls, isNot(contains('takeActions')));
+      expect(widgets.actions, hasLength(1));
+    });
+  });
+
+  NotificationResponse dueDoneOf(String accountId, Task task) => action(
+    NotificationActionIds.markDone,
+    accountId: accountId,
+    taskId: task.id,
+    key: '${task.id}:due',
+    payload: NotificationPayload(
+      accountId: accountId,
+      taskId: task.id,
+      key: '${task.id}:due',
+      occurrence: task.dueDate,
+    ).toJson(),
+  );
+
+  test('widget Done then notification Done of the same task sends at '
+      'once on iOS', () async {
+    onIOS();
+    final (accountId, db) = await signedIn();
+    widgets.actions.add(tapOfFirst(accountId));
+
+    await handler.handle(dueDoneOf(accountId, water));
+
+    expect(widgets.actions, isEmpty);
+    expect(write.updates, [(1, const TaskChanges(done: true))]);
+    expect(await db.outboxDao.count(), 0);
+  });
+
+  test('widget Done then notification Done of the same task sends at once '
+      'on Android too, where the tap waits for the widget worker', () async {
+    final (accountId, db) = await signedIn();
+    widgets.actions.add(tapOfFirst(accountId));
+
+    await handler.handle(dueDoneOf(accountId, water));
+
+    expect(widgets.actions, hasLength(1));
+    expect(write.updates, [(1, const TaskChanges(done: true))]);
+    expect(await db.outboxDao.count(), 0);
+  });
+
+  test('widget Done then notification Done of another task tells iOS '
+      'before anything waits for the network, then sends both', () async {
+    onIOS();
+    final (accountId, db) = await signedIn();
+    widgets.actions.add(tapOfFirst(accountId));
+    List<int>? cancelledBeforeSend;
+    write.beforeRequest = (_) async =>
+        cancelledBeforeSend ??= [...gateway.cancelled];
+
+    await handler.handle(dueDoneOf(accountId, second));
+
+    expect(
+      cancelledBeforeSend,
+      contains(notificationOsIdFor(accountId, '2:due')),
+    );
+    expect(write.requests, ['update 1', 'update 2']);
+    expect(await db.outboxDao.count(), 0);
   });
 
   group('ignored', () {

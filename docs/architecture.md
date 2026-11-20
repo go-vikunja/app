@@ -177,7 +177,7 @@ Each entry point builds its own `ProviderContainer` from the same providers:
 |---|---|---|
 | `main()` → `bootstrap()` | the user | the UI, the foreground sync, realtime, the notification scheduler, the widget publisher |
 | `callbackDispatcher()` | WorkManager (Android), BGTaskScheduler (iOS) | the background sync of every account |
-| `onNotificationActionInBackground()` | a notification action while the app is not running | Done or snooze, through the outbox |
+| `onNotificationActionInBackground()` | a notification action while the app is not running | Done or snooze, through the outbox; on iOS it first imports the widgets' waiting Done taps |
 | `widgetActionsMain()` | the Android widget worker | imports a widget's Done taps into the outbox |
 
 Background containers never send queued uploads; those are left to the UI.
@@ -198,7 +198,7 @@ While the app is in front, the active account keeps one WebSocket to the server'
 
 ### 6.4 Home-screen widgets
 
-Dart builds every text of a widget from the account's database and writes small JSON files through `plugins/vikunja_widgets`; Glance (Android) and a WidgetKit extension (iOS) only draw them and record taps. A Done tap comes back to Dart and enters the outbox exactly once. Nothing native talks to the server or holds a token ([D63](decisions.md#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios)).
+Dart builds every text of a widget from the account's database and writes small JSON files through `plugins/vikunja_widgets`; Glance (Android) and a WidgetKit extension (iOS) only draw them and record taps; the iOS extension also removes a tapped task's notifications. A Done tap comes back to Dart and enters the outbox exactly once. Nothing native talks to the server or holds a token ([D63](decisions.md#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios)).
 
 ## 7. Description editor
 

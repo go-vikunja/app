@@ -26,6 +26,7 @@ internal data class SnapshotRow(
     val projectColor: Int?,
     val canDone: Boolean,
     val semanticsLabel: String,
+    val overdueSemanticsLabel: String? = null,
     val doneLabel: String,
     val link: String,
 )
@@ -90,6 +91,7 @@ internal data class Snapshot(
             projectColor = colorOf(json.string("color")),
             canDone = json.opt("canDone") == true,
             semanticsLabel = json.required("label"),
+            overdueSemanticsLabel = json.string("labelOverdue"),
             doneLabel = json.required("doneLabel"),
             link = json.required("link"),
         )

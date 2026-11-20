@@ -27,6 +27,7 @@ final class WidgetSnapshot {
     this.link,
     this.newTaskLink,
     this.newTaskLabel,
+    this.staleNotice,
   });
 
   factory fromJson(Map<String, Object?> json) {
@@ -58,6 +59,7 @@ final class WidgetSnapshot {
       link: json['link'] as String?,
       newTaskLink: json['newTaskLink'] as String?,
       newTaskLabel: json['newTaskLabel'] as String?,
+      staleNotice: json['staleNotice'] as String?,
     );
   }
 
@@ -115,6 +117,10 @@ final class WidgetSnapshot {
   final String? newTaskLink;
   final String? newTaskLabel;
 
+  /// Shown above the rows from [validUntil] on, while the app has not
+  /// written the list again.
+  final String? staleNotice;
+
   int get more => total - rows.length;
 
   Map<String, Object?> toJson() => {
@@ -138,6 +144,7 @@ final class WidgetSnapshot {
     'link': ?link,
     'newTaskLink': ?newTaskLink,
     'newTaskLabel': ?newTaskLabel,
+    'staleNotice': ?staleNotice,
   };
 
   String encode() => jsonEncode(toJson());
@@ -183,17 +190,22 @@ final class WidgetRow {
     required this.doneLabel,
     required this.link,
     this.dueLabel,
+    this.absoluteDueLabel,
     this.dueAt,
     this.priorityLabel,
     this.priorityLevel,
     this.projectTitle,
     this.projectColor,
+    this.overdueSemanticsLabel,
+    this.absoluteSemanticsLabel,
+    this.absoluteOverdueSemanticsLabel,
   });
 
   factory fromJson(Map<String, Object?> json) => WidgetRow(
     taskId: json['id']! as int,
     title: _string(json, 'title'),
     dueLabel: json['due'] as String?,
+    absoluteDueLabel: json['dueAbsolute'] as String?,
     dueAt: _date(json['dueAt']),
     tone: _enum(WidgetDueTone.values, json['tone']),
     priorityLabel: json['priority'] as String?,
@@ -202,6 +214,9 @@ final class WidgetRow {
     projectColor: json['color'] as String?,
     canDone: json['canDone']! as bool,
     semanticsLabel: _string(json, 'label'),
+    overdueSemanticsLabel: json['labelOverdue'] as String?,
+    absoluteSemanticsLabel: json['labelAbsolute'] as String?,
+    absoluteOverdueSemanticsLabel: json['labelAbsoluteOverdue'] as String?,
     doneLabel: _string(json, 'doneLabel'),
     link: _string(json, 'link'),
   );
@@ -213,8 +228,14 @@ final class WidgetRow {
   /// absolute format the user picked on the web; never "in 2 hours".
   final String? dueLabel;
 
+  /// [dueLabel] with the date in place of a day word or weekday ("Oct 26,
+  /// 14:30"), for a reader past the snapshot's `validUntil`; null where
+  /// [dueLabel] names the date already or is the format picked on the web.
+  final String? absoluteDueLabel;
+
   /// A reader at a later instant shows a [WidgetDueTone.today] row whose
-  /// [dueAt] has passed as overdue.
+  /// [dueAt] has passed as overdue, and the iOS extension a
+  /// [WidgetDueTone.later] row too.
   final DateTime? dueAt;
   final WidgetDueTone tone;
 
@@ -233,7 +254,25 @@ final class WidgetRow {
   /// The user may mark it done: the project allows writing and is not
   /// archived.
   final bool canDone;
+
+  /// Says "Overdue" only with [WidgetDueTone.overdue]. The variants below
+  /// serve the iOS extension, which speaks the one of the tone and due text
+  /// an entry shows; each is null where no entry needs it or it equals the
+  /// label the extension takes instead.
   final String semanticsLabel;
+
+  /// [semanticsLabel] saying "Overdue", for a [WidgetDueTone.today] row
+  /// once its [dueAt] has passed.
+  final String? overdueSemanticsLabel;
+
+  /// [semanticsLabel] with [absoluteDueLabel], past `validUntil`; saying
+  /// "Overdue" for a [WidgetDueTone.today] row, whose [dueAt] has passed
+  /// by then. Null along with [absoluteDueLabel].
+  final String? absoluteSemanticsLabel;
+
+  /// For a [WidgetDueTone.later] row past `validUntil` once its [dueAt] has
+  /// passed: saying "Overdue", with [absoluteDueLabel] or else [dueLabel].
+  final String? absoluteOverdueSemanticsLabel;
 
   /// The Done control's content description.
   final String doneLabel;
@@ -245,6 +284,7 @@ final class WidgetRow {
     'id': taskId,
     'title': title,
     'due': ?dueLabel,
+    'dueAbsolute': ?absoluteDueLabel,
     'dueAt': ?dueAt?.millisecondsSinceEpoch,
     'tone': tone.name,
     'priority': ?priorityLabel,
@@ -253,6 +293,9 @@ final class WidgetRow {
     'color': ?projectColor,
     'canDone': canDone,
     'label': semanticsLabel,
+    'labelOverdue': ?overdueSemanticsLabel,
+    'labelAbsolute': ?absoluteSemanticsLabel,
+    'labelAbsoluteOverdue': ?absoluteOverdueSemanticsLabel,
     'doneLabel': doneLabel,
     'link': link,
   };

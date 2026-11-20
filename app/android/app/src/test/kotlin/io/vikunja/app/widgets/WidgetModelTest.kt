@@ -127,6 +127,7 @@ internal object SampleJson {
         extra: String = "",
         canDone: Boolean = true,
         label: String = title,
+        extra2: String = "",
     ): String {
         val fields = listOf(
             """"id":$id""",
@@ -136,7 +137,7 @@ internal object SampleJson {
             """"label":"$label"""",
             """"doneLabel":"Mark “$title” done"""",
             """"link":"$LINK/task/$id?account=acc"""",
-        ) + listOfNotNull(extra.ifEmpty { null })
+        ) + listOfNotNull(extra.ifEmpty { null }, extra2.ifEmpty { null })
         return fields.joinToString(prefix = "{", postfix = "}")
     }
 
@@ -148,6 +149,7 @@ internal object SampleJson {
             extra = """"due":"Today, 14:30","dueAt":5000,"priority":"High","priorityLevel":3,""" +
                 """"project":"Home","color":"1973ff"""",
             label = "Water the plants, due today",
+            extra2 = """"labelOverdue":"Water the plants, overdue, due today"""",
         ),
         row(-4, "Call the plumber", canDone = false),
     ).joinToString(prefix = "[", postfix = "]")

@@ -78,6 +78,8 @@ struct ListSnapshot: Decodable {
     var id: Int
     var title: String
     var due: String?
+    /// `due` with a date for a day word, for an entry from `validUntil` on.
+    var dueAbsolute: String?
     var dueAt: Date?
     var tone: String?
     var priority: String?
@@ -86,6 +88,9 @@ struct ListSnapshot: Decodable {
     var color: String?
     var canDone: Bool?
     var label: String?
+    var labelOverdue: String?
+    var labelAbsolute: String?
+    var labelAbsoluteOverdue: String?
     var doneLabel: String?
     var link: String?
   }
@@ -107,8 +112,16 @@ struct ListSnapshot: Decodable {
   var link: String?
   var newTaskLink: String?
   var newTaskLabel: String?
+  var staleNotice: String?
 
   var listState: State { state.flatMap(State.init(rawValue:)) ?? .ok }
+
+  /// Now, then every instant a row may look or read otherwise: its due
+  /// instant, also after `validUntil`, and `validUntil`.
+  func entryDates(rows: [Row], now: Date, limit: Int) -> [Date] {
+    let changes = (changesAt ?? []) + [validUntil].compactMap { $0 } + rows.compactMap(\.dueAt)
+    return [now] + Set(changes.filter { $0 > now }).sorted().prefix(limit - 1)
+  }
 
   static func load(key: String) -> ListSnapshot? {
     guard AppGroupStore.isFileSafe(key),
@@ -117,5 +130,20 @@ struct ListSnapshot: Decodable {
       snapshot.v == 1
     else { return nil }
     return snapshot
+  }
+}
+
+extension ListSnapshot.Row {
+  /// The label of the due text and tone an entry shows: dated from
+  /// `validUntil` on (`stale`), and "Overdue" while the row shows as overdue.
+  /// A label the app leaves out equals the one tried next or is never
+  /// needed; a snapshot written before step 40t has `label` alone.
+  func spokenLabel(stale: Bool, overdue: Bool) -> String? {
+    switch (stale, overdue) {
+    case (false, false): return label
+    case (false, true): return labelOverdue ?? label
+    case (true, false): return labelAbsolute ?? label
+    case (true, true): return labelAbsoluteOverdue ?? labelAbsolute ?? labelOverdue ?? label
+    }
   }
 }

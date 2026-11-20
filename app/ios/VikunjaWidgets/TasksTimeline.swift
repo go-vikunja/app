@@ -26,7 +26,8 @@ struct ListContent {
   var accountId: String
   var title: String
   var subtitle: String?
-  /// Why the rows may be out of date (an ended session), shown above them.
+  /// Why the rows may be out of date (an ended session, or no update since
+  /// `validUntil`), shown above them.
   var notice: String?
   var rows: [TaskRowContent]
   var total: Int
@@ -75,8 +76,10 @@ struct TasksProvider: AppIntentTimelineProvider {
   }
 }
 
-/// Entries at now, at every due instant the app listed and at midnight: a row
-/// due today turns overdue on time while the app is not running.
+/// Entries at now, at every row's due instant and at midnight: a row turns
+/// overdue on time while the app is not running, and from `validUntil` on
+/// the rows show dates instead of day words, on the medium and larger sizes
+/// under a notice.
 struct TasksTimeline {
   private static let maxEntries = 48
 
@@ -142,14 +145,15 @@ struct TasksTimeline {
     let allRows = snapshot.rows ?? []
     let rows = allRows.filter { !hidden.contains($0.id) }
     let total = max(rows.count, (snapshot.total ?? allRows.count) - (allRows.count - rows.count))
-    let boundaries = (snapshot.changesAt ?? []) + [snapshot.validUntil].compactMap { $0 }
-    let dates = [now] + Set(boundaries.filter { $0 > now }).sorted().prefix(Self.maxEntries - 1)
-
-    entries = dates.map { date in
+    entries = snapshot.entryDates(rows: rows, now: now, limit: Self.maxEntries).map { date in
+      // The day words would be wrong from here on, and the list may be too.
+      let stale = snapshot.validUntil.map { date >= $0 } ?? false
       let content = ListContent(
         accountId: selection.accountId, title: snapshot.title, subtitle: snapshot.subtitle,
-        notice: notice,
-        rows: rows.map { Self.rowContent($0, at: date, accountId: selection.accountId) },
+        notice: notice ?? (stale ? snapshot.staleNotice : nil),
+        rows: rows.map {
+          Self.rowContent($0, at: date, stale: stale, accountId: selection.accountId)
+        },
         total: total, countLabel: rows.count == allRows.count ? snapshot.countLabel : nil,
         empty: snapshot.empty,
         openLink: notice == nil ? openLink : messageLink ?? openLink,
@@ -167,17 +171,19 @@ struct TasksTimeline {
   }
 
   private static func rowContent(
-    _ row: ListSnapshot.Row, at date: Date, accountId: String
+    _ row: ListSnapshot.Row, at date: Date, stale: Bool, accountId: String
   ) -> TaskRowContent {
     var tone = row.tone.flatMap(DueTone.init(rawValue:)) ?? .none
-    if tone == .today, let dueAt = row.dueAt, dueAt <= date {
+    if tone == .today || tone == .later, let dueAt = row.dueAt, dueAt <= date {
       tone = .overdue
     }
+    let dueLabel = stale ? (row.dueAbsolute ?? row.due) : row.due
     return TaskRowContent(
-      id: row.id, title: row.title, dueLabel: row.due, dueTone: tone, dueAt: row.dueAt,
+      id: row.id, title: row.title, dueLabel: dueLabel, dueTone: tone, dueAt: row.dueAt,
       priorityLabel: row.priority, priorityLevel: row.priorityLevel ?? 0,
       projectTitle: row.project, projectColor: row.color.flatMap(Color.init(hex:)),
-      canDone: row.canDone ?? false, semanticsLabel: row.label ?? row.title,
+      canDone: row.canDone ?? false,
+      semanticsLabel: row.spokenLabel(stale: stale, overdue: tone == .overdue) ?? row.title,
       doneLabel: row.doneLabel ?? row.title,
       link: WidgetLinks.parse(row.link) ?? WidgetLinks.task(row.id, accountId: accountId))
   }

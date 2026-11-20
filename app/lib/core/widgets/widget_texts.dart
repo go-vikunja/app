@@ -61,10 +61,33 @@ final class WidgetTexts {
       1 => at(l10n.sectionTomorrow),
       -1 => at(l10n.inboxYesterday),
       > 1 && < 7 => at(intl.DateFormat.E(l10n.localeName).format(local)),
-      _ when local.year == today.year => material.formatShortMonthDay(local),
-      _ => material.formatShortDate(local),
+      _ => _shortDate(local, today),
     };
   }
+
+  /// What [dueLabel] says with the date in place of its day word or
+  /// weekday, which stays true after midnight; null where [dueLabel] is a
+  /// date already or the format picked on the web.
+  String? absoluteDueLabel(
+    DateTime due, {
+    required DateTime now,
+    required MomentFormatter formatter,
+  }) {
+    if (formatter.chosenAbsolute(due) != null) return null;
+    final local = due.toLocal();
+    final today = now.toLocal();
+    return switch (calendarDaysBetween(today, local)) {
+      >= -1 && < 7 => l10n.widgetDueAt(
+        _shortDate(local, today),
+        formatter.timeOfDay(due),
+      ),
+      _ => null,
+    };
+  }
+
+  String _shortDate(DateTime local, DateTime today) => local.year == today.year
+      ? material.formatShortMonthDay(local)
+      : material.formatShortDate(local);
 
   WidgetDueTone tone(Task task, DateTime now) =>
       switch (DueTone.of(task, now: now)) {

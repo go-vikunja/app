@@ -55,7 +55,15 @@ internal data class QuickAddState(
     }
 }
 
-internal data class ShownRow(val row: SnapshotRow, val tone: DueTone)
+internal data class ShownRow(val row: SnapshotRow, val tone: DueTone) {
+    // A row this reader turned overdue is spoken as overdue, not only coloured so.
+    val semanticsLabel: String
+        get() = if (tone == DueTone.OVERDUE && row.tone != DueTone.OVERDUE) {
+            row.overdueSemanticsLabel ?: row.semanticsLabel
+        } else {
+            row.semanticsLabel
+        }
+}
 
 internal sealed interface ListContent {
     data class SetUp(val appWidgetId: Int, val linkKey: String? = null) : ListContent

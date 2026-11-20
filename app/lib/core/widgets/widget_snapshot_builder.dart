@@ -506,6 +506,7 @@ final class _AccountBuild {
           ? _newTaskLink(listProjectId == null ? null : newTaskProjectId)
           : null,
       newTaskLabel: l10n.newTask,
+      staleNotice: l10n.widgetStaleNotice,
     );
   }
 
@@ -530,6 +531,9 @@ final class _AccountBuild {
     final dueLabel = due == null
         ? null
         : texts.dueLabel(due, now: now, formatter: formatter);
+    final absoluteDueLabel = due == null
+        ? null
+        : texts.absoluteDueLabel(due, now: now, formatter: formatter);
     final tone = texts.tone(task, now);
     final priority =
         PriorityFlag.showsOnRow(
@@ -541,10 +545,20 @@ final class _AccountBuild {
     final projectTitle = project != null && task.projectId != listProjectId
         ? project.displayTitle(l10n)
         : null;
+    String semantics(String? shownDue, {required bool overdue}) => [
+      task.title,
+      ?projectTitle,
+      if (shownDue != null && overdue)
+        l10n.taskOverdueSemantics(shownDue)
+      else if (shownDue != null)
+        l10n.taskDueSemantics(shownDue),
+      if (priority != null) l10n.prioritySemantics(priority),
+    ].join('\n');
     return WidgetRow(
       taskId: task.id,
       title: task.title,
       dueLabel: dueLabel,
+      absoluteDueLabel: absoluteDueLabel,
       dueAt: due,
       tone: tone,
       priorityLabel: priority,
@@ -555,15 +569,23 @@ final class _AccountBuild {
           project != null &&
           !archived.contains(project.id) &&
           ProjectAccess.of(project).canChangeTasks,
-      semanticsLabel: [
-        task.title,
-        ?projectTitle,
-        if (dueLabel != null && tone == WidgetDueTone.overdue)
-          l10n.taskOverdueSemantics(dueLabel)
-        else if (dueLabel != null)
-          l10n.taskDueSemantics(dueLabel),
-        if (priority != null) l10n.prioritySemantics(priority),
-      ].join('\n'),
+      semanticsLabel: semantics(
+        dueLabel,
+        overdue: tone == WidgetDueTone.overdue,
+      ),
+      overdueSemanticsLabel: tone == WidgetDueTone.today
+          ? semantics(dueLabel, overdue: true)
+          : null,
+      absoluteSemanticsLabel: absoluteDueLabel == null
+          ? null
+          : semantics(
+              absoluteDueLabel,
+              overdue:
+                  tone == WidgetDueTone.overdue || tone == WidgetDueTone.today,
+            ),
+      absoluteOverdueSemanticsLabel: tone == WidgetDueTone.later
+          ? semantics(absoluteDueLabel ?? dueLabel, overdue: true)
+          : null,
       doneLabel: l10n.widgetMarkDone(task.title),
       link: WidgetTaskLink(
         accountId: account.id,

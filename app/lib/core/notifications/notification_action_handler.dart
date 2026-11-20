@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 import 'package:vikunja_mobile/core/support/session_end_log.dart';
+import 'package:vikunja_mobile/core/widgets/widget_taps.dart';
 
 final _log = Logger('NotificationAction');
 
@@ -108,6 +109,13 @@ final class NotificationActionHandler {
   /// ([NotificationScheduler.snoozeUntilTomorrow]), unless the key's
   /// instant is no longer the one the payload names. A payload or account
   /// that is not understood is ignored. Errors are logged, never thrown.
+  ///
+  /// On iOS the widgets' waiting Done taps are imported first: the widget
+  /// removed their tasks' notifications, and the scheduler this action
+  /// starts would schedule them again for a task still open here. The
+  /// import does not drain, so the network does not hold up this action's
+  /// own Done. That Done drains its account's outbox, the taps' Done
+  /// included, also when ignored because a tap just marked its task done.
   Future<void> handle(NotificationResponse response) async {
     try {
       await _handle(response);
@@ -144,6 +152,9 @@ final class NotificationActionHandler {
     if (accounts.find(payload.accountId) == null) {
       _log.info('Ignored a notification action of an unknown account');
       return;
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      await importWidgetTaps(_container, drains: false);
     }
     switch (actionId) {
       case NotificationActionIds.markDone:

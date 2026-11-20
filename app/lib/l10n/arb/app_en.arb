@@ -7759,7 +7759,7 @@
   },
   "widgetDueAt": "{day}, {time}",
   "@widgetDueAt": {
-    "description": "A task's due date on a home-screen widget: a day word (Today, Tomorrow, Yesterday) or a short weekday, then the time.",
+    "description": "A task's due date on a home-screen widget: a day word (Today, Tomorrow, Yesterday), a short weekday or a short date (Oct 26, or Jan 4, 2027 in another year), then the time. On an iPhone or iPad widget the short date replaces the day word or the weekday once the app has not updated the widget since midnight.",
     "placeholders": {
       "day": {
         "type": "String",
@@ -7770,6 +7770,10 @@
         "example": "14:30"
       }
     }
+  },
+  "widgetStaleNotice": "Open Vikunja to update",
+  "@widgetStaleNotice": {
+    "description": "Above the tasks of an iPhone or iPad home-screen widget that the app has not updated since midnight: its list may be out of date, and its due dates show the date instead of Today or Tomorrow until the app updates the widget, when it is opened or in a background run."
   },
   "widgetMoreTasks": "{count, plural, one{+{count} more} other{+{count} more}}",
   "@widgetMoreTasks": {

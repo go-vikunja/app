@@ -120,6 +120,7 @@ void main() {
           taskId: 12,
           title: 'Water the plants',
           dueLabel: 'Today, 14:00',
+          absoluteDueLabel: 'Oct 26, 14:00',
           dueAt: DateTime.utc(2026, 10, 26, 13),
           tone: WidgetDueTone.today,
           priorityLabel: 'High',
@@ -128,6 +129,9 @@ void main() {
           projectColor: '1973ff',
           canDone: true,
           semanticsLabel: 'Water the plants',
+          overdueSemanticsLabel: 'Water the plants, overdue',
+          absoluteSemanticsLabel: 'Water the plants, Oct 26, 14:00',
+          absoluteOverdueSemanticsLabel: 'Water the plants, overdue Oct 26',
           doneLabel: 'Mark “Water the plants” done',
           link: 'vikunja-io.vikunja.app://widget/task/12',
         ),
@@ -153,6 +157,7 @@ void main() {
       link: 'vikunja-io.vikunja.app://widget/list',
       newTaskLink: 'vikunja-io.vikunja.app://widget/new-task',
       newTaskLabel: 'New task',
+      staleNotice: 'Open Vikunja to update',
     );
 
     test('round-trips through its JSON', () {

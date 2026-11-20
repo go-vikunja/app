@@ -74,9 +74,11 @@ final class ExternalDone {
 
   /// With [shown], a Done the task has passed by ([TappedOccurrence]) is
   /// ignored, and only the account's notifications are planned again,
-  /// which withdraws what the tray still shows of the old occurrence.
-  /// Without it (a notification scheduled before step 40e) the Done always
-  /// goes.
+  /// which withdraws what the tray still shows of the old occurrence; but
+  /// a Done of the task that still waits in the outbox (a widget's,
+  /// imported just before on iOS) is settled then as a new one would be,
+  /// drain included. Without [shown] (a notification scheduled before step
+  /// 40e) the Done always goes.
   Future<void> markDone(
     String accountId,
     int taskId, {
@@ -86,6 +88,10 @@ final class ExternalDone {
       final db = _container.read(appDatabaseProvider(accountId));
       final task = await db.tasksDao.find(await db.tasksDao.resolveId(taskId));
       if (task != null && shown.passedBy(task)) {
+        if ((await db.outboxDao.pendingChangesFor(task.id))?.done == true) {
+          await settle(accountId, {taskId});
+          return;
+        }
         _log.info(
           'Ignored a Done of task $taskId from outside the app: the task is '
           'done or has moved on since',
@@ -111,8 +117,10 @@ final class ExternalDone {
   }
 
   /// What follows once the Done of [taskIds] is in the outbox. Without
-  /// [drains] the outbox is left to the caller (a background run drains it
-  /// next, with session managers that refresh).
+  /// [drains] the outbox stays as it is: a background run drains it next,
+  /// with session managers that refresh; after a notification action's
+  /// import on iOS, that action's Done sends it, else the next start,
+  /// resume or background run.
   Future<void> settle(
     String accountId,
     Set<int> taskIds, {

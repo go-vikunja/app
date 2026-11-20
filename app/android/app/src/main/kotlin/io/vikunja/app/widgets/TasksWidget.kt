@@ -250,7 +250,7 @@ private fun TaskRow(shown: ShownRow, content: ListContent.Shown, wide: Boolean) 
         modifier = GlanceModifier
             .fillMaxWidth()
             .clickable(open(context, WidgetLinks.parse(row.link) ?: WidgetLinks.open(accountId, content.linkKey)))
-            .semantics { contentDescription = row.semanticsLabel },
+            .semantics { contentDescription = shown.semanticsLabel },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (row.canDone) {

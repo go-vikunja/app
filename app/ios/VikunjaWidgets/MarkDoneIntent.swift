@@ -1,8 +1,10 @@
 import AppIntents
+import UserNotifications
 import WidgetKit
 
-/// Runs in the extension: it only records the tap. The app sends it at its
-/// next run, so the extension never needs a token or the network (D24).
+/// Runs in the extension: it only records the tap and takes away the task's
+/// reminders. The app sends the Done at its next run, so the extension never
+/// needs a token or the network (D24).
 struct MarkDoneIntent: AppIntent {
   static let title: LocalizedStringResource = "Mark task as done"
   static let isDiscoverable = false
@@ -25,9 +27,43 @@ struct MarkDoneIntent: AppIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    try DoneTaps.record(
+    let recorded = try DoneTaps.record(
       accountId: accountId, taskId: taskId, shown: showsRow ? ShownRow(dueAt: dueAt) : nil)
+    if recorded {
+      await TaskNotifications.remove(accountId: accountId, taskId: taskId)
+    }
     WidgetCenter.shared.reloadTimelines(ofKind: WidgetKinds.tasks)
     return .result()
+  }
+}
+
+/// The task's reminders and due-date notification, scheduled and shown, which
+/// would otherwise go on until the app imports the tap (ExternalDone cancels
+/// them then). Matched by the payload flutter_local_notifications keeps under
+/// "payload": its account, and a key of notification_plan.dart.
+enum TaskNotifications {
+  static func remove(accountId: String, taskId: Int) async {
+    let center = UNUserNotificationCenter.current()
+    let pending = await center.pendingNotificationRequests()
+    center.removePendingNotificationRequests(
+      withIdentifiers: pending.filter {
+        belongs($0.content.userInfo, accountId: accountId, taskId: taskId)
+      }.map(\.identifier))
+    let shown = await center.deliveredNotifications()
+    center.removeDeliveredNotifications(
+      withIdentifiers: shown.filter {
+        belongs($0.request.content.userInfo, accountId: accountId, taskId: taskId)
+      }.map(\.request.identifier))
+  }
+
+  private static func belongs(_ userInfo: [AnyHashable: Any], accountId: String, taskId: Int)
+    -> Bool
+  {
+    guard let payload = (userInfo["payload"] as? String)?.data(using: .utf8),
+      let fields = (try? JSONSerialization.jsonObject(with: payload)) as? [String: Any],
+      fields["account"] as? String == accountId,
+      let key = fields["key"] as? String
+    else { return false }
+    return key == "\(taskId):due" || key.hasPrefix("\(taskId):reminder:")
   }
 }
