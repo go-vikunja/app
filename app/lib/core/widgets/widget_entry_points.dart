@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart' show WidgetsFlutterBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:logging/logging.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_report_providers.dart';
 import 'package:vikunja_mobile/core/logging/logging_setup.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -35,11 +36,13 @@ Future<void> runWidgetActions({
   WidgetsFlutterBinding.ensureInitialized();
   DartPluginRegistrant.ensureInitialized();
   configureLogging(part: AppPart.widgetAction);
+  final reports = startHeadlessCrashReports(AppPart.widgetAction);
   final ProviderContainer container;
   try {
     container = await createContainer();
   } on Object catch (error) {
     _log.severe('Could not start for the widget actions: ${error.runtimeType}');
+    await (await reports).flush();
     await _tellWorker();
     return;
   }
@@ -50,6 +53,7 @@ Future<void> runWidgetActions({
     _log.warning('The widget actions failed: ${error.runtimeType}');
   } finally {
     container.dispose();
+    await (await reports).flush();
     await _tellWorker();
   }
 }

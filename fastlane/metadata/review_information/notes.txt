@@ -1,4 +1,4 @@
-Vikunja is a task manager that people run on their own servers; this is its open-source (MIT) app for iPhone and iPad. The app has no server of its own: it talks only to the Vikunja servers the user adds, and it has no analytics, ads, tracking or crash reporting. For the review, please use Vikunja's public demo server, which the Vikunja project runs.
+Vikunja is a task manager that people run on their own servers; this is its open-source (MIT) app for iPhone and iPad. The app has no server of its own: apart from opt-in crash reports (asked once after the first sign-in), it talks only to the Vikunja servers the user adds, and it has no analytics, ads or tracking. For the review, please use Vikunja's public demo server.
 
 HOW TO SIGN IN
 1. Open the app and tap "Try the public demo". The app connects to https://try.vikunja.io and shows the server with its message, which names the demo account.
@@ -20,7 +20,7 @@ ACCOUNTS (5.1.1(v))
 Accounts belong to the user's Vikunja server and are created on its web page: "Create account" on the server screen opens the server's sign-in page, whose own link leads to its registration. To delete an account: Account tab, Account settings, Delete account. The app explains what happens and opens the server's own deletion page, where the user confirms with the password; the server then emails a confirmation link and deletes the account three days after confirmation. Where a server does not allow it, the row says to ask whoever runs the server. Please do not delete the shared demo account: other visitors use it, and its confirmation link goes to an address reviewers cannot read. Delete account shows the flow up to the server's page.
 
 LOGIN SERVICES (4.8)
-The app offers no third-party or social login and adds no account system of its own: users sign in with their account on the Vikunja server they add, on its own sign-in page.
+The app offers no third-party or social login and adds no account system of its own: users sign in on their Vikunja server's own sign-in page.
 
 USER CONTENT
 Tasks, comments and attachments live on the user's Vikunja server, whose operator moderates it, and only people with access to the account or to a project the user shares see them. There are no public feeds or profiles and no way to find strangers; only the shared demo account is open to every visitor.

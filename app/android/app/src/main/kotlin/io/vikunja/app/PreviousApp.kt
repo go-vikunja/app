@@ -32,6 +32,12 @@ internal object PreviousApp {
     val PREFERENCE_FILES = listOf("HomeWidgetPreferences", "InternalHomeWidgetPreferences")
     const val DOWNLOADER_KEY_PREFIX = "com.bbflight.background_downloader"
 
+    // The Sentry SDK's unsent reports and scope in the cache, and its install
+    // id. This app's own crash reports keep theirs there too, but only once
+    // allowed after a sign-in, which a first start comes before (D113).
+    const val SENTRY_CACHE = "sentry"
+    const val SENTRY_INSTALLATION = "INSTALLATION"
+
     // The language tags of shippedLocales in app/lib/app/l10n/shipped_locales.dart;
     // app/test/l10n/shipped_locales_test.dart keeps them equal.
     val LANGUAGES = setOf("en", "de")
@@ -108,6 +114,12 @@ internal object PreviousApp {
                 keys.forEach(editor::remove)
                 if (!editor.commit()) Log.w(TAG, "The previous app's download state stays")
             }
+        }
+        step {
+            val cache = File(context.cacheDir, SENTRY_CACHE)
+            if (cache.exists() && !cache.deleteRecursively()) Log.w(TAG, "The previous app's crash reports stay")
+            val installation = File(context.filesDir, SENTRY_INSTALLATION)
+            if (installation.exists() && !installation.delete()) Log.w(TAG, "The previous app's crash report id stays")
         }
         LegacyWidgets.disableIfUnused(context)
     }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_local_notifications/flutter_local_notifications.dart'
     show NotificationResponse;
+import 'package:vikunja_mobile/core/crash_reports/crash_report_providers.dart';
 import 'package:vikunja_mobile/core/logging/logging_setup.dart';
 import 'package:vikunja_mobile/core/notifications/notification_action_handler.dart';
 import 'package:vikunja_mobile/core/platform/app_part.dart';
@@ -19,5 +20,14 @@ void onNotificationActionInBackground(NotificationResponse response) {
     configureLogging(part: AppPart.notificationAction);
     _loggingConfigured = true;
   }
-  unawaited(handleNotificationAction(response));
+  unawaited(_handleInBackground(response));
+}
+
+Future<void> _handleInBackground(NotificationResponse response) async {
+  final reports = startHeadlessCrashReports(AppPart.notificationAction);
+  try {
+    await handleNotificationAction(response);
+  } finally {
+    await (await reports).flush();
+  }
 }

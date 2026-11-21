@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_report_consent.dart';
 import 'package:vikunja_mobile/core/outbox/sync_problem.dart';
 import 'package:vikunja_mobile/core/security/device_authenticator.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
@@ -23,6 +24,7 @@ import 'package:vikunja_mobile/features/privacy/presentation/privacy_page.dart';
 import '../helpers/account_security_fakes.dart';
 import '../helpers/app_lock_fakes.dart';
 import '../helpers/auth_fakes.dart';
+import '../helpers/crash_report_fakes.dart';
 import '../helpers/sync_fakes.dart';
 import 'sweep_data.dart';
 import 'sweep_harness.dart';
@@ -64,6 +66,7 @@ void _seedApiTokens(SyncFakes data) => data.accountSecurity.apiTokenList = [
 Future<void> _pumpWithLock(
   WidgetTester tester, {
   bool lockOn = false,
+  bool crashReports = false,
   DeviceAuthResult result = DeviceAuthResult.success,
 }) async {
   final auth = AuthFakes();
@@ -73,6 +76,9 @@ Future<void> _pumpWithLock(
       const PrivacySettings(appLock: true),
     );
   }
+  if (crashReports) {
+    await auth.preferences.setString(CrashReportConsentStore.key, 'allowed');
+  }
   useResumedLifecycle(tester);
   await pumpSweepApp(
     tester,
@@ -81,6 +87,7 @@ Future<void> _pumpWithLock(
       deviceAuthenticatorProvider.overrideWithValue(
         FakeDeviceAuthenticator(result: result),
       ),
+      if (crashReports) ...crashReportOverrides(),
     ],
   );
   await pumpPastPromptSettle(tester);
@@ -122,7 +129,8 @@ final List<SweepScenario> accountRouteScenarios = [
   ),
   SweepScenario.route(
     AppRoutes.privacy,
-    setUp: (tester, _) => _pumpWithLock(tester, lockOn: true),
+    setUp: (tester, _) =>
+        _pumpWithLock(tester, lockOn: true, crashReports: true),
     navigate: (tester, _) async => pushTo(tester, AppRoutes.privacy),
     expectScreen: (_) => find.byType(PrivacyPage),
   ),

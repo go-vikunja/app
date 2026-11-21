@@ -185,13 +185,16 @@ if ((kept)); then
         cp "${out}/first-start.xml" "${out}/note.xml"
         screenshot note
       fi
-      if shows first-start "${synced[@]}"; then
+      if asks_about_crash_reports first-start; then
+        decline_crash_reports 0 || true
+      elif shows first-start "${synced[@]}"; then
         shell_shown=1
         break
       fi
     fi
     sleep 1
   done
+  if ((shell_shown)); then decline_crash_reports || true; fi
   screenshot first-start
   stop_recording
   check "no browser opened${browser_seen:+ (${browser_seen})}" test -z "$browser_seen"
@@ -256,7 +259,7 @@ if ((!kept)); then
   owner \
     "Tap $(ui string de connectContinue), allow the unencrypted connection and $(sign_in_hint)." \
     "Come back here once the app is back from the browser."
-  expect_screen "the first sync shows the tasks" 180 synced "${synced[@]}"
+  expect_shell "the first sync shows the tasks" 180 synced "${synced[@]}"
   expect_theme dark synced
   check "the app is in German after the sign-in" shows synced --lang de tabOverview
 fi

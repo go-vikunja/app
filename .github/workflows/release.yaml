@@ -31,9 +31,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # A patch release's tag that may go without every German text.
+      # A patch release's tag that may go without every German text, and the
+      # opt-in crash reports' Sentry DSN, which no build without it has (D113).
       - env:
           VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN: ${{ vars.VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN }}
+          VIKUNJA_APP_SENTRY_DSN: ${{ vars.VIKUNJA_APP_SENTRY_DSN }}
         run: tool/ci/release_build.sh --tag "$GITHUB_REF_NAME"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

@@ -13,6 +13,7 @@ import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart'
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/background/background_entry_point.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_report_providers.dart';
 import 'package:vikunja_mobile/core/legal/app_licenses.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/logging/logging_setup.dart';
@@ -51,6 +52,10 @@ Future<void> bootstrap() async {
   final privacy = container.read(privacySettingsControllerProvider.future);
   await _prepareWidgetLinkKey(container);
   final previousApp = await importPreviousApp(container);
+  // From here on the app's errors wait for the crash report choice, which
+  // sends or drops them once it is read (D113). Not before the import: the
+  // reporter reads the registry, whose first read wipes what it reads.
+  container.listen(crashReporterProvider, (_, _) {});
   try {
     // Behind the native launch screen, so the router starts on its first
     // real screen instead of animating it in over the empty splash route,

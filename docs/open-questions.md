@@ -1,8 +1,8 @@
 # Open questions
 
-The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 2026-10-27, answered Q21 on 2026-11-02 (step 37c) and Q20 and Q22 the same day (step 37d). Step 38d made Q22 obsolete and removed the DCO of Q3 and Q17 ([D87](decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)). The owner answered Q18 on 2026-11-16 for step 38e ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)). This page records each answer and where it was turned into a decision. The questions themselves are condensed from [research/synthesis.md](research/synthesis.md) §5.
+The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 2026-10-27, answered Q21 on 2026-11-02 (step 37c) and Q20 and Q22 the same day (step 37d). Step 38d made Q22 obsolete and removed the DCO of Q3 and Q17 ([D87](decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)). The owner answered Q18 on 2026-11-16 for step 38e ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)) and took up the deferred Q12 on 2026-11-21 for step 41 ([D113](decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry)). This page records each answer and where it was turned into a decision. The questions themselves are condensed from [research/synthesis.md](research/synthesis.md) §5.
 
-**Still deferred:** [Q11](#q11-optional-near-real-time-push-on-android) push, [Q12](#q12-crash-reporting) crash reporting, [Q14](#q14-licensed-features) licensed features.
+**Still deferred:** [Q11](#q11-optional-near-real-time-push-on-android) push, [Q14](#q14-licensed-features) licensed features.
 
 **Derived lead decision:** browser OAuth + PKCE is the only sign-in method (Q4), and it exists only on Vikunja 2.3.0 and newer. The effective support floor is therefore **2.3.0**, not the 2.0.0 of option A in Q1, and the `standard` tier for 2.0–2.2 is dropped ([D13](decisions.md#d13-support-floor-230)).
 
@@ -83,9 +83,9 @@ The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 20
 
 ## Q12: Crash reporting
 
-**Deferred** ("leave for now").
+**Answered 2026-11-21** by the owner (deferred on 2026-10-09: "leave for now").
 
-- **Result:** no crash reporting SDK. If it comes back, the alternative was opt-in self-hosted Sentry or GlitchTip. [D20](decisions.md#d20-scope-cuts-and-mobile-forms-of-desktop-features).
+- **Result:** opt-in crash reports to Vikunja's Sentry, asked once after the first sign-in and switched off at any time, with the app's redacted error log; without the project's key in the build there are none. [D113](decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry), step 41.
 
 ## Q13: Launch languages
 

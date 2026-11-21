@@ -37,7 +37,7 @@ Also
 
 Privacy
 • An optional app lock with Face ID, Touch ID or your passcode; task titles can be hidden in notifications and widgets.
-• No ads, no analytics, no tracking, no crash reporting. The app has no server of its own: it talks only to the servers you add.
+• No ads, no analytics, no tracking. The app has no server of its own: apart from crash reports you allow, it talks only to the servers you add.
 
 Not in the app (yet)
 • Time tracking, keyboard shortcuts and changing dates on the Gantt chart.

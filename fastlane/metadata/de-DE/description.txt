@@ -37,7 +37,7 @@ Außerdem
 
 Privatsphäre
 • Eine optionale App-Sperre mit Face ID, Touch ID oder deinem Code; Aufgabentitel lassen sich in Benachrichtigungen und Widgets ausblenden.
-• Keine Werbung, keine Analyse, kein Tracking, keine Absturzberichte. Die App hat keinen eigenen Server: Sie spricht nur mit den Servern, die du hinzufügst.
+• Keine Werbung, keine Analyse, kein Tracking. Die App hat keinen eigenen Server: Bis auf Absturzberichte, die du erlaubst, spricht sie nur mit den Servern, die du hinzufügst.
 
 Open Source
 Die App ist Open Source unter der MIT-Lizenz.

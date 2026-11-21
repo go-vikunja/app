@@ -213,6 +213,7 @@ Descriptions are edited in the web's own editor, TipTap, so the HTML stays what 
 
 - **Localisation:** English ARB strings are the source; other languages come through Vikunja's Crowdin project, and contributors change only the English ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)).
 - **Logging:** `package:logging` throughout. A record is redacted when it is made; the diagnostics log the user can add to a support request keeps warnings and errors, an error only by its type and a stack only by the app's own frames.
+- **Crash reports:** only in a build made with the Vikunja project's Sentry key and only after the user allows them, `core/crash_reports/` hands uncaught errors and the log's errors to Sentry, with its warnings as breadcrumbs, scrubbed on the device; on Android the app starts Sentry's native SDK itself so that its own reports are scrubbed too, while on iOS the native SDK reports nothing of its own; background isolates use Sentry's Dart SDK alone and read the stored choice before each report ([D113](decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry)).
 - **Privacy:** app lock and screen protection over the UI, lock-screen privacy for notifications, the app's folders kept out of backups ([D64](decisions.md#d64-app-lock-over-the-ui-and-device-privacy-settings)).
 - **Licence:** MIT, with Vikunja's contribution rules ([D87](decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)); the AGPL code of Vikunja's server and web is read for its behaviour only.
 

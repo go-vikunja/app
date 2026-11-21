@@ -382,10 +382,30 @@ void main() {
               file.readAsStringSync().contains("import '$library';"))
             file.path,
       };
-      expect(users, {
+      // The crash reports (D113) take a record as the log keeps it
+      // (DiagnosticsEntry.capture), never the log itself.
+      const recordsOnly = {
+        'lib/core/crash_reports/crash_reporter.dart',
+        'lib/core/crash_reports/sentry_crash_report_sdk.dart',
+      };
+      expect(users.difference(recordsOnly), {
         'lib/core/logging/logging_setup.dart',
         'lib/features/about/application/support_details.dart',
       });
+      for (final path in recordsOnly) {
+        expect(
+          File(path).readAsStringSync(),
+          isNot(
+            matches(
+              RegExp(
+                r'DiagnosticsLog\b|currentDiagnosticsLog|diagnosticsLogProvider|'
+                'useDiagnosticsLog|readAll',
+              ),
+            ),
+          ),
+          reason: path,
+        );
+      }
     });
   });
 }

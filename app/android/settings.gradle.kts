@@ -26,3 +26,16 @@ plugins {
 }
 
 include(":app")
+
+// sentry_flutter's build script puts the Android Gradle plugin 7.4.2 on its
+// own classpath, which would fetch that plugin and its tools; like every
+// plugin it runs on the app's version declared above (D113).
+gradle.beforeProject {
+    if (name == "sentry_flutter") {
+        buildscript.configurations.configureEach {
+            withDependencies {
+                removeIf { it.group == "com.android.tools.build" && it.name == "gradle" }
+            }
+        }
+    }
+}

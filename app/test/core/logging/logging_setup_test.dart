@@ -214,6 +214,51 @@ void main() {
     expect(log.entries, isEmpty);
   });
 
+  test('hands each uncaught error on, after logging it, to the crash '
+      "reports' listener, which a throw of its own does not break; a silent "
+      'one says so', () {
+    final handed = <(Object, StackTrace?, bool, bool, String?)>[];
+    configureLogging(
+      part: AppPart.app,
+      printToConsole: false,
+      diagnosticsDirectory: _noFolder,
+    );
+    listenToUncaughtErrors((
+      error,
+      stack, {
+      required flutter,
+      required silent,
+      library,
+    }) {
+      handed.add((error, stack, flutter, silent, library));
+      expect(records, isNotEmpty, reason: 'logged first');
+      throw StateError('listener failed');
+    });
+    final flutterError = StateError(_title);
+    final uncaught = ArgumentError(_refreshToken);
+
+    expect(reportBoth(flutterError, uncaught), isTrue);
+    FlutterError.reportError(
+      FlutterErrorDetails(exception: flutterError, stack: stack, silent: true),
+    );
+
+    expect(handed, [
+      (flutterError, stack, true, false, 'widgets library'),
+      (uncaught, stack, false, false, null),
+      (flutterError, stack, true, true, 'Flutter framework'),
+    ]);
+    expect(records, hasLength(3), reason: 'a silent one is logged too');
+
+    resetLoggingForTest();
+    configureLogging(
+      part: AppPart.app,
+      printToConsole: false,
+      diagnosticsDirectory: _noFolder,
+    );
+    FlutterError.reportError(detailsOf(flutterError));
+    expect(handed, hasLength(3), reason: 'the reset forgets the listener');
+  });
+
   test('writes the diagnostics log into the folder it is given', () async {
     final folder = await Directory.systemTemp.createTemp('diagnostics');
     addTearDown(() => folder.delete(recursive: true));

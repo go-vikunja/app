@@ -160,6 +160,10 @@ const overlayInventory = <String, OverlayCoverage>{
     'swept as the "connect insecure question" state of the connect '
     'screen',
   ),
+  'features/privacy/presentation/crash_reports_question.dart '
+      'showCrashReportsQuestion showAdaptiveDialog': Swept(
+    'crash reports question',
+  ),
   'features/projects/presentation/board/column_menu.dart '
       'ColumnMenuButton.build PopupMenuButton': Exempt(
     '$_menuOfTextItems; opened at 200 % in '

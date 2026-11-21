@@ -22,6 +22,10 @@ abstract final class LegalAssets {
 
   /// The Android libraries, from `tool/build_android_notices.py`.
   static const android = 'assets/legal/android.md';
+
+  /// The Swift packages fetched by URL, which `tool/ci/ios_notices.py`
+  /// checks against the build.
+  static const ios = 'assets/legal/ios.md';
 }
 
 /// The workspace root's package name, under which Flutter's build lists the
@@ -41,8 +45,9 @@ void registerAppLicenses() {
   );
 }
 
-/// The Android libraries only on Android. An asset that cannot be read is
-/// left out, so that the rest of the page still shows.
+/// The Android libraries only on Android, the Swift packages only on iOS.
+/// An asset that cannot be read is left out, so that the rest of the page
+/// still shows.
 Stream<LicenseEntry> appLicenses(
   AssetBundle bundle, {
   required TargetPlatform platform,
@@ -53,6 +58,7 @@ Stream<LicenseEntry> appLicenses(
     LegalAssets.portedCode,
     LegalAssets.materialIcons,
     if (platform == TargetPlatform.android) LegalAssets.android,
+    if (platform == TargetPlatform.iOS) LegalAssets.ios,
   ]) {
     if (await _read(bundle, asset) case final notices?) {
       yield* Stream.fromIterable(parseNotices(notices));

@@ -16,7 +16,10 @@
 # and the path of its .p8 file; VIKUNJA_APP_SOURCE_CODE_URL, the repository's
 # URL (default https://github.com/go-vikunja/app), whose tree at the tag the
 # build links as its source; VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN, a patch
-# release's tag that may go without every German text (release_lib.sh).
+# release's tag that may go without every German text (release_lib.sh);
+# VIKUNJA_APP_SENTRY_DSN, the opt-in crash reports' Sentry DSN (D113), without
+# which the build has none, on sentry.io (check_sentry_dsn in release_lib.sh),
+# never printed.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -142,6 +145,7 @@ if [[ -n "$key_file" ]]; then
   fi
 fi
 check_german "$tag"
+check_sentry_dsn
 
 icon=app/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png
 icon_info="$(sips -g pixelWidth -g pixelHeight -g hasAlpha -g space -g profile "$icon")"
@@ -190,7 +194,7 @@ archive=app/build/ios/archive/Runner.xcarchive
 ipa_dir=app/build/ios/ipa
 rm -rf "$archive" "$ipa_dir"
 build=(flutter build ipa --release --build-name="$build_name" --build-number="$build_number"
-  --dart-define=SOURCE_CODE_URL="$source_url")
+  --dart-define=SOURCE_CODE_URL="$source_url" --dart-define=VIKUNJA_APP_SENTRY_DSN="${VIKUNJA_APP_SENTRY_DSN:-}")
 if ((dry_run)); then
   (cd app && "${build[@]}" --no-codesign)
 else

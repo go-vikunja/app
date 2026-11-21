@@ -83,6 +83,28 @@ check_german() {
   fi
 }
 
+# VIKUNJA_APP_SENTRY_DSN, the opt-in crash reports' DSN (D113): unset or empty,
+# the build has no crash reports; otherwise it must be
+# https://<key>@<host>/<project id> on sentry.io or a subdomain of it, since
+# the network security config takes https and the system CAs only for those
+# hosts. Exits on any other value. It never prints the value, not even in
+# part; GitHub's log still shows it with the step's env, unmasked as a
+# variable, and every build carries it.
+check_sentry_dsn() {
+  local LC_ALL=C dsn="${VIKUNJA_APP_SENTRY_DSN:-}"
+  local rule='^https://[A-Za-z0-9]+@([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*sentry\.io/[0-9]+$'
+  if [[ -z "$dsn" ]]; then
+    echo "notice: VIKUNJA_APP_SENTRY_DSN is not set, so this build has no crash reports (D113)"
+  elif [[ "$dsn" =~ $rule ]]; then
+    echo "OK: VIKUNJA_APP_SENTRY_DSN is an https DSN on sentry.io (D113)."
+  else
+    echo "error: VIKUNJA_APP_SENTRY_DSN must be https://<key>@<host>/<project id>, the host sentry.io or a" \
+      "subdomain of it, without a port, a password, spaces, line breaks or anything after the id (D113); its value" \
+      "is not shown" >&2
+    exit 1
+  fi
+}
+
 # The only runs that publish: GitHub Actions on a tag of the official repository.
 official_release_run() {
   [[ "${GITHUB_ACTIONS:-}" == true && "${GITHUB_REPOSITORY:-}" == "$OFFICIAL_REPOSITORY" &&

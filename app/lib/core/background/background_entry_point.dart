@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/background/background_run_log.dart';
 import 'package:vikunja_mobile/core/background/background_sync_runner.dart';
 import 'package:vikunja_mobile/core/background/workmanager_background_scheduler.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_report_providers.dart';
 import 'package:vikunja_mobile/core/logging/logging_setup.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -62,6 +63,8 @@ final _running = <BackgroundSyncRunner>{};
 /// OS grants: WorkManager stops a worker after 10 min, and iOS gives a
 /// refresh task about 30 s.
 Future<BackgroundRunOutcome> runBackgroundTask(String task) async {
+  final started = Stopwatch()..start();
+  final reports = startHeadlessCrashReports(AppPart.backgroundRun);
   final kind = task == BackgroundTasks.drain
       ? BackgroundRunKind.drain
       : BackgroundRunKind.sync;
@@ -79,7 +82,30 @@ Future<BackgroundRunOutcome> runBackgroundTask(String task) async {
     return await runner.run(kind: kind);
   } finally {
     _running.remove(runner);
+    await (await reports).flush(
+      timeout: backgroundFlushTimeout(
+        defaultTargetPlatform,
+        deadline: deadline,
+        elapsed: started.elapsed,
+      ),
+    );
   }
+}
+
+/// How long a run waits for its crash reports to go out: on iOS at most
+/// 2 s and never past the run's deadline, which keeps the run inside the
+/// time iOS grants; elsewhere 5 s.
+@visibleForTesting
+Duration backgroundFlushTimeout(
+  TargetPlatform platform, {
+  required Duration deadline,
+  required Duration elapsed,
+}) {
+  if (platform != TargetPlatform.iOS) return const Duration(seconds: 5);
+  const most = Duration(seconds: 2);
+  final left = deadline - elapsed;
+  if (left <= Duration.zero) return Duration.zero;
+  return left < most ? left : most;
 }
 
 /// The connect timeout of a token request in a background run, which the

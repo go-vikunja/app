@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_report_providers.dart';
 import 'package:vikunja_mobile/features/about/application/support_details.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/app_bar_text_action.dart';
@@ -78,7 +79,9 @@ class _SupportDetailsPageState extends ConsumerState<SupportDetailsPage> {
                   ),
                   SettingsNote(
                     icon: Icons.history,
-                    text: l10n.supportDetailsLogNote,
+                    text: ref.watch(crashReportsDsnProvider) == null
+                        ? l10n.supportDetailsLogNote
+                        : l10n.supportDetailsLogNoteCrashReports,
                   ),
                   SwitchListTile.adaptive(
                     secondary: const Icon(Icons.dns_outlined),

@@ -71,8 +71,58 @@ internal class DeviceChannel(
             "setAppLanguage" -> setAppLanguage(call.argument<String>("language"), result)
             "userCaCertificates" -> offMain(result) { userCaCertificates() }
             "proxyFor" -> offMain(result) { proxyFor(call.argument<String>("url")) }
+            "startNativeCrashReports" -> startNativeCrashReports(call, result)
+            "stopNativeCrashReports" -> stopNativeCrashReports(result)
             else -> result.notImplemented()
         }
+    }
+
+    private fun startNativeCrashReports(call: MethodCall, result: MethodChannel.Result) {
+        val dsn = call.argument<String>("dsn")
+        val release = call.argument<String>("release")
+        val dist = call.argument<String>("dist")
+        if (dsn.isNullOrEmpty() || release == null || dist == null) {
+            result.error("invalid_arguments", "dsn, release or dist is missing", null)
+            return
+        }
+        crashReportWork.execute {
+            val failure = crashReportFailureOf { NativeCrashReports.start(context, dsn, release, dist) }
+            // Nothing half-started stays.
+            if (failure != null) crashReportFailureOf { NativeCrashReports.stop() }
+            main.post {
+                if (failure == null) {
+                    result.success(null)
+                } else {
+                    Log.w(TAG, "Could not start the native crash reports: ${failure.javaClass.simpleName}")
+                    result.error("unavailable", failure.javaClass.simpleName, null)
+                }
+            }
+        }
+    }
+
+    // Closing flushes for up to the SDK's flush timeout.
+    private fun stopNativeCrashReports(result: MethodChannel.Result) {
+        crashReportWork.execute {
+            val failure = crashReportFailureOf { NativeCrashReports.stop() }
+            main.post {
+                if (failure == null) {
+                    result.success(null)
+                } else {
+                    Log.w(TAG, "Could not stop the native crash reports: ${failure.javaClass.simpleName}")
+                    result.error("unavailable", failure.javaClass.simpleName, null)
+                }
+            }
+        }
+    }
+
+    // A class the SDK lacks is a LinkageError, which would end the app.
+    private fun crashReportFailureOf(work: () -> Unit): Throwable? = try {
+        work()
+        null
+    } catch (error: Exception) {
+        error
+    } catch (error: LinkageError) {
+        error
     }
 
     private fun copySensitive(text: String?, result: MethodChannel.Result) {
@@ -249,6 +299,11 @@ internal class DeviceChannel(
 
         val removals = Executors.newSingleThreadExecutor()
         val previousAppWork = Executors.newSingleThreadExecutor()
+
+        // Not previousAppWork: a stop that flushes for seconds would hold back
+        // the network settings a reconnect reads there. One thread keeps start
+        // and stop in the order Dart sends them.
+        val crashReportWork = Executors.newSingleThreadExecutor { work -> Thread(work, "vikunja-crash-reports") }
 
         // ClipDescription.EXTRA_IS_SENSITIVE from API 33; Android 13 hides the
         // clipboard preview of a clip marked with it, older versions ignore it.

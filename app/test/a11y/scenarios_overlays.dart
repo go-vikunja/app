@@ -17,6 +17,7 @@ import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_s
 import 'package:vikunja_mobile/features/accounts/presentation/remove_account_dialog.dart';
 import 'package:vikunja_mobile/features/common/presentation/day_range_picker.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
+import 'package:vikunja_mobile/features/privacy/presentation/crash_reports_question.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/delete_task_dialog.dart';
@@ -63,6 +64,7 @@ const overlayRegistry = <String>[
   'option sheet',
   'delete-task dialog',
   'sign-out dialog',
+  'crash reports question',
   'done snackbar',
   'bin snackbar',
   'one-time secret page',
@@ -288,6 +290,11 @@ final List<SweepScenario> overlayScenarios = [
         pendingChanges: 2,
       ),
     ),
+    expectScreen: (_) => alertDialog,
+  ),
+  _overlay(
+    'crash reports question',
+    show: (context, _) => unawaited(showCrashReportsQuestion(context)),
     expectScreen: (_) => alertDialog,
   ),
   _overlay(

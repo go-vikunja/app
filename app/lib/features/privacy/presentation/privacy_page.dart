@@ -17,14 +17,15 @@ import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/privacy/application/app_switcher_protection.dart';
+import 'package:vikunja_mobile/features/privacy/presentation/crash_reports_card.dart';
 import 'package:vikunja_mobile/features/privacy/presentation/lock_after_texts.dart';
 
 final _log = Logger('PrivacyPage');
 
 /// The device's app lock and how long the app may be out of sight before it
-/// locks, screenshots (Android), what notifications show and whether
-/// widgets list task titles. Turning the lock on or off takes the device's
-/// screen lock or biometrics first.
+/// locks, screenshots (Android), what notifications show, whether widgets
+/// list task titles and, in a build that has them, crash reports. Turning
+/// the lock on or off takes the device's screen lock or biometrics first.
 class PrivacyPage extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -303,6 +304,7 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
                     text: l10n.widgetsPrivacyNote,
                   ),
                 ),
+              const CrashReportsCard(),
             ],
           ),
         ),

@@ -13,6 +13,7 @@ StreamSubscription<LogRecord>? _consoleSink;
 StreamSubscription<LogRecord>? _diagnosticsSink;
 FlutterExceptionHandler? _flutterErrorBefore;
 ErrorCallback? _uncaughtErrorBefore;
+UncaughtErrorListener? _uncaughtListener;
 
 final _flutterLog = Logger('Flutter');
 final _uncaughtLog = Logger('Uncaught');
@@ -59,6 +60,19 @@ void configureLogging({
   });
 }
 
+typedef UncaughtErrorListener = void Function(
+  Object error,
+  StackTrace? stack, {
+  required bool flutter,
+  required bool silent,
+  String? library,
+});
+
+/// Hands this isolate's uncaught errors on after they are logged, with the
+/// error itself: the crash reports (D113). Null stops it.
+void listenToUncaughtErrors(UncaughtErrorListener? listener) =>
+    _uncaughtListener = listener;
+
 @visibleForTesting
 void resetLoggingForTest() {
   // A widget test's binding puts its own handler back after the test.
@@ -75,6 +89,7 @@ void resetLoggingForTest() {
   useDiagnosticsLog(null);
   _flutterErrorBefore = null;
   _uncaughtErrorBefore = null;
+  _uncaughtListener = null;
   _configured = false;
   Logger.root.level = Level.INFO;
 }
@@ -84,13 +99,22 @@ void _onFlutterError(FlutterErrorDetails details) => _logUncaught(
   details.exception,
   details.stack,
   details.exceptionAsString,
+  flutter: true,
+  silent: details.silent,
   library: details.library,
 );
 
 // True even when logging fails: false, or a throw, makes the engine print
 // the error unredacted.
 bool _onUncaughtError(Object error, StackTrace stack) {
-  _logUncaught(_uncaughtLog, error, stack, () => '$error');
+  _logUncaught(
+    _uncaughtLog,
+    error,
+    stack,
+    () => '$error',
+    flutter: false,
+    silent: false,
+  );
   return true;
 }
 
@@ -99,6 +123,8 @@ void _logUncaught(
   Object error,
   StackTrace? stack,
   String Function() describe, {
+  required bool flutter,
+  required bool silent,
   String? library,
 }) {
   try {
@@ -119,5 +145,16 @@ void _logUncaught(
     );
   } on Object {
     // Nothing left to report it through.
+  }
+  try {
+    _uncaughtListener?.call(
+      error,
+      stack,
+      flutter: flutter,
+      silent: silent,
+      library: library,
+    );
+  } on Object {
+    // As above.
   }
 }

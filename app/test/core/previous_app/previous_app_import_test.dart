@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/app/l10n/shipped_locales.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/previous_install.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_report_consent.dart';
 import 'package:vikunja_mobile/core/previous_app/previous_app_import.dart';
 import 'package:vikunja_mobile/core/previous_app/previous_app_platform.dart';
 import 'package:vikunja_mobile/core/previous_app/previous_app_record.dart';
@@ -126,6 +127,25 @@ void main() {
     expect(await PreviousAppRecord.read(preferences), expected);
     expect(log, isNot(contains('read user-token')));
     expect(log, ['traces', ..._readKeys, 'cancelNotifications', 'clear']);
+  });
+
+  test("the previous app's crash report choice is not carried over: the "
+      'app asks itself (D113)', () async {
+    secureStore.values.addAll({
+      ...previousAppValues(),
+      // However the previous app stored its "Enable Sentry" switch.
+      for (final key in ['sentry-enabled', 'sentry_enabled', 'enable_sentry'])
+        key: 'true',
+    });
+    preferences.values['flutter.sentry_enabled'] = 'true';
+
+    await run();
+
+    expect(
+      await CrashReportConsentStore(preferences).read(),
+      CrashReportConsent.notAsked,
+    );
+    expect(log.where((entry) => entry.contains('sentry')), isEmpty);
   });
 
   test('the recent servers keep each server once, at its newest use, and '

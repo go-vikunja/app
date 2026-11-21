@@ -5,9 +5,27 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:sentry/sentry.dart'
+    show
+        Breadcrumb,
+        EventProcessor,
+        Sentry,
+        SentryEnvelope,
+        SentryEvent,
+        SentryException,
+        SentryId,
+        SentryMessage,
+        SentryOptions,
+        Transport;
+import 'package:sentry_flutter/sentry_flutter.dart' show SentryFlutterOptions;
+// The processors SentryFlutter.init adds, which a test runs as it does.
+import 'package:sentry_flutter/src/exception/android_platform_exception_event_processor.dart';
+import 'package:sentry_flutter/src/exception/platform_exception_event_processor.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -15,6 +33,10 @@ import 'package:vikunja_mobile/core/auth/link_share_gateway.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_report_consent.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_report_scrubber.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_reporter.dart';
+import 'package:vikunja_mobile/core/crash_reports/sentry_crash_report_sdk.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/links/widget_link.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
@@ -758,4 +780,228 @@ void main() {
       expect(stored, isNot(contains(piece)), reason: piece);
     }
   });
+
+  test('crash reports, while allowed, hold no secret, title, e-mail '
+      'address, server or IP address, whatever the errors and records '
+      'quote', () async {
+    capture(printToConsole: false);
+    final tokens = issueTokens(issuedAt: _now, refreshToken: _refreshMarker(6));
+    const host = 'tasks.example.org';
+    final quoted = [
+      tokens.accessToken,
+      tokens.refreshToken,
+      ...tlsAccessValues().values,
+      tlsFixturePassword,
+      _hash,
+      _sharePassword,
+      newWidgetLinkKey(),
+      _title,
+      _email,
+    ];
+    final sdk = _ScrubbingCrashReportSdk(hosts: const {host});
+    // No volume limit, which would drop all but the first value's reports.
+    final reporter = CrashReporter(
+      dsn: 'https://0123456789abcdef@o1.ingest.example.invalid/1',
+      part: AppPart.app,
+      sdk: sdk,
+      reportLimit: 1 << 30,
+      repeatWindow: Duration.zero,
+    )..hosts = const {host};
+    addTearDown(reporter.dispose);
+    await reporter.follow(CrashReportConsent.allowed);
+    final log = Logger('CrashProbe');
+
+    final errors = <Object>[];
+    for (final value in quoted) {
+      final quoting = [
+        FormatException('Unexpected character', value),
+        Exception('failed with $value'),
+        ArgumentError.value(value, 'name'),
+        DioException.connectionError(
+          requestOptions: RequestOptions(path: '${_base}api/v1/tasks?q=$value'),
+          reason: 'failed for $_base',
+          error: SocketException(
+            "Failed host lookup: '$host'",
+            address: InternetAddress('192.168.20.7'),
+          ),
+        ),
+      ];
+      errors.addAll(quoting);
+      quoting.forEach(reportUncaught);
+      log
+        ..warning('Retrying ${_base}api/v1/tasks?token=$value')
+        ..severe('Gave up on 192.168.20.7: ${value.runtimeType}');
+    }
+    await Future<void>.delayed(Duration.zero);
+    final sent = sdk.sent.join('\n');
+
+    // Each error from FlutterError and from PlatformDispatcher, 1 record
+    // per value, and every warning in the last report.
+    expect(sdk.sent, hasLength(errors.length * 2 + quoted.length));
+    for (final (index, error) in errors.indexed) {
+      expect(
+        [
+          for (final (handed, flutter) in sdk.uncaught)
+            if (identical(handed, error)) flutter,
+        ],
+        unorderedEquals([true, false]),
+        reason: 'error $index',
+      );
+    }
+    expect(
+      (jsonDecode(sdk.sent.last) as Map<String, Object?>)['breadcrumbs'],
+      hasLength(quoted.length),
+    );
+    expect(sent, contains('FormatException: Unexpected character'));
+    expect(sent, contains('<server>'));
+    for (final piece in piecesOf([
+      ...quoted,
+      host,
+      '192.168.20.7',
+      'failed with',
+    ])) {
+      expect(sent, isNot(contains(piece)), reason: piece);
+    }
+  });
+
+  test("a PlatformException quoting a file's name in its message and in "
+      'the Java cause it carries leaves through the real event processors '
+      'with neither', () async {
+    const host = 'tasks.example.org';
+    const file =
+        '/storage/emulated/0/Download/Bewerbung Max Mustermann.pdf: open '
+        'failed';
+    PackageInfo.setMockInitialValues(
+      appName: 'Vikunja',
+      packageName: 'io.vikunja.app',
+      version: '1.0.0',
+      buildNumber: '7',
+      buildSignature: '',
+    );
+    late _EnvelopeTransport transport;
+    await Sentry.init((options) {
+      configureCrashReportOptions(
+        options,
+        start: (
+          dsn: 'https://0123456789abcdef@o1.ingest.example.invalid/1',
+          part: AppPart.app,
+          hosts: () => const {host},
+        ),
+        release: 'io.vikunja.app@1.0.0+7',
+        dist: '7',
+      );
+      transport = _EnvelopeTransport(options);
+      options.transport = transport;
+      // Before the exception grouping, as in SentryFlutter.init.
+      final grouping = [
+        for (final processor in options.eventProcessors)
+          if ('${processor.runtimeType}' == 'ExceptionGroupEventProcessor')
+            processor,
+      ]..forEach(options.removeEventProcessor);
+      <EventProcessor>[
+        AndroidPlatformExceptionEventProcessor(SentryFlutterOptions(), null),
+        PlatformExceptionEventProcessor(),
+        ...grouping,
+      ].forEach(options.addEventProcessor);
+    });
+    addTearDown(Sentry.close);
+
+    await SentryCrashReportSdk(native: false).captureUncaught(
+      PlatformException(
+        code: 'copy_failed',
+        message: 'FileNotFoundException: $file',
+        stacktrace:
+            'java.lang.RuntimeException: Could not copy from $host\n'
+            '\tat io.vikunja.app.ShareInbox.copy(ShareInbox.kt:42)\n'
+            'Caused by: java.io.FileNotFoundException: $file: ENOENT (No such '
+            'file or directory)\n'
+            '\tat libcore.io.IoBridge.open(IoBridge.java:574)\n'
+            '\tat io.vikunja.app.ShareInbox.copy(ShareInbox.kt:40)\n',
+      ),
+      StackTrace.current,
+      flutter: false,
+    );
+    final sent = transport.sent.join('\n');
+
+    expect(sent, contains('PlatformException(copy_failed)'));
+    expect(sent, contains('FileNotFoundException'), reason: 'the cause');
+    expect(sent, contains('"module":"java.io"'));
+    for (final piece in ['Mustermann', 'Bewerbung', host, 'Could not copy']) {
+      expect(sent, isNot(contains(piece)), reason: piece);
+    }
+  });
+}
+
+/// What the Sentry SDK would send, as text.
+final class _EnvelopeTransport implements Transport {
+  new(this._options);
+
+  final SentryOptions _options;
+  final sent = <String>[];
+
+  @override
+  Future<SentryId?> send(SentryEnvelope envelope) async {
+    final bytes = <int>[];
+    await envelope.envelopeStream(_options).forEach(bytes.addAll);
+    sent.add(utf8.decode(bytes));
+    return SentryId.newId();
+  }
+}
+
+/// Builds each report as the Sentry SDK hands it to its `beforeSend`, and
+/// keeps what the scrubber lets through, as JSON.
+final class _ScrubbingCrashReportSdk implements CrashReportSdk {
+  new({required this.hosts});
+
+  final Set<String> hosts;
+  final sent = <String>[];
+  final uncaught = <(Object, bool)>[];
+  final _breadcrumbs = <Breadcrumb>[];
+
+  void _send(SentryEvent event) {
+    final scrubbed = scrubCrashReport(
+      event..breadcrumbs = List.of(_breadcrumbs),
+      part: AppPart.app.name,
+      hosts: hosts,
+    );
+    sent.add(jsonEncode(scrubbed.toJson()));
+  }
+
+  @override
+  Future<void> start(CrashReportStart start) async {}
+
+  @override
+  Future<void> stop() async {}
+
+  @override
+  Future<void> deleteUnsent() async {}
+
+  @override
+  Future<void> captureUncaught(
+    Object error,
+    StackTrace? stack, {
+    required bool flutter,
+    String? library,
+  }) async {
+    uncaught.add((error, flutter));
+    _send(
+      SentryEvent(
+        exceptions: [
+          SentryException(
+            type: '${error.runtimeType}',
+            value: '$error',
+            throwable: error,
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Future<void> captureError(DiagnosticsEntry entry, StackTrace? stack) async =>
+      _send(SentryEvent(message: SentryMessage(entry.message)));
+
+  @override
+  Future<void> addWarning(DiagnosticsEntry entry) async =>
+      _breadcrumbs.add(crashReportBreadcrumb(entry, hosts: hosts));
 }

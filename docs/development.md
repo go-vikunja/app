@@ -145,7 +145,9 @@ The OSV scan runs in the job `osv`, also weekly; locally, `tool/ci/osv.sh` does 
   :app:assembleRelease :app:bundleRelease :app:assembleDebug :app:assembleProfile :app:testDebugUnitTest)
 ```
 
-The licence page lists the Android libraries from that lockfile; CI fails until their notices are written again too, then commit `app/assets/legal/android.md`. A library of a new Maven group needs its licence in the script's table first; a Google Play services library is refused. After the Cronet version changed (`cronet-bundled` in `app/android/app/build.gradle.kts`, a build of a Chrome stable release; [releasing.md](releasing.md#raising-cronet)), write the lock and build the release APK once, so that Gradle has the new AARs, then copy their licence files with `--refresh-cronet` (it checks the AARs against Google's Maven and refuses a Chromium build that is not a Chrome stable release) and commit `tool/android_notices/cronet/` too:
+`app/android/settings.gradle.kts` changes one plugin's build since step 41 ([D113](decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry)): sentry_flutter's build script puts the Android Gradle plugin 7.4.2 on its own classpath, which would fetch that plugin and its tools and need them in the verification metadata. A `gradle.beforeProject` hook removes `com.android.tools.build:gradle` from that classpath for the project `sentry_flutter` only, so that it builds with the app's 9.1.0, as every plugin does. The hook matches the group and the name, not the version, so a raise of sentry_flutter keeps it working.
+
+The licence page lists the Android libraries from that lockfile; CI fails until their notices are written again too, then commit `app/assets/legal/android.md`. A library of a new Maven group needs its licence in the script's table first; a Google Play services library is refused. The code that Sentry's Java SDK vendors comes from a copy of the notices file in its jar, checked by its SHA-256 per version ([releasing.md](releasing.md#crash-reports)). After the Cronet version changed (`cronet-bundled` in `app/android/app/build.gradle.kts`, a build of a Chrome stable release; [releasing.md](releasing.md#raising-cronet)), write the lock and build the release APK once, so that Gradle has the new AARs, then copy their licence files with `--refresh-cronet` (it checks the AARs against Google's Maven and refuses a Chromium build that is not a Chrome stable release) and commit `tool/android_notices/cronet/` too:
 
 ```sh
 python3 -I tool/build_android_notices.py           # --check only compares, --self-test tests the script
@@ -229,6 +231,16 @@ adb reverse tcp:34527 tcp:34527
 
 The app uses a server over plain `http://` only after you confirm it; the permission is kept for that server address and can be revoked under Connection in the Account tab.
 
+**Crash reports** ([D113](decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry)) are only in a build made with a Sentry DSN, which the release builds take from a repository variable ([releasing.md](releasing.md#crash-reports)). Without it there is no question, no switch and no running SDK. To try them, pass a DSN as a define:
+
+```sh
+cd app
+flutter run -d emulator-5554 --dart-define=VIKUNJA_APP_SENTRY_DSN=https://public@example.invalid/1   # the question and the switch; nothing reaches Sentry
+VIKUNJA_APP_UNSIGNED=true flutter build apk --release --dart-define=VIKUNJA_APP_SENTRY_DSN=…
+```
+
+A DSN whose host does not exist, like the one above, shows the question after the first sign-in, the switch at the end of Account › App lock and privacy and the Account tab's "Crash reports: On" or "Off", and sends nothing. With the project's real DSN the build sends to the old app's Sentry project under its own release, so use it only for a build that should. Never commit a DSN: pass it on the command line or from your shell's environment; the build's copies, in `app/ios/Flutter/Generated.xcconfig` and `flutter_export_environment.sh`, are ignored by git. The question comes only once per installation, as the answer is a device setting (`crash_reports.consent`); clear the app's data to see it again. The tests run without a DSN; a test of a build with crash reports overrides the providers with `crashReportOverrides()` of `app/test/helpers/crash_report_fakes.dart`, whose `testCrashReportsDsn` names no real project, and a fake SDK.
+
 ## Sign in on a device (end to end)
 
 Browser sign-in is tested by hand against the Docker test servers, with a fixed test user. Its username and password are in [`test_servers/seed/e2e-user.env`](../test_servers/seed/e2e-user.env); a second user for the multi-account flows is in [`test_servers/seed/e2e-user-2.env`](../test_servers/seed/e2e-user-2.env) (create it with `E2E_USER_ENV=test_servers/seed/e2e-user-2.env tool/seed_e2e_user.sh`). They are throwaway values for these local servers only.
@@ -297,6 +309,7 @@ tool/e2e/update_test.sh --server https://try.vikunja.io emulator-5554 <old.apk> 
 
   Then align both with the build-tools' `zipalign -P 16 4` and sign them with `apksigner sign` and one throwaway key (`keytool -genkeypair`), its passwords passed from the environment or a private file (`--ks-pass env:…`), never on the command line; `apksigner verify --print-certs` shows that key as the only signer.
 - **The run:** each check prints PASS, FAIL or SKIP; a script exits 1 when a check failed and 2 when the test could not run. The output folder gets the log, the screen dumps, the screenshots and, from the update test, a recording of the first start, which stops once a browser has the focus or Connect takes input, so it never holds a sign-in. For a sign-in the scripts print only the clipboard route for the E2E user's password, as [above](#sign-in-on-a-device-end-to-end). They read the screen by the app's own English and German texts from the ARB files (`tool/e2e/ui.py`), so a text they look for that is renamed or gone stops them early, naming its key; `python3 -I tool/e2e/ui.py --self-test` checks the matching and runs in `tool/ci/checks.sh`.
+- **Crash reports** (since step 41, [D113](decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry)): a build with a DSN asks about them once, over the shell after the first sync, and the dialog's barrier hides the screen below from the dump. The scripts decline: `decline_crash_reports` in `tool/e2e/lib.sh` finds No thanks with `ui.py point`, taps it with `adb shell input tap` and prints PASS once the question is gone, so a build with a DSN, a release candidate's included, sends nothing during the tests. In a build without a DSN each check of the shell spends about 4 s looking for the question.
 - **Needs:** macOS's bash 3.2 or newer, `adb` and the build-tools of the Android SDK, python3 and curl; with ImageMagick 7 (`magick`) the scripts judge the dark theme from a screenshot themselves, else they ask.
 
 ## Documentation

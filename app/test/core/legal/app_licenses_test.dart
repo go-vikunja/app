@@ -222,6 +222,26 @@ Text
       expect(ios.keys.where((name) => name.startsWith('androidx.')), isEmpty);
     });
 
+    test("Sentry's libraries on each platform, only there", () {
+      expect(
+        android.keys,
+        containsAll([
+          'io.sentry:sentry',
+          'io.sentry:sentry-android-core',
+          'io.sentry:sentry-native-ndk',
+          'com.abovevacant:epitaph',
+          'Google GSON (Apache 2.0)',
+        ]),
+      );
+      expect(_text(android['io.sentry:sentry']!.single), contains('Sentry'));
+      expect(android.keys, isNot(contains('sentry-apple-binaries')));
+      expect(
+        _text(ios['sentry-apple-binaries']!.single),
+        allOf(contains('Copyright (c) 2015 Sentry'), contains('MIT License')),
+      );
+      expect(ios.keys.where((name) => name.startsWith('io.sentry')), isEmpty);
+    });
+
     test('the code of other projects inside embedded Cronet', () {
       expect(
         android.keys,

@@ -8054,7 +8054,7 @@
   },
   "privacyTitle": "Privacy",
   "@privacyTitle": {
-    "description": "Heading of the Account tab's privacy section and title of the privacy page (app lock, screenshots, notification content, widget titles)."
+    "description": "Heading of the Account tab's privacy section and title of the privacy page (app lock, screenshots, notification content, widget titles and, in builds that have them, crash reports)."
   },
   "privacyEntryTitle": "App lock and privacy",
   "@privacyEntryTitle": {
@@ -8075,6 +8075,20 @@
       "duration": {
         "type": "String",
         "example": "1 minute"
+      }
+    }
+  },
+  "privacyEntryWithCrashReports": "{appLock} · Crash reports: {crashReports, select, on{On} other{Off}}",
+  "@privacyEntryWithCrashReports": {
+    "description": "Subtitle of the Account tab's privacy entry in builds that can send crash reports. appLock is the app lock part, one of privacyEntryAppLockOff, privacyEntryAppLockImmediately or privacyEntryAppLockAfter; crashReports is on while the user allows crash reports, else off.",
+    "placeholders": {
+      "appLock": {
+        "type": "String",
+        "example": "App lock: Off"
+      },
+      "crashReports": {
+        "type": "String",
+        "example": "on"
       }
     }
   },
@@ -8201,6 +8215,38 @@
   "privacyWidgetTitlesSubtitle": "When off, widgets show only how many tasks there are",
   "@privacyWidgetTitlesSubtitle": {
     "description": "Under the Show task titles in widgets switch."
+  },
+  "privacyCrashReportsHeading": "Crash reports",
+  "@privacyCrashReportsHeading": {
+    "description": "Heading of the crash report setting on the privacy page. Only in builds that can send crash reports."
+  },
+  "privacyCrashReportsSwitch": "Send crash reports",
+  "@privacyCrashReportsSwitch": {
+    "description": "Switch on the privacy page: whether the app sends reports of its errors and crashes. Off until the user allows it; it takes effect at once."
+  },
+  "privacyCrashReportsSubtitle": "Errors and crashes go to the Vikunja project through Sentry",
+  "@privacyCrashReportsSubtitle": {
+    "description": "Under the Send crash reports switch. Sentry is the crash reporting service; keep the name."
+  },
+  "privacyCrashReportsNote": "A report holds what went wrong and where in the app, the app's warnings just before it, the app's version and your device's model and system version. Before sending, the app removes server addresses, account details and anything else it recognizes as your data. Turning this off deletes the reports that weren't sent yet.",
+  "@privacyCrashReportsNote": {
+    "description": "Note under the Send crash reports switch: what a crash report contains, what the app removes before sending and what turning the switch off does. The app removes only what its rules recognize; keep the text from promising more."
+  },
+  "crashReportsQuestionTitle": "Send crash reports?",
+  "@crashReportsQuestionTitle": {
+    "description": "Title of the question the app asks once, after the first sign-in, whether it may send reports of its errors and crashes. Its buttons are crashReportsQuestionAllow and crashReportsQuestionDecline; neither is preselected."
+  },
+  "crashReportsQuestionBody": "When the app crashes or runs into an error, it can send a report to the Vikunja project through Sentry: what went wrong and where in the app, the app's warnings just before it, the app's version and your device's model and system version. Before sending, the app removes server addresses, account details and anything else it recognizes as your data. You can change this at any time under Account › App lock and privacy.",
+  "@crashReportsQuestionBody": {
+    "description": "Body of the crash report question. Sentry is the crash reporting service; keep the name. The app's warnings are the warnings of its own log (supportDetailsLogNote). Account › App lock and privacy is the path to the privacy page: the Account tab and its entry privacyEntryTitle. The app removes only what its rules recognize; keep the text from promising more."
+  },
+  "crashReportsQuestionAllow": "Allow",
+  "@crashReportsQuestionAllow": {
+    "description": "Button of the crash report question: the app may send crash reports."
+  },
+  "crashReportsQuestionDecline": "No thanks",
+  "@crashReportsQuestionDecline": {
+    "description": "Button of the crash report question: the app sends no crash reports. Going back answers the same."
   },
   "privacySettingsUnreadable": "Your privacy settings couldn't be read, so Vikunja locked itself. Choose them again here.",
   "@privacySettingsUnreadable": {
@@ -9579,6 +9625,10 @@
   "supportDetailsLogNote": "The details end with the app's warnings and errors of the last 7 days. The app keeps them only on this device.",
   "@supportDetailsLogNote": {
     "description": "Second note at the top of the support details page, below supportDetailsIntro; screen readers read it on its own. The details are the support details (supportDetailsTitle); the app's log of warnings and errors is the last part of their text."
+  },
+  "supportDetailsLogNoteCrashReports": "The details end with the app's warnings and errors of the last 7 days. They stay on this device; only if you allow crash reports are errors and the warnings before them also sent with each report.",
+  "@supportDetailsLogNoteCrashReports": {
+    "description": "supportDetailsLogNote in builds that can send crash reports (privacyCrashReportsSwitch): the same note, saying that with crash reports allowed the errors and the warnings before them also go out in the reports."
   },
   "errorWidgetMessage": "This part of the screen could not be shown.",
   "@errorWidgetMessage": {

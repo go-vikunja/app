@@ -26,6 +26,17 @@ class CiScriptsTest(unittest.TestCase):
                 with self.subTest(f'{script}: {path}'):
                     self.assertTrue(os.path.isfile(os.path.join(ROOT, path)), path)
 
+    def test_the_release_builds_check_the_sentry_dsn_first_and_never_print_it(self):
+        for script in ('release_build.sh', 'ios_release.sh'):
+            with open(os.path.join(ROOT, 'tool/ci', script), encoding='utf-8') as f:
+                text = f.read()
+            with self.subTest(script):
+                self.assertIn('\ncheck_sentry_dsn\n', text)
+                self.assertLess(text.index('\ncheck_sentry_dsn\n'), text.index('flutter build'))
+                for line in text.splitlines():
+                    if 'VIKUNJA_APP_SENTRY_DSN' in line and not line.lstrip().startswith('#'):
+                        self.assertNotRegex(line, r'\b(echo|printf)\b', line)
+
     def test_the_scan_covers_the_committed_lockfiles(self):
         with open(os.path.join(ROOT, 'tool/ci/osv.sh'), encoding='utf-8') as f:
             text = f.read()

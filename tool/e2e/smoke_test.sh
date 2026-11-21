@@ -3,7 +3,8 @@
 # with its data wiped, checks that it opens on Connect without the previous
 # app's note or server and with the previous app's widget provider disabled,
 # waits while you sign in through the browser, then checks the first sync and
-# that the app is still signed in after a new start. Prints PASS, FAIL or
+# that the app is still signed in after a new start. A build with a crash
+# reports DSN asks about them after the first sync; the test declines. Prints PASS, FAIL or
 # SKIP per check and exits 1 when one failed, 2 when the test could not run;
 # the output folder gets the log, the screen dumps and the screenshots.
 #
@@ -75,7 +76,7 @@ if [[ "$server" == http://* ]]; then cleartext=", allow the unencrypted connecti
 owner \
   "Enter ${server}, tap Continue${cleartext} and $(sign_in_hint)." \
   "Come back here once the app is back from the browser."
-expect_screen "the first sync shows the tasks" 180 synced "${synced[@]}"
+expect_shell "the first sync shows the tasks" 180 synced "${synced[@]}"
 
 section "A new start"
 expect_signed_in_after_restart restarted

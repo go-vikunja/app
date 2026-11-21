@@ -369,7 +369,8 @@ class GitHubWorkflowsTest(unittest.TestCase):
         self.assertNotIn('environment', build)
         self.assertEqual(runs(build), ['tool/ci/release_build.sh --tag "$GITHUB_REF_NAME"'])
         self.assertEqual(step_running(build, 'tool/ci/release_build.sh --tag "$GITHUB_REF_NAME"')['env'],
-                         {'VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN': '${{ vars.VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN }}'})
+                         {'VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN': '${{ vars.VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN }}',
+                          'VIKUNJA_APP_SENTRY_DSN': '${{ vars.VIKUNJA_APP_SENTRY_DSN }}'})
         self.assertEqual(kinds(build), ['actions/checkout', 'run', 'actions/upload-artifact'])
         self.assertEqual(steps_using(build, 'actions/upload-artifact')[0]['with'],
                          {'name': 'release-unsigned', 'path': 'build/release/unsigned/', 'if-no-files-found': 'error',

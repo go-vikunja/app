@@ -18,7 +18,13 @@ with its actions, categories and every attribute of its data elements. Any
 addition, removal or change fails: review what the new manifest exposes,
 then update ALLOWED (--print shows the found entries in its format). Also
 asserts that backups stay off (allowBackup="false" and the data extraction
-rules). --self-test checks the checker against manifests made from ALLOWED.
+rules), that no Sentry component is left to start with the app and its
+meta-data keep it from starting on its own and from collecting network
+breadcrumbs, with no other io.sentry.* meta-data anywhere: crash reports
+start only once the user allows them, with the app's options (D113). It
+also reads the app's network security config: Sentry's hosts take https and
+the system's CAs only. --self-test checks the checker against manifests made
+from ALLOWED and configs made from the app's.
 """
 import os
 import sys
@@ -30,6 +36,16 @@ DEFAULT_MANIFEST = os.path.join(
 ANDROID = '{http://schemas.android.com/apk/res/android}'
 COMPONENTS = ('activity', 'activity-alias', 'receiver', 'service', 'provider')
 RULES = '@xml/data_extraction_rules'
+NETWORK_CONFIG_REFERENCE = '@xml/network_security_config'
+# sentry_flutter starts Sentry from Dart; the SDK's own providers would run
+# at every start, SentryInitProvider would initialise it (D113).
+SENTRY_PREFIX = 'io.sentry.'
+SENTRY_META_DATA = {
+    'io.sentry.auto-init': 'false',
+    'io.sentry.breadcrumbs.network-events': 'false',
+}
+NETWORK_CONFIG = os.path.join(ROOT, 'app/android/app/src/main/res/xml/network_security_config.xml')
+SENTRY_DOMAIN = 'sentry.io'
 
 APP = 'io.vikunja.app'
 SCHEME = 'vikunja-io.vikunja.app'
@@ -133,6 +149,22 @@ def check(manifest):
         problems.append('application: android:allowBackup is not "false"')
     if attribute(application, 'dataExtractionRules') != RULES:
         problems.append(f'application: android:dataExtractionRules is not "{RULES}"')
+    if attribute(application, 'networkSecurityConfig') != NETWORK_CONFIG_REFERENCE:
+        problems.append(f'application: android:networkSecurityConfig is not "{NETWORK_CONFIG_REFERENCE}"')
+    for element in application:
+        name = attribute(element, 'name') or ''
+        if element.tag in COMPONENTS and name.startswith(SENTRY_PREFIX):
+            problems.append(f'a Sentry component starts with the app: {element.tag} {name}')
+    for key, value in SENTRY_META_DATA.items():
+        values = [attribute(e, 'value') for e in application.findall('meta-data') if attribute(e, 'name') == key]
+        if values != [value]:
+            problems.append(f'application: meta-data {key} is not "{value}"')
+    # The SDK applies them before the app's options, so one the app does not
+    # set stays, such as an attachment, which never passes beforeSend.
+    for element in application.iter('meta-data'):
+        name = attribute(element, 'name') or ''
+        if name.startswith(SENTRY_PREFIX) and name not in SENTRY_META_DATA:
+            problems.append(f'meta-data {name} sets a Sentry option; only {", ".join(SENTRY_META_DATA)} may')
     found, export_problems = exported_components(application)
     problems += export_problems
     for key in sorted(found.keys() - ALLOWED.keys()):
@@ -146,10 +178,39 @@ def check(manifest):
     return found, problems
 
 
+def check_network_config(config):
+    """Problems of the network security config: one domain-config for
+    SENTRY_DOMAIN and its subdomains, without cleartext, trusting the
+    system's CAs only (not the user's, which the base-config trusts for
+    self-hosted servers)."""
+    matching = [d for d in config.findall('domain-config')
+                if any((domain.text or '').strip() == SENTRY_DOMAIN and domain.get('includeSubdomains') == 'true'
+                       for domain in d.findall('domain'))]
+    if len(matching) != 1:
+        return [f'network security config: not exactly one domain-config for {SENTRY_DOMAIN} with includeSubdomains']
+    sentry, problems = matching[0], []
+    if sentry.get('cleartextTrafficPermitted') != 'false':
+        problems.append(f'network security config: {SENTRY_DOMAIN} allows cleartext')
+    sources = [c.get('src') for anchors in sentry.findall('trust-anchors') for c in anchors.findall('certificates')]
+    if sources != ['system']:
+        problems.append(f'network security config: {SENTRY_DOMAIN} trusts {sources}, not the system CAs only')
+    # The most specific domain wins, so no other one may name Sentry's hosts.
+    others = [d for d in config.iter('domain-config') if d is not sentry]
+    for other in others:
+        for domain in other.findall('domain'):
+            name = (domain.text or '').strip()
+            if name == SENTRY_DOMAIN or name.endswith('.' + SENTRY_DOMAIN):
+                problems.append(f'network security config: another domain-config names {name}')
+    return problems
+
+
 def manifest_from_allowed():
     manifest = ElementTree.Element('manifest')
     application = ElementTree.SubElement(
-        manifest, 'application', {ANDROID + 'allowBackup': 'false', ANDROID + 'dataExtractionRules': RULES})
+        manifest, 'application', {ANDROID + 'allowBackup': 'false', ANDROID + 'dataExtractionRules': RULES,
+                                  ANDROID + 'networkSecurityConfig': NETWORK_CONFIG_REFERENCE})
+    for key, value in SENTRY_META_DATA.items():
+        ElementTree.SubElement(application, 'meta-data', {ANDROID + 'name': key, ANDROID + 'value': value})
     for (tag, name), (permission, filters) in ALLOWED.items():
         component = ElementTree.SubElement(application, tag, {ANDROID + 'name': name, ANDROID + 'exported': 'true'})
         if permission:
@@ -215,6 +276,24 @@ def self_test():
         ('filters regrouped', regroup_share_filters, False),
         ('backups allowed', lambda m: application(m).set(ANDROID + 'allowBackup', 'true'), False),
         ('no extraction rules', lambda m: application(m).attrib.pop(ANDROID + 'dataExtractionRules'), False),
+        ('no network security config', lambda m: application(m).attrib.pop(ANDROID + 'networkSecurityConfig'), False),
+        ("Sentry's unexported init provider", lambda m: add(
+            m, 'provider', 'io.sentry.android.core.SentryInitProvider', 'false'), False),
+        ("Sentry's performance provider", lambda m: add(
+            m, 'provider', 'io.sentry.android.core.SentryPerformanceProvider', 'false'), False),
+        ('Sentry auto-init not off', lambda m: remove_meta_data(m, 'io.sentry.auto-init'), False),
+        ("Sentry's network breadcrumbs not off", lambda m: remove_meta_data(m, 'io.sentry.breadcrumbs.network-events'),
+         False),
+        ("Sentry's network breadcrumbs on", lambda m: meta_data(m, 'io.sentry.breadcrumbs.network-events').set(
+            ANDROID + 'value', 'true'), False),
+        ("a library's Sentry option", lambda m: add_meta_data(application(m), 'io.sentry.anr.attach-thread-dumps',
+                                                               'true'), False),
+        ('a Sentry option set off', lambda m: add_meta_data(application(m), 'io.sentry.debug', 'false'), False),
+        ('a Sentry option inside a component', lambda m: add_meta_data(
+            component(m, f'{APP}.MainActivity'), 'io.sentry.tombstone.attach-raw', 'true'), False),
+        ('Sentry auto-init twice', lambda m: add_meta_data(application(m), 'io.sentry.auto-init', 'false'), False),
+        ('meta-data of another library', lambda m: add_meta_data(application(m), 'io.flutter.embedding.x', 'true'),
+         True),
     ] + [(f'a data element with {name}', add_data_attribute(name), False)
          for name in ('pathSuffix', 'pathAdvancedPattern', 'ssp', 'sspPrefix', 'sspPattern', 'port')]
     failed = 0
@@ -222,15 +301,67 @@ def self_test():
         manifest = manifest_from_allowed()
         mutate(manifest)
         _, problems = check(manifest)
-        if (not problems) != passes:
-            failed += 1
-            print(f'FAILED: {description}: expected {"a pass" if passes else "a failure"}')
-            for problem in problems:
-                print(f'  {problem}')
+        failed += report(description, passes, problems)
+    config_cases = network_config_cases()
+    for description, mutate, passes in config_cases:
+        config = ElementTree.parse(NETWORK_CONFIG).getroot()
+        mutate(config)
+        failed += report(description, passes, check_network_config(config))
     if failed:
         return 1
-    print(f'Self-test: {len(cases)} cases as expected.')
+    print(f'Self-test: {len(cases) + len(config_cases)} cases as expected.')
     return 0
+
+
+def report(description, passes, problems):
+    if (not problems) == passes:
+        return 0
+    print(f'FAILED: {description}: expected {"a pass" if passes else "a failure"}')
+    for problem in problems:
+        print(f'  {problem}')
+    return 1
+
+
+def meta_data(manifest, name):
+    return next(e for e in manifest.find('application').findall('meta-data') if attribute(e, 'name') == name)
+
+
+def remove_meta_data(manifest, name):
+    manifest.find('application').remove(meta_data(manifest, name))
+
+
+def add_meta_data(parent, name, value):
+    ElementTree.SubElement(parent, 'meta-data', {ANDROID + 'name': name, ANDROID + 'value': value})
+
+
+def sentry_config(config):
+    return next(d for d in config.findall('domain-config')
+                if any((domain.text or '').strip() == SENTRY_DOMAIN for domain in d.findall('domain')))
+
+
+def add_domain_config(config, name, parent=None):
+    element = ElementTree.SubElement(config if parent is None else parent, 'domain-config')
+    ElementTree.SubElement(element, 'domain').text = name
+    anchors = ElementTree.SubElement(element, 'trust-anchors')
+    ElementTree.SubElement(anchors, 'certificates', {'src': 'user'})
+
+
+def network_config_cases():
+    return [
+        ("the app's config", lambda c: None, True),
+        ('no domain-config for Sentry', lambda c: c.remove(sentry_config(c)), False),
+        ('Sentry without its subdomains', lambda c: sentry_config(c).find('domain').attrib.pop('includeSubdomains'),
+         False),
+        ('cleartext to Sentry', lambda c: sentry_config(c).set('cleartextTrafficPermitted', 'true'), False),
+        ("Sentry trusting the user's CAs", lambda c: ElementTree.SubElement(
+            sentry_config(c).find('trust-anchors'), 'certificates', {'src': 'user'}), False),
+        ('Sentry without trust anchors', lambda c: sentry_config(c).remove(sentry_config(c).find('trust-anchors')),
+         False),
+        ('a more specific domain-config for an ingest host', lambda c: add_domain_config(c, 'o1.ingest.sentry.io'),
+         False),
+        ('a nested domain-config', lambda c: add_domain_config(c, 'ingest.sentry.io', sentry_config(c)), False),
+        ('a domain-config for another host', lambda c: add_domain_config(c, 'tasks.example.org'), True),
+    ]
 
 
 def main(arguments):
@@ -243,6 +374,7 @@ def main(arguments):
         print(f'No merged manifest at {path}; build the release APK first.')
         return 2
     found, problems = check(ElementTree.parse(path).getroot())
+    problems += check_network_config(ElementTree.parse(NETWORK_CONFIG).getroot())
     if show:
         for key in sorted(found):
             print(f'{key!r}: {describe(found[key])},')
@@ -251,7 +383,8 @@ def main(arguments):
         for problem in problems:
             print(f'  {problem}')
         return 1
-    print(f'{len(found)} exported components as allowed; backups off.')
+    print(f'{len(found)} exported components as allowed; backups off; no Sentry component, its network '
+          f'breadcrumbs off, no other Sentry meta-data; {SENTRY_DOMAIN} over https with the system CAs only.')
     return 0
 
 

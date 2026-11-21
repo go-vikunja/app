@@ -38,6 +38,10 @@ const _allowed = <String, Map<String, String>>{
         '(DiagnosticsLog.add): from WARNING up, redacted at capture, errors '
         "by type and the stack by the app's frames, kept in the cache "
         'folder and leaving only through the support details.',
+    'lib/core/crash_reports/crash_reporter.dart':
+        'The crash reports (D113), only while the user allows them: from '
+        'WARNING up, each record as the diagnostics log keeps it '
+        '(DiagnosticsEntry.capture), then through the crash report scrubber.',
   },
 };
 
@@ -487,10 +491,10 @@ void main() {
     expect(_errorTextsKept(dart), isEmpty);
   });
 
-  test('only the logging setup listens to the records: the debug console '
-      'and the diagnostics log', () {
+  test('only the logging setup listens to the records, the debug console '
+      'and the diagnostics log, and the crash reports while allowed', () {
     expect(_notAllowed('sink', _recordSinks(dart)), isEmpty);
-    expect(_recordSinks(dart), hasLength(2));
+    expect(_recordSinks(dart), hasLength(3));
   });
 
   test('no toString prints a secret field', () {

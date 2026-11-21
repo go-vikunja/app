@@ -12,6 +12,11 @@
 # Actions, only --dry-run runs. VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN, the
 # repository variable of the same name in the job, names a patch release's tag
 # that may go without every German text (check_german in release_lib.sh).
+# VIKUNJA_APP_SENTRY_DSN, the repository variable of the same name, is the
+# opt-in crash reports' Sentry DSN (D113); a build without it has none, and
+# one on another host than sentry.io fails (check_sentry_dsn in
+# release_lib.sh). The scripts never print it; GitHub's log still shows it
+# with the step's env, unmasked as a variable, and every build carries it.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -153,6 +158,7 @@ elif ((l10n_status != 0)); then
   exit "$l10n_status"
 fi
 check_german "$tag"
+check_sentry_dsn
 
 rm -rf "$release_unsigned_dir"
 apk_dir=app/build/app/outputs/flutter-apk
@@ -178,7 +184,8 @@ release_flutter_build() {
   (
     cd app
     VIKUNJA_APP_UNSIGNED=true flutter build "$@" --release --build-name="$build_name" \
-      --build-number="$build_number" --dart-define=SOURCE_CODE_URL="$source_url"
+      --build-number="$build_number" --dart-define=SOURCE_CODE_URL="$source_url" \
+      --dart-define=VIKUNJA_APP_SENTRY_DSN="${VIKUNJA_APP_SENTRY_DSN:-}"
   )
 }
 must_exist() {

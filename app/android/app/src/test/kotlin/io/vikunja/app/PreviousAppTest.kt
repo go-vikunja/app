@@ -62,5 +62,8 @@ class PreviousAppTest {
         assertEquals("FlutterSecureStorage", PreviousApp.SECURE_PREFERENCES)
         assertEquals("VGhpcyBpcyB0aGUgcHJlZml4IGZvciBhIHNlY3VyZSBzdG9yYWdlCg", PreviousApp.SECURE_KEY_PREFIX)
         assertEquals("scheduled_notifications", PreviousApp.SCHEDULED_NOTIFICATIONS)
+        // The Sentry Android SDK's cache folder and install id file.
+        assertEquals("sentry", PreviousApp.SENTRY_CACHE)
+        assertEquals("INSTALLATION", PreviousApp.SENTRY_INSTALLATION)
     }
 }

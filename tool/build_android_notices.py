@@ -32,6 +32,12 @@ only that copy, so they need neither Gradle nor the network, and fail when it
 does not belong to the locked Cronet version. CRONET_SUPPLEMENT adds what the
 native library links statically but the licences do not name.
 
+The Sentry Java SDK (io.sentry:sentry, D113) vendors other projects' code,
+which the SENTRY_THIRD_PARTY_NOTICES.md in its jar lists; a copy of that file
+is tool/android_notices/sentry_third_party_notices.md, checked against
+SENTRY_NOTICES_SHA256 for the locked version. Take it from the new version's
+jar (META-INF/) when Sentry is raised.
+
 The written offer for desugar_jdk_libs' source names the upstream commit from
 tool/android_notices/desugar_jdk_libs.source and WRITTEN_OFFER_CONTACT;
 --require-offer-contact fails while that contact is empty, which the release
@@ -94,9 +100,14 @@ LICENCES = {
     'protobuf': ('BSD-3-Clause', 'protobuf.txt'),
     'chromium': ('BSD-3-Clause', 'chromium.txt'),
     'gpl-classpath': ('GPL-2.0-only WITH Classpath-exception-2.0', 'gpl-2.0-classpath-exception.txt'),
+    'sentry': ('MIT', 'sentry.txt'),
+    'sentry-native': ('MIT', 'sentry_native.txt'),
+    'epitaph': ('MIT', 'epitaph.txt'),
 }
 
 GROUPS = {
+    # The tombstone decoder of sentry-android-core.
+    'com.abovevacant': 'epitaph',
     'com.getkeepsafe.relinker': 'apache',
     'com.google.android.material': 'apache',
     'com.google.code.findbugs': 'apache',
@@ -106,6 +117,7 @@ GROUPS = {
     'com.google.guava': 'apache',
     'com.google.protobuf': 'protobuf',
     'com.squareup.okio': 'apache',
+    'io.sentry': 'sentry',
     'org.chromium.net': 'chromium',
     'org.jetbrains': 'apache',
     'org.jetbrains.kotlin': 'apache',
@@ -125,6 +137,8 @@ ARTIFACTS = {
     'androidx.glance:glance-appwidget-external-protobuf': 'protobuf',
     # OpenJDK's java.time and java.util for older Android versions.
     'com.android.tools:desugar_jdk_libs': 'gpl-classpath',
+    # Built from sentry-native, whose licence differs from Sentry Java's.
+    'io.sentry:sentry-native-ndk': 'sentry-native',
 }
 
 # Object code under the GPL-2.0 comes with its source code or a written offer
@@ -150,6 +164,14 @@ SOURCE_MANIFESTS = {
 # How to ask for the source under the written offer; the release job fails
 # while it is empty.
 WRITTEN_OFFER_CONTACT = 'hello@vikunja.io'
+
+SENTRY_JAVA = ('io.sentry', 'sentry')
+SENTRY_NOTICES = os.path.join(TEXTS, 'sentry_third_party_notices.md')
+# {version of io.sentry:sentry: SHA-256 of its META-INF/SENTRY_THIRD_PARTY_NOTICES.md}
+SENTRY_NOTICES_SHA256 = {
+    '8.64.0': 'f4f674ecef75e797ac0d5bdaed05f23d2303a5f2c415ce82e6d8f23386810e61',
+}
+VENDORED_SECTION = re.compile(r'^## (.+?)\n(.*?)^```[^\n]*\n(.*?)^```$', re.MULTILINE | re.DOTALL)
 
 DESUGARING = re.compile(r'^\s*coreLibraryDesugaring\("([^":]+):([^":]+):([^":]+)"\)', re.MULTILINE)
 # Cronet's licence file: Chromium's licence under CHROMIUM_HEADING, then each
@@ -393,7 +415,33 @@ def bundled_components(owner, entries, texts, supplement):
     return section_items, blocks
 
 
-def render(libraries, texts, cronet_licences, supplement=None, sources=None, contact=''):
+def vendored_notices(markdown):
+    """[(name, text)] of a SENTRY_THIRD_PARTY_NOTICES.md: each `## ` heading
+    with the first fenced block under it."""
+    sections = [(name.strip(), text.strip('\n'))
+                for name, _, text in VENDORED_SECTION.findall(markdown.replace('\r\n', '\n'))]
+    if not sections or any('`' in name or not text for name, text in sections):
+        raise NoticeError('the Sentry notices have no sections, or one without a name or a licence text')
+    return sections
+
+
+def sentry_blocks(libraries, notices):
+    """The blocks of the code the locked io.sentry:sentry vendors; none
+    without it."""
+    versions = sorted(version for group, name, version in libraries if (group, name) == SENTRY_JAVA)
+    if not versions:
+        return []
+    version = versions[-1]
+    expected = SENTRY_NOTICES_SHA256.get(version)
+    if notices is None or expected is None or sha256(notices.encode('utf-8')) != expected:
+        raise NoticeError(f'{os.path.relpath(SENTRY_NOTICES, ROOT)} is not the SENTRY_THIRD_PARTY_NOTICES.md of '
+                          f'io.sentry:sentry {version}: copy it from that jar (META-INF/) and record its SHA-256 '
+                          'in SENTRY_NOTICES_SHA256')
+    owner = f'io.sentry:sentry {version}'
+    return [fenced(f'- `{name}` in {owner}', text, f'the notice of {name}') for name, text in vendored_notices(notices)]
+
+
+def render(libraries, texts, cronet_licences, supplement=None, sources=None, contact='', sentry_notices=None):
     grouped = {key: [] for key in LICENCES}
     for group, name, version in sorted(set(libraries)):
         grouped[licence_of(group, name)].append((group, name, version))
@@ -417,13 +465,17 @@ def render(libraries, texts, cronet_licences, supplement=None, sources=None, con
         sections.append(f'The other projects in {cronet[0]} whose licences are not above, as the licence files '
                         'of its AARs list them:')
         sections += component_blocks
+    vendored = sentry_blocks(libraries, sentry_notices)
+    if vendored:
+        sections.append('The code of other projects in the Sentry Java SDK, as its third-party notices list it:')
+        sections += vendored
     return '\n'.join([
         '# Third-party notices: Android libraries',
         '',
         'The Android app contains these libraries besides the Flutter engine and the',
         'Dart packages. Generated by `tool/build_android_notices.py` from',
-        '`app/android/app/gradle.lockfile`, `build.gradle.kts` and',
-        '`tool/android_notices/cronet/`; do not edit.',
+        '`app/android/app/gradle.lockfile`, `build.gradle.kts`,',
+        '`tool/android_notices/cronet/` and the Sentry notices; do not edit.',
         '',
         '\n\n'.join(sections),
         '',
@@ -585,7 +637,9 @@ def read_sources():
 def build():
     texts = {key: read(os.path.join(TEXTS, file)) for key, (_, file) in LICENCES.items()}
     supplement = {component: read(os.path.join(TEXTS, file)) for component, file in CRONET_SUPPLEMENT.items()}
-    return render(released_libraries(), texts, read_cronet(), supplement, read_sources(), WRITTEN_OFFER_CONTACT)
+    sentry_notices = read(SENTRY_NOTICES) if os.path.exists(SENTRY_NOTICES) else None
+    return render(released_libraries(), texts, read_cronet(), supplement, read_sources(), WRITTEN_OFFER_CONTACT,
+                  sentry_notices)
 
 
 def fake_aar(entries):
@@ -901,6 +955,20 @@ def self_test():
         ('a lockfile without Cronet', good, {}, without_cronet),
     ]:
         refused(lambda: refresh(aars, changes, locked), description)
+
+    notices = ('# Third-Party Software Notices\n\nIntro.\n\n---\n\n## Google GSON (Apache 2.0)\n\n'
+               '**License:** Apache\n\n### Scope\n\nVendored.\n\n```\nCopyright (C) 2010 Google Inc.\n\nApache text\n'
+               '```\n\n---\n\n## SalomonBrys — ANR-WatchDog (MIT)\n\n```\nMIT text\n```\n')
+    assert vendored_notices(notices) == [
+        ('Google GSON (Apache 2.0)', 'Copyright (C) 2010 Google Inc.\n\nApache text'),
+        ('SalomonBrys — ANR-WatchDog (MIT)', 'MIT text'),
+    ], vendored_notices(notices)
+    refused(lambda: vendored_notices('# Notices\n\nNo sections.\n'), 'Sentry notices without sections')
+    sentry = [('io.sentry', 'sentry', '8.64.0')]
+    assert sentry_blocks([('androidx.core', 'core', '1.18.0')], None) == []
+    refused(lambda: sentry_blocks(sentry, None), 'a locked Sentry without its notices')
+    refused(lambda: sentry_blocks(sentry, notices), "notices that are not the locked Sentry's")
+    refused(lambda: sentry_blocks([('io.sentry', 'sentry', '0.0.1')], notices), 'a Sentry version without a hash')
     print('Self-test passed.')
 
 

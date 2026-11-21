@@ -132,7 +132,18 @@ The texts new in this step are English until Vikunja's Crowdin brings them; the 
 - [ ] **A label created offline:** in the label picker "Create label "x"" works offline; on the Labels page the label reads "Noch nicht synchronisiert" until it is sent; a refused one is a sync problem named "The label could not be created." with its title.
 - [ ] **Scanner:** the task sheet offline in light, dark and at the largest font.
 
-### 2.10 The flows
+### 2.10 Checks of step 41
+
+On a phone in German with TalkBack and Switch Access, in a build with crash reports (`--dart-define=VIKUNJA_APP_SENTRY_DSN=…`, [D113]):
+
+The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
+
+- [ ] **The question:** after the first sign-in the dialog "Send crash reports?" opens over the shell; TalkBack reads its title first, then its text, then "No thanks" and "Allow", neither of which is preselected or looks like the default; back closes it as "No thanks"; on a tablet it keeps its readable width.
+- [ ] **The switch:** Account › App lock and privacy ends with "Send crash reports", read as one switch with its state and its subtitle, and the note below it read on its own; turning it on or off is announced.
+- [ ] **Scanner:** the dialog and the privacy page in light, dark and at the largest font.
+- [ ] **VoiceOver** (the iOS device test): the same three checks.
+
+### 2.11 The flows
 
 Each flow lists what to do, what to expect and what to record, beyond section 2.2.
 
@@ -177,3 +188,4 @@ Once, on a device (the simulator for what it can show):
 [D106]: decisions.md#d106-faster-work-in-lists-swipes-selecting-several-tasks-reschedule
 [D109]: decisions.md#d109-offline-details-stored-task-details-images-on-disk-labels-created-offline
 [D112]: decisions.md#d112-accessibility-pass-on-an-emulator-a-scan-of-the-real-screens-48-dp-chips-and-widget-targets
+[D113]: decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry

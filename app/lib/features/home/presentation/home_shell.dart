@@ -16,6 +16,7 @@ import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
+import 'package:vikunja_mobile/features/privacy/presentation/crash_reports_question.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
 import 'package:vikunja_mobile/features/session/application/session_check.dart';
@@ -42,8 +43,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dar
 /// is in front, the socket that brings the server's notifications at once,
 /// the other accounts' outboxes, the notification schedulers and session
 /// reminders of every signed-in account, the switch from one account to
-/// another, and the offer to remove an http account whose user is signed in
-/// over https too.
+/// another, the offer to remove an http account whose user is signed in
+/// over https too, and the one question about crash reports.
 class HomeShell extends ConsumerStatefulWidget {
   const new({required this.navigationShell, super.key});
 
@@ -119,8 +120,15 @@ class _HomeShellState extends ConsumerState<HomeShell>
       _checkSession();
       _syncQuietly();
       // The shell starts again after an added account's first sync.
-      if (mounted) unawaited(offerToRemoveHttpTwin(context, ref));
+      if (mounted) unawaited(_offerOnStart());
     });
+  }
+
+  /// One question after the other, the crash reports' only the first time
+  /// an account gets here.
+  Future<void> _offerOnStart() async {
+    await offerToRemoveHttpTwin(context, ref);
+    if (mounted) await askAboutCrashReportsOnce(context, ref);
   }
 
   @override

@@ -33,6 +33,11 @@ def write(path, content):
         f.write(content)
 
 
+def read(path):
+    with open(path, encoding='utf-8') as file:
+        return file.read()
+
+
 class LicenceSectionsTest(unittest.TestCase):
     def test_a_single_licence_is_the_package_s(self):
         self.assertEqual(licence_sections(BSD, 'url_launcher_ios'), [(['url_launcher_ios'], BSD)])
@@ -101,6 +106,89 @@ class CheckTest(unittest.TestCase):
 
     def test_complete(self):
         self.assertEqual(self.errors(), [])
+
+    def swift_package(self, notices, licence='MIT License\n\nCopyright (c) 2015 Sentry\n'):
+        write(os.path.join(self.root, ios_notices.PACKAGE_RESOLVED), json.dumps({'pins': [
+            {'identity': 'sentry-apple-binaries', 'kind': 'remoteSourceControl',
+             'location': 'https://github.com/getsentry/sentry-apple-binaries',
+             'state': {'revision': '3f13fd5a', 'version': '9.34.0'}},
+            {'identity': 'local', 'kind': 'localSourceControl', 'state': {'version': '1.0.0'}},
+        ], 'version': 2}))
+        write(os.path.join(self.root, ios_notices.SWIFT_CHECKOUTS, 'sentry-apple-binaries/LICENSE.md'), licence)
+        if notices is not None:
+            write(os.path.join(self.root, ios_notices.IOS_NOTICES), notices)
+
+    def test_a_swift_package_with_its_version_and_licence(self):
+        self.swift_package('- sentry-apple-binaries 9.34.0 (MIT): Sentry\n\n```text\nMIT License\n\n'
+                           'Copyright (c) 2015   Sentry\n```\n')
+        os.makedirs(os.path.join(self.app, 'Frameworks/Sentry.framework'))
+        self.assertEqual(self.errors(), [])
+
+    def test_a_swift_package_framework_without_the_package(self):
+        os.makedirs(os.path.join(self.app, 'Frameworks/Sentry.framework'))
+        self.assertEqual(self.errors(), [
+            'Frameworks/Sentry.framework comes from no pub package, so no notice on the licence page covers it'])
+
+    def test_a_swift_package_the_notices_miss(self):
+        self.swift_package(None)
+        self.assertEqual(self.errors(), [
+            f'{ios_notices.IOS_NOTICES} is missing, so the licence page names no Swift package fetched by URL'])
+        self.swift_package('- sentry-apple-binaries 9.33.0 (MIT)\n\nMIT License\n')
+        self.assertEqual(self.errors(), [
+            f'{ios_notices.IOS_NOTICES} does not list the Swift package sentry-apple-binaries 9.34.0',
+            f'{ios_notices.IOS_NOTICES} lacks the licence of the Swift package sentry-apple-binaries '
+            f'({os.path.join(self.root, ios_notices.SWIFT_CHECKOUTS, "sentry-apple-binaries/LICENSE.md")})'])
+
+    def test_reads_the_workspace_package_resolved_the_build_uses(self):
+        self.assertIn('Runner.xcworkspace', ios_notices.PACKAGE_RESOLVED)
+        self.assertIn('Runner.xcodeproj', ios_notices.PROJECT_PACKAGE_RESOLVED)
+        write(os.path.join(self.root, ios_notices.PROJECT_PACKAGE_RESOLVED), json.dumps({'pins': [
+            {'identity': 'sentry-apple-binaries', 'kind': 'remoteSourceControl',
+             'state': {'revision': '3f13fd5a', 'version': '9.34.0'}}], 'version': 2}))
+        self.assertEqual(self.errors(), [
+            f'{ios_notices.PROJECT_PACKAGE_RESOLVED} differs from {ios_notices.PACKAGE_RESOLVED}, which the build '
+            'uses: delete it or copy the workspace\'s over it'])
+
+    def test_a_project_package_resolved_equal_to_the_workspace_one(self):
+        self.swift_package('- sentry-apple-binaries 9.34.0 (MIT): Sentry\n\n```text\nMIT License\n\n'
+                           'Copyright (c) 2015 Sentry\n```\n')
+        workspace = read(os.path.join(self.root, ios_notices.PACKAGE_RESOLVED))
+        write(os.path.join(self.root, ios_notices.PROJECT_PACKAGE_RESOLVED), workspace.replace(', ', ',  '))
+        self.assertEqual(self.errors(), [])
+
+    def test_a_project_package_resolved_with_the_same_pins_in_another_format(self):
+        self.swift_package('- sentry-apple-binaries 9.34.0 (MIT): Sentry\n\n```text\nMIT License\n\n'
+                           'Copyright (c) 2015 Sentry\n```\n')
+        workspace = json.loads(read(os.path.join(self.root, ios_notices.PACKAGE_RESOLVED)))
+        project = {'originHash': 'f0e1d2c3', 'pins': list(reversed(workspace['pins'])), 'version': 3}
+        write(os.path.join(self.root, ios_notices.PROJECT_PACKAGE_RESOLVED), json.dumps(project))
+        self.assertEqual(self.errors(), [])
+
+    def test_a_project_package_resolved_from_another_location(self):
+        self.swift_package('- sentry-apple-binaries 9.34.0 (MIT): Sentry\n\n```text\nMIT License\n\n'
+                           'Copyright (c) 2015 Sentry\n```\n')
+        workspace = read(os.path.join(self.root, ios_notices.PACKAGE_RESOLVED))
+        write(os.path.join(self.root, ios_notices.PROJECT_PACKAGE_RESOLVED),
+              workspace.replace('github.com/getsentry', 'example.org/fork'))
+        self.assertEqual(self.errors(), [
+            f'{ios_notices.PROJECT_PACKAGE_RESOLVED} differs from {ios_notices.PACKAGE_RESOLVED}, which the build '
+            'uses: delete it or copy the workspace\'s over it'])
+
+    def test_an_unreadable_project_package_resolved(self):
+        self.swift_package('- sentry-apple-binaries 9.34.0 (MIT): Sentry\n\n```text\nMIT License\n\n'
+                           'Copyright (c) 2015 Sentry\n```\n')
+        write(os.path.join(self.root, ios_notices.PROJECT_PACKAGE_RESOLVED), json.dumps({'version': 3}))
+        self.assertEqual(len(self.errors()), 1)
+        self.assertIn('is unreadable', self.errors()[0])
+
+    def test_a_stale_project_package_resolved(self):
+        self.swift_package('- sentry-apple-binaries 9.34.0 (MIT): Sentry\n\n```text\nMIT License\n\n'
+                           'Copyright (c) 2015 Sentry\n```\n')
+        workspace = read(os.path.join(self.root, ios_notices.PACKAGE_RESOLVED))
+        write(os.path.join(self.root, ios_notices.PROJECT_PACKAGE_RESOLVED), workspace.replace('9.34.0', '9.33.0'))
+        self.assertEqual(self.errors(), [
+            f'{ios_notices.PROJECT_PACKAGE_RESOLVED} differs from {ios_notices.PACKAGE_RESOLVED}, which the build '
+            'uses: delete it or copy the workspace\'s over it'])
 
     def test_a_licence_missing_from_the_notices(self):
         del self.notices['aFileChooser']

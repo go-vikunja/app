@@ -15,7 +15,8 @@ remote_dump=/data/local/tmp/vikunja-e2e-ui.xml
 remote_recording=/data/local/tmp/vikunja-e2e.mp4
 # The message keys the scripts look for on the screen.
 screen_keys="previousAppNoteTitle previousAppNoteSignInAgain previousAppNoteSignIn previousAppNoteSignedIn
-previousAppNoteWidgets previousAppNoteWidgetsAfterSignIn previousAppSigningIn connectTagline tabOverview"
+previousAppNoteWidgets previousAppNoteWidgetsAfterSignIn previousAppSigningIn connectTagline tabOverview
+crashReportsQuestionTitle crashReportsQuestionDecline"
 passed=0
 failed=0
 skipped=0
@@ -565,10 +566,60 @@ confirm_wipe() {
   guard_device
 }
 
+# A build with a crash reports DSN asks about them once, over the shell
+# after the first sign-in, and its barrier hides the screen below from the
+# dump. The scripts answer No thanks.
+
+# asks_about_crash_reports <name>: in the last dump of <name>.
+asks_about_crash_reports() {
+  shows "$1" crashReportsQuestionTitle
+}
+
+crash_question_gone() {
+  ! asks_about_crash_reports "$1"
+}
+
+# shows_or_asks <name> <find arguments...>
+shows_or_asks() {
+  local name="$1"
+  shift
+  shows "$name" "$@" || asks_about_crash_reports "$name"
+}
+
+# decline_crash_reports [seconds]: when the question shows within the
+# seconds (default 4, as it comes a moment after the shell), taps No thanks.
+# Returns 1 when it did not show: a build without a DSN, or answered before.
+decline_crash_reports() {
+  local name=crash-question point
+  wait_until "${1:-4}" "$name" asks_about_crash_reports "$name" || return 1
+  if ! point="$(ui point "${out}/${name}.xml" crashReportsQuestionDecline)"; then
+    fail "the crash reports question has $(ui string en crashReportsQuestionDecline) (see ${name}.png)"
+    return 0
+  fi
+  guard_device
+  # shellcheck disable=SC2086 # the point is two words, x and y.
+  adb_ shell input tap $point || die "cannot tap on ${serial}"
+  if wait_until 10 "$name" crash_question_gone "$name"; then
+    pass "a build with crash reports asked once; $(ui string en crashReportsQuestionDecline) declined them"
+  else
+    fail "the crash reports question went away after $(ui string en crashReportsQuestionDecline) (see ${name}.png)"
+  fi
+}
+
+# expect_shell <description> <seconds> <name> <find arguments...>:
+# expect_screen for the shell, past the crash reports question.
+expect_shell() {
+  local description="$1" seconds="$2" name="$3" wait=0
+  shift 3
+  wait_until "$seconds" "$name" shows_or_asks "$name" "$@" || true
+  if decline_crash_reports; then wait=30; fi
+  expect_screen "$description" "$wait" "$name" "$@"
+}
+
 # expect_signed_in_after_restart <name>
 expect_signed_in_after_restart() {
   restart_app
-  expect_screen "still signed in after a force-stop and a new start" 60 "$1" "${synced[@]}"
+  expect_shell "still signed in after a force-stop and a new start" 60 "$1" "${synced[@]}"
   expect_absent "no Connect screen after the new start" "$1" connectTagline
 }
 

@@ -3,6 +3,7 @@
 
   python3 -I tool/e2e/ui.py find DUMP [--lang en|de] TEXT...
   python3 -I tool/e2e/ui.py fields [--enabled] DUMP
+  python3 -I tool/e2e/ui.py point DUMP TEXT...
   python3 -I tool/e2e/ui.py has-app-text DUMP
   python3 -I tool/e2e/ui.py string LANG KEY
   python3 -I tool/e2e/ui.py keys KEY...
@@ -12,7 +13,10 @@
 find exits 0 when a node of the app shows one of the TEXTs: a message key of
 app/lib/l10n/arb in English and German (or only --lang), or "=" and a literal
 text. A message counts by its longest part without placeholders, dashes,
-apostrophes and ellipses, which the screen may render differently.
+apostrophes and ellipses, which the screen may render differently. A message
+the German file lacks counts by its English text, which the app then shows.
+point prints the center "x y" of the first node of the app that find would
+match, for `adb shell input tap`, and exits 1 when there is none.
 fields prints the value of each text field (or each one that takes input)
 and exits 1 when there is none; has-app-text exits 0 when any node of the
 app has a text (Flutter builds its accessibility tree only once asked, so
@@ -33,6 +37,8 @@ import xml.etree.ElementTree as ElementTree
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ARB = os.path.join(ROOT, 'app', 'lib', 'l10n', 'arb', 'app_{}.arb')
 LANGUAGES = ('en', 'de')
+TEMPLATE = 'en'
+BOUNDS = re.compile(r'^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$')
 PACKAGE = 'io.vikunja.app'
 BREAKS = re.compile('\\{[^}]*\\}|[—–\'’…“”„]')
 MIN_FRAGMENT = 6
@@ -47,11 +53,17 @@ def normal(text):
     return ' '.join(text.split())
 
 
-def message(lang, key):
+def arb(lang):
     if lang not in _arb_cache:
-        with open(ARB.format(lang), encoding='utf-8') as arb:
-            _arb_cache[lang] = json.load(arb)
-    value = _arb_cache[lang].get(key)
+        with open(ARB.format(lang), encoding='utf-8') as file:
+            _arb_cache[lang] = json.load(file)
+    return _arb_cache[lang]
+
+
+def message(lang, key):
+    value = arb(lang).get(key)
+    if value is None and lang != TEMPLATE and not key.startswith('@'):
+        value = arb(TEMPLATE).get(key)
     if not isinstance(value, str) or key.startswith('@'):
         raise UsageError(f'no message {key} in app_{lang}.arb')
     return value
@@ -80,16 +92,14 @@ def app_nodes(path):
 
 
 def app_texts(path):
-    texts = []
-    for node in app_nodes(path):
-        for attribute in ('text', 'content-desc'):
-            value = normal(node.get(attribute) or '')
-            if value:
-                texts.append(value)
-    return texts
+    return [text for node in app_nodes(path) for text in node_texts(node)]
 
 
-def find(path, arguments):
+def node_texts(node):
+    return [value for value in (normal(node.get(attribute) or '') for attribute in ('text', 'content-desc')) if value]
+
+
+def wanted_from(arguments):
     languages = LANGUAGES
     if arguments[:1] == ['--lang']:
         if len(arguments) < 2 or arguments[1] not in LANGUAGES:
@@ -97,9 +107,24 @@ def find(path, arguments):
         languages, arguments = (arguments[1],), arguments[2:]
     if not arguments:
         raise UsageError('find needs a text')
-    wanted = wanted_texts(arguments, languages)
+    return wanted_texts(arguments, languages)
+
+
+def find(path, arguments):
+    wanted = wanted_from(arguments)
     texts = app_texts(path)
     return any(text in shown for text in wanted for shown in texts)
+
+
+def point(path, arguments):
+    """The center of the first node of the app showing one of the texts."""
+    wanted = wanted_from(arguments)
+    for node in app_nodes(path):
+        bounds = BOUNDS.match(node.get('bounds') or '')
+        if bounds and any(text in shown for text in wanted for shown in node_texts(node)):
+            left, top, right, bottom = map(int, bounds.groups())
+            return (left + right) // 2, (top + bottom) // 2
+    return None
 
 
 def fields(path, enabled_only=False):
@@ -136,6 +161,10 @@ def self_test():
             '<node class="android.widget.EditText" package="io.vikunja.app" enabled="false" '
             'text="http://localhost:34527"/>'
             '<node class="android.widget.EditText" package="io.vikunja.app" enabled="true" text=""/>'
+            '<node class="android.widget.Button" package="com.android.systemui" text="No thanks" '
+            'bounds="[0,0][10,10]"/>'
+            '<node class="android.widget.Button" package="io.vikunja.app" content-desc="No thanks" '
+            'bounds="[100,1800][420,1944]"/>'
             '</hierarchy>')
     with tempfile.TemporaryDirectory() as folder:
         path = os.path.join(folder, 'dump.xml')
@@ -146,12 +175,22 @@ def self_test():
         assert not find(path, ['--lang', 'en', 'previousAppNoteTitle'])
         assert not find(path, ['previousAppNoteSignedIn'])
         assert find(path, ['=localhost:34527'])
+        assert point(path, ['crashReportsQuestionDecline']) == (260, 1872)
+        assert point(path, ['=localhost:34527']) is None, 'a node without bounds'
+        assert point(path, ['crashReportsQuestionAllow']) is None
+        with contextlib.redirect_stdout(io.StringIO()) as printed:
+            assert main(['point', path, 'crashReportsQuestionDecline']) == 0
+        assert printed.getvalue() == '260 1872\n'
         assert fields(path) == ['http://localhost:34527', '']
         assert fields(path, enabled_only=True) == ['']
         with contextlib.redirect_stdout(io.StringIO()):
             assert main(['fields', '--enabled', path]) == 0
             assert main(['fields', os.path.join(folder, 'missing.xml')]) == 1
         assert app_texts(os.path.join(folder, 'missing.xml')) == []
+    _arb_cache['de'] = {'onlyEnglish': None}
+    _arb_cache['en'] = {'onlyEnglish': 'Only in English'}
+    assert message('de', 'onlyEnglish') == 'Only in English', 'falls back to the English as the app does'
+    _arb_cache.clear()
     titles = demo_titles()
     assert 'Pay the rent' in titles and 'Miete überweisen' in titles and 'Send the kickoff notes' not in titles
     print('ui.py self-test passed')
@@ -164,6 +203,12 @@ def main(arguments):
     command, rest = (arguments[0], arguments[1:]) if arguments else ('', [])
     if command == 'find' and rest:
         return 0 if find(rest[0], rest[1:]) else 1
+    if command == 'point' and len(rest) >= 2:
+        found = point(rest[0], rest[1:])
+        if found is None:
+            return 1
+        print(*found)
+        return 0
     if command == 'fields' and rest and len(rest) == 1 + (rest[0] == '--enabled'):
         values = fields(rest[-1], rest[0] == '--enabled')
         for value in values:

@@ -8,4 +8,13 @@
             <certificates src="user" />
         </trust-anchors>
     </base-config>
+    <!-- Crash reports (D113) go to Sentry over https only, which a CA the
+         user or a device policy installed cannot read.
+         tool/check_exported_components.py checks this. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">sentry.io</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
 </network-security-config>
