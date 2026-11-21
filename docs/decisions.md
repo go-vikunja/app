@@ -4370,7 +4370,7 @@ Open:
 Step 40w takes the accessibility part of finding P6 of the code review (2026-11-17): TalkBack, Switch Access and the Accessibility Scanner on an emulator, VoiceOver with the iOS device test.
 
 - **TalkBack and Switch Access move to the device phase** (owner, 2026-11-20), together with VoiceOver ([accessibility checklist](accessibility-checklist.md), [Q19](open-questions.md#q19-device-setup-for-the-manual-talkback-pass)): TalkBack ignores the touch and key events an agent sends over adb ([D68](#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep)), so the 15 flows of the checklist need the owner at the controls, about two to three hours.
-- **No Accessibility Scanner** (owner, 2026-11-20): it needs a Google sign-in on the emulator. In its place the release build was scanned on the project's emulator `Vikunja_Screens` (Android 16, 420 dpi) from `uiautomator` dumps and screenshots, the way the Scanner checks: a tappable node without a name of its own or of a child, a tap target below 48 × 48 dp (one cut off by the screen or its scroll view excepted), text below 4.5:1 (3:1 when large) and two targets with the same name and place. The screens: the Overview, Upcoming, Projects, a project's list, table and Gantt views, the task sheet and its edit page, quick add, search, the account switcher, the inbox, the Account tab with its settings pages (account settings, labels, teams, trash, widgets, reminders, due dates, connection, the language, About and the support details), the description editor and both home-screen widgets; English and light, then German and dark. The Kanban board was not scanned: the account's session had ended with the test server's restart and the board was not stored on the device.
+- **No Accessibility Scanner** (owner, 2026-11-20), and since 2026-11-21 not on a device either, so the checklist no longer asks for it (owner): it needs a Google sign-in on the emulator. In its place the release build was scanned on the project's emulator `Vikunja_Screens` (Android 16, 420 dpi) from `uiautomator` dumps and screenshots, the way the Scanner checks: a tappable node without a name of its own or of a child, a tap target below 48 × 48 dp (one cut off by the screen or its scroll view excepted), text below 4.5:1 (3:1 when large) and two targets with the same name and place. The screens: the Overview, Upcoming, Projects, a project's list, table and Gantt views, the task sheet and its edit page, quick add, search, the account switcher, the inbox, the Account tab with its settings pages (account settings, labels, teams, trash, widgets, reminders, due dates, connection, the language, About and the support details), the description editor and both home-screen widgets; English and light, then German and dark. The Kanban board was not scanned: the account's session had ended with the test server's restart and the board was not stored on the device.
 - **Found and fixed:**
   - The task sheet's project chip, quick add's recognised parts and suggestions and the filter field's suggestions were 40 dp tall: `VisualDensity.compact` lowers a chip's tap target with its look. They take the standard density now, 48 dp, and look the same, as the extra height is the chip's transparent tap padding. The route sweep had not seen them: Flutter's tap-target guideline skips nodes marked as links, as the project chip is, and no scenario shows suggestions or recognised parts. Their tests now check the chips' height (`project_icon_sites_test.dart`, `magic_composer_test.dart`, `filter_field_test.dart`); each fails with the compact density.
   - The Tasks widget's Done box took taps only on Glance's own 32 dp checkbox, which had no name: the name and the 48 dp size sat on the frame around it ([D63](#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios)). It is a 48 dp button with Material's `check_box_outline_blank`, named after its task, now; `MarkDoneAction` still ignores an untick from a widget drawn before the update, until it is drawn again.
@@ -4386,7 +4386,7 @@ Limits:
 
 ## D113: Opt-in crash reports through Vikunja's Sentry
 
-*In review since 2026-11-21 (step 41), the owner's decisions of 2026-11-21 where marked.*
+*Accepted 2026-11-21 (step 41), the owner's decisions of 2026-11-21 where marked.*
 
 Step 41 answers [Q12](open-questions.md#q12-crash-reporting), deferred since 2026-10-09: the owner asked for crash reports through Sentry, sent only after the user's consent and turned off at any time (owner, 2026-11-21). Until then the app had no crash reporting ([D20](#d20-scope-cuts-and-mobile-forms-of-desktop-features)).
 
@@ -4502,7 +4502,7 @@ Open:
 
 ## D114: Cleanup before the move
 
-*In review since 2026-11-21 (step 42), the owner's decisions of 2026-11-21 where marked.*
+*Accepted 2026-11-21 (step 42), the owner's decisions of 2026-11-21 where marked.*
 
 Step 42 removes what the move into go-vikunja/app ([D87](#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)) should not carry: leftovers of the development builds, dead code, unused fixtures and notes that meant something only while the app was built step by step. What each step did stays in the git history.
 
@@ -4533,4 +4533,3 @@ Limits:
 
 Open:
 - Whether the Crowdin rehearsal's clean-up is done ([beta.md](beta.md#the-crowdin-rehearsal)).
-- Whether the accessibility checklist keeps the Accessibility Scanner's items or replaces them with the scan of [D112](#d112-accessibility-pass-on-an-emulator-a-scan-of-the-real-screens-48-dp-chips-and-widget-targets) ([accessibility checklist](accessibility-checklist.md)).

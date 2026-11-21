@@ -2,9 +2,9 @@
 
 This is the manual accessibility pass of the Vikunja app, the Android and iOS client for self-hosted Vikunja. It goes with the automated checks of step 36a ([D68]): the route sweep, the 3.12× text check and the static rules in `app/test/a11y/`. The sweep covers what a widget test can see; this pass covers what only a screen reader, a switch and real fonts on a device show. The yardstick is WCAG 2.2 AA with the deviations listed in [D68].
 
-A sign-off goes through section 1 on the tree being signed off, section 2 on Android (TalkBack, Switch Access, Accessibility Scanner) for every area the change touched (all of it before a release), and section 3 once in the final iOS phase (VoiceOver). The results and the date go into the step's decision: per flow, what TalkBack (German and English), Switch Access and the Scanner showed, and each finding with its screen and severity, fixed or a follow-up.
+A sign-off goes through section 1 on the tree being signed off, section 2 on Android (TalkBack, Switch Access) for every area the change touched (all of it before a release), and section 3 once in the final iOS phase (VoiceOver). The results and the date go into the step's decision: per flow, what TalkBack (German and English) and Switch Access showed, and each finding with its screen and severity, fixed or a follow-up.
 
-**Status:** sections 2 and 3 not yet run. On 2026-10-28 the pass could not be performed on the emulator ([D68]); since step 40w TalkBack and Switch Access run in the device phase together with VoiceOver, and the Accessibility Scanner is not used: in its place step 40w scanned the release build's screens on an emulator from `uiautomator` dumps and fixed what it found ([D112]; owner, 2026-11-20; [Q19]). *Note 2026-11-02, step 37d ([D77]): both passes come before 1.0.0 ([beta.md](beta.md#before-100)); App Store Connect's Accessibility Nutrition Labels stay blank until they confirm a feature ([store-listing.md](store-listing.md#app-store-connect)).*
+**Status:** sections 2 and 3 not yet run. On 2026-10-28 the pass could not be performed on the emulator ([D68]); since step 40w TalkBack and Switch Access run in the device phase together with VoiceOver, and the Accessibility Scanner is not used, on the emulator or on a device: in its place step 40w scanned the release build's screens on an emulator from `uiautomator` dumps and fixed what it found ([D112]; owner, 2026-11-20 and 2026-11-21; [Q19]). *Note 2026-11-02, step 37d ([D77]): both passes come before 1.0.0 ([beta.md](beta.md#before-100)); App Store Connect's Accessibility Nutrition Labels stay blank until they confirm a feature ([store-listing.md](store-listing.md#app-store-connect)).*
 
 ## 1. Automated
 
@@ -25,7 +25,7 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 
 ### 2.1 Setup
 
-- **Device:** the Pixel_Tablet emulator (Android 16, Google Play image). TalkBack 16 came preinstalled; Switch Access is part of the same Android Accessibility Suite. Accessibility Scanner comes from Play, which needs the owner's Google sign-in. A phone with TalkBack works as well.
+- **Device:** the Pixel_Tablet emulator (Android 16, Google Play image). TalkBack 16 came preinstalled; Switch Access is part of the same Android Accessibility Suite. A phone with TalkBack works as well.
 - **A person at the controls.** TalkBack ignores touch and key events that `adb` injects (its focus does not move, and its Alt+arrow shortcuts sent that way do nothing), and logging its node tree needs a four-finger gesture. On the emulator, use the host keyboard with TalkBack's keyboard shortcuts; check the keymap first (TalkBack settings › Advanced › Keyboard shortcuts) and note it in the results.
 - **Build:** the release APK, installed with `adb install -r`; the project's emulator rules apply (start lean, one emulator, stop it afterwards).
 - **Server and data:** the local test server, seeded with `tool/seed_demo_data.py` (German by default, `--reset --lang en` for the English flows; since step 37c it also sets up the Kanban view with a done column); make sure it has: an overdue task and a task due later today; a description with headings, a link and a checklist; a Kanban view with a done column; a Gantt view with one *blocking* and one *precedes* relation between tasks in range; two accounts; an API token, a CalDAV token and a second session (signed in on the web).
@@ -42,7 +42,6 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 - **Live regions** speak: the offline banner, sync errors, form errors and the app's announcements.
 - **No time limits:** a snackbar with Undo stays while TalkBack is on.
 - **Switch Access** (auto-scan, two host keys as Select and Next): every action of the flow can be reached.
-- **Accessibility Scanner** on each main screen of the flow: targets, contrast and labels with real rendering, platform views and widgets included.
 
 ### 2.3 Checks of step 36a
 
@@ -63,29 +62,29 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 
 ### 2.4 Checks of step 36c
 
-On the tablet emulator in landscape (1280 × 800), with TalkBack, Switch Access and the Scanner ([D70]):
+On the tablet emulator in landscape (1280 × 800), with TalkBack and Switch Access ([D70]):
 
 - [ ] **Open:** activate a row of the Overview and of a project's list. The task opens in the pane beside the list; TalkBack's focus moves into the pane; nothing is announced beyond what opening the sheet says on a phone; back on the list, the row reads "ausgewählt" ("selected"), and so do a Kanban card and a Gantt row in their views.
 - [ ] **Order and headings:** swiping goes through the list, then the pane; the Headings control reaches the screen's title, its section headers, the task's title (level 1) and the pane's sections. The pane's menu reads "Mehr zu „*Titel*“", the project page's menu "Mehr".
 - [ ] **A task inside the pane:** activate a related task or a subtask in the pane. It opens in the same place, focus stays in the pane, and the back arrow reads "Zurück zu „*Titel*“" once; activating it returns to the task before.
 - [ ] **Close:** activate "Details schließen". The pane closes and focus returns to the row that opened the task; record where it lands when that row has scrolled away.
-- [ ] **Switch Access** reaches the rows, the pane's back arrow, its close button and its menu; the Scanner finds nothing new on the screen with the pane.
+- [ ] **Switch Access** reaches the rows, the pane's back arrow, its close button and its menu.
 
 ### 2.5 Checks of step 36g
 
-On the tablet emulator in landscape (1280 × 800), with TalkBack, Switch Access and the Scanner, signed in to an account with a favourite project and a saved filter ([D82]):
+On the tablet emulator in landscape (1280 × 800), with TalkBack and Switch Access, signed in to an account with a favourite project and a saved filter ([D82]):
 
 - [ ] **Order and regions:** open a project and a task in its pane. Swiping goes through the tree's column, then the project, then the pane, each as a region of its own; nothing of one is read inside another.
 - [ ] **Headings:** the Headings control reaches "Projekte" (the title of the tree's column), then the project's title, then the task's title, each at level 1, with their sections at level 2. With nothing open, the page beside the tree's column has "Kein Projekt geöffnet" at level 1, and going back from a project to it, or selecting "Projekte" while a project is open, announces "Kein Projekt geöffnet" as the screen's name.
 - [ ] **Marked rows:** the open project's rows in the tree's column read "ausgewählt", for a favourite project both its row under "Favoriten" and its row in the tree; so do "Favorisierte Aufgaben" and a saved filter's rows while they are open. No other row does.
 - [ ] **Another project:** activate another project in the tree's column. Record where TalkBack's focus lands and what is read; the middle shows the new project, the pane is closed, and the new project's rows read "ausgewählt".
 - [ ] **Back:** with a task in the pane, back closes the pane, then leaves the project for "Kein Projekt geöffnet", then goes to "Überblick". Beside the tree's column the project has no back arrow.
-- [ ] **Switch Access** reaches the rows of the tree's column, their expand buttons and its app bar (search, "Neues Projekt", the menu, the account switcher), then the project's controls; the Scanner finds nothing new with the tree's column, the project and the pane side by side.
+- [ ] **Switch Access** reaches the rows of the tree's column, their expand buttons and its app bar (search, "Neues Projekt", the menu, the account switcher), then the project's controls.
 - [ ] **A guest:** signed in through a link share, the tree gets no column; the shared project takes the room and has its back arrow.
 
 ### 2.6 Checks of step 37k
 
-On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to an account with a project you may change and a board whose columns include two of the same title ([D84]); the pane once more on the tablet emulator in landscape:
+On a phone in German, with TalkBack and Switch Access, signed in to an account with a project you may change and a board whose columns include two of the same title ([D84]); the pane once more on the tablet emulator in landscape:
 
 - [ ] **The rows:** open a task with a due date, a priority and a reminder. "Fällig am", "Priorität" and "Erinnerungen" each read as one button with their value, and TalkBack's hint names the action ("Fälligkeitsdatum ändern", "Priorität ändern", "Erinnerungen bearbeiten"); start date, progress and repeat are no buttons. In a project you may only read, and in an archived one, no row is a button.
 - [ ] **The add row:** open a task without due date, priority, reminders and labels. The attribute card's last row reads "Fälligkeitsdatum festlegen", "Priorität festlegen", "Erinnerung hinzufügen" and "Label hinzufügen", four buttons, each holding the word it shows. At the largest font the row wraps inside the card and nothing is cut off.
@@ -94,23 +93,23 @@ On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to
 - [ ] **The reminders sheet:** activate "Erinnerungen". The sheet takes focus with "Erinnerungen" as its heading; each reminder reads its wording, edit and remove; adding, changing and removing are each said once ("Erinnerung hinzugefügt", "Erinnerung geändert", "Erinnerung entfernt"); the same reminder again reads "Diese Erinnerung gibt es schon." under the title, and is said. "Fertig" closes it.
 - [ ] **Copy link and Share:** in the sheet's menu ("Mehr", in the pane "Mehr zu „*Titel*“") "Link kopieren" is confirmed by the system on Android 13 and later, else by "Link kopiert" in the sheet; "Teilen" opens the system's share sheet, and with the app lock on the app is not locked on return. In a project you may only read, the menu holds just these two.
 - [ ] **Move to column:** open a card from the board; Mehr › "In Spalte verschieben …" opens a list with "In Spalte verschieben" as its heading, the other columns only, the two of the same title numbered ("*Titel* (2)"), a full column read as unavailable with "Voll" under it, and the done hint under the done column. A pick says "Nach *Spalte* verschoben" once and the sheet stays. On the board, a drop into one of the two same-titled columns says its numbered name.
-- [ ] **Keyboard and focus:** with the comment field focused, open an editor and close it; the keyboard stays down. Switch Access reaches every row, the add row's buttons, "Labels ändern" and the menu's items; the Scanner finds nothing new on the sheet, the lists and the reminders sheet.
+- [ ] **Keyboard and focus:** with the comment field focused, open an editor and close it; the keyboard stays down. Switch Access reaches every row, the add row's buttons, "Labels ändern" and the menu's items.
 - [ ] **The pane:** on the tablet in landscape, open a card into the pane. The lists and the reminders sheet open over the shell with the pane under them; after a pick, focus returns to the row in the pane; "In Spalte verschieben …" is in the pane's menu.
 
 ### 2.7 Checks of step 37l
 
-On a phone in German, with TalkBack, Switch Access and the Scanner, signed in to a user account and a guest ([D20], [D38]):
+On a phone in German, with TalkBack and Switch Access, signed in to a user account and a guest ([D20], [D38]):
 
 - [ ] **The row:** Account › the version › "Über die App". After "Hilfe und Fehler melden" comes "Support-Details" with "Was du beilegen kannst, wenn du einen Fehler meldest; du siehst es, bevor du es teilst", one button. Signed out, the row is there too (the button under the Connect screen's form).
 - [ ] **The page:** it opens full screen with "Support-Details" as its level-1 heading and a close button; while the details are collected the spinner says "Support-Details", and "Teilen" is not available until the text is there. The note, the switch "Serveradressen anzeigen" with "Sonst erscheinen sie als <server-1>, <server-2> und so weiter" (TalkBack reads it as a switch with its state), then the text. Turning the switch on changes the text in place; leaving and opening the page again finds it off. Record how TalkBack reads the monospaced text block (by line, or as one long text) and whether swiping through it is usable.
-- [ ] **Share:** "Teilen" opens the system's share sheet; with the app lock on, the app is not locked on return. Switch Access reaches the close button, "Teilen" and the switch; the Scanner finds nothing new on the page, also at the largest font, where the text wraps inside its card.
+- [ ] **Share:** "Teilen" opens the system's share sheet; with the app lock on, the app is not locked on return. Switch Access reaches the close button, "Teilen" and the switch; at the largest font the text wraps inside its card.
 - [ ] **Quick add offline:** airplane mode on until the offline banner shows, then "Neue Aufgabe" and type `Einkaufen *neuesLabel`. The new label's chip reads "neuesLabel · neu", and TalkBack "Neues Label neuesLabel, wird beim Hinzufügen erstellt". After "Hinzufügen" the task carries the label at once; since step 40m it is created on the device and sent when the connection is back ([D109]).
 - [ ] **Quick add as a guest:** switch to the guest; the same text gives the chip "neuesLabel · bleibt im Titel" and TalkBack "Das Label neuesLabel gibt es nicht; es bleibt im Titel". The help (`?`) says under Labels that as a guest you can't create new ones.
 - [ ] **Signing straight back in:** mark a task done from a reminder notification while the server cannot be reached, then at once sign that account out and sign in to it again from the Connect screen; the wait shows only while the notification's Done still holds the account's data, so record whether it was seen. The button reads "Abmeldung wird abgeschlossen …" while it waits (TalkBack reads it once it has focus), and back leaves the screen. If the wait gives up after 30 s, the error card reads "Die Abmeldung läuft noch" with its explanation and suggestion and is read when it appears.
 
 ### 2.8 Checks of step 40o
 
-On a phone in German, with TalkBack, Switch Access and the Scanner ([D106]):
+On a phone in German, with TalkBack and Switch Access ([D106]):
 
 The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
 
@@ -118,11 +117,10 @@ The texts new in this step are English until Vikunja's Crowdin brings them; the 
 - [ ] **Selecting:** "Select" on a row; the bar says how many are selected (spoken as it changes), each row reads as checked or not checked, a read-only task as unavailable; "Select all"; the bottom bar's five buttons by name; Back ends it and "Selection ended" is spoken; with a sheet of the bar open, Back closes only the sheet. Switch Access reaches the close button, "Select all" and every bottom button. Record where focus goes after "Select" and after an action ends the selection.
 - [ ] **Reschedule:** the Overdue heading reads as a heading, then "Reschedule" as a button; at the largest font it sits on its own line below the heading, nothing cut off. The sheet takes focus with its title.
 - [ ] **Swipes without a screen reader:** a slow drag shows the strip and its name, crossing the threshold ticks, letting go before it does nothing; on a board and in a timeline nothing swipes.
-- [ ] **Scanner:** the selection bars and the Overdue heading in light, dark and at the largest font.
 
 ### 2.9 Checks of step 40m
 
-On a phone in German, with TalkBack and the Scanner, offline after the task was opened once online ([D109]):
+On a phone in German, with TalkBack, offline after the task was opened once online ([D109]):
 
 The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
 
@@ -130,7 +128,6 @@ The texts new in this step are English until Vikunja's Crowdin brings them; the 
 - [ ] **Actions that need a connection:** in an attachment's menu "Delete attachment" (and the cover) and in a comment's menu Edit and Delete read as unavailable with "This needs a connection to the server.", greyed, never red; Open, Share and Save stay available.
 - [ ] **Images:** an image in the description and an avatar seen online show offline after the app was closed.
 - [ ] **A label created offline:** in the label picker "Create label "x"" works offline; on the Labels page the label reads "Noch nicht synchronisiert" until it is sent; a refused one is a sync problem named "The label could not be created." with its title.
-- [ ] **Scanner:** the task sheet offline in light, dark and at the largest font.
 
 ### 2.10 Checks of step 41
 
@@ -140,8 +137,7 @@ The texts new in this step are English until Vikunja's Crowdin brings them; the 
 
 - [ ] **The question:** after the first sign-in the dialog "Send crash reports?" opens over the shell; TalkBack reads its title first, then its text, then "No thanks" and "Allow", neither of which is preselected or looks like the default; back closes it as "No thanks"; on a tablet it keeps its readable width.
 - [ ] **The switch:** Account › App lock and privacy ends with "Send crash reports", read as one switch with its state and its subtitle, and the note below it read on its own; turning it on or off is announced.
-- [ ] **Scanner:** the dialog and the privacy page in light, dark and at the largest font.
-- [ ] **VoiceOver** (the iOS device test): the same three checks.
+- [ ] **VoiceOver** (the iOS device test): the same two checks.
 
 ### 2.11 The flows
 
@@ -161,7 +157,7 @@ Each flow lists what to do, what to expect and what to record, beyond section 2.
 12. **Description editor.** "Beschreibung bearbeiten" from the sheet; move TalkBack into the editor, type, use the toolbar (bold, list, checklist), type `@` for the mention bar, go back to the native page, save. *Expect:* TalkBack enters the WebView and reads the editable area in the app's language; toolbar buttons with their names and toggled state; mention suggestions announced; leaving the WebView reaches the toolbar or the app bar. *Record:* **yes or no: does TalkBack enter the WebView**, and how; any focus trap. If it does not, a plain-text description field for screen-reader users becomes a follow-up.
 13. **App lock.** Account › Privatsphäre › App-Sperre on (with a device PIN); leave the app past the timeout; return; unlock. *Expect:* the lock screen names itself ("Vikunja ist gesperrt"), "Entsperren" has focus, nothing behind is reachable; after the unlock focus is in the app and nothing stale is spoken. *Record:* whether the privacy cover is silent in the app switcher.
 14. **Account switcher and sign-out.** Account tab › the accounts row; switch to the second account; open "Abmelden", cancel, open it again. *Expect:* the sheet takes focus; accounts read with name and host, the active one marked; "Zu *Name* gewechselt" announced; the dialog takes focus with its title and text. *Record:* focus after the sheet and the dialog close.
-15. **Home-screen widgets.** Add the Tasks and the Quick add widget; read a row, activate its Done checkbox and "Neue Aufgabe"; check the smallest size at the largest font. *Expect:* each row one stop; the Done checkbox named after the task; the count read; nothing clipped. *Record:* the Scanner on the home screen.
+15. **Home-screen widgets.** Add the Tasks and the Quick add widget; read a row, activate its Done checkbox and "Neue Aufgabe"; check the smallest size at the largest font. *Expect:* each row one stop; the Done checkbox named after the task; the count read; nothing clipped.
 
 ## 3. Final iOS phase
 
