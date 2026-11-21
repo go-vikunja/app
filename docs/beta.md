@@ -130,14 +130,12 @@ test "$(git rev-parse 'origin/main^1')" = "$(git rev-parse 'legacy-final^{commit
   ```
 
 - The GitLab project gets a description that points to https://github.com/go-vikunja/app and is archived (Settings > General > Advanced > Archive project). Since step 38f none of the app's pages links it: the only ones that did, on the owner's former website, are offline.
-- The test repository of step 38c is deleted or made private, once [the Crowdin rehearsal](#the-crowdin-rehearsal) has used it.
+- The test repository of step 38c is deleted or made private.
 - The result goes into [D87], which settles D83's open point on how the two histories are joined.
 
 ### The Crowdin rehearsal
 
 *Done on 2026-11-16 ([D88] has the results): the integration put the source into a version branch `main` beside the root file, so the German upload took `-b main`; its pull request had no `[ci skip]`, got new commits on later syncs instead of a force-push and was green once the German was in; the first export reformats every ARB file once; and an English change drops that text's translations until they are approved again. The run after the re-approval was green.*
-
-**Still open:** delete the rehearsal's Crowdin token (Account Settings > API) and its test project, which removes its integration, and revoke Crowdin's access under the GitHub account's Settings > Applications, as it reaches every repository the account can write to.
 
 ### The translations on Crowdin
 
