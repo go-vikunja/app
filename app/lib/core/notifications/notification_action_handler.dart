@@ -62,9 +62,9 @@ Future<void> handleNotificationAction(NotificationResponse response) async {
   }
 }
 
-/// Session managers that never rotate the refresh token (D26, architecture
-/// §5.8): a stored access token that is still valid is used, otherwise the
-/// op stays queued for the app to send.
+/// Session managers that never rotate the refresh token (D26): a stored
+/// access token that is still valid is used, otherwise the op stays queued
+/// for the app to send.
 final List<Override> backgroundActionOverrides = [
   sessionManagersProvider.overrideWith(_nonRefreshingSessionManagers),
   runsHeadlessProvider.overrideWithValue(true),

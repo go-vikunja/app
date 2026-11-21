@@ -121,7 +121,7 @@ void main() {
     );
   });
 
-  test('a snooze is set and cleared without touching the fire time', () async {
+  test('a snooze is set without touching the fire time', () async {
     await db.scheduledNotificationsDao.replaceAll([
       row('1:due', osId: 5, taskId: 1),
     ]);
@@ -132,15 +132,10 @@ void main() {
       until: until,
       originalFireAt: monday,
     );
-    var stored = (await db.scheduledNotificationsDao.find('1:due'))!;
+    final stored = (await db.scheduledNotificationsDao.find('1:due'))!;
     expect(stored.fireAt, monday);
     expect(stored.snoozedUntil, until);
     expect(stored.snoozeOriginalFireAt, monday);
-
-    await db.scheduledNotificationsDao.clearSnooze('1:due');
-    stored = (await db.scheduledNotificationsDao.find('1:due'))!;
-    expect(stored.snoozedUntil, isNull);
-    expect(stored.snoozeOriginalFireAt, isNull);
   });
 
   test('rows go by task ids or all at once', () async {

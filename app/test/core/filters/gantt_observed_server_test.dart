@@ -17,10 +17,10 @@ import '../../helpers/test_database.dart';
 import '../../helpers/zero_random.dart';
 
 // The answers Vikunja 2.7.0 gave the web's exact Gantt request on
-// 2026-10-26 (step 29's probe, `observed_server` in gantt-vectors.json),
-// identical on v1 and v2: every task the server listed, the matching ones
-// and their subtasks (`expand=subtasks`). An empty zone is the server's
-// own, GMT, which was also the probe user's timezone setting.
+// 2026-10-26 (the Gantt probe, D61), identical on v1 and v2: every task
+// the server listed, the matching ones and their subtasks
+// (`expand=subtasks`). An empty zone is the server's own, GMT, which was
+// also the probe user's timezone setting.
 const _project = 7;
 const _ganttView = 71;
 

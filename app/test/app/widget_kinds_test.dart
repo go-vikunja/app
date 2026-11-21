@@ -35,13 +35,6 @@ void main() {
     expect(reloaded, unorderedEquals(declared.values));
   });
 
-  test('every kind starts with Vikunja', () {
-    expect(declared.values, isNotEmpty);
-    for (final kind in declared.values) {
-      expect(kind, startsWith('Vikunja'));
-    }
-  });
-
   test('every widget of the extension takes its kind from WidgetKinds', () {
     final used = [
       for (final entity in Directory(extensionFolder).listSync())

@@ -54,4 +54,4 @@ final class DescriptionDraftsProvider
   }
 }
 
-String _$descriptionDraftsHash() => r'9b3c592ddbd129b08313a9cf0313697047b0f437';
+String _$descriptionDraftsHash() => r'25d2be9b60ac62b054280bb654d80730cd0e4fe2';

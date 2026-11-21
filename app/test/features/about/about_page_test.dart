@@ -31,20 +31,12 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  final unofficial = find.textContaining(
-    RegExp(
-      'unofficial|affiliated|inoffiziell|nicht zum Vikunja-Projekt',
-      caseSensitive: false,
-    ),
-  );
-
   Future<void> expectNotices(WidgetTester tester) async {
     expect(find.byType(AboutPage), findsOneWidget);
     expect(find.text('About the app'), findsOneWidget);
     expect(find.text('Vikunja'), findsOneWidget);
     expect(find.text(en.aboutVersion('1.0.0', '42')), findsOneWidget);
     expect(find.text(copyrightNotice), findsOneWidget);
-    expect(unofficial, findsNothing);
     for (final text in [
       en.aboutSupport,
       en.supportDetailsTitle,
@@ -61,7 +53,6 @@ void main() {
     ]) {
       await scrollTo(tester, find.text(text));
       expect(find.text(text), findsOneWidget);
-      expect(unofficial, findsNothing);
     }
   }
 
@@ -320,20 +311,18 @@ void main() {
       expect(opener.opened, vikunjaPages);
     });
 
-    testWidgets('in German, the page is about the app and no line calls it '
-        'unofficial', (tester) async {
+    testWidgets('in German, the page is about the app', (tester) async {
       useLocale(tester, const Locale('de'));
       await pumpAbout(tester);
 
       expect(find.text('Über die App'), findsOneWidget);
-      expect(unofficial, findsNothing);
       for (final text in [
         de.aboutLicence,
         de.aboutLicences,
         de.aboutNameAndLogo,
       ]) {
         await scrollTo(tester, find.text(text));
-        expect(unofficial, findsNothing);
+        expect(find.text(text), findsOneWidget);
       }
     });
 

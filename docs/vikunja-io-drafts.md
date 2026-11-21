@@ -1,6 +1,6 @@
 # Drafts for vikunja.io
 
-The app's privacy policy, help page and legal notice are on vikunja.io since step 38f ([D89](decisions.md#d89-store-listing-and-web-pages-of-the-official-app)). This page holds the drafts of their texts for kolaente, who puts them into [go-vikunja/website](https://github.com/go-vikunja/website) himself; nothing here is prepared as a pull request for that repository (owner, 2026-11-17). Until he publishes them, the addresses that the app's About page and both store listings link lead to a policy without the app's section and to a missing help page, so no build is distributed before then ([store-listing.md](store-listing.md#the-website) lists the addresses).
+The app's privacy policy, help page and legal notice belong on vikunja.io ([D89](decisions.md#d89-store-listing-and-web-pages-of-the-official-app)). This page holds the drafts of their texts for kolaente, who puts them into [go-vikunja/website](https://github.com/go-vikunja/website) himself; nothing here is prepared as a pull request for that repository (owner, 2026-11-17). Until he publishes them, the addresses that the app's About page and both store listings link lead to a policy without the app's section and to a missing help page, so no build is distributed before then ([store-listing.md](store-listing.md#the-website) lists the addresses).
 
 The drafts are in vikunja.io's voice: "we" is the Vikunja project, and the controller is the one vikunja.io's privacy policy names. They are English only, like vikunja.io, in US English and with the app's own labels as `app/lib/l10n/arb/app_en.arb` has them on 2026-11-17. They follow the former privacy policy and support page of the app, which were on the owner's website until step 38f, and the writing rules of the website's help pages (second person, short sentences, labels in bold, relative links).
 
@@ -91,7 +91,7 @@ Google Play and the App Store handle downloads, updates, ratings and diagnostics
 
 If you test a beta version through Google Play, Google does not tell us who you are; we see only the feedback you send through Google Play. If you test it through TestFlight on iPhone or iPad, we see what TestFlight shows us about you, such as your email address, and the feedback and crash reports you send. We use them only to run the beta (Art. 6(1)(b) GDPR) and remove you from the list of testers when the beta ends or you leave it.
 
-If you download the APK file from GitHub, yourself or through an app such as Obtainium that watches the releases, [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) applies. If you download it from dl.vikunja.io, [Server log files](#server-log-files) applies.
+If you download the APK file from GitHub, [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) applies. If you download it from dl.vikunja.io, [Server log files](#server-log-files) applies.
 
 #### Questions and bug reports
 
@@ -132,7 +132,7 @@ The Vikunja app brings your tasks to your Android phone or tablet, iPhone and iP
 
 ## Get the app
 
-- **Android:** [Google Play](https://play.google.com/store/apps/details?id=io.vikunja.app). Without Google Play, install an APK from the [GitHub releases](https://github.com/go-vikunja/app/releases) or [dl.vikunja.io](https://dl.vikunja.io/app/): the one for your phone's processor, usually `arm64-v8a`, is much smaller than the one for every device. Each release lists the SHA-256 of every APK and that of the signing certificate. An APK installed this way gets no updates by itself, security fixes included: [Obtainium](https://obtainium.imranr.dev) can watch `https://github.com/go-vikunja/app` and install each new release.
+- **Android:** [Google Play](https://play.google.com/store/apps/details?id=io.vikunja.app). Without Google Play, install an APK from the [GitHub releases](https://github.com/go-vikunja/app/releases) or [dl.vikunja.io](https://dl.vikunja.io/app/): the one for your phone's processor, usually `arm64-v8a`, is much smaller than the one for every device. Each release lists the SHA-256 of every APK and that of the signing certificate. An APK installed this way gets no updates by itself, security fixes included.
 - **iPhone and iPad:** APP-STORE-LINK
 
 The app needs Android 7.0 or newer, or iOS 15 or newer, and a Vikunja server with version 2.3.0 or newer. It is free, without ads or in-app purchases.

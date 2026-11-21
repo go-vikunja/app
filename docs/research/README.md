@@ -1,6 +1,6 @@
 # Research snapshot
 
-The files in this directory are the research snapshot of **2026-10-08**. They were written against Vikunja `main` @ `e7d7f17` (2026-10-06), whose latest release is **v2.7.0**. They are kept as written and are not updated. Later findings are recorded below.
+The files in this directory are the research snapshot of **2026-10-08**. They were written against Vikunja `main` @ `e7d7f17` (2026-10-06), whose latest release is **v2.7.0**. They are kept as written and are not updated. Later findings are recorded below. Two files of the snapshot were removed before the move, `auth.md` (sign-in, sessions and tokens) and `flutter-stack.md` (packages, native configuration, build experiments); the corrections below and the other files still cite their sections, and their last versions are in git: `git show c2bf10d:docs/research/auth.md` and `git show c2bf10d:docs/research/flutter-stack.md`.
 
 **Precedence:**
 1. Where the files disagree, **[critique.md](critique.md) wins** over the other research files.
@@ -11,11 +11,9 @@ The files in this directory are the research snapshot of **2026-10-08**. They we
 |---|---|
 | [api-v1.md](api-v1.md) | `/api/v1` (Echo): endpoints, conventions, errors, paging |
 | [api-v2.md](api-v2.md) | `/api/v2` (Huma, ≥ 2.4.0): endpoints, AutoPatch, ETag, problem+json, `/info` |
-| [auth.md](auth.md) | Login, sessions and refresh, OAuth 2.0 + PKCE, API tokens, WebSocket auth |
 | [sync.md](sync.md) | Delta sync, deletes, outbox, conflicts, server limits |
 | [features.md](features.md) | Feature inventory of the web frontend |
 | [client-logic.md](client-logic.md) | Client-side logic to port: quick-add, filters, dates, positions, colours |
-| [flutter-stack.md](flutter-stack.md) | Flutter packages and versions, native configuration, build experiments |
 | [critique.md](critique.md) | Completeness review: corrections, gaps, unverified claims |
 | [synthesis.md](synthesis.md) | Architecture, roadmap, open questions and risks derived from all of the above |
 
@@ -46,7 +44,7 @@ Items 1 and 2 were verified against the Docker test servers in [`test_servers/`]
    - iOS ignores `NSAllowsArbitraryLoads` as soon as `NSAllowsLocalNetworking` is present, and ATS exception domains cannot name hosts typed at runtime.
    - The per-host opt-in is therefore the in-app confirmation only; the OS keys stay open. See [D8](../decisions.md#d8-cleartext-only-after-the-users-consent).
 
-Items 4 to 9 were verified during step 2+3 against the 2.3.0, 2.4.0 and 2.7.0 Docker images, by the contract tests in `packages/vikunja_api/test/contract/auth_contract_test.dart` and the captures in `packages/vikunja_api/test/fixtures/errors/` and `fixtures/user/`. They correct [auth.md](auth.md).
+Items 4 to 9 were verified during step 2+3 against the 2.3.0, 2.4.0 and 2.7.0 Docker images, by the contract tests in `packages/vikunja_api/test/contract/auth_contract_test.dart` and the captures in `packages/vikunja_api/test/fixtures/errors/` and `fixtures/user/`. They correct auth.md.
 
 4. **Access tokens from 2.3.0 and 2.4.0 have no `iat` claim** (auth.md §3).
    - 2.7.0 sends `iat`; the access tokens of 2.3.0 and 2.4.0 lack it.

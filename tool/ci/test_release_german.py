@@ -1,5 +1,5 @@
 """Tests check_german of tool/ci/release_lib.sh, the release scripts' German
-check (D88), and its override for a patch release (owner, 2026-11-18), on a
+check (D88), and its override for a patch release (owner, D97), on a
 copy of the scripts beside ARB files of the test's own."""
 import json
 import os

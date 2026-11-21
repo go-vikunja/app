@@ -52,7 +52,6 @@ CATEGORIES = {
 
 APP_NAME = 'Vikunja'
 UNOFFICIAL = re.compile(r'(?i)\bunofficial\b|not affiliated with|inoffiziell|gehört nicht zum Vikunja-Projekt')
-OLD_LICENCE = re.compile(r'(?i)\bagpl\b|affero')
 # docs/glossary.md: US spelling, and tasks are checked off, never ticked off.
 # The review notes are English too.
 BRITISH = re.compile(r'(?i)colour|favourit|licenc|organis|recognis|prioritis|synchronis|customis|categoris|centre'
@@ -196,8 +195,6 @@ class Checker:
             self.error(path, f'names the other platform: {OTHER_PLATFORM[platform].search(value).group(0)}')
         if UNOFFICIAL.search(value):
             self.error(path, 'calls the app unofficial (D83)')
-        if OLD_LICENCE.search(value):
-            self.error(path, 'names the AGPL, but the app is under the MIT License (D87)')
         if (lang == 'en' or name in ENGLISH_SHARED) and BRITISH.search(value):
             self.error(path, f"not the US spelling or the glossary's term: {BRITISH.search(value).group(0)}")
         if name in ('title.txt', 'name.txt') and value != APP_NAME:

@@ -11,11 +11,3 @@ TaskResolver accountTaskResolver(Ref ref, String accountId) =>
       ref.watch(appDatabaseProvider(accountId)),
       ref.watch(readClientProvider(accountId)),
     );
-
-/// The active account's; null while nobody is signed in.
-@Riverpod(keepAlive: true)
-TaskResolver? taskResolver(Ref ref) {
-  final accountId = ref.watch(activeAccountIdProvider);
-  if (accountId == null) return null;
-  return ref.watch(accountTaskResolverProvider(accountId));
-}

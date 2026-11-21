@@ -128,22 +128,3 @@ TaskDeepLink? parseTaskDeepLink(Uri uri, {required String scheme}) {
 }
 
 const _taskHost = 'task';
-
-/// The inverse of [parseTaskDeepLink].
-Uri buildTaskDeepLink(
-  TaskReference reference, {
-  required String scheme,
-  String? account,
-}) => Uri(
-  scheme: scheme,
-  host: _taskHost,
-  pathSegments: [
-    switch (reference) {
-      TaskById(:final id) => '$id',
-      TaskByIdentifier(:final identifier, :final index) => '$identifier-$index',
-    },
-  ],
-  queryParameters: account == null || account.isEmpty
-      ? null
-      : {'account': account},
-);

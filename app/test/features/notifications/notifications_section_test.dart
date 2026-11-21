@@ -5,6 +5,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
+import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notifications_section.dart';
@@ -379,7 +380,7 @@ void main() {
 
     expect(notifications.gateway.shown, hasLength(1));
     final shown = notifications.gateway.shown.single;
-    expect(shown.osId, testNotificationOsId);
+    expect(shown.osId, NotificationOsIds.testNotification);
     expect(shown.title, en.notificationTestTitle);
     expect(shown.body, en.notificationTestBody);
     final payload = NotificationPayload.fromJson(shown.payload);

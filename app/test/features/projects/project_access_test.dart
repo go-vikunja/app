@@ -24,8 +24,6 @@ void main() {
         'canAddTasks' => (a) => a.canAddTasks,
         'canChangeTasks' => (a) => a.canChangeTasks,
         'canReorderOrBoard' => (a) => a.canReorderOrBoard,
-        'canComment' => (a) => a.canComment,
-        'canReact' => (a) => a.canReact,
         'isAdmin' => (a) => a.isAdmin,
         'canChangeParent' => (a) => a.canChangeParent,
         'canDelete' => (a) => a.canDelete,
@@ -45,8 +43,6 @@ void main() {
         'canAddTasks',
         'canChangeTasks',
         'canReorderOrBoard',
-        'canComment',
-        'canReact',
       ];
       const adminRules = [
         'isAdmin',

@@ -314,7 +314,7 @@ tool/e2e/update_test.sh --server https://try.vikunja.io emulator-5554 <old.apk> 
 
 ## Documentation
 
-- [Architecture](architecture.md): an overview of the current design for new maintainers. What each step built, in full detail, is in the [archive](archive/architecture-by-step.md).
+- [Architecture](architecture.md): an overview of the current design for new maintainers.
 - [Threat model](threat-model.md): assets, trust boundaries, entry points, mitigations with their tests, residual risks with their decisions, and the security sign-off checklist.
 - [Releasing](releasing.md): the release checklist: what Vikunja's maintainers set up once in go-vikunja/app, the website and the store consoles, the version and the tag, what the release workflow publishes to Google Play, dl.vikunja.io and GitHub, the staged rollout, retries and the dry run, and the iOS build's way to TestFlight.
 - [Beta](beta.md): how a beta runs, from the steps before the first tag to the testers, the feedback and the final release.
@@ -322,7 +322,7 @@ tool/e2e/update_test.sh --server https://try.vikunja.io emulator-5554 <old.apk> 
 - [Drafts for vikunja.io](vikunja-io-drafts.md): the privacy section "Mobile app", the help page `/help/mobile` and the imprint's scope sentence.
 - [Glossary](glossary.md): the terms and the style of the app's texts in English and German, which every string follows.
 - [Accessibility checklist](accessibility-checklist.md): the manual pass with TalkBack, Switch Access, Accessibility Scanner and VoiceOver that goes with the automated accessibility sweep.
-- [Roadmap](roadmap.md): all steps and milestones.
+- [Roadmap](roadmap.md): what is left before and after 1.0.
 - [Decisions](decisions.md): the decision log.
 - [Open questions](open-questions.md): the answered questions and those still open or deferred.
 - [Research](research/README.md): the research the architecture is based on.

@@ -38,7 +38,7 @@ Inspect the compose file with `config --services` only. A plain `config` prints 
 - `client-ca.pem/.key`, `client.pem/.key`, `client.p12` (AES-256, PBKDF2), `client-legacy.p12` (3DES/RC2): what 34529 accepts.
 - `wrong-client.p12` (and its PEM files): a client certificate from another CA, which 34529 refuses.
 - `client-p12-password.txt`: the PKCS#12 password (no trailing newline). Caddy never loads it.
-- `access.env`: only the two access-header values, loaded into the proxy's environment. One generated before the rename to `VIKUNJA_APP_TEST_ACCESS_ID` and `VIKUNJA_APP_TEST_ACCESS_SECRET` (step 38c) does not work: run `tool/gen_tls_test_certs.sh` again.
+- `access.env`: only the two access-header values, loaded into the proxy's environment.
 - `manifest.json`: subject, issuer, SHA-256 and validity of each certificate.
 
 After a full regeneration while the proxy runs, run the `up -d tls-proxy` line again: it recreates the proxy, which reads `access.env` only when its container is created (a `restart` keeps the old header values).
@@ -79,7 +79,7 @@ The app connects to `https://localhost:3452x`, so SNI is `localhost`. dart:io (p
 | 34530 | Behind a login proxy | Access headers (user CA installed) | Guest works, realtime on polling; headers plus in-app CA trust: realtime connects. A wrong secret: behind a login proxy again |
 | 34527 | The unencrypted-connection question | Allow it | Consent recorded; revoking it blocks requests |
 
-Browser sign-in for user accounts (on 34528, the `frontend_url`) needs the password typed, so only the owner runs it.
+Browser sign-in for user accounts (on 34528, the `frontend_url`) needs the password typed, so it is run by hand.
 
 With the profile up, the opt-in Docker tests run with `cd app && VIKUNJA_APP_TLS_DOCKER=1 flutter test --tags tls-docker`.
 

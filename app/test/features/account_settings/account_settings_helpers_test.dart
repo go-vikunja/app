@@ -206,11 +206,6 @@ void main() {
   });
 
   group('the avatar square', () {
-    test('the largest square in the middle', () {
-      expect(centreSquare(40, 20), const ui.Rect.fromLTWH(10, 0, 20, 20));
-      expect(centreSquare(30, 50), const ui.Rect.fromLTWH(0, 10, 30, 30));
-    });
-
     test('what the viewport shows at the start, after a pan and a zoom', () {
       // A 4000 × 2000 photo covers a 200 dp square at 1/10.
       Matrix4 centred() => Matrix4.translationValues(-100, 0, 0);
@@ -265,7 +260,7 @@ void main() {
       );
       expect((image!.width, image.height), (40, 20));
       final png = await tester.runAsync(
-        () => encodeSquareAvatar(image, centreSquare(40, 20)),
+        () => encodeSquareAvatar(image, const ui.Rect.fromLTWH(10, 0, 20, 20)),
       );
       final square = await tester.runAsync(() => decodeAvatarSource(png!));
       expect((square!.width, square.height), (20, 20));

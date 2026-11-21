@@ -75,14 +75,6 @@ final class ScheduledNotificationsDao extends DatabaseAccessor<AppDatabase>
     ),
   );
 
-  Future<void> clearSnooze(String key) =>
-      (update(scheduledNotifications)..where((n) => n.key.equals(key))).write(
-        const ScheduledNotificationsCompanion(
-          snoozedUntil: Value(null),
-          snoozeOriginalFireAt: Value(null),
-        ),
-      );
-
   Future<List<ScheduledNotificationRow>> forTasks(Iterable<int> taskIds) =>
       (select(
         scheduledNotifications,

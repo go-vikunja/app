@@ -1,6 +1,6 @@
-// What Vikunja 2.7.0 (SQLite) answered on `GET /tasks` for the step 24
-// probe fixture, v1 and v2 alike (scratchpad/step24/server.md), against
-// the engine: one test per probed filter.
+// What Vikunja 2.7.0 (SQLite) answered on `GET /tasks` for the filter
+// probe's fixture, v1 and v2 alike (server_observed.jsonl), against the
+// engine: one test per probed filter.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
@@ -8,8 +8,8 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'filter_test_support.dart';
 
 // SQLite stores dates as text without the bound's suffix, so a stored
-// instant equal to the bound fails `=` and passes `<` and `!=`
-// (server.md §4.4). The engine compares instants as written.
+// instant equal to the bound fails `=` and passes `<` and `!=`. The engine
+// compares instants as written.
 const _sqliteEqualInstants = {
   'reminders = 2026-10-25T08:00:00Z': 't8',
   'reminders != 2026-10-25T08:00:00Z':

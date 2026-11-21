@@ -81,8 +81,8 @@ Future<void> _delay(Duration duration) => Future<void>.delayed(duration);
 /// With `refreshes` false the manager never calls the server: it hands out
 /// the stored access token while it is valid and otherwise fails the
 /// request as a rejected token, so that a short-lived isolate (a
-/// notification action, D26 and architecture §5.8) leaves the rotation to
-/// the app; a token a sibling isolate stored meanwhile is still adopted.
+/// notification action, D26) leaves the rotation to the app; a token a
+/// sibling isolate stored meanwhile is still adopted.
 ///
 /// A closed `mayStartRefresh` gate fails a refresh before it is sent, as
 /// deferred ([RefreshDeferred.cutoff]): a background run closes it when too

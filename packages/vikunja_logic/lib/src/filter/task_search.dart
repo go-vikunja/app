@@ -2,14 +2,10 @@ import 'package:vikunja_logic/src/filter/filterable_task.dart';
 import 'package:vikunja_logic/src/filter/go_values.dart';
 import 'package:vikunja_logic/src/filter/sql_text.dart';
 
-/// The server's `s`/`q` search without ParadeDB: [search] (trimmed) is a
+/// The server's `s`/`q` search without ParadeDB: the search (trimmed) is a
 /// substring of the title or the stored description, ignoring ASCII case,
 /// with `%` and `_` as wildcards; the first `#12` in it also matches index
 /// 12 in any project. An empty search matches everything.
-bool matchesTaskSearch(String search, FilterableTask task) =>
-    TaskSearchMatcher(search).matches(task);
-
-/// [matchesTaskSearch] prepared once for many tasks.
 final class TaskSearchMatcher {
   new(String search) : this._trimmed(goTrimSpace(search));
 

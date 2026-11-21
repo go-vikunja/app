@@ -138,7 +138,7 @@ flutter_test_concurrency() {
 }
 
 # The project's gradle.properties asks for 8 GB, more than a small runner has,
-# and GitHub's Ubuntu image defaults to JDK 17 where the owner's machine uses
+# and GitHub's Ubuntu image defaults to JDK 17 where local development uses
 # 21. Only on a CI runner: never touches a developer's ~/.gradle or JDK.
 ci_gradle_setup() {
   if ! on_ci_runner; then

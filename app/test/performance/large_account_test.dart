@@ -7,8 +7,7 @@ import '../helpers/sample_data.dart';
 import '../helpers/test_database.dart';
 
 // What the lists of an account with 5,000 tasks cost on this machine. The
-// numbers go into the step's report; the budgets hold only with
-// VIKUNJA_BENCHMARK=1.
+// budgets hold only with VIKUNJA_BENCHMARK=1.
 void main() {
   late AppDatabase db;
   const urgent = Label(id: 1, title: 'urgent');

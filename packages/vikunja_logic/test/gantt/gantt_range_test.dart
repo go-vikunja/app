@@ -1,8 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
-// Derived from the web's useGanttFilters.ts (scratchpad step29/
-// gantt-vectors.json, derived_from_code), with GF1/GF2 of
+// Derived from the web's useGanttFilters.ts, with GF1/GF2 of
 // useGanttFilters.test.ts adapted: the app keeps the range per view in its
 // preferences instead of the route.
 CalendarDate _date(String text) => CalendarDate.tryParse(text)!;

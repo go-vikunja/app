@@ -39,13 +39,6 @@ final class ServerNotificationsDao extends DatabaseAccessor<AppDatabase>
     };
   }
 
-  Future<int?> maxId() {
-    final max = serverNotifications.id.max();
-    return (selectOnly(
-      serverNotifications,
-    )..addColumns([max])).map((row) => row.read(max)).getSingle();
-  }
-
   /// Stores a pulled page. A stored row keeps its pending mark (and with
   /// it the local `read_at`) and whether it was handled; a new row counts
   /// as handled when [handled] says so or the server has it read already.

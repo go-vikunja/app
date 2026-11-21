@@ -1,6 +1,5 @@
 # Local Vikunja server for the vikunja_api contract tests and manual sign-in
-# tests. CI's job `contract` tests the latest release (owner decision,
-# 2026-10-09):
+# tests. CI's job `contract` tests the latest release (owner, D28):
 #   34527  2.8.0  latest release
 #   34528-34531  the same release behind TLS, opt-in profile `tls` (below)
 # The image is pinned by its tag and the digest of its multi-platform index,

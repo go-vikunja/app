@@ -143,8 +143,8 @@ void main() {
       expect(priority.priority, isNull);
     });
 
-    test('step 40q: behind a doubled prefix too, so words inside it stay in '
-        'it; until then `tomorrow` there was read as the date', () {
+    test('behind a doubled prefix too, so words inside it stay in it: '
+        '`tomorrow` there is no date', () {
       final plan = service().plan('Call ++"stuff tomorrow"');
 
       expect(plan.unmatchedProject, 'stuff tomorrow');

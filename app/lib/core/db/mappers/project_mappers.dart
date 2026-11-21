@@ -79,7 +79,7 @@ ProjectView? projectViewFromRow(ProjectViewRow row) {
   );
 }
 
-/// The server's own JSON shape, so step 7 can diff it against responses.
+/// The server's own JSON shape.
 String? encodeViewFilter(ViewFilter? filter) {
   if (filter == null) return null;
   return jsonEncode({

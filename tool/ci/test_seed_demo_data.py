@@ -220,12 +220,12 @@ class ResetTest(unittest.TestCase):
                     {'id': 3, 'title': 'mine', 'created_by': {'id': 1}},
                     {'id': 4, 'title': 'garage', 'created_by': {'id': 1}}],
             inbox_tasks=[{'id': 50, 'title': 'Reifen wechseln'}, {'id': 51, 'title': 'Change the tires'},
-                         {'id': 52, 'title': 'Something else'}, {'id': 53, 'title': 'Change the tyres'}])
+                         {'id': 52, 'title': 'Something else'}])
         with mock.patch.object(seed_demo_data, 'call', server):
             seed_demo_data.reset('token', ME)
         self.assertEqual([path for path, _ in server.sent('DELETE')], [
             '/projects/10', '/projects/11', '/projects/13', '/filters/5', '/filters/6',
-            '/labels/1', '/labels/4', '/tasks/50', '/tasks/51', '/tasks/53'])
+            '/labels/1', '/labels/4', '/tasks/50', '/tasks/51'])
 
     def test_the_demo_data_in_the_trash_is_deleted_for_good(self):
         server = FakeServer(trash={
@@ -234,14 +234,13 @@ class ResetTest(unittest.TestCase):
             'tasks': [[{'id': 60, 'title': 'Change the tires', 'project_id': 1},
                        {'id': 61, 'title': 'Reifen wechseln', 'project_id': 30},
                        {'id': 62, 'title': 'Something else', 'project_id': 1},
-                       {'id': 63, 'title': 'Reifen wechseln', 'project_id': 1},
-                       {'id': 64, 'title': 'Change the tyres', 'project_id': 1}]]})
+                       {'id': 63, 'title': 'Reifen wechseln', 'project_id': 1}]]})
         with mock.patch.object(seed_demo_data, 'call', server):
             seed_demo_data.reset('token', ME)
         self.assertEqual([(path, version) for (method, path, _), version in zip(server.requests, server.versions)
                           if method == 'DELETE'], [
             ('/projects/20/permanent', 'v2'), ('/projects/21/permanent', 'v2'), ('/projects/24/permanent', 'v2'),
-            ('/tasks/60/permanent', 'v2'), ('/tasks/63/permanent', 'v2'), ('/tasks/64/permanent', 'v2')])
+            ('/tasks/60/permanent', 'v2'), ('/tasks/63/permanent', 'v2')])
         self.assertEqual([path for path, _ in server.sent('GET') if '/deleted?' in path], [
             '/projects/deleted?per_page=50&page=1', '/projects/deleted?per_page=50&page=2',
             '/tasks/deleted?per_page=50&page=1'])

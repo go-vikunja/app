@@ -1,7 +1,6 @@
 export 'src/attachments/attachment_preview.dart';
 export 'src/attachments/safe_file_name.dart';
 export 'src/filter/filter_context.dart';
-export 'src/filter/filter_dates.dart';
 export 'src/filter/filter_expression.dart';
 export 'src/filter/filter_parser.dart';
 export 'src/filter/filter_transforms.dart';

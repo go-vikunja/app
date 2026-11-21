@@ -369,42 +369,4 @@ void main() {
         '[{"account":"a","target":"task:1","html":3}]';
     expect(await drafts.read(account: 'a', target: task), isNull);
   });
-
-  test("development builds' drafts in the preferences, which iOS backs up, "
-      'are removed once seen and not offered', () async {
-    final preferences = MemoryPreferencesStore()
-      ..values['description_editor.draft'] = jsonEncode({
-        'account': 'a',
-        'target': 'task:1',
-        'html': '<p>Old</p>',
-        'base': '',
-      })
-      ..values['description_editor.drafts'] = jsonEncode([
-        {'account': 'a', 'target': 'task:1', 'html': '<p>Old</p>', 'base': ''},
-      ])
-      ..values['other'] = 'kept';
-    drafts = DescriptionDrafts(store, legacy: preferences);
-
-    expect(await drafts.read(account: 'a', target: task), isNull);
-    expect(preferences.values, {'other': 'kept'});
-    expect(store.values, isEmpty);
-
-    await drafts.save(draft, account: 'a', target: task);
-    expect(preferences.values, {'other': 'kept'});
-    expect(store.values.keys, [DescriptionDrafts.key]);
-  });
-
-  test('old drafts that cannot be removed now are removed later, and keep '
-      'nothing from working', () async {
-    final preferences = MemoryPreferencesStore()
-      ..values[DescriptionDrafts.key] = '[]'
-      ..failNextRead.add(DescriptionDrafts.key);
-    drafts = DescriptionDrafts(store, legacy: preferences);
-
-    await drafts.save(draft, account: 'a', target: task);
-    expect(preferences.values, isNotEmpty);
-    expect(await drafts.read(account: 'a', target: task), isNotNull);
-
-    expect(preferences.values, isEmpty);
-  });
 }

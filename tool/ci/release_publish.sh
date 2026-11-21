@@ -467,7 +467,7 @@ release_notes() {
     "- Source code: ${source_url}" \
     "- \`${desugar_archive}\`: the source code of desugar_jdk_libs at upstream commit ${desugar_commit} (GPL-2.0 with the Classpath exception), which the app contains" \
     "" \
-    "An APK installed by hand gets no updates by itself. [Obtainium](https://obtainium.imranr.dev) can watch these releases and install each new one: add https://github.com/${GITHUB_REPOSITORY:-go-vikunja/app}, and to get the smaller APK for your phone, filter the APKs by its ABI, usually \`arm64-v8a\`."
+    "An APK installed by hand gets no updates by itself. Most phones can take the smaller APK for \`arm64-v8a\`."
 }
 
 # Final releases only: an older line's patch must not become "Latest" while a

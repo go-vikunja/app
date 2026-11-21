@@ -182,8 +182,6 @@ final class FakeShareIntentSource implements ShareIntentSource {
   Future<void> Function(String call)? beforeCall;
   var _nextCopy = 1;
 
-  IncomingShare? get pendingShare => _pending;
-
   void push(IncomingShare share) {
     _pending = share;
     controller.add(share);

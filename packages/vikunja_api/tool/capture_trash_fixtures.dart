@@ -374,13 +374,11 @@ Future<void> main(List<String> args) async {
     'DELETE',
     '/api/v2/tasks/deleted?include_others=false',
   );
-  await capture('v2_tasks_deleted_after_empty_own', 'GET', tasksPage);
   await capture(
     'v2_projects_empty',
     'DELETE',
     '/api/v2/projects/deleted?include_others=true',
   );
-  await capture('v2_projects_deleted_after_empty', 'GET', projectsPage);
 
   dio.close();
 }

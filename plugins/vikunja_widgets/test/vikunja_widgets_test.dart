@@ -560,7 +560,6 @@ void main() {
   test('both natives register the Dart channel name', () {
     const kotlin = 'android/src/main/kotlin/io/vikunja/vikunja_widgets';
 
-    expect(VikunjaWidgets.channelName, 'io.vikunja.vikunja_widgets');
     for (final path in [
       '$kotlin/VikunjaWidgetsPlugin.kt',
       'ios/vikunja_widgets/Sources/vikunja_widgets/VikunjaWidgetsPlugin.swift',

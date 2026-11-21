@@ -318,7 +318,10 @@ void main() {
     await sync.run();
 
     expect(await db.serverNotificationsDao.count(), 200);
-    expect(await db.serverNotificationsDao.maxId(), 300);
+    expect(await db.serverNotificationsDao.existingIds([100, 101, 300]), {
+      101,
+      300,
+    });
   });
 
   test('a call during a run joins it', () async {

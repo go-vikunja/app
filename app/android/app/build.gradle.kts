@@ -42,8 +42,6 @@ android {
 
     defaultConfig {
         applicationId = "io.vikunja.app"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         // Not Flutter's default, so that a Flutter update cannot raise it
         // unnoticed: API 37 needs ACCESS_LOCAL_NETWORK for servers on the

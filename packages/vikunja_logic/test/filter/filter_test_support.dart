@@ -46,8 +46,8 @@ List<String> matchingKeys(
   ];
 }
 
-// The step 24 probe fixture (scratchpad/step24/probe/fixture.py, ids of the
-// probed run): user A owns everything, B is assigned to some tasks.
+// The filter probe's fixture on Vikunja 2.7.0 (D51; ids of the probed run):
+// user A owns everything, B is assigned to some tasks.
 
 const userA = 'probefbaee647';
 const userB = 'probefc46a1e9';
@@ -254,7 +254,7 @@ List<String> sortedKeys(Iterable<String> keys) => [...keys]
 int _number(String key) =>
     int.tryParse(key.replaceAll(RegExp('[^0-9]'), '')) ?? 0;
 
-// Upstream's model fixture, as far as language.md §14.1 needs it: the tasks
+// Upstream's model fixture, as far as the model vectors need it: the tasks
 // user 1 sees (U1); legacy NULL priority everywhere but tasks 3 and 4, NULL
 // done on task 39.
 

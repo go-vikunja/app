@@ -37,7 +37,7 @@ const _namedEntities = {
 
 /// A readable plain-text version of a TipTap description: block ends become
 /// line breaks, list items get a bullet or checkbox, tags are dropped and
-/// the common entities are decoded. Rich rendering comes in step 10.
+/// the common entities are decoded.
 String htmlToPlainText(String html) {
   final text = html
       .replaceAll(_lineBreak, '\n')

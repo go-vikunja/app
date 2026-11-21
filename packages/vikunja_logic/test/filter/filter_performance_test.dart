@@ -67,7 +67,7 @@ void main() {
       expect(count, cold);
     }
 
-    // ignore: avoid_print, the step's report quotes these numbers.
+    // ignore: avoid_print, every run shows the measured times.
     print(
       'filter over ${tasks.length} tasks: $cold match; after the first pass '
       '${(warmTime / 10000).toStringAsFixed(1)} ms per pass',

@@ -260,17 +260,15 @@ void main() {
     ], splitQuickAddLines(withMarkerOnly));
   });
 
-  group('step 40q: the tokens are the ones the parser reads', () {
-    test('an unclosed quote ends at the next label, which is marked too; '
-        'until then it ran to the end of the line and neither was', () {
+  group('the tokens are the ones the parser reads', () {
+    test('an unclosed quote ends at the next label, which is marked too', () {
       expect(spansOf('Buy *"milk *urgent'), [
         ('*"milk', MagicSpanKind.label),
         ('*urgent', MagicSpanKind.label),
       ]);
     });
 
-    test('a quoted label holding ` *` is two labels, each marked; until '
-        'then it was one token the parser did not read', () {
+    test('a quoted label holding ` *` is two labels, each marked', () {
       expect(planOf('x *"a *b" c').parsed.labels, ['a', 'b"']);
       expect(spansOf('x *"a *b" c'), [
         ('*"a', MagicSpanKind.label),
@@ -279,7 +277,7 @@ void main() {
     });
 
     test('a doubled prefix at the start is marked with the label the '
-        'parser keeps there; until then it was not marked', () {
+        'parser keeps there', () {
       expect(planOf('**bike now').parsed.labels, ['*bike']);
       expect(
         magicSpansForLine(

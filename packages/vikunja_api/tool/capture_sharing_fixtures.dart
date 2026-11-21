@@ -397,13 +397,6 @@ Future<void> main(List<String> args) async {
     contentType: _mergePatch,
   );
   await capture(
-    'v2_team_update_empty_description',
-    'PATCH',
-    '/api/v2/teams/$teamTwo',
-    body: {'description': ''},
-    contentType: _mergePatch,
-  );
-  await capture(
     'v2_team_update_forbidden',
     'PATCH',
     '/api/v2/teams/$teamTwo',

@@ -14,10 +14,6 @@ class PriorityFlag extends StatelessWidget {
 
   final TaskPriority priority;
 
-  /// In the detail sheet: high, urgent and do-now.
-  static bool showsInDetail(TaskPriority priority) =>
-      priority.value >= TaskPriority.high.value;
-
   /// In a list row, like the web's: an open task at or above the user's
   /// minimum priority.
   static bool showsOnRow(Task task, {required int minimumPriority}) =>

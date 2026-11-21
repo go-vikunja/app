@@ -1,9 +1,8 @@
 // The web's Gantt request against Vikunja 2.7.0 (v1 and v2 answered alike)
 // and what the web draws from the answer (fixtures/gantt/
-// gantt_observed.json, from scratchpad step29/gantt-vectors.json): the
-// engine evaluates the web's filter text for the same tasks, and the
-// layout draws the same rows, with calendar-day widths where the web's
-// are a day wider across a DST change.
+// gantt_observed.json): the engine evaluates the web's filter text for the
+// same tasks, and the layout draws the same rows, with calendar-day widths
+// where the web's are a day wider across a DST change.
 
 import 'dart:convert';
 import 'dart:io';

@@ -17,10 +17,6 @@ enum ActivityKind {
 
   final String serverName;
 
-  /// What may become an OS notification. A server reminder never does:
-  /// the phone schedules the reminders itself.
-  bool get notifies => this != reminder && this != other;
-
   static ActivityKind of(String name) {
     for (final kind in values) {
       if (kind.serverName == name && kind != other) return kind;

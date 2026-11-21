@@ -194,7 +194,7 @@ void main() {
       'saves the labels as ids', (tester) async {
     await openNewSavedFilter(tester);
     await type(tester, '');
-    // Step 40w: the chips' compact density had shrunk them to 40 dp.
+    // Compact density would shrink the chips to 40 dp.
     for (final chip in find.byType(ActionChip).evaluate()) {
       final size = tester.getSize(find.byWidget(chip.widget));
       expect(size.height, greaterThanOrEqualTo(48), reason: '$size');

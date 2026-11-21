@@ -1,6 +1,6 @@
 {
  "meta": {
-  "about": "commentHtmlFromText vectors. Every html without editorFixedPoint false loads into the bundled editor (app/editor, TipTap 3.31.3 with the web's schema) and serializes back byte for byte; the mention, reply and link forms are the web's (sanitizer_oracle.json, Comments.vue startReplyTo, the 2.7.0 probe of step 27)."
+  "about": "commentHtmlFromText vectors. Every html without editorFixedPoint false loads into the bundled editor (app/editor, TipTap 3.31.3 with the web's schema) and serializes back byte for byte; the mention, reply and link forms are the web's (sanitizer_oracle.json, Comments.vue startReplyTo, and the comment answers recorded from Vikunja 2.7.0 in packages/vikunja_api/test/fixtures/write/v1_comment_*_2.7.0.json)."
  },
  "vectors": [
   {

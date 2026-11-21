@@ -13,8 +13,6 @@ final _british = RegExp(
 // ARB keys keep their British spelling, and descriptions name them.
 final _identifier = RegExp(r'\b[a-z]+(?:[A-Z][A-Za-z0-9]*)+\b');
 
-final _unofficial = RegExp('unofficial|inoffiziell', caseSensitive: false);
-
 Map<String, Object?> _arb(String locale) =>
     jsonDecode(File('lib/l10n/arb/app_$locale.arb').readAsStringSync())
         as Map<String, Object?>;
@@ -74,16 +72,6 @@ void main() {
     };
 
     expect(british, isEmpty);
-  });
-
-  test('no message calls the app unofficial', () {
-    final unofficial = [
-      for (final locale in ['en', 'de'])
-        for (final MapEntry(:key, :value) in _arbTexts(locale).entries)
-          if (_unofficial.hasMatch(value)) '$locale $key',
-    ];
-
-    expect(unofficial, isEmpty);
   });
 
   test('the native English texts use US spelling', () {

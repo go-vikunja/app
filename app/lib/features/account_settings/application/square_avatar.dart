@@ -35,12 +35,6 @@ Future<ui.Image> decodeAvatarSource(Uint8List bytes) async {
   }
 }
 
-/// The largest square in the middle of a [width] × [height] picture.
-ui.Rect centreSquare(int width, int height) {
-  final side = math.min(width, height).toDouble();
-  return ui.Rect.fromLTWH((width - side) / 2, (height - side) / 2, side, side);
-}
-
 /// The part of a [imageWidth] × [imageHeight] picture a square viewport of
 /// [viewportSide] shows, when the picture covers the viewport at scale 1
 /// and [transform] is the viewer's pan and zoom; in the picture's pixels.

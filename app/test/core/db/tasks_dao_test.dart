@@ -291,10 +291,9 @@ void main() {
       ]),
     );
 
-    test('counts and lists ids, done tasks included', () async {
+    test('counts the tasks, done ones included', () async {
       expect(await db.tasksDao.countInProject(5), 3);
       expect(await db.tasksDao.countInProject(7), 0);
-      expect(await db.tasksDao.idsInProject(5), [1, 2, 3]);
     });
 
     test('counts what the lists show in several projects, without a queued '
@@ -393,8 +392,13 @@ void main() {
         await db.tasksDao.purgeInProjectExcept(5, {1, 3, 4}, runId: 'run'),
         1,
       );
-      expect(await db.tasksDao.idsInProject(5), [1, 3]);
-      expect(await db.tasksDao.idsInProject(6), [4]);
+      expect(
+        [
+          for (final row in await db.select(db.tasks).get())
+            (row.projectId, row.id),
+        ],
+        [(5, 1), (5, 3), (6, 4)],
+      );
       expect(
         await db.tasksDao.purgeInProjectExcept(5, {1, 3}, runId: 'run'),
         0,

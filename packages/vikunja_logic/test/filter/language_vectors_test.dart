@@ -1,4 +1,4 @@
-// Every JSONL vector of scratchpad/step24/language.md §14 (upstream model,
+// Every language_*.jsonl vector in test/fixtures/filter (upstream model,
 // HTTP and web tests plus vectors derived from the server's code), each as
 // one test. A vector the engine does not own (sorting, the favourites
 // scope, the web editor's widgets) is a skipped test saying why, so none
@@ -6,10 +6,12 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:timezone/timezone.dart' as tz;
+import 'package:vikunja_logic/src/filter/filter_dates.dart';
 import 'package:vikunja_logic/src/filter/filter_nodes.dart';
 import 'package:vikunja_logic/src/filter/filter_preprocess.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
+import 'filter_test_helpers.dart';
 import 'filter_test_support.dart';
 
 final DateTime _now = utc('2026-10-20T08:05:00Z');
@@ -40,13 +42,13 @@ const _view161 =
 void main() {
   setUpAll(loadTimeZones);
 
-  group('§14.2 parse vectors', () {
+  group('parse vectors', () {
     for (final vector in loadJsonl('language_parse.jsonl')) {
       _vectorTest(vector, () => _checkParse(vector));
     }
   });
 
-  group('§14.2 replaceFilterOperators', () {
+  group('replaceFilterOperators', () {
     for (final vector in loadJsonl('language_replace_operators.jsonl')) {
       test(vector['in']! as String, () {
         expect(replaceOperatorWords(vector['in']! as String), vector['out']);
@@ -54,13 +56,13 @@ void main() {
     }
   });
 
-  group('§14.2 complexity', () {
+  group('complexity', () {
     for (final vector in loadJsonl('language_complexity.jsonl')) {
       _vectorTest(vector, () => _checkComplexity(vector));
     }
   });
 
-  group('§14.3 model results', () {
+  group('model results', () {
     for (final vector in loadJsonl('language_model_results.jsonl')) {
       _vectorTest(
         vector,
@@ -73,7 +75,7 @@ void main() {
     }
   });
 
-  group('§14.3 sort', () {
+  group('model sort', () {
     for (final vector in loadJsonl('language_model_sort.jsonl')) {
       _vectorTest(
         vector,
@@ -83,7 +85,7 @@ void main() {
     }
   });
 
-  group('§14.4 HTTP results', () {
+  group('HTTP results', () {
     for (final vector in loadJsonl('language_http_results.jsonl')) {
       _vectorTest(
         vector,
@@ -95,13 +97,13 @@ void main() {
     }
   });
 
-  group('§14.5 derived vectors', () {
+  group('derived vectors', () {
     for (final vector in loadJsonl('language_derived.jsonl')) {
       _vectorTest(vector, () => _checkDerived(vector));
     }
   });
 
-  group('§14.6 web transforms', () {
+  group('web transforms', () {
     for (final vector in loadJsonl('language_web_transforms.jsonl')) {
       _vectorTest(
         vector,
@@ -114,7 +116,7 @@ void main() {
     }
   });
 
-  group('§14.6 other web vectors', () {
+  group('other web vectors', () {
     for (final vector in loadJsonl('language_web_other.jsonl')) {
       final filter = vector['filter'];
       _vectorTest(

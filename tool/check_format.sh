@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 roots=()
-for dir in app/lib app/test app/integration_test packages plugins; do
+for dir in app/lib app/test packages plugins; do
   if [[ -d "$dir" ]]; then
     roots+=("$dir")
   fi
@@ -20,7 +20,6 @@ while IFS= read -r -d '' file; do
   files+=("$file")
 done < <(find "${roots[@]}" -type f -name '*.dart' \
   ! -name '*.g.dart' \
-  ! -name '*.freezed.dart' \
   ! -path 'app/lib/l10n/generated/*' \
   ! -path '*/.dart_tool/*' \
   ! -path '*/build/*' \

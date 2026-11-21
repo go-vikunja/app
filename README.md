@@ -31,7 +31,7 @@ Vikunja is the open-source to-do app you can host yourself. The app is for every
 
 - **Android:** [Google Play](https://play.google.com/store/apps/details?id=io.vikunja.app)
 - **iPhone and iPad:** App Store
-- **Android without Google Play:** signed APKs on the [GitHub releases page](https://github.com/go-vikunja/app/releases) and on [dl.vikunja.io](https://dl.vikunja.io/app/). Take the one for your device's processor, usually `vikunja-app-<version>-arm64-v8a.apk`, or `vikunja-app-<version>.apk`, which runs on every device but is larger. Each release lists the SHA-256 of every APK and of the signing certificate. An APK installed this way does not update itself; [Obtainium](https://obtainium.imranr.dev) can watch the releases for you.
+- **Android without Google Play:** signed APKs on the [GitHub releases page](https://github.com/go-vikunja/app/releases) and on [dl.vikunja.io](https://dl.vikunja.io/app/). Take the one for your device's processor, usually `vikunja-app-<version>-arm64-v8a.apk`, or `vikunja-app-<version>.apk`, which runs on every device but is larger. Each release lists the SHA-256 of every APK and of the signing certificate. An APK installed this way does not update itself.
 
 ## Requirements
 

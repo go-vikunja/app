@@ -1,7 +1,6 @@
 export 'src/account/account_security_port.dart';
 export 'src/account/user_api.dart';
 export 'src/auth/access_token_source.dart';
-export 'src/auth/auth_interceptor.dart';
 export 'src/auth/authorization_request.dart';
 export 'src/auth/jwt_claims.dart';
 export 'src/auth/link_share_auth_client.dart';

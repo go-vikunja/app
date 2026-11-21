@@ -1,4 +1,5 @@
 import 'package:timezone/timezone.dart';
+import 'package:vikunja_logic/src/filter/filter_dates.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
 /// Whether [task] matches [expression] the way the server decides it.
@@ -25,3 +26,6 @@ DateTime? parseFilterDate(
   required DateTime now,
   required Location location,
 }) => FilterDate.tryParse(value)?.resolve(now, location);
+
+bool matchesTaskSearch(String search, FilterableTask task) =>
+    TaskSearchMatcher(search).matches(task);

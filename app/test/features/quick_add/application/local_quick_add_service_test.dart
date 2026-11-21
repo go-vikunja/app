@@ -883,21 +883,21 @@ void main() {
       expect(result.unresolvedAssignees, isEmpty);
     });
 
-    test('step 40q: a label kept is the token the parser read it from, not '
-        'the start of an unclosed quote before it', () async {
+    test('a label kept is the token the parser read it from, not the start '
+        'of an unclosed quote before it', () async {
       final result = await service(
         grammar: const QuickAddGrammar(),
         guest: true,
       ).submit('Plan *"a trip *a');
 
-      // Until then `*a` was found as the start of `*"a trip`, which the
-      // title holds, so the label the parser removed was lost.
+      // Finding `*a` at the start of `*"a trip`, which the title holds,
+      // would lose the label the parser removed.
       expect(tasks.creates.single.title, 'Plan *"a trip *a');
       expect(result.labelsKept, ['*"a trip', '*a']);
     });
 
-    test('step 40q: the result names each title as the task was created: '
-        'without the names found, with the labels kept, cut', () async {
+    test('the result names each title as the task was created: without the '
+        'names found, with the labels kept, cut', () async {
       final long = 'x' * (Task.maxTitleLength + 5);
       final result = await service(grammar: const QuickAddGrammar())
           .submit('Call @bob tomorrow.\nAsk @@alice\nFix **bike\n$long');

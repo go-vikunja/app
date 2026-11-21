@@ -96,6 +96,7 @@ const activityCommentLength = 80;
         null => l10n.activityNotificationTeamAddedSomeone(doer, team),
       },
     ),
+    // The phone schedules the reminders itself.
     ActivityKind.reminder || ActivityKind.other => null,
   };
 }

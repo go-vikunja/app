@@ -73,9 +73,8 @@ void main() {
       ));
     });
 
-    test('step 40q: an open quote ends at the next label, as the parser '
-        'reads it, so that label is the one being typed; until then the '
-        'quote ran to the end of the line and the query was "milk *urg"', () {
+    test('an open quote ends at the next label, as the parser reads it, so '
+        'that label is the one being typed', () {
       expect(activeMagicToken(at('Buy *"milk *urg'), vikunja), (
         kind: MagicTokenKind.label,
         prefix: '*',

@@ -7,8 +7,8 @@
 // patch unchanged (304), favourited by a v2 merge-patch; "Urgent open"
 // replaced and favourited by v1 full replaces after a read; four refused
 // creates (unknown field, bad value, syntax, empty filter) on v2 and the
-// empty one on v1; the project list naming both; an unknown id read; deletes
-// on both versions and one twice. The request bodies are kept as `sent`.
+// empty one on v1; an unknown id read; deletes on both versions and one
+// twice. The request bodies are kept as `sent`.
 // Writes are paced by half a second. The user is renamed `fixtureuser` and
 // the email address replaced; no file may hold a token or a real address.
 import 'dart:async';
@@ -204,7 +204,6 @@ Future<void> main(List<String> args) async {
     },
   );
 
-  await capture('v2_projects_saved_filters', 'GET', '/api/v2/projects');
   await capture(
     'v2_saved_filter_read_unknown',
     'GET',

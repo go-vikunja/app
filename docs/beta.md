@@ -14,7 +14,7 @@ Step 38d ([D87]): the repository joins go-vikunja/app with its whole history, so
 
 - 38d's own changes are on our `main`, reviewed and green, so the imported tree is the reviewed one.
 - kolaente has agreed to the freeze of go-vikunja/app's `main`, from the tag of step 3 until the merge, and has changed the ruleset for the import ([what kolaente does](#what-kolaente-does)).
-- The GitHub account has `coderoftime@gmail.com` as a verified email, so that GitHub links the commits to it, and "Block command line pushes that expose my email" is off, or the push fails with GH007.
+- The GitHub account has the commits' author address (`git log --format='%ae' -1`) as a verified email, so that GitHub links the commits to it, and "Block command line pushes that expose my email" is off, or the push fails with GH007.
 - The tracked test-server users, `test_servers/seed/e2e-user.env` and `e2e-user-2.env`, hold nothing used anywhere else. The history goes public unchanged: it holds no real secret, and most of it is public on GitLab already.
 - The push to the fork publishes: commits pushed there stay reachable from every repository of the network, go-vikunja/app included, even after the fork is deleted ([forks][gh-forks]). Push nothing that has not passed the checks below.
 
@@ -61,7 +61,7 @@ test -z "$(git diff --stat "$B" ours/main)" && echo "ok: nothing differs from ou
 git merge-base --is-ancestor legacy-final "$B" && echo "ok: the old main is an ancestor, so the PR has no conflicts"
 git merge-base --is-ancestor ours/main "$B" && echo "ok: every hash of ours stays"
 test -z "$(git status --porcelain)" && echo "ok: the working tree is clean"
-git log --format='%an <%ae> | %cn <%ce>' legacy-final.."$B" | sort | uniq -c   # one line: coderoftime@gmail.com
+git log --format='%an <%ae> | %cn <%ce>' legacy-final.."$B" | sort | uniq -c   # one line: the owner's address
 git ls-tree --name-only "$B:.github/workflows"                                  # ci, contract-matrix, release and upstream (.yaml)
 git rev-list --objects legacy-final.."$B" | git cat-file --batch-check='%(objecttype) %(objectsize) %(rest)' |
   awk '$1 == "blob"' | sort -k2 -n | tail -1                                    # far below GitHub's 50 MiB warning
@@ -137,39 +137,7 @@ test "$(git rev-parse 'origin/main^1')" = "$(git rev-parse 'legacy-final^{commit
 
 *Done on 2026-11-16 ([D88] has the results): the integration put the source into a version branch `main` beside the root file, so the German upload took `-b main`; its pull request had no `[ci skip]`, got new commits on later syncs instead of a force-push and was green once the German was in; the first export reformats every ARB file once; and an English change drops that text's translations until they are approved again. The run after the re-approval was green.*
 
-Before kolaente connects the real integration, the owner tries it once in a Crowdin project of his own against the test repository of step 38c, so that [the translations on Crowdin](#the-translations-on-crowdin) rest on what was seen, not only on Crowdin's docs. It touches neither project 462614 nor go-vikunja/app and may come before the move.
-
-1. **The test repository:** push our `main`, step 38e included, to its `main`, so that it has `crowdin.yml` and the ARB files.
-2. **The project:** a public project on crowdin.com (free for public projects; you accept Crowdin's terms yourself), English as the source, German, Portuguese, Brazilian Portuguese and Esperanto as the targets. Note its project id.
-3. **An old file,** standing in for the old app's `/app_en.arb` at the root, from a working copy of the test repository:
-
-   ```sh
-   read -rs CROWDIN_PERSONAL_TOKEN && export CROWDIN_PERSONAL_TOKEN   # a new token, Account Settings > API, with the earliest expiry offered, not Never; step 9 deletes it
-   P=<the test project's id>                                          # -i overrides crowdin.yml's 462614
-   crowdin config lint                                                # refuses any custom language in crowdin.yml's mapping
-   crowdin upload sources -i "$P"                                     # no -b: the file lands at the root
-   ```
-
-4. **The integration:** connect Crowdin's GitHub integration to the test repository as [kolaente will](#what-kolaente-does): the branch `main`, the configuration file `crowdin.yml`, "Push Sources", "One-time translation import after the branch is connected" and "Always import new translations from the repository" off, and "Skip untranslated strings" and "Export only approved translations" under the project's Settings > Export. The source lands in a new version branch `main` as `main/app_en.arb`, beside the root `/app_en.arb`.
-5. **The German,** as in the real upload, with `-b main`:
-
-   ```sh
-   crowdin upload translations -i "$P" -b main -l de --auto-approve-imported --import-eq-suggestions --dryrun
-   crowdin upload translations -i "$P" -b main -l de --auto-approve-imported --import-eq-suggestions
-   ```
-
-   The CLI waits while Crowdin imports, several minutes. Crowdin may show German at 0 % for some minutes after it ends, then 100 % translated and 100 % proofread. Then delete the root `/app_en.arb` in the project's Sources, as kolaente will after his export: until then German's progress counts both files and shows 50 %.
-
-6. **A regional language:** in Crowdin's editor, translate a few strings into Brazilian Portuguese and approve them, and one into Esperanto, approved too.
-7. **The pull request,** after "Sync Now" in the integration or the hourly sync:
-   - it comes from the branch `l10n_main` toward `main`;
-   - its title and commit message are "chore(i18n): update translations via Crowdin", with no `[ci skip]`; its commits, one per changed file, name the GitHub account that connected the integration as author;
-   - CI runs and is green once the German is in. A pull request opened before the German upload has almost no German and fails the tests that pin German texts (`project_titles_test.dart`, `german_texts_test.dart`) until a sync after the upload;
-   - the files follow the mapping: `app_de.arb`, `app_pt.arb` (`{}`, the empty base, even with nothing translated into pt-PT), `app_pt_BR.arb` and `app_eo.arb`, which compiles but is not shipped, and none has `@@locale`;
-   - on `l10n_main`, `git diff main -- app/lib/l10n/arb/app_de.arb` differs from our file only in what Crowdin adds or changes: note any copied `@key` metadata, any reordered keys, any changed escapes (`\n`, „…“, …) and whether the final newline is missing;
-   - `python3 -I tool/l10n_progress.py` on its branch shows German at 100.0 % and Brazilian Portuguese with the strings you approved.
-8. **An English change:** change one English text in `app_en.arb` on the test repository's `main` and push it. The text changes in the Crowdin file, and its translations stay, unapproved. The next sync drops that string from `app_de.arb`, and from every other language that had it, and adds commits to `l10n_main`, without a force-push. CI fails where a test pins that German text (the rehearsal changed `connectTagline`, and `german_texts_test.dart` failed). Re-approve the German in Crowdin's editor and Sync Now: the string comes back.
-9. **The end:** write down what differed from this page in [D88], and the notes of steps 7 and 8 in its Limits, in place of the point on the untried export; if the copied metadata or a missing final newline would change every pull request, say so there too. Delete the Crowdin token (Account Settings > API) and the test project, which removes its integration, and revoke Crowdin's access under the GitHub account's Settings > Applications, as it reaches every repository the account can write to.
+**Still open:** delete the rehearsal's Crowdin token (Account Settings > API) and its test project, which removes its integration, and revoke Crowdin's access under the GitHub account's Settings > Applications, as it reaches every repository the account can write to.
 
 ### The translations on Crowdin
 

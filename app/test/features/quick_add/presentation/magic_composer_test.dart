@@ -147,7 +147,7 @@ void main() {
       ]) {
         expect(chip(label), findsOneWidget, reason: label);
       }
-      // Step 40w: the chips' compact density had shrunk them to 40 dp.
+      // Compact density would shrink the chips to 40 dp.
       for (final chip in find.byType(Chip).evaluate()) {
         final size = tester.getSize(find.byWidget(chip.widget));
         expect(size.height, greaterThanOrEqualTo(48), reason: '$size');
@@ -193,9 +193,8 @@ void main() {
       expect(fieldFocused(tester), isTrue);
     });
 
-    testWidgets('step 40q: after an unclosed quote, the next label is read '
-        'and marked, and its chip removes its own token; until then the '
-        'quote swallowed it and the chip removed nothing', (tester) async {
+    testWidgets('after an unclosed quote, the next label is read and '
+        'marked, and its chip removes its own token', (tester) async {
       await harness.open(tester);
       await typeLine(tester, 'Buy *"milk *urgent');
 
@@ -342,7 +341,7 @@ void main() {
       await harness.open(tester);
       await typeLine(tester, 'Pack *ro');
       await tester.pump();
-      // Step 40w: the chips' compact density had shrunk them to 40 dp.
+      // Compact density would shrink the chips to 40 dp.
       for (final chip in find.byType(ActionChip).evaluate()) {
         final size = tester.getSize(find.byWidget(chip.widget));
         expect(size.height, greaterThanOrEqualTo(48), reason: '$size');
@@ -994,7 +993,7 @@ void main() {
       await tester.tap(addButton());
       await tester.pumpAndSettle();
 
-      // Until step 40q the sheet named its own reading, "Call @alex.".
+      // The sheet used to name its own reading, "Call @alex.".
       expect(find.text(en.newTaskCreated('Call .')), findsOneWidget);
     });
 

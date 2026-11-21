@@ -35,7 +35,6 @@ void main() {
     expect(unread.isRead, isFalse);
     expect((await dao.find(2))!.readAt, noon);
     expect((await dao.unhandledUnread()).map((n) => n.id), [1]);
-    expect(await dao.maxId(), 2);
     expect(await dao.existingIds([1, 3]), {1});
   });
 

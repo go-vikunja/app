@@ -16,11 +16,9 @@ import 'package:vikunja_mobile/core/avatar/avatar_providers.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/repositories/local/local_task_details_repository.dart';
-import 'package:vikunja_mobile/core/repositories/local/local_task_resolver.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository_providers.dart';
-import 'package:vikunja_mobile/core/repositories/task_resolver_providers.dart';
 import 'package:vikunja_mobile/core/storage/comment_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_drafts.dart';
 import 'package:vikunja_mobile/features/description_editor/application/description_target.dart';
@@ -78,12 +76,10 @@ void main() {
     addTearDown(container.dispose);
   });
 
-  test('signed out there is nothing to read details, tasks or images '
-      'with', () async {
+  test('signed out there is nothing to read details or images with', () async {
     await container.read(accountsProvider.future);
 
     expect(container.read(taskDetailsRepositoryProvider), isNull);
-    expect(container.read(taskResolverProvider), isNull);
     expect(container.read(attachmentImagesProvider), isNull);
   });
 
@@ -98,14 +94,11 @@ void main() {
       activate: false,
     );
     await container.read(accountsProvider.future);
-    container
-      ..listen(taskDetailsRepositoryProvider, (_, _) {})
-      ..listen(taskResolverProvider, (_, _) {});
+    container.listen(taskDetailsRepositoryProvider, (_, _) {});
 
     final details = container.read(taskDetailsRepositoryProvider);
     final images = container.read(attachmentImagesProvider);
     expect(details, isA<LocalTaskDetailsRepository>());
-    expect(container.read(taskResolverProvider), isA<LocalTaskResolver>());
     expect(
       images,
       same(container.read(accountAttachmentImagesProvider(alice.id))),

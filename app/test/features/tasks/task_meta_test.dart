@@ -99,8 +99,6 @@ void main() {
         ),
         isFalse,
       );
-      expect(PriorityFlag.showsInDetail(TaskPriority.medium), isFalse);
-      expect(PriorityFlag.showsInDetail(TaskPriority.high), isTrue);
     });
   });
 

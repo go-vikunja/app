@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -22,8 +24,14 @@ void main() {
         .setMockMethodCallHandler(StorageFlush.channel, null);
   });
 
-  test('the channel carries the plugin name', () {
-    expect(StorageFlush.channel.name, 'io.vikunja.vikunja_storage_flush');
+  test('Android registers the Dart channel name', () {
+    expect(
+      File(
+        'android/src/main/kotlin/io/vikunja/vikunja_storage_flush/'
+        'VikunjaStorageFlushPlugin.kt',
+      ).readAsStringSync(),
+      contains('"${StorageFlush.channelName}"'),
+    );
   });
 
   test('asks Android to flush the named file', () async {

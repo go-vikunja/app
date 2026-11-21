@@ -417,7 +417,7 @@ final class AccountRegistry {
         if (!readableIds.contains(raw['id'])) (index, raw),
     ];
     final keptIds = {for (final (_, raw) in kept) raw['id']};
-    final json = encodeRegistry(next);
+    final json = _encodeRegistry(next);
     json['accounts'] = _insertKept(json['accounts']! as List<Object?>, kept);
     json['recent_account_ids'] = _insertKept(
       json['recent_account_ids']! as List<Object?>,
@@ -487,8 +487,7 @@ List<Object?> _insertKept(List<Object?> written, List<(int, Object?)> kept) {
 
 const _toDeleteKey = 'accounts_to_delete';
 
-@visibleForTesting
-Map<String, Object?> encodeRegistry(AccountRegistryState state) => {
+Map<String, Object?> _encodeRegistry(AccountRegistryState state) => {
   'version': AccountRegistry._schemaVersion,
   'active_account_id': state.activeAccountId,
   'recent_account_ids': state._recencyOrder,
@@ -497,10 +496,6 @@ Map<String, Object?> encodeRegistry(AccountRegistryState state) => {
 
 /// Entries that cannot be read are left out (and logged) instead of failing
 /// the whole registry.
-@visibleForTesting
-AccountRegistryState decodeRegistry(Object? json) =>
-    _decodeRegistry(json).state;
-
 _StoredRegistry _decodeRegistry(Object? json) {
   if (json is! Map<String, Object?>) {
     throw const FormatException('Account registry is not a JSON object');

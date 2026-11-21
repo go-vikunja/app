@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_logic/src/filter/filter_dates.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
 import 'filter_test_helpers.dart';

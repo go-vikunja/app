@@ -768,9 +768,8 @@ class GithubTest(Fixture):
             f'- `{DESUGAR}`: the source code of desugar_jdk_libs at upstream commit {COMMIT} '
             '(GPL-2.0 with the Classpath exception), which the app contains',
             '',
-            'An APK installed by hand gets no updates by itself. [Obtainium](https://obtainium.imranr.dev) can watch '
-            'these releases and install each new one: add https://github.com/go-vikunja/app, and to get the smaller '
-            'APK for your phone, filter the APKs by its ABI, usually `arm64-v8a`.',
+            'An APK installed by hand gets no updates by itself. Most phones can take the smaller APK for '
+            '`arm64-v8a`.',
         ]) + '\n')
         self.assertIn('Published the GitHub release: https://github.com/go-vikunja/app/releases/tag/v1.0.0-beta.1',
                       result.stdout)

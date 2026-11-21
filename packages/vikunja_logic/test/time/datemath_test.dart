@@ -117,7 +117,7 @@ void main() {
     });
   });
 
-  group('a UTC now rounds in UTC (the server zone GMT, server.md §6)', () {
+  group('a UTC now rounds in UTC (the probed server zone GMT)', () {
     final now = DateTime.utc(2026, 10, 13, 20, 48, 55);
     final cases = {
       'now/d': DateTime.utc(2026, 10, 13),
@@ -510,7 +510,7 @@ void main() {
       );
     });
 
-    test('server.md §6: the probe time with filter_timezone Berlin', () {
+    test('the server probe time with filter_timezone Berlin', () {
       final now = DateTime.utc(2026, 10, 13, 20, 48, 55).toLocal();
 
       expect(

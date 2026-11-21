@@ -70,10 +70,6 @@ final class ProjectAccess {
   /// Manual order in a list view, cards and columns on a board.
   bool get canReorderOrBoard => canWrite;
 
-  bool get canComment => canWrite;
-
-  bool get canReact => canWrite;
-
   @override
   bool operator ==(Object other) =>
       other is ProjectAccess && other.permission == permission;

@@ -1,6 +1,6 @@
 {
 	"source": "frontend/src/helpers/parseTaskIdFromUrl.ts and parseTaskIdFromUrl.test.ts, Vikunja main e7d7f173 (2.7.0)",
-	"generatedBy": "step10/tools/ptid.mjs (re-implementation; every upstream vector re-checked)",
+	"generatedBy": "a re-implementation of the upstream function named in source; every upstream vector re-checked",
 	"algorithm": [
 		"Return null for an empty href.",
 		"Resolve href against the window origin with the WHATWG URL parser (new URL(href, window.location.origin)); return null if it throws.",

@@ -43,11 +43,6 @@ const List<Size> iOSSizes = [
   iPad11Landscape,
   iPad13Portrait,
 ];
-const List<Size> androidTablets = [
-  androidTabletLandscape,
-  androidTabletPortrait,
-];
-const List<Size> iOSTablets = [iPad11Landscape, iPad11Portrait];
 
 String sizeName(Size size) =>
     '${size.width.toStringAsFixed(0)}×${size.height.toStringAsFixed(0)}';

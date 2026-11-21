@@ -21,7 +21,7 @@ final class StoredLinkShare {
 
 /// A guest's secrets in secure storage, apart from the OAuth tokens of
 /// users. The share's password only when the user chose to remember it
-/// (owner, 2026-11-19); otherwise a share that has one asks for it again
+/// (owner, D62); otherwise a share that has one asks for it again
 /// when the hash alone cannot authenticate.
 final class LinkShareStore {
   new(this._store);

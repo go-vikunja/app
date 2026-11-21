@@ -10,6 +10,7 @@ import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
+import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/notifications/subscriber_reminders.dart';
@@ -21,10 +22,6 @@ import 'package:vikunja_mobile/features/notifications/application/notification_p
 import 'package:vikunja_mobile/features/notifications/application/os_notification_capabilities.dart';
 
 final _log = Logger('NotificationsSection');
-
-/// The OS id of the test notification; the scheduler's ids are hashes
-/// far above it.
-const testNotificationOsId = 1;
 
 /// The task id a test notification carries; a tap on it opens the Account
 /// tab instead of a task.
@@ -61,7 +58,7 @@ class NotificationsSection extends ConsumerWidget {
       await ref
           .read(notificationGatewayProvider)
           .showNow(
-            osId: testNotificationOsId,
+            osId: NotificationOsIds.testNotification,
             title: l10n.notificationTestTitle,
             body: l10n.notificationTestBody,
             payload: NotificationPayload(

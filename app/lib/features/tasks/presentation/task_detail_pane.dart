@@ -50,12 +50,6 @@ class TaskDetailPaneScope extends InheritedModel<int> {
   static void Function(Set<int> taskIds)? deletedOf(BuildContext context) =>
       context.getInheritedWidgetOfExactType<TaskDetailPaneScope>()?.deleted;
 
-  /// The task the current tab's pane shows; null without a pane and
-  /// outside the tabs. Rebuilds [context] whenever that changes.
-  static int? selectedTaskIdOf(BuildContext context) => context
-      .dependOnInheritedWidgetOfExactType<TaskDetailPaneScope>()
-      ?.selectedTaskId;
-
   /// Whether the current tab's pane shows the task [taskId]; rebuilds
   /// [context] only when that answer changes.
   static bool isSelected(BuildContext context, int taskId) =>

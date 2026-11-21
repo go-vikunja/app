@@ -431,7 +431,6 @@ void main() {
       expect(decodeTaskChanges(all.first.payload), done);
       expect((await db.outboxDao.nextInLine())!.kind, 'updateTask');
       expect((await db.tasksDao.loadOpenTasks()).map((t) => t.id), [2]);
-      expect(await db.tasksDao.idsInProject(7), [2]);
       expect(await db.tasksDao.findAll([1, 2]), hasLength(1));
       // The counts mirror the server, which still holds the task.
       expect(await db.tasksDao.count(), 3);

@@ -70,7 +70,7 @@ bool Function(X509Certificate certificate) pinnedSocketCheck(
   return (certificate) => check(certificate, origin.host, origin.port);
 }
 
-/// An [HttpClient] for [profile]'s origin (network.md §2.3). [context] is
+/// An [HttpClient] for [profile]'s origin (D65). [context] is
 /// [profileSecurityContext] unless the caller built and validated it
 /// already.
 HttpClient profileHttpClient(

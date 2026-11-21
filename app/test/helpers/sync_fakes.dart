@@ -1163,8 +1163,6 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   /// Each saved filter's last download, by pseudo project id; its tasks
   /// that are in [all] and open show (done ones too for
   /// [savedFiltersWithDone]), like the local database's.
-  Map<int, ListSnapshot> get savedFilterSnapshots =>
-      Map.unmodifiable(_savedFilterSnapshots);
   final Map<int, ListSnapshot> _savedFilterSnapshots = {};
 
   void setSavedFilterSnapshot(int pseudoProjectId, ListSnapshot snapshot) {
@@ -1182,8 +1180,6 @@ final class FakeTaskRepository implements TaskRepository, PendingTaskIdsSource {
   /// project id: its list shows those of [all] that are open (done ones too
   /// for [savedFiltersWithDone]), under `FilterEvaluation.local`, instead
   /// of its snapshot's.
-  Map<int, Set<int>> get savedFilterMatches =>
-      Map.unmodifiable(_savedFilterMatches);
   final Map<int, Set<int>> _savedFilterMatches = {};
 
   void setSavedFilterMatches(int pseudoProjectId, Set<int>? ids) {

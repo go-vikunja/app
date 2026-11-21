@@ -6,8 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// machine a correct run can take several times as long. Otherwise the
 /// time is only printed.
 void expectWithinBudget(int milliseconds, int budget, String what) {
-  // The number the step reports.
-  // ignore: avoid_print
+  // ignore: avoid_print, every run shows the measured time.
   print('$what: $milliseconds ms (budget $budget ms)');
   if (Platform.environment['VIKUNJA_BENCHMARK'] == '1') {
     expect(milliseconds, lessThan(budget), reason: what);

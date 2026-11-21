@@ -1,5 +1,5 @@
 // How the server combined filters with views, saved filters and searches
-// on the probe fixture (server.md §6–§8), rebuilt from the engine's parts.
+// on the probe fixture (D51), rebuilt from the engine's parts.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
@@ -77,7 +77,7 @@ String _saved(
 void main() {
   setUpAll(loadTimeZones);
 
-  group('project views (§6)', () {
+  group('project views', () {
     test('a view covers its project only', () {
       expect(_view(''), 't1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12');
       expect(_view('project = $childProject'), '');
@@ -120,7 +120,7 @@ void main() {
     });
   });
 
-  group('saved filters (§8.5)', () {
+  group('saved filters', () {
     const urgentOpen = 'labels = $urgent && done = false';
 
     test('alone, and with a request filter ANDed', () {

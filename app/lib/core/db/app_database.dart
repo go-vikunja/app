@@ -86,8 +86,7 @@ final class AppDatabase extends _$AppDatabase {
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-    // From 1, and from the development builds' 12, which has version 1's
-    // tables, version 2 adds the stored details, the label remaps and the
+    // From 1, version 2 adds the stored details, the label remaps and the
     // outbox's label column. A later version's database after a rollback
     // keeps its tables: `createTable` creates only what is missing, and the
     // column is added only when it is.

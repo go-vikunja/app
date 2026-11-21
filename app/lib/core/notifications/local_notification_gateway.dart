@@ -512,7 +512,7 @@ final class LocalNotificationGateway implements NotificationGateway {
           // (`cancelNotification`). Such an action also runs from a secure
           // lock screen, so Done is left out while the app lock is on.
           // Android shows at most three actions, so 10 minutes gives way
-          // to Tomorrow (owner, 2026-11-19).
+          // to Tomorrow (owner, D39).
           actions: [
             for (final (id, title) in [
               if (!privacy.doneNeedsUnlock)

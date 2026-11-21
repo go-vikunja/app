@@ -12,7 +12,7 @@ import '../../helpers/server_connections.dart';
 
 const _accountId = 'a1';
 
-// The managers of the background action isolate (D26, architecture §5.8):
+// The managers of the background action isolate (D26):
 // they never call the token endpoint.
 void main() {
   late DateTime now;

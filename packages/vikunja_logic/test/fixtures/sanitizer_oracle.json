@@ -1,6 +1,6 @@
 {
 	"meta": {
-		"generatedBy": "step10/tools/oracle.mjs (re-implementation of the Vikunja 2.7.0 editor extension set; no checkout code executed)",
+		"generatedBy": "a re-implementation of the Vikunja 2.7.0 (e7d7f173) editor extension set with the pinned versions; no checkout code executed. app/editor/test/oracle.test.mjs checks the bundled editor against these vectors",
 		"pinned": {
 			"@tiptap/*": "3.31.3",
 			"prosemirror-model": "1.25.11",

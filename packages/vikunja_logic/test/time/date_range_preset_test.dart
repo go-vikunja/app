@@ -111,7 +111,7 @@ final Map<String, (DateTime, List<_Range>)> _cases = {
       (DateTime(2026, 3, 29, 12), DateTime(2027)),
     ],
   ),
-  'the probe time of server.md §6 (a Tuesday)': (
+  'the server probe time (a Tuesday)': (
     DateTime(2026, 10, 13, 22, 48, 55),
     [
       (DateTime(2026, 10, 13), DateTime(2026, 10, 14)),

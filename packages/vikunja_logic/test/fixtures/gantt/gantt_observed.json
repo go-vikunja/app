@@ -1,5 +1,5 @@
 {
- "_source": "Vikunja 2.7.0 at localhost:34527, probed 2026-10-26 (scratchpad step29/gantt-vectors.json, probe/gantt_state.json for the ids). observed_server: the server's answer to the web's exact Gantt request, v1 and v2; X was created after the 32 runs. derived_client_rows: what the web draws from it (probe/simulate_client.py), device zone = filter zone, today 2026-10-26.",
+ "_source": "Vikunja 2.7.0 at localhost:34527, probed 2026-10-26 (D61). observed_server: the server's answer to the web's exact Gantt request, v1 and v2; X was created after the 32 runs. derived_client_rows: what the web draws from it, simulated after the web's code, device zone = filter zone, today 2026-10-26.",
  "fixture_tasks": [
   {
    "id": 3140,

@@ -912,9 +912,6 @@ final class TasksDao extends DatabaseAccessor<AppDatabase>
         .distinct(mapEquals);
   }
 
-  Future<List<int>> idsInProject(int projectId) =>
-      _ids(tasks.projectId.equals(projectId) & _visible);
-
   Future<List<int>> _ids(Expression<bool> where) {
     final query = selectOnly(tasks)
       ..addColumns([tasks.id])

@@ -4,7 +4,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 
 import '../helpers/tasks.dart';
 
-// The fixture of server.md §6 as local wall times (they were Europe/Berlin
+// The server probe's fixture as local wall times (they were Europe/Berlin
 // there), created in this order; the probe ran on Tuesday 2026-10-13 at
 // 22:48:55.
 final _now = DateTime(2026, 10, 13, 22, 48, 55);
@@ -95,7 +95,7 @@ void main() {
     });
   });
 
-  group('server.md §6 boundaries, compared semantically', () {
+  group('the probed boundaries, compared semantically', () {
     test('the default range, now to now + 7 days', () {
       expect(_select(preset: DateRangePreset.next7Days), {
         'overdue': <int>[],
