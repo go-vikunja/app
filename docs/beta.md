@@ -179,7 +179,7 @@ Step 38e ([D88]): the app's texts go into Vikunja's Crowdin project 462614, besi
 
 - [The rehearsal](#the-crowdin-rehearsal) is done (2026-11-16).
 - The import is merged, which removed the old workflow, or kolaente has disabled it: otherwise its nightly runs keep writing the old app's 188 strings into the root `/app_en.arb`.
-- kolaente has done the Crowdin items of [what kolaente does](#what-kolaente-does): what Crowdin held in the old root `app_en.arb` exported, the manager role in project 462614 for you, and the integration connected.
+- The Crowdin items of [what kolaente does](#what-kolaente-does) are done. With your Developer role in project 462614 (since 2026-11-21), which may approve translations, connect integrations and manage source files, but not change the project's settings (support.crowdin.com/roles), you can export what Crowdin held in the old root `app_en.arb` and connect the integration yourself, once kolaente has given its bot account write access to go-vikunja/app; the export settings and the language mapping stay with kolaente.
 - kolaente has told you where the integration put the source, and the project's Sources show it with the app's strings: as in the rehearsal, `main/app_en.arb` in a version branch `main`, or `app_en.arb` at the project's root, in place of the old app's file.
 - The Crowdin CLI (`brew install crowdin`), a new personal access token of your Crowdin account, not the rehearsal's (Account Settings > API, with the earliest expiry offered, not the default Never), and a clean working copy of go-vikunja/app's `main`. `crowdin.yml` holds the project and the paths but no token: the CLI reads the token from `CROWDIN_PERSONAL_TOKEN`.
 
@@ -202,7 +202,8 @@ crowdin upload translations -b main -l de --auto-approve-imported --import-eq-su
 
 **Afterwards:**
 
-- Delete the Crowdin token under Account Settings > API: it acts with your manager role in 462614, which also holds the web's and the API's files.
+- Delete the Crowdin token under Account Settings > API: it acts with your Developer role in 462614, which also holds the web's and the API's files.
+- Check that German shows 100 % proofread: Crowdin's docs do not say whether a Developer's upload with `--auto-approve-imported` is approved. If it is not, approve the file's German in the editor (a Developer may), or ask kolaente.
 - On Crowdin, German shows the app's file as 100 % translated and 100 % proofread.
 - The integration's next sync opens a pull request "chore(i18n): update translations via Crowdin" from its branch `l10n_main` in go-vikunja/app. Its checks run (no `[ci skip]`), and `python3 -I tool/l10n_progress.py de` on its branch prints 100.0 %. The first one reformats every ARB file once: Crowdin copies the template's `@` metadata into each translation, orders the keys its own way and writes no final newline. Read its diff of `app_de.arb` before you merge: the texts must stay ours. Later diffs stay small.
 - A pull request the integration opened before the German upload has almost no German and fails the tests that pin German texts: leave it unmerged until a sync after the upload ("Sync Now") has updated it.
@@ -231,7 +232,7 @@ A list for the owner to forward:
 - **The Apple account** that publishes the app: with it the App Store name (whether "Vikunja" is still held by the former contributor's team that the old app's `ios/fastlane/Appfile` names), the bundle id and the privacy label, which is open since step 38f ([store-listing.md](store-listing.md#app-store-connect)).
 - **The old app's `app_en.arb`:** the integration does not replace it but puts the app's file beside it, as `main/app_en.arb` in a version branch `main` ([the rehearsal](#the-crowdin-rehearsal)). Export the old root file first if anyone translated it since December 2025, then delete it: until then it counts in each language's progress. Its translations stay in the translation memory.
 - **The old workflow "Crowdin Sync":** the import removes it; if the import is delayed, disable it (Actions > Crowdin Sync > Disable workflow), as each nightly run uploads the old app's `app_en.arb` into the project's root file again.
-- **The manager role** in project 462614 for the owner, for the one-time German upload.
+- **The manager role** for the owner is not needed any more: since 2026-11-21 the owner is a Developer in project 462614, who may approve translations, connect the integration and export or delete the old root file. What still needs kolaente there: the bot account's write access to go-vikunja/app, the export settings and the language mapping below.
 - **The project's export settings** (Settings > Export): "Skip untranslated strings" and "Export only approved translations" on, as `crowdin.yml` asks for the app's file, since Crowdin does not document whether the integration follows `crowdin.yml` there; the server's sync passes both already.
 - **Crowdin's GitHub integration** in project 462614 (Integrations > GitHub), for go-vikunja/app once the import is merged ([the translations on Crowdin](#the-translations-on-crowdin)):
   - connected through a dedicated bot account, not a person's: Crowdin acts with that account's GitHub authorization, its commits name that account as author, and only the member who sets the integration up can change it. The account needs write access to go-vikunja/app and nothing else; Crowdin's staff say it lists only repositories where the account is an admin, so admin at most for the setup;

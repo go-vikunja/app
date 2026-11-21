@@ -3057,7 +3057,7 @@ Step 38e of [D83](#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp). 
 - the bot account lowered to Write once the integration has synced, and the integration checked to still push its branch and update its pull request;
 - "main protect" keeping a maintainer's approval required, so that the integration's account cannot merge its own pull requests;
 - the old nightly Crowdin workflow disabled before the upload, unless the import pull request has removed it already;
-- the manager role in project 462614 for the owner;
+- the manager role in project 462614 for the owner; since 2026-11-21 the owner is a Developer there instead, which covers the integration, approving the German and the old root file ([beta.md](beta.md#what-kolaente-does));
 - "Skip untranslated strings" and "Export only approved translations" under the project's Settings > Export (why: Crowdin does not document whether the integration follows these two options of `crowdin.yml`);
 - where the integration put `app_en.arb`, told to the owner before the German upload: as in the rehearsal, `main/app_en.arb` in a version branch `main`, so that the upload takes `-b main`, or at the root, in place of the old app's file; and Swiss German's mapping in the project's settings (above);
 - whether the web's translations may pre-translate the app;
