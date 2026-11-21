@@ -62,7 +62,7 @@ git merge-base --is-ancestor legacy-final "$B" && echo "ok: the old main is an a
 git merge-base --is-ancestor ours/main "$B" && echo "ok: every hash of ours stays"
 test -z "$(git status --porcelain)" && echo "ok: the working tree is clean"
 git log --format='%an <%ae> | %cn <%ce>' legacy-final.."$B" | sort | uniq -c   # one line: coderoftime@gmail.com
-git ls-tree --name-only "$B:.github/workflows"                                  # ci.yaml and release.yaml only
+git ls-tree --name-only "$B:.github/workflows"                                  # ci, contract-matrix, release and upstream (.yaml)
 git rev-list --objects legacy-final.."$B" | git cat-file --batch-check='%(objecttype) %(objectsize) %(rest)' |
   awk '$1 == "blob"' | sort -k2 -n | tail -1                                    # far below GitHub's 50 MiB warning
 git log --graph --oneline -8 "$B"
