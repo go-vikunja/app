@@ -2,7 +2,7 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Cronet follows network changes; its AARs declare no permission since
-         500.x, so this no longer comes with them (D67). -->
+         500.x, so this no longer comes with them (D5). -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Local reminders (flutter_local_notifications): the permission prompt
          on Android 13+, exact alarms (denied by default on 14+, never
@@ -188,7 +188,7 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
-        <!-- Embedded Cronet's manifest flags (D67), read from this disabled
+        <!-- Embedded Cronet's manifest flags (D5), read from this disabled
              placeholder by its fully qualified name; the class does not
              exist. Without ReadHttpFlags=false Cronet applies a flags file
              from a system-image package, which can override its features
