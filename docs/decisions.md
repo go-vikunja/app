@@ -1193,7 +1193,7 @@ Limits:
 
 ## D63: Home-screen widgets: app-written snapshots, Glance on Android, WidgetKit on iOS
 
-*In review since 2026-10-27 (steps 18 and 19, until the iOS device test).*
+*Accepted 2026-11-22 for Android (step 18); in review for iOS since 2026-10-27 (step 19, until the iOS device test).*
 
 **Data: the app writes, the widgets only draw** (`app/lib/core/widgets/`); nothing native talks to the server or holds a token.
 - Lists: Today (as on the Overview), Upcoming 3, 7 or 14 days, Overdue, Favorites, a project (as its first list view), a label, a saved filter (its open tasks, [D95]; not for guests); and a New task button.
@@ -1837,7 +1837,7 @@ Limits:
 
 ## D82: Projects list–detail: the project tree beside the project on wide windows
 
-*In review since 2026-11-10 (step 36g), the owner's decision where marked.*
+*Accepted 2026-11-22 (step 36g), the owner's decision where marked.*
 
 - Part of the first release's beta build (owner, [D72]).
 - On wide windows the project tree, the open project and the task pane always stand side by side, and the pane keeps [D70]'s width (owner). Below the gate and on every phone nothing changes.
