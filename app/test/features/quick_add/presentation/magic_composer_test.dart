@@ -154,6 +154,29 @@ void main() {
       }
     });
 
+    testWidgets("a typed project's chip and the project field show the "
+        "project's colour, the text's green only marks the text", (
+      tester,
+    ) async {
+      harness.data.projects.all = [
+        work.copyWith(hexColor: '1973ff'),
+        inbox,
+        garageSale,
+        gardening,
+      ];
+      await harness.open(tester);
+      await typeLine(tester, 'Plan +Work');
+
+      List<String> colours(Finder of) => [
+        for (final icon in tester.widgetList<ProjectIcon>(
+          find.descendant(of: of, matching: find.byType(ProjectIcon)),
+        ))
+          icon.hexColor,
+      ];
+      expect(colours(chip('Work')), ['1973ff']);
+      expect(colours(projectField('Work')), ['1973ff']);
+    });
+
     testWidgets('people not known here are looked up when adding', (
       tester,
     ) async {
@@ -491,6 +514,54 @@ void main() {
       expect(composerText(tester), 'Ask @alex ');
     });
 
+    testWidgets('a token that names its item in full suggests it no more, '
+        'unless its quote is still open', (tester) async {
+      await harness.open(tester);
+
+      await typeLine(tester, 'Plan +wor');
+      expect(suggestion('Work'), findsOneWidget);
+      await typeLine(tester, 'Plan +work');
+      expect(suggestion('Work'), findsNothing);
+
+      await typeLine(tester, 'Sell +"Garage Sa');
+      expect(suggestion('Garage Sale'), findsOneWidget);
+      await typeLine(tester, 'Sell +"garage sale"');
+      expect(suggestion('Garage Sale'), findsNothing);
+
+      await typeLine(tester, 'Pack *urgen');
+      await tester.pump();
+      expect(suggestion('urgent'), findsOneWidget);
+      await typeLine(tester, 'Pack *urgent');
+      expect(suggestion('urgent'), findsNothing);
+
+      await typeLine(tester, 'Ask @sa');
+      await tester.pump();
+      expect(suggestion('Sam Example'), findsOneWidget);
+      await typeLine(tester, 'Ask @sam');
+      await tester.pump();
+      expect(suggestion('Sam Example'), findsNothing);
+      await tester.pump(MagicSuggestions.debounce);
+      await tester.pump();
+      expect(suggestion('Sam Example'), findsNothing);
+    });
+
+    testWidgets('projects show and match their display title, and a tap '
+        "completes the server's", (tester) async {
+      useLocale(tester, const Locale('de'));
+      await harness.open(tester);
+
+      await typeLine(tester, 'Kaufen +eing');
+      expect(suggestion(de.projectInboxTitle), findsOneWidget);
+      await tester.tap(suggestion(de.projectInboxTitle));
+      await tester.pump();
+      expect(composerText(tester), 'Kaufen +Inbox ');
+      expect(chip(de.projectInboxTitle), findsOneWidget);
+
+      await typeLine(tester, 'Kaufen +inb');
+      expect(suggestion(de.projectInboxTitle), findsOneWidget);
+      expect(suggestion('Inbox'), findsNothing);
+    });
+
     testWidgets('people search in the project the line names', (tester) async {
       await harness.open(tester);
       await typeLine(tester, 'Plan +Work @s');
@@ -550,7 +621,7 @@ void main() {
       );
       expect(find.text(en.quickAddHelpLabelsCreated('@')), findsOneWidget);
       // The 27th of next month, never a date in the past.
-      for (final example in ['nov 27', '27/11', '2026-11-27']) {
+      for (final example in ['nov 27', '27/11', '27.11.', '2026-11-27']) {
         await tester.scrollUntilVisible(
           find.text(example),
           200,
@@ -563,7 +634,7 @@ void main() {
         );
       }
       await tester.scrollUntilVisible(
-        find.text(en.quickAddHelpEnglish),
+        find.text(en.quickAddHelpMode('Todoist')),
         200,
         scrollable: find
             .descendant(
@@ -573,6 +644,36 @@ void main() {
             .first,
       );
       expect(find.text(en.quickAddHelpMode('Todoist')), findsOneWidget);
+    });
+
+    testWidgets('the Dates section starts with the note that date words are '
+        'English', (tester) async {
+      await harness.open(tester);
+      await tester.tap(find.byTooltip(en.quickAddHelp));
+      await tester.pumpAndSettle();
+      await tester.scrollUntilVisible(
+        find.text('today'),
+        200,
+        scrollable: find
+            .descendant(
+              of: find.byType(QuickAddHelpSheet),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+
+      final heading = tester.getRect(find.text(en.quickAddHelpDatesTitle));
+      final note = tester.getRect(find.text(en.quickAddHelpEnglish));
+      final examples = tester.getRect(find.text(en.quickAddHelpDatesBody));
+      expect(note.top, greaterThan(heading.bottom));
+      expect(note.bottom, lessThanOrEqualTo(examples.top));
+      expect(
+        find.descendant(
+          of: find.byType(QuickAddHelpSheet),
+          matching: find.text(en.quickAddHelpEnglish),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('a guest reads that new labels stay in the title, since a '
@@ -804,6 +905,100 @@ void main() {
       await tester.pumpAndSettle();
       expect(harness.service.submits.single.fallbackPriority, 4);
     });
+
+    testWidgets('a locked row says that the title sets it, beside its '
+        'heading or in the field', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await harness.open(tester);
+      final note = inSheet(en.newTaskSetInTitle);
+
+      await typeLine(tester, 'Call Sam tomorrow');
+      expect(note, findsOneWidget);
+      // Beside the heading where there is room, else under it.
+      expect(
+        tester.getRect(note).top,
+        greaterThanOrEqualTo(tester.getRect(inSheet(en.taskDetailDueDate)).top),
+      );
+      expect(
+        tester.getRect(note).bottom,
+        lessThanOrEqualTo(tester.getRect(choiceChip(en.shortcutToday)).top),
+      );
+
+      await typeLine(tester, 'Call Sam tomorrow at 9:00 !3 +Work');
+      expect(note, findsNWidgets(3));
+      final project = find.byType(ProjectField);
+      expect(
+        find.descendant(of: project, matching: find.text(en.newTaskSetInTitle)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: project,
+          matching: find.byIcon(Icons.arrow_drop_down),
+        ),
+        findsNothing,
+      );
+      expect(tester.getSemantics(project).hint, en.newTaskSetInTitle);
+
+      await typeLine(tester, 'Call Sam');
+      expect(note, findsNothing);
+      expect(tester.getSemantics(project).hint, isEmpty);
+
+      await typeLine(tester, 'Call mom tomorrow +Work\nBuy milk +Work friday');
+      expect(note, findsNWidgets(2));
+      semantics.dispose();
+    });
+  });
+
+  group('hints', () {
+    testWidgets('a German date word without a date says that the date words '
+        'are English, as a live region', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await harness.open(tester);
+      await typeLine(tester, 'Zahnarzt morgen um 17 Uhr');
+
+      final hint = inSheet(en.quickAddHintEnglishDates('tomorrow at 17:00'));
+      expect(hint, findsOneWidget);
+      expect(
+        find.ancestor(
+          of: hint,
+          matching: find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics && (widget.properties.liveRegion ?? false),
+          ),
+        ),
+        findsOneWidget,
+      );
+
+      await typeLine(tester, 'Zahnarzt tomorrow at 17:00');
+      expect(hint, findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets('a clock time after the date without at says to add it', (
+      tester,
+    ) async {
+      await harness.open(tester);
+      await typeLine(tester, 'Call Sam tomorrow 5pm');
+
+      final hint = inSheet(en.quickAddHintAddAt('5pm'));
+      expect(hint, findsOneWidget);
+      await typeLine(tester, 'Call Sam tomorrow at 5pm');
+      expect(hint, findsNothing);
+    });
+
+    testWidgets('with magic off there are no hints', (tester) async {
+      harness.settings = const UserSettings(
+        quickAddMagicMode: QuickAddMagicMode.disabled,
+      );
+      await harness.open(tester);
+      await typeLine(tester, 'Zahnarzt morgen um 17 Uhr');
+
+      expect(
+        inSheet(en.quickAddHintEnglishDates('tomorrow at 17:00')),
+        findsNothing,
+      );
+    });
   });
 
   group('adding', () {
@@ -1032,6 +1227,7 @@ void main() {
         'For the weekend',
       );
       await tester.pump();
+      await tapInSheet(tester, en.repeatModeEvery);
       await tapInSheet(tester, en.repeatPresetDaily);
       await tester.ensureVisible(addButton(2));
       await tester.pumpAndSettle();

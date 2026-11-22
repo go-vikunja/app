@@ -15,7 +15,9 @@ struct TaskRowContent: Identifiable {
   var priorityLabel: String?
   var priorityLevel: Int
   var projectTitle: String?
+  /// As the app drew it on the light background, and below on the dark.
   var projectColor: Color?
+  var projectColorDark: Color?
   var canDone: Bool
   var semanticsLabel: String
   var doneLabel: String
@@ -181,7 +183,9 @@ struct TasksTimeline {
     return TaskRowContent(
       id: row.id, title: row.title, dueLabel: dueLabel, dueTone: tone, dueAt: row.dueAt,
       priorityLabel: row.priority, priorityLevel: row.priorityLevel ?? 0,
-      projectTitle: row.project, projectColor: row.color.flatMap(Color.init(hex:)),
+      projectTitle: row.project,
+      projectColor: (row.colorLight ?? row.color).flatMap(Color.init(hex:)),
+      projectColorDark: (row.colorDark ?? row.color).flatMap(Color.init(hex:)),
       canDone: row.canDone ?? false,
       semanticsLabel: row.spokenLabel(stale: stale, overdue: tone == .overdue) ?? row.title,
       doneLabel: row.doneLabel ?? row.title,

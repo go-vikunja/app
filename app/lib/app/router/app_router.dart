@@ -110,8 +110,11 @@ abstract final class AppRoutes {
   static int? projectIdIn(String location) =>
       int.tryParse(_projectLocation.firstMatch(location)?.group(1) ?? '');
 
-  /// Full screen over the shell, from the detail sheet or a new task.
-  static String taskEdit(int id) => '$home/tasks/$id/edit';
+  /// Full screen over the shell, from the detail sheet; with [field] it
+  /// opens scrolled to that field.
+  static String taskEdit(int id, {TaskEditField? field}) => field == null
+      ? '$home/tasks/$id/edit'
+      : '$home/tasks/$id/edit?field=${field.name}';
 
   /// The description editor over the shell, from the detail sheet and the
   /// edit pages.
@@ -380,7 +383,11 @@ GoRouter appRouter(Ref ref) {
       ),
       overShell(
         '${AppRoutes.home}/tasks/:id/edit',
-        (state) => TaskEditPage(taskId: _idParam(state)!),
+        (state) => TaskEditPage(
+          taskId: _idParam(state)!,
+          field: TaskEditField.values
+              .asNameMap()[state.uri.queryParameters['field']],
+        ),
         redirect: _needsId(AppRoutes.overview),
       ),
       overShell(

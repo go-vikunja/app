@@ -172,35 +172,153 @@ void main() {
     });
   });
 
-  testWidgets('a settings section has a divider above, the header and its '
-      'tiles', (tester) async {
-    final colors = await pump(
-      tester,
-      ListView(
-        children: const [
-          SettingsSection(
-            title: 'Instance',
-            dividerAbove: false,
-            children: [ListTile(title: Text('Sync'))],
-          ),
-          SettingsSection(
-            title: 'Appearance',
-            children: [ListTile(title: Text('Theme'))],
-          ),
-        ],
-      ),
+  group('settings section', () {
+    Material cardOf(WidgetTester tester, String text) => tester.widget(
+      find.ancestor(of: find.text(text), matching: find.byType(Material)).first,
     );
 
-    expect(find.byType(Divider), findsOneWidget);
-    expect(
-      tester.getTopLeft(find.byType(Divider)).dy,
-      lessThan(tester.getTopLeft(find.text('Appearance')).dy),
-    );
-    expect(
-      tester.widget<Text>(find.text('Appearance')).style?.color,
-      colors.primary,
-    );
-    expect(find.text('Theme'), findsOneWidget);
+    testWidgets('is drawn like a section card: the header, then its tiles on '
+        'one rounded card', (tester) async {
+      final colors = await pump(
+        tester,
+        ListView(
+          children: const [
+            SectionCard(title: 'Privacy', children: [Text('Lock')]),
+            SettingsSection(
+              title: 'Appearance',
+              trailing: Text('On this device'),
+              children: [
+                ListTile(title: Text('Theme')),
+                ListTile(title: Text('Language')),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      final card = cardOf(tester, 'Theme');
+      expect(identical(card, cardOf(tester, 'Language')), isTrue);
+      expect(card.color, colors.surfaceContainerLow);
+      expect(card.clipBehavior, Clip.antiAlias);
+      expect(
+        card.shape,
+        const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(SectionCardItem.radius),
+        ),
+      );
+      expect(
+        tester.widget<Text>(find.text('Appearance')).style?.color,
+        colors.primary,
+      );
+      expect(find.text('On this device'), findsOneWidget);
+      double left(String text) => tester.getTopLeft(find.text(text)).dx;
+      expect(left('Appearance'), left('Privacy'));
+      Rect rectOf(String text) => tester.getRect(
+        find
+            .ancestor(of: find.text(text), matching: find.byType(Material))
+            .first,
+      );
+      expect(rectOf('Theme').left, rectOf('Lock').left);
+      expect(rectOf('Theme').width, rectOf('Lock').width);
+      expect(find.byType(Divider), findsNothing);
+    });
+
+    testWidgets('draws an inset divider only between rows that take up '
+        'space', (tester) async {
+      final colors = await pump(
+        tester,
+        const Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: 300,
+            child: SettingsSection(
+              title: 'Sync',
+              children: [
+                SizedBox.shrink(),
+                SizedBox(height: 40, child: Text('One')),
+                SizedBox.shrink(),
+                SizedBox(height: 40, child: Text('Two')),
+                SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final one = tester.getRect(find.text('One'));
+      final two = tester.getRect(find.text('Two'));
+      expect(two.top - one.bottom, 1);
+      final card = tester.getRect(
+        find
+            .ancestor(of: find.text('One'), matching: find.byType(Material))
+            .first,
+      );
+      expect(one.top, card.top);
+      expect(two.bottom, card.bottom);
+      expect(card.width, 300 - 32);
+
+      final rows = find.ancestor(
+        of: find.text('One'),
+        matching: find.byWidgetPredicate(
+          (widget) => '${widget.runtimeType}' == '_DividedRows',
+        ),
+      );
+      expect(
+        rows,
+        paints..rect(
+          rect: Rect.fromLTWH(16, one.bottom - card.top, 300 - 32 - 32, 1),
+          color: colors.outlineVariant.withValues(alpha: 0.7),
+        ),
+      );
+      expect(
+        rows,
+        isNot(
+          paints
+            ..rect()
+            ..rect(),
+        ),
+      );
+    });
+
+    testWidgets('with every row empty, draws no divider', (tester) async {
+      await pump(
+        tester,
+        const SettingsSection(
+          title: 'Sync',
+          children: [SizedBox.shrink(), SizedBox.shrink()],
+        ),
+      );
+
+      final rows = find.descendant(
+        of: find.byType(SettingsSection),
+        matching: find.byWidgetPredicate(
+          (widget) => '${widget.runtimeType}' == '_DividedRows',
+        ),
+      );
+      expect(tester.getSize(rows).height, 0);
+      expect(rows, isNot(paints..rect()));
+    });
+
+    testWidgets('a row tapped inside the card gets the tap', (tester) async {
+      var taps = 0;
+      await pump(
+        tester,
+        ListView(
+          children: [
+            SettingsSection(
+              title: 'Accounts',
+              children: [
+                const SizedBox.shrink(),
+                ListTile(title: const Text('Add account'), onTap: () => taps++),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      await tester.tap(find.text('Add account'));
+      expect(taps, 1);
+    });
   });
 
   group('a heading stays a node of its own before a single tappable row, '

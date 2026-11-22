@@ -5,6 +5,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_rows.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_html.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row_parts.dart';
 
@@ -63,8 +64,10 @@ class _DescriptionHeader extends StatelessWidget {
 
 /// Selectable rich text whose checkboxes take taps when [onToggleTaskItem]
 /// is set; without visible content "Add description" when [onAdd] is set,
-/// else "No description".
-class _Description extends StatelessWidget {
+/// else "No description". With [onAdd] a tap on its text opens the editor
+/// too, unless it lands on a link or a checkbox, while a long press still
+/// selects.
+class _Description extends StatefulWidget {
   const new({
     required this.task,
     required this.onLink,
@@ -80,44 +83,55 @@ class _Description extends StatelessWidget {
   final void Function(String html, RichTaskItem item)? onToggleTaskItem;
 
   @override
+  State<_Description> createState() => _DescriptionState();
+}
+
+class _DescriptionState extends State<_Description> {
+  final _selectionArea = GlobalKey<SelectionAreaState>();
+  var _selecting = false;
+
+  /// Ends a selection, as the area's own tap would; else edits.
+  void _tapped() {
+    if (_selecting) {
+      _selectionArea.currentState?.selectableRegion
+        ?..hideToolbar()
+        ..clearSelection();
+      return;
+    }
+    widget.onAdd?.call();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
-    final onAdd = this.onAdd;
+    final task = widget.task;
+    final onAdd = widget.onAdd;
     final empty = onAdd == null
-        ? Padding(
-            padding: const EdgeInsets.all(16),
-            child: Text(
-              l10n.taskDetailNoDescription,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          )
-        // The button's own padding lines its icon up with the card's text.
-        : Padding(
-            padding: const EdgeInsets.all(4),
-            child: Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                onPressed: onAdd,
-                icon: const Icon(Icons.add),
-                label: Text(l10n.taskDetailAddDescription),
-              ),
-            ),
-          );
+        ? DetailEmptyLine(text: l10n.taskDetailNoDescription)
+        : DetailAddRow(label: l10n.taskDetailAddDescription, onPressed: onAdd);
     if (!hasDescription(task)) return empty;
     return Padding(
       padding: const EdgeInsets.all(16),
       child: SelectionArea(
-        child: RichHtml(
-          html: task.description,
-          onLink: onLink,
-          onTaskLink: onTaskLink,
-          onToggleTaskItem: onToggleTaskItem,
-          style: theme.textTheme.bodyLarge,
-          projectId: task.projectId,
-          empty: empty,
+        key: _selectionArea,
+        onSelectionChanged: (content) =>
+            _selecting = content?.plainText.isNotEmpty ?? false,
+        // Inside the area, so that its taps come first; links and
+        // checkboxes lie deeper still and keep theirs.
+        child: GestureDetector(
+          onTap: onAdd == null ? null : _tapped,
+          // Screen readers have Edit description in the heading.
+          excludeFromSemantics: true,
+          child: RichHtml(
+            html: task.description,
+            onLink: widget.onLink,
+            onTaskLink: widget.onTaskLink,
+            onToggleTaskItem: widget.onToggleTaskItem,
+            style: theme.textTheme.bodyLarge,
+            projectId: task.projectId,
+            empty: empty,
+          ),
         ),
       ),
     );

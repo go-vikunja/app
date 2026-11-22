@@ -23,12 +23,12 @@ class InboxButton extends ConsumerWidget {
     return Semantics(
       container: true,
       button: true,
-      label: l10n.inboxButton(unread),
+      label: l10n.activityButton(unread),
       onTap: open,
       excludeSemantics: true,
       child: IconButton(
         onPressed: open,
-        tooltip: l10n.inboxTitle,
+        tooltip: l10n.activityTitle,
         icon: Badge(
           isLabelVisible: unread > 0,
           // Like the tab bar's labels; the button's label speaks the count.

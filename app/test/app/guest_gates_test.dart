@@ -258,7 +258,7 @@ void main() {
     await openTab(tester, en.tabUpcoming);
     await openMenu(tester);
     expect(find.text(en.refresh), findsOneWidget);
-    expect(find.text(en.inboxButton(0)), findsNothing);
+    expect(find.text(en.activityButton(0)), findsNothing);
   });
 
   testWidgets('the Projects tab offers a guest no new project or saved '

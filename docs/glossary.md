@@ -48,6 +48,8 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - support details for what the About page's row of that name shows and shares for a bug report ("Support details"); the details' own text stays English in every language.
   - the trash for the server's trash (Vikunja 2.8.0 and later), as on the web ([D79](decisions.md#d79-the-trash-of-vikunja-280-undo-queued-deletes-a-trash-page)): a task or project is moved to the trash, is in the trash, is restored from the trash, is deleted forever (also for the server's purge after 30 days; never "for good"); the trash is emptied ("Empty trash", "Trash emptied"); a server without it "doesn't support the trash". Never "bin".
   - following for the server's subscriptions: a user follows a task or project and unfollows it ("Follow task", "Unfollow task", "Following the project …"); never subscribe or watch. On Vikunja 2.8.0 and later the tasks a user follows are the ones whose reminders reach them. Only the share cleanup notice keeps "subscriptions", for what the server deletes.
+  - activity for the server's notifications about comments, assignments and mentions: the page the Overview's bell opens is "Activity" ("No new activity", "Activity, 3 unread"), like the category and its switch; "notifications" names only what the device shows and their settings (the Account tab's Notifications section).
+  - working through several tasks ([D106](decisions.md#d106-faster-work-in-lists-swipes-selecting-several-tasks-reschedule)): select ("Select", "Select tasks", "Select all", "{count} selected", "End selection"); reschedule only for giving tasks a new due date (the Overdue heading's "Reschedule"); move only for another project, column or place in a list ("Move", "Move to column…"), never for a date; "Done" and "Not done" for the swipe and the selection's actions.
 - **Sign in:** "sign in" (verb), "sign-in" (noun or adjective: sign-in page), "sign out". Never log in, login or log out.
 - **Device:** "device" for the phone or tablet the app runs on. "phone" only for another phone (`linkShareQrHint`) and in the connect tagline.
 - **People and places:**
@@ -96,7 +98,8 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - Zugriff for access and Berechtigung for permission, not Rechte;
   - accounts: Account, as in Vikunja's German translation instructions (der Account, die Accounts, Account-Einstellungen, Account-Passwort), never Konto; Anmeldename for the username, never Benutzername (both checked by `app/test/l10n/german_texts_test.dart`); anmelden/Anmeldung, abmelden; a session the server ended is "beendet", not "abgelaufen";
   - Synchronisierung;
-  - Aktivitäten for the notification category and its switch;
+  - Aktivitäten for the notification category, its switch and the page the bell opens („Aktivitäten“, „Keine neuen Aktivitäten“); Benachrichtigungen only for what the device shows and their settings;
+  - working through several tasks: Auswählen („Aufgaben auswählen“, „Alle auswählen“), „{count} ausgewählt“, „Auswahl beenden“; Neu planen for reschedule („Neu planen“, „{count} überfällige Aufgaben neu planen“), never Verschieben, which stays for move („Verschieben“, „In Spalte verschieben …“); Erledigt and Nicht erledigt for the actions Done and Not done;
   - Gerät for the device, also in the connect tagline; Smartphone for another phone (`linkShareQrHint`); never Handy (`german_texts_test.dart`);
   - Startbildschirm (Home-Bildschirm only in iOS steps);
   - 12-/24-Stunden-Format;

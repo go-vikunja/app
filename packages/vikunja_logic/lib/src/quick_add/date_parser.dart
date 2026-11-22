@@ -116,17 +116,25 @@ final _absoluteDates = [
     '(^| )(?<date>(?<year>[0-9]{3,4})-(?<month>[0-9][0-9]?)'
     r'-(?<day>[0-9][0-9]))($| )',
   ),
+  // D102-10: a final dot, as German writes `17.12.` and `17.12.2026.`.
   RegExp(
     r'(^| )(?<date>(?<day>[0-9][0-9]?)\.(?<month>[0-9][0-9]?)'
-    r'(?:\.(?<year>[0-9][0-9](?:[0-9][0-9])?))?)($| )',
+    r'(?:\.(?<year>[0-9][0-9](?:[0-9][0-9])?))?\.?)($| )',
   ),
 ];
+
+final RegExp _dottedDate = _absoluteDates.last;
+
+// D102-10: a standalone German `am` before a dotted date goes with it,
+// unless it is the time suffix of a number before it (`at 9 am 17.12.`).
+final _amBefore = RegExp(r'(?<!\S)am $', caseSensitive: false);
+final _numberBefore = RegExp(r'(?:^|\s)[0-9][0-9]?(?::[0-9][0-9])? $');
 
 const _anyAbsoluteDate =
     '[0-9][0-9]?/[0-9][0-9]?(?:/[0-9][0-9](?:[0-9][0-9])?)?'
     '|[0-9]{3,4}/[0-9][0-9]?/[0-9][0-9]'
     '|[0-9]{3,4}-[0-9][0-9]?-[0-9][0-9]'
-    r'|[0-9][0-9]?\.[0-9][0-9]?(?:\.(?:[0-9][0-9](?:[0-9][0-9])?)?)?';
+    r'|[0-9][0-9]?\.[0-9][0-9]?(?:\.(?:[0-9][0-9](?:[0-9][0-9])?\.?)?)?';
 
 // Web parity: the web keeps a range such as `31.12.2026 - 01.01.2027` in
 // the title and takes no date from it.
@@ -151,9 +159,11 @@ final _time = RegExp(
   caseSensitive: false,
 );
 
-// D102-5: the web reads `Release 1.2` as 1 February.
+// D102-5: the web reads `Release 1.2` as 1 February; German section words
+// keep `Kapitel 3.2` text too.
 final _versionWord = RegExp(
-  r'(?:^|\s)(?:v|ver|version|release|rel|build|update|patch|rc|beta|alpha) $',
+  r'(?:^|\s)(?:v|ver|version|release|rel|build|update|patch|rc|beta|alpha'
+  r'|kapitel|abschnitt|seite|folie|teil|nr\.?) $',
   caseSensitive: false,
 );
 
@@ -329,14 +339,27 @@ _FoundDate? _absoluteDate(String text, DateTime now, ClockTime? defaultTime) {
       now: now,
     );
     if (date != null) {
+      final phrase = match.namedGroup('date')!;
       return _found(
         text,
         atDefaultTime(date, now: now, defaultTime: defaultTime),
-        match.namedGroup('date')!,
+        identical(pattern, _dottedDate)
+            ? '${_germanAm(text.substring(0, match.start + match[1]!.length))}'
+                  '$phrase'
+            : phrase,
       );
     }
   }
   return null;
+}
+
+/// The `am ` that ends [before] and goes with the dotted date after it, as
+/// typed; empty when there is none or it ends a time (`9 am`).
+String _germanAm(String before) {
+  if (!_amBefore.hasMatch(before)) return '';
+  final head = before.substring(0, before.length - 3);
+  if (_numberBefore.hasMatch(head)) return '';
+  return before.substring(before.length - 3);
 }
 
 _FoundDate? _monthDayDate(String text, DateTime now, ClockTime? defaultTime) {

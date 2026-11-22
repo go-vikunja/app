@@ -1,6 +1,7 @@
 import 'package:intl/intl.dart' as intl;
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/large_text.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
@@ -8,7 +9,8 @@ import 'package:vikunja_mobile/features/common/presentation/section_semantics.da
 /// One day of Upcoming's timeline: a date column (the day's number, filled
 /// for today, its weekday and a line down to the next day) beside the
 /// day's [title] and its task [rows] in a card; without rows "Nothing
-/// planned".
+/// planned". From 1.5 times the text size without the date column and its
+/// line, so that the rows get the whole width; the titles say the dates.
 class TimelineDay extends StatelessWidget {
   const new({
     required this.day,
@@ -63,6 +65,12 @@ class TimelineDay extends StatelessWidget {
         ],
       ),
     );
+    if (largeTextOf(context)) {
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        child: content,
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Stack(

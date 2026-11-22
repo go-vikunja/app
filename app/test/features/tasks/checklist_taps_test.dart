@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../../helpers/announcer_region.dart';
+import '../../helpers/editor_bridge_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/sync_fakes.dart';
@@ -68,7 +70,12 @@ void main() {
 
   Future<void> openSheet(WidgetTester tester, String title) async {
     usePhoneSurface(tester, logicalSize: const Size(360, 1800));
-    await pumpSignedInApp(tester, sync: data, now: now);
+    await pumpSignedInApp(
+      tester,
+      sync: data,
+      now: now,
+      overrides: [FakeEditorBridges().override],
+    );
     await tester.tap(find.text(title));
     await tester.pumpAndSettle();
   }
@@ -162,13 +169,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('an item that cannot be toggled in place stays read-only', (
+  testWidgets('an item that cannot be toggled in place stays read-only; a '
+      'tap on it opens the editor, as on any text of the description', (
     tester,
   ) async {
     await openSheet(tester, 'Shopping');
     final legacy = find.ancestor(
       of: inSheet(find.text('Old item')),
       matching: find.byType(MergeSemantics),
+    );
+    expect(
+      find.descendant(of: legacy, matching: find.byType(InkResponse)),
+      findsNothing,
     );
 
     await tester.tap(
@@ -177,10 +189,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(data.tasks.checklistToggles, isEmpty);
-    expect(
-      find.descendant(of: legacy, matching: find.byType(InkResponse)),
-      findsNothing,
-    );
+    expect(find.byType(DescriptionEditorPage), findsOneWidget);
   });
 
   testWidgets('each item is one checkbox for screen readers; one with a link '

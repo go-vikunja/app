@@ -312,6 +312,94 @@ void main() {
       expect(parse('Release 1.2.2022').date, DateTime(2022, 2, 1, 12));
       expect(parse('Pay rent 1.7').date, DateTime(2021, 7, 1, 12));
     });
+
+    test('D102-5: after a German section word a number is no date', () {
+      for (final text in [
+        'Lies Kapitel 3.2',
+        'Lies Kapitel 3.2.',
+        'Lesen: Abschnitt 2.1',
+        'Seite 4.5',
+        'Ändern: Folie 2.3',
+        'Teil 1.2',
+        'Nr. 3.4',
+        'Nr 3.4',
+        'kapitel 7/8',
+      ]) {
+        final result = parse(text);
+        expect(result.date, isNull, reason: text);
+        expect(result.text, text, reason: text);
+      }
+      expect(parse('Kapitel 3.2.2022').date, DateTime(2022, 2, 3, 12));
+    });
+  });
+
+  group('D102-10: German short dates', () {
+    final cases = {
+      'Arzt 17.12.': ('Arzt', DateTime(2021, 12, 17, 12), ['17.12.']),
+      '17.12. Arzt': ('Arzt', DateTime(2021, 12, 17, 12), ['17.12.']),
+      'Arzt 17.12.2022.': ('Arzt', DateTime(2022, 12, 17, 12), ['17.12.2022.']),
+      'Arzt 17.12.22.': ('Arzt', DateTime(2022, 12, 17, 12), ['17.12.22.']),
+      'Arzt am 17.12.': ('Arzt', DateTime(2021, 12, 17, 12), ['am 17.12.']),
+      'Arzt Am 17.12': ('Arzt', DateTime(2021, 12, 17, 12), ['Am 17.12']),
+      'am 3.7.': ('', DateTime(2021, 7, 3, 12), ['am 3.7.']),
+      'Arzt am 17.12. at 10': (
+        'Arzt',
+        DateTime(2021, 12, 17, 10),
+        ['am 17.12.', 'at 10'],
+      ),
+      // The am of a time stays with it.
+      'Call at 9 am 17.12.': (
+        'Call',
+        DateTime(2021, 12, 17, 9),
+        ['17.12.', 'at 9 am'],
+      ),
+      'Call 9 am 17.12.': ('Call 9 am', DateTime(2021, 12, 17, 12), ['17.12.']),
+      'Call 9:30 AM 17.12.': (
+        'Call 9:30 AM',
+        DateTime(2021, 12, 17, 12),
+        ['17.12.'],
+      ),
+      'Exam 24.6.': ('Exam', DateTime(2021, 6, 24, 12), ['24.6.']),
+    };
+    for (final MapEntry(key: input, value: (text, date, phrases))
+        in cases.entries) {
+      test(input, () {
+        final result = parse(input);
+        expect(result.text, text);
+        expect(result.date, date);
+        expect(result.datePhrases, phrases);
+      });
+    }
+
+    test('an am inside a word or a dotted date in the middle stays', () {
+      expect(parse('Team 17.12.').text, 'Team');
+      expect(parse('Spam 17.12.').text, 'Spam');
+      expect(parse('Arzt am 17.12. Termin').date, isNull);
+      expect(parse('Arzt am 17.12. Termin').text, 'Arzt am 17.12. Termin');
+    });
+
+    test('a range with final dots stays in the title', () {
+      for (final text in [
+        'Urlaub 17.12. - 24.12.',
+        'Urlaub 17.12.2026. - 24.12.2026.',
+      ]) {
+        final result = parse(text);
+        expect(result.date, isNull, reason: text);
+        expect(result.text, text, reason: text);
+      }
+    });
+
+    test('other dates, times and numbers read as before', () {
+      expect(parse('x 1.1.1.').date, isNull);
+      expect(parse('x 1.2.3').date, isNull);
+      expect(parse('Pay 12.50.').date, isNull);
+      expect(parse('Ping 10.0.0.1').date, isNull);
+      expect(parse('Release 1.2.').date, isNull);
+      expect(parse('Meet at 9 am').date, DateTime(2021, 6, 24, 9));
+      expect(parse('Meet at 9 am').text, 'Meet');
+      expect(parse('I am 17').text, 'I am 17');
+      expect(parse('x 6/7/21.').date, isNull);
+    });
   });
 
   group('without a year the next such date', () {

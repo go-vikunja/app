@@ -131,6 +131,7 @@ void main() {
           tester,
           find.widgetWithText(ListTile, en.accountSettingsEntry),
           inset,
+          margin: 16,
         );
         _expectFormBand(tester, find.byType(SettingsSection).first, inset);
       }, variant: TargetPlatformVariant.only(window.platform));
@@ -189,6 +190,7 @@ void main() {
               )
               .first,
           window.page,
+          margin: 16,
         );
       }, variant: TargetPlatformVariant.only(window.platform));
     }

@@ -8,6 +8,8 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/main_action.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
@@ -362,133 +364,141 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
     ];
     final selectableIds = {for (final task in selectable) task.id};
 
+    final newTask = selecting
+        ? null
+        : MainAction(
+            icon: Icons.add,
+            label: l10n.newTask,
+            onPressed: () => unawaited(showNewTaskSheet(context)),
+          );
     return selectionBackHandler(
-      child: Scaffold(
-        appBar: selecting
-            ? selectionBar(selectable, bottom: const SyncProgressBar())
-            : AppBar(
-                // The tree beside it is where to go next; back still goes back.
-                automaticallyImplyLeading: !ProjectTreeColumnScope.shownOf(
-                  context,
+      child: MainActionClaim(
+        action: newTask,
+        child: Scaffold(
+          appBar: selecting
+              ? selectionBar(selectable, bottom: const SyncProgressBar())
+              : ReadableAppBar(
+                  maxWidth: ReadableWidth.list,
+                  // The tree beside it is where to go next; back still goes
+                  // back.
+                  automaticallyImplyLeading: !ProjectTreeColumnScope.shownOf(
+                    context,
+                  ),
+                  title: ScreenTitle(title),
+                  actions: [
+                    RefreshButton(onPressed: refreshing ? null : refresh),
+                    if (listed != null) _menu(l10n, listed),
+                  ],
+                  bottom: const SyncProgressBar(),
                 ),
-                title: ScreenTitle(title),
-                actions: [
-                  RefreshButton(onPressed: refreshing ? null : refresh),
-                  if (listed != null) _menu(l10n, listed),
-                ],
-                bottom: const SyncProgressBar(),
-              ),
-        bottomNavigationBar: selecting ? selectionActionBar(selectable) : null,
-        floatingActionButton: selecting
-            ? null
-            : FloatingActionButton.extended(
-                // A page over the shell finds the heroes of every tab's top
-                // route.
-                heroTag: null,
-                onPressed: () => unawaited(showNewTaskSheet(context)),
-                icon: const Icon(Icons.add),
-                label: Text(l10n.newTask),
-              ),
-        body: buildRefreshable(
-          list,
-          loadingLabel: l10n.projectTasksLoading,
-          maxWidth: ReadableWidth.list,
-          builder: (value, notice) {
-            final loadedAt = value.loadedAt;
-            final local = value.evaluation == FilterEvaluation.local;
-            final (sections, doneTasks) = _sections(value, now);
-            final nothingMatches = value.includesDone
-                ? EmptyState(
-                    icon: Icons.filter_alt_outlined,
-                    title: l10n.savedFilterNoMatchesTitle,
-                    body: l10n.savedFilterNoMatchesBody(title),
-                  )
-                : EmptyState(
-                    icon: Icons.task_alt,
-                    title: l10n.overviewEmptyTitle,
-                    body: l10n.overviewFilterEmptyBody(title),
-                  );
-            return DueSectionsList(
-              sections: sections,
-              doneTasks: doneTasks,
-              doneNote: value.omitsDoneTasks
-                  ? l10n.savedFilterDoneLimited(SavedFilterTasks.doneLimit)
-                  : null,
-              projectsById: projectsById,
-              pendingIds: pendingIds,
-              now: now,
-              minimumPriority: minimumPriority,
-              header: stackedNotes([
-                ?notice,
-                if (!local && loadedAt != null)
-                  ListNote(
-                    icon: Icons.filter_list,
-                    text: l10n.smartListFilterNotice(
-                      formatRelativeTime(
-                        l10n,
-                        // The tick may lag behind a download just finished.
-                        loadedAt.isAfter(now) ? now : loadedAt,
-                        now: now,
+          bottomNavigationBar: selecting
+              ? selectionActionBar(selectable)
+              : null,
+          floatingActionButton: MainActionButton.unlessBesideRail(
+            context,
+            newTask,
+          ),
+          body: buildRefreshable(
+            list,
+            loadingLabel: l10n.projectTasksLoading,
+            maxWidth: ReadableWidth.list,
+            builder: (value, notice) {
+              final loadedAt = value.loadedAt;
+              final local = value.evaluation == FilterEvaluation.local;
+              final (sections, doneTasks) = _sections(value, now);
+              final nothingMatches = value.includesDone
+                  ? EmptyState(
+                      icon: Icons.filter_alt_outlined,
+                      title: l10n.savedFilterNoMatchesTitle,
+                      body: l10n.savedFilterNoMatchesBody(title),
+                    )
+                  : EmptyState(
+                      icon: Icons.task_alt,
+                      title: l10n.overviewEmptyTitle,
+                      body: l10n.overviewFilterEmptyBody(title),
+                    );
+              return DueSectionsList(
+                sections: sections,
+                doneTasks: doneTasks,
+                doneNote: value.omitsDoneTasks
+                    ? l10n.savedFilterDoneLimited(SavedFilterTasks.doneLimit)
+                    : null,
+                projectsById: projectsById,
+                pendingIds: pendingIds,
+                now: now,
+                minimumPriority: minimumPriority,
+                header: stackedNotes([
+                  ?notice,
+                  if (!local && loadedAt != null)
+                    ListNote(
+                      icon: Icons.filter_list,
+                      text: l10n.smartListFilterNotice(
+                        formatRelativeTime(
+                          l10n,
+                          // The tick may lag behind a download just finished.
+                          loadedAt.isAfter(now) ? now : loadedAt,
+                          now: now,
+                        ),
                       ),
                     ),
+                ]),
+                emptyState: switch ((_isFavorites, loadedAt)) {
+                  (true, _) => EmptyState(
+                    icon: Icons.star_outline,
+                    title: l10n.favoritesEmptyTitle,
+                    body: l10n.favoritesEmptyBody,
                   ),
-              ]),
-              emptyState: switch ((_isFavorites, loadedAt)) {
-                (true, _) => EmptyState(
-                  icon: Icons.star_outline,
-                  title: l10n.favoritesEmptyTitle,
-                  body: l10n.favoritesEmptyBody,
-                ),
-                _ when local => nothingMatches,
-                (false, null) when gone => EmptyState(
-                  icon: Icons.filter_list_off,
-                  title: l10n.smartListFilterGoneTitle,
-                  body: l10n.smartListFilterGoneBody,
-                ),
-                (false, null)
-                    when offline || failedOnTheNetwork(downloadFailure) =>
-                  EmptyState(
+                  _ when local => nothingMatches,
+                  (false, null) when gone => EmptyState(
+                    icon: Icons.filter_list_off,
+                    title: l10n.smartListFilterGoneTitle,
+                    body: l10n.smartListFilterGoneBody,
+                  ),
+                  (false, null)
+                      when offline || failedOnTheNetwork(downloadFailure) =>
+                    EmptyState(
+                      icon: Icons.cloud_download_outlined,
+                      title: l10n.overviewFilterNotLoadedTitle,
+                      body: l10n.smartListFilterNotLoadedBody(title),
+                    ),
+                  (false, null) when downloadFailure != null => EmptyState(
+                    icon: Icons.cloud_off_outlined,
+                    title: l10n.smartListFilterDownloadFailedTitle,
+                    body: l10n.smartListFilterDownloadFailedBody(title),
+                  ),
+                  // A download runs or has just finished, its tasks about to
+                  // show; without one, this build started one.
+                  (false, null) => EmptyState(
                     icon: Icons.cloud_download_outlined,
-                    title: l10n.overviewFilterNotLoadedTitle,
-                    body: l10n.smartListFilterNotLoadedBody(title),
+                    title: l10n.smartListFilterDownloadingTitle,
+                    body: l10n.smartListFilterDownloadingBody(title),
                   ),
-                (false, null) when downloadFailure != null => EmptyState(
-                  icon: Icons.cloud_off_outlined,
-                  title: l10n.smartListFilterDownloadFailedTitle,
-                  body: l10n.smartListFilterDownloadFailedBody(title),
+                  (false, _) => nothingMatches,
+                },
+                onDoneChanged: (task, {required done}) =>
+                    unawaited(setTaskDone(task, done: done)),
+                onFavoriteChanged: (task, {required favorite}) =>
+                    unawaited(setTaskFavorite(task, favorite: favorite)),
+                onDueDate: (task) => unawaited(changeTaskDueDate(task)),
+                onSelect: startSelection,
+                selection: (task) => rowSelection(
+                  task,
+                  changeable: selectableIds.contains(task.id),
                 ),
-                // A download runs or has just finished, its tasks about to
-                // show; without one, this build started one.
-                (false, null) => EmptyState(
-                  icon: Icons.cloud_download_outlined,
-                  title: l10n.smartListFilterDownloadingTitle,
-                  body: l10n.smartListFilterDownloadingBody(title),
-                ),
-                (false, _) => nothingMatches,
-              },
-              onDoneChanged: (task, {required done}) =>
-                  unawaited(setTaskDone(task, done: done)),
-              onFavoriteChanged: (task, {required favorite}) =>
-                  unawaited(setTaskFavorite(task, favorite: favorite)),
-              onDueDate: (task) => unawaited(changeTaskDueDate(task)),
-              onSelect: startSelection,
-              selection: (task) => rowSelection(
-                task,
-                changeable: selectableIds.contains(task.id),
-              ),
-              onReschedule: selecting
-                  ? null
-                  : (tasks) => unawaited(
-                      rescheduleTasks(
-                        context,
-                        ref,
-                        tasks,
-                        title: l10n.overdueRescheduleTitle(tasks.length),
+                onReschedule: selecting
+                    ? null
+                    : (tasks) => unawaited(
+                        rescheduleTasks(
+                          context,
+                          ref,
+                          tasks,
+                          title: l10n.overdueRescheduleTitle(tasks.length),
+                        ),
                       ),
-                    ),
-              changeable: (task) => taskChangeable(task, projectsById),
-            );
-          },
+                changeable: (task) => taskChangeable(task, projectsById),
+              );
+            },
+          ),
         ),
       ),
     );

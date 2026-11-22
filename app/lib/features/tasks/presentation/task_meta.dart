@@ -4,6 +4,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/app/theme/legible_color.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
@@ -12,8 +13,27 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart'
 double metaIconSize(BuildContext context) =>
     MediaQuery.textScalerOf(context).scale(14).clamp(14, 28);
 
-/// A priority as a flag and its name: urgent and up in the error colour,
-/// high with an amber flag, lower ones muted.
+/// The colour of urgent and up, an orange set apart from the error red,
+/// which marks what is overdue; with [text] for a priority's name, which
+/// needs more contrast than its flag.
+Color urgentPriorityColor(BuildContext context, {bool text = false}) {
+  // The high-contrast schemes (D68) give their text roles 7:1.
+  final high = MediaQuery.highContrastOf(context);
+  return legibleIn(
+    context,
+    _urgentOrange,
+    minContrast: switch ((text, high)) {
+      (true, true) => 7,
+      (true, false) || (false, true) => 4.5,
+      (false, false) => 3,
+    },
+  );
+}
+
+const _urgentOrange = Color(0xFFEF6C00);
+
+/// A priority as a flag and its name: urgent and up with a flag in
+/// [urgentPriorityColor], high with an amber flag, lower ones muted.
 class PriorityFlag extends StatelessWidget {
   const new({required this.priority, super.key});
 
@@ -36,7 +56,11 @@ class PriorityFlag extends StatelessWidget {
       Color iconColor,
       Color textColor,
     ) = switch (priority.value) {
-      >= 4 => (Icons.flag, colors.error, colors.error),
+      >= 4 => (
+        Icons.flag,
+        urgentPriorityColor(context),
+        urgentPriorityColor(context, text: true),
+      ),
       3 => (Icons.flag, HighlightColors.of(context).highlight, colors.tertiary),
       _ => (
         Icons.outlined_flag,

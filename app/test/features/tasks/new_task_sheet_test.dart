@@ -6,12 +6,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/reminder_picker.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
@@ -67,7 +69,7 @@ void main() {
           of: find.byType(NewTaskSheet),
           matching: find.byWidgetPredicate(
             (widget) =>
-                widget is SingleChildScrollView &&
+                widget is CustomScrollView &&
                 widget.scrollDirection == Axis.vertical,
           ),
         )
@@ -276,6 +278,144 @@ void main() {
       harness.service.submits.single.fallbackDueDate,
       DateTime(2026, 10, 11, 12).toUtc(),
     );
+  });
+
+  testWidgets("Upcoming's New task starts with today as the due date, which "
+      'a tap on its chip clears', (tester) async {
+    await harness.pumpApp(tester);
+    routerOf(tester).go(AppRoutes.upcoming);
+    await tester.pumpAndSettle();
+    await openSheet(tester);
+
+    final today = choiceChip(en.shortcutToday);
+    expect(tester.widget<ChoiceChip>(today).selected, isTrue);
+    expect(
+      chipText(en.shortcutAtTime(en.shortcutToday, '12:00 PM')),
+      findsOneWidget,
+    );
+    await typeLine(tester, 'Buy milk');
+    await tester.tap(addButton());
+    await tester.pumpAndSettle();
+    expect(
+      harness.service.submits.single.fallbackDueDate,
+      DateTime(2026, 10, 10, 12).toUtc(),
+    );
+
+    // The confirmation goes and frees the button.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    await openSheet(tester);
+    await tester.tap(choiceChip(en.shortcutToday));
+    await tester.pumpAndSettle();
+    expect(tester.widget<ChoiceChip>(today).selected, isFalse);
+  });
+
+  testWidgets('a due day the sheet opens with is a removable chip at the '
+      "user's default due time", (tester) async {
+    harness.settings = const UserSettings(defaultDueTime: ClockTime(17, 45));
+    await harness.pumpApp(tester);
+    unawaited(
+      showNewTaskSheet(
+        tester.element(find.byType(FloatingActionButton)),
+        dueDay: DateTime(2026, 10, 14),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final chip = find.descendant(
+      of: find.byType(NewTaskSheet),
+      matching: find.byType(InputChip),
+    );
+    expect(tester.widget<InputChip>(chip).selected, isTrue);
+    await typeLine(tester, 'Buy milk');
+    await tester.tap(addButton());
+    await tester.pumpAndSettle();
+    expect(
+      harness.service.submits.single.fallbackDueDate,
+      DateTime(2026, 10, 14, 17, 45).toUtc(),
+    );
+
+    unawaited(
+      showNewTaskSheet(
+        tester.element(find.byType(FloatingActionButton)),
+        dueDay: DateTime(2026, 10, 14),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(chip);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: chip,
+        matching: find.byTooltip(en.taskEditClearDueDate),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(chip, findsNothing);
+    await typeLine(tester, 'Buy bread');
+    await tester.tap(addButton());
+    await tester.pumpAndSettle();
+    expect(harness.service.submits.last.fallbackDueDate, isNull);
+  });
+
+  test("a list of days dates a new task on the strip's day, else today, or "
+      'the first day of a range ahead', () {
+    final now = DateTime(2026, 10, 10, 12);
+    final nextDays = DateRange(from: now, to: DateTime(2026, 10, 17, 12));
+    expect(
+      newTaskDayIn(nextDays, selectedDay: null, now: now),
+      DateTime(2026, 10, 10),
+    );
+    expect(
+      newTaskDayIn(nextDays, selectedDay: DateTime(2026, 10, 12), now: now),
+      DateTime(2026, 10, 12),
+    );
+    expect(
+      newTaskDayIn(nextDays, selectedDay: DateTime(2026, 10, 30), now: now),
+      DateTime(2026, 10, 10),
+    );
+    final nextWeek = DateRange(
+      from: DateTime(2026, 10, 12),
+      to: DateTime(2026, 10, 19),
+    );
+    expect(
+      newTaskDayIn(nextWeek, selectedDay: null, now: now),
+      DateTime(2026, 10, 12),
+    );
+    final lastWeek = DateRange(
+      from: DateTime(2026, 9, 28),
+      to: DateTime(2026, 10, 5),
+    );
+    expect(
+      newTaskDayIn(lastWeek, selectedDay: null, now: now),
+      DateTime(2026, 10, 10),
+    );
+  });
+
+  testWidgets("a single task's confirmation opens it; several tasks' has no "
+      'Open', (tester) async {
+    harness.service.result = const QuickAddResult(createdTaskIds: [1]);
+    await harness.open(tester);
+    await typeLine(tester, 'Existing');
+    await tester.tap(addButton());
+    await tester.pumpAndSettle();
+
+    final open = find.widgetWithText(SnackBarAction, en.taskDuplicateOpen);
+    expect(open, findsOneWidget);
+    await tester.tap(open);
+    await tester.pumpAndSettle();
+    expect(find.byType(TaskDetailSheet), findsOneWidget);
+
+    await tester.tapAt(const Offset(180, 40));
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    harness.service.result = const QuickAddResult(createdTaskIds: [-1, -2]);
+    await openSheet(tester);
+    await typeLine(tester, 'Buy milk\nCall Sam');
+    await tester.tap(find.widgetWithText(FilledButton, en.newTaskAddMany(2)));
+    await tester.pumpAndSettle();
+    expect(find.text(en.newTaskCreatedMany(2)), findsOneWidget);
+    expect(find.byType(SnackBarAction), findsNothing);
   });
 
   testWidgets('tapping a selected shortcut again clears the due date', (
@@ -615,6 +755,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tapInSheet(tester, en.repeatModeEvery);
     await tapInSheet(tester, en.repeatPresetWeekly);
     expect(harness.data.tasks.writes, isEmpty);
     expect(harness.service.submits, isEmpty);
@@ -1051,6 +1192,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.text(en.pickerDone));
       await tester.pumpAndSettle();
+      await tapInSheet(tester, en.repeatModeEvery);
       await tapInSheet(tester, en.repeatPresetWeekly);
       await add(tester);
 
@@ -1257,6 +1399,7 @@ void main() {
     await typeLine(tester, 'Big text');
     await tester.pumpAndSettle();
     await tapInSheet(tester, en.newTaskMoreOptions);
+    await tapInSheet(tester, en.repeatModeEvery);
     await tester.ensureVisible(inSheet(en.repeatPresetDaily));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);

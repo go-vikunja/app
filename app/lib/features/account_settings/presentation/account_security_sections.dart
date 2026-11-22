@@ -5,6 +5,7 @@ import 'package:vikunja_mobile/features/account_settings/application/totp_status
 import 'package:vikunja_mobile/features/account_settings/presentation/account_deletion.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/web_password_note.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 
@@ -245,39 +246,42 @@ List<Widget> deleteAccountSection({
     null => l10n.accountSettingsOpensWeb,
   });
   return [
-    const Divider(height: 1),
-    const SizedBox(height: 8),
-    ListTile(
-      leading: Icon(Icons.person_remove_outlined, color: error),
-      title: Text(
-        l10n.accountSettingsDeleteAccount,
-        style: TextStyle(color: error),
-      ),
-      // Without a scheduled deletion, the dialog before the web says it.
-      subtitle: scheduled != null && (profile?.isLocalUser ?? false)
-          ? Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                status,
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: SettingHelpText(
-                    webAsksPasswordNote(
-                      l10n,
-                      accountLockout: connection.capabilities.has(
-                        Capability.accountLockout,
+    const SizedBox(height: 16),
+    SectionCard(
+      children: [
+        ListTile(
+          leading: Icon(Icons.person_remove_outlined, color: error),
+          title: Text(
+            l10n.accountSettingsDeleteAccount,
+            style: TextStyle(color: error),
+          ),
+          // Without a scheduled deletion, the dialog before the web says it.
+          subtitle: scheduled != null && (profile?.isLocalUser ?? false)
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    status,
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: SettingHelpText(
+                        webAsksPasswordNote(
+                          l10n,
+                          accountLockout: connection.capabilities.has(
+                            Capability.accountLockout,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ],
-            )
-          : status,
-      trailing: Icon(
-        allowed ? Icons.open_in_new : Icons.info_outline,
-        color: error,
-      ),
-      onTap: onDelete,
+                  ],
+                )
+              : status,
+          trailing: Icon(
+            allowed ? Icons.open_in_new : Icons.info_outline,
+            color: error,
+          ),
+          onTap: onDelete,
+        ),
+      ],
     ),
   ];
 }

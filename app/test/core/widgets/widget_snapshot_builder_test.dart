@@ -1,7 +1,8 @@
-import 'package:flutter/widgets.dart' show Locale;
+import 'package:flutter/widgets.dart' show Color, Locale;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/theme/legible_color.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/core/settings/user_settings_json.dart';
@@ -168,6 +169,27 @@ void main() {
     for (final row in snapshot.rows) row.title,
   ];
 
+  test("a row's project colour is drawn as the app draws its folders: "
+      'only its lightness moved to stand out from each background', () async {
+    await db.projectsDao.upsertAll([
+      sampleProject(
+        id: 1,
+        title: 'Inbox',
+        hexColor: '6A1B9A',
+      ).copyWith(maxPermission: Permission.admin),
+    ]);
+
+    final [_, afternoon] = (await one(const TodayKind())).rows;
+    Color drawn(String? hex) => Color(0xFF000000 | int.parse(hex!, radix: 16));
+    expect(afternoon.projectColor, '6a1b9a');
+    expect(afternoon.projectColorLight, '6a1b9a');
+    expect(afternoon.projectColorDark, isNot('6a1b9a'));
+    expect(
+      contrastRatio(drawn(afternoon.projectColorDark), const Color(0xFF0E141C)),
+      greaterThanOrEqualTo(3),
+    );
+  });
+
   group('Today', () {
     test('lists the overdue and the due today, like the Overview', () async {
       final today = await one(const TodayKind());
@@ -187,6 +209,8 @@ void main() {
       expect(afternoon.priorityLevel, 3);
       expect(afternoon.projectTitle, 'Inbox');
       expect(afternoon.projectColor, '1973ff');
+      expect(afternoon.projectColorLight, '1973ff');
+      expect(afternoon.projectColorDark, '1973ff');
       expect(afternoon.canDone, isTrue);
       expect(
         afternoon.semanticsLabel,

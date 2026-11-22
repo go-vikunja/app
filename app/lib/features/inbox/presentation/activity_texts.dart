@@ -33,7 +33,7 @@ String describeInboxRow(AppLocalizations l10n, ActivityItem item) {
       null => l10n.inboxAddedSomeoneToTeam(doer, team),
     },
     ActivityKind.reminder => l10n.inboxReminder(task),
-    ActivityKind.other => l10n.inboxOther,
+    ActivityKind.other => l10n.activityOther,
   };
 }
 

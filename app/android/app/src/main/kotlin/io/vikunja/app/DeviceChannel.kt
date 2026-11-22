@@ -61,6 +61,7 @@ internal class DeviceChannel(
             "canOpenAppLocaleSettings" -> result.success(canOpenAppLocaleSettings())
             "openAppLocaleSettings" -> result.success(openAppLocaleSettings())
             "openAppSettings" -> result.success(openAppSettings())
+            "openSecuritySettings" -> result.success(openSecuritySettings())
             "removeLocation" -> removeLocation(call.argument<String>("path"), result)
             "backgroundState" -> result.success(backgroundState())
             "previousAppTraces" -> offMain(result) { PreviousApp.traces(context) }
@@ -269,6 +270,17 @@ internal class DeviceChannel(
         )
         return try {
             activity.startActivity(intent)
+            true
+        } catch (_: ActivityNotFoundException) {
+            false
+        }
+    }
+
+    // Where the screen lock is set up, which the app lock needs.
+    private fun openSecuritySettings(): Boolean {
+        val activity = activity ?: return false
+        return try {
+            activity.startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
             true
         } catch (_: ActivityNotFoundException) {
             false

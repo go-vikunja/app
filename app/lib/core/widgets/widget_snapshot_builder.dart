@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart' show immutable;
+import 'package:material_ui/material_ui.dart' show Color;
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/theme/legible_color.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/account_title.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -527,6 +529,7 @@ final class _AccountBuild {
 
   WidgetRow _row(Task task, {int? listProjectId}) {
     final project = projectsById[task.projectId];
+    final color = _color(project?.hexColor);
     final due = task.dueDate;
     final dueLabel = due == null
         ? null
@@ -564,7 +567,9 @@ final class _AccountBuild {
       priorityLabel: priority,
       priorityLevel: priority == null ? null : task.priority.value,
       projectTitle: projectTitle,
-      projectColor: _color(project?.hexColor),
+      projectColor: color,
+      projectColorLight: _drawnOn(color, _widgetBackgroundLight),
+      projectColorDark: _drawnOn(color, _widgetBackgroundDark),
       canDone:
           project != null &&
           !archived.contains(project.id) &&
@@ -711,4 +716,20 @@ final class _AccountBuild {
 String? _color(String? hex) {
   final value = hex?.replaceFirst('#', '').toLowerCase() ?? '';
   return RegExp(r'^[0-9a-f]{6}$').hasMatch(value) ? value : null;
+}
+
+// The Android widgets' backgrounds in the brand scheme (WidgetTheme.kt).
+// The iOS extension's WidgetBackground is #F8F9FF and #111318, and the
+// system palette's are as light or dark, all close enough for 3:1.
+const _widgetBackgroundLight = Color(0xFFF8F9FF);
+const _widgetBackgroundDark = Color(0xFF0E141C);
+
+/// The `rrggbb` [color] as drawn on [background] ([legibleOn]).
+String? _drawnOn(String? color, Color background) {
+  if (color == null) return null;
+  final drawn = legibleOn(
+    Color(0xFF000000 | int.parse(color, radix: 16)),
+    background,
+  );
+  return (drawn.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0');
 }

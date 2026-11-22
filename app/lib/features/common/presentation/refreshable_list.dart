@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:material_ui/material_ui.dart';
@@ -18,11 +20,21 @@ import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 /// still running then ends unheard. A server that cannot be reached, by a
 /// refresh or by a sync, is the shell's offline banner; only a list on a
 /// page over the shell, where the banner does not show, puts the offline
-/// notice above the saved data.
+/// notice above the saved data. The pull's spinner shows for
+/// [spinnerLimit] at most: a refresh still waiting for the server then goes
+/// on under the quiet sync bar, with a note above the saved data.
 mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
+  /// A server that takes the connection and never answers would otherwise
+  /// keep the spinner up for the timeouts of two sync runs, about 50 s
+  /// (D97: a pull waits for the run under way, then runs its own).
+  static const spinnerLimit = Duration(seconds: 9);
+
   Object? _refreshFailure;
   bool _refreshing = false;
+  bool _waiting = false;
   int _generation = 0;
+  Completer<void>? _spinner;
+  Timer? _spinnerTimer;
 
   bool get refreshing => _refreshing;
 
@@ -36,15 +48,30 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   @mustCallSuper
   void onRepositoryReplaced() => clearRefreshFailure();
 
-  /// Fails silently: the failure becomes the notice.
-  Future<void> refresh() async {
+  @override
+  void dispose() {
+    _spinnerTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Fails silently: the failure becomes the notice. Ends with the newest
+  /// refresh, or [spinnerLimit] after it started while it still runs.
+  Future<void> refresh() {
     final load = startRefresh();
-    if (load == null) return;
+    if (load == null) return Future.value();
     final generation = ++_generation;
     setState(() {
       _refreshing = true;
+      _waiting = false;
       _refreshFailure = null;
     });
+    _spinnerTimer?.cancel();
+    _spinnerTimer = null;
+    unawaited(_finish(load, generation));
+    return _spin();
+  }
+
+  Future<void> _finish(Future<void> load, int generation) async {
     try {
       await load;
     } on Object catch (error) {
@@ -52,10 +79,32 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
         setState(() => _refreshFailure = error);
       }
     } finally {
+      if (generation == _generation) _stopSpinner();
       if (mounted && generation == _generation) {
-        setState(() => _refreshing = false);
+        setState(() {
+          _refreshing = false;
+          _waiting = false;
+        });
       }
     }
+  }
+
+  Future<void> _spin() {
+    final spinner = _spinner ??= Completer<void>();
+    _spinnerTimer ??= Timer(spinnerLimit, () {
+      _spinnerTimer = null;
+      _spinner?.complete();
+      _spinner = null;
+      if (mounted && _refreshing) setState(() => _waiting = true);
+    });
+    return spinner.future;
+  }
+
+  void _stopSpinner() {
+    _spinnerTimer?.cancel();
+    _spinnerTimer = null;
+    _spinner?.complete();
+    _spinner = null;
   }
 
   /// For the subclass's own `setState`, when the list it showed goes away:
@@ -63,7 +112,9 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   void clearRefreshFailure() {
     _refreshFailure = null;
     _refreshing = false;
+    _waiting = false;
     _generation++;
+    _stopSpinner();
   }
 
   /// The failure of the last refresh the user started, while its notice
@@ -110,7 +161,9 @@ mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
             stale: true,
             onRetry: refresh,
           ),
-          null => offline && !underBanner ? const OfflineNotice() : null,
+          null when offline => underBanner ? null : const OfflineNotice(),
+          null when _waiting => const ServerWaitNotice(),
+          null => null,
         }),
         AsyncError(:final error) when !_refreshing => CenteredScrollView(
           header: header,

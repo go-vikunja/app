@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/add_relation_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/relation_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
@@ -378,22 +379,62 @@ void main() {
       expect(editable.focusNode!.hasFocus, isTrue);
     });
 
-    testWidgets('a task without subtasks still offers the field', (
-      tester,
-    ) async {
+    testWidgets('a task without subtasks still offers the field, the only '
+        'row of the card, which stays its last', (tester) async {
       await openDetail(tester, 'Buy sunscreen');
 
       expect(inSheet(find.text(en.taskDetailSubtasks)), findsOneWidget);
       expect(inSheet(find.text(en.taskDetailSubtasksDone(0, 0))), findsNothing);
-      expect(
-        inSheet(find.widgetWithText(TextField, en.taskDetailAddSubtask)),
-        findsOneWidget,
+      final field = inSheet(
+        find.widgetWithText(TextField, en.taskDetailAddSubtask),
       );
+      Finder slot() =>
+          find.ancestor(of: field, matching: find.byType(SectionCardItem));
+      expect(field, findsOneWidget);
+      expect(tester.widget<SectionCardItem>(slot()).first, isTrue);
       expect(inSheet(find.text(en.taskDetailParentTask)), findsNothing);
+
+      await tester.ensureVisible(field);
+      await tester.enterText(field, 'Pack it');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(rowOf('Pack it'), findsOneWidget);
+      expect(tester.widget<SectionCardItem>(slot()).first, isFalse);
+      expect(tester.widget<SectionCardItem>(slot()).last, isTrue);
+      expect(tester.widget<TextField>(field).focusNode!.hasFocus, isTrue);
     });
   });
 
   group('related tasks', () {
+    testWidgets('Add relation is the last row of a card of its own, alone '
+        'in the section while there is none', (tester) async {
+      await openDetail(tester, 'Buy sunscreen');
+      Finder addCard() => find.ancestor(
+        of: inSheet(find.text(en.taskDetailAddRelation)),
+        matching: find.byType(SectionCard),
+      );
+      expect(addCard(), findsOneWidget);
+      expect(
+        find.descendant(of: addCard(), matching: find.byType(RelationRow)),
+        findsNothing,
+      );
+      expect(inSheet(find.byType(RelationRow)), findsNothing);
+
+      await tester.tap(find.byTooltip(en.taskDetailClose));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Plan the trip').first);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(inSheet(find.text(en.taskDetailAddRelation)));
+      expect(
+        find.descendant(of: addCard(), matching: find.byType(RelationRow)),
+        findsNothing,
+      );
+      expect(
+        tester.getTopLeft(rowOf('Get a visa')).dy,
+        lessThan(tester.getTopLeft(addCard()).dy),
+      );
+    });
+
     testWidgets('are grouped under their localized kinds, with the project of '
         'a task elsewhere', (tester) async {
       await openDetail(tester, 'Plan the trip');

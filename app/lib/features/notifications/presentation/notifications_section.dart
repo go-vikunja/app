@@ -120,16 +120,12 @@ class NotificationsSection extends ConsumerWidget {
       title: l10n.notificationsHeading,
       trailing: const OnThisDeviceMark(),
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
-          child: Text(l10n.onThisDeviceSubtitle, style: secondary),
-        ),
         if (!entry.account.isLinkShare)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Text(
               entry.subscriberId != null
-                  ? l10n.notificationsForFollowedTasks
+                  ? l10n.notificationsFollowedTasksNote
                   : l10n.notificationsForOwnTasks,
               style: secondary,
             ),
@@ -207,7 +203,7 @@ class NotificationsSection extends ConsumerWidget {
           ),
         if (scheduled != null)
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Text(
               l10n.notificationsScheduledOnDevice(scheduled),
               style: secondary,

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/app/theme/legible_color.dart';
 import 'package:vikunja_mobile/features/common/presentation/drawn_text_style.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_days.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/selected_task_highlight.dart';
@@ -98,7 +99,7 @@ class TimelineRow extends StatelessWidget {
     final barLeft = math.max<double>(fullLeft, 0);
     final barRight = math.min<double>(fullRight, width);
     final barWidth = math.max<double>(barRight - barLeft, 0);
-    final look = _BarLook.of(row, colors);
+    final look = _BarLook.of(row, colors, chart: surfaceBehind(context));
     final selected = TaskDetailPaneScope.isSelected(context, task.id);
     final style = TimelineRowMetrics.titleStyleOf(context);
     final textScaler = MediaQuery.textScalerOf(context);
@@ -350,12 +351,12 @@ class TimelineRow extends StatelessWidget {
   }
 }
 
-/// A bar's colours: the task's own, else the scheme's primary container;
-/// an estimated bar neutral. A done task's are mixed with the surface
-/// rather than drawn translucent, so that its title's colour is chosen
-/// against the colour on screen. A fill can be as light as the chart, so
-/// every bar has a border that stands out from it (WCAG 1.4.11), also
-/// when done.
+/// A bar's colours: the task's own, as light or dark as it needs to stand
+/// out from the chart, else the scheme's primary container; an estimated
+/// bar neutral. A done task's are mixed with the surface rather than drawn
+/// translucent, so that its title's colour is chosen against the colour on
+/// screen. A fill can be as light as the chart, so every bar has a border
+/// that stands out from it (WCAG 1.4.11), also when done.
 @immutable
 final class _BarLook {
   const new({
@@ -365,7 +366,7 @@ final class _BarLook {
     required this.dashed,
   });
 
-  factory of(GanttRow row, ColorScheme colors) {
+  factory of(GanttRow row, ColorScheme colors, {required Color chart}) {
     Color muted(Color color) => row.task.done
         ? Color.alphaBlend(color.withValues(alpha: 0.5), colors.surface)
         : color;
@@ -377,7 +378,10 @@ final class _BarLook {
         dashed: true,
       );
     }
-    final own = parseHexColor(row.task.hexColor);
+    final own = switch (parseHexColor(row.task.hexColor)) {
+      final color? => legibleOn(color, chart),
+      null => null,
+    };
     final fill = muted(own ?? colors.primaryContainer);
     final onBar = own == null
         ? colors.onPrimaryContainer

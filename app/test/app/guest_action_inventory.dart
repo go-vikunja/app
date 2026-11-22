@@ -381,6 +381,14 @@ const guestActionInventory = <String, GuestActionEntry>{
     ),
     uses: {'accountSettingsProvider'},
   ),
+  'features/home/presentation/home_shell.dart _HomeShellState.build': (
+    Gated(
+      "the Overview's tab shows the dot of unread activity only when the "
+      'active account is no guest; the count only reads the local table, '
+      'empty for a guest',
+    ),
+    uses: {'unreadActivityCountProvider'},
+  ),
   'features/inbox/presentation/inbox_button.dart InboxButton.build': (
     Gated(
       'built only in the Overview header, which leaves the bell out for a '
@@ -655,8 +663,10 @@ const guestActionInventory = <String, GuestActionEntry>{
   'features/tasks/presentation/details/task_detail_actions.dart '
       'TaskDetailActions._subscriptions': (
     Gated(
-      'only the Follow button reads or writes through it, and a guest gets '
-      'none; the sheet takes the state from the task details',
+      "only the header's Follow button and the Follow of the note under "
+      'Reminders read or write through it, and a guest gets neither (the '
+      'note also needs a subscriber id, which a link share lacks); the '
+      'sheet takes the state from the task details',
       checkIn: ['features/tasks/presentation/task_detail_sheet.dart'],
     ),
     uses: {'subscriptionRepositoryProvider'},

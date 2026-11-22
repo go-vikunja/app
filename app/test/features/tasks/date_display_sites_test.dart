@@ -146,7 +146,11 @@ void main() {
       await openEditPageWith(tester, data: data, taskId: 1, now: now);
 
       expect(find.text('14/10/2026 09:30'), findsOneWidget);
-      expect(find.text('13/10/2026 08:00'), findsOneWidget);
+      // Tomorrow's start date is its shortcut's chip, at its time.
+      expect(
+        find.text(en.shortcutAtTime(en.shortcutTomorrow, '08:00')),
+        findsOneWidget,
+      );
       expect(find.text('14/10/2026 08:00'), findsOneWidget);
       expect(
         find.bySemanticsLabel(

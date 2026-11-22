@@ -1838,17 +1838,13 @@
   "taskEditProjectPickerTitle": "Choose a project",
   "taskEditProjectSemantics": "Project: {project}",
   "@taskEditProjectSemantics": {
-    "description": "Screen reader: the project field of the new-task sheet and the project chip of the Quick Add preview and the share sheet; project is the project's title, for example Inbox.",
+    "description": "Screen reader: the project field of the new-task sheet and of the task edit page, and the project chip of the Quick Add preview and the share sheet; project is the project's title, for example Inbox.",
     "placeholders": {
       "project": {
         "type": "String",
         "example": "Inbox"
       }
     }
-  },
-  "taskEditDateNotSet": "Not set",
-  "@taskEditDateNotSet": {
-    "description": "Value of a date field (due, start or end date) on the task edit page when the task has no such date."
   },
   "taskEditClearDueDate": "Clear due date",
   "taskEditClearStartDate": "Clear start date",
@@ -1878,7 +1874,7 @@
   },
   "shortcutAtTime": "{label} at {time}",
   "@shortcutAtTime": {
-    "description": "The new-task sheet's selected date shortcut chip with the time the due date gets.",
+    "description": "The chosen date shortcut chip of the new-task sheet and the edit page, with the time the date gets.",
     "placeholders": {
       "label": {
         "type": "String",
@@ -1933,8 +1929,14 @@
   "taskEditRepeat": "Repeat",
   "repeatModeNone": "Never",
   "repeatModeEvery": "Every…",
-  "repeatModeMonthly": "Monthly",
-  "repeatModeFromCompletion": "From completion",
+  "repeatModeMonthly": "Same day every month",
+  "@repeatModeMonthly": {
+    "description": "The repeat choice of the edit page and the new-task sheet for a task that repeats on the same day of each month (the web's monthly mode), next to Never and Every…; not a number of days."
+  },
+  "repeatModeFromCompletion": "Count from when it's done",
+  "@repeatModeFromCompletion": {
+    "description": "A switch under the repeat interval of the edit page and the new-task sheet: on, the next dates count from when the task is marked done instead of from its dates (the web's repeat from the current date)."
+  },
   "repeatAmountLabel": "Every",
   "repeatAmountInvalid": "Enter more than 0.",
   "repeatAmountTooLarge": "Enter at most {max}.",
@@ -2459,23 +2461,6 @@
       }
     }
   },
-  "inboxTitle": "Notifications",
-  "inboxButton": "{count, plural, =0{Notifications} one{Notifications, {count} unread} other{Notifications, {count} unread}}",
-  "@inboxButton": {
-    "description": "Screen reader label of the bell on the Overview and of the notifications item in Upcoming's menu.",
-    "placeholders": {
-      "count": {
-        "type": "int",
-        "format": "decimalPattern",
-        "example": "3"
-      }
-    }
-  },
-  "inboxLoading": "Loading notifications…",
-  "inboxEmptyTitle": "You're all caught up",
-  "@inboxEmptyTitle": {
-    "description": "Title of the empty state of the notifications page, which lists the server's notifications about comments, assignments and mentions."
-  },
   "inboxEmptyBody": "Comments, assignments and mentions from your Vikunja server show up here.",
   "inboxMarkAllRead": "Mark all as read",
   "inboxToday": "Today",
@@ -2675,10 +2660,6 @@
       }
     }
   },
-  "inboxOther": "New notification",
-  "@inboxOther": {
-    "description": "A server notification of a kind this app does not know."
-  },
   "inboxQuoted": "“{text}”",
   "@inboxQuoted": {
     "description": "A comment's text in quotation marks.",
@@ -2714,13 +2695,9 @@
   "notificationSetupExactAllow": "Allow exact alarms",
   "notificationSetupSkip": "Skip",
   "notificationsHeading": "Notifications",
-  "notificationsForFollowedTasks": "Reminders and due dates notify you about the tasks you follow: the ones you create or are assigned to, and those in projects you follow. Unfollow a task to stop its notifications.",
-  "@notificationsForFollowedTasks": {
-    "description": "Account tab, Notifications section, under the line that these settings stay on the device, for an account on Vikunja 2.8.0 or later: which tasks the Reminders and Due dates switches notify about. That server reminds only the people who follow a task, and the device does the same. Not shown for guests through a shared link."
-  },
   "notificationsForOwnTasks": "Reminders and due dates notify you about the tasks you created or are assigned to.",
   "@notificationsForOwnTasks": {
-    "description": "Account tab, Notifications section, under the line that these settings stay on the device, for an account on a server older than Vikunja 2.8.0: which tasks the Reminders and Due dates switches notify about (notificationsForFollowedTasks on 2.8.0 and later). Not shown for guests through a shared link."
+    "description": "Account tab, first line of the Notifications section, for an account on a server older than Vikunja 2.8.0: which tasks the Reminders and Due dates switches notify about (notificationsFollowedTasksNote on 2.8.0 and later). Not shown for guests through a shared link."
   },
   "notificationsReminders": "Reminders",
   "notificationsRemindersSubtitle": "At the time of each reminder",
@@ -3098,7 +3075,7 @@
   "taskDuplicated": "Duplicated",
   "taskDuplicateOpen": "Open",
   "@taskDuplicateOpen": {
-    "description": "Snackbar action that opens the copy just made."
+    "description": "Snackbar action that opens the task just made: the copy of a task, a task added in the New task sheet, or the task a share created or added to."
   },
   "taskDuplicateNeedsConnection": "Duplicating needs a connection to the server.",
   "@taskDuplicateNeedsConnection": {
@@ -3118,7 +3095,7 @@
   "taskDuplicateFailedUnknown": "Couldn't duplicate the task.",
   "followTask": "Follow task",
   "@followTask": {
-    "description": "The task sheet's follow bell: its tooltip while the user does not follow the task, and its name for screen readers, which read the bell as a switch with its state, on while the user follows the task."
+    "description": "The task sheet's follow bell: its tooltip while the user does not follow the task, and its name for screen readers, which read the bell as a switch with its state, on while the user follows the task. Also the button after the note under the Reminders row (taskRemindersNotFollowed), which follows the task."
   },
   "unfollowTask": "Unfollow task",
   "@unfollowTask": {
@@ -5082,7 +5059,6 @@
   "@onThisDeviceHeading": {
     "description": "At the end of the headers of the Account tab's sections whose settings stay on the device (home screen, notifications, privacy)."
   },
-  "onThisDeviceSubtitle": "These settings stay on this device and are not saved to your account.",
   "accountSettingsTitle": "Account settings",
   "accountSettingsIntro": "Saved to your account on {host}: they apply on the web and on all your devices.",
   "@accountSettingsIntro": {
@@ -5965,7 +5941,7 @@
   },
   "accountAppVersion": "Vikunja app {version} ({build})",
   "@accountAppVersion": {
-    "description": "The app's version line at the end of the Account tab. “Vikunja app” rather than “Vikunja”, so that the number does not read as the server's version.",
+    "description": "The app's version line at the end of the Account tab, under its label accountAboutLine; a tap opens the About page. “Vikunja app” rather than “Vikunja”, so that the number does not read as the server's version.",
     "placeholders": {
       "version": {
         "type": "String",
@@ -7409,7 +7385,10 @@
   },
   "guestNoteCanView": "You can view this project's tasks, comments and attachments.",
   "guestNoteCanChange": "You can view and change this project's tasks, comment and add attachments.",
-  "guestNoteNeedsAccount": "Account settings, labels, teams, favorites, reactions and the server's notifications need an account of your own.",
+  "guestNoteNeedsAccount": "Account settings, labels, teams, favorites, reactions and activity need an account of your own.",
+  "@guestNoteNeedsAccount": {
+    "description": "The guest note on the Account tab of a link share, after guestNoteCanView or guestNoteCanChange: what a guest of a shared link cannot use. Activity is the page the Overview's bell opens (activityTitle)."
+  },
   "guestRemove": "Remove guest access",
   "@guestRemove": {
     "description": "The Account tab's sign-out button while a link-share guest is active."
@@ -8107,10 +8086,6 @@
   "privacyAppLockSubtitle": "Unlock with biometrics or the device screen lock",
   "@privacyAppLockSubtitle": {
     "description": "Under the app lock switch: what unlocks the app."
-  },
-  "privacyAppLockUnsupported": "Set a screen lock on this device first",
-  "@privacyAppLockUnsupported": {
-    "description": "Under the disabled app lock switch when the device has no screen lock or biometrics."
   },
   "privacyAppLockLockedOut": "Too many attempts. Try again later.",
   "@privacyAppLockLockedOut": {
@@ -9204,7 +9179,7 @@
   },
   "aboutTitle": "About the app",
   "@aboutTitle": {
-    "description": "Title of the About page, and the label of its entries on the Account tab's version line and the connect screen."
+    "description": "Title of the About page, and the label of its button on the connect screen."
   },
   "aboutVersion": "Version {version} ({build})",
   "@aboutVersion": {
@@ -9466,7 +9441,7 @@
   },
   "taskDetailDueDateRemoved": "Due date removed",
   "@taskDetailDueDateRemoved": {
-    "description": "Screen reader: said after Clear due date (taskEditClearDueDate) in the task sheet's due-date choices removed the due date."
+    "description": "Snackbar after Clear due date (taskEditClearDueDate) in the due-date choices of the task sheet or of a swipe removed a task's due date, with an Undo action; where no snackbar can show, screen readers say it."
   },
   "taskDetailReminderAdded": "Reminder added",
   "@taskDetailReminderAdded": {
@@ -10071,5 +10046,168 @@
   "upcomingEmptyRangeBody": "To see other days, select another date range.",
   "@upcomingEmptyRangeBody": {
     "description": "Upcoming, below upcomingEmptyRangeTitle when no open task is due in its date range of more than today; the range button in the app bar is named upcomingSelectRange."
+  },
+  "accountAboutLine": "About, help and privacy",
+  "@accountAboutLine": {
+    "description": "The visible label of the Account tab's last line, above the app's version (accountAppVersion); a tap opens the About page, which holds Help and bug reports, the support details, the privacy policy and the legal notice."
+  },
+  "shortcutOnDay": "{label} · {date}",
+  "@shortcutOnDay": {
+    "description": "A date shortcut chip that is not chosen, on the new-task sheet and the edit page: the shortcut's name and the day it stands for. Once chosen, the chip shows shortcutAtTime instead. label is the shortcut's name, date the day.",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "Next week"
+      },
+      "date": {
+        "type": "String",
+        "example": "Sat, Nov 28"
+      }
+    }
+  },
+  "taskFollowed": "You follow this task now",
+  "@taskFollowed": {
+    "description": "Message in the task sheet after the user followed the task with its bell."
+  },
+  "taskUnfollowed": "You no longer follow this task",
+  "@taskUnfollowed": {
+    "description": "Message in the task sheet after the user unfollowed the task with its bell, on a server older than Vikunja 2.8.0, where reminders do not depend on following."
+  },
+  "taskUnfollowedSilenced": "You no longer follow this task, so its reminders and due date won't notify you.",
+  "@taskUnfollowedSilenced": {
+    "description": "Message in the task sheet after the user unfollowed the task with its bell, on Vikunja 2.8.0 and later: that server reminds only the people who follow a task, and the device notifies about the same tasks."
+  },
+  "taskRemindersNotFollowed": "You don't follow this task, so its reminders and due date won't notify you.",
+  "@taskRemindersNotFollowed": {
+    "description": "Note under the Reminders row of the task sheet while the user does not follow the task, on Vikunja 2.8.0 and later, which reminds only the people who follow a task; the device notifies about the same tasks. A button after it, named like the sheet's bell (followTask), follows the task."
+  },
+  "taskDetailChangeStartDate": "Change start date",
+  "@taskDetailChangeStartDate": {
+    "description": "Screen reader: the tap hint of the start-date row in the task sheet, which opens the edit page at the start date."
+  },
+  "taskDetailChangeEndDate": "Change end date",
+  "@taskDetailChangeEndDate": {
+    "description": "Screen reader: the tap hint of the end-date row in the task sheet, which opens the edit page at the end date."
+  },
+  "taskDetailChangeProgress": "Change progress",
+  "@taskDetailChangeProgress": {
+    "description": "Screen reader: the tap hint of the progress row in the task sheet, which opens the edit page at the progress."
+  },
+  "taskDetailChangeRepeat": "Change repeat",
+  "@taskDetailChangeRepeat": {
+    "description": "Screen reader: the tap hint of the Repeats row in the task sheet, which opens the edit page at the repeat."
+  },
+  "taskDetailChangeAssignees": "Change assignees",
+  "@taskDetailChangeAssignees": {
+    "description": "Screen reader: the tap hint of the assignees row in the task sheet, which opens the edit page at the assignees."
+  },
+  "quickAddHintEnglishDates": "Quick Add Magic only knows English date words, for example “{example}”.",
+  "@quickAddHintEnglishDates": {
+    "description": "Hint under the New task sheet's title field when the title has a date word in another language, such as morgen, Freitag or um 17 Uhr, and Quick Add Magic found no date in it, as it knows only English date words. example is an English phrase it understands, tomorrow at 17:00, kept in English.",
+    "placeholders": {
+      "example": {
+        "type": "String",
+        "example": "tomorrow at 17:00"
+      }
+    }
+  },
+  "quickAddHintAddAt": "Add “at” to use {time} as the time.",
+  "@quickAddHintAddAt": {
+    "description": "Hint under the New task sheet's title field when a clock time follows the recognized date without “at” or “@”, so Quick Add Magic leaves the time in the title. The word at is Quick Add syntax and stays English. time is the time as typed, for example 5pm or 17:00.",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "5pm"
+      }
+    }
+  },
+  "notificationsFollowedTasksNote": "Reminders and due dates notify you about the tasks you follow; unfollow a task to stop its notifications.",
+  "@notificationsFollowedTasksNote": {
+    "description": "Account tab, first line of the Notifications section, for an account on Vikunja 2.8.0 or later: which tasks the Reminders and Due dates switches notify about. That server reminds only the people who follow a task, and the device does the same. Not shown for guests through a shared link."
+  },
+  "privacyAppLockNeedsScreenLock": "“Lock Vikunja” needs a screen lock on this device. Set one up in the system settings, then come back here.",
+  "@privacyAppLockNeedsScreenLock": {
+    "description": "Privacy page, a note under the disabled app lock switch (privacyAppLockSwitch) while the device has no screen lock or biometrics; the switch works once one is set up and the user returns to the app. On Android it has the button privacyOpenSecuritySettings."
+  },
+  "privacyOpenSecuritySettings": "Open security settings",
+  "@privacyOpenSecuritySettings": {
+    "description": "Android only: button of the note privacyAppLockNeedsScreenLock; opens the system's security settings, where the screen lock is set up."
+  },
+  "privacySecuritySettingsNotOpened": "The security settings could not be opened.",
+  "@privacySecuritySettingsNotOpened": {
+    "description": "Shown briefly when privacyOpenSecuritySettings could not open the system's security settings."
+  },
+  "insecureFallbackDialogBodyLocal": "{host} didn't answer over https://, only over unencrypted http://. On a home network, that usually means the server uses only http://.\n\nOnly continue if you know the server uses http:// and you trust this network: your password and tasks would travel unencrypted. If it does, type http:// before the address, and the app won't try https:// first.",
+  "@insecureFallbackDialogBodyLocal": {
+    "description": "Body of the warning insecureFallbackDialogTitle for an address on the home network (such as 192.168.1.20, a .local name or the device itself), when https could not be reached and the server answered over plain http instead; instead of insecureFallbackDialogBody, which also says that someone may be blocking https. host is the server's address, for example 192.168.1.20:3456.",
+    "placeholders": {
+      "host": {
+        "type": "String",
+        "example": "192.168.1.20:3456"
+      }
+    }
+  },
+  "connectionOptionsHttpsFirst": "The app tries https:// first",
+  "@connectionOptionsHttpsFirst": {
+    "description": "Under Connection options (connectionOptions) on the connect screen, after connectionOptionsFor, while the address was typed without http:// or https://: the settings are those of the https:// address, which the app tries before http://."
+  },
+  "newTaskSetInTitle": "Set in the title",
+  "@newTaskSetInTitle": {
+    "description": "Note beside the New task sheet's due date or priority heading, or in its project field, while the title's own Quick Add Magic sets that value (for example tomorrow, !3 or +Home), so the row's chips or the field can't be changed until that part is removed from the title."
+  },
+  "taskDueDateChanged": "Due {when}",
+  "@taskDueDateChanged": {
+    "description": "Snackbar after the due date of one task was changed from its task sheet or by a swipe on its row, with an Undo action; when is the new due date as the task sheet shows it, for example Nov 22, 2026 9:00 AM. Screen readers hear when as a spoken date.",
+    "placeholders": {
+      "when": {
+        "type": "String",
+        "example": "Nov 22, 2026 9:00 AM"
+      }
+    }
+  },
+  "refreshWaitingNotice": "Still waiting for the server — showing saved data",
+  "@refreshWaitingNotice": {
+    "description": "Note above a list when a refresh the user started (by pulling the list down) has waited about 9 seconds for the server and is still running, for example behind a captive portal: the list shows the data saved on the device meanwhile. Compare offlineNotice, which shows once the server could not be reached."
+  },
+  "activityTitle": "Activity",
+  "@activityTitle": {
+    "description": "Title of the Activity page, which lists the server's notifications about comments, assignments and mentions, and the tooltip of the bell on the Overview that opens it. Not the device's notifications, which the Account tab's Notifications section sets up."
+  },
+  "activityButton": "{count, plural, =0{Activity} one{Activity, {count} unread} other{Activity, {count} unread}}",
+  "@activityButton": {
+    "description": "The bell on the Overview, as screen readers hear it, and the item in Upcoming's menu, both opening the Activity page (activityTitle); screen readers also hear it after the name of the Overview's tab in the navigation bar, which then shows a dot. count is how many of its entries are unread, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "3"
+      }
+    }
+  },
+  "activityLoading": "Loading activity…",
+  "@activityLoading": {
+    "description": "Shown while the Activity page (activityTitle) loads."
+  },
+  "activityEmptyTitle": "No new activity",
+  "@activityEmptyTitle": {
+    "description": "Title of the empty state of the Activity page (activityTitle), which lists the server's notifications about comments, assignments and mentions."
+  },
+  "activityOther": "New activity",
+  "@activityOther": {
+    "description": "An entry on the Activity page (activityTitle) for a server notification of a kind this app does not know."
+  },
+  "dateFieldChipSemantics": "{field}: {label}",
+  "@dateFieldChipSemantics": {
+    "description": "Screen reader: the chip of the edit page's date fields that opens the date picker (newTaskPickDate) or shows a date on no shortcut, read with the date's name, so that the chips of the due, start and end dates differ; field is the date's name, label the chip's text or the spoken date.",
+    "placeholders": {
+      "field": {
+        "type": "String",
+        "example": "Start date"
+      },
+      "label": {
+        "type": "String",
+        "example": "Pick date…"
+      }
+    }
   }
 }

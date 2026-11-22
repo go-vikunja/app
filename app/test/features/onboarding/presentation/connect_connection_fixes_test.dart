@@ -368,9 +368,19 @@ void main() {
       await tester.pumpAndSettle();
       expect(button().onPressed, isNotNull);
       expect(optionsText(tester), contains(en.connectionOptionsFor('$origin')));
+      expect(optionsText(tester), contains(en.connectionOptionsHttpsFirst));
       expect(
         optionsText(tester),
         isNot(contains(en.connectionOptionsNeedAddress)),
+      );
+
+      // The same origin typed with its scheme no longer says so.
+      await tester.enterText(_addressField, 'https://vikunja.example.com');
+      await tester.pumpAndSettle();
+      expect(optionsText(tester), contains(en.connectionOptionsFor('$origin')));
+      expect(
+        optionsText(tester),
+        isNot(contains(en.connectionOptionsHttpsFirst)),
       );
 
       await tester.enterText(_addressField, 'vikunja.example.com:3456');
@@ -385,6 +395,10 @@ void main() {
       expect(
         optionsText(tester),
         contains(en.connectionOptionsFor('https://tasks.example.org:443')),
+      );
+      expect(
+        optionsText(tester),
+        isNot(contains(en.connectionOptionsHttpsFirst)),
       );
 
       await tester.enterText(_addressField, 'not an address');

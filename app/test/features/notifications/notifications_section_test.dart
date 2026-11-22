@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
+import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/notifications/presentation/notifications_section.dart';
 
@@ -87,11 +88,43 @@ void main() {
   });
 
   group('which tasks the switches notify about', () {
-    testWidgets('on Vikunja 2.8.0 the tasks the user follows', (tester) async {
+    testWidgets('on Vikunja 2.8.0 the tasks the user follows, in one '
+        'sentence that says how to stop them, after the device mark alone', (
+      tester,
+    ) async {
       await pumpSection(tester, server: fullServer280());
 
-      expect(inSection(en.notificationsForFollowedTasks), findsOneWidget);
+      expect(inSection(en.notificationsFollowedTasksNote), findsOneWidget);
       expect(find.text(en.notificationsForOwnTasks), findsNothing);
+      expect(
+        RegExp('[.;] [A-Z]').hasMatch(en.notificationsFollowedTasksNote),
+        isFalse,
+      );
+      expect(en.notificationsFollowedTasksNote, contains('unfollow a task'));
+      final header = find.ancestor(
+        of: find.text(en.notificationsHeading),
+        matching: find.byType(ListSectionHeader),
+      );
+      expect(
+        find.descendant(
+          of: header,
+          matching: find.text(en.onThisDeviceHeading),
+        ),
+        findsOneWidget,
+      );
+      final texts = tester
+          .widgetList<Text>(
+            find.descendant(
+              of: find.byType(NotificationsSection),
+              matching: find.byType(Text),
+            ),
+          )
+          .map((text) => text.data)
+          .toList();
+      expect(
+        texts.indexOf(en.notificationsFollowedTasksNote),
+        texts.indexOf(en.onThisDeviceHeading) + 1,
+      );
     });
 
     testWidgets('on an older server the tasks the user created or is '
@@ -99,7 +132,7 @@ void main() {
       await pumpSection(tester);
 
       expect(inSection(en.notificationsForOwnTasks), findsOneWidget);
-      expect(find.text(en.notificationsForFollowedTasks), findsNothing);
+      expect(find.text(en.notificationsFollowedTasksNote), findsNothing);
     });
 
     testWidgets('a guest through a shared link is told neither', (
@@ -119,9 +152,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(inSection(en.onThisDeviceSubtitle), findsOneWidget);
-      expect(find.text(en.notificationsForFollowedTasks), findsNothing);
+      expect(find.text(en.notificationsFollowedTasksNote), findsNothing);
       expect(find.text(en.notificationsForOwnTasks), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(NotificationsSection),
+          matching: find.text(en.onThisDeviceHeading),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('at 200 % text the line wraps without an overflow', (
@@ -131,7 +170,7 @@ void main() {
       useAccessibilityExtremes(tester);
       await pumpSection(tester, server: fullServer280());
       await tester.scrollUntilVisible(
-        inSection(en.notificationsForFollowedTasks),
+        inSection(en.notificationsFollowedTasksNote),
         100,
         scrollable: tabList(),
       );
@@ -139,7 +178,7 @@ void main() {
 
       final paragraph = tester.renderObject<RenderParagraph>(
         find.descendant(
-          of: inSection(en.notificationsForFollowedTasks),
+          of: inSection(en.notificationsFollowedTasksNote),
           matching: find.byType(RichText),
         ),
       );
@@ -154,7 +193,7 @@ void main() {
         greaterThanOrEqualTo(paragraph.textSize.height),
       );
       expect(
-        tester.getRect(inSection(en.notificationsForFollowedTasks)).right,
+        tester.getRect(inSection(en.notificationsFollowedTasksNote)).right,
         lessThanOrEqualTo(320),
       );
       expect(tester.takeException(), isNull);
@@ -168,7 +207,7 @@ void main() {
         accountTab: de.tabAccount,
       );
 
-      expect(inSection(de.notificationsForFollowedTasks), findsOneWidget);
+      expect(inSection(de.notificationsFollowedTasksNote), findsOneWidget);
     });
   });
 

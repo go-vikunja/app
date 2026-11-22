@@ -15,7 +15,7 @@ Each entry has a number, a status and the step that took it. It says what was de
 - **Look, accessibility, languages:** [D20] scope cuts, support details · [D21] [D71] English and German · [D45] app shell · [D56] design · [D68] screen readers · [D69] large screens · [D70] the task pane · [D75] the owner's UI review · [D82] projects list–detail · [D100] small things · [D112] accessibility pass
 - **Security and privacy:** [D64] app lock · [D66] threat model · [D92] security fixes · [D113] opt-in crash reports
 - **Identity, release, the official app:** [D15] app id and name · [D42] app icon · [D72] first release · [D73] CI from local scripts · [D74] iOS phase · [D76] store listings and policies · [D77] beta preparation · [D83] successor of the official app · [D85] update from the old app · [D86] GitHub Actions · [D87] MIT and the move · [D88] Crowdin · [D89] the official store listing · [D67] notices, the licence and About pages, no F-Droid · replaced: [D10]
-- **Code review fixes:** [D90] before beta.1 · [D91] the description editor, leaving pages for a switch · [D93] quick fixes · [D94] outbox retries, notifications, the diagnostics log, session reminders · [D95] small things users notice · [D96] robustness · [D97] security and release · [D98] the limits' review · [D107] the make-up reviews · [D116] the UI/UX review, part one
+- **Code review fixes:** [D90] before beta.1 · [D91] the description editor, leaving pages for a switch · [D93] quick fixes · [D94] outbox retries, notifications, the diagnostics log, session reminders · [D95] small things users notice · [D96] robustness · [D97] security and release · [D98] the limits' review · [D107] the make-up reviews · [D116] [D117] the UI/UX review
 - **The repository:** [D105] architecture overview · [D114] cleanup before the move · [D115] this log shortened
 
 ## D1: Flutter pub workspace with pure-Dart packages
@@ -748,12 +748,12 @@ Limits:
 - **Shell:** on Android and the other non-Apple platforms a navigation rail from 600 dp wide, with the four labelled destinations; iOS keeps the tab bar at every width, the iPad included ([D69]). The tab rule: re-selecting a tab pops to its root, an account switch resets the tabs, back goes to the first tab.
 - **Theme** is a setting of this device: Light, Dark or System, System until another is picked, the same for every account and for guests, offline too (owner, 2026-11-13; why: the app's look is chosen on the device, independent of the web). It is the Theme row of the Account tab's Appearance section ([D75]). The app neither reads nor writes the account's `color_schema`, so the web's choice survives on the server. The start waits behind the launch screen, within its 5 s, so the first frame has the stored theme.
   - After the update from the old app ([D85]), its light or dark becomes this preference on the first start, before the first frame (owner, 2026-11-13).
-- **Dynamic colour** on Android 12 and later: the system palette becomes the light and dark schemes. On by default; the device-wide "Use system colors" switch (shown only where a palette exists) brings back the brand scheme ([D56]). iOS always uses the brand scheme. After the update from the old app, its dynamic colors set the switch once: on only if they were on and could be read (why: their default was off, so its users saw the brand blue, which the switch's default would change).
+- **Dynamic colour** on Android 12 and later: the system palette becomes the light and dark schemes. Off by default, so new installs show the brand scheme (owner, 2026-11-22, [D117]); the device-wide "Use system colors" switch (shown only where a palette exists) turns it on ([D56]). iOS always uses the brand scheme. After the update from the old app, its dynamic colors set the switch once: on only if they were on and could be read.
 - **The web's display settings apply only once set** (why: the web's defaults `relative` and `24h` would change the app for everyone who never opened them). Until set, rows, comments and the inbox show relative dates and the rest the device's format; once set, an absolute `date_display` applies everywhere a date shows, `relative` where the app is relative, and an explicit `time_format` to every time and the time pickers, 12 hours in German included.
 - **Week start** 1–6 sets the date pickers' first day; 0 keeps the locale's (why: the server cannot tell 0 from never set). Upcoming's presets stay on Monday weeks, like the server's date math.
 - **Default view:** a project opens on the view it was last left in, while it has it (owner, 2026-11-18, [D95]), saved per account; else on the first view of the user's `default_view` kind, else its first view. A view named in the route wins without being saved; a guest's link lands on its view this way ([D62]).
 - **Translated names** for display only: the pseudo project −1, the exact titles `Inbox` and `My Open Tasks`, and the four default view titles; storage, quick-add matching and default-project detection keep the server's titles.
-- **Projects tab:** Favorites, Saved filters and All projects (the tree). Every project shows as a folder in its colour (owner, [D75]). "Show saved filters" ([D75]), "Show archived projects" and the collapsed branches are saved per account; wide windows show the tree beside the list ([D82]). Archived projects stay out of pickers, defaults and quick add, and their tasks are read-only ([D84], [D96]).
+- **Projects tab:** Favorites, All projects (the tree) and Saved filters ([D117]). Every project shows as a folder in its colour (owner, [D75]). "Show saved filters" ([D75]), "Show archived projects" and the collapsed branches are saved per account; wide windows show the tree beside the list ([D82]). Archived projects stay out of pickers, defaults and quick add, and their tasks are read-only ([D84], [D96]).
 - **Smart lists** at negative ids: "Favorite tasks" comes from the local database; a saved filter is evaluated on the device ([D51]), else the server's answer is downloaded when its snapshot is missing or older than five minutes. A filter's list also shows the done tasks it matches unless `done = false` leaves them out, as on the web, at most the 100 most recently done ([D95]). Snapshots of gone filters are purged on every sync.
 - **Offline banner** in the shell, not per list (why: no connectivity plugin can tell whether the server is reachable; the last sync can): offline after a sync run of the active account fails with a network failure, online after one gets through, unchanged while one runs, so retries do not flicker. It shows the last sync time; a tap syncs ([D96]).
 
@@ -953,7 +953,7 @@ Limits:
 *Accepted 2026-10-21 (outside the roadmap's steps; the owner's mockups).*
 
 - The app looks like the owner's mockups of eight screens without copying them blindly, and stays a typical Flutter app with material_ui and cupertino_ui ([D2]).
-- **Colour:** the brand scheme (when the system palette is off or missing, and on iOS) is a tonal scheme with primary roles from the Vikunja blue `#1973FF`, cool grey-blue surfaces and an amber tertiary for highlights (favourite stars, high priority). Dynamic colour ([D45]) stays on by default and replaces the whole scheme; every component reads scheme roles. High-contrast variants follow the platform ([D68]).
+- **Colour:** the brand scheme (when the system palette is off or missing, and on iOS) is a tonal scheme with primary roles from the Vikunja blue `#1973FF`, cool grey-blue surfaces and an amber tertiary for highlights (favourite stars, high priority). Dynamic colour ([D45]) is an opt-in (owner, 2026-11-22) and then replaces the whole scheme; every component reads scheme roles, except the orange of Urgent and Do now ([D117]). High-contrast variants follow the platform ([D68]).
 - **Surfaces and structure:** grouped content in 12 dp cards with inset dividers; primary-coloured section headers with an optional count; settings tiles with a 24 dp outlined leading icon; switches with a check in the thumb (Material only); segmented buttons for short exclusive choices.
 - **One task row for every list** (Overview, Upcoming, project lists, the Table view, smart lists, search, labels): a square checkbox, the title after the task's colour dot, one wrapping meta line (priority flag; due date in the overdue, today or later tone, with an error icon when overdue; the project after a folder in its colour; label pills in the server's colours; checklist count; comment count with the unread dot; description and repeat icons; the not-yet-synced mark), the percent-done bar, an avatar stack and the favourite star. No task identifier (owner, [D75]).
 - **Shared widgets** (`SectionCard`, `TaskRow` and the others): every list and settings page uses them, and new screens do too.
@@ -1221,7 +1221,7 @@ Limits:
 
 **Android** (Glance 1.2.0): Tasks (3 × 2, resizable, setup optional, so Android 12+ places it showing the active account's Today) and New task (2 × 1).
 - **The old app's provider** ([D85]): a second receiver under the old class name, `io.vikunja.app.widget.AppWidgetReciever` with its spelling, so old widgets survive the update. They show "Tap to choose what this widget shows" until set up (why: silently showing Today could change what an old widget showed); the old choice is not mapped and is deleted with the old widget data. The component is disabled once no widget uses it (why: launchers that ignore `hide_from_picker` would list "Tasks" twice).
-- Rows at least 48 dp; text in `sp`. Removing a widget deletes its config. Theme: the system colours on Android 12+ unless "Use system colors" is off, else [D56]'s brand colours.
+- Rows at least 48 dp; text in `sp`. Removing a widget deletes its config. Theme: the system colours on Android 12+ when "Use system colors" is on, else [D56]'s brand colours. A project's folder takes the colour the app draws for the widget's light or dark background ([D117]).
 - The configure activity accepts only the app's own widget ids and opens the setup in the app's own task, so no second Flutter engine runs on the same databases. Taps follow only the app's own widget links.
 - Dependencies: the Compose compiler plugin equal to the Kotlin version; `androidx.work:work-runtime:2.11.2` (why: below it R8 strips Glance's RemoteViews translator); no `glance-material3`; ProGuard keeps every `ActionCallback`'s no-argument constructor (Glance calls it by reflection).
 
@@ -1411,7 +1411,7 @@ Limits:
 - **Strings:** new and changed ARB keys get a description, "Screen reader: " first for strings that are only spoken. A plural shows its number in a `one{…}` branch and has no `=1{…}` ([D88]). Some older messages still have no description.
 
 **Deviations from WCAG 2.2 AA:**
-- 1.4.4 Resize Text, below 200 %: the navigation labels above; the inbox badge ([D74]), the offline banner and Upcoming's date column (the rows carry the dates) at 1.3×; Upcoming's day strip and the Gantt header ([D61]) at 1.5×; avatar initials, reaction emoji and inline pills unscaled; Flutter's app bar title at 1.34×, ellipsized and spoken in full.
+- 1.4.4 Resize Text, below 200 %: the navigation labels above; the inbox badge ([D74]), the offline banner and Upcoming's date column (the rows carry the dates) at 1.3×, and from 1.5× it goes ([D117]); Upcoming's day strip and the Gantt header ([D61]) at 1.5×; avatar initials, reaction emoji and inline pills unscaled; Flutter's app bar title at 1.34×, ellipsized and spoken in full.
 - 2.5.7 Dragging Movements: moving a card within its column, a task in a manually sorted list or a project among its siblings takes a drag or a screen reader's custom actions ([D47], [D49]). Single-pointer ways exist for a card's column (Move to column… in its task detail, [D84]), a column's place (Move left, Move right), a project's parent and a task's project (the edit pages).
 - 1.4.11 Non-text Contrast: the light brand scheme's amber highlight (the star's fill, the high-priority flag) is about 1.82:1; it is supplementary (the star has a 6.18:1 outline, the flag stands beside the priority's name).
 - 1.4.3 on iOS alerts: Apple's system blue and red measure 2.86–4.40:1 on the alert's material; under Increase Contrast the delete-task, sign-out and browser-hint alerts pass, while the insecure-connection alert's "Continue anyway" stays at 4.23:1.
@@ -1461,7 +1461,7 @@ Limits:
 - Windows 600–839 dp wide and 480–899 dp high get no caps (an Android split screen in portrait, the Pixel Tablet's 50/50 split in landscape, an iPad's 2/3 split): their forms reach about 760 dp beside the rail and 839 pt on iOS, and their iOS sheets fill the window.
 - With a task in the pane the shell's snackbar crosses the divider. A new narrower scaffold with its own snackbars needs its own snackbar width; nothing checks this.
 - Pages over the shell, such as settings and search, cover the rail or the tab bar.
-- The floating action buttons stay at the window's bottom right, beside the band.
+- The floating action buttons stay at the window's bottom right, beside the band, except New task on Android rail layouts, which is the rail's leading button ([D117]).
 - The description and comment editors have no width of their own, and images in a description decode at the window's width.
 - Not looked at on an iPad: the wheel popups as cards, an iPad mini or 11", Split View and Slide Over.
 
@@ -1636,7 +1636,7 @@ Limits:
 **The new-task sheet:**
 - In order: the headline, the title, the Quick Add preview, the project, then the due date and the priority as two rows of chips (owner). The headline's row ends in the pin "Keep open after adding" ([D95]), off by default; with it on, an add empties the title and the description and keeps the rest (why a mode: Enter adds, so only a mode lets the keyboard add task after task).
 - Each row is one line that scrolls sideways, with its heading above the chips (owner); on a 360 × 740 phone at 1.0 text both stay in view with the keyboard up.
-- Due date: Today, Tomorrow, Next week, a chip for another date, and "Pick date…". The chosen shortcut shows the time the due date gets, for example "Tomorrow at 9:00 AM" ("{label} at {time}") (owner). Priority: Low to Do now (1 to 5).
+- Due date: Today, Tomorrow, Next week, a chip for another date, and "Pick date…". The chosen shortcut shows the time the due date gets, for example "Tomorrow at 9:00 AM" ("{label} at {time}") (owner); one not chosen shows its day ("Next week · Sat, Nov 28") (owner, 2026-11-22, [D117]). Priority: Low to Do now (1 to 5).
 - The title field is [D38]'s composer, without a prefix toolbar and with its help behind `?` (owner).
 - The sheet sets a priority in every mode, as a fallback like the due date, and a line's own `!n` wins (owner, [D38]).
 - "More options" expands the sheet in place and reads "Fewer options" while open (owner). It adds a Description, Labels, Reminders and Repeat; with several pasted lines every task gets them ([D38]). Nothing is created before Add, new labels included, so a dismissed sheet leaves nothing on the server.
@@ -1647,7 +1647,7 @@ Limits:
 - One Appearance section holds the rows Theme, "Use system colors" (Android 12 and later) and App language ([D71]) (owner). The Account settings page has no Appearance section.
   - Theme („Design“) is the device's theme ([D45]), with Light, Dark and System segments, a sliding segmented control on iOS (owner, 2026-11-13); it works offline and for guests.
   - Each row has "On this device" („Auf diesem Gerät“) in a small line under its title (owner, 2026-11-13). The section has no mark of its own and no hint pointing to the account settings.
-- The tab's order is (owner): the banners, the header and the notes; Account settings, Organize and Accounts; Sync (the last sync or its phase, a failure's explanation, the background line, Sync now, Full resync, Pending changes, Sync problems); Home screen, Notifications, Privacy and Appearance; Server (the Vikunja version, Connection, the server's notices); Sign out and the version line.
+- The tab's order is (owner): the banners, the header and the notes; Account settings, Organize and Accounts; Sync (the last sync or its phase, a failure's explanation, the background line, Sync now, Full resync, Pending changes, Sync problems); Home screen, Notifications, Privacy and Appearance; Server (the Vikunja version, Connection, the server's notices); Sign out and the version line, labelled "About, help and privacy" ([D117]).
 
 Limits:
 - While a quick-add token is typed, the suggestions strip leaves about 220 dp at 360 × 740 with the keyboard up, so the priority row scrolls under it; a very long line or a typed date's chip does the same.
@@ -1799,7 +1799,7 @@ Limits:
 - Inactive accounts on an upgraded server keep [D17] until they are active once and their `/info` is read again.
 - A task restored from the trash starts unknown again.
 - Large followed projects bring many notifications; the window still holds the soonest 100 (Android) or, on iOS, an even share of 60 less one place per account ([D94]).
-- Not built: the bell's stored state shown offline, the project menu seeded from the stored state, a hint on a task with reminders the user does not follow.
+- Not built: the bell's stored state shown offline, the project menu seeded from the stored state.
 
 ## D81: Vikunja 2.8.0 details: legal links, Okabe–Ito colours, lockout hints, subtask tree, accents
 
@@ -1811,7 +1811,7 @@ Limits:
 - The test server lists a further link (owner): "Terms of Service" at `https://example.org/terms`, in `test_servers/docker-compose.yaml`, for the TLS server too.
 
 **Colours:**
-- Every colour row offers the Okabe–Ito palette (owner): the seven colours of Okabe and Ito's "Color Universal Design" (J\*FLY, 2002, revised 2008) in its order without black, `e69f00`, `56b4e9`, `009e73`, `f0e442`, `0072b2`, `d55e00`, `cc79a7` (why no black: a black label or folder disappears in the dark theme).
+- Every colour row offers the Okabe–Ito palette (owner): the seven colours of Okabe and Ito's "Color Universal Design" (J\*FLY, 2002, revised 2008) in its order without black, `e69f00`, `56b4e9`, `009e73`, `f0e442`, `0072b2`, `d55e00`, `cc79a7` (why no black: a black label or folder disappears in the dark theme). Folders and colour dots are drawn lighter or darker where a colour would fall below 3:1; the stored value stays the palette's ([D117]).
 - The rows for tasks, projects and labels offer them after "No color"; a colour set elsewhere still shows as chosen and can be chosen again until the page is left (owner: colours already set stay). A new label gets one of the seven at random. Screen readers name the seven, any other colour as "Color #hex" ([D98]).
 
 **API token presets:** on 2.8.0 they include the trash's permissions as the web's do (owner; [D55]).
@@ -1888,8 +1888,8 @@ Open:
 *Accepted 2026-11-12 (step 37k).*
 
 - **Properties in place,** in the sheet and in the pane ([D70]): the Due date, Priority and Reminders rows are buttons, the whole row. The Labels row has a "Change labels" button after its pills (why: the pills keep opening the label's tasks, [D60], so the row cannot be one button). Unset properties that may be set show as one add row at the end of the attribute card.
-- **The controls:** the due date offers the new-task sheet's shortcuts ([D75]), each at the time already set, else at the user's default due time, else at the next breakpoint ([D35]); reminders up to 100, refusing two at one moment, because the server keeps one reminder per moment ([D36]). Project, title, start and end dates, progress, colour, repeat and assignees stay on the edit page.
-- **Writing:** each choice is one change of its field through the outbox ([D34], [D36]), offline too; a choice that changes nothing writes nothing. No Undo and no confirmation, screen readers hear what changed, with one exception ([D98]): a due date that would put two of the task's reminders on one moment asks first, as the edit page warns.
+- **The controls:** the due date offers the new-task sheet's shortcuts ([D75]), each at the time already set, else at the user's default due time, else at the next breakpoint ([D35]); reminders up to 100, refusing two at one moment, because the server keeps one reminder per moment ([D36]). Project, title, start and end dates, progress, colour, repeat and assignees stay on the edit page; the rows of the dates, progress, repeat and assignees open it at their field ([D117]).
+- **Writing:** each choice is one change of its field through the outbox ([D34], [D36]), offline too; a choice that changes nothing writes nothing. No confirmation, and Undo only for the due date ([D117]); screen readers hear what changed. One exception ([D98]): a due date that would put two of the task's reminders on one moment asks first, as the edit page warns.
 - **Who may:** write permission ([D60]), a project not archived in the tree, and a task this device has a row of (why: a change for a task without one would be dropped); while the permission or the row is still loading, edits are offered. Without a row the sheet offers only comments, reactions, the follow bell, Copy link and Share ([D96]); in an archived project only reading, Copy link and Share. A subtask follows its own project's permission and archived state.
 - **The menu,** "More": Move to column…, Copy link, Share, Duplicate, Delete. Copy link and Share appear for every task the server knows, also read-only, archived and offline, not for a task whose create is still queued; Duplicate and Delete only with write permission outside archived projects.
 - **The task link** is `{web frontend}tasks/{id}`, on the frontend URL when it is http(s) and not http for an https server, else on the server root, as for link shares ([D60]); a comment's link adds `#comment-{id}` ([D57]). Copy uses the plain clipboard (why: a task link carries no secret, and only members of the project can open it). Leaving the app to share does not lock it ([D64]). The link carries the task's database id, which is not shown or spoken ([D75]).
@@ -1902,7 +1902,7 @@ Limits:
 - In the pane, Move to column… stays after a switch to another view of the same project; it still moves the card on the board it came from.
 - When the pane gives way to a sheet while a list or picker is open, the choice is still written, but "Pick date…" opens no date picker, a due date that needs the question about reminders is not written, only said, and a refused reminder, "Moved to …" and the limit text are not shown.
 - Reminders that already shared a moment before a due date change are not asked about.
-- No Undo.
+- No Undo for priority, labels and reminders.
 - Not checked yet with TalkBack or VoiceOver ([checklist](accessibility-checklist.md#26-checks-of-step-37k)).
 
 ## D85: Update from the old app: server prefill, one session try, leftovers cleared, widgets kept
@@ -2537,7 +2537,7 @@ Finding N11 of the code review and N12's bullets about the background job and th
 
 **The foreground timer** ([D33]): 60 s after a run that wrote the account's tasks, projects, labels or queue (an incremental run that finds nothing new writes none), doubling after each run that wrote nothing, up to 5 min; a write by the user or the outbox shortens it to 60 s after the last run. A 5xx and a 429 back off like a network failure; a 429 waits at least its `Retry-After`, at most 15 min (the outbox's bound), a resume too, and writes do not shorten a backoff. The activity sync ([D40]) runs on the first tick at least 5 min after its last run, as the ticks are 1 to 5 min apart.
 
-**The progress bar** shows once a quiet run has lasted 1 s, on every screen; a refresh the user starts shows its own progress (the pull's spinner, Sync now's).
+**The progress bar** shows once a quiet run has lasted 1 s, on every screen; a refresh the user starts shows its own progress (the pull's spinner, for at most 9 s, [D117]; Sync now's).
 
 **The background job and the account settings:** the periodic Android job runs only with a network and a battery that is not low; the account settings read the server on a resume only after 5 min, after one of the web's pages or while an email change waits ([D54]).
 
@@ -2608,9 +2608,10 @@ Finding B10 of the code review and two fixes from the web's open pull requests (
 7. **Labels, projects and priorities leave the title only as whole tokens**, so removing `*bug` keeps `*bugfix`. A quoted token or a found name also ends at punctuation before a space or the end (as a removed date can leave punctuation there); an unquoted token before punctuation includes it (`!3,` stays). Every token takes along the repeated prefix the web drops (`**bike`). The service and the composer use the parser's own tokenizer ([D38], [D110]).
 8. **A priority is a whole number from 0 to 5:** `!2fa` is none, `!03` is 3 (the web used `parseInt`, #4421). The composer highlights the token the parser removes, whole.
 9. **A date on today never takes a default time that has passed** (owner, 2026-11-19): the date becomes 23:59 of today instead (why: the web keeps the passed time, so the task is overdue the moment it is set). This holds for quick add's date phrases and repeats without a date, and in the pickers for a date-only pick of today and for Today on a task whose time of day has passed. A time typed with `at` or picked stays; other days keep the default time (`tomorrow` after 21:00 is 09:00). Cancelling the clock after a day was picked counts as a date-only pick of that day ([D116]).
+10. **German short dates** (owner, 2026-11-22, [D117]): `17.12.` and `17.12.2026.` are dates, and ranges with a final dot stay text. A lone `am` right before a dotted date goes with it, unless a number before it makes it the time's suffix (`at 9 am 17.12.` keeps it). Point 5's guard words gain Kapitel, Abschnitt, Seite, Folie, Teil and Nr., so `Kapitel 3.2` stays text.
 
 Limits:
-- The version words are an English fixed list; `Release 1.2` in another language still reads as a date.
+- The version words are a fixed list of English and a few German section words; `Release 1.2` in another language still reads as a date.
 - `Fix today's build` keeps `today's`; a user who meant today types `today`.
 
 ## D103: Test hygiene, dead code and shared helpers
@@ -2680,7 +2681,7 @@ Finding N7 of the code review: working through a list took a tap on each task. T
 - No delete by swipe (why: a swipe is easy to make by mistake, and a delete would need a question or an undo).
 
 **Selecting several tasks:**
-- Starts with a long press, the "Select" action or "Select tasks" in the list's menu; in a list sorted by hand a long press lifts the row, so only the menu starts it there, and while the list selects no row lifts.
+- Starts with a long press, the "Select" action or "Select tasks" in the list's menu; in a list sorted by hand a long press held without moving selects too, and one followed by a drag moves the row (owner, 2026-11-22, [D117]); while the list selects no row lifts.
 - The app bar shows "N selected" (a live region) and Select all; a bottom bar holds Done, Due date, Priority, Move and Delete (why: five named actions do not fit beside the count on a phone, and the thumb reaches them there). A selected row reads as checked; the start and the end are announced.
 - Only tasks the user may change can be selected; the actions take only the selected tasks the list shows. Back, the close button, an action that wrote something, another view or another account end it. On Android Back ends it before anything else goes back, on the Overview too; on iOS the edge swipe goes back and ends it with the page ([D116]).
 - Each action writes one queued change per task ([D34]), never the server's bulk endpoints, which replace whole sets ([D36]), and offers Undo. Due date asks once when some tasks would get two reminders on one moment, and its Undo sends their reminders too, as the server kept only one. Move offers the projects the user may write to. Delete asks "Delete N tasks?" in the words of the single delete (for the trash, a guest and a server without it) and takes the tasks out of the pane; with the trash its Undo removes a delete still queued and restores one the server made; without the trash there is no Undo.
@@ -2896,7 +2897,7 @@ The accessibility part of finding P6 of the code review.
 - **Chips are 48 dp:** the task sheet's project chip, quick add's recognised parts and suggestions and the filter field's suggestions take the standard density, as `VisualDensity.compact` lowers a chip's tap target with its look; they look the same, the extra height being transparent tap padding. Their tests check the height, because the route sweep does not see them: Flutter's tap-target guideline skips nodes marked as links, as the project chip is, and no scenario shows suggestions or recognised parts.
 - **Widget targets** ([D63]): the Tasks widget's Done box is a 48 dp button named after its task (Glance's own checkbox is 32 dp and has no name); an untick from a widget drawn before the update is ignored until it is drawn again. The widget's title, which opens the list, keeps 48 dp through a spacer.
 - **Contrast:** the scan's check only sees nodes with a text of their own, which Flutter gives text fields alone, so the contrast of Flutter's text stays with the route sweep, which measures it on every route ([D68]). The disabled name field on the account settings page measures 1.23:1, which 1.4.3 exempts.
-- **For the TalkBack pass:** the description editor's WebView shows no nodes of its own in a dump and is itself a tappable node without a name, so whether TalkBack enters it (flow 12) stays open. A parent project's link in the task sheet's breadcrumb reports the whole breadcrumb's area as its bounds, so TalkBack's focus box would cover the project chip too.
+- **For the TalkBack pass:** the description editor's WebView shows no nodes of its own in a dump and is itself a tappable node without a name, so whether TalkBack enters it (flow 12) stays open.
 
 Limits:
 - Not run: TalkBack, Switch Access and VoiceOver, and the scan at the largest font, which would change the emulator's system font size; the route sweep covers 200 % text on every route and 3.12× on the six core screens. The Kanban board was not scanned.
@@ -3055,7 +3056,7 @@ The owner asked for a UI/UX review of 1.0.0-beta.1 on an Android 16 emulator (20
 - Every bottom sheet's barrier reads Material's dismiss label ("Dismiss"), not "Scrim" ("Gitter" in German).
 
 **Look:**
-- Every sheet title has one style, a level-1 heading in `titleLarge`. At 200 % text on a 320 dp phone a picker's list gets shorter (the share sheet in German from 301 to 165 px), but every row still scrolls into reach (why: the pickers' header titles 24 sheets, so a smaller size there would bring two sizes back).
+- Every sheet title has one style, a level-1 heading in `titleLarge`. At 200 % text on a 320 dp phone a picker's list gets shorter (the share sheet in German from 301 to 165 px), but every row still scrolls into reach (why: the pickers' header titles 24 sheets, so a smaller size there would bring two sizes back). The owner kept the large size (owner, 2026-11-22, [D117]).
 - A section heading with an action (Overdue with Reschedule) puts its title on the action's 48 dp line, where the other headings' titles sit, also when the action wraps below it.
 - The due date has one icon everywhere, the outlined calendar, with the error icon when overdue; start and end keep play and stop. The meta line's icons grow with the text, from 14 to 28 dp.
 - The Table's priority column draws the rows' flag ([D61]).
@@ -3077,8 +3078,61 @@ Limits:
 - While a day is picked in Upcoming, the strip sits about 16 dp lower, for the 48 dp "All days" button (why: one height for both states moved the default view down instead).
 - Checked in widget tests and on the Android emulator only; the TalkBack pass is still open ([D68]).
 
-Open:
-- `titleMedium` for every sheet title instead, which keeps more of a picker's list at 200 % text (owner).
+
+## D117: Fixes from the UI/UX review, part two
+
+*In review since 2026-11-22 (step 44b), the owner's decisions of 2026-11-22 where marked.*
+
+The rest of the UI/UX review of 2026-11-21 ([D116]): its larger findings, and twelve questions the owner answered on 2026-11-22.
+
+**The owner's decisions** (owner, 2026-11-22):
+- **Brand colours by default:** new installs start in the brand scheme, and "Use system colors" is an opt-in (why: the wallpaper's palette left Vikunja's blue only in the logo). Installs that never touched the switch show the brand blue too; the old app's import still sets it ([D85]). The app, the widgets and their host file share the default ([D45], [D63]).
+- **Legible colours:** project folders, the task colour dot, Gantt bars in a task's own colour and the widgets' folders keep the stored hue and chroma but shift their lightness (Oklch) until they reach 3:1 against the surface they are drawn on, light or dark (why: dark colours vanished in dark mode and pale ones in light). The stored value is unchanged and the colour pickers show it; the drawn colour may differ slightly from the web's ([D75], [D81]).
+- **Sheet titles stay large** ([D116]).
+- **Upcoming at large text:** from 1.5× text the timeline drops its date column and rail line; the day headings stay and the cards get the full width ([D56]).
+- **The version line** at the end of the Account tab is labelled "About, help and privacy", above "Vikunja app {version} ({build})" (two lines, as the glossary keeps the version after "Vikunja app"); its place and the tab's order stay ([D75], [D77]).
+- **"On this device"** loses only what was doubled: the Notifications section's own paragraph goes and its follow note is one sentence ([D80]); the marks, Appearance's per-row line and the order stay ([D75]).
+- **Selecting on the Overview** keeps the long press alone; its header gets no menu ([D56]).
+- **Lists sorted by hand:** a long press held without moving selects, as in every other list; a long press followed by a drag moves the row ([D106]).
+- **Date shortcut chips** keep their names, and one not chosen shows its day ("Next week · Sat, Nov 28"), as Reschedule does (why: Next week is seven days on there but the calendar week in Upcoming; [D75]).
+- **Quick add stays English** ([D19], [D38]): a German date word without a parsed date, or a time after a date without `at`, gets a hint under the title, and the help's Dates section starts with the note that date words are English.
+- **German short dates:** `17.12.` and `17.12.2026.` are dates, a lone `am` right before one goes with it, and German section words keep `Kapitel 3.2` text ([D102] point 10).
+- **The edit page** takes the New task sheet's form: its headings, project field and date shortcuts (Today, Tomorrow, Next week, another date, "Pick date…"), one priority row with Unset first (so a priority can be cleared), and the description as a link to the editor ([D18], [D52], [D75]).
+
+**The task sheet:**
+- Edit opens over the sheet or the pane; Back or Save returns to the task, which says "Saved" (why: the sheet closed, so the user landed on the list).
+- Start and end dates, progress, repeat and assignees are buttons that open the edit page at their field; they are still edited only there ([D84]).
+- A tap on the description's text opens the editor where it may be edited; links and checkboxes keep their taps, and a long press still selects ([D44]).
+- A due date changed in the sheet, the pane or by a swipe offers Undo, which also brings back reminders the change merged ([D84]).
+- The bell confirms each change. On servers where reminders reach only followers, an unfollowed task says so under Reminders, with "Follow task" ([D80]).
+- Subtasks, attachments and related tasks add through a "+ Add …" last row of their card, its only row while the section is empty.
+- The breadcrumb's links are nodes of their own, read after Back and before the header's actions ([D112]).
+- Repeat offers Never, Every… and "Same day every month"; the presets and "Count from when it's done" show under Every… ([D35]).
+
+**Lists and the shell:**
+- A task added from Upcoming starts on the selected day, else today, or a future range's first day. A single added task's confirmation offers Open.
+- The Overview's tab shows a dot while activity is unread, not for guests ([D40]). The bell's page is "Activity"; "notifications" names only what the device shows (the glossary, [D71]).
+- A pull's spinner ends after at most 9 s; a refresh still running then goes on under the quiet bar, with "Still waiting for the server — showing saved data" above the list. Every refresh the user starts still waits for the run under way and runs its own ([D97], [D99]).
+- The Projects tab lists Favorites, All projects, then Saved filters ([D45]).
+- Urgent and Do now are orange, a fixed hue shifted to 3:1 for the flag and 4.5:1 for the name (4.5:1 and 7:1 under high contrast), in rows, cards, the Table, the sheet and the widgets; error red stays for overdue (why: Urgent looked overdue, and a scheme role harmonised to the blue primary would turn red again). This deviates from [D56]'s scheme roles.
+- From 1.5× text the list screens' New task button is the 56 dp icon button ([D68]). On Android rail layouts New task is the rail's leading button, offered by the screen in front ([D69]).
+- On capped windows the app bars of Upcoming, the Projects tab, a project, saved filters and the Account tab keep their title and actions to the content band; the bar's surface stays full width ([D69]).
+- A project row's details keep each count with its word and wrap between the parts, in every language.
+
+**Quick add:** the typed project's chip and a locked Project field show the project's coloured folder; a row set from the title says "Set in the title"; a suggestion the typed token already names in full is hidden; project suggestions show and match the display title ("Eingang"), while completion and matching keep the server's titles ([D45]).
+
+**Account, connection, privacy:**
+- Settings sections are cards like the rest of the app, with the Theme segments in Appearance's card ([D56]).
+- For a local-network host, "No encrypted connection" says the server probably uses only http:// and to type it; the question still comes every time ([D8]). Connection options say that the app tries https:// first.
+- Without a screen lock on the device, the privacy page explains it in full contrast, on Android with "Open security settings", a trip that does not lock the app ([D64]).
+- The glossary fixes the German terms of selecting, Reschedule, Move and Activity before translators start ([D88]).
+
+Limits:
+- After a due date changes, the row moves at once while its Undo shows.
+- The selection bar and the pages over the shell keep the full-width app bar; saved filters show no open counts; label colour dots keep the stored colour.
+- A dotted date inside a title without `at` after it (`Am 17.12. Zahnarzt`) is still no date, as the boundary rule for absolute dates stays.
+- New texts show in English in the German app until Crowdin delivers them ([D88]).
+- The widgets' new colours and their orange are checked in tests only so far, on devices at the device tests ([D74]).
 
 [D1]: #d1-flutter-pub-workspace-with-pure-dart-packages
 [D2]: #d2-material_ui-and-cupertino_ui-instead-of-the-sdks-libraries
@@ -3196,3 +3250,4 @@ Open:
 [D114]: #d114-cleanup-before-the-move
 [D115]: #d115-the-decision-log-shortened
 [D116]: #d116-fixes-from-the-uiux-review-part-one
+[D117]: #d117-fixes-from-the-uiux-review-part-two

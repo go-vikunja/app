@@ -139,7 +139,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: ScreenTitle(l10n.inboxTitle),
+        title: ScreenTitle(l10n.activityTitle),
         actions: [
           RefreshButton(onPressed: refreshing ? null : refresh),
           PopupMenuButton<_Action>(
@@ -159,7 +159,7 @@ class _InboxScreenState extends ConsumerState<InboxScreen>
       ),
       body: buildRefreshable(
         items,
-        loadingLabel: l10n.inboxLoading,
+        loadingLabel: l10n.activityLoading,
         maxWidth: ReadableWidth.list,
         builder: (value, notice) => _InboxList(
           sections: groupActivityByDay(value, now),
@@ -194,7 +194,7 @@ class _InboxList extends StatelessWidget {
         maxWidth: ReadableWidth.list,
         child: EmptyState(
           icon: Icons.notifications_none,
-          title: l10n.inboxEmptyTitle,
+          title: l10n.activityEmptyTitle,
           body: l10n.inboxEmptyBody,
         ),
       );

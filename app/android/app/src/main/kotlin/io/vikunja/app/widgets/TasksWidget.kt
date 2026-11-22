@@ -28,6 +28,7 @@ import androidx.glance.appwidget.lazy.LazyColumn
 import androidx.glance.appwidget.lazy.items
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
+import androidx.glance.color.ColorProvider as DayNightColor
 import androidx.glance.currentState
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -317,9 +318,7 @@ private fun MetaLine(shown: ShownRow, wide: Boolean) {
                 ImageProvider(R.drawable.widget_project),
                 contentDescription = null,
                 modifier = GlanceModifier.size(12.dp),
-                colorFilter = ColorFilter.tint(
-                    row.projectColor?.let { ColorProvider(Color(it)) } ?: colors.onSurfaceVariant,
-                ),
+                colorFilter = ColorFilter.tint(projectTint(row) ?: colors.onSurfaceVariant),
             )
             Spacer(GlanceModifier.width(3.dp))
             MetaText(it, colors.onSurfaceVariant, GlanceModifier.defaultWeight())
@@ -346,12 +345,24 @@ private fun toneColor(tone: DueTone): ColorProvider = when (tone) {
     DueTone.LATER, DueTone.NONE -> GlanceTheme.colors.onSurfaceVariant
 }
 
-// The app's PriorityFlag: error from "urgent", the amber accent for "high".
+// The app's PriorityFlag: from "urgent" its orange, set apart from the error
+// red of what is overdue, at 4.5:1 on the light and the dark background
+// (legibleOn in app/lib/app/theme/legible_color.dart); the amber accent for
+// "high".
 @Composable
 private fun priorityColor(level: Int?): ColorProvider = when {
-    level != null && level >= 4 -> GlanceTheme.colors.error
+    level != null && level >= 4 -> DayNightColor(day = Color(0xFFBD5400), night = Color(0xFFEF6C00))
     level == 3 -> GlanceTheme.colors.tertiary
     else -> GlanceTheme.colors.onSurfaceVariant
+}
+
+// The app's ProjectIcon: the project's colour with its lightness moved to
+// stand out from the background, as the app computed it for each.
+private fun projectTint(row: SnapshotRow): ColorProvider? = row.projectColor?.let { stored ->
+    DayNightColor(
+        day = Color(row.projectColorLight ?: stored),
+        night = Color(row.projectColorDark ?: stored),
+    )
 }
 
 @Composable

@@ -26,7 +26,7 @@ internal data class ListWidgetState(
                 hiddenTaskIds = snapshot
                     ?.let { WidgetActionQueue(files).hiddenTaskIds(it.accountId, it.generatedAt) }
                     .orEmpty(),
-                dynamicColor = host?.dynamicColor ?: true,
+                dynamicColor = host?.dynamicColor ?: false,
                 linkKey = host?.linkKey,
             )
         }
@@ -48,7 +48,7 @@ internal data class QuickAddState(
             return QuickAddState(
                 accountId = config?.accountId,
                 snapshot = config?.key?.let(files::readSnapshot),
-                dynamicColor = host?.dynamicColor ?: true,
+                dynamicColor = host?.dynamicColor ?: false,
                 linkKey = host?.linkKey,
             )
         }

@@ -14,7 +14,9 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
 import 'package:vikunja_mobile/core/attachments/attachment_image_providers.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
+import 'package:vikunja_mobile/core/notifications/subscriber_reminders.dart';
 import 'package:vikunja_mobile/core/platform/copy_confirmation.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_details_repository.dart';
@@ -63,6 +65,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/details/reaction_chip
 import 'package:vikunja_mobile/features/tasks/presentation/details/task_detail_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/task_details_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/task_metadata_line.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_button.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
@@ -744,12 +747,21 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
         messenger: _messenger.currentState,
       );
 
-  /// The edit page replaces the sheet, so its "Saved" lands on the list;
-  /// the pane stays under it.
-  void _edit(Task task) {
-    final router = GoRouter.of(context);
-    if (widget.pane == null) Navigator.of(context).pop();
-    unawaited(router.push(AppRoutes.taskEdit(task.id)));
+  /// The edit page over the sheet or the pane, which come back with what
+  /// was saved and say so; [field] is the one it opens at.
+  Future<void> _edit(Task task, {TaskEditField? field}) async {
+    final l10n = context.l10n;
+    await _dropFieldFocus();
+    if (!mounted) return;
+    final saved = await context.pushPage<bool>(
+      AppRoutes.taskEdit(task.id, field: field),
+    );
+    if (!(saved ?? false)) return;
+    if (mounted) {
+      _showMessage(l10n.taskEditSaved);
+    } else {
+      _showMessageBelow(l10n.taskEditSaved);
+    }
   }
 
   /// The editor opens over the sheet, which comes back with the new
@@ -1066,6 +1078,12 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     // The server refuses a link-share guest's reactions and subscriptions
     // and ignores its favourites.
     final guest = ref.watch(activeAccountIsGuestProvider);
+    // Unfollowing silences the task's reminders on these servers (D80).
+    final remindersNeedFollow = ref.watch(
+      accountsProvider.select(
+        (accounts) => accounts.value?.activeAccount?.subscriberId != null,
+      ),
+    );
     final linkBases = ref.watch(activeLinkBasesProvider);
     final origin = widget.board;
     final boardSource = origin == null
@@ -1179,7 +1197,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                 onBack: pane?.back,
                 backTitle: pane?.backTitle,
                 locked: locked,
-                onEdit: changer == null ? null : () => _edit(task),
+                onEdit: changer == null ? null : () => unawaited(_edit(task)),
                 guest: guest,
                 follow: _actions.follow,
                 onFollow: () =>
@@ -1240,7 +1258,9 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                   _Inset(
                     child: TaskDetailTitle(
                       task: task,
-                      onEdit: changer == null ? null : () => _edit(task),
+                      onEdit: changer == null
+                          ? null
+                          : () => unawaited(_edit(task)),
                     ),
                   ),
                   _Inset(
@@ -1335,6 +1355,21 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
                         showMessage: _showMessage,
                       ),
                     ),
+                    onEditField: changer == null
+                        ? null
+                        : (field) => unawaited(_edit(task, field: field)),
+                    remindersNote:
+                        remindersNeedFollow &&
+                            !guest &&
+                            !task.done &&
+                            task.id > 0
+                        ? UnfollowedRemindersNote(
+                            follow: _actions.follow,
+                            onFollow: () => unawaited(
+                              _actions.toggleFollow(task, projectTitles),
+                            ),
+                          )
+                        : null,
                   ),
                   if (task.parentTasks.isNotEmpty)
                     ParentTasksBlock(

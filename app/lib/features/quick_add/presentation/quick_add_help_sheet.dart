@@ -74,6 +74,7 @@ List<String> _dateExamples(DateTime now) {
     '$month 27',
     '27 $month',
     '27/$mm',
+    '27.$mm.',
     '${date.year}-$mm-27',
     'in 3 days',
     'in two weeks',
@@ -188,6 +189,7 @@ class QuickAddHelpSheet extends StatelessWidget {
           icon: Icons.calendar_today_outlined,
           title: l10n.quickAddHelpDatesTitle,
           children: [
+            Text(l10n.quickAddHelpEnglish),
             Text(l10n.quickAddHelpDatesBody),
             _Examples(_dateExamples(now)),
             Text(l10n.quickAddHelpTimesBody),
@@ -207,7 +209,6 @@ class QuickAddHelpSheet extends StatelessWidget {
           icon: Icons.info_outline,
           title: l10n.quickAddHelpMoreTitle,
           children: [
-            Text(l10n.quickAddHelpEnglish),
             Text(l10n.quickAddHelpQuotes),
             Text(l10n.quickAddHelpLines),
             Text(l10n.quickAddHelpMode(modeName)),

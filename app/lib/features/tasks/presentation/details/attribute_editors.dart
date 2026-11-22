@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -24,6 +25,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/reminder_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 
 /// The new-task sheet's shortcuts (D75), also for several tasks at once.
 const Set<DateShortcut> dueDateShortcuts = {
@@ -117,9 +119,10 @@ bool dueChangeMergesReminders(Task task, DateTime? due) =>
 
 /// Sets [task]'s due date from Today, Tomorrow and Next week, each at the
 /// time it already has (else the user's default due time, else the next
-/// breakpoint after [now]), from the date picker, or clears it. A due date
-/// that would put two reminders on one moment is asked about first; with
-/// the screen that asked gone, it is not written, and that is said.
+/// breakpoint after [now]), from the date picker, or clears it, with "Due
+/// … · Undo". A due date that would put two reminders on one moment is
+/// asked about first; with the screen that asked gone, it is not written,
+/// and that is said.
 Future<void> editDueDate(
   BuildContext context, {
   required TaskRepository repository,
@@ -129,6 +132,8 @@ Future<void> editDueDate(
 }) => _withLatest(context, task, (latest) async {
   final l10n = context.l10n;
   final announcer = Announcer.of(context);
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final persist = MediaQuery.accessibleNavigationOf(context);
   final write = _writer(context, repository, action: 'Changing a due date');
   final formatter = MomentFormatter.of(context, display);
   final due = task.dueDate?.toLocal();
@@ -185,7 +190,8 @@ Future<void> editDueDate(
   var row = latest();
   final utc = moment?.toUtc();
   if (row == null || utc == toTheMinute(row.dueDate)?.toUtc()) return;
-  if (dueChangeMergesReminders(row, utc)) {
+  final merges = dueChangeMergesReminders(row, utc);
+  if (merges) {
     // Written unasked, the server would drop a reminder the user never
     // agreed to lose.
     if (!context.mounted) {
@@ -201,19 +207,61 @@ Future<void> editDueDate(
     row = latest();
     if (!confirmed || row == null) return;
   }
-  final queued = await write(
-    row.id,
-    TaskChanges(
-      dueDate: utc == null ? const DateChange.clear() : DateChange.set(utc),
-    ),
-  );
+  final queued = await write(row.id, TaskChanges(dueDate: _dateChange(utc)));
   if (!queued) return;
-  announcer.say(
-    moment == null
-        ? l10n.taskDetailDueDateRemoved
-        : l10n.taskDueSemantics(formatter.spokenAbsolute(moment)),
-  );
+  if (messenger == null || !messenger.mounted) {
+    announcer.say(
+      moment == null
+          ? l10n.taskDetailDueDateRemoved
+          : l10n.taskDueSemantics(formatter.spokenAbsolute(moment)),
+    );
+    return;
+  }
+  final before = row;
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: moment == null
+            ? Text(l10n.taskDetailDueDateRemoved)
+            : Text(
+                l10n.taskDueDateChanged(formatter.absolute(moment)),
+                semanticsLabel: l10n.taskDueDateChanged(
+                  formatter.spokenAbsolute(moment),
+                ),
+              ),
+        duration: markedDoneSnackBarDuration,
+        // Under a screen reader it stays until dismissed, so Undo can be
+        // reached.
+        persist: persist,
+        action: SnackBarAction(
+          label: l10n.undo,
+          onPressed: () {
+            unawaited(HapticFeedback.selectionClick());
+            unawaited(
+              saveLocalChangeIn(
+                messenger,
+                l10n,
+                () => repository.updateTask(
+                  before.id,
+                  TaskChanges(
+                    dueDate: _dateChange(before.dueDate),
+                    // The server kept one of the reminders that fell
+                    // together.
+                    reminders: merges ? before.reminders : null,
+                  ),
+                ),
+                action: 'Undoing a due date change',
+              ),
+            );
+          },
+        ),
+      ),
+    );
 });
+
+DateChange _dateChange(DateTime? date) =>
+    date == null ? const DateChange.clear() : DateChange.set(date);
 
 /// Sets [task]'s priority from the six levels, Unset included.
 Future<void> editPriority(

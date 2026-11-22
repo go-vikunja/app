@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
+import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_text_controller.dart';
@@ -136,10 +137,10 @@ class QuickAddPreview extends ConsumerWidget {
           warning: true,
           onRemove: () => onRemove(MagicSpanKind.unmatchedProject),
         )
-      else if (parsed.project != null && plan.project != null) ...[
+      else if ((parsed.project, plan.project) case (_?, final project?)) ...[
         _PartChip(
           kind: MagicSpanKind.project,
-          icon: const Icon(Icons.folder_outlined),
+          icon: ProjectIcon(hexColor: project.hexColor),
           label: projectTitle,
           semanticsLabel: l10n.taskEditProjectSemantics(projectTitle),
           onRemove: () => onRemove(MagicSpanKind.project),

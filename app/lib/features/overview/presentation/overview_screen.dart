@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/main_action.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
@@ -90,76 +91,84 @@ class _OverviewScreenState extends ConsumerState<OverviewScreen>
     ];
     final selectableIds = {for (final task in selectable) task.id};
 
+    final newTask = selecting
+        ? null
+        : MainAction(
+            icon: Icons.add,
+            label: l10n.newTask,
+            onPressed: () => unawaited(showNewTaskSheet(context)),
+          );
     return selectionBackHandler(
-      child: Scaffold(
-        appBar: selecting ? selectionBar(selectable) : null,
-        bottomNavigationBar: selecting ? selectionActionBar(selectable) : null,
-        floatingActionButton: selecting
-            ? null
-            : FloatingActionButton.extended(
-                // A page over the shell (the inbox, the edit page) finds the
-                // heroes of every tab's top route; the project screen's
-                // button would share the default tag.
-                heroTag: null,
-                onPressed: () => unawaited(showNewTaskSheet(context)),
-                icon: const Icon(Icons.add),
-                label: Text(l10n.newTask),
-              ),
-        body: SafeArea(
-          top: !selecting,
-          bottom: false,
-          child: Column(
-            children: [
-              const SyncProgressBar(),
-              Expanded(
-                child: buildRefreshable(
-                  overview,
-                  loadingLabel: l10n.overviewLoading,
-                  header: header(),
-                  maxWidth: ReadableWidth.list,
-                  builder: (value, notice) {
-                    final sections = groupTasksByDueDate(
-                      withLeavingTasks(value.tasks),
-                      now,
-                    );
-                    return _TaskSections(
-                      overview: value,
-                      sections: sections,
-                      projectsById: projectsById,
-                      pendingIds: pendingIds,
-                      now: now,
-                      minimumPriority: minimumPriority,
-                      offline: offline,
-                      header: header(tasksLeft: _tasksLeftToday(sections)),
-                      notice: notice,
-                      onDoneChanged: (task, {required done}) =>
-                          unawaited(setTaskDone(task, done: done)),
-                      onFavoriteChanged: (task, {required favorite}) =>
-                          unawaited(setTaskFavorite(task, favorite: favorite)),
-                      onDueDate: (task) => unawaited(changeTaskDueDate(task)),
-                      onSelect: startSelection,
-                      selection: (task) => rowSelection(
-                        task,
-                        changeable: selectableIds.contains(task.id),
-                      ),
-                      onReschedule: selecting
-                          ? null
-                          : (tasks) => unawaited(
-                              rescheduleTasks(
-                                context,
-                                ref,
-                                tasks,
-                                title: l10n.overdueRescheduleTitle(
-                                  tasks.length,
+      child: MainActionClaim(
+        action: newTask,
+        child: Scaffold(
+          appBar: selecting ? selectionBar(selectable) : null,
+          bottomNavigationBar: selecting
+              ? selectionActionBar(selectable)
+              : null,
+          floatingActionButton: MainActionButton.unlessBesideRail(
+            context,
+            newTask,
+          ),
+          body: SafeArea(
+            top: !selecting,
+            bottom: false,
+            child: Column(
+              children: [
+                const SyncProgressBar(),
+                Expanded(
+                  child: buildRefreshable(
+                    overview,
+                    loadingLabel: l10n.overviewLoading,
+                    header: header(),
+                    maxWidth: ReadableWidth.list,
+                    builder: (value, notice) {
+                      final sections = groupTasksByDueDate(
+                        withLeavingTasks(value.tasks),
+                        now,
+                      );
+                      return _TaskSections(
+                        overview: value,
+                        sections: sections,
+                        projectsById: projectsById,
+                        pendingIds: pendingIds,
+                        now: now,
+                        minimumPriority: minimumPriority,
+                        offline: offline,
+                        header: header(tasksLeft: _tasksLeftToday(sections)),
+                        notice: notice,
+                        onDoneChanged: (task, {required done}) =>
+                            unawaited(setTaskDone(task, done: done)),
+                        onFavoriteChanged: (task, {required favorite}) =>
+                            unawaited(
+                              setTaskFavorite(task, favorite: favorite),
+                            ),
+                        onDueDate: (task) => unawaited(changeTaskDueDate(task)),
+                        onSelect: startSelection,
+                        selection: (task) => rowSelection(
+                          task,
+                          changeable: selectableIds.contains(task.id),
+                        ),
+                        onReschedule: selecting
+                            ? null
+                            : (tasks) => unawaited(
+                                rescheduleTasks(
+                                  context,
+                                  ref,
+                                  tasks,
+                                  title: l10n.overdueRescheduleTitle(
+                                    tasks.length,
+                                  ),
                                 ),
                               ),
-                            ),
-                      changeable: (task) => taskChangeable(task, projectsById),
-                    );
-                  },
+                        changeable: (task) =>
+                            taskChangeable(task, projectsById),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -151,8 +151,8 @@ void main() {
       ),
       'migration.done': (
         <String, Object?>{},
-        'New notification',
-        'Neue Benachrichtigung',
+        en.activityOther,
+        de.activityOther,
       ),
     };
     for (final MapEntry(key: label, value: (payload, english, german))

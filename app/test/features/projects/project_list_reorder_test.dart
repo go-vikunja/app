@@ -385,8 +385,13 @@ void main() {
       await pumpProject(tester);
       expect(rows(tester).last, ('Done nine', 0));
 
-      await dragRow(tester, 'Alpha child', aboveRow(tester, 'Delta'));
-      await dragRow(tester, 'Done nine', aboveRow(tester, 'Alpha'));
+      // Their long press selects them instead (D106).
+      for (final title in ['Alpha child', 'Done nine']) {
+        await dragRow(tester, title, aboveRow(tester, 'Alpha'));
+        expect(find.text(en.selectionCount(1)), findsOneWidget);
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+      }
       expect(data.tasks.positions, isEmpty);
       expect(actionsOf(tester, 'Alpha child'), isEmpty);
       expect(actionsOf(tester, 'Done nine'), isEmpty);
@@ -402,6 +407,9 @@ void main() {
       expect(actionsOf(tester, 'Charlie'), isEmpty);
       await dragRow(tester, 'Charlie', aboveRow(tester, 'Alpha'));
       expect(data.tasks.positions, isEmpty);
+      expect(find.byType(TaskSelectionActionBar), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
       // The rows around it still move past it.
       expect(
         actionsOf(tester, 'Bravo'),
@@ -585,15 +593,115 @@ void main() {
   });
 
   group('selecting (D106)', () {
-    testWidgets('a long press lifts a row to move it and never selects, not '
-        'even on a row that does not lift', (tester) async {
+    testWidgets('a long press held still selects, as in every other list: '
+        'a row that lifts once let go, one that does not at once; moved, '
+        'the row moves instead', (tester) async {
       await pumpProject(tester);
+      bool? selected(String title) =>
+          tester.widget<TaskRow>(rowOf(title)).selection?.selected;
+      Future<void> endSelection() async {
+        await tester.binding.handlePopRoute();
+        await tester.pumpAndSettle();
+        expect(find.byType(TaskSelectionActionBar), findsNothing);
+      }
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(rowOf('Delta')),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byType(LiftedRows), findsOne);
+      // A finger held still still trembles a little.
+      await gesture.moveBy(const Offset(0, 4));
+      await tester.pump();
+      expect(find.byType(TaskSelectionActionBar), findsNothing);
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(data.tasks.positions, isEmpty);
+      expect(find.text(en.selectionCount(1)), findsOneWidget);
+      expect(selected('Delta'), isTrue);
+      await endSelection();
+
+      await tester.longPress(find.text('Alpha child'));
+      await tester.pumpAndSettle();
+      expect(find.text(en.selectionCount(1)), findsOneWidget);
+      expect(selected('Alpha child'), isTrue);
+      await endSelection();
 
       await dragRow(tester, 'Delta', between(tester, 'Alpha child', 'Bravo'));
-      await dragRow(tester, 'Alpha child', aboveRow(tester, 'Bravo'));
-
       expect(data.tasks.positions, isNotEmpty);
       expect(find.byType(TaskSelectionActionBar), findsNothing);
+    });
+
+    testWidgets('a row dragged and brought back to where it was lifted is '
+        'not selected', (tester) async {
+      await pumpProject(tester);
+
+      final from = tester.getCenter(rowOf('Delta'));
+      final gesture = await tester.startGesture(from);
+      await tester.pump(const Duration(milliseconds: 600));
+      for (final dy in [20.0, 40.0, 60.0, 40.0, 20.0, 0.0]) {
+        await gesture.moveTo(from + Offset(0, dy));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.positions, isEmpty);
+      expect(find.byType(TaskSelectionActionBar), findsNothing);
+    });
+
+    testWidgets('a touch the system takes while a row is held selects '
+        'nothing', (tester) async {
+      await pumpProject(tester);
+
+      final gesture = await tester.startGesture(
+        tester.getCenter(rowOf('Delta')),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byType(LiftedRows), findsOne);
+      await gesture.cancel();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LiftedRows), findsNothing);
+      expect(find.byType(TaskSelectionActionBar), findsNothing);
+    });
+
+    testWidgets("a row held still at the list's edge neither scrolls the "
+        'list nor moves, and is selected', (tester) async {
+      data.tasks.all = [
+        for (var id = 1; id <= 30; id++) sampleTask(id: id, title: 'Task $id'),
+      ];
+      data.tasks.setSnapshot(
+        'view:11',
+        ListSnapshot(
+          positions: {for (var id = 1; id <= 30; id++) id: id * 100.0},
+          loadedAt: now,
+        ),
+      );
+      await pumpProject(tester);
+      tester.view.physicalSize = const Size(400, 700) * 3;
+      await tester.pumpAndSettle();
+      final list = find
+          .ancestor(of: rowOf('Task 1'), matching: find.byType(Scrollable))
+          .first;
+      final position = tester.state<ScrollableState>(list).position;
+      final rect = tester.getRect(list);
+
+      final gesture = await tester.startGesture(
+        Offset(rect.left + 80, rect.bottom - 8),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.byType(LiftedRows), findsOne);
+      await gesture.moveBy(const Offset(0, 4));
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(position.pixels, 0);
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.positions, isEmpty);
+      expect(find.text(en.selectionCount(1)), findsOneWidget);
     });
 
     testWidgets('Select tasks in the menu selects; meanwhile no row lifts, '

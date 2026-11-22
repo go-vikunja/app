@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
+import 'package:vikunja_mobile/app/theme/legible_color.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 
 import '../../helpers/pump_app.dart';
@@ -29,14 +30,81 @@ void main() {
   );
 
   group('priority flag', () {
-    testWidgets('urgent and up in the error colour', (tester) async {
-      final theme = await pump(
-        tester,
-        const PriorityFlag(priority: TaskPriority.doNow),
-      );
+    testWidgets('urgent and up in an orange, not the red of what is '
+        'overdue, legible in light and dark', (tester) async {
+      for (final theme in [AppTheme.light(), AppTheme.dark()]) {
+        for (final (priority, name) in [
+          (TaskPriority.urgent, en.priorityUrgent),
+          (TaskPriority.doNow, en.priorityDoNow),
+        ]) {
+          await tester.pumpWidget(
+            MaterialApp(
+              theme: theme,
+              localizationsDelegates: appLocalizationsDelegates,
+              supportedLocales: appSupportedLocales,
+              home: Scaffold(
+                body: Center(
+                  child: Card(child: PriorityFlag(priority: priority)),
+                ),
+              ),
+            ),
+          );
+          // The theme changes over an animation.
+          await tester.pumpAndSettle();
+          final colors = theme.colorScheme;
+          final text = textColor(tester, name)!;
+          final flag = iconOf(tester, PriorityFlag);
+          expect(flag.icon, Icons.flag);
+          expect(text, isNot(colors.error));
+          expect(flag.color, isNot(colors.error));
+          expect(
+            contrastRatio(text, colors.surfaceContainerLow),
+            greaterThanOrEqualTo(4.5),
+          );
+          expect(
+            contrastRatio(flag.color!, colors.surfaceContainerLow),
+            greaterThanOrEqualTo(3),
+          );
+          expect(HSVColor.fromColor(text).hue, inInclusiveRange(20, 32));
+          expect(HSVColor.fromColor(flag.color!).hue, inInclusiveRange(20, 32));
+        }
+      }
+    });
 
-      expect(textColor(tester, en.priorityDoNow), theme.colorScheme.error);
-      expect(iconOf(tester, PriorityFlag).icon, Icons.flag);
+    testWidgets('with high contrast, urgent reaches the contrast of the '
+        "high-contrast scheme's text", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(highContrast: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      for (final theme in [
+        AppTheme.highContrastLight(),
+        AppTheme.highContrastDark(),
+      ]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: theme,
+            localizationsDelegates: appLocalizationsDelegates,
+            supportedLocales: appSupportedLocales,
+            home: const Scaffold(
+              body: Center(
+                child: Card(child: PriorityFlag(priority: TaskPriority.urgent)),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final surface = theme.colorScheme.surfaceContainerLow;
+        expect(
+          contrastRatio(textColor(tester, en.priorityUrgent)!, surface),
+          greaterThanOrEqualTo(7),
+        );
+        expect(
+          contrastRatio(iconOf(tester, PriorityFlag).color!, surface),
+          greaterThanOrEqualTo(4.5),
+        );
+      }
     });
 
     testWidgets('high with the amber flag', (tester) async {

@@ -37,6 +37,8 @@ class WidgetModelTest {
         assertEquals(3, row.priorityLevel)
         assertEquals("Home", row.projectTitle)
         assertEquals(0xFF1973FF.toInt(), row.projectColor)
+        assertEquals(0xFF1973FF.toInt(), row.projectColorLight)
+        assertEquals(0xFF4A8CFF.toInt(), row.projectColorDark)
         assertTrue(row.canDone)
         assertEquals("Water the plants, due today", row.semanticsLabel)
         assertEquals("Mark “Water the plants” done", row.doneLabel)
@@ -47,6 +49,7 @@ class WidgetModelTest {
         assertNull(second.dueLabel)
         assertEquals(DueTone.NONE, second.tone)
         assertNull(second.projectColor)
+        assertNull(second.projectColorDark)
         assertFalse(second.canDone)
     }
 
@@ -99,12 +102,12 @@ class WidgetModelTest {
     }
 
     @Test
-    fun `reads the host settings with dynamic colour on by default`() {
-        val host = HostSettings.parse("""{"version":1,"activeAccountId":"acc","dynamicColor":false}""")!!
+    fun `reads the host settings with dynamic colour off by default`() {
+        val host = HostSettings.parse("""{"version":1,"activeAccountId":"acc","dynamicColor":true}""")!!
 
         assertEquals("acc", host.activeAccountId)
-        assertFalse(host.dynamicColor)
-        assertTrue(HostSettings.parse("""{"version":1,"activeAccountId":null}""")!!.dynamicColor)
+        assertTrue(host.dynamicColor)
+        assertFalse(HostSettings.parse("""{"version":1,"activeAccountId":null}""")!!.dynamicColor)
     }
 
     @Test
@@ -147,7 +150,7 @@ internal object SampleJson {
             "Water the plants",
             tone = "today",
             extra = """"due":"Today, 14:30","dueAt":5000,"priority":"High","priorityLevel":3,""" +
-                """"project":"Home","color":"1973ff"""",
+                """"project":"Home","color":"1973ff","colorLight":"1973ff","colorDark":"4a8cff"""",
             label = "Water the plants, due today",
             extra2 = """"labelOverdue":"Water the plants, overdue, due today"""",
         ),

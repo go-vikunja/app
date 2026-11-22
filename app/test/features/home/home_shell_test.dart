@@ -4,6 +4,7 @@ import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/layout/main_action.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_connection.dart';
@@ -12,6 +13,7 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/home_shell.dart';
+import 'package:vikunja_mobile/features/inbox/application/inbox_providers.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
@@ -21,9 +23,11 @@ import 'package:vikunja_mobile/features/sync/application/realtime_connection_pro
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_banner.dart';
 import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/guest_app.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
@@ -442,6 +446,165 @@ void main() {
     expect(find.text(de.tabUpcoming), findsOneWidget);
     expect(find.text(de.tabProjects), findsOneWidget);
     expect(find.text(de.tabAccount), findsOneWidget);
+  });
+
+  group('New task beside the rail', () {
+    const wide = Size(800, 600);
+
+    Finder railButton() => find.descendant(
+      of: find.byType(NavigationRail),
+      matching: find.byType(FloatingActionButton),
+    );
+    Finder screenButton() =>
+        find.widgetWithText(FloatingActionButton, en.newTask);
+
+    Future<NewTaskSheet> openFromRail(WidgetTester tester) async {
+      await tester.tap(railButton());
+      await tester.pumpAndSettle();
+      final sheet = tester.widget<NewTaskSheet>(find.byType(NewTaskSheet));
+      Navigator.of(tester.element(find.byType(NewTaskSheet))).pop();
+      await tester.pumpAndSettle();
+      return sheet;
+    }
+
+    testWidgets("is the rail's button for the screen in front, whose own "
+        'floating button goes', (tester) async {
+      usePhoneSurface(tester, logicalSize: wide);
+      await pumpSignedInApp(tester, sync: data, now: now);
+
+      expect(railButton(), findsOneWidget);
+      expect(screenButton(), findsNothing);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byTooltip(en.newTask), findsOneWidget);
+      expect((await openFromRail(tester)).projectId, isNull);
+
+      await openTab(tester, en.tabUpcoming);
+      expect(railButton(), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+
+      // The Account tab and the project list offer none; the destinations
+      // stay where they were.
+      final upcoming = tester.getRect(find.text(en.tabUpcoming).first);
+      await openTab(tester, en.tabAccount);
+      expect(railButton(), findsNothing);
+      expect(tester.getRect(find.text(en.tabUpcoming).first), upcoming);
+      await openTab(tester, en.tabProjects);
+      expect(railButton(), findsNothing);
+
+      await tester.tap(find.text('Work'));
+      await tester.pumpAndSettle();
+      expect(screenButton(), findsNothing);
+      expect((await openFromRail(tester)).projectId, 1);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(railButton(), findsNothing);
+    });
+
+    testWidgets("a phone keeps each screen's extended floating button", (
+      tester,
+    ) async {
+      usePhoneSurface(tester);
+      await pumpSignedInApp(tester, sync: data, now: now);
+
+      expect(find.byType(NavigationRail), findsNothing);
+      expect(screenButton(), findsOneWidget);
+      await openTab(tester, en.tabUpcoming);
+      expect(screenButton(), findsOneWidget);
+    });
+
+    testWidgets('a phone turned to landscape moves it into the rail and '
+        'back', (tester) async {
+      usePhoneSurface(tester);
+      await pumpSignedInApp(tester, sync: data, now: now);
+      expect(screenButton(), findsOneWidget);
+
+      usePhoneSurface(tester, logicalSize: const Size(740, 360));
+      await tester.pumpAndSettle();
+      expect(screenButton(), findsNothing);
+      expect(railButton(), findsOneWidget);
+
+      usePhoneSurface(tester);
+      await tester.pumpAndSettle();
+      expect(screenButton(), findsOneWidget);
+      expect(find.byType(RailMainActionButton), findsNothing);
+    });
+  });
+
+  group('unread activity', () {
+    Finder dotIn(Type bar) => find.descendant(
+      of: find.byType(bar),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is Badge && widget.isLabelVisible,
+      ),
+    );
+
+    testWidgets('puts a dot on the Overview in the bar, which screen readers '
+        'hear after its name, and the dot goes once all is read', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final unread = StreamController<int>();
+      addTearDown(unread.close);
+      usePhoneSurface(tester);
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        now: now,
+        overrides: [
+          unreadActivityCountProvider.overrideWith((ref) => unread.stream),
+        ],
+      );
+      unread.add(3);
+      await tester.pumpAndSettle();
+
+      expect(dotIn(NavigationBar), findsOneWidget);
+      await openTab(tester, en.tabUpcoming);
+      expect(dotIn(NavigationBar), findsOneWidget);
+      final overview = tester.getSemantics(
+        find.descendant(
+          of: find.byType(NavigationBar),
+          matching: find.text(en.tabOverview),
+        ),
+      );
+      expect(overview.hint, en.activityButton(3));
+
+      unread.add(0);
+      await tester.pumpAndSettle();
+      expect(dotIn(NavigationBar), findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets('and on the Overview in the rail', (tester) async {
+      usePhoneSurface(tester, logicalSize: const Size(800, 600));
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        now: now,
+        overrides: [
+          unreadActivityCountProvider.overrideWith((ref) => Stream.value(1)),
+        ],
+      );
+
+      expect(dotIn(NavigationRail), findsOneWidget);
+    });
+
+    testWidgets('a link-share guest, who has no activity, gets none', (
+      tester,
+    ) async {
+      usePhoneSurface(tester);
+      await pumpGuestApp(
+        tester,
+        auth: AuthFakes(),
+        data: SyncFakes(now: now),
+        overrides: [
+          unreadActivityCountProvider.overrideWith((ref) => Stream.value(2)),
+        ],
+      );
+
+      expect(find.byType(NavigationBar), findsOneWidget);
+      expect(dotIn(NavigationBar), findsNothing);
+    });
   });
 
   group('quiet sync', () {

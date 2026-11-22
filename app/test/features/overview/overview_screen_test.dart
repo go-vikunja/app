@@ -12,11 +12,13 @@ import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_switcher_button.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/common/presentation/refreshable_list.dart';
 import 'package:vikunja_mobile/features/common/presentation/search_pill.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
 import 'package:vikunja_mobile/features/overview/presentation/overview_screen.dart';
 import 'package:vikunja_mobile/features/search/presentation/search_page.dart';
+import 'package:vikunja_mobile/features/sync/presentation/sync_progress_bar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
@@ -668,6 +670,116 @@ void main() {
     expect(offersRefresh(), isTrue);
     expect(data.engine.refreshInNewRunCalls, 1);
     semantics.dispose();
+  });
+
+  group('a server that does not answer', () {
+    Future<void> startPull(WidgetTester tester) async {
+      final list = find.byType(CustomScrollView);
+      await tester.fling(
+        list,
+        Offset(0, tester.getSize(list).height / 2),
+        1000,
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    // The quiet sync bar under way never settles.
+    Future<void> outlastSpinner(WidgetTester tester) async {
+      await tester.pump(RefreshableList.spinnerLimit);
+      await tester.pump(const Duration(seconds: 1));
+    }
+
+    Finder note() => find.text(en.refreshWaitingNotice);
+
+    testWidgets("the pull's spinner ends after a while, and the refresh goes "
+        'on under the quiet sync bar, with a note above the saved data', (
+      tester,
+    ) async {
+      await pumpOverview(tester);
+      final run = Completer<void>();
+      data.engine.onRefresh = () => run.future;
+
+      await startPull(tester);
+      expect(find.byType(RefreshProgressIndicator), findsOneWidget);
+      expect(note(), findsNothing);
+
+      await outlastSpinner(tester);
+      expect(find.byType(RefreshProgressIndicator), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byType(SyncProgressBar),
+          matching: find.byType(LinearProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+      expect(note(), findsOneWidget);
+      expect(find.byType(TaskRow), findsNWidgets(5));
+      expect(data.engine.refreshInNewRunCalls, 1);
+
+      // D97: a pull meanwhile waits for the run under way and then starts
+      // one of its own, with the spinner again for at most the limit.
+      await startPull(tester);
+      expect(find.byType(RefreshProgressIndicator), findsOneWidget);
+      expect(note(), findsNothing);
+      await outlastSpinner(tester);
+      expect(data.engine.refreshInNewRunCalls, 2);
+      expect(find.byType(RefreshProgressIndicator), findsNothing);
+      expect(note(), findsOneWidget);
+
+      data.tasks.all = openTasks().sublist(0, 2);
+      run.complete();
+      await tester.pumpAndSettle();
+      expect(note(), findsNothing);
+      expect(find.byType(TaskRow), findsNWidgets(2));
+    });
+
+    testWidgets('screen readers hear the note when it appears', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpOverview(tester);
+      final run = Completer<void>();
+      data.engine.onRefresh = () => run.future;
+
+      await startPull(tester);
+      await outlastSpinner(tester);
+
+      expect(
+        tester.getSemantics(note()),
+        isSemantics(label: en.refreshWaitingNotice, isLiveRegion: true),
+      );
+      run.complete();
+      await tester.pumpAndSettle();
+      semantics.dispose();
+    });
+
+    testWidgets('a refresh that then fails offline leaves it to the '
+        'offline banner', (tester) async {
+      await pumpOverview(tester);
+      final run = Completer<void>();
+      data.engine.onRefresh = () => run.future;
+
+      await startPull(tester);
+      await outlastSpinner(tester);
+      expect(note(), findsOneWidget);
+
+      run.completeError(const NetworkFailure(NetworkProblem.timeout));
+      await tester.pumpAndSettle();
+      expect(note(), findsNothing);
+      expect(find.byType(DataFailureCard), findsNothing);
+    });
+
+    testWidgets('a refresh that answers in time shows no note', (tester) async {
+      await pumpOverview(tester);
+      data.engine.onRefresh = () => Future.delayed(const Duration(seconds: 3));
+
+      await startPull(tester);
+      await outlastSpinner(tester);
+      await tester.pumpAndSettle();
+
+      expect(note(), findsNothing);
+      expect(find.byType(RefreshProgressIndicator), findsNothing);
+      expect(data.engine.refreshInNewRunCalls, 1);
+    });
   });
 
   group('"now" moves on', () {

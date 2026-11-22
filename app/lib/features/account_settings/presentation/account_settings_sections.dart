@@ -124,7 +124,6 @@ Widget profileSection({
   final account = entry.account;
   return SettingsSection(
     title: l10n.accountSettingsProfile,
-    dividerAbove: false,
     children: [
       ListTile(
         leading: UserAvatar(

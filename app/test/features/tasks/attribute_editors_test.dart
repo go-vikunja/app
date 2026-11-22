@@ -169,6 +169,22 @@ void main() {
 
     Finder dialog() => find.text(en.taskDetailDueDateCoincideTitle);
 
+    /// The snackbar's text as shown and as spoken; nothing is said besides.
+    (String, String?) snackBar(WidgetTester tester) {
+      final text = tester.widget<Text>(
+        find
+            .descendant(of: find.byType(SnackBar), matching: find.byType(Text))
+            .first,
+      );
+      expect(said(tester), isEmpty);
+      return (text.data!, text.semanticsLabel);
+    }
+
+    (String, String) changedTo(String shown, String date, String time) => (
+      en.taskDueDateChanged(shown),
+      en.taskDueDateChanged(written(date, time)),
+    );
+
     testWidgets('offers Today, Tomorrow and Next week at the breakpoint time '
         'with their moments, then Pick date; no Clear without a due date', (
       tester,
@@ -221,7 +237,9 @@ void main() {
       );
     });
 
-    testWidgets('a shortcut sets the due date and says it', (tester) async {
+    testWidgets('a shortcut sets the due date and shows it with Undo', (
+      tester,
+    ) async {
       await pumpApp(tester);
       await open(tester, 1);
 
@@ -230,10 +248,58 @@ void main() {
       expect(data.tasks.updates, [
         (1, TaskChanges(dueDate: DateChange.set(now.toUtc()))),
       ]);
-      expect(said(tester), [
-        en.taskDueSemantics(written('Saturday, October 10, 2026', '12:00')),
-      ]);
+      expect(
+        snackBar(tester),
+        changedTo('10/10/2026 12:00', 'Saturday, October 10, 2026', '12:00'),
+      );
+      expect(find.widgetWithText(SnackBarAction, en.undo), findsOneWidget);
       expect(find.byType(BottomSheet), findsNothing);
+    });
+
+    testWidgets('Undo puts the due date back, and goes by itself after a '
+        'while', (tester) async {
+      await pumpApp(tester);
+      await open(tester, 2);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutNextWeek);
+
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.updates, [
+        (
+          2,
+          TaskChanges(
+            dueDate: DateChange.set(DateTime(2026, 10, 17, 9, 30).toUtc()),
+          ),
+        ),
+        (2, TaskChanges(dueDate: DateChange.set(due.toUtc()))),
+      ]);
+      expect(task(2).dueDate, due.toUtc());
+
+      await open(tester, 2);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutToday);
+      expect(find.byType(SnackBar), findsOneWidget);
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsNothing);
+    });
+
+    testWidgets('under a screen reader the snackbar stays until dismissed', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(accessibleNavigation: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await tester.pumpAndSettle();
+      await open(tester, 2);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutToday);
+
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pumpAndSettle();
+      expect(find.byType(SnackBar), findsOneWidget);
     });
 
     testWidgets('Pick date opens the date and the time picker and sets what '
@@ -259,9 +325,10 @@ void main() {
           ),
         ),
       ]);
-      expect(said(tester), [
-        en.taskDueSemantics(written('Tuesday, October 20, 2026', '09:30')),
-      ]);
+      expect(
+        snackBar(tester),
+        changedTo('20/10/2026 09:30', 'Tuesday, October 20, 2026', '09:30'),
+      );
     });
 
     testWidgets('the due date it already has, from a shortcut or the picker, '
@@ -387,9 +454,10 @@ void main() {
           ),
         ),
       ]);
-      expect(said(tester), [
-        en.taskDueSemantics(written('Tuesday, October 20, 2026', '09:30')),
-      ]);
+      expect(
+        snackBar(tester),
+        changedTo('20/10/2026 09:30', 'Tuesday, October 20, 2026', '09:30'),
+      );
     });
 
     testWidgets('Cancel in the date dialog after Pick date writes nothing', (
@@ -452,9 +520,24 @@ void main() {
           ),
         ),
       ]);
-      expect(said(tester), [
-        en.taskDueSemantics(written('Saturday, October 17, 2026', '09:30')),
-      ]);
+      expect(
+        snackBar(tester),
+        changedTo('17/10/2026 09:30', 'Saturday, October 17, 2026', '09:30'),
+      );
+
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+      // The server kept only one of the reminders that fell together.
+      expect(data.tasks.updates.last, (
+        4,
+        TaskChanges(
+          dueDate: DateChange.set(due.toUtc()),
+          reminders: [
+            dayBefore,
+            TaskReminder(reminder: DateTime(2026, 10, 16, 9, 30).toUtc()),
+          ],
+        ),
+      ));
     });
 
     testWidgets('clearing the due date of two reminders relative to it asks '
@@ -521,7 +604,8 @@ void main() {
       ]);
     });
 
-    testWidgets('Clear due date clears it and says so', (tester) async {
+    testWidgets('Clear due date clears it, says so with Undo, and Undo sets '
+        'it again without touching the reminders', (tester) async {
       await pumpApp(tester);
       await open(tester, 2);
 
@@ -530,7 +614,27 @@ void main() {
       expect(data.tasks.updates, [
         (2, const TaskChanges(dueDate: DateChange.clear())),
       ]);
-      expect(said(tester), [en.taskDetailDueDateRemoved]);
+      expect(snackBar(tester), (en.taskDetailDueDateRemoved, null));
+
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+      expect(data.tasks.updates.last, (
+        2,
+        TaskChanges(dueDate: DateChange.set(due.toUtc())),
+      ));
+    });
+
+    testWidgets('an Undo the device cannot store says so', (tester) async {
+      await pumpApp(tester);
+      await open(tester, 2);
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutNextWeek);
+      data.tasks.beforeWrite = () async =>
+          throw const FileSystemException('No space left on device');
+
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.localChangeFailed), findsOneWidget);
     });
   });
 
@@ -840,6 +944,7 @@ void main() {
 
         expect(data.tasks.updates, isEmpty);
         expect(said(tester), isEmpty);
+        expect(find.byType(SnackBar), findsNothing);
         expect(messages, isEmpty);
       });
 
@@ -855,9 +960,50 @@ void main() {
 
         expect(data.tasks.updates, hasLength(1));
         expect(data.tasks.updates.single.$1, 2);
-        expect(said(tester), hasLength(1));
+        // A due date shows with its Undo where the app's snackbars still
+        // show; the rest is said.
+        if (what.contains('due date')) {
+          expect(find.byType(SnackBar), findsOneWidget);
+          expect(said(tester), isEmpty);
+        } else {
+          expect(said(tester), hasLength(1));
+        }
       });
     }
+
+    testWidgets('a due date whose screen took its snackbars with it is '
+        'said instead', (tester) async {
+      await pumpApp(tester);
+      final body = GlobalKey();
+      final route = MaterialPageRoute<void>(
+        builder: (_) => ScaffoldMessenger(
+          child: Scaffold(body: SizedBox.expand(key: body)),
+        ),
+      );
+      Navigator.of(page(tester), rootNavigator: true).push(route);
+      await tester.pumpAndSettle();
+      final context = body.currentContext!;
+      unawaited(
+        editDueDate(
+          context,
+          repository: data.tasks,
+          task: task(2),
+          now: now,
+          display: slashed,
+        ),
+      );
+      await tester.pumpAndSettle();
+      route.navigator!.removeRoute(route);
+      await tester.pumpAndSettle();
+
+      await tapIn(tester, find.byType(BottomSheet), en.shortcutToday);
+
+      expect(data.tasks.updates, hasLength(1));
+      expect(find.byType(SnackBar), findsNothing);
+      expect(said(tester), [
+        en.taskDueSemantics(written('Saturday, October 10, 2026', '23:59')),
+      ]);
+    });
 
     testWidgets('a refused reminder once the screen that asked is gone '
         'writes nothing and shows no message', (tester) async {

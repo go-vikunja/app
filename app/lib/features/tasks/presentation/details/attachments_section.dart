@@ -25,6 +25,7 @@ import 'package:vikunja_mobile/features/common/presentation/section_semantics.da
 import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/attachment_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_rows.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/pending_upload_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/task_details_controller.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_viewer.dart';
@@ -36,9 +37,10 @@ enum _Busy { downloading, deleting, saving }
 /// The task's attachments: the queued uploads (offline too) above the ones
 /// the server listed in [details], each with its menu. With [writable] and
 /// a server that takes attachments, files, photos and camera shots can be
-/// added, and attachments deleted or made the cover, which [offline]
-/// shows disabled; opening, sharing and saving work for everyone. Nothing
-/// shows while there is nothing to list or add.
+/// added through the card's last row, alone while there is none, and
+/// attachments deleted or made the cover, which [offline] shows disabled;
+/// opening, sharing and saving work for everyone. Nothing shows while
+/// there is nothing to list or add.
 class TaskAttachmentsSection extends ConsumerStatefulWidget {
   const new({
     required this.task,
@@ -145,6 +147,22 @@ class _TaskAttachmentsSectionState
     } finally {
       if (mounted) setState(() => _queueing = false);
     }
+  }
+
+  /// The sources in a menu over [anchor], as a menu button opens one.
+  Future<void> _pickSource(BuildContext anchor) async {
+    final box = anchor.findRenderObject();
+    final overlay = Navigator.of(anchor).overlay?.context.findRenderObject();
+    if (box is! RenderBox || overlay is! RenderBox) return;
+    final source = await showMenu<AttachmentSource>(
+      context: anchor,
+      position: RelativeRect.fromRect(
+        box.localToGlobal(Offset.zero, ancestor: overlay) & box.size,
+        Offset.zero & overlay.size,
+      ),
+      items: attachmentSourceItems(context.l10n, AttachmentSource.values),
+    );
+    if (source != null && mounted) unawaited(_add(source));
   }
 
   Future<void> _cancel(PendingUpload upload) async {
@@ -375,28 +393,26 @@ class _TaskAttachmentsSectionState
           },
         ),
     ];
-    final canAdd = canChange && !_queueing;
-
     return SectionSemantics(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          DetailSectionHeader(
-            title: l10n.taskDetailAttachments,
-            actions: [
-              if (canAdd)
-                PopupMenuButton<AttachmentSource>(
-                  tooltip: l10n.attachmentAdd,
-                  icon: const Icon(Icons.add),
-                  onSelected: (source) => unawaited(_add(source)),
-                  itemBuilder: (context) =>
-                      attachmentSourceItems(l10n, AttachmentSource.values),
-                )
-              else
-                const SizedBox(height: kMinInteractiveDimension),
+          DetailSectionHeader(title: l10n.taskDetailAttachments),
+          SectionCard(
+            children: [
+              ...rows,
+              if (canChange)
+                Builder(
+                  key: const ValueKey('add attachment'),
+                  builder: (anchor) => DetailAddRow(
+                    label: l10n.attachmentAdd,
+                    onPressed: _queueing
+                        ? null
+                        : () => unawaited(_pickSource(anchor)),
+                  ),
+                ),
             ],
           ),
-          if (rows.isNotEmpty) SectionCard(children: rows),
           if (_queueing)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),

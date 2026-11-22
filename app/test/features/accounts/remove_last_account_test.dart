@@ -40,6 +40,10 @@ void main() {
           )
           .first,
     );
+    // Clear of the iOS tab bar, which the list scrolls under.
+    await tester.pump();
+    await Scrollable.ensureVisible(tester.element(more), alignment: 0.5);
+    await tester.pumpAndSettle();
     await tester.tap(more);
     await tester.pumpAndSettle();
     await tester.tap(find.text(en.accountRemove));

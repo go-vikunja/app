@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/application/task_row_content.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/attribute_editors.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
@@ -17,7 +18,9 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_meta.dart';
 /// progress, repeat, reminders, labels and assignees, and last the
 /// [AddAttributeLine] for what is unset and has its callback. The due date,
 /// priority and reminder rows are buttons where their callback is set; the
-/// label pills open [onOpenLabel].
+/// start and end date, progress, repeat and assignee rows open the edit
+/// page at their field through [onEditField]; the label pills open
+/// [onOpenLabel]. [remindersNote] goes under the reminders row.
 List<Widget> attributeSection(
   BuildContext context, {
   required Task task,
@@ -29,6 +32,8 @@ List<Widget> attributeSection(
   required VoidCallback? onChangeReminders,
   required VoidCallback? onChangeLabels,
   required VoidCallback? onAddReminder,
+  ValueChanged<TaskEditField>? onEditField,
+  Widget? remindersNote,
 }) {
   final l10n = context.l10n;
   final colors = Theme.of(context).colorScheme;
@@ -51,6 +56,10 @@ List<Widget> attributeSection(
     onTap: onTap,
     tapHint: tapHint,
   );
+  VoidCallback? edit(TaskEditField field) => switch (onEditField) {
+    final onEdit? => () => onEdit(field),
+    null => null,
+  };
   final dueTone = DueTone.of(task, now: now);
   final attributes = [
     if (task.dueDate case final dueDate?)
@@ -80,9 +89,17 @@ List<Widget> attributeSection(
         Icons.play_arrow_outlined,
         l10n.taskDetailStartDate,
         startDate,
+        onTap: edit(TaskEditField.startDate),
+        tapHint: l10n.taskDetailChangeStartDate,
       ),
     if (task.endDate case final endDate?)
-      dateAttribute(Icons.stop_outlined, l10n.taskDetailEndDate, endDate),
+      dateAttribute(
+        Icons.stop_outlined,
+        l10n.taskDetailEndDate,
+        endDate,
+        onTap: edit(TaskEditField.endDate),
+        tapHint: l10n.taskDetailChangeEndDate,
+      ),
     if (task.priority != TaskPriority.unset)
       _Attribute(
         icon: Icons.flag_outlined,
@@ -96,12 +113,16 @@ List<Widget> attributeSection(
         icon: Icons.percent,
         label: l10n.taskDetailProgress,
         text: l10n.taskPercentDone(percent),
+        onTap: edit(TaskEditField.progress),
+        tapHint: l10n.taskDetailChangeProgress,
       ),
     if (repeat != null)
       _Attribute.text(
         icon: Icons.repeat,
         label: l10n.taskDetailRepeat,
         text: repeat,
+        onTap: edit(TaskEditField.repeat),
+        tapHint: l10n.taskDetailChangeRepeat,
       ),
     if (task.reminders.isNotEmpty)
       _Attribute.text(
@@ -121,6 +142,7 @@ List<Widget> attributeSection(
         ].join('\n'),
         onTap: onChangeReminders,
         tapHint: l10n.taskDetailEditReminders,
+        note: remindersNote,
       ),
     if (task.labels.isNotEmpty)
       _Attribute(
@@ -147,6 +169,8 @@ List<Widget> attributeSection(
       _Attribute(
         icon: Icons.people_outline,
         label: l10n.taskDetailAssignees,
+        onTap: edit(TaskEditField.assignees),
+        tapHint: l10n.taskDetailChangeAssignees,
         value: (alignment) => Wrap(
           alignment: alignment,
           spacing: 12,
@@ -236,7 +260,8 @@ class _NameColumn extends InheritedWidget {
 /// and the value at the end; the value goes under the name when the two do
 /// not fit side by side, as at a large text size. [value] gets the
 /// alignment of the side it is on. With [onTap] the whole row is a button,
-/// whose tap [tapHint] names.
+/// whose tap [tapHint] names. [note] goes under the row, outside its
+/// button.
 class _Attribute extends StatelessWidget {
   const new({
     required this.icon,
@@ -245,6 +270,7 @@ class _Attribute extends StatelessWidget {
     this.merge = true,
     this.onTap,
     this.tapHint,
+    this.note,
   });
 
   factory text({
@@ -255,11 +281,13 @@ class _Attribute extends StatelessWidget {
     TextStyle? style,
     VoidCallback? onTap,
     String? tapHint,
+    Widget? note,
   }) => _Attribute(
     icon: icon,
     label: label,
     onTap: onTap,
     tapHint: tapHint,
+    note: note,
     value: (alignment) => Text(
       text,
       semanticsLabel: semanticsText,
@@ -280,6 +308,7 @@ class _Attribute extends StatelessWidget {
 
   final VoidCallback? onTap;
   final String? tapHint;
+  final Widget? note;
 
   static const _minValueWidth = 120.0;
 
@@ -368,14 +397,20 @@ class _Attribute extends StatelessWidget {
           );
     // Unmerged, the row is still a node of its own: else its name would
     // join the card's node, ahead of the rows above it.
-    return merge
+    final node = merge
         ? MergeSemantics(child: row)
         : Semantics(container: true, child: row);
+    final note = this.note;
+    if (note == null) return node;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [node, note],
+    );
   }
 }
 
-/// The priority with its flag: in the error colour from urgent up, amber
-/// for high, muted below.
+/// The priority with its flag, coloured as in the task rows: urgent and up
+/// in [urgentPriorityColor], amber for high, muted below.
 class _PriorityValue extends StatelessWidget {
   const new({required this.priority});
 
@@ -384,8 +419,9 @@ class _PriorityValue extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final urgent = priority.value >= 4;
     final (icon, color) = switch (priority.value) {
-      >= 4 => (Icons.flag, colors.error),
+      >= 4 => (Icons.flag, urgentPriorityColor(context)),
       3 => (Icons.flag, HighlightColors.of(context).highlight),
       _ => (Icons.outlined_flag, colors.onSurfaceVariant),
     };
@@ -397,7 +433,9 @@ class _PriorityValue extends StatelessWidget {
         Flexible(
           child: Text(
             priorityLabel(context.l10n, priority),
-            style: priority.value >= 4 ? TextStyle(color: colors.error) : null,
+            style: urgent
+                ? TextStyle(color: urgentPriorityColor(context, text: true))
+                : null,
           ),
         ),
       ],

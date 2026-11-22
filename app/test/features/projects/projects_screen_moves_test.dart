@@ -6,8 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
+import 'package:vikunja_mobile/core/repositories/task_lists.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_row.dart';
 import 'package:vikunja_mobile/features/projects/presentation/reorder_slot.dart';
+import 'package:vikunja_mobile/features/smart_lists/presentation/smart_list_row.dart';
 
 import '../../helpers/announcer_region.dart';
 import '../../helpers/pump_app.dart';
@@ -226,6 +228,25 @@ void main() {
       expect(data.projects.moves, [
         (projectId: 5, position: 400.0 + 65536, parentProjectId: 0),
       ]);
+    });
+
+    testWidgets('the saved filters below the tree take no drop', (
+      tester,
+    ) async {
+      data.projects.savedFilters = const [
+        SavedFilterRef(projectId: -2, title: 'Zeta'),
+      ];
+      await pumpProjects(tester);
+      final filter = find.widgetWithText(SmartListRow, 'Zeta');
+      expect(
+        tester.getRect(filter).top,
+        greaterThan(tester.getRect(rowOf('Garden')).bottom),
+      );
+
+      await dragProject(tester, 'Q1', tester.getCenter(filter));
+
+      expect(data.projects.moves, isEmpty);
+      expect(treeRows(tester), contains(('Q1', 2)));
     });
 
     testWidgets('while held, the line shows the level a drop lands on, an '

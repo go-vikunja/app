@@ -117,8 +117,11 @@ void main() {
       await tester.binding.handlePopRoute();
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip(en.taskEditClearStartDate));
-      await tester.pumpAndSettle();
+      // The start date is tomorrow's: its chosen shortcut clears it.
+      await tapVisible(
+        tester,
+        find.text(en.shortcutAtTime(en.shortcutTomorrow, '8:00 AM')),
+      );
       await openAddSheet(tester);
       expect(
         inSheet(find.text(before('2 hours', en.reminderReferenceEndDate))),
@@ -470,8 +473,7 @@ void main() {
       expect(find.text(en.reminderStartDateNotSet), findsOneWidget);
       expect(find.text('Oct 12, 2026 7:30 AM'), findsOneWidget);
 
-      await tester.tap(find.byTooltip(en.taskEditClearDueDate));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.byTooltip(en.taskEditClearDueDate));
       expect(find.text(en.reminderDueDateNotSet), findsOneWidget);
       expect(find.text('Oct 12, 2026 7:30 AM'), findsNothing);
     });
@@ -518,8 +520,7 @@ void main() {
       );
       expect(find.text(en.taskEditRemindersCoincide), findsNothing);
 
-      await tester.tap(find.byTooltip(en.taskEditClearDueDate));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.byTooltip(en.taskEditClearDueDate));
       expect(find.text(en.taskEditRemindersCoincide), findsOneWidget);
     });
 
@@ -603,16 +604,17 @@ void main() {
     final order = [
       en.taskEditTitleLabel,
       en.taskEditProject,
+      en.taskDetailDueDate,
+      en.taskDetailPriority,
+      en.taskDetailDescription,
       en.taskDetailLabels,
       en.taskDetailAssignees,
-      en.taskDetailDueDate,
+      en.taskDetailReminders,
+      en.taskEditRepeat,
       en.taskDetailStartDate,
       en.taskDetailEndDate,
-      en.taskDetailReminders,
-      en.taskDetailPriority,
       en.taskDetailProgress,
       en.taskEditColour,
-      en.taskEditRepeat,
     ];
     for (var i = 1; i < order.length; i++) {
       expect(top(order[i]), greaterThan(top(order[i - 1])), reason: order[i]);

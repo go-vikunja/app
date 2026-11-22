@@ -67,6 +67,7 @@ Future<void> _pumpWithLock(
   WidgetTester tester, {
   bool lockOn = false,
   bool crashReports = false,
+  bool screenLock = true,
   DeviceAuthResult result = DeviceAuthResult.success,
 }) async {
   final auth = AuthFakes();
@@ -85,7 +86,7 @@ Future<void> _pumpWithLock(
     auth: auth,
     overrides: [
       deviceAuthenticatorProvider.overrideWithValue(
-        FakeDeviceAuthenticator(result: result),
+        FakeDeviceAuthenticator(supported: screenLock, result: result),
       ),
       if (crashReports) ...crashReportOverrides(),
     ],
@@ -269,6 +270,14 @@ final List<SweepScenario> accountStateScenarios = [
       setUp: (tester, _) => _pumpWithLock(tester, lockOn: true, result: result),
       expectScreen: (l10n) => find.text(l10n.appLockTitle),
     ),
+  SweepScenario(
+    kind: SweepKind.state,
+    name: 'privacy without a screen lock',
+    route: AppRoutes.privacy,
+    setUp: (tester, _) => _pumpWithLock(tester, screenLock: false),
+    navigate: (tester, _) async => pushTo(tester, AppRoutes.privacy),
+    expectScreen: (l10n) => find.text(l10n.privacyAppLockNeedsScreenLock),
+  ),
   SweepScenario(
     kind: SweepKind.state,
     name: 'privacy cover',

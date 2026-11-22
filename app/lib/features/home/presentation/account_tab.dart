@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
@@ -16,6 +17,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/web_settin
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/accounts_section.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/connection/presentation/browser_leg_hint.dart';
 import 'package:vikunja_mobile/features/connection/presentation/connection_settings_action.dart';
@@ -48,9 +50,9 @@ import 'package:vikunja_mobile/features/widgets/presentation/widgets_section.dar
 /// background sync and the changes still waiting for it,
 /// what is set on this device only (the home-screen widgets,
 /// notifications, privacy), the appearance, the server with its connection
-/// settings, sign-out and the app's version, which opens the About page. A
-/// link-share guest gets a note on what it may do instead of the settings
-/// and the labels and teams.
+/// settings, sign-out and the line to the About page with the app's
+/// version. A link-share guest gets a note on what it may do instead of
+/// the settings and the labels and teams.
 class AccountTab extends ConsumerWidget {
   const new({super.key});
 
@@ -106,7 +108,8 @@ class AccountTab extends ConsumerWidget {
     const bannerPadding = EdgeInsets.fromLTRB(16, 8, 16, 8);
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: ReadableAppBar(
+        maxWidth: ReadableWidth.form,
         title: ScreenTitle(l10n.tabAccount),
         bottom: const SyncProgressBar(),
       ),
@@ -182,15 +185,18 @@ class AccountTab extends ConsumerWidget {
                   ),
                 ),
               if (!guest)
-                ListTile(
-                  leading: const Icon(Icons.manage_accounts_outlined),
-                  title: Text(l10n.accountSettingsEntry),
-                  subtitle: Text(l10n.accountSettingsEntrySubtitle),
-                  trailing: const Icon(Icons.chevron_right),
-                  enabled: !busy,
-                  onTap: () => _openSettings(context),
+                SectionCard(
+                  children: [
+                    ListTile(
+                      leading: const Icon(Icons.manage_accounts_outlined),
+                      title: Text(l10n.accountSettingsEntry),
+                      subtitle: Text(l10n.accountSettingsEntrySubtitle),
+                      trailing: const Icon(Icons.chevron_right),
+                      enabled: !busy,
+                      onTap: () => _openSettings(context),
+                    ),
+                  ],
                 ),
-              const SizedBox(height: 8),
               if (!guest) OrganiseSection(busy: busy),
               AccountsSection(busy: busy),
               SettingsSection(
@@ -244,7 +250,7 @@ class AccountTab extends ConsumerWidget {
                   label: Text(signOutLabel),
                 ),
               ),
-              const _AppVersionLine(),
+              const _AboutLine(),
             ],
           ),
         ),
@@ -253,7 +259,9 @@ class AccountTab extends ConsumerWidget {
   }
 }
 
-class _AppVersionLine extends ConsumerWidget {
+/// The way to the About page, with help, bug reports and the privacy
+/// policy, named above the app's version (D77).
+class _AboutLine extends ConsumerWidget {
   const new();
 
   @override
@@ -264,22 +272,24 @@ class _AppVersionLine extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
       child: Center(
-        child: Tooltip(
-          message: l10n.aboutTitle,
-          child: TextButton.icon(
-            onPressed: () =>
-                unawaited(GoRouter.of(context).push(AppRoutes.about)),
-            style: TextButton.styleFrom(
-              foregroundColor: theme.colorScheme.onSurfaceVariant,
-              textStyle: theme.textTheme.bodySmall,
-            ),
-            icon: const Icon(Icons.info_outline, size: 18),
-            label: Text(
-              build.isEmpty
-                  ? l10n.accountAppVersionWithoutBuild(version)
-                  : l10n.accountAppVersion(version, build),
-              textAlign: TextAlign.center,
-            ),
+        child: TextButton.icon(
+          onPressed: () =>
+              unawaited(GoRouter.of(context).push(AppRoutes.about)),
+          icon: const Icon(Icons.info_outline, size: 18),
+          label: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(l10n.accountAboutLine, textAlign: TextAlign.center),
+              Text(
+                build.isEmpty
+                    ? l10n.accountAppVersionWithoutBuild(version)
+                    : l10n.accountAppVersion(version, build),
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
         ),
       ),

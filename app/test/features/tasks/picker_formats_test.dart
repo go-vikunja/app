@@ -420,7 +420,7 @@ void main() {
       );
     await openEditPageWith(tester, data: data, taskId: 1, now: now);
 
-    await tapVisible(tester, find.text(en.taskDetailDueDate));
+    await tapVisible(tester, find.text(en.newTaskPickDate).first);
     expect(firstDayOfWeekInPicker(tester), 5);
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();

@@ -51,6 +51,6 @@ Future<ColorSchemes?> readSystemColorSchemes() async {
 ColorSchemes? appColorSchemes(Ref ref) {
   final system = ref.watch(systemColorsProvider).value;
   if (system == null) return null;
-  final enabled = ref.watch(useSystemColorsProvider).value ?? true;
+  final enabled = ref.watch(useSystemColorsProvider).value ?? false;
   return enabled ? system : null;
 }

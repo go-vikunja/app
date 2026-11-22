@@ -27,7 +27,7 @@ class AppearanceSection extends ConsumerWidget {
     final language =
         ref.watch(appLanguageSettingsAvailableProvider).value ?? false;
     final l10n = context.l10n;
-    final enabled = ref.watch(useSystemColorsProvider).value ?? true;
+    final enabled = ref.watch(useSystemColorsProvider).value ?? false;
     return SettingsSection(
       title: l10n.appearanceHeading,
       children: [

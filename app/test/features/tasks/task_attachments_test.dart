@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/attachments/pending_upload.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/attachments/application/attachment_picker.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/attachment_image_viewer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
@@ -81,7 +82,7 @@ void main() {
   }
 
   Future<void> add(WidgetTester tester, String source) async {
-    await tester.tap(inSheet(find.byTooltip(en.attachmentAdd)));
+    await tester.tap(inSheet(find.text(en.attachmentAdd)));
     await tester.pumpAndSettle();
     await tester.tap(find.text(source).last);
     await tester.pumpAndSettle();
@@ -163,6 +164,26 @@ void main() {
       expect(find.text(en.attachmentsQueued(2)), findsOneWidget);
     });
 
+    testWidgets('without attachments the card holds only its last row, Add '
+        'attachment, as the other sections add', (tester) async {
+      data.details.detailsByTask[4] = const TaskDetails();
+      picker.photos = const [PickedFile(path: '/cache/p.jpg', name: 'p.jpg')];
+      await openDetail(tester, data.tasks.find(4)!);
+      Finder card() => find.ancestor(
+        of: inSheet(find.text(en.attachmentAdd)),
+        matching: find.byType(SectionCardItem),
+      );
+      expect(card(), findsOneWidget);
+      expect(tester.widget<SectionCardItem>(card()).first, isTrue);
+      expect(inSheet(find.widgetWithIcon(IconButton, Icons.add)), findsNothing);
+
+      await add(tester, en.attachmentSourcePhotos);
+
+      expect(inSheet(find.text('p.jpg')), findsOneWidget);
+      expect(tester.widget<SectionCardItem>(card()).first, isFalse);
+      expect(tester.widget<SectionCardItem>(card()).last, isTrue);
+    });
+
     testWidgets('Photos and the camera use their pickers', (tester) async {
       picker
         ..photos = const [PickedFile(path: '/cache/p.jpg', name: 'p.jpg')]
@@ -194,7 +215,7 @@ void main() {
       await openDetail(tester, data.tasks.find(4)!);
       // The section shows its progress while the question is up.
       Future<void> addPhotos() async {
-        await tester.tap(inSheet(find.byTooltip(en.attachmentAdd)));
+        await tester.tap(inSheet(find.text(en.attachmentAdd)));
         await tester.pumpAndSettle();
         await tester.tap(find.text(en.attachmentSourcePhotos).last);
         await tester.pump();
@@ -658,7 +679,7 @@ void main() {
       );
       await openDetail(tester, data.tasks.find(6)!);
 
-      expect(inSheet(find.byTooltip(en.attachmentAdd)), findsNothing);
+      expect(inSheet(find.text(en.attachmentAdd)), findsNothing);
       expect(await menuOf(tester, sampleAttachment(id: 7, taskId: 6)), [
         en.attachmentOpen,
         en.attachmentShare,
@@ -671,7 +692,7 @@ void main() {
       data.attachments.uploadsEnabled = false;
       await openDetail(tester, data.tasks.find(4)!);
 
-      expect(inSheet(find.byTooltip(en.attachmentAdd)), findsNothing);
+      expect(inSheet(find.text(en.attachmentAdd)), findsNothing);
       expect(await menuOf(tester, pdf), [
         en.attachmentOpen,
         en.attachmentShare,
@@ -700,7 +721,7 @@ void main() {
       await openDetail(tester, sampleTask(id: 40, title: 'From a link'));
 
       expect(inSheet(find.text('photo.png')), findsOneWidget);
-      expect(inSheet(find.byTooltip(en.attachmentAdd)), findsNothing);
+      expect(inSheet(find.text(en.attachmentAdd)), findsNothing);
     });
   });
 }

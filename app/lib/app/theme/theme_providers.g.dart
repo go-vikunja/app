@@ -117,4 +117,4 @@ final class AppColorSchemesProvider
   }
 }
 
-String _$appColorSchemesHash() => r'4c27e8410c2023e97e8fd8041cc6f0db8f27623d';
+String _$appColorSchemesHash() => r'cb703d0293499b8288646fc6a52521e07aa1bfb6';

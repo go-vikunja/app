@@ -64,6 +64,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   /// The address the typed text names, for its connection settings.
   OriginKey? _typedOrigin;
   var _typedOriginHasSettings = false;
+  var _typedWithoutScheme = false;
 
   ConnectServerController get _controller =>
       ref.read(connectServerControllerProvider.notifier);
@@ -96,6 +97,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     final server = ref.read(previousAppProvider).value?.record?.server;
     if (server == null || _address.text.isNotEmpty) return;
     _address.text = '$server';
+    _typedWithoutScheme = typedWithoutScheme(_address.text);
     _typedOrigin = originOfTypedAddress(_address.text);
     if (_typedOrigin case final origin?) unawaited(_lookUpSettings(origin));
   }
@@ -147,6 +149,10 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
   }
 
   void _onAddressEdited() {
+    final withoutScheme = typedWithoutScheme(_address.text);
+    if (withoutScheme != _typedWithoutScheme) {
+      setState(() => _typedWithoutScheme = withoutScheme);
+    }
     final origin = originOfTypedAddress(_address.text);
     if (origin == _typedOrigin) return;
     setState(() {
@@ -473,6 +479,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                       ConnectionOptionsButton(
                         origin: _typedOrigin,
                         hasSettings: _typedOriginHasSettings,
+                        triesHttpsFirst: _typedWithoutScheme,
                         onPressed: busy
                             ? null
                             : (origin) =>
@@ -730,6 +737,19 @@ String _claimedServerNote(
     claiming = '${server.scheme}://$claiming';
   }
   return l10n.guestServerClaimed(claiming, link);
+}
+
+/// Whether [input] is a server address without `http://` or `https://`,
+/// which the app tries over https first (D8).
+bool typedWithoutScheme(String input) {
+  if (parseLinkShareUrl(input) != null || parseInviteLink(input) != null) {
+    return false;
+  }
+  try {
+    return !normalizeServerAddress(input).hasExplicitScheme;
+  } on InvalidServerAddress {
+    return false;
+  }
 }
 
 /// The origin whose connection settings apply to what was typed: a shared

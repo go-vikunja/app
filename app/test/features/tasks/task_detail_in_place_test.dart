@@ -306,14 +306,15 @@ void main() {
     });
 
     testWidgets('the due date, priority and reminder rows are buttons with '
-        'their hints, labels have a button of their own, the other rows '
-        'stay text', (tester) async {
+        'their hints, the start date opens the edit page, labels have a '
+        'button of their own', (tester) async {
       final semantics = tester.ensureSemantics();
       await pumpApp(tester);
       await openStored(tester, 1);
 
       for (final (name, hint) in [
         (en.taskDetailDueDateRow, en.taskDetailChangeDueDate),
+        (en.taskDetailStartDate, en.taskDetailChangeStartDate),
         (en.taskDetailPriority, en.taskDetailChangePriority),
         (en.taskDetailReminders, en.taskDetailEditReminders),
       ]) {
@@ -325,10 +326,6 @@ void main() {
           reason: name,
         );
       }
-      expect(
-        tester.getSemantics(inSheet(find.text(en.taskDetailStartDate))),
-        isSemantics(isButton: false, hasTapAction: false),
-      );
       final changeLabels = inSheet(
         find.byWidgetPredicate(
           (widget) =>
@@ -485,6 +482,7 @@ void main() {
 
     for (final name in [
       en.taskDetailDueDateRow,
+      en.taskDetailStartDate,
       en.taskDetailPriority,
       en.taskDetailReminders,
     ]) {

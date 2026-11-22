@@ -40,6 +40,21 @@ class ProjectRow extends StatelessWidget {
   /// Where a row of [depth] starts its content.
   static double indentOf(int depth) => 16 + depth * 20.0;
 
+  /// The [parts] joined with " · ", which stays with the part before it,
+  /// each count bound to the word beside it, so a narrow column never
+  /// parts a count from its noun, in any language; a part longer than the
+  /// line still wraps between its words.
+  static String detailsLine(List<String> parts) => parts
+      .map(
+        (part) => part
+            .replaceFirstMapped(_leadingCount, (match) => '${match[1]}\u00A0')
+            .replaceFirstMapped(_trailingCount, (match) => '\u00A0${match[1]}'),
+      )
+      .join('\u00A0· ');
+
+  static final _leadingCount = RegExp(r'^(\S*\d)\s');
+  static final _trailingCount = RegExp(r'\s(\d\S*)$');
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -71,7 +86,7 @@ class ProjectRow extends StatelessWidget {
         subtitle: details.isEmpty
             ? null
             : Text(
-                details.join(' · '),
+                detailsLine(details),
                 style: TextStyle(color: colors.onSurfaceVariant),
               ),
         trailing: Row(

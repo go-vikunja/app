@@ -138,6 +138,51 @@ void main() {
       expect(data.details.calls, hasLength(reads + 1));
     });
 
+    testWidgets('a tap on the text opens the editor as Edit does; a long '
+        'press selects without opening it, and the next tap only ends the '
+        'selection', (tester) async {
+      await openSheet(tester, 'Quarterly report');
+      final text = inSheet(find.text('Numbers & charts'));
+
+      await tester.longPress(text);
+      await tester.pumpAndSettle();
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+      expect(find.text('Copy'), findsOneWidget);
+
+      await tester.tap(text);
+      await tester.pumpAndSettle();
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+      expect(find.text('Copy'), findsNothing);
+
+      await tester.tap(text);
+      await tester.pumpAndSettle();
+      expect(find.byType(DescriptionEditorPage), findsOneWidget);
+      expect(bridges.last.init!.html, '<p>Numbers &amp; charts</p>');
+    });
+
+    testWidgets('a tap on a checkbox in the text ticks it and opens no '
+        'editor', (tester) async {
+      data.tasks.all = [
+        ...data.tasks.all,
+        sampleTask(
+          id: 5,
+          title: 'Checklist',
+          description: [
+            '<ul data-type="taskList"><li data-checked="false" ',
+            'data-type="taskItem"><label><input type="checkbox"><span>',
+            '</span></label><div><p>Milk</p></div></li></ul>',
+          ].join(),
+        ),
+      ];
+      await openSheet(tester, 'Checklist');
+
+      await tester.tap(inSheet(find.byIcon(Icons.check_box_outline_blank)));
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.checklistToggles, hasLength(1));
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+    });
+
     testWidgets('a task without a description offers "Add description"', (
       tester,
     ) async {
@@ -213,6 +258,9 @@ void main() {
         inSheet(find.byTooltip(en.taskDetailEditDescription)),
         findsNothing,
       );
+      await tester.tap(inSheet(find.text('Kept')));
+      await tester.pumpAndSettle();
+      expect(find.byType(DescriptionEditorPage), findsNothing);
 
       await tester.tap(find.byTooltip(en.taskDetailClose));
       await tester.pumpAndSettle();

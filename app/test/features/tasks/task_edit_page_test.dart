@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/color_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
@@ -51,11 +52,20 @@ void main() {
 
   String location(WidgetTester tester) => routerOf(tester).state.uri.toString();
 
+  /// What the page popped with, once it did.
+  late Future<bool?> popped;
+
   Future<void> openEditPage(WidgetTester tester, int id) async {
-    // Tall enough for the whole form, which the list builds lazily.
     usePhoneSurface(tester, logicalSize: const Size(360, 2200));
     await pumpSignedInApp(tester, sync: data, now: now);
-    unawaited(routerOf(tester).push(AppRoutes.taskEdit(id)));
+    popped = routerOf(tester).push<bool>(AppRoutes.taskEdit(id));
+    await tester.pumpAndSettle();
+  }
+
+  Future<void> tapVisible(WidgetTester tester, Finder finder) async {
+    await tester.ensureVisible(finder);
+    await tester.pumpAndSettle();
+    await tester.tap(finder);
     await tester.pumpAndSettle();
   }
 
@@ -84,8 +94,8 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets("the sheet's Edit button closes it and opens the page over "
-        'the shell', (tester) async {
+    testWidgets("the sheet's Edit button opens the page over the sheet, "
+        'which Back returns to', (tester) async {
       await openDetail(tester, 'Bare task');
 
       await tester.tap(find.byTooltip(en.taskEdit));
@@ -98,6 +108,53 @@ void main() {
       expect(
         tester.widget<TextField>(titleField()).controller?.text,
         'Bare task',
+      );
+
+      await pressBack(tester);
+      expect(find.byType(TaskEditPage), findsNothing);
+      expect(find.byType(TaskDetailSheet), findsOneWidget);
+      expect(find.text(en.taskEditSaved), findsNothing);
+    });
+
+    testWidgets('Save returns to the sheet, which shows the saved values and '
+        'says Saved', (tester) async {
+      await openDetail(tester, 'Bare task');
+      await tester.tap(find.byTooltip(en.taskEdit));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(titleField(), 'Bare task, renamed');
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect(find.byType(TaskEditPage), findsNothing);
+      final sheet = find.byType(TaskDetailSheet);
+      expect(sheet, findsOneWidget);
+      expect(
+        find.descendant(of: sheet, matching: find.text('Bare task, renamed')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: sheet, matching: find.text(en.taskEditSaved)),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets("a tap on the sheet's progress row opens the page at the "
+        'progress', (tester) async {
+      await openDetail(tester, 'Quarterly report');
+
+      await tapVisible(
+        tester,
+        find.descendant(
+          of: find.byType(TaskDetailSheet),
+          matching: find.text(en.taskDetailProgress),
+        ),
+      );
+
+      expect(find.byType(TaskEditPage), findsOneWidget);
+      expect(
+        location(tester),
+        AppRoutes.taskEdit(1, field: TaskEditField.progress),
       );
     });
 
@@ -128,15 +185,14 @@ void main() {
   });
 
   group('saving', () {
-    testWidgets('sends only the changed fields, pops and confirms', (
+    testWidgets('sends only the changed fields and pops with true', (
       tester,
     ) async {
       await openEditPage(tester, 1);
       expect(saveEnabled(tester), isFalse);
 
       await tester.enterText(titleField(), 'Quarterly report Q4');
-      await tester.tap(find.text(en.priorityUrgent));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text(en.priorityUrgent));
       expect(saveEnabled(tester), isTrue);
       await save(tester);
 
@@ -146,8 +202,45 @@ void main() {
       expect(data.tasks.writes, ['update 1']);
       expect(find.byType(TaskEditPage), findsNothing);
       expect(location(tester), AppRoutes.overview);
-      expect(find.text(en.taskEditSaved), findsOneWidget);
+      expect(await popped, isTrue);
       expect(find.text('Quarterly report Q4'), findsOneWidget);
+    });
+
+    testWidgets('the priority row starts with Unset, which clears the '
+        'priority', (tester) async {
+      await openEditPage(tester, 1);
+      final chips = find.descendant(
+        of: find.byType(TaskEditPage),
+        matching: find.byType(ChoiceChip),
+      );
+      final labels = [
+        for (final chip in tester.widgetList<ChoiceChip>(chips))
+          if (chip.label case Text(:final data?)) data,
+      ];
+      expect(labels.sublist(labels.indexOf(en.priorityUnset)).take(6), [
+        en.priorityUnset,
+        en.priorityLow,
+        en.priorityMedium,
+        en.priorityHigh,
+        en.priorityUrgent,
+        en.priorityDoNow,
+      ]);
+      final unset = find.ancestor(
+        of: find.text(en.priorityUnset),
+        matching: find.byType(ChoiceChip),
+      );
+      final row = find.ancestor(
+        of: unset,
+        matching: find.byType(SingleChildScrollView),
+      );
+      expect(
+        tester.widget<SingleChildScrollView>(row.first).scrollDirection,
+        Axis.horizontal,
+      );
+
+      await tapVisible(tester, unset);
+      await save(tester);
+      expect(data.tasks.updates.single.$2, const TaskChanges(priority: 0));
     });
 
     testWidgets('an empty title disables Save and says why', (tester) async {
@@ -222,7 +315,7 @@ void main() {
 
       expect(find.byType(TaskEditPage), findsNothing);
       expect(find.text('Quarterly report Q4'), findsOneWidget);
-      expect(find.text(en.taskEditSaved), findsOneWidget);
+      expect(await popped, isTrue);
       expect(find.text(en.localChangeFailed), findsNothing);
     });
 
@@ -326,12 +419,74 @@ void main() {
   });
 
   group('dates', () {
-    Finder dueRow() => find.widgetWithText(ListTile, en.taskDetailDueDate);
+    Finder chipOf(Finder text) =>
+        find.ancestor(of: text, matching: find.byType(ChoiceChip));
+
+    bool selected(WidgetTester tester, Finder text) =>
+        tester.widget<ChoiceChip>(chipOf(text)).selected;
+
+    testWidgets("each date has the sheet's shortcuts and Pick date…, and no "
+        'other shortcut', (tester) async {
+      await openEditPage(tester, 2);
+
+      for (final label in [
+        en.shortcutToday,
+        en.shortcutTomorrow,
+        en.shortcutNextWeek,
+        en.newTaskPickDate,
+      ]) {
+        expect(find.text(label), findsNWidgets(3));
+      }
+      for (final label in [
+        en.shortcutNextMonday,
+        en.shortcutThisWeekend,
+        en.shortcutEndOfMonth,
+        en.shortcutInAMonth,
+      ]) {
+        expect(find.text(label), findsNothing);
+      }
+      for (final heading in [
+        en.taskDetailDueDate,
+        en.taskDetailStartDate,
+        en.taskDetailEndDate,
+      ]) {
+        expect(find.text(heading), findsOneWidget);
+      }
+    });
+
+    testWidgets('a shortcut that is not chosen shows its day, the chosen one '
+        'the time instead', (tester) async {
+      await openEditPage(tester, 2);
+      final tomorrow = find.text(en.shortcutTomorrow).first;
+      String chipText() => [
+        for (final text in tester.widgetList<Text>(
+          find.descendant(of: chipOf(tomorrow), matching: find.byType(Text)),
+        ))
+          text.data,
+      ].join();
+
+      expect(chipText(), en.shortcutOnDay(en.shortcutTomorrow, 'Sun, Oct 11'));
+      expect(
+        chipText(),
+        isNot(contains(en.shortcutAtTime(en.shortcutTomorrow, '12:00 PM'))),
+      );
+      await tapVisible(tester, tomorrow);
+
+      expect(
+        find.text(en.shortcutAtTime(en.shortcutTomorrow, '12:00 PM')),
+        findsOneWidget,
+      );
+      expect(
+        find.text(en.shortcutOnDay(en.shortcutNextWeek, 'Sat, Oct 17')),
+        findsNothing,
+        reason: 'the day is a lighter run of its own',
+      );
+      expect(find.text(' · Sat, Oct 17'), findsNWidgets(3));
+    });
 
     testWidgets('a shortcut on a task without a time uses the breakpoint '
         'time and reads out its day', (tester) async {
       await openEditPage(tester, 2);
-      expect(find.text(en.taskEditDateNotSet), findsNWidgets(3));
 
       final tomorrow = find.text(en.shortcutTomorrow).first;
       expect(
@@ -342,21 +497,20 @@ void main() {
           'Sun, Oct 11',
         ),
       );
-      await tester.tap(tomorrow);
-      await tester.pumpAndSettle();
+      await tapVisible(tester, tomorrow);
 
-      expect(find.text('Oct 11, 2026 12:00 PM'), findsOneWidget);
-      expect(
-        tester.widget<ChoiceChip>(find.byType(ChoiceChip).first).selected,
-        isFalse,
+      final chosen = find.text(
+        en.shortcutAtTime(en.shortcutTomorrow, '12:00 PM'),
       );
+      expect(selected(tester, chosen), isTrue);
+      expect(selected(tester, find.text(en.shortcutToday).first), isFalse);
       expect(
-        tester
-            .widget<ChoiceChip>(
-              find.ancestor(of: tomorrow, matching: find.byType(ChoiceChip)),
-            )
-            .selected,
-        isTrue,
+        tester.getSemantics(chosen).label,
+        en.shortcutFieldSemantics(
+          en.taskDetailDueDate,
+          en.shortcutAtTime(en.shortcutTomorrow, '12:00 PM'),
+          'Sun, Oct 11',
+        ),
       );
 
       await save(tester);
@@ -368,15 +522,21 @@ void main() {
       );
     });
 
-    testWidgets('a shortcut keeps the time already set', (tester) async {
+    testWidgets('a date on no shortcut shows as a chip of its own, and a '
+        'shortcut keeps its time', (tester) async {
       await openEditPage(tester, 1);
+      expect(find.text('Oct 12, 2026 9:30 AM'), findsOneWidget);
 
-      await tester.ensureVisible(find.text(en.shortcutNextWeek).first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text(en.shortcutNextWeek).first);
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text(en.shortcutNextWeek).first);
 
-      expect(find.text('Oct 17, 2026 9:30 AM'), findsOneWidget);
+      expect(find.text('Oct 12, 2026 9:30 AM'), findsNothing);
+      expect(
+        selected(
+          tester,
+          find.text(en.shortcutAtTime(en.shortcutNextWeek, '9:30 AM')),
+        ),
+        isTrue,
+      );
       await save(tester);
       expect(
         data.tasks.updates.single.$2.dueDate,
@@ -384,26 +544,22 @@ void main() {
       );
     });
 
-    testWidgets('tapping the selected shortcut again clears the date', (
+    testWidgets('tapping the chosen shortcut again clears the date', (
       tester,
     ) async {
-      await openEditPage(tester, 1);
-      final nextMonday = find.text(en.shortcutNextMonday).first;
-      expect(
-        tester
-            .widget<ChoiceChip>(
-              find.ancestor(of: nextMonday, matching: find.byType(ChoiceChip)),
-            )
-            .selected,
-        isTrue,
+      data.tasks.all = [
+        sampleTask(id: 4, title: 'Soon', due: DateTime(2026, 10, 11, 8)),
+      ];
+      await openEditPage(tester, 4);
+      final chosen = find.text(
+        en.shortcutAtTime(en.shortcutTomorrow, '8:00 AM'),
       );
+      expect(selected(tester, chosen), isTrue);
 
-      await tester.ensureVisible(nextMonday);
-      await tester.pumpAndSettle();
-      await tester.tap(nextMonday);
-      await tester.pumpAndSettle();
+      await tapVisible(tester, chosen);
 
-      expect(find.text(en.taskEditDateNotSet), findsNWidgets(3));
+      expect(chosen, findsNothing);
+      expect(selected(tester, find.text(en.shortcutTomorrow).first), isFalse);
       await save(tester);
       expect(
         data.tasks.updates.single.$2,
@@ -411,13 +567,14 @@ void main() {
       );
     });
 
-    testWidgets('Clear removes the date', (tester) async {
+    testWidgets("the other date's delete button clears the date", (
+      tester,
+    ) async {
       await openEditPage(tester, 1);
 
-      await tester.tap(find.byTooltip(en.taskEditClearDueDate));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.byTooltip(en.taskEditClearDueDate));
 
-      expect(find.text(en.taskEditDateNotSet), findsNWidgets(3));
+      expect(find.text('Oct 12, 2026 9:30 AM'), findsNothing);
       await save(tester);
       expect(
         data.tasks.updates.single.$2,
@@ -425,13 +582,12 @@ void main() {
       );
     });
 
-    testWidgets('the row opens the date picker, then the time picker', (
+    testWidgets('Pick date… opens the date picker, then the time picker', (
       tester,
     ) async {
       await openEditPage(tester, 1);
 
-      await tester.tap(dueRow());
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text(en.newTaskPickDate).first);
       expect(find.byType(DatePickerDialog), findsOneWidget);
       await tester.tap(find.text('15'));
       await tester.tap(find.text('OK'));
@@ -451,8 +607,7 @@ void main() {
       );
       await openEditPage(tester, 1);
 
-      await tester.tap(find.text(en.shortcutToday).at(1));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text(en.shortcutToday).at(1));
       await save(tester);
 
       expect(
@@ -488,12 +643,37 @@ void main() {
       semantics.dispose();
     });
 
+    testWidgets('Pick date… and a date on no shortcut name their date too', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await openEditPage(tester, 1);
+
+      final pick = find.text(en.newTaskPickDate);
+      expect(pick, findsNWidgets(3));
+      expect(
+        [for (var i = 0; i < 3; i++) tester.getSemantics(pick.at(i)).label],
+        [
+          for (final field in [
+            en.taskDetailDueDate,
+            en.taskDetailStartDate,
+            en.taskDetailEndDate,
+          ])
+            en.dateFieldChipSemantics(field, en.newTaskPickDate),
+        ],
+      );
+      expect(
+        tester.getSemantics(find.text('Oct 12, 2026 9:30 AM')).label,
+        startsWith('${en.taskDetailDueDate}: '),
+      );
+      semantics.dispose();
+    });
+
     testWidgets('a start date set by chip and an end date cleared go '
         'together', (tester) async {
       await openEditPage(tester, 1);
 
-      await tester.tap(find.text(en.shortcutToday).at(1));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text(en.shortcutToday).at(1));
       await save(tester);
 
       expect(
@@ -503,6 +683,85 @@ void main() {
         ),
       );
     });
+  });
+
+  group('the layout of the New task sheet', () {
+    testWidgets('the fields have icon headings, in the order title, '
+        'project, due date and priority', (tester) async {
+      await openEditPage(tester, 1);
+
+      double top(Finder finder) => tester.getRect(finder).top;
+      final title = titleField();
+      final project = find.byType(ProjectField);
+      final due = find.text(en.taskDetailDueDate);
+      final priority = find.text(en.taskDetailPriority);
+      expect(top(title), lessThan(top(project)));
+      expect(top(project), lessThan(top(due)));
+      expect(top(due), lessThan(top(priority)));
+      for (final (heading, icon) in [
+        (en.taskDetailDueDate, Icons.calendar_today_outlined),
+        (en.taskDetailPriority, Icons.flag_outlined),
+        (en.taskDetailLabels, Icons.label_outline),
+        (en.taskDetailAssignees, Icons.people_outline),
+        (en.taskDetailReminders, Icons.alarm),
+        (en.taskEditRepeat, Icons.repeat),
+        (en.taskDetailStartDate, Icons.play_arrow_outlined),
+        (en.taskDetailEndDate, Icons.stop_outlined),
+        (en.taskDetailProgress, Icons.percent),
+        (en.taskEditColour, Icons.palette_outlined),
+      ]) {
+        final row = find.ancestor(
+          of: find.text(heading),
+          matching: find.byType(Row),
+        );
+        expect(
+          find.descendant(of: row.first, matching: find.byIcon(icon)),
+          findsOneWidget,
+          reason: heading,
+        );
+        expect(
+          tester
+              .getSemantics(find.text(heading))
+              .getSemanticsData()
+              .headingLevel,
+          2,
+          reason: heading,
+        );
+      }
+    });
+
+    for (final (field, heading, atTop) in [
+      (TaskEditField.startDate, 'Start date', false),
+      (TaskEditField.endDate, 'End date', false),
+      (TaskEditField.progress, 'Progress', false),
+      (TaskEditField.repeat, 'Repeat', true),
+      (TaskEditField.assignees, 'Assignees', true),
+    ]) {
+      testWidgets('opened at ${field.name}, it scrolls to that field', (
+        tester,
+      ) async {
+        usePhoneSurface(tester);
+        await pumpSignedInApp(tester, sync: data, now: now);
+        unawaited(routerOf(tester).push(AppRoutes.taskEdit(1, field: field)));
+        await tester.pumpAndSettle();
+
+        final list = find
+            .descendant(
+              of: find.byType(TaskEditPage),
+              matching: find.byType(Scrollable),
+            )
+            .first;
+        expect(tester.state<ScrollableState>(list).position.pixels, isPositive);
+        final shown = find.text(heading).hitTestable();
+        expect(shown, findsOneWidget);
+        if (atTop) {
+          expect(
+            tester.getRect(shown).top - tester.getRect(list).top,
+            lessThan(48),
+          );
+        }
+      });
+    }
   });
 
   group('properties', () {
@@ -648,13 +907,57 @@ void main() {
 
       await tester.enterText(amount, '3');
       await tester.tap(find.text(en.repeatUnitDays));
-      await tester.tap(find.text(en.repeatModeFromCompletion));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text(en.repeatModeFromCompletion));
       await save(tester);
       expect(
         data.tasks.updates.single.$2,
         const TaskChanges(
           repeatAfter: Duration(days: 3),
+          repeatMode: RepeatMode.fromCurrentDate,
+        ),
+      );
+    });
+
+    testWidgets('the repeat offers Never, an interval and the same day '
+        'every month; only the interval has the presets and counts from '
+        'when the task is done', (tester) async {
+      await openEditPage(tester, 2);
+      Finder fromDone() =>
+          find.widgetWithText(SwitchListTile, en.repeatModeFromCompletion);
+
+      expect(find.text(en.repeatModeNone), findsOneWidget);
+      expect(find.text(en.repeatModeMonthly), findsOneWidget);
+      expect(en.repeatModeMonthly, 'Same day every month');
+      expect(find.text(en.repeatPresetThirtyDays), findsNothing);
+      expect(fromDone(), findsNothing);
+
+      await tapVisible(tester, find.text(en.repeatModeMonthly));
+      expect(find.text(en.repeatPresetThirtyDays), findsNothing);
+      expect(fromDone(), findsNothing);
+
+      await tapVisible(tester, find.text(en.repeatModeEvery));
+      expect(find.text(en.repeatPresetThirtyDays), findsOneWidget);
+      expect(tester.widget<SwitchListTile>(fromDone()).value, isFalse);
+
+      await tapVisible(tester, fromDone());
+      await tapVisible(tester, find.text(en.repeatPresetWeekly));
+      expect(tester.widget<SwitchListTile>(fromDone()).value, isTrue);
+      expect(
+        tester
+            .widget<ChoiceChip>(
+              find.ancestor(
+                of: find.text(en.repeatModeEvery),
+                matching: find.byType(ChoiceChip),
+              ),
+            )
+            .selected,
+        isTrue,
+      );
+      await save(tester);
+      expect(
+        data.tasks.updates.single.$2,
+        const TaskChanges(
+          repeatAfter: Duration(days: 7),
           repeatMode: RepeatMode.fromCurrentDate,
         ),
       );
@@ -667,27 +970,27 @@ void main() {
         sampleProject(id: 2, title: 'Personal', hexColor: '008080'),
         sampleProject(id: 3, title: 'Old', archived: true),
       ];
-      String tileMark() => tester
+      String fieldMark() => tester
           .widget<ProjectIcon>(
             find.descendant(
-              of: find.widgetWithText(ListTile, en.taskEditProject),
+              of: find.byType(ProjectField),
               matching: find.byType(ProjectIcon),
             ),
           )
           .hexColor;
       await openEditPage(tester, 1);
-      expect(find.widgetWithText(ListTile, 'Work'), findsOneWidget);
-      expect(tileMark(), '');
+      expect(find.widgetWithText(ProjectField, 'Work'), findsOneWidget);
+      expect(fieldMark(), '');
 
-      await tester.tap(find.widgetWithText(ListTile, en.taskEditProject));
+      await tester.tap(find.byType(ProjectField));
       await tester.pumpAndSettle();
       expect(find.text(en.taskEditProjectPickerTitle), findsOneWidget);
       expect(find.text('Old'), findsNothing);
       await tester.tap(find.text('Personal'));
       await tester.pumpAndSettle();
 
-      expect(find.widgetWithText(ListTile, 'Personal'), findsOneWidget);
-      expect(tileMark(), '008080');
+      expect(find.widgetWithText(ProjectField, 'Personal'), findsOneWidget);
+      expect(fieldMark(), '008080');
       await save(tester);
       expect(data.tasks.updates.single.$2, const TaskChanges(projectId: 2));
     });
@@ -701,7 +1004,7 @@ void main() {
       ];
       await openEditPage(tester, 1);
 
-      await tester.tap(find.widgetWithText(ListTile, en.taskEditProject));
+      await tester.tap(find.byType(ProjectField));
       await tester.pumpAndSettle();
 
       final title = find.text(en.taskEditProjectPickerTitle);
@@ -722,8 +1025,25 @@ void main() {
       );
       await tester.tap(find.text('Personal'));
       await tester.pumpAndSettle();
-      expect(find.widgetWithText(ListTile, 'Personal'), findsOneWidget);
+      expect(find.widgetWithText(ProjectField, 'Personal'), findsOneWidget);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets('a project whose title another shares shows its parent', (
+      tester,
+    ) async {
+      data.projects.all = [
+        ...data.projects.all,
+        sampleProject(id: 4, title: 'Backlog', parent: 1),
+        sampleProject(id: 5, title: 'Backlog', parent: 2),
+      ];
+      data.tasks.all = [sampleTask(id: 6, title: 'Later', projectId: 5)];
+      await openEditPage(tester, 6);
+
+      expect(
+        find.widgetWithText(ProjectField, 'Personal › Backlog'),
+        findsOneWidget,
+      );
+    });
 
     testWidgets('every control meets the Android tap target size', (
       tester,

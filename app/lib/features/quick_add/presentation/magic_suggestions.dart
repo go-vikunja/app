@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/filters/search_index.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
+import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/initials_avatar.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
@@ -20,11 +21,13 @@ import 'package:vikunja_mobile/features/tasks/application/people_search.dart';
 
 /// Completions for the prefixed token at the caret, in a strip that scrolls
 /// sideways: labels, projects, or people (the ones this device knows, then
-/// the server's matches for [projectId] once typing pauses). [onSelected]
-/// gets the label title, project title or username.
+/// the server's matches for [projectId] once typing pauses), leaving out
+/// the one the token already names in full. [onSelected] gets the label
+/// title, project title or username.
 class MagicSuggestions extends ConsumerStatefulWidget {
   const new({
     required this.token,
+    required this.typed,
     required this.projectId,
     required this.onSelected,
     super.key,
@@ -34,6 +37,9 @@ class MagicSuggestions extends ConsumerStatefulWidget {
   static const maxSuggestions = 30;
 
   final ActiveMagicToken token;
+
+  /// The token as it stands in the text, prefix included.
+  final String typed;
   final int? projectId;
   final ValueChanged<String> onSelected;
 
@@ -145,36 +151,42 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
     final labels = ref.watch(allLabelsProvider).value ?? const <Label>[];
     return [
       for (final label in filterLabels(labels, query))
-        _SuggestionChip(
-          avatar: _dot(parseHexColor(label.hexColor)),
-          label: label.title,
-          onPressed: () => widget.onSelected(label.title),
-        ),
+        if (!_named(label.title))
+          _SuggestionChip(
+            avatar: _dot(parseHexColor(label.hexColor)),
+            label: label.title,
+            onPressed: () => widget.onSelected(label.title),
+          ),
     ];
   }
 
+  /// Projects show their display title and match it too, while a tap
+  /// completes the server's title, which quick add matches (D45).
   /// Projects of the same title are told apart by their parents, and a
   /// tap completes what makes quick add take that one: the identifier
   /// when the title is not enough.
   List<Widget> _projectChips(String query) {
+    final l10n = context.l10n;
     final projects = ref.watch(projectsProvider).value ?? const <Project>[];
     final candidates = [
       for (final row in selectableProjects(writableProjects(projects)))
         row.node.project,
     ];
     final needle = foldForSearch(query.trim());
+    String titleOf(Project project) => project.displayTitle(l10n);
     return [
       for (final project in candidates)
         if (needle.isEmpty ||
             foldForSearch(project.title).contains(needle) ||
+            foldForSearch(titleOf(project)).contains(needle) ||
             foldForSearch(project.identifier).contains(needle))
-          _SuggestionChip(
-            avatar: ProjectIcon(hexColor: project.hexColor),
-            label: projectLabel(project, candidates),
-            onPressed: () => widget.onSelected(
-              projectReference(project, candidates) ?? project.title,
+          if (projectReference(project, candidates) ?? project.title
+              case final reference when !_named(reference))
+            _SuggestionChip(
+              avatar: ProjectIcon(hexColor: project.hexColor),
+              label: projectLabel(project, candidates, titleOf: titleOf),
+              onPressed: () => widget.onSelected(reference),
             ),
-          ),
     ];
   }
 
@@ -187,15 +199,29 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
     );
     return [
       for (final user in people)
-        _SuggestionChip(
-          avatar: ExcludeSemantics(
-            child: InitialsAvatar(name: user.displayName, radius: 10),
+        if (!_named(user.username))
+          _SuggestionChip(
+            avatar: ExcludeSemantics(
+              child: InitialsAvatar(name: user.displayName, radius: 10),
+            ),
+            label: user.displayName,
+            tooltip: context.l10n.assigneeUsername(user.username),
+            onPressed: () => widget.onSelected(user.username),
           ),
-          label: user.displayName,
-          tooltip: context.l10n.assigneeUsername(user.username),
-          onPressed: () => widget.onSelected(user.username),
-        ),
     ];
+  }
+
+  /// Whether the token already names [item] in full, ignoring case, so that
+  /// completing it would change nothing; an open quote still needs it.
+  bool _named(String item) {
+    final prefix = widget.token.prefix;
+    if (!widget.typed.startsWith(prefix)) return false;
+    var typed = widget.typed.substring(prefix.length);
+    if (typed.startsWith('"') || typed.startsWith("'")) {
+      if (typed.length < 2 || !typed.endsWith(typed[0])) return false;
+      typed = typed.substring(1, typed.length - 1);
+    }
+    return typed.toLowerCase() == item.toLowerCase();
   }
 
   Widget _dot(Color? color) {

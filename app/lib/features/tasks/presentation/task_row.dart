@@ -85,8 +85,8 @@ class TaskRow extends ConsumerWidget {
   final VoidCallback? onDueDate;
 
   /// Starts the list's selection with this task: a long press while
-  /// [selectOnLongPress] (not where a long press lifts the row to move it)
-  /// and an action for screen readers.
+  /// [selectOnLongPress] (not where the long press lifts the row, which
+  /// selects it when let go unmoved) and an action for screen readers.
   final VoidCallback? onSelect;
   final bool selectOnLongPress;
 

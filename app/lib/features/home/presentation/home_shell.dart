@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/main_action.dart';
 import 'package:vikunja_mobile/app/layout/pane_split.dart';
 import 'package:vikunja_mobile/app/layout/readable_snack_bars.dart';
 import 'package:vikunja_mobile/app/layout/window_layout.dart';
@@ -16,6 +17,7 @@ import 'package:vikunja_mobile/core/notifications/notification_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
+import 'package:vikunja_mobile/features/inbox/application/inbox_providers.dart';
 import 'package:vikunja_mobile/features/privacy/presentation/crash_reports_question.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
@@ -35,8 +37,10 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_selection.dart';
 
-/// The signed-in app: the tab bar (or, in a wide window, the rail) around
-/// the Overview, Upcoming, Projects and Account branches, each tab's task
+/// The signed-in app: the tab bar (or, in a wide window, the rail with the
+/// main action of the screen in front, such as New task) around the
+/// Overview, Upcoming, Projects and Account branches, the Overview's with a
+/// dot while there is unread activity, each tab's task
 /// detail pane beside it where the window has room, the project tree's
 /// column beside the Projects tab where it has room for that too, the
 /// offline banner, the session check when the app opens or resumes,
@@ -73,6 +77,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
 
   late final AppLifecycleListener _lifecycle;
   late final TaskDetailPanes _panes;
+  final _railActions = RailMainActions();
 
   /// For the one frame after an account switch in which the tabs are left
   /// out.
@@ -165,6 +170,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
   @override
   void dispose() {
     _panes.detach(this);
+    _railActions.dispose();
     _paneFocus.dispose();
     _lifecycle.dispose();
     super.dispose();
@@ -541,12 +547,20 @@ class _HomeShellState extends ConsumerState<HomeShell>
     final signingOut = ref.watch(signOutControllerProvider);
     final signingIn = ref.watch(signInControllerProvider) is SignInInProgress;
     final onFirstTab = widget.navigationShell.currentIndex == 0;
+    // A link-share guest has one project, and the server keeps no
+    // notifications for it.
+    final guest = ref.watch(activeAccountIsGuestProvider);
+    final unread = guest
+        ? 0
+        : ref.watch(unreadActivityCountProvider).unwrapPrevious().value ?? 0;
 
     final destinations = [
       AdaptiveDestination(
         icon: Icons.home_outlined,
         selectedIcon: Icons.home,
         label: l10n.tabOverview,
+        // The bell's badge scrolls away with the Overview's header.
+        dot: unread > 0 ? l10n.activityButton(unread) : null,
       ),
       AdaptiveDestination(
         icon: Icons.event_outlined,
@@ -572,8 +586,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
     final inFront = ModalRoute.isCurrentOf(context) ?? false;
     if (_pendingSheet != null && inFront) _schedulePendingSheet();
     final top = paneShown ? _paneStacks[tab].last : null;
-    // A link-share guest has one project, and a fold would cut a column.
-    final guest = ref.watch(activeAccountIsGuestProvider);
+    // A fold would cut a column.
     final treeBeside =
         (_paneMode ?? false) &&
         !guest &&
@@ -600,7 +613,10 @@ class _HomeShellState extends ConsumerState<HomeShell>
           data: _branchThemeOf(Theme.of(context)),
           child: _resettingTabs
               ? const SizedBox.expand()
-              : widget.navigationShell,
+              : RailMainActions.scope(
+                  actions: rail ? _railActions : null,
+                  child: widget.navigationShell,
+                ),
         ),
       ),
     );
@@ -672,6 +688,7 @@ class _HomeShellState extends ConsumerState<HomeShell>
                 selectedIndex: widget.navigationShell.currentIndex,
                 onDestinationSelected: _selectTab,
                 destinations: destinations,
+                leading: RailMainActionButton(actions: _railActions),
               ),
             Expanded(
               child: ReadableSnackBars(

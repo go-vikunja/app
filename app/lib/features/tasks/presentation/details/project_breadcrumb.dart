@@ -42,7 +42,10 @@ class ProjectBreadcrumb extends StatelessWidget {
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
         for (final ancestor in path.take(path.length - 1)) ...[
+          // A node of its own, as large as its tap target: merged upwards
+          // it would take the header's buttons in.
           Semantics(
+            container: true,
             link: true,
             hint: l10n.taskDetailOpenProjectHint,
             child: InkWell(

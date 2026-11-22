@@ -6,14 +6,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
+import 'package:vikunja_mobile/core/platform/device_channel.dart';
 import 'package:vikunja_mobile/core/security/device_authenticator.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings_store.dart';
+import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/privacy/presentation/lock_after_texts.dart';
 import 'package:vikunja_mobile/features/privacy/presentation/privacy_page.dart';
 
+import '../../helpers/announcer_region.dart';
 import '../../helpers/app_lock_fakes.dart';
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/guest_app.dart';
@@ -233,14 +236,33 @@ void main() {
     expect(stored().appLock, isFalse);
   });
 
-  testWidgets('without a screen lock the switch is off and says why, until '
-      'one is set up in the system settings', (tester) async {
+  Finder screenLockNote() => find.ancestor(
+    of: find.text(en.privacyAppLockNeedsScreenLock),
+    matching: find.byType(SettingsNote),
+  );
+
+  testWidgets('without a screen lock the switch is off and a note in full '
+      'contrast says why, until one is set up in the system settings', (
+    tester,
+  ) async {
     authenticator.supported = false;
     await pumpPage(tester);
 
     expect(switchTile(tester, en.privacyAppLockSwitch).onChanged, isNull);
-    expect(find.text(en.privacyAppLockUnsupported), findsOneWidget);
-    expect(find.text(en.privacyAppLockSubtitle), findsNothing);
+    expect(screenLockNote(), findsOneWidget);
+    expect(find.text(en.privacyAppLockSubtitle), findsOneWidget);
+    final theme = Theme.of(tester.element(screenLockNote()));
+    expect(
+      tester
+          .widget<Text>(find.text(en.privacyAppLockNeedsScreenLock))
+          .style
+          ?.color,
+      theme.colorScheme.onSurfaceVariant,
+    );
+    expect(
+      tester.getTopLeft(screenLockNote()).dy,
+      greaterThan(tester.getBottomLeft(lockSwitch()).dy - 1),
+    );
     await tester.tap(lockSwitch());
     await tester.pumpAndSettle();
     expect(authenticator.prompts, 0);
@@ -252,7 +274,84 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(switchTile(tester, en.privacyAppLockSwitch).onChanged, isNotNull);
-    expect(find.text(en.privacyAppLockSubtitle), findsOneWidget);
+    expect(screenLockNote(), findsNothing);
+    expect(find.text(en.privacyOpenSecuritySettings), findsNothing);
+  });
+
+  group("the way to Android's security settings", () {
+    late List<String> calls;
+    late bool opens;
+
+    setUp(() {
+      calls = [];
+      opens = true;
+    });
+
+    void mockDeviceChannel(WidgetTester tester) {
+      final messenger = tester.binding.defaultBinaryMessenger
+        ..setMockMethodCallHandler(deviceChannel, (call) async {
+          calls.add(call.method);
+          return call.method == 'openSecuritySettings' ? opens : null;
+        });
+      addTearDown(
+        () => messenger.setMockMethodCallHandler(deviceChannel, null),
+      );
+    }
+
+    testWidgets('opens them from the note', (tester) async {
+      authenticator.supported = false;
+      await pumpPage(tester);
+      mockDeviceChannel(tester);
+
+      await tester.tap(find.text(en.privacyOpenSecuritySettings));
+      await tester.pumpAndSettle();
+
+      expect(calls, ['openSecuritySettings']);
+      expect(find.text(en.privacySecuritySettingsNotOpened), findsNothing);
+    });
+
+    testWidgets('says so when they did not open', (tester) async {
+      authenticator.supported = false;
+      await pumpPage(tester);
+      mockDeviceChannel(tester);
+      opens = false;
+
+      await tester.tap(find.text(en.privacyOpenSecuritySettings));
+      await tester.pumpAndSettle();
+
+      expect(calls, ['openSecuritySettings']);
+      expect(find.text(en.privacySecuritySettingsNotOpened), findsOneWidget);
+    });
+
+    testWidgets('iOS has the note without the button', (tester) async {
+      authenticator.supported = false;
+      await pumpPage(tester);
+
+      expect(screenLockNote(), findsOneWidget);
+      expect(find.text(en.privacyOpenSecuritySettings), findsNothing);
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+  });
+
+  testWidgets('a screen lock removed after the check is named by the note '
+      'and spoken once, not shown twice', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await pumpPage(tester);
+    authenticator
+      ..supported = false
+      ..result = DeviceAuthResult.noCredentials;
+    final spoken = SpokenCount(tester, en.privacyAppLockNeedsScreenLock);
+
+    await tester.tap(lockSwitch());
+    await spoken.frames();
+    await tester.pumpAndSettle();
+
+    expect(spoken.times, 1);
+    expect(switchTile(tester, en.privacyAppLockSwitch).value, isFalse);
+    expect(stored().appLock, isFalse);
+    expect(find.text(en.privacyAppLockNeedsScreenLock), findsOneWidget);
+    expect(find.byType(SettingErrorText), findsNothing);
+    expect(switchTile(tester, en.privacyAppLockSwitch).onChanged, isNull);
+    semantics.dispose();
   });
 
   testWidgets('a device that lost its screen lock still turns the lock off', (
@@ -272,7 +371,7 @@ void main() {
 
     expect(switchTile(tester, en.privacyAppLockSwitch).value, isFalse);
     expect(stored().appLock, isFalse);
-    expect(find.text(en.privacyAppLockUnsupported), findsOneWidget);
+    expect(screenLockNote(), findsOneWidget);
     expect(switchTile(tester, en.privacyAppLockSwitch).onChanged, isNull);
   });
 

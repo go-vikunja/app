@@ -279,6 +279,7 @@ private struct DueText: View {
 
 private struct MetaLine: View {
   var row: TaskRowContent
+  @Environment(\.colorScheme) private var colorScheme
 
   var body: some View {
     HStack(spacing: 8) {
@@ -292,7 +293,7 @@ private struct MetaLine: View {
       }
       if let projectTitle = row.projectTitle {
         HStack(spacing: 3) {
-          Image(systemName: "folder").foregroundStyle(row.projectColor ?? .secondary)
+          Image(systemName: "folder").foregroundStyle(projectColor ?? .secondary)
           Text(projectTitle)
         }
         .foregroundStyle(.secondary)
@@ -302,9 +303,15 @@ private struct MetaLine: View {
     .lineLimit(1)
   }
 
+  private var projectColor: Color? {
+    colorScheme == .dark ? row.projectColorDark ?? row.projectColor : row.projectColor
+  }
+
+  /// The app's: an orange from urgent up, set apart from the red of what is
+  /// overdue.
   private var priorityColor: Color {
     switch row.priorityLevel {
-    case 4...: return Color("Overdue")
+    case 4...: return Color("Urgent")
     case 3: return Color("Highlight")
     default: return .secondary
     }

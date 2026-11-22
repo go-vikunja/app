@@ -74,7 +74,7 @@ void main() {
       scrollable: accountList,
     );
     await tester.pumpAndSettle();
-    expect(find.byTooltip(en.aboutTitle), findsOneWidget);
+    expect(find.text(en.accountAboutLine), findsOneWidget);
     await tester.tap(versionLine());
     await tester.pumpAndSettle();
   }

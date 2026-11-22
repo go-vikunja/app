@@ -135,3 +135,55 @@ class _InheritedFollowNote extends StatelessWidget {
     );
   }
 }
+
+/// Under the reminders of a task the user does not follow, on a server that
+/// reminds only its followers (D80): that they won't notify, and a button
+/// that follows it. Nothing while the user follows it or it is unknown.
+class UnfollowedRemindersNote extends StatelessWidget {
+  const new({required this.follow, required this.onFollow, super.key});
+
+  final FollowController follow;
+  final VoidCallback onFollow;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder(
+    valueListenable: follow,
+    builder: (context, state, _) => switch (state) {
+      FollowKnown(subscription: null, :final saving) => _UnfollowedNote(
+        onFollow: saving ? null : onFollow,
+      ),
+      _ => const SizedBox.shrink(),
+    },
+  );
+}
+
+class _UnfollowedNote extends StatelessWidget {
+  const new({required this.onFollow});
+
+  final VoidCallback? onFollow;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    // Lines up with the rows' icons and names above it.
+    return Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 0, 8, 4),
+      child: Row(
+        children: [
+          Icon(Icons.notifications_off_outlined, size: 20, color: muted),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              l10n.taskRemindersNotFollowed,
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton(onPressed: onFollow, child: Text(l10n.followTask)),
+        ],
+      ),
+    );
+  }
+}

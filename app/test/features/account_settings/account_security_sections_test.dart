@@ -11,6 +11,7 @@ import 'package:vikunja_mobile/features/account_settings/presentation/api_tokens
 import 'package:vikunja_mobile/features/account_settings/presentation/caldav_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/data_export_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/sessions_page.dart';
+import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 
 import '../../helpers/account_settings_fakes.dart';
 import '../../helpers/fakes.dart';
@@ -63,6 +64,23 @@ void main() {
       await placeInList(tester, en.accountSettingsDeleteAccount),
     ];
     expect(places, orderedEquals([...places]..sort()));
+  });
+
+  testWidgets('deleting the account sits in a card of its own, like the '
+      'sections above it, with no full-width divider', (tester) async {
+    await harness.pump(tester);
+    final row = find.widgetWithText(ListTile, en.accountSettingsDeleteAccount);
+    await scrollTo(tester, row);
+
+    expect(
+      find.ancestor(of: row, matching: find.byType(SectionCardItem)),
+      findsOneWidget,
+    );
+    final page = find.byType(AccountSettingsPage);
+    expect(
+      find.descendant(of: page, matching: find.byType(Divider)),
+      findsNothing,
+    );
   });
 
   group('password and email', () {

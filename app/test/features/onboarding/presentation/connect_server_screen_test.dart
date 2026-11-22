@@ -434,17 +434,40 @@ void main() {
       expect(find.text('http://192.168.1.20:3456'), findsOneWidget);
     }, variant: variant);
 
+    testWidgets('typed without a scheme, a public host is told that '
+        'someone may be blocking https', (tester) async {
+      usePhoneSurface(tester);
+      connector.handler = (_) async =>
+          insecureServer(root: 'http://tasks.example.org');
+      await pumpVikunjaApp(tester, connector: connector);
+      await _submitAddress(tester, 'tasks.example.org');
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.insecureFallbackDialogTitle), findsOneWidget);
+      expect(
+        find.text(en.insecureFallbackDialogBody('tasks.example.org')),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('type http:// before the address'),
+        findsNothing,
+      );
+    }, variant: variant);
+
     testWidgets('typed without a scheme, says that https failed rather than '
-        'that the server uses http, and continues when accepted', (
-      tester,
-    ) async {
+        'that the server uses http, on the home network how to go to http '
+        'at once, and continues when accepted', (tester) async {
       usePhoneSurface(tester);
       await connectInsecurely(tester, address: '192.168.1.20:3456');
 
       expect(find.text(en.insecureFallbackDialogTitle), findsOneWidget);
       expect(
-        find.text(en.insecureFallbackDialogBody('192.168.1.20:3456')),
+        find.text(en.insecureFallbackDialogBodyLocal('192.168.1.20:3456')),
         findsOneWidget,
+      );
+      expect(
+        find.text(en.insecureFallbackDialogBody('192.168.1.20:3456')),
+        findsNothing,
       );
       expect(find.text(en.insecureDialogTitle), findsNothing);
       expect(containerOf(tester).read(currentServerProvider), isNull);

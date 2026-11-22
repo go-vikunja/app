@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
@@ -45,8 +46,8 @@ enum _Action { refresh, newSavedFilter, toggleSavedFilters, toggleArchived }
 const _menuRouteName = 'project-tree-menu';
 
 /// The web's sidebar: the favourites (the Favorites list, saved filters and
-/// projects), every saved filter, and the project tree, archived projects
-/// on request; saved filters, favourite ones too, can be hidden. In the
+/// projects), the project tree, archived projects on request, and every
+/// saved filter, which can be hidden, favourite ones too. In the
 /// tree a long press lifts a project with its subprojects, to drop it
 /// between other projects or onto one, and screen readers move it with the
 /// row's actions; each move goes to the server at once. New projects start
@@ -142,8 +143,9 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
     // A link-share guest has its one project and no saved filters.
     final guest = ref.watch(activeAccountIsGuestProvider);
     // The tree would otherwise show expanded for a moment, then collapse,
-    // and be pushed down by the sections above it and its rows' counts as
-    // they arrive.
+    // and be pushed down by the favourites above it and its rows' counts as
+    // they arrive; an account with saved filters only would show the empty
+    // state first.
     final ready =
         (treePreferences.hasValue || treePreferences.hasError) &&
         (!showSavedFilters ||
@@ -152,7 +154,8 @@ class _ProjectsScreenState extends ConsumerState<ProjectsScreen>
         favoritesLoaded &&
         (openTaskCounts.hasValue || openTaskCounts.hasError);
     return Scaffold(
-      appBar: AppBar(
+      appBar: ReadableAppBar(
+        maxWidth: ReadableWidth.list,
         title: ScreenTitle(l10n.tabProjects),
         actions: [
           const SearchButton(),
@@ -340,6 +343,9 @@ class _SectionsState extends ConsumerState<_Sections> {
   /// The part of a row's height at its top and at its bottom that drops
   /// beside it; the middle drops into it.
   static const _edgeShare = 0.25;
+
+  /// Below the tree while a project is held, to drop it on the top level.
+  static const _dropRoom = 56.0;
 
   /// As [SectionCard] lays out its card and header.
   static const _cardMargin = EdgeInsets.symmetric(horizontal: 16);
@@ -586,6 +592,7 @@ class _SectionsState extends ConsumerState<_Sections> {
   _TreeDrop? _dropAt(Offset pointer, int held) {
     final rows = _rows;
     int? lastLaidOut;
+    var lastBottom = 0.0;
     for (var index = 0; index < rows.length; index++) {
       final box = _slots[rows[index].node.project.id]?.findRenderObject();
       if (box is! RenderBox || !box.attached || !box.hasSize) continue;
@@ -599,8 +606,12 @@ class _SectionsState extends ConsumerState<_Sections> {
         return _Into(rowIndex: index, projectId: rows[index].node.project.id);
       }
       lastLaidOut = index;
+      lastBottom = top + height;
     }
-    if (lastLaidOut != rows.length - 1) return null;
+    // Over the saved filters below the room, nothing.
+    if (lastLaidOut != rows.length - 1 || pointer.dy > lastBottom + _dropRoom) {
+      return null;
+    }
     return _Gap(
       rowIndex: rows.length,
       depth: 0,
@@ -891,12 +902,6 @@ class _SectionsState extends ConsumerState<_Sections> {
                       itemCount: favouriteRows.length,
                       itemBuilder: (context, index) => favouriteRows[index],
                     ),
-                  if (savedFilters.isNotEmpty)
-                    SliverSectionCard(
-                      title: l10n.savedFiltersHeading,
-                      itemCount: filterRows.length,
-                      itemBuilder: (context, index) => filterRows[index],
-                    ),
                   if (rows.isNotEmpty)
                     SliverMainAxisGroup(
                       slivers: [
@@ -940,13 +945,19 @@ class _SectionsState extends ConsumerState<_Sections> {
                         ),
                       ],
                     ),
-                  SliverSafeArea(
-                    top: false,
-                    // While a project is held, room below the last row to drop
-                    // it on the top level.
-                    sliver: SliverToBoxAdapter(
-                      child: SizedBox(height: _held == null ? 16 : 72),
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: _held == null ? 0 : _dropRoom),
+                  ),
+                  // Below the tree, which they would push down as they grow.
+                  if (savedFilters.isNotEmpty)
+                    SliverSectionCard(
+                      title: l10n.savedFiltersHeading,
+                      itemCount: filterRows.length,
+                      itemBuilder: (context, index) => filterRows[index],
                     ),
+                  const SliverSafeArea(
+                    top: false,
+                    sliver: SliverToBoxAdapter(child: SizedBox(height: 16)),
                   ),
                 ],
               ),

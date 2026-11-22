@@ -492,7 +492,7 @@ void main() {
 
       await app.read(widgetHostSettingsProvider.future);
 
-      expect(host.hostFile, (activeAccountId: entry.id, dynamicColor: true));
+      expect(host.hostFile, (activeAccountId: entry.id, dynamicColor: false));
       expect(host.snapshot('${entry.id}.today'), isNotNull);
       expect(host.calls, contains('updateAll'));
     });

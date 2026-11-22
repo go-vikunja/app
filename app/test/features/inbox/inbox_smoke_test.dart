@@ -144,7 +144,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        find.text(lookupAppLocalizations(locale).inboxEmptyTitle),
+        find.text(lookupAppLocalizations(locale).activityEmptyTitle),
         findsOneWidget,
       );
       expect(tester.takeException(), isNull);

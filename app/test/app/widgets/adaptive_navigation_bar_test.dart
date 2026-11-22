@@ -134,6 +134,93 @@ void main() {
       expect(selected, [1]);
     });
   }
+
+  group('a dot on a destination', () {
+    const dotted = [
+      AdaptiveDestination(
+        icon: Icons.home_outlined,
+        selectedIcon: Icons.home,
+        label: 'Overview',
+        dot: 'Activity, 3 unread',
+      ),
+      AdaptiveDestination(
+        icon: Icons.calendar_today_outlined,
+        selectedIcon: Icons.calendar_today,
+        label: 'Upcoming',
+      ),
+    ];
+
+    Future<void> pumpDotted(
+      WidgetTester tester, {
+      required TargetPlatform platform,
+      bool rail = false,
+    }) => tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(platform: platform),
+        home: Scaffold(
+          body: rail
+              ? Row(
+                  children: [
+                    AdaptiveNavigationRail(
+                      destinations: dotted,
+                      selectedIndex: 1,
+                      onDestinationSelected: (_) {},
+                    ),
+                  ],
+                )
+              : null,
+          bottomNavigationBar: rail
+              ? null
+              : AdaptiveNavigationBar(
+                  destinations: dotted,
+                  selectedIndex: 1,
+                  onDestinationSelected: (_) {},
+                ),
+        ),
+      ),
+    );
+
+    Finder dots() => find.byWidgetPredicate(
+      (widget) => widget is Badge && widget.isLabelVisible,
+    );
+
+    for (final (name, platform, rail) in [
+      ('the bar', TargetPlatform.android, false),
+      ('the rail', TargetPlatform.android, true),
+    ]) {
+      testWidgets('$name shows it on that icon, and screen readers hear '
+          'it last, as Android reads a hint', (tester) async {
+        final semantics = tester.ensureSemantics();
+        await pumpDotted(tester, platform: platform, rail: rail);
+
+        expect(dots(), findsOneWidget);
+        expect(
+          find.descendant(
+            of: dots(),
+            matching: find.byIcon(Icons.home_outlined),
+          ),
+          findsOneWidget,
+        );
+        final node = tester.getSemantics(find.text('Overview'));
+        expect(node.label, startsWith('Overview'));
+        expect(node.hint, 'Activity, 3 unread');
+        expect(tester.getSemantics(find.text('Upcoming')).hint, isEmpty);
+        semantics.dispose();
+      });
+    }
+
+    testWidgets("the iOS tab bar: VoiceOver reads it as the tab's value, "
+        'after its name', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpDotted(tester, platform: TargetPlatform.iOS);
+
+      expect(dots(), findsOneWidget);
+      final node = tester.getSemantics(find.text('Overview'));
+      expect(node.label, 'Overview');
+      expect(node.value, 'Activity, 3 unread');
+      semantics.dispose();
+    });
+  });
 }
 
 /// Android's 115 %, as its float arithmetic gives it: a hair above 1.15.

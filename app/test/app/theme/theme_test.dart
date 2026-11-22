@@ -158,13 +158,42 @@ void main() {
     final brandLight = AppTheme.light().colorScheme.primary;
     final brandDark = AppTheme.dark().colorScheme.primary;
 
-    testWidgets('Android 12 and later take the palette for both modes and '
-        'keep the component themes', (tester) async {
+    /// The switch turned on before, as an opt-in.
+    AuthFakes systemColorsOn() =>
+        AuthFakes()..preferences.values[useSystemColorsKey] = 'true';
+
+    testWidgets('a new install starts in the brand blue, also where a '
+        'palette exists, and its switch is off', (tester) async {
       useSystemPalette(
         tester,
         () => _palette(primary40: 0xFF00AA44, primary80: 0xFF66DD88),
       );
-      await pumpSignedInApp(tester, sync: data, now: now);
+      final auth = AuthFakes();
+      await pumpVikunjaApp(tester, auth: auth);
+
+      expect(
+        themeOf(tester, ConnectServerScreen).colorScheme.primary,
+        brandLight,
+      );
+      expect(
+        await containerOf(tester).read(useSystemColorsProvider.future),
+        isFalse,
+      );
+      expect(auth.preferences.values.containsKey(useSystemColorsKey), isFalse);
+    });
+
+    testWidgets('once turned on, Android 12 and later take the palette for '
+        'both modes and keep the component themes', (tester) async {
+      useSystemPalette(
+        tester,
+        () => _palette(primary40: 0xFF00AA44, primary80: 0xFF66DD88),
+      );
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        auth: systemColorsOn(),
+        now: now,
+      );
 
       final light = themeOf(tester, OverviewScreen);
       expect(light.colorScheme.primary, const Color(0xFF00AA44));
@@ -191,7 +220,12 @@ void main() {
         tester,
         () => _palette(primary40: primary, primary80: 0xFF66DD88),
       );
-      await pumpSignedInApp(tester, sync: data, now: now);
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        auth: systemColorsOn(),
+        now: now,
+      );
 
       primary = 0xFFAA3300;
       const [
@@ -210,8 +244,8 @@ void main() {
       );
     });
 
-    testWidgets('the switch in the Account tab turns them off for the '
-        'device, and on again', (tester) async {
+    testWidgets('the switch in the Account tab turns them on for the '
+        'device, and off again', (tester) async {
       useSystemPalette(
         tester,
         () => _palette(primary40: 0xFF00AA44, primary80: 0xFF66DD88),
@@ -243,42 +277,47 @@ void main() {
         ),
         findsOneWidget,
       );
-      expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
-
-      await tester.tap(toggle);
-      await tester.pumpAndSettle();
-
       expect(tester.widget<SwitchListTile>(toggle).value, isFalse);
       expect(themeOf(tester, AccountTab).colorScheme.primary, brandLight);
-      expect(auth.preferences.values[useSystemColorsKey], 'false');
 
       await tester.tap(toggle);
       await tester.pumpAndSettle();
 
+      expect(tester.widget<SwitchListTile>(toggle).value, isTrue);
       expect(
         themeOf(tester, AccountTab).colorScheme.primary,
         const Color(0xFF00AA44),
       );
       expect(auth.preferences.values[useSystemColorsKey], 'true');
+
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+
+      expect(themeOf(tester, AccountTab).colorScheme.primary, brandLight);
+      expect(auth.preferences.values[useSystemColorsKey], 'false');
     });
 
-    testWidgets('turned off before, the app starts in the brand blue', (
-      tester,
-    ) async {
-      useSystemPalette(
-        tester,
-        () => _palette(primary40: 0xFF00AA44, primary80: 0xFF66DD88),
-      );
-      final auth = AuthFakes();
-      auth.preferences.values[useSystemColorsKey] = 'false';
-      await auth.seedAccount(
-        fullServer270(),
-        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
-      );
-      await pumpVikunjaApp(tester, auth: auth, sync: data);
+    for (final (stored, palette) in [('false', false), ('true', true)]) {
+      testWidgets('stored as $stored before, the app starts in the '
+          '${palette ? 'palette' : 'brand blue'}', (tester) async {
+        useSystemPalette(
+          tester,
+          () => _palette(primary40: 0xFF00AA44, primary80: 0xFF66DD88),
+        );
+        final auth = AuthFakes();
+        auth.preferences.values[useSystemColorsKey] = stored;
+        await auth.seedAccount(
+          fullServer270(),
+          tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+        );
+        await pumpVikunjaApp(tester, auth: auth, sync: data);
 
-      expect(themeOf(tester, OverviewScreen).colorScheme.primary, brandLight);
-    });
+        expect(
+          themeOf(tester, OverviewScreen).colorScheme.primary,
+          palette ? const Color(0xFF00AA44) : brandLight,
+        );
+      });
+    }
 
     for (final (name, variant) in [
       ('Android before 12', TargetPlatform.android),
@@ -366,7 +405,12 @@ void main() {
         () => _palette(primary40: 0xFF00AA44, primary80: 0xFF66DD88),
       );
       useHighContrast(tester);
-      await pumpSignedInApp(tester, sync: data, now: now);
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        auth: AuthFakes()..preferences.values[useSystemColorsKey] = 'true',
+        now: now,
+      );
 
       final light = themeOf(tester, OverviewScreen).colorScheme;
       expect(

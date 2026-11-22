@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
@@ -31,14 +32,15 @@ final class _RowDrag {
 }
 
 /// The rows of a project's list view: the open part, then the done part
-/// under its heading, or the view's empty state. While the list can be put
-/// in order by hand ([onReorder]), a long press lifts a top-level row of
-/// the open part with its subtasks, to drop it between two others (the
-/// list scrolls near its ends), and screen readers move it with the row's
-/// actions; the done part, nested rows and the tasks in [leavingIds] stay
-/// where they are. In a list that is not put in order by hand a long press
-/// selects a row ([onSelect]), so it means one thing in either list; while
-/// the list selects ([selection]) no row lifts.
+/// under its heading, or the view's empty state. A long press selects a row
+/// ([onSelect]), as in every list. While the list can be put in order by
+/// hand ([onReorder]), a top-level row of the open part lifts with its
+/// subtasks at that long press and, moved before it is let go, drops
+/// between two others (the list scrolls near its ends); let go where it
+/// was lifted, it is selected instead. Screen readers move it with the
+/// row's actions. The done part, nested rows and the tasks in [leavingIds]
+/// stay where they are; while the list selects ([selection]) no row
+/// lifts.
 class ProjectListBody extends StatefulWidget {
   const new({
     required this.projectId,
@@ -112,6 +114,14 @@ class _ProjectListBodyState extends State<ProjectListBody> {
   Offset? _pointer;
   int? _dropIndex;
 
+  /// How far the held row has moved since it was lifted.
+  Offset _travel = Offset.zero;
+
+  /// Whether the held row ever went further than a touch slop: until then
+  /// it neither scrolls the list nor shows where it would land, and once
+  /// it has, letting go never selects, even back where it started.
+  bool _moved = false;
+
   @override
   void dispose() {
     _edgeScroller.stop();
@@ -150,7 +160,25 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     };
   }
 
-  void _startDrag(Task task) => setState(() => _held = task.id);
+  void _startDrag(Task task) {
+    _travel = Offset.zero;
+    _moved = false;
+    setState(() => _held = task.id);
+  }
+
+  void _heldMoved(DragUpdateDetails details) {
+    _travel += details.delta;
+    _moved = _moved || _travel.distance > kTouchSlop;
+    if (_moved) _dragMoved(details.globalPosition);
+  }
+
+  /// A row let go without ever moving was only held: it is selected, as a
+  /// long press does in every other list. A touch the system took is not.
+  void _released(Task task, DraggableDetails details) {
+    final held = !_moved && details.wasAccepted;
+    _endDrag();
+    if (held && mounted) widget.onSelect?.call(task);
+  }
 
   void _endDrag() {
     _edgeScroller.stop();
@@ -327,6 +355,8 @@ class _ProjectListBodyState extends State<ProjectListBody> {
           group.rows.first,
           key: keys.first,
           actions: movable ? _actionsFor(index) : const {},
+          // Its long press is the lift's, which selects when let go.
+          selectOnLongPress: !movable,
         );
         return ReorderSlot<int>(
           key: ValueKey(task.id),
@@ -358,8 +388,8 @@ class _ProjectListBodyState extends State<ProjectListBody> {
                   ),
                 ),
                 onDragStarted: () => _startDrag(task),
-                onDragUpdate: (details) => _dragMoved(details.globalPosition),
-                onDragEnd: (_) => _endDrag(),
+                onDragUpdate: _heldMoved,
+                onDragEnd: (details) => _released(task, details),
                 child: LiftableRow(liftable: movable, child: top),
               ),
               for (final (i, row) in group.rows.indexed.skip(1)) ...[
@@ -413,6 +443,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     ProjectListRow row, {
     required Key key,
     Map<CustomSemanticsAction, VoidCallback> actions = const {},
+    bool selectOnLongPress = true,
   }) {
     final task = row.task;
     final projectsById = widget.projectsById;
@@ -442,7 +473,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
           ? null
           : () => widget.onDueDate!(task),
       onSelect: widget.onSelect == null ? null : () => widget.onSelect!(task),
-      selectOnLongPress: widget.onReorder == null,
+      selectOnLongPress: selectOnLongPress,
       selection: widget.selection?.call(task),
       actions: actions,
     );

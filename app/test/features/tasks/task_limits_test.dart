@@ -44,8 +44,7 @@ void main() {
       );
 
       expect(fieldText(tester, en.taskEditTitleLabel), long);
-      await tester.tap(find.text(en.priorityUrgent));
-      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text(en.priorityUrgent));
       expect(editSaveEnabled(tester), isTrue);
       await saveEdits(tester);
 

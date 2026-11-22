@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/link_share_providers.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
@@ -14,6 +15,7 @@ import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
 import 'package:vikunja_mobile/features/common/presentation/list_section_header.dart';
+import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/home/presentation/reauth_banner.dart';
@@ -24,6 +26,7 @@ import 'package:vikunja_mobile/features/session/application/session_check.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/fakes.dart';
+import '../../helpers/large_screens.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
@@ -173,15 +176,36 @@ void main() {
     }
   });
 
-  testWidgets("ends with the app's version", (tester) async {
+  testWidgets("ends with the line to About, named above the app's version", (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
     await pumpHome(tester);
 
-    await scrollTo(tester, find.text(en.accountAppVersion('1.0.0', '42')));
+    final version = find.text(en.accountAppVersion('1.0.0', '42'));
+    await scrollTo(tester, version);
+    final label = find.text(en.accountAboutLine);
     final signOut = find.widgetWithText(OutlinedButton, en.homeSignOut);
     expect(
-      tester.getTopLeft(find.text(en.accountAppVersion('1.0.0', '42'))).dy,
+      tester.getTopLeft(label).dy,
       greaterThan(tester.getBottomLeft(signOut).dy),
     );
+    expect(
+      tester.getTopLeft(version).dy,
+      greaterThan(tester.getTopLeft(label).dy),
+    );
+    final line = find.ancestor(of: label, matching: find.byType(TextButton));
+    expect(find.descendant(of: line, matching: version), findsOneWidget);
+    expect(
+      tester.getSemantics(line),
+      isSemantics(
+        label: '${en.accountAboutLine}\n${en.accountAppVersion('1.0.0', '42')}',
+        isButton: true,
+        hasTapAction: true,
+      ),
+    );
+    expect(find.byTooltip(en.aboutTitle), findsNothing);
+    semantics.dispose();
   });
 
   testWidgets('without a separate name the username is shown once', (
@@ -256,9 +280,48 @@ void main() {
       findsOneWidget,
     );
     expect(
-      tester.getTopLeft(find.text(en.onThisDeviceSubtitle)).dy,
+      tester.getTopLeft(find.text(en.notificationsForOwnTasks)).dy,
       greaterThan(tester.getTopLeft(notifications).dy),
     );
+  });
+
+  testWidgets('every section is a card, the settings row included, with '
+      'its header outside and a divider only between rows', (tester) async {
+    usePhoneSurface(tester, logicalSize: const Size(400, 3200));
+    await pumpHome(tester);
+
+    Finder cardOf(Finder row) =>
+        find.ancestor(of: row, matching: find.byType(Material)).first;
+    final settingsRow = find.widgetWithText(ListTile, en.accountSettingsEntry);
+    final settingsCard = tester.widget<Material>(cardOf(settingsRow));
+    final colors = Theme.of(tester.element(settingsRow)).colorScheme;
+    expect(settingsCard.color, colors.surfaceContainerLow);
+    final tab = tester.getRect(find.byType(AccountTab));
+    expect(tester.getRect(cardOf(settingsRow)).left, tab.left + 16);
+
+    final sync = find.widgetWithText(ListSectionHeader, en.accountSyncHeading);
+    final syncCard = find
+        .descendant(
+          of: find.ancestor(of: sync, matching: find.byType(SettingsSection)),
+          matching: find.byType(Material),
+        )
+        .first;
+    expect(
+      find.descendant(of: syncCard, matching: find.text(en.accountSyncNow)),
+      findsOneWidget,
+    );
+    expect(tester.widget<Material>(syncCard).color, colors.surfaceContainerLow);
+    expect(
+      tester.widget<Material>(syncCard).shape,
+      const RoundedRectangleBorder(
+        borderRadius: BorderRadius.all(Radius.circular(12)),
+      ),
+    );
+    expect(
+      tester.getRect(syncCard).top,
+      greaterThan(tester.getRect(sync).bottom - 1),
+    );
+    expect(find.byType(Divider), findsNothing);
   });
 
   testWidgets('cancelling the sign-out dialog keeps the account', (
@@ -945,5 +1008,25 @@ void main() {
       expect(auth.webAuthenticator.urls, isEmpty);
       expect(find.text(en.failureUnreachableTitle), findsOneWidget);
     });
+  });
+
+  testWidgets("on a tablet the app bar's title lines up with the column "
+      'below it', (tester) async {
+    useWindow(tester, androidTabletLandscape);
+    await pumpHome(tester);
+
+    final screen = tester.getRect(find.byType(AccountTab));
+    final inset = (screen.width - ReadableWidth.form) / 2;
+    expect(inset, greaterThan(0));
+    final title = find.descendant(
+      of: find.byType(AppBar),
+      matching: find.text(en.tabAccount),
+    );
+    final card = tester.getRect(
+      find.widgetWithText(ListTile, en.accountSettingsEntry),
+    );
+    expect(tester.getTopLeft(title).dx, screen.left + inset + 16);
+    expect(card.left, screen.left + inset + 16);
+    expect(tester.getRect(find.byType(AppBar)).width, screen.width);
   });
 }

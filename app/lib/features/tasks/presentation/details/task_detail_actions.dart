@@ -6,6 +6,8 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/notifications/subscriber_reminders.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository.dart';
 import 'package:vikunja_mobile/core/repositories/subscription_repository_providers.dart';
@@ -299,19 +301,35 @@ final class TaskDetailActions extends ChangeNotifier {
     }
   }
 
+  /// A change that went through is said, as the project's follow is; an
+  /// unfollow also says that the task no longer notifies where the server
+  /// reminds only its followers (D80).
   Future<void> toggleFollow(Task task, Map<int, String> projectTitles) async {
     final l10n = _context.l10n;
     if (task.id < 0) {
       _showMessage(l10n.followTaskOnceSynced);
       return;
     }
+    final before = follow.value;
     final message = await toggleFollowing(
       _context,
       follow,
       id: task.id,
       projectTitle: (id) => projectTitles[id] ?? l10n.projectUnknownTitle,
     );
-    if (message != null && _context.mounted) _showMessage(message);
+    if (!_context.mounted) return;
+    final silenced =
+        _ref.read(accountsProvider).value?.activeAccount?.subscriberId != null;
+    final text =
+        message ??
+        switch ((before, follow.value)) {
+          (FollowKnown(following: false), FollowKnown(following: true)) =>
+            l10n.taskFollowed,
+          (FollowKnown(following: true), FollowKnown(following: false)) =>
+            silenced ? l10n.taskUnfollowedSilenced : l10n.taskUnfollowed,
+          _ => null,
+        };
+    if (text != null) _showMessage(text);
   }
 
   /// At once here, then on the server; undone here when that fails. The

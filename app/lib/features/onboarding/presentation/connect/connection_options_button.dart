@@ -12,12 +12,17 @@ class ConnectionOptionsButton extends StatelessWidget {
     required this.origin,
     required this.hasSettings,
     required this.onPressed,
+    this.triesHttpsFirst = false,
     super.key,
   });
 
   final OriginKey? origin;
   final bool hasSettings;
   final ValueChanged<OriginKey>? onPressed;
+
+  /// The address has no scheme, so [origin] is its https one, whose
+  /// settings do not apply if the server answers only over http (D8).
+  final bool triesHttpsFirst;
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +35,7 @@ class ConnectionOptionsButton extends StatelessWidget {
         ? l10n.connectionOptionsNeedAddress
         : [
             l10n.connectionOptionsFor('$origin'),
+            if (triesHttpsFirst) l10n.connectionOptionsHttpsFirst,
             if (hasSettings) l10n.connectionOptionsSaved,
           ].join(' · ');
     return Align(

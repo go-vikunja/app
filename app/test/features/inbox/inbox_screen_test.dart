@@ -124,7 +124,7 @@ void main() {
         find.descendant(of: find.byType(InboxButton), matching: find.text('4')),
         findsOneWidget,
       );
-      expect(find.bySemanticsLabel(en.inboxButton(4)), findsOneWidget);
+      expect(find.bySemanticsLabel(en.activityButton(4)), findsOneWidget);
       semantics.dispose();
     });
 
@@ -144,8 +144,8 @@ void main() {
         ),
       );
       expect(badge.isLabelVisible, isFalse);
-      expect(find.bySemanticsLabel(en.inboxButton(0)), findsOneWidget);
-      expect(en.inboxButton(0), en.inboxTitle);
+      expect(find.bySemanticsLabel(en.activityButton(0)), findsOneWidget);
+      expect(en.activityButton(0), en.activityTitle);
       semantics.dispose();
     });
 
@@ -620,7 +620,7 @@ void main() {
     ];
     await pumpSignedInApp(tester, sync: data, now: now);
 
-    expect(find.bySemanticsLabel(en.inboxButton(0)), findsOneWidget);
+    expect(find.bySemanticsLabel(en.activityButton(0)), findsOneWidget);
 
     await tester.tap(find.byType(InboxButton));
     await tester.pumpAndSettle();
@@ -729,7 +729,7 @@ void main() {
     data.activity.notifications = [];
     await openInbox(tester);
 
-    expect(find.text(en.inboxEmptyTitle), findsOneWidget);
+    expect(find.text(en.activityEmptyTitle), findsOneWidget);
     expect(find.text(en.inboxEmptyBody), findsOneWidget);
   });
 
@@ -755,7 +755,7 @@ void main() {
     useLocale(tester, const Locale('de'));
     await openInbox(tester);
 
-    expect(find.text(de.inboxTitle), findsWidgets);
+    expect(find.text(de.activityTitle), findsWidgets);
     expect(find.text(de.inboxToday), findsOneWidget);
     expect(
       find.text(de.inboxCommented('Anna Example', 'Water the plants')),

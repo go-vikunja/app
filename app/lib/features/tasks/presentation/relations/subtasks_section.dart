@@ -10,10 +10,11 @@ import 'package:vikunja_mobile/features/tasks/presentation/details/detail_sectio
 import 'package:vikunja_mobile/features/tasks/presentation/relations/relation_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
-/// The subtasks with their done controls, and a field that adds one; the
-/// field stays focused for the next. Without [onAdd] (no account) the
-/// field is left out and the controls only show, as they do for a subtask
-/// that [isReadOnly] says the user may not change.
+/// The subtasks with their done controls and, as the card's last row, a
+/// field that adds one, alone while there is none; the field stays focused
+/// for the next. Without [onAdd] (no account) the field is left out and
+/// the controls only show, as they do for a subtask that [isReadOnly] says
+/// the user may not change.
 class SubtasksSection extends StatefulWidget {
   const new({
     required this.subtasks,
@@ -89,6 +90,7 @@ class _SubtasksSectionState extends State<SubtasksSection> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final colors = Theme.of(context).colorScheme;
     final subtasks = widget.subtasks;
     final done = subtasks.where((task) => task.done).length;
     final onRemove = widget.onRemove;
@@ -103,7 +105,7 @@ class _SubtasksSectionState extends State<SubtasksSection> {
                 ? null
                 : Text(l10n.taskDetailSubtasksDone(done, subtasks.length)),
           ),
-          if (subtasks.isNotEmpty)
+          if (subtasks.isNotEmpty || widget.onAdd != null)
             SectionCard(
               children: [
                 for (final subtask in subtasks)
@@ -115,33 +117,41 @@ class _SubtasksSectionState extends State<SubtasksSection> {
                     onOpen: () => widget.onOpen(subtask),
                     onRemove: onRemove == null ? null : () => onRemove(subtask),
                   ),
-              ],
-            ),
-          if (widget.onAdd != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              child: TextField(
-                controller: _title,
-                focusNode: _focus,
-                textInputAction: TextInputAction.done,
-                textCapitalization: TextCapitalization.sentences,
-                inputFormatters: [CodePointLimitFormatter(Task.maxTitleLength)],
-                decoration: InputDecoration(
-                  labelText: l10n.taskDetailAddSubtask,
-                  prefixIcon: const Icon(Icons.subdirectory_arrow_right),
-                  suffixIcon: IconButton(
-                    onPressed: canAdd ? () => unawaited(_add()) : null,
-                    tooltip: l10n.taskDetailAddSubtask,
-                    icon: const Icon(Icons.add),
+                if (widget.onAdd != null)
+                  Padding(
+                    // Keeps the typed title and the focus while rows above
+                    // come or go.
+                    key: const ValueKey('add subtask'),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: TextField(
+                      controller: _title,
+                      focusNode: _focus,
+                      textInputAction: TextInputAction.done,
+                      textCapitalization: TextCapitalization.sentences,
+                      inputFormatters: [
+                        CodePointLimitFormatter(Task.maxTitleLength),
+                      ],
+                      decoration: InputDecoration(
+                        // As the other sections' "+ Add …" rows.
+                        border: InputBorder.none,
+                        labelText: l10n.taskDetailAddSubtask,
+                        labelStyle: TextStyle(color: colors.primary),
+                        prefixIcon: Icon(Icons.add, color: colors.primary),
+                        suffixIcon: IconButton(
+                          onPressed: canAdd ? () => unawaited(_add()) : null,
+                          tooltip: l10n.taskDetailAddSubtask,
+                          icon: const Icon(Icons.keyboard_return),
+                        ),
+                      ),
+                      // Keeps the keyboard up for the next subtask; Done on an
+                      // empty field closes it.
+                      onEditingComplete: () {
+                        if (_title.text.trim().isEmpty) _focus.unfocus();
+                      },
+                      onSubmitted: (_) => unawaited(_add()),
+                    ),
                   ),
-                ),
-                // Keeps the keyboard up for the next subtask; Done on an empty
-                // field closes it.
-                onEditingComplete: () {
-                  if (_title.text.trim().isEmpty) _focus.unfocus();
-                },
-                onSubmitted: (_) => unawaited(_add()),
-              ),
+              ],
             ),
         ],
       ),

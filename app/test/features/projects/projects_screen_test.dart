@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -72,7 +73,10 @@ void main() {
     expect(find.text(en.projectsAllHeading), findsOneWidget);
     expect(rowTitles(tester), ['Home', 'Home', 'Work', 'Admin', 'Reports']);
     expect(find.text('Old'), findsNothing);
-    expect(find.text(en.projectChildCount(2)), findsOneWidget);
+    expect(
+      find.text(ProjectRow.detailsLine([en.projectChildCount(2)])),
+      findsOneWidget,
+    );
     final stars = find.descendant(
       of: find.byType(ProjectRow),
       matching: find.byType(FilledStar),
@@ -102,10 +106,122 @@ void main() {
     await pumpProjects(tester);
 
     expect(
-      find.text('${en.smartListOpenTaskCount(2)} · ${en.projectChildCount(2)}'),
+      find.text(
+        ProjectRow.detailsLine([
+          en.smartListOpenTaskCount(2),
+          en.projectChildCount(2),
+        ]),
+      ),
       findsOneWidget,
     );
-    expect(find.text(en.smartListOpenTaskCount(1)), findsOneWidget);
+    expect(
+      find.text(ProjectRow.detailsLine([en.smartListOpenTaskCount(1)])),
+      findsOneWidget,
+    );
+  });
+
+  test("a project's details break only between their parts, never between "
+      'a count and its noun', () {
+    final line = ProjectRow.detailsLine([
+      de.smartListOpenTaskCount(2),
+      de.projectChildCount(1),
+    ]);
+
+    expect(
+      line.replaceAll('\u00A0', ' '),
+      '${de.smartListOpenTaskCount(2)} · ${de.projectChildCount(1)}',
+    );
+    expect(line.split(' '), [
+      '2\u00A0offene',
+      'Aufgaben\u00A0·',
+      '1\u00A0Unterprojekt',
+    ]);
+    expect(ProjectRow.detailsLine(['Aufgaben: 2']), 'Aufgaben:\u00A02');
+  });
+
+  testWidgets('in a narrow column the details wrap between their parts', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          // The test font's glyphs are 14 wide: room for the first part
+          // and the next count, not for its noun.
+          child: SizedBox(
+            width: 300,
+            child: Text(
+              ProjectRow.detailsLine(['2 offene Aufgaben', '1 Unterprojekt']),
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byType(RichText),
+    );
+    final line = ProjectRow.detailsLine([
+      '2 offene Aufgaben',
+      '1 Unterprojekt',
+    ]);
+    List<TextBox> boxes(String part) {
+      final start = line.indexOf(part);
+      return paragraph.getBoxesForSelection(
+        TextSelection(baseOffset: start, extentOffset: start + part.length),
+      );
+    }
+
+    final tasks = boxes('2\u00A0offene Aufgaben');
+    final subprojects = boxes('1\u00A0Unterprojekt');
+    expect(tasks.map((box) => box.top).toSet(), hasLength(1));
+    expect(subprojects.map((box) => box.top).toSet(), hasLength(1));
+    expect(subprojects.first.top, greaterThan(tasks.first.top));
+    expect(subprojects.first.left, 0);
+  });
+
+  testWidgets('at twice the text size, a part longer than the line wraps '
+      'between its words, never inside one', (tester) async {
+    final line = ProjectRow.detailsLine([
+      '12 offene Aufgaben',
+      '1 Unterprojekt',
+    ]);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          // 14 glyphs of 28: the longest part, "1 Unterprojekt", fits, the
+          // first does not.
+          child: SizedBox(
+            width: 392,
+            child: Text(
+              line,
+              style: const TextStyle(fontSize: 14),
+              textScaler: const TextScaler.linear(2),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final paragraph = tester.renderObject<RenderParagraph>(
+      find.byType(RichText),
+    );
+    double topOf(int offset) => paragraph
+        .getBoxesForSelection(
+          TextSelection(baseOffset: offset, extentOffset: offset + 1),
+        )
+        .first
+        .top;
+    final starts = [
+      0,
+      for (var offset = 1; offset < line.length; offset++)
+        if (line[offset] != ' ' && topOf(offset) > topOf(offset - 1)) offset,
+    ];
+    expect(starts.length, greaterThan(1));
+    for (final start in starts.skip(1)) {
+      expect(line[start - 1], ' ', reason: 'the line at $start');
+    }
+    expect(starts.map(line.substring).last, '1\u00A0Unterprojekt');
   });
 
   testWidgets('children are indented and can be collapsed', (tester) async {
@@ -254,8 +370,8 @@ void main() {
     ];
 
     testWidgets('the favourites first (the Favorites list, favourite saved '
-        'filters and projects), then every saved filter by title, then the '
-        'tree', (tester) async {
+        'filters and projects), then the tree, then every saved filter by '
+        'title', (tester) async {
       usePhoneSurface(tester, logicalSize: const Size(360, 1600));
       data.projects.savedFilters = filters;
       data.tasks.all = [
@@ -267,20 +383,20 @@ void main() {
 
       expect(headings(tester), [
         en.projectsFavouritesHeading,
-        en.savedFiltersHeading,
         en.projectsAllHeading,
+        en.savedFiltersHeading,
       ]);
       expect(rows(tester), [
         en.projectsFavouriteTasks,
         'Zeta',
         'Home',
-        'alpha',
-        en.savedFilterMyOpenTasks,
-        'Zeta',
         'Home',
         'Work',
         'Admin',
         'Reports',
+        'alpha',
+        en.savedFilterMyOpenTasks,
+        'Zeta',
       ]);
       expect(find.text(en.smartListOpenTaskCount(2)), findsOneWidget);
       expect(find.byIcon(Icons.filter_list), findsNWidgets(4));
@@ -302,8 +418,8 @@ void main() {
       );
     });
 
-    testWidgets('the tree waits for the sections above it rather than jump '
-        'down when they arrive', (tester) async {
+    testWidgets('the tree waits for the saved filters too, so an account '
+        'with saved filters only shows no empty state first', (tester) async {
       final filters = StreamController<List<SavedFilterRef>>();
       addTearDown(filters.close);
       await pumpSignedInApp(
@@ -322,8 +438,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(headings(tester), [
         en.projectsFavouritesHeading,
-        en.savedFiltersHeading,
         en.projectsAllHeading,
+        en.savedFiltersHeading,
       ]);
     });
 
@@ -367,6 +483,8 @@ void main() {
     testWidgets('the Favorites list and a saved filter open as lists', (
       tester,
     ) async {
+      // The saved filters are below the tree.
+      usePhoneSurface(tester, logicalSize: const Size(360, 1600));
       data.projects.savedFilters = filters;
       data.tasks.all = [sampleTask(id: 1, title: 'Starred', favorite: true)];
       await pumpProjects(tester);
@@ -431,8 +549,8 @@ void main() {
 
       expect(headings(tester), [
         en.projectsFavouritesHeading,
-        en.savedFiltersHeading,
         en.projectsAllHeading,
+        en.savedFiltersHeading,
       ]);
       expect(data.listPreferences.projectTree.showSavedFilters, isTrue);
     });
@@ -474,6 +592,7 @@ void main() {
     });
 
     testWidgets('are in German', (tester) async {
+      usePhoneSurface(tester, logicalSize: const Size(360, 1600));
       useLocale(tester, const Locale('de'));
       data.projects.savedFilters = filters;
       data.tasks.all = [sampleTask(id: 1, title: 'Starred', favorite: true)];
@@ -482,8 +601,8 @@ void main() {
 
       expect(headings(tester), [
         de.projectsFavouritesHeading,
-        de.savedFiltersHeading,
         de.projectsAllHeading,
+        de.savedFiltersHeading,
       ]);
       expect(find.text(de.projectsFavouriteTasks), findsOneWidget);
       expect(find.text(de.savedFilterMyOpenTasks), findsOneWidget);

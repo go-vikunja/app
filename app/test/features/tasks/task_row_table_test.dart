@@ -206,7 +206,7 @@ void main() {
     tester,
   ) async {
     const priority = {TableColumn.title, TableColumn.priority};
-    Future<(Color?, IconData?)> look(TaskPriority value, String text) async {
+    Future<(Object?, IconData?)> look(TaskPriority value, String text) async {
       await pumpRow(
         tester,
         fullTask(priority: value, done: true),
@@ -219,7 +219,13 @@ void main() {
           matching: find.byType(Icon),
         ),
       );
-      return (colorOf(tester, label), icon.icon);
+      final color = colorOf(tester, label);
+      return (
+        color == urgentPriorityColor(tester.element(label), text: true)
+            ? 'urgent'
+            : color,
+        icon.icon,
+      );
     }
 
     final colors = AppTheme.light().colorScheme;
@@ -241,7 +247,7 @@ void main() {
       (TaskPriority.urgent, en.priorityUrgent),
       (TaskPriority.doNow, en.priorityDoNow),
     ]) {
-      expect(await look(value, text), (colors.error, Icons.flag));
+      expect(await look(value, text), ('urgent', Icons.flag));
     }
     expect(find.byIcon(Icons.error_outline), findsNothing);
   });

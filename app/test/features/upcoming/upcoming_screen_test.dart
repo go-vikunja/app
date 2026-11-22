@@ -16,8 +16,10 @@ import 'package:vikunja_mobile/features/overview/presentation/overview_screen.da
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/day_strip.dart';
+import 'package:vikunja_mobile/features/upcoming/presentation/timeline_day.dart';
 import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.dart';
 
+import '../../helpers/large_screens.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/sync_fakes.dart';
@@ -428,7 +430,7 @@ void main() {
 
     await tester.tap(find.byTooltip(en.moreActions));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(en.inboxButton(0)));
+    await tester.tap(find.text(en.activityButton(0)));
     await tester.pumpAndSettle();
 
     expect(find.byType(InboxScreen), findsOneWidget);
@@ -608,5 +610,71 @@ void main() {
       find.text(en.selectionCount(rowTitles(tester).length)),
       findsOneWidget,
     );
+  });
+
+  group('large text', () {
+    void useTextScale(WidgetTester tester, double scale) {
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    }
+
+    Finder dayNumber(String number) => find.descendant(
+      of: find.byType(TimelineDay),
+      matching: find.text(number),
+    );
+
+    Rect rowRect(WidgetTester tester, String title) =>
+        tester.getRect(find.widgetWithText(TaskRow, title));
+
+    testWidgets('below 1.5 times the text the days keep the date column '
+        'beside their rows', (tester) async {
+      useTextScale(tester, 1.3);
+      await pumpUpcoming(tester);
+
+      expect(dayNumber('14'), findsOneWidget);
+      expect(
+        rowRect(tester, 'Water plants').left,
+        greaterThan(rowRect(tester, 'Pay the bill').left),
+      );
+    });
+
+    testWidgets('from 1.5 times the text the days lose the date column, '
+        'their headings say the dates, and their rows get the whole width', (
+      tester,
+    ) async {
+      useTextScale(tester, 1.5);
+      await pumpUpcoming(tester);
+
+      expect(dayNumber('14'), findsNothing);
+      expect(find.text(en.sectionTomorrow), findsOneWidget);
+      final overdue = rowRect(tester, 'Pay the bill');
+      final tomorrow = rowRect(tester, 'Water plants');
+      expect(tomorrow.left, overdue.left);
+      expect(tomorrow.width, overdue.width);
+    });
+  });
+
+  testWidgets("on a tablet the app bar's title and actions line up with "
+      'the band of the list below it', (tester) async {
+    useWindow(tester, androidTabletLandscape);
+    await pumpSignedInApp(tester, sync: data, now: now);
+    await openTab(tester, en.tabUpcoming);
+
+    final screen = tester.getRect(find.byType(UpcomingScreen));
+    final inset = (screen.width - 840) / 2;
+    expect(inset, greaterThan(0));
+    final title = find.descendant(
+      of: find.byType(AppBar),
+      matching: find.text(en.tabUpcoming),
+    );
+    // The title starts where the cards do.
+    final row = tester.getRect(find.widgetWithText(TaskRow, 'Pay the bill'));
+    expect(tester.getTopLeft(title).dx, screen.left + inset + 16);
+    expect(row.left, screen.left + inset + 16);
+    expect(
+      tester.getRect(find.byTooltip(en.moreActions)).right,
+      lessThanOrEqualTo(screen.right - inset),
+    );
+    expect(tester.getRect(find.byType(AppBar)).width, screen.width);
   });
 }

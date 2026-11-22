@@ -6,6 +6,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/main_action.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
@@ -278,7 +280,8 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
     if (project != null) _seen = true;
     if (_seen && project == null && projects.hasValue) {
       return Scaffold(
-        appBar: AppBar(
+        appBar: ReadableAppBar(
+          maxWidth: ReadableWidth.list,
           automaticallyImplyLeading: !ProjectTreeColumnScope.shownOf(context),
           title: ScreenTitle(l10n.projectUnknownTitle),
         ),
@@ -412,152 +415,164 @@ class _ProjectTasksScreenState extends ConsumerState<ProjectTasksScreen>
         : const <Task>[];
     final selectableIds = {for (final task in selectable) task.id};
 
+    final newTask = !addsTasks || selecting
+        ? null
+        : MainAction(
+            icon: Icons.add,
+            label: l10n.newTask,
+            onPressed: () => unawaited(
+              showNewTaskSheet(context, projectId: widget.projectId),
+            ),
+          );
     return selectionBackHandler(
-      child: Scaffold(
-        appBar: selecting
-            ? selectionBar(
-                selectable,
-                bottom: ProjectAppBarBottom(
-                  progress: progress,
-                  textScaler: MediaQuery.textScalerOf(context),
-                ),
-              )
-            : AppBar(
-                // The tree beside it is where to go next; back still goes back.
-                automaticallyImplyLeading: !ProjectTreeColumnScope.shownOf(
-                  context,
-                ),
-                title: ScreenTitle(
-                  project?.displayTitle(l10n) ?? l10n.projectUnknownTitle,
-                ),
-                actions: [
-                  if (project != null &&
-                      _followable &&
-                      !archived &&
-                      access.canEdit &&
-                      !guest)
-                    IconButton(
-                      onPressed: managingProject
-                          ? null
-                          : () => unawaited(toggleProjectFavourite(project)),
-                      tooltip: project.isFavorite
-                          ? l10n.projectRemoveFromFavourites
-                          : l10n.projectAddToFavourites,
-                      isSelected: project.isFavorite,
-                      icon: const Icon(Icons.star_outline),
-                      selectedIcon: const FilledStar(),
-                    ),
-                  if (managingProject)
-                    SizedBox.square(
-                      dimension: kMinInteractiveDimension,
-                      child: Center(
-                        child: SizedBox.square(
-                          dimension: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            semanticsLabel: l10n.projectSaving,
+      child: MainActionClaim(
+        action: newTask,
+        child: Scaffold(
+          appBar: selecting
+              ? selectionBar(
+                  selectable,
+                  bottom: ProjectAppBarBottom(
+                    progress: progress,
+                    textScaler: MediaQuery.textScalerOf(context),
+                  ),
+                )
+              : ReadableAppBar(
+                  maxWidth: ReadableWidth.list,
+                  // The tree beside it is where to go next; back still goes
+                  // back.
+                  automaticallyImplyLeading: !ProjectTreeColumnScope.shownOf(
+                    context,
+                  ),
+                  title: ScreenTitle(
+                    project?.displayTitle(l10n) ?? l10n.projectUnknownTitle,
+                  ),
+                  actions: [
+                    if (project != null &&
+                        _followable &&
+                        !archived &&
+                        access.canEdit &&
+                        !guest)
+                      IconButton(
+                        onPressed: managingProject
+                            ? null
+                            : () => unawaited(toggleProjectFavourite(project)),
+                        tooltip: project.isFavorite
+                            ? l10n.projectRemoveFromFavourites
+                            : l10n.projectAddToFavourites,
+                        isSelected: project.isFavorite,
+                        icon: const Icon(Icons.star_outline),
+                        selectedIcon: const FilledStar(),
+                      ),
+                    if (managingProject)
+                      SizedBox.square(
+                        dimension: kMinInteractiveDimension,
+                        child: Center(
+                          child: SizedBox.square(
+                            dimension: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              semanticsLabel: l10n.projectSaving,
+                            ),
                           ),
                         ),
-                      ),
-                    )
-                  else
-                    PopupMenuButton<_Action>(
-                      tooltip: l10n.moreActions,
-                      onSelected: (action) =>
-                          _onAction(action, project: project),
-                      itemBuilder: (context) {
-                        final projectItems = _projectItems(
-                          context,
-                          project: project,
-                          access: access,
-                          guest: guest,
-                          archived: archived,
-                          parentArchived:
-                              project != null &&
-                              project.parentProjectId != 0 &&
-                              isArchivedInTree(
-                                project.parentProjectId,
-                                projectsById,
-                              ),
-                          isDefault: project?.id == defaultProjectId,
-                        );
-                        return [
-                          // For whoever cannot pull the list, a screen
-                          // reader among them.
-                          projectMenuItem(
-                            _Action.refresh,
-                            icon: Icons.refresh,
-                            label: l10n.refresh,
-                            enabled: !refreshing,
-                          ),
-                          if (selects && !archived && access.canChangeTasks)
+                      )
+                    else
+                      PopupMenuButton<_Action>(
+                        tooltip: l10n.moreActions,
+                        onSelected: (action) =>
+                            _onAction(action, project: project),
+                        itemBuilder: (context) {
+                          final projectItems = _projectItems(
+                            context,
+                            project: project,
+                            access: access,
+                            guest: guest,
+                            archived: archived,
+                            parentArchived:
+                                project != null &&
+                                project.parentProjectId != 0 &&
+                                isArchivedInTree(
+                                  project.parentProjectId,
+                                  projectsById,
+                                ),
+                            isDefault: project?.id == defaultProjectId,
+                          );
+                          return [
+                            // For whoever cannot pull the list, a screen
+                            // reader among them.
                             projectMenuItem(
-                              _Action.select,
-                              icon: Icons.checklist,
-                              label: l10n.selectTasks,
+                              _Action.refresh,
+                              icon: Icons.refresh,
+                              label: l10n.refresh,
+                              enabled: !refreshing,
                             ),
-                          if (projectItems.isNotEmpty) const PopupMenuDivider(),
-                          ...projectItems,
-                        ];
-                      },
-                    ),
-                ],
-                bottom: ProjectAppBarBottom(
-                  progress: progress,
-                  textScaler: MediaQuery.textScalerOf(context),
-                  tabs: tabs,
+                            if (selects && !archived && access.canChangeTasks)
+                              projectMenuItem(
+                                _Action.select,
+                                icon: Icons.checklist,
+                                label: l10n.selectTasks,
+                              ),
+                            if (projectItems.isNotEmpty)
+                              const PopupMenuDivider(),
+                            ...projectItems,
+                          ];
+                        },
+                      ),
+                  ],
+                  bottom: ProjectAppBarBottom(
+                    progress: progress,
+                    textScaler: MediaQuery.textScalerOf(context),
+                    tabs: tabs,
+                  ),
                 ),
-              ),
-        bottomNavigationBar: selecting ? selectionActionBar(selectable) : null,
-        floatingActionButton: !addsTasks || selecting
-            ? null
-            : FloatingActionButton.extended(
-                onPressed: () => unawaited(
-                  showNewTaskSheet(context, projectId: widget.projectId),
-                ),
-                icon: const Icon(Icons.add),
-                label: Text(l10n.newTask),
-              ),
-        body: buildRefreshable(
-          showing.data,
-          loadingLabel: l10n.projectTasksLoading,
-          header: controls,
-          // Under the tabs in every view; the board and the timeline
-          // themselves use the whole width.
-          maxWidth: ReadableWidth.list,
-          notificationPredicate: delegate.notificationPredicate,
-          builder: (content, notice) => projectViewBody(
+          bottomNavigationBar: selecting
+              ? selectionActionBar(selectable)
+              : null,
+          floatingActionButton: MainActionButton.unlessBesideRail(
             context,
-            content,
-            ProjectViewFrame(
-              projectId: widget.projectId,
-              projectsById: projectsById,
-              archived: archived,
-              access: access,
-              repository: repository,
-              offline: offlineOrUnreachable,
-              downloadFailed: downloadFailed,
-              notice: notice,
-              archivedNote: archivedNote,
-              controls: controls,
-              columns: columns,
-              now: now,
-              minimumPriority: minimumPriority,
-              pendingIds: pendingIds,
-              bottomPadding: addsTasks ? _fabRoom : 0,
-              leavingIn: leavingTasksIn,
-              onDoneChanged: (task, {required done}) =>
-                  unawaited(setTaskDone(task, done: done)),
-              onFavoriteChanged: (task, {required favorite}) =>
-                  unawaited(setTaskFavorite(task, favorite: favorite)),
-              onDueDate: (task) => unawaited(changeTaskDueDate(task)),
-              onSelect: startSelection,
-              selection: selecting
-                  ? (task) => rowSelection(
-                      task,
-                      changeable: selectableIds.contains(task.id),
-                    )
-                  : null,
+            newTask,
+          ),
+          body: buildRefreshable(
+            showing.data,
+            loadingLabel: l10n.projectTasksLoading,
+            header: controls,
+            // Under the tabs in every view; the board and the timeline
+            // themselves use the whole width.
+            maxWidth: ReadableWidth.list,
+            notificationPredicate: delegate.notificationPredicate,
+            builder: (content, notice) => projectViewBody(
+              context,
+              content,
+              ProjectViewFrame(
+                projectId: widget.projectId,
+                projectsById: projectsById,
+                archived: archived,
+                access: access,
+                repository: repository,
+                offline: offlineOrUnreachable,
+                downloadFailed: downloadFailed,
+                notice: notice,
+                archivedNote: archivedNote,
+                controls: controls,
+                columns: columns,
+                now: now,
+                minimumPriority: minimumPriority,
+                pendingIds: pendingIds,
+                bottomPadding: addsTasks ? _fabRoom : 0,
+                leavingIn: leavingTasksIn,
+                onDoneChanged: (task, {required done}) =>
+                    unawaited(setTaskDone(task, done: done)),
+                onFavoriteChanged: (task, {required favorite}) =>
+                    unawaited(setTaskFavorite(task, favorite: favorite)),
+                onDueDate: (task) => unawaited(changeTaskDueDate(task)),
+                onSelect: startSelection,
+                selection: selecting
+                    ? (task) => rowSelection(
+                        task,
+                        changeable: selectableIds.contains(task.id),
+                      )
+                    : null,
+              ),
             ),
           ),
         ),

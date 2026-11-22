@@ -175,7 +175,7 @@ void main() {
 
   testWidgets('the chosen theme carries a check where the segments have room '
       'for their icons', (tester) async {
-    await pumpAccountTab(tester, size: const Size(600, 740));
+    await pumpAccountTab(tester, size: const Size(680, 740));
 
     Finder inSegmentOf(String label, Finder matching) => find.descendant(
       of: find.ancestor(
@@ -196,13 +196,20 @@ void main() {
       findsOneWidget,
     );
     expect(find.byIcon(Icons.brightness_auto_outlined), findsNothing);
+    final card = find
+        .ancestor(of: segments, matching: find.byType(Material))
+        .first;
     final section = find.ancestor(
       of: segments,
       matching: find.byType(SettingsSection),
     );
     expect(
-      tester.getSize(segments).width,
+      tester.getSize(card).width,
       moreOrLessEquals(tester.getSize(section).width - 32, epsilon: 1),
+    );
+    expect(
+      tester.getSize(segments).width,
+      moreOrLessEquals(tester.getSize(card).width - 32, epsilon: 1),
     );
   });
 

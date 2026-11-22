@@ -40,7 +40,7 @@ class ThemeChoice extends _$ThemeChoice {
   }
 }
 
-/// The device-wide "Use system colours" switch, on unless turned off.
+/// The device-wide "Use system colours" switch, off until turned on.
 @Riverpod(keepAlive: true)
 class UseSystemColors extends _$UseSystemColors {
   @override
@@ -48,7 +48,7 @@ class UseSystemColors extends _$UseSystemColors {
     final stored = await ref
         .watch(preferencesStoreProvider)
         .getString(useSystemColorsKey);
-    return stored != 'false';
+    return stored == 'true';
   }
 
   Future<void> set({required bool enabled}) async {

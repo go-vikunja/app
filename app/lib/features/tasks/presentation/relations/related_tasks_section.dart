@@ -5,12 +5,14 @@ import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_semantics.dart';
 import 'package:vikunja_mobile/features/tasks/application/relation_search.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_header.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/details/detail_section_rows.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/relations/relation_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
-/// The relations other than subtasks and parents, grouped by kind, and the
-/// action that adds one. Without [onAdd] (no account) the action is left
-/// out, and the section too when there is nothing to show.
+/// The relations other than subtasks and parents, grouped by kind, and
+/// the card that adds one, alone while there is none. Without [onAdd] (no
+/// account) that card is left out, and the section too when there is
+/// nothing to show.
 class RelatedTasksSection extends StatelessWidget {
   const new({
     required this.task,
@@ -70,16 +72,13 @@ class RelatedTasksSection extends StatelessWidget {
             const SizedBox(height: 4),
           ],
           if (onAdd case final onAdd?)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: TextButton.icon(
+            SectionCard(
+              children: [
+                DetailAddRow(
+                  label: l10n.taskDetailAddRelation,
                   onPressed: onAdd,
-                  icon: const Icon(Icons.add_link),
-                  label: Text(l10n.taskDetailAddRelation),
                 ),
-              ),
+              ],
             ),
         ],
       ),

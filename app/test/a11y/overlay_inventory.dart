@@ -233,9 +233,11 @@ const overlayInventory = <String, OverlayCoverage>{
     'test/app/accessibility_smoke_test.dart',
   ),
   'features/tasks/presentation/details/attachments_section.dart '
-      '_TaskAttachmentsSectionState.build PopupMenuButton': Exempt(
-    '$_menuOfTextItems; opened at 200 % in '
-    'test/app/accessibility_smoke_test.dart',
+      '_TaskAttachmentsSectionState._pickSource showMenu': Exempt(
+    'the attachment sources as a Material popup menu of text items, opened '
+    "by the section's labelled Add attachment row, which is swept with the "
+    'task sheet; the items are 48 dp rows that read their text; opened at '
+    '200 % in test/app/accessibility_smoke_test.dart',
   ),
   'features/tasks/presentation/details/comments_section.dart '
       '_CommentMenu.build PopupMenuButton': Exempt(

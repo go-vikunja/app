@@ -127,6 +127,8 @@ void main() {
           priorityLevel: 3,
           projectTitle: 'Home',
           projectColor: '1973ff',
+          projectColorLight: '1973ff',
+          projectColorDark: '4a8cff',
           canDone: true,
           semanticsLabel: 'Water the plants',
           overdueSemanticsLabel: 'Water the plants, overdue',

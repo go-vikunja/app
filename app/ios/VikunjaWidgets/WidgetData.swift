@@ -86,6 +86,9 @@ struct ListSnapshot: Decodable {
     var priorityLevel: Int?
     var project: String?
     var color: String?
+    /// `color` as the app drew it on the light and the dark background.
+    var colorLight: String?
+    var colorDark: String?
     var canDone: Bool?
     var label: String?
     var labelOverdue: String?

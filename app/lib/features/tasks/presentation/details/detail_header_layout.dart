@@ -8,6 +8,8 @@ enum DetailHeaderSlot { back, breadcrumb, actions }
 /// The detail's header: [back] at the start of its line and [actions] at
 /// the end, [breadcrumb] between them when it fits there whole, else on a
 /// line of its own below them, [breadcrumbIndent] in from the start.
+/// Screen readers read back, the breadcrumb, then the actions, on whichever
+/// line the breadcrumb is.
 class DetailHeaderLayout
     extends SlottedMultiChildRenderObjectWidget<DetailHeaderSlot, RenderBox> {
   const new({
@@ -27,11 +29,19 @@ class DetailHeaderLayout
   Iterable<DetailHeaderSlot> get slots => DetailHeaderSlot.values;
 
   @override
-  Widget? childForSlot(DetailHeaderSlot slot) => switch (slot) {
-    DetailHeaderSlot.back => back,
-    DetailHeaderSlot.breadcrumb => breadcrumb,
-    DetailHeaderSlot.actions => actions,
-  };
+  Widget? childForSlot(DetailHeaderSlot slot) {
+    final child = switch (slot) {
+      DetailHeaderSlot.back => back,
+      DetailHeaderSlot.breadcrumb => breadcrumb,
+      DetailHeaderSlot.actions => actions,
+    };
+    if (child == null) return null;
+    return Semantics(
+      container: true,
+      sortKey: OrdinalSortKey(slot.index.toDouble()),
+      child: child,
+    );
+  }
 
   @override
   RenderDetailHeader createRenderObject(BuildContext context) =>
@@ -76,6 +86,13 @@ class RenderDetailHeader extends RenderBox
     if (value == _breadcrumbIndent) return;
     _breadcrumbIndent = value;
     markNeedsLayout();
+  }
+
+  // The slots' sort keys order them only as siblings within one node.
+  @override
+  void describeSemanticsConfiguration(SemanticsConfiguration config) {
+    super.describeSemanticsConfiguration(config);
+    config.isSemanticBoundary = true;
   }
 
   RenderBox? get _back => childForSlot(DetailHeaderSlot.back);

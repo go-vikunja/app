@@ -39,8 +39,8 @@ private val brandColors = colorProviders(
     widgetBackground = ColorProvider(day = Color(0xFFF8F9FF), night = Color(0xFF0E141C)),
 )
 
-// The system palette on Android 12+ unless "Use system colours" is off in
-// the app (D45); the brand scheme otherwise.
+// The system palette on Android 12+ once "Use system colours" is on in the
+// app (D45); the brand scheme otherwise.
 @Composable
 internal fun WidgetTheme(dynamicColor: Boolean, content: @Composable () -> Unit) {
     val dynamic = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S

@@ -68,6 +68,7 @@ import 'package:vikunja_mobile/features/sharing/presentation/qr_code_view.dart';
 import 'package:vikunja_mobile/features/smart_lists/presentation/saved_filter_form_page.dart';
 import 'package:vikunja_mobile/features/sync/presentation/first_sync_screen.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/create/new_task_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/comment_composer.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/open/account_picker.dart';
@@ -564,13 +565,13 @@ void main() {
           )
           .first;
       await tester.scrollUntilVisible(
-        find.byTooltip(l10n.attachmentAdd),
+        find.text(l10n.attachmentAdd),
         200,
         scrollable: scrollable,
       );
       await tester.pump();
       expect(tester.takeException(), isNull);
-      await tester.tap(find.byTooltip(l10n.attachmentAdd));
+      await tester.tap(find.text(l10n.attachmentAdd));
       await tester.pumpAndSettle();
       expect(find.text(l10n.attachmentSourceCamera), findsOneWidget);
       await tester.tapAt(const Offset(4, 4));
@@ -1375,29 +1376,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(TaskEditPage), findsOneWidget);
-      await scrollToEnd(tester, find.byType(ListView));
+      await scrollToEnd(tester, find.byType(TaskEditPage));
       expect(tester.takeException(), isNull);
 
-      // The end of the list is built now; the top is not, so jump back.
+      await tester.ensureVisible(find.text(l10n.repeatModeEvery));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.repeatModeEvery));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(l10n.repeatModeFromCompletion));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(l10n.repeatModeFromCompletion));
       await tester.pumpAndSettle();
-      tester
-          .state<ScrollableState>(
-            find
-                .descendant(
-                  of: find.byType(ListView),
-                  matching: find.byType(Scrollable),
-                )
-                .first,
-          )
-          .position
-          .jumpTo(0);
+      expect(tester.takeException(), isNull);
+      await tester.ensureVisible(find.byType(ProjectField));
       await tester.pumpAndSettle();
-      await tester.ensureVisible(
-        find.widgetWithText(ListTile, l10n.taskEditProject),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(ListTile, l10n.taskEditProject));
+      await tester.tap(find.byType(ProjectField));
       await tester.pumpAndSettle();
       expect(find.text(l10n.taskEditProjectPickerTitle), findsOneWidget);
       await tester.tap(find.text(l10n.taskEditProjectPickerTitle));
@@ -1503,6 +1496,10 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.text(l10n.newTaskMoreOptions));
       await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(l10n.repeatModeEvery));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.repeatModeEvery));
+      await tester.pumpAndSettle();
       await tester.ensureVisible(find.text(l10n.repeatPresetThirtyDays));
       await tester.pumpAndSettle();
       expect(find.text(l10n.newTaskFewerOptions), findsOneWidget);
@@ -1548,18 +1545,8 @@ void main() {
       await tester.pumpAndSettle();
 
       Future<void> open(String action) async {
-        // The form builds lazily; at this scale the sections start below
-        // the fold.
-        await tester.scrollUntilVisible(
-          find.text(action),
-          200,
-          scrollable: find
-              .descendant(
-                of: find.byType(ListView),
-                matching: find.byType(Scrollable),
-              )
-              .first,
-        );
+        // At this scale the sections start below the fold.
+        await tester.ensureVisible(find.text(action));
         await tester.pumpAndSettle();
         await tester.tap(find.text(action));
         await tester.pumpAndSettle();
@@ -3030,7 +3017,8 @@ void main() {
           .position
           .jumpTo(0);
       await tester.pump();
-      for (var i = 0; i < 80 && row.evaluate().isEmpty; i++) {
+      // The page runs to about 20,000 px at 200 % text in German.
+      for (var i = 0; i < 160 && row.evaluate().isEmpty; i++) {
         await tester.drag(settingsList(), const Offset(0, -200));
         await tester.pump();
       }

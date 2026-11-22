@@ -7,11 +7,32 @@ final class AdaptiveDestination {
     required this.icon,
     required this.selectedIcon,
     required this.label,
+    this.dot,
   });
 
   final IconData icon;
   final IconData selectedIcon;
   final String label;
+
+  /// A dot on the icon, such as for unread activity, and what screen
+  /// readers hear for it after the label; null for none.
+  final String? dot;
+
+  Widget iconFor(BuildContext context, {required bool selected}) {
+    final icon = Icon(selected ? selectedIcon : this.icon);
+    final dot = this.dot;
+    if (dot == null) return icon;
+    // Read after the label: Android reads a hint last, iOS a value next.
+    final apple = switch (Theme.of(context).platform) {
+      TargetPlatform.iOS || TargetPlatform.macOS => true,
+      _ => false,
+    };
+    return Semantics(
+      value: apple ? dot : null,
+      hint: apple ? null : dot,
+      child: Badge(child: icon),
+    );
+  }
 }
 
 /// Whether the destinations go into an [AdaptiveNavigationRail] beside the
@@ -58,8 +79,8 @@ class AdaptiveNavigationBar extends StatelessWidget {
             items: [
               for (final destination in destinations)
                 BottomNavigationBarItem(
-                  icon: Icon(destination.icon),
-                  activeIcon: Icon(destination.selectedIcon),
+                  icon: destination.iconFor(context, selected: false),
+                  activeIcon: destination.iconFor(context, selected: true),
                   label: destination.label,
                 ),
             ],
@@ -82,8 +103,8 @@ class AdaptiveNavigationBar extends StatelessWidget {
             destinations: [
               for (final destination in destinations)
                 NavigationDestination(
-                  icon: Icon(destination.icon),
-                  selectedIcon: Icon(destination.selectedIcon),
+                  icon: destination.iconFor(context, selected: false),
+                  selectedIcon: destination.iconFor(context, selected: true),
                   label: destination.label,
                   // Its tooltip would show the label at the bar's size.
                   tooltip: _beyond(context, 1.15, _materialLabelSize(context))
@@ -98,18 +119,21 @@ class AdaptiveNavigationBar extends StatelessWidget {
   }
 }
 
-/// A Material 3 navigation rail with every label shown, for wide windows.
+/// A Material 3 navigation rail with every label shown, for wide windows,
+/// with [leading] above the destinations, such as a floating button.
 class AdaptiveNavigationRail extends StatelessWidget {
   const new({
     required this.destinations,
     required this.selectedIndex,
     required this.onDestinationSelected,
+    this.leading,
     super.key,
   });
 
   final List<AdaptiveDestination> destinations;
   final int selectedIndex;
   final ValueChanged<int> onDestinationSelected;
+  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
@@ -122,11 +146,12 @@ class AdaptiveNavigationRail extends StatelessWidget {
         labelType: NavigationRailLabelType.all,
         // A phone in landscape is short.
         scrollable: true,
+        leading: leading,
         destinations: [
           for (final destination in destinations)
             NavigationRailDestination(
-              icon: Icon(destination.icon),
-              selectedIcon: Icon(destination.selectedIcon),
+              icon: destination.iconFor(context, selected: false),
+              selectedIcon: destination.iconFor(context, selected: true),
               label: Text(destination.label),
             ),
         ],

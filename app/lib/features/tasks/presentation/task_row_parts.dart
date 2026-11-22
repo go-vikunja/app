@@ -1,8 +1,10 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/theme/legible_color.dart';
 
-/// The web's colour bubble before a task's title or a project's name.
+/// The web's colour bubble before a task's title, as light or dark as it
+/// needs to stand out from what it is drawn on.
 class ColorDot extends StatelessWidget {
   const new({required this.color, super.key});
 
@@ -13,7 +15,10 @@ class ColorDot extends StatelessWidget {
     child: SizedBox.square(
       dimension: 10,
       child: DecoratedBox(
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: legibleIn(context, color),
+          shape: BoxShape.circle,
+        ),
       ),
     ),
   );

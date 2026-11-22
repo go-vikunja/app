@@ -5,6 +5,10 @@ import 'package:vikunja_mobile/features/common/presentation/section_semantics.da
 const _margin = EdgeInsets.symmetric(horizontal: 16);
 const _headerPadding = EdgeInsetsDirectional.fromSTEB(20, 16, 20, 4);
 
+/// The colour of the dividers between a card's rows.
+Color sectionCardDividerColor(ColorScheme colors) =>
+    colors.outlineVariant.withValues(alpha: 0.7);
+
 /// The row's own key keeps its place among the card's rows; a global key
 /// must stay with the row alone.
 Key? _slotKey(Widget row) => row.key is LocalKey ? row.key : null;
@@ -31,6 +35,9 @@ class SectionCard extends StatelessWidget {
   final Widget? trailing;
   final Color? titleColor;
   final EdgeInsetsGeometry margin;
+
+  static const EdgeInsets defaultMargin = _margin;
+  static const EdgeInsetsDirectional headerPadding = _headerPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -174,7 +181,7 @@ class SectionCardItem extends StatelessWidget {
               height: 1,
               indent: 16,
               endIndent: 16,
-              color: colors.outlineVariant.withValues(alpha: 0.7),
+              color: sectionCardDividerColor(colors),
             ),
         ],
       ),

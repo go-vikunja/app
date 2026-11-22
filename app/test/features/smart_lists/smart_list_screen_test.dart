@@ -728,7 +728,8 @@ void main() {
       );
       await openList(tester, filter.projectId);
 
-      await tester.tap(find.text(en.newTask));
+      // At 800 dp the rail's button, which names it in its tooltip.
+      await tester.tap(find.byTooltip(en.newTask));
       await tester.pumpAndSettle();
 
       expect(find.byType(NewTaskSheet), findsOneWidget);

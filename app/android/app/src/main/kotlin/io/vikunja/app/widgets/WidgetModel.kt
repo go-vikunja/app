@@ -29,6 +29,9 @@ internal data class SnapshotRow(
     val overdueSemanticsLabel: String? = null,
     val doneLabel: String,
     val link: String,
+    // projectColor as drawn on the light and the dark background.
+    val projectColorLight: Int? = null,
+    val projectColorDark: Int? = null,
 )
 
 internal data class Snapshot(
@@ -89,6 +92,8 @@ internal data class Snapshot(
             priorityLevel = json.long("priorityLevel")?.toInt(),
             projectTitle = json.string("project"),
             projectColor = colorOf(json.string("color")),
+            projectColorLight = colorOf(json.string("colorLight")),
+            projectColorDark = colorOf(json.string("colorDark")),
             canDone = json.opt("canDone") == true,
             semanticsLabel = json.required("label"),
             overdueSemanticsLabel = json.string("labelOverdue"),
@@ -146,7 +151,7 @@ internal data class HostSettings(
             val json = JSONObject(text)
             HostSettings(
                 json.string("activeAccountId"),
-                json.opt("dynamicColor") != false,
+                json.opt("dynamicColor") == true,
                 json.string("linkKey")?.takeIf { it.isNotEmpty() },
             )
         }

@@ -6,13 +6,21 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/tasks/application/date_shortcuts.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/shortcut_chips.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/task_form_parts.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/date_time_picker.dart';
 
-/// One date of the edit page: the row opens the picker, the trailing
-/// button clears, the chips below jump to a day and keep the time already
-/// set (else the user's default due time, else the breakpoint time for
-/// [now]).
+// The checkmark goes in the avatar's fixed box; without an avatar it takes
+// a square as tall as the label, which grows with the text size.
+const _chipIconBox = BoxConstraints.tightFor(width: 20, height: 20);
+
+/// One date of the edit page laid out as the New task sheet lays out its
+/// due date: a heading, then one row of the [shortcuts], a chip for a date
+/// on none of them, whose delete button clears it, and "Pick date…", the
+/// last two named with the field for screen readers, as the shortcuts are. A
+/// shortcut jumps to its day and keeps the time already set (else the
+/// user's default due time, else the breakpoint time for [now]); tapping
+/// the chosen one again clears.
 class DateField extends ConsumerWidget {
   const new({
     required this.label,
@@ -27,7 +35,8 @@ class DateField extends ConsumerWidget {
 
   final String label;
 
-  /// The clear button's tooltip, naming the field.
+  /// The tooltip of the delete button of a date on no shortcut, naming the
+  /// field.
   final String clearLabel;
   final IconData icon;
   final DateTime? value;
@@ -53,35 +62,20 @@ class DateField extends ConsumerWidget {
     final defaultTime = ref.watch(
       displaySettingsProvider.select((display) => display.defaultDueTime),
     );
+    final value = this.value;
     final local = value?.toLocal();
     final selectedDay = local == null
         ? null
         : DateTime(local.year, local.month, local.day);
+    final onShortcut = shortcuts.any((option) => option.day == selectedDay);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        ListTile(
-          leading: Icon(icon, color: colors.onSurfaceVariant),
-          title: Text(label),
-          subtitle: switch (value) {
-            final value? => Text(
-              formatter.absolute(value),
-              semanticsLabel: formatter.semanticsLabel(value),
-            ),
-            null => Text(l10n.taskEditDateNotSet),
-          },
-          trailing: value == null
-              ? null
-              : IconButton(
-                  onPressed: () => onChanged(null),
-                  tooltip: clearLabel,
-                  icon: const Icon(Icons.clear),
-                ),
-          onTap: () => unawaited(_pick(context, ref)),
-        ),
+        TaskFormHeading(icon: icon, text: label, top: 10, bottom: 0),
         DateShortcutChips(
           options: shortcuts,
           selectedDay: selectedDay,
+          selectedTime: value == null ? null : formatter.timeOfDay(value),
           fieldLabel: label,
           onSelected: (option) => onChanged(
             option == null
@@ -93,8 +87,39 @@ class DateField extends ConsumerWidget {
                     defaultTime: defaultTime,
                   ),
           ),
+          trailing: [
+            if (value != null && !onShortcut)
+              InputChip(
+                avatar: const SizedBox.shrink(),
+                avatarBoxConstraints: _chipIconBox,
+                deleteIconBoxConstraints: _chipIconBox,
+                label: Text(
+                  formatter.absolute(value),
+                  semanticsLabel: l10n.dateFieldChipSemantics(
+                    label,
+                    formatter.spokenAbsolute(value),
+                  ),
+                ),
+                selected: true,
+                onDeleted: () => onChanged(null),
+                deleteButtonTooltipMessage: clearLabel,
+              ),
+            ActionChip(
+              avatar: Icon(
+                Icons.calendar_month_outlined,
+                color: colors.onSurfaceVariant,
+              ),
+              label: Text(
+                l10n.newTaskPickDate,
+                semanticsLabel: l10n.dateFieldChipSemantics(
+                  label,
+                  l10n.newTaskPickDate,
+                ),
+              ),
+              onPressed: () => unawaited(_pick(context, ref)),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
       ],
     );
   }

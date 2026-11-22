@@ -416,18 +416,26 @@ void main() {
         );
       }
 
-      final back = nodes.indexWhere(
+      // What a screen reader stops at: the header's slots group their nodes
+      // in nodes of their own, which say nothing.
+      final read = [
+        for (final node in nodes)
+          if (node.getSemanticsData() case final data
+              when data.label.isNotEmpty || data.tooltip.isNotEmpty)
+            node,
+      ];
+      final back = read.indexWhere(
         (node) =>
             node.getSemanticsData().tooltip ==
             en.taskDetailPaneBack('Plan the team day'),
       );
-      final project = nodes.indexWhere(
+      final project = read.indexWhere(
         (node) => node.getSemanticsData().label == 'Work',
       );
       expect(back, isNot(-1));
       expect(project, back + 1);
-      expect(nodes[project].getSemanticsData().flagsCollection.isLink, isTrue);
-      expect(nodes[project].mergeAllDescendantsIntoThisNode, isTrue);
+      expect(read[project].getSemanticsData().flagsCollection.isLink, isTrue);
+      expect(read[project].mergeAllDescendantsIntoThisNode, isTrue);
       expect(
         nodes.where((node) => node.getSemanticsData().label.contains('WORK-')),
         isEmpty,

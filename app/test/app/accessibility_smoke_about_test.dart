@@ -134,7 +134,7 @@ void main() {
       await openTab(tester, l10n.tabAccount);
 
       await scrollToEnd(tester, AccountTab);
-      expect(find.byTooltip(l10n.aboutTitle), findsOneWidget);
+      expect(find.text(l10n.accountAboutLine), findsOneWidget);
       await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
       await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
       expect(tester.takeException(), isNull);

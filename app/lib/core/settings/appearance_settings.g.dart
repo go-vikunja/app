@@ -111,15 +111,15 @@ abstract class _$ThemeChoice extends $AsyncNotifier<ThemeMode> {
   }
 }
 
-/// The device-wide "Use system colours" switch, on unless turned off.
+/// The device-wide "Use system colours" switch, off until turned on.
 
 @ProviderFor(UseSystemColors)
 final useSystemColorsProvider = UseSystemColorsProvider._();
 
-/// The device-wide "Use system colours" switch, on unless turned off.
+/// The device-wide "Use system colours" switch, off until turned on.
 final class UseSystemColorsProvider
     extends $AsyncNotifierProvider<UseSystemColors, bool> {
-  /// The device-wide "Use system colours" switch, on unless turned off.
+  /// The device-wide "Use system colours" switch, off until turned on.
   UseSystemColorsProvider._()
     : super(
         from: null,
@@ -139,9 +139,9 @@ final class UseSystemColorsProvider
   UseSystemColors create() => UseSystemColors();
 }
 
-String _$useSystemColorsHash() => r'e1869966896569dcb8021b5b5f41cd72961b9fc5';
+String _$useSystemColorsHash() => r'5d16e4a92a60b98ef791af318cd298bce3345ac7';
 
-/// The device-wide "Use system colours" switch, on unless turned off.
+/// The device-wide "Use system colours" switch, off until turned on.
 
 abstract class _$UseSystemColors extends $AsyncNotifier<bool> {
   FutureOr<bool> build();

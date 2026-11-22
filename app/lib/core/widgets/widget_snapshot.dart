@@ -196,6 +196,8 @@ final class WidgetRow {
     this.priorityLevel,
     this.projectTitle,
     this.projectColor,
+    this.projectColorLight,
+    this.projectColorDark,
     this.overdueSemanticsLabel,
     this.absoluteSemanticsLabel,
     this.absoluteOverdueSemanticsLabel,
@@ -212,6 +214,8 @@ final class WidgetRow {
     priorityLevel: json['priorityLevel'] as int?,
     projectTitle: json['project'] as String?,
     projectColor: json['color'] as String?,
+    projectColorLight: json['colorLight'] as String?,
+    projectColorDark: json['colorDark'] as String?,
     canDone: json['canDone']! as bool,
     semanticsLabel: _string(json, 'label'),
     overdueSemanticsLabel: json['labelOverdue'] as String?,
@@ -250,6 +254,12 @@ final class WidgetRow {
 
   /// `rrggbb`, without `#`.
   final String? projectColor;
+
+  /// [projectColor] as the widgets draw it on their light and their dark
+  /// background, `rrggbb`: as the app draws its folders, only the
+  /// lightness moved until it stands out by 3:1.
+  final String? projectColorLight;
+  final String? projectColorDark;
 
   /// The user may mark it done: the project allows writing and is not
   /// archived.
@@ -291,6 +301,8 @@ final class WidgetRow {
     'priorityLevel': ?priorityLevel,
     'project': ?projectTitle,
     'color': ?projectColor,
+    'colorLight': ?projectColorLight,
+    'colorDark': ?projectColorDark,
     'canDone': canDone,
     'label': semanticsLabel,
     'labelOverdue': ?overdueSemanticsLabel,

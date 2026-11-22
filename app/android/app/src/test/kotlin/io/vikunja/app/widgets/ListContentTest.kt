@@ -20,19 +20,19 @@ class ListContentTest {
         val state = ListWidgetState.load(files, 5)
 
         assertEquals(ListContent.SetUp(5), ListContent.of(state, now = 0))
-        assertTrue(state.dynamicColor)
+        assertFalse(state.dynamicColor)
     }
 
     @Test
     fun `shows the active account's Today list until configured`() {
-        write("widgets/host.json", """{"version":1,"activeAccountId":"acc","dynamicColor":false}""")
+        write("widgets/host.json", """{"version":1,"activeAccountId":"acc","dynamicColor":true}""")
         write("widgets/snapshots/acc.today.json", SampleJson.snapshot())
 
         val state = ListWidgetState.load(files, 5)
 
         assertFalse(state.configured)
         assertEquals("acc.today", state.snapshot?.key)
-        assertFalse(state.dynamicColor)
+        assertTrue(state.dynamicColor)
     }
 
     @Test

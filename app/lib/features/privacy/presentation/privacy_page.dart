@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
+import 'package:vikunja_mobile/core/security/app_excursions.dart';
 import 'package:vikunja_mobile/core/security/app_lock_controller.dart';
 import 'package:vikunja_mobile/core/security/device_authenticator.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
@@ -17,6 +18,7 @@ import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 import 'package:vikunja_mobile/features/common/presentation/screen_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 import 'package:vikunja_mobile/features/privacy/application/app_switcher_protection.dart';
+import 'package:vikunja_mobile/features/privacy/application/security_settings.dart';
 import 'package:vikunja_mobile/features/privacy/presentation/crash_reports_card.dart';
 import 'package:vikunja_mobile/features/privacy/presentation/lock_after_texts.dart';
 
@@ -25,7 +27,8 @@ final _log = Logger('PrivacyPage');
 /// The device's app lock and how long the app may be out of sight before it
 /// locks, screenshots (Android), what notifications show, whether widgets
 /// list task titles and, in a build that has them, crash reports. Turning
-/// the lock on or off takes the device's screen lock or biometrics first.
+/// the lock on or off takes the device's screen lock or biometrics first;
+/// without one, a note leads to the system settings to set one up.
 class PrivacyPage extends ConsumerStatefulWidget {
   const new({super.key});
 
@@ -65,9 +68,9 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
     final error = switch (result) {
       null => l10n.privacySaveFailed,
       DeviceAuthResult.success || DeviceAuthResult.cancelled => null,
-      // The controller turned it off: there is no screen lock to ask for.
-      DeviceAuthResult.noCredentials when !enabled => null,
-      DeviceAuthResult.noCredentials => l10n.privacyAppLockUnsupported,
+      // Turning it on, the note under the switch says what to do; turning
+      // it off, the controller did so without a screen lock to ask for.
+      DeviceAuthResult.noCredentials => null,
       DeviceAuthResult.lockedOut => l10n.privacyAppLockLockedOut,
       DeviceAuthResult.inProgress => l10n.appLockPromptStuck,
       DeviceAuthResult.unavailable => l10n.privacyAppLockFailed,
@@ -79,7 +82,11 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
       _changingLock = false;
       _lockError = error;
     });
-    if (error != null) announce(context, error);
+    if (error != null) {
+      announce(context, error);
+    } else if (enabled && result == DeviceAuthResult.noCredentials) {
+      announce(context, l10n.privacyAppLockNeedsScreenLock);
+    }
   }
 
   Future<void> _chooseLockAfter(LockAfter current) async {
@@ -116,6 +123,15 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
     }
   }
 
+  Future<void> _openSecuritySettings() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final failed = context.l10n.privacySecuritySettingsNotOpened;
+    if (await openSecuritySettings(ref.read(appExcursionsProvider))) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(failed)));
+  }
+
   Future<void> _openNotificationSettings() async {
     try {
       await ref.read(notificationGatewayProvider).openNotificationSettings();
@@ -141,9 +157,8 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
         stored != null &&
         !_changingLock &&
         (settings.appLock || (supported ?? false));
-    final lockSubtitle = supported == false && !settings.appLock
-        ? l10n.privacyAppLockUnsupported
-        : l10n.privacyAppLockSubtitle;
+    // The resume check enables the switch once a screen lock is set up.
+    final needsScreenLock = supported == false && !settings.appLock;
 
     return Scaffold(
       appBar: AppBar(title: ScreenTitle(l10n.privacyEntryTitle)),
@@ -173,7 +188,7 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(lockSubtitle),
+                        Text(l10n.privacyAppLockSubtitle),
                         if (lockError != null) SettingErrorText(lockError),
                       ],
                     ),
@@ -182,6 +197,18 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
                         ? (value) => unawaited(_setAppLock(enabled: value))
                         : null,
                   ),
+                  if (needsScreenLock)
+                    SettingsNote(
+                      icon: Icons.screen_lock_portrait_outlined,
+                      text: l10n.privacyAppLockNeedsScreenLock,
+                      action: platform == TargetPlatform.android
+                          ? TextButton(
+                              onPressed: () =>
+                                  unawaited(_openSecuritySettings()),
+                              child: Text(l10n.privacyOpenSecuritySettings),
+                            )
+                          : null,
+                    ),
                   if (settings.appLock)
                     SettingChoiceTile(
                       leading: const Icon(Icons.timer_outlined),

@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/create/project_field.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/assignee_picker.dart';
 
@@ -413,7 +414,7 @@ void main() {
     testWidgets('searches the project the draft moved to and keeps the '
         'assignees', (tester) async {
       await openPage(tester);
-      await tester.tap(find.widgetWithText(ListTile, en.taskEditProject));
+      await tester.tap(find.byType(ProjectField));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Personal'));
       await tester.pumpAndSettle();

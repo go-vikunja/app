@@ -21,6 +21,7 @@ import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/application/projects_provider.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_confirmations.dart';
 import 'package:vikunja_mobile/features/quick_add/application/project_references.dart';
+import 'package:vikunja_mobile/features/quick_add/application/quick_add_hints.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_lines.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_service_provider.dart';
@@ -42,12 +43,15 @@ import 'package:vikunja_mobile/features/tasks/presentation/edit/labels_section.d
 import 'package:vikunja_mobile/features/tasks/presentation/edit/reminders_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/repeat_section.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/shortcut_chips.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/edit/task_form_parts.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/date_time_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/label_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/project_picker.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/reminder_picker.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
+import 'package:vikunja_mobile/features/upcoming/application/upcoming_sections.dart';
 
 final _log = Logger('NewTaskSheet');
 
@@ -56,13 +60,16 @@ final _log = Logger('NewTaskSheet');
 /// and a priority for lines without their own, and under "More options" a
 /// description, labels, reminders and a repeat for every task. [projectId]
 /// preselects the list's own project; with [column] the tasks that go to
-/// it are placed on top of that board column. With its pin on, the sheet
-/// stays open after each add for the next task. While a title or a
-/// description is typed, leaving asks first.
+/// it are placed on top of that board column; [dueDay] preselects a due
+/// date on that local day. With its pin on, the sheet stays open after
+/// each add for the next task. While a title or a description is typed,
+/// leaving asks first. A single task added opens from the confirmation
+/// where [context] opens a task.
 Future<void> showNewTaskSheet(
   BuildContext context, {
   int? projectId,
   NewTaskColumn? column,
+  DateTime? dueDay,
 }) {
   // Over the tab bar, not inside the tab's own navigator.
   final navigator = Navigator.of(context, rootNavigator: true);
@@ -76,12 +83,33 @@ Future<void> showNewTaskSheet(
     useSafeArea: true,
     showDragHandle: true,
     transitionAnimationController: animation,
-    builder: (context) => NewTaskSheet(
+    builder: (_) => NewTaskSheet(
       projectId: projectId,
       column: column,
+      dueDay: dueDay,
       animation: animation,
+      onOpenAdded: (task) {
+        if (context.mounted) openTaskDetail(context, task: task);
+      },
     ),
   );
+}
+
+/// The day a task added from a list of [range]'s days is due on, so that
+/// it shows there: [selectedDay] while the strip shows it, else today, or
+/// the range's first day while that is still ahead.
+DateTime newTaskDayIn(
+  DateRange range, {
+  required DateTime? selectedDay,
+  required DateTime now,
+}) {
+  if (selectedDay != null &&
+      (stripDaysOf(range)?.contains(selectedDay) ?? false)) {
+    return selectedDay;
+  }
+  final today = DateTime(now.year, now.month, now.day);
+  final (first, _) = daysOf(range);
+  return first.isAfter(today) ? first : today;
 }
 
 /// The board column a project's new tasks go on top of.
@@ -127,21 +155,39 @@ const Set<DateShortcut> _quickShortcuts = {
 // a square as tall as the label, which grows with the text size.
 const _chipIconBox = BoxConstraints.tightFor(width: 20, height: 20);
 
+// The hint's example stays English, as the grammar is (D38).
+const _englishDateExample = 'tomorrow at 17:00';
+
 final List<TaskPriority> _priorities = [
   for (final priority in TaskPriority.values)
     if (priority != TaskPriority.unset) priority,
 ];
 
 class NewTaskSheet extends ConsumerStatefulWidget {
-  const new({this.projectId, this.column, this.animation, super.key});
+  const new({
+    this.projectId,
+    this.column,
+    this.dueDay,
+    this.animation,
+    this.onOpenAdded,
+    super.key,
+  });
 
   final int? projectId;
   final NewTaskColumn? column;
+
+  /// The local day of the due date the sheet starts with, at the user's
+  /// default due time like a day chip.
+  final DateTime? dueDay;
 
   /// The `transitionAnimationController` of the sheet's route, which the
   /// sheet disposes once the route is gone. With it, a swipe down that
   /// would drop what was typed brings the sheet back up and asks.
   final AnimationController? animation;
+
+  /// Opens a single task added, from the confirmation's Open (why on every
+  /// add: the sheet cannot tell whether the list it came from shows it).
+  final ValueChanged<Task>? onOpenAdded;
 
   @override
   ConsumerState<NewTaskSheet> createState() => _NewTaskSheetState();
@@ -195,6 +241,14 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
   @override
   void initState() {
     super.initState();
+    if (widget.dueDay case final day?) {
+      _due = dayWithTime(
+        day,
+        current: null,
+        now: ref.read(clockProvider)(),
+        defaultTime: ref.read(displaySettingsProvider).defaultDueTime,
+      ).toUtc();
+    }
     _text.addListener(_onTextChanged);
     _description.addListener(_noteTyped);
   }
@@ -590,10 +644,27 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       );
       return;
     }
+    final open = widget.onOpenAdded;
+    // A stand-in until the opened detail follows the stored task.
+    final single = created.length == 1
+        ? Task(
+            id: created.single,
+            title: result.createdTitles.single,
+            projectId: plans.first.project!.id,
+          )
+        : null;
+    final persist = MediaQuery.accessibleNavigationOf(context);
     _close(navigator);
     messenger.showSnackBar(
       SnackBar(
         duration: Duration(seconds: warnings.isEmpty ? 4 : 8),
+        persist: persist,
+        action: open == null || single == null
+            ? null
+            : SnackBarAction(
+                label: l10n.taskDuplicateOpen,
+                onPressed: () => open(single),
+              ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -807,6 +878,9 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
     final defaultDueTime = ref.watch(
       displaySettingsProvider.select((display) => display.defaultDueTime),
     );
+    final dateHint = plan == null || prefixes == null
+        ? null
+        : quickAddDateHint(plan);
 
     final keepOpen = ref.watch(newTaskKeepOpenProvider).value ?? false;
 
@@ -896,6 +970,25 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
               ),
             ),
           ),
+        if (dateHint != null)
+          Padding(
+            padding: const EdgeInsetsDirectional.fromSTEB(28, 4, 28, 0),
+            child: Semantics(
+              container: true,
+              liveRegion: true,
+              child: Text(
+                switch (dateHint) {
+                  ForeignDateWords() => l10n.quickAddHintEnglishDates(
+                    _englishDateExample,
+                  ),
+                  TimeWithoutAt(:final time) => l10n.quickAddHintAddAt(time),
+                },
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
         if (plan != null)
           QuickAddPreview(
             plan: plan,
@@ -916,12 +1009,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             title: projectTitle,
             hexColor: project?.hexColor ?? '',
             // A +project in the text decides until it is removed.
-            leading: matchedProject == null
-                ? null
-                : Icon(
-                    Icons.folder_outlined,
-                    color: MagicColors.accentOf(context, MagicSpanKind.project),
-                  ),
+            note: matchedProject == null ? null : l10n.newTaskSetInTitle,
             onPressed: matchedProject != null
                 ? null
                 : () => unawaited(_pickProject(projects, fallback?.id)),
@@ -929,9 +1017,10 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         ),
         // Closer to the chips than to the project field above; a row of
         // chips already leaves a gap with its tap targets.
-        _SectionTitle(
+        TaskFormHeading(
           icon: Icons.calendar_today_outlined,
           text: l10n.taskDetailDueDate,
+          note: dueLocked ? l10n.newTaskSetInTitle : null,
           top: 10,
           bottom: 0,
         ),
@@ -974,12 +1063,13 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             ),
           ],
         ),
-        _SectionTitle(
+        TaskFormHeading(
           icon: Icons.flag_outlined,
           text: l10n.taskDetailPriority,
+          note: priorityLocked ? l10n.newTaskSetInTitle : null,
           bottom: 0,
         ),
-        _ChipRow(
+        ChipRow(
           children: [
             for (final priority in _priorities)
               ChoiceChip(
@@ -1015,7 +1105,10 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
               ),
             ),
           ),
-          _SectionTitle(icon: Icons.label_outline, text: l10n.taskDetailLabels),
+          TaskFormHeading(
+            icon: Icons.label_outline,
+            text: l10n.taskDetailLabels,
+          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: LabelsSection(
@@ -1029,7 +1122,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
               onAdd: () => unawaited(_pickLabels()),
             ),
           ),
-          _SectionTitle(icon: Icons.alarm, text: l10n.taskDetailReminders),
+          TaskFormHeading(icon: Icons.alarm, text: l10n.taskDetailReminders),
           RemindersSection(
             reminders: _reminders,
             dates: _reminderDates,
@@ -1038,7 +1131,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
                 setState(() => _reminders = [..._reminders]..removeAt(index)),
             onAdd: () => unawaited(_pickReminder()),
           ),
-          _SectionTitle(icon: Icons.repeat, text: l10n.taskEditRepeat),
+          TaskFormHeading(icon: Icons.repeat, text: l10n.taskEditRepeat),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: RepeatSection(
@@ -1063,6 +1156,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
         if (token != null)
           MagicSuggestions(
             token: token,
+            typed: _text.text.substring(token.start, token.end),
             projectId: (plan?.project ?? project)?.id,
             onSelected: (item) =>
                 _edit(completeMagicToken(_text.value, token, item)),
@@ -1127,13 +1221,16 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Flexible(
-                child: SingleChildScrollView(
+                // A sliver viewport, so a field it cuts keeps its whole size
+                // for screen readers.
+                child: CustomScrollView(
                   controller: _scroll,
+                  shrinkWrap: true,
                   // Short of room, the headline goes out of view before the
                   // due date and priority rows do; the field keeps its
                   // caret in view itself. The longer form starts at its top.
                   reverse: !_moreOptions,
-                  child: content,
+                  slivers: [SliverToBoxAdapter(child: content)],
                 ),
               ),
               ConstrainedBox(
@@ -1150,65 +1247,6 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
       ),
     );
   }
-}
-
-/// A muted label with its icon over the group it names.
-class _SectionTitle extends StatelessWidget {
-  const new({
-    required this.icon,
-    required this.text,
-    this.top = 6,
-    this.bottom = 2,
-  });
-
-  final IconData icon;
-  final String text;
-  final double top;
-  final double bottom;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final color = theme.colorScheme.onSurfaceVariant;
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, top, 16, bottom),
-      child: Semantics(
-        header: true,
-        headingLevel: 2,
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                text,
-                style: theme.textTheme.labelMedium?.copyWith(color: color),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// One line of chips that scrolls sideways, as [DateShortcutChips] lays
-/// out its own.
-class _ChipRow extends StatelessWidget {
-  const new({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    scrollDirection: Axis.horizontal,
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    child: Row(
-      children: [
-        for (final child in children) ...[child, const SizedBox(width: 8)],
-      ],
-    ),
-  );
 }
 
 /// [value] without the [added] text it still starts with, and the spaces
