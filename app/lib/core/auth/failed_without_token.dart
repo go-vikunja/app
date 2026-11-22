@@ -3,7 +3,7 @@ import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 
 /// No token could be had for the request, so the server never processed
-/// it: the refresh was put off, or secure storage refused to read (D59).
+/// it: the refresh was put off, or secure storage refused to read.
 /// Neither is an outage, though both arrive as a `NetworkFailure`.
 bool failedWithoutToken(Object? error) =>
     error is NetworkFailure &&

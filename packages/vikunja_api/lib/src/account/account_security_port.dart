@@ -5,7 +5,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// The signed-in user's two-factor status, sessions, API and CalDAV tokens
 /// and data export, on `/api/v2` from 2.4.0 and `/api/v1` before. Every
 /// call needs a user session: an API token gets `TokenRejected`. None needs
-/// a password or a TOTP code (D14). Lists read every page, at most 20.
+/// a password or a TOTP code (decision log: Accounts and sign-in). Lists
+/// read every page, at most 20.
 abstract interface class AccountSecurityPort {
   /// `GET /user/settings/totp`; 412 code 1016 is [TotpStatus.notSetUp].
   /// Only whether a secret is present is read, never the secret or its

@@ -339,7 +339,7 @@ void main() {
     );
   });
 
-  group('an account waiting for a sign-in (D59)', () {
+  group('an account waiting for a sign-in (decision log: Sessions)', () {
     late SessionDiagnostics diagnostics;
     late SessionCheck restoring;
 

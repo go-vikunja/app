@@ -61,11 +61,11 @@ final class ConnectionProfileState {
   String toString() => 'ConnectionProfileState($origin, ${status.name})';
 }
 
-/// Every origin's connection settings (D65): metadata in preferences under
-/// [storageKey], secrets in secure storage. Storage is the truth: other
-/// isolates (background sync, notification actions, widgets) read the same
-/// keys, so reads are cached briefly and every write reads afresh, changes
-/// only its origin and keeps everything else as stored.
+/// Every origin's connection settings: metadata in preferences under
+/// [storageKey], secrets in secure storage (decision log: Connections). Storage
+/// is the truth: other isolates (background sync, notification actions,
+/// widgets) read the same keys, so reads are cached briefly and every write
+/// reads afresh, changes only its origin and keeps everything else as stored.
 ///
 /// Reads fail closed with the domain's connection-settings exceptions, so
 /// a request never goes out without the pin or headers it should carry.

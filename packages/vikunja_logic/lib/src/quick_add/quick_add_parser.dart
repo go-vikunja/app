@@ -28,12 +28,12 @@ QuickAddPrefixes? quickAddPrefixes(QuickAddMagicMode mode) => switch (mode) {
   ),
 };
 
-/// The web's `parseTaskText`, with the deviations of D19 and D38. [now] is
+/// The web's `parseTaskText`, with the app's deviations. [now] is
 /// local wall-clock time; every relative date is computed from it. A day
 /// without a time takes the user's `default_due_time` ([defaultTime]), else
 /// the breakpoint for [now] (`atDefaultTime`).
 ///
-/// Where it parts from the web on purpose (D38):
+/// Where it parts from the web on purpose (decision log: Quick add):
 /// - Repeat keywords and units match in any case (`Daily`, `Every Day`).
 /// - The date keywords (`today` to `next monday`) need whole words:
 ///   `todays` and `next weekend` stay text.
@@ -106,7 +106,7 @@ String? parseQuickAddProject(
 }
 
 /// The web's `cleanupItemText`: removes `<prefix>item` (quoted or not, with
-/// one trailing space) for each of [items], case-insensitively. D102-7:
+/// one trailing space) for each of [items], case-insensitively. QA-16:
 /// only as a whole token, at the start or after a space and ending at a
 /// space or the end; the web also cut `*bug` out of `*bugfix`. A quoted
 /// item may also end before punctuation (`*"New York",`), as the parser

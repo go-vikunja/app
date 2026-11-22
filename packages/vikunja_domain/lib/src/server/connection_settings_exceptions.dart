@@ -14,7 +14,7 @@ final class CleartextBlockedException implements Exception {
 }
 
 /// Secure storage is not readable yet (before the first unlock) or failed;
-/// transient, like a locked Keychain (D24).
+/// transient, like a locked Keychain (decision log: Connections).
 final class ConnectionProfileLockedException implements Exception {
   const new(this.origin);
 

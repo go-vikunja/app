@@ -19,11 +19,12 @@ import io.sentry.protocol.SentryRuntime
 import io.sentry.protocol.SentryStackTrace
 import java.io.File
 
-// The app starts the Android SDK itself, once the user allowed crash reports
-// (D113), so that every option is the app's and the scrubber is in place before
-// the SDK processes anything. What the SDK builds itself (Java crashes, ANRs,
-// NDK crashes) never passes the app's Dart scrubber; Dart's reports reach the
-// SDK as envelopes, which this beforeSend never sees.
+// The app starts the Android SDK itself, once the user allowed crash reports,
+// so that every option is the app's and the scrubber is in place before the
+// SDK processes anything (decision log: Diagnostics). What the SDK builds
+// itself (Java crashes, ANRs, NDK crashes) never passes the app's Dart
+// scrubber; Dart's reports reach the SDK as envelopes, which this beforeSend
+// never sees.
 internal object NativeCrashReports {
     const val LOG_CATEGORY = "app.log"
     const val MAX_BREADCRUMBS = 50

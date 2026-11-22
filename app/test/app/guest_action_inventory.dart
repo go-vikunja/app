@@ -647,7 +647,7 @@ const guestActionInventory = <String, GuestActionEntry>{
       'TaskDetailActions.delete': (
     Open(
       'the Undo of a delete restores the task by id from the bin, which a '
-      'write guest may (D79)',
+      'write guest may (decision log: Tasks)',
     ),
     uses: {'restoreTask'},
   ),
@@ -675,14 +675,14 @@ const guestActionInventory = <String, GuestActionEntry>{
     Open(
       'the Undo of a delete of several selected tasks restores them by id '
       "from the bin, which a write guest may, as with the task sheet's Undo "
-      '(D79, D106)',
+      '(decision log: Tasks)',
     ),
     uses: {'restoreTask'},
   ),
   'features/tasks/presentation/open/task_opener.dart TaskOpener._restore': (
     Gated(
       "the opener offers the bin's Restore only when _mayRestore allows "
-      'it, which a guest never does, as on the web (D79)',
+      'it, which a guest never does, as on the web (decision log: Tasks)',
     ),
     uses: {'restoreTask'},
   ),

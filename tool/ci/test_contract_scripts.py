@@ -1,6 +1,7 @@
-"""Tests tool/contract_tests.sh and tool/ci/contract.sh (D28) on a copy of the
+"""Tests tool/contract_tests.sh and tool/ci/contract.sh on a copy of the
 scripts, with fake docker-compose and flutter first on PATH: the requested
-image is always started, and every suite runs before a failure counts."""
+image is always started, and every suite runs before a failure counts
+(decision log: Servers)."""
 import json
 import os
 import re

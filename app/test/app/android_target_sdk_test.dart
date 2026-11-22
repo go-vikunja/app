@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 // API 37 asks for ACCESS_LOCAL_NETWORK and a Play declaration for servers on
-// the local network (D76), so raising the target is a decision of its own,
-// never a side effect of a Flutter update.
+// the local network, so raising the target is a decision of its own, never a
+// side effect of a Flutter update (decision log: Releases).
 void main() {
   test('targetSdk is set explicitly to 36, not taken from Flutter', () {
     final gradle = File('android/app/build.gradle.kts').readAsStringSync();

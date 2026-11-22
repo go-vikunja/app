@@ -19,7 +19,7 @@ final _log = Logger('NetworkProfileAdapter');
 
 /// Applies each origin's connection profile below every interceptor, so
 /// header values and certificates never reach an object above the
-/// transport (D65). Origins without a profile go to the platform adapter
+/// transport. Origins without a profile go to the platform adapter
 /// unchanged; header-only profiles stay on it; a pin, a CA or a client
 /// certificate needs dart:io, with one adapter per origin.
 final class NetworkProfileAdapter implements HttpClientAdapter {

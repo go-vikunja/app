@@ -346,8 +346,9 @@ void main() {
     );
 
     testWidgets(
-      'is removed from pictures from the file picker too (owner, D53), '
-      'while its other files stay as they are',
+      'is removed from pictures from the file picker too (owner), while its '
+      'other files stay as they are '
+      '(decision log: Descriptions, comments, attachments)',
       variant: const TargetPlatformVariant({
         TargetPlatform.iOS,
         TargetPlatform.android,

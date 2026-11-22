@@ -740,7 +740,7 @@ String _claimedServerNote(
 }
 
 /// Whether [input] is a server address without `http://` or `https://`,
-/// which the app tries over https first (D8).
+/// which the app tries over https first (decision log: Connections).
 bool typedWithoutScheme(String input) {
   if (parseLinkShareUrl(input) != null || parseInviteLink(input) != null) {
     return false;

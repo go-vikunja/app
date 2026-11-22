@@ -583,7 +583,7 @@ void main() {
     });
 
     testWidgets('a sign-in secure storage could not read is not explained as '
-        'an unreachable server (D59)', (tester) async {
+        'an unreachable server (decision log: Sessions)', (tester) async {
       const failure = NetworkFailure(
         NetworkProblem.unreachable,
         cause: SecureStorageUnreadable(PlatformException),

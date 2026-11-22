@@ -1,6 +1,6 @@
 # The trash of Vikunja 2.8.0
 
-Research of **2026-11-09** for step 37f ([D79](../decisions.md)). Verified live on throwaway `vikunja/vikunja:2.8.0` servers with an owner, users with write, read and admin shares, a user without access, and read, write and admin link shares; the purge cron was checked with backdated rows. The web's behaviour was read from the frontend source at tag v2.8.0 for behaviour only (AGPL, nothing copied). The captured answers are in `packages/vikunja_api/test/fixtures/trash/`.
+Research of **2026-11-09** for step 37f ([Tasks](../decisions.md#tasks)). Verified live on throwaway `vikunja/vikunja:2.8.0` servers with an owner, users with write, read and admin shares, a user without access, and read, write and admin link shares; the purge cron was checked with backdated rows. The web's behaviour was read from the frontend source at tag v2.8.0 for behaviour only (AGPL, nothing copied). The captured answers are in `packages/vikunja_api/test/fixtures/trash/`.
 
 ## Routes
 

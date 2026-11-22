@@ -382,7 +382,7 @@ void main() {
       },
     );
 
-    test('reads the rows of the versions before D75, and nothing it cannot '
+    test('reads the rows of earlier versions, and nothing it cannot '
         'read', () async {
       for (final (stored, expected) in [
         ('{"view_id":70}', 70),

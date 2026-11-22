@@ -717,8 +717,9 @@ void main() {
       expect(find.byType(TaskRow), findsNWidgets(5));
       expect(data.engine.refreshInNewRunCalls, 1);
 
-      // D97: a pull meanwhile waits for the run under way and then starts
-      // one of its own, with the spinner again for at most the limit.
+      // A pull meanwhile waits for the run under way and then starts one of
+      // its own, with the spinner again for at most the limit
+      // (decision log: Sync).
       await startPull(tester);
       expect(find.byType(RefreshProgressIndicator), findsOneWidget);
       expect(note(), findsNothing);

@@ -53,8 +53,9 @@ Future<void> bootstrap() async {
   await _prepareWidgetLinkKey(container);
   final previousApp = await importPreviousApp(container);
   // From here on the app's errors wait for the crash report choice, which
-  // sends or drops them once it is read (D113). Not before the import: the
-  // reporter reads the registry, whose first read wipes what it reads.
+  // sends or drops them once it is read (decision log: Diagnostics). Not before
+  // the import: the reporter reads the registry, whose first read wipes what it
+  // reads.
   container.listen(crashReporterProvider, (_, _) {});
   try {
     // Behind the native launch screen, so the router starts on its first

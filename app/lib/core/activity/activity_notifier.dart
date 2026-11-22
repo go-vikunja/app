@@ -39,7 +39,8 @@ final class ActivityNotifier {
   final AppLocalizations _l10n;
   final Future<NotificationContent> Function() _content;
 
-  /// Whether the account's open session end happened on this device (D59).
+  /// Whether the account's open session end happened on this device
+  /// (decision log: Sessions).
   final Future<bool> Function(String accountId) _endedOnDevice;
   final ActivityTray _tray;
 

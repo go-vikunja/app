@@ -5,8 +5,8 @@ import 'parse_helpers.dart';
 
 void main() {
   group('date from text (the web table, now 2021-06-24)', () {
-    // Every date takes the default time (15:00): ordinal days since D38-5
-    // (the web keeps 12:34), absolute and day-and-month dates since D102-5
+    // Every date takes the default time (15:00): ordinal days by QA-7
+    // (the web keeps 12:34), absolute and day-and-month dates by QA-9
     // (the web leaves them at 00:00).
     final now = DateTime(2021, 6, 24, 12, 34);
     final cases = <String, DateTime?>{
@@ -43,8 +43,8 @@ void main() {
       'Jun 21': DateTime(2022, 6, 21, 15),
       'june 21': DateTime(2022, 6, 21, 15),
       'June 21': DateTime(2022, 6, 21, 15),
-      // Ordinals: D38-5, and a passed one with its month is next year's
-      // (D102-3; the web keeps it in the past).
+      // Ordinals: QA-7, and a passed one with its month is next year's
+      // (QA-10; the web keeps it in the past).
       '21st June': DateTime(2022, 6, 21, 15),
       '2nd March': DateTime(2022, 3, 2, 15),
       '2nd march': DateTime(2022, 3, 2, 15),
@@ -204,7 +204,7 @@ void main() {
     });
   });
 
-  group('D38-11: a phrase removed before punctuation takes the spaces '
+  group('QA-19: a phrase removed before punctuation takes the spaces '
       'before it (the web leaves "Call back .")', () {
     final now = DateTime(2021, 6, 24, 12, 34);
     final cases = {
@@ -232,7 +232,7 @@ void main() {
     test('before a space, a letter or an apostrophe the spaces stay', () {
       expect(parse('x tomorrow , y', now: now).text, 'x  , y');
       expect(parse('x tomorrow-ish', now: now).text, 'x -ish');
-      // D102-1: an apostrophe after a keyword keeps it text.
+      // QA-4: an apostrophe after a keyword keeps it text.
       expect(parse("x tomorrow's", now: now).text, "x tomorrow's");
       expect(parse('x  tomorrow y', now: now).text, 'x   y');
     });
@@ -244,9 +244,9 @@ void main() {
   });
 
   group('what the numbers make', () {
-    // Dates take the default time, 12:00 at the tables' noon (D102-5).
+    // Dates take the default time, 12:00 at the tables' noon (QA-9).
     final cases = <String, DateTime?>{
-      // D102-6: a day the month lacks is no date (JS rolls it over).
+      // QA-11: a day the month lacks is no date (JS rolls it over).
       'x 02/30/2021': null,
       'x 02/31/2021': null,
       'x 02/32/2021': null,
@@ -291,14 +291,14 @@ void main() {
       });
     }
 
-    test('D102-6: a leap day without a year is the next 29 February', () {
+    test('QA-11: a leap day without a year is the next 29 February', () {
       final now = DateTime(2023, 6, 1, 10);
       for (final text in ['x 2/29', 'x feb 29', 'x 29.2']) {
         expect(parse(text, now: now).date, DateTime(2024, 2, 29, 12));
       }
     });
 
-    test('D102-5: a version number is no date', () {
+    test('QA-9: a version number is no date', () {
       for (final text in [
         'Release 1.2',
         'Ship version 2.10',
@@ -313,7 +313,7 @@ void main() {
       expect(parse('Pay rent 1.7').date, DateTime(2021, 7, 1, 12));
     });
 
-    test('D102-5: after a German section word a number is no date', () {
+    test('QA-9: after a German section word a number is no date', () {
       for (final text in [
         'Lies Kapitel 3.2',
         'Lies Kapitel 3.2.',
@@ -333,7 +333,7 @@ void main() {
     });
   });
 
-  group('D102-10: German short dates', () {
+  group('QA-13: German short dates', () {
     final cases = {
       'Arzt 17.12.': ('Arzt', DateTime(2021, 12, 17, 12), ['17.12.']),
       '17.12. Arzt': ('Arzt', DateTime(2021, 12, 17, 12), ['17.12.']),
@@ -408,7 +408,7 @@ void main() {
       expect(parse('x jun 25').date, DateTime(2021, 6, 25, 12));
     });
 
-    test("D102-5: today's date is today (the web moves it to next year)", () {
+    test("QA-9: today's date is today (the web moves it to next year)", () {
       expect(parse('x 06/24').date, DateTime(2021, 6, 24, 12));
       expect(parse('x jun 24 at 13:00').date, DateTime(2021, 6, 24, 13));
       expect(parse('x 24.6').date, DateTime(2021, 6, 24, 12));
@@ -503,7 +503,7 @@ void main() {
       expect(parse('x 1. sep').date, DateTime(2021, 9, 1, 12));
     });
 
-    test('D102-3: only a month right beside the day joins it', () {
+    test('QA-10: only a month right beside the day joins it', () {
       final apart = parse('x 3rd at 10:00 jan');
       expect(apart.text, 'x  jan');
       expect(apart.date, DateTime(2021, 7, 3, 10));
@@ -520,19 +520,19 @@ void main() {
       expect(parse('x 3rd May and MAY').text, 'x   and');
     });
 
-    test('D38-9: the month word only where it is a whole word', () {
+    test('QA-6: the month word only where it is a whole word', () {
       // The web gives "x   or" and "Rek".
       expect(parse('x 3rd may mayor').text, 'x   mayor');
       expect(parse('5th mar Remark').text, 'Remark');
     });
 
-    test("D102-1: the month word is not removed out of `may's`", () {
+    test("QA-4: the month word is not removed out of `may's`", () {
       final result = parse("Plan may's party 5th may");
       expect(result.text, "Plan may's party");
       expect(result.date, DateTime(2022, 5, 5, 12));
     });
 
-    test('D102-3: a month word elsewhere in the text stays there (the web '
+    test('QA-10: a month word elsewhere in the text stays there (the web '
         'takes it)', () {
       final result = parse('Ask if we may move 3rd');
       expect(result.text, 'Ask if we may move');
@@ -540,8 +540,8 @@ void main() {
     });
 
     test('the web vectors: replace in title case and lower case', () {
-      // D38-5: noon is its own default time, so the web's 12:00 holds;
-      // D102-3: the passed 8 March is next year's.
+      // QA-7: noon is its own default time, so the web's 12:00 holds;
+      // QA-10: the passed 8 March is next year's.
       for (final text in ['Some task Mar 8th', 'Some task mar 8th']) {
         final result = parse(text, now: DateTime(2021, 6, 24, 12));
         expect(result.date, DateTime(2022, 3, 8, 12));
@@ -549,7 +549,7 @@ void main() {
       }
     });
 
-    test('D38-5: the default time, not the clock time of now', () {
+    test('QA-7: the default time, not the clock time of now', () {
       // The web says 2021-07-03 12:34:56.
       expect(
         parse('x 3rd', now: DateTime(2021, 6, 24, 12, 34, 56)).date,
@@ -557,7 +557,7 @@ void main() {
       );
     });
 
-    test("D38-5: the user's default due time wins over the breakpoint", () {
+    test("QA-7: the user's default due time wins over the breakpoint", () {
       for (final text in ['x 3rd', 'x 3rd jul']) {
         expect(
           parse(
@@ -572,7 +572,7 @@ void main() {
     });
 
     test('in N units keep their own time (web parity), calendar dates take '
-        'the default time (D102-5; the web leaves them at 00:00)', () {
+        'the default time (QA-9; the web leaves them at 00:00)', () {
       final now = DateTime(2021, 6, 24, 12, 34, 56);
       const defaultTime = ClockTime(17, 45);
       expect(
@@ -585,7 +585,7 @@ void main() {
       );
     });
 
-    test("D102-3: a past ordinal and month is next year's (the web keeps "
+    test("QA-10: a past ordinal and month is next year's (the web keeps "
         'it past)', () {
       expect(
         parse('Something sep 17th', now: DateTime(2026, 10, 8, 10)).date,
@@ -593,7 +593,7 @@ void main() {
       );
     });
 
-    test('D102-6: a day the month never has is no date (the web rolls it '
+    test('QA-11: a day the month never has is no date (the web rolls it '
         'over); 29 February waits for a leap year', () {
       final now = DateTime(2026, 1, 10, 10);
       final none = parse('x 30th feb', now: now);
@@ -602,7 +602,7 @@ void main() {
       expect(parse('x 29th feb', now: now).date, DateTime(2028, 2, 29, 12));
     });
 
-    test('D19-4: a month word must be whole', () {
+    test('QA-5: a month word must be whole', () {
       expect(parse('x 3rd sept').date, isNull);
       expect(parse('x 17th september').date, DateTime(2021, 9, 17, 12));
     });
@@ -627,7 +627,7 @@ void main() {
       'Something at 10:00 in 5 days': DateTime(2021, 6, 29, 10),
       'Something at 10:00 17th': DateTime(2021, 7, 17, 10),
       'Something at 10:00 sep 17th': DateTime(2021, 9, 17, 10),
-      // D102-3: a passed ordinal date is next year's.
+      // QA-10: a passed ordinal date is next year's.
       '2nd March at 5': DateTime(2022, 3, 2, 5),
       '2nd March at 5pm': DateTime(2022, 3, 2, 17),
       '2nd March @ 14:00': DateTime(2022, 3, 2, 14),
@@ -652,7 +652,7 @@ void main() {
   group('in N units', () {
     final now = DateTime(2021, 6, 24, 12, 34, 56, 789);
 
-    test('adds to now, seconds included (D38-5 keeps this)', () {
+    test('adds to now, seconds included (QA-7 keeps this)', () {
       expect(
         parse('x in 3 days', now: now).date,
         DateTime(2021, 6, 27, 12, 34, 56, 789),
@@ -706,7 +706,7 @@ void main() {
       expect(result.datePhrases, ['in 3 days']);
     });
 
-    test('D38-9: an amount above 100000 is text', () {
+    test('QA-6: an amount above 100000 is text', () {
       expect(parse('x in 100001 hours', now: now).date, isNull);
       expect(
         parse('x in 100000 weeks', now: now).date,
@@ -731,7 +731,7 @@ void main() {
       );
     });
 
-    test('D38-9: punctuation may follow the unit (the web wants a space)', () {
+    test('QA-6: punctuation may follow the unit (the web wants a space)', () {
       final comma = parse('Pay rent in 2 days, then call', now: now);
       expect(comma.date, DateTime(2021, 6, 26, 12, 34, 56, 789));
       expect(comma.text, 'Pay rent, then call');
@@ -842,7 +842,7 @@ void main() {
       expect(parse('x at 9', now: now).date, DateTime(2021, 6, 24, 9));
     });
 
-    test('D102-2: what is no clock time stays in the text without a date '
+    test('QA-14: what is no clock time stays in the text without a date '
         '(the web rolls it over or cuts a longer number)', () {
       for (final text in [
         'x at 25:00',
@@ -859,13 +859,13 @@ void main() {
       }
     });
 
-    test('D102-2: a later valid time counts after an invalid one', () {
+    test('QA-14: a later valid time counts after an invalid one', () {
       final result = parse('x at 25 y at 10', now: now);
       expect(result.date, DateTime(2021, 6, 24, 10));
       expect(result.text, 'x at 25 y');
     });
 
-    test('D102-2: a later time leaves an earlier number that starts like it '
+    test('QA-14: a later time leaves an earlier number that starts like it '
         'whole', () {
       for (final (text, title, hour) in [
         ('Visit at 221B Baker street at 22', 'Visit at 221B Baker street', 22),
@@ -915,7 +915,7 @@ void main() {
         expect(result.date, DateTime(2021, 6, 24, 10));
       });
 
-      test('D102-2: one-digit minutes are no time', () {
+      test('QA-14: one-digit minutes are no time', () {
         final result = parse('x at 3:5', now: now);
         expect(result.text, 'x at 3:5');
         expect(result.date, isNull);

@@ -12,7 +12,7 @@ void main() {
       'today': DateTime(2026, 9, 14, 9),
       'tonight': DateTime(2026, 9, 14, 21),
       'tomorrow': DateTime(2026, 9, 15, 9),
-      // D102-4: next Monday is a week ahead on a Monday (the web: today).
+      // QA-12: next Monday is a week ahead on a Monday (the web: today).
       'next monday': DateTime(2026, 9, 21, 9),
       'this weekend': DateTime(2026, 9, 19, 9),
       'later this week': DateTime(2026, 9, 16, 9),
@@ -46,11 +46,11 @@ void main() {
       'later next week': DateTime(2026, 11, 7, 18),
       'next week': DateTime(2026, 11, 7, 18),
       'next month': DateTime(2026, 11, 1, 18),
-      // The web's 09:00 has passed today (D102-9).
+      // The web's 09:00 has passed today (QA-8).
       'end of month': DateTime(2026, 10, 31, 23, 59),
     },
     // Sunday 22:30 on the last of the year: after 21:00 the default time
-    // is 09:00, which on today has passed, so 23:59 (D102-9).
+    // is 09:00, which on today has passed, so 23:59 (QA-8).
     DateTime(2028, 12, 31, 22, 30): {
       'today': DateTime(2028, 12, 31, 23, 59),
       'tonight': DateTime(2028, 12, 31, 23, 59),
@@ -189,7 +189,7 @@ void main() {
     }
   });
 
-  group('D19-3: the keywords need a word boundary after them', () {
+  group('QA-3: the keywords need a word boundary after them', () {
     for (final text in [
       'Read todays paper',
       'Collect tomorrows mail',
@@ -215,17 +215,17 @@ void main() {
       expect(ymd(result.date), '2021-6-24');
     });
 
-    test('punctuation is a boundary, as on the web (D38-11: without the '
+    test('punctuation is a boundary, as on the web (QA-19: without the '
         'space before it)', () {
       final result = parse('Buy milk today, urgent');
       expect(result.text, 'Buy milk, urgent');
       expect(ymd(result.date), '2021-6-24');
-      // D102-1: an apostrophe and a letter keep the keyword text.
+      // QA-4: an apostrophe and a letter keep the keyword text.
       expect(parse("x today's").text, "x today's");
       expect(parse("x today'").date, isNotNull);
     });
 
-    test("D102-1: a keyword elsewhere leaves `today's` whole (the web "
+    test("QA-4: a keyword elsewhere leaves `today's` whole (the web "
         "gives `Fix 's build`)", () {
       final result = parse("Fix today's build today");
       expect(result.text, "Fix today's build");
@@ -242,7 +242,7 @@ void main() {
     });
 
     test('the web turned next weekend into next week and left "end"', () {
-      // D19-3: the web gives 2021-7-1 and the text "Plan end trip".
+      // QA-3: the web gives 2021-7-1 and the text "Plan end trip".
       expect(parse('Plan next weekend trip').text, 'Plan next weekend trip');
     });
   });
@@ -272,7 +272,7 @@ void main() {
       });
     }
 
-    test('on today only while it has not passed, then 23:59 (D102-9)', () {
+    test('on today only while it has not passed, then 23:59 (QA-8)', () {
       expect(
         parse(
           'x today',

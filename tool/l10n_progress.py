@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Prints the share of the template's messages that each ARB file translates
-(D88). Crowdin exports only approved translations and leaves untranslated
-messages out, so a message in a file counts as approved.
+(decision log: Languages). Crowdin exports only approved translations and
+leaves untranslated messages out, so a message in a file counts as approved.
 
 Usage: python3 -I tool/l10n_progress.py [--arb-dir DIR] [--shipped-list [FILE]]
            [--min PERCENT] [LOCALE ...]

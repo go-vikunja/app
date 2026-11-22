@@ -121,7 +121,8 @@ void main() {
     );
   });
 
-  group('what the reads say is stored for the notifications (D80)', () {
+  group('what the reads say is stored for the notifications '
+      '(decision log: Notifications and widgets)', () {
     const alice = 7;
     late int refreshes;
     late Future<void> Function() refresh;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Prints the build name and number of a release tag (D73).
+"""Prints the build name and number of a release tag (decision log: Releases).
 
   python3 -I tool/ci/release_version.py TAG [--pubspec app/pubspec.yaml]
 

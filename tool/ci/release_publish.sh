@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# The publish steps of .github/workflows/release.yaml (D86): the bundle to
-# Google Play, the universal and the per-ABI APKs to dl.vikunja.io, the GitHub
-# release. Publishes only
+# The publish steps of .github/workflows/release.yaml: the bundle to Google
+# Play, the universal and the per-ABI APKs to dl.vikunja.io, the GitHub
+# release (decision log: Releases). Publishes only
 # from go-vikunja/app (release_lib.sh); otherwise prints what it would do.
 # Each step skips what is already published with the same content, so
 # re-running the job is the retry.

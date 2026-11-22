@@ -155,7 +155,7 @@ List<Widget> attributeSection(
           children: [
             for (final label in rowLabels(task.labels))
               LabelPill(label: label, onTap: () => onOpenLabel(label)),
-            // The pills open their labels' tasks (D60).
+            // The pills open their labels' tasks.
             if (onChangeLabels != null)
               IconButton(
                 onPressed: onChangeLabels,

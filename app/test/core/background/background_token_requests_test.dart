@@ -31,7 +31,7 @@ final class _RecordingAdapter implements HttpClientAdapter {
 
 // The native adapters bound a request by its connect and receive timeouts
 // together, so a background token request must count both against the time
-// left before the run's container goes (D59).
+// left before the run's container goes (decision log: Sessions).
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 

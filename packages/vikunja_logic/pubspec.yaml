@@ -9,8 +9,8 @@ environment:
 
 dependencies:
   # Held: bounded_html_parser.dart subclasses its tokenizer and tree builder,
-  # so an upgrade means reading the overridden internals again against D58's
-  # budgets.
+  # so an upgrade means reading the overridden internals again against the
+  # work budgets (decision log: Stack and structure).
   html: 0.15.7
   meta: ^1.16.0
   timezone: ^0.11.2

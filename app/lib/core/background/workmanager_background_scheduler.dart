@@ -98,8 +98,9 @@ final class WorkmanagerBackgroundScheduler implements BackgroundScheduler {
   /// same delay; when it runs is the system's choice.
   ///
   /// A low battery only defers runs until it charges or recovers: a
-  /// session ends after 72 h without one (D22), and the reminder to open
-  /// the app 12 h before is an alarm, which no job constraint holds back.
+  /// session ends after 72 h without one, and the reminder to open the app
+  /// 12 h before is an alarm, which no job constraint holds back
+  /// (decision log: Sessions).
   @override
   Future<void> registerPeriodicSync() => _client.registerPeriodicTask(
     BackgroundTasks.sync,

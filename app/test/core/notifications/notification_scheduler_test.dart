@@ -791,7 +791,8 @@ void main() {
     });
   });
 
-  group('following subscriptions (D80)', () {
+  group('following subscriptions '
+      '(decision log: Notifications and widgets)', () {
     const followWork = Subscription(
       entity: SubscriptionEntity.project,
       entityId: 7,
@@ -852,7 +853,8 @@ void main() {
       },
     );
 
-    test('without the flag the same data plans by D17', () async {
+    test('without the flag the same data plans by the rule of older servers '
+        '(decision log: Notifications and widgets)', () async {
       await db.projectsDao.storeSubscription(7, followWork);
       await db.projectsDao.storeSubscription(
         8,

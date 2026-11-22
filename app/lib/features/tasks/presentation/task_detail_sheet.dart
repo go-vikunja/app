@@ -1078,7 +1078,7 @@ class _TaskDetailSheetState extends ConsumerState<TaskDetailSheet> {
     // The server refuses a link-share guest's reactions and subscriptions
     // and ignores its favourites.
     final guest = ref.watch(activeAccountIsGuestProvider);
-    // Unfollowing silences the task's reminders on these servers (D80).
+    // Unfollowing silences the task's reminders on these servers.
     final remindersNeedFollow = ref.watch(
       accountsProvider.select(
         (accounts) => accounts.value?.activeAccount?.subscriberId != null,

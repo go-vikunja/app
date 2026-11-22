@@ -1,6 +1,7 @@
 # shellcheck shell=bash
-# Shared by the tool/ci scripts (D73, D86), which source it after `set -euo pipefail`.
-# Runs on GitHub-hosted runners and macOS's bash 3.2 alike.
+# Shared by the tool/ci scripts, which source it after `set -euo pipefail`
+# (decision log: Releases). Runs on GitHub-hosted runners and macOS's bash 3.2
+# alike.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=tool/ci/pins.sh

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The workflow "Crowdin" (.github/workflows/crowdin.yaml, D88): the English
+# The workflow "Crowdin" (.github/workflows/crowdin.yaml): the English
 # source up to Vikunja's Crowdin project, its approved translations back in a
 # pull request from the branch crowdin. Only a run on main of go-vikunja/app
 # on GitHub Actions talks to Crowdin or pushes; --dry-run prints what it would
@@ -195,7 +195,7 @@ if [[ "$step" == download ]]; then
 
   # Every language but German first. Swiss German without its project-level
   # mapping, or any other language whose two-letter code is de or en, would
-  # be written over app_de.arb or app_en.arb here (D88).
+  # be written over app_de.arb or app_en.arb here (decision log: Languages).
   run_cli download translations "${download_flags[@]}" --exclude-language de
   no_symlinks
   dropped=()
@@ -246,7 +246,7 @@ PYTHON
   for name in ${dropped[@]+"${dropped[@]}"}; do
     echo "$name" >>"${WORK_DIR}/dropped.txt"
     case "$name" in
-      app_de.arb) reason="a language other than German was exported as app_de.arb, likely Vikunja's Swiss German without its mapping to gsw (D88); German comes from its own download" ;;
+      app_de.arb) reason="a language other than German was exported as app_de.arb, likely Vikunja's Swiss German without its mapping to gsw (decision log: Languages); German comes from its own download" ;;
       app_en.arb) reason="a language was exported as app_en.arb, the English source" ;;
       *) reason="not a name gen-l10n reads (app_<code>.arb)" ;;
     esac
@@ -320,7 +320,7 @@ fi
 pr_body() {
   local name
   cat <<'BODY'
-The approved translations of Vikunja's Crowdin project, exported by the workflow "Crowdin" (`.github/workflows/crowdin.yaml`, D88). Each sync replaces the branch `crowdin` with the checked-out `main` and the current export, so do not push to it.
+The approved translations of Vikunja's Crowdin project, exported by the workflow "Crowdin" (`.github/workflows/crowdin.yaml`). Each sync replaces the branch `crowdin` with the checked-out `main` and the current export, so do not push to it.
 
 **The checks wait for a maintainer.** This pull request comes from the workflow's own token, so GitHub holds its workflow runs until someone with write access approves them: in "Files changed", click "Awaiting approval" at the top right, then "Approve workflows to run" (or use the button in the merge box). Each push of the branch needs it again; runs left waiting for 30 days fail.
 

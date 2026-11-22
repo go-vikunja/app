@@ -155,7 +155,7 @@ const Set<DateShortcut> _quickShortcuts = {
 // a square as tall as the label, which grows with the text size.
 const _chipIconBox = BoxConstraints.tightFor(width: 20, height: 20);
 
-// The hint's example stays English, as the grammar is (D38).
+// The hint's example stays English, as the grammar is.
 const _englishDateExample = 'tomorrow at 17:00';
 
 final List<TaskPriority> _priorities = [

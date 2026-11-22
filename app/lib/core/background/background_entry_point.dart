@@ -117,7 +117,8 @@ Duration get backgroundConnectTimeout =>
     : const Duration(seconds: 10);
 
 /// The least time a token refresh in a background run gets for its answer;
-/// with less left before the run's container goes, none starts (D59).
+/// with less left before the run's container goes, none starts
+/// (decision log: Sessions).
 Duration get backgroundTokenTimeout =>
     defaultTargetPlatform == TargetPlatform.iOS
     ? const Duration(seconds: 8)

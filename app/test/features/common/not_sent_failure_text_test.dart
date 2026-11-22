@@ -25,8 +25,8 @@ import 'package:vikunja_mobile/features/trash/presentation/trash_failure_text.da
 
 import '../../helpers/pump_app.dart';
 
-// A request that got no token was never sent (D59): no text may call it an
-// unconfirmed change or a missing connection.
+// A request that got no token was never sent: no text may call it an
+// unconfirmed change or a missing connection (decision log: Sessions).
 void main() {
   const unreadable = NetworkFailure(
     NetworkProblem.unreachable,

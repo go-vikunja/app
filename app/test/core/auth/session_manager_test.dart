@@ -1470,7 +1470,7 @@ void main() {
     });
   });
 
-  group('diagnostics (D59)', () {
+  group('diagnostics (decision log: Sessions)', () {
     late SessionDiagnostics diagnostics;
 
     setUp(() => diagnostics = SessionDiagnostics(preferences));
@@ -1705,7 +1705,7 @@ void main() {
     });
   });
 
-  group('an ended session (D59)', () {
+  group('an ended session (decision log: Sessions)', () {
     test('stays ended when storage still holds a refresh token rotated away '
         'here, whose successor could not be stored', () async {
       final diagnostics = SessionDiagnostics(preferences);
@@ -1835,7 +1835,7 @@ void main() {
     });
   });
 
-  group('races across runs (D59)', () {
+  group('races across runs (decision log: Sessions)', () {
     late SessionDiagnostics diagnostics;
 
     setUp(() => diagnostics = SessionDiagnostics(preferences));
@@ -1895,7 +1895,7 @@ void main() {
     });
   });
 
-  group('storage that refuses to read (D59)', () {
+  group('storage that refuses to read (decision log: Sessions)', () {
     test('fails a call as a network failure that names the storage', () async {
       await store(expiresIn: const Duration(minutes: 5));
       secureStore.beforeRead = (_) async =>
@@ -1942,7 +1942,7 @@ void main() {
     });
   });
 
-  group('the refresh gate (D59)', () {
+  group('the refresh gate (decision log: Sessions)', () {
     test('a closed gate defers a refresh before it is sent', () async {
       final stored = await store(expiresIn: Duration.zero);
 
@@ -2039,7 +2039,7 @@ void main() {
     });
   });
 
-  group('settle (D59)', () {
+  group('settle (decision log: Sessions)', () {
     test('writes rotated tokens again that storage refused at first, a few '
         'times', () async {
       await store(expiresIn: Duration.zero);

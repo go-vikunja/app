@@ -78,7 +78,7 @@ String _$foregroundSyncSchedulerHash() =>
 
 /// What a run that found something new stores, and every local write:
 /// the account's tasks, projects, labels and queued changes. A run that
-/// finds nothing new writes none of them (D33), so the foreground sync can
+/// finds nothing new writes none of them, so the foreground sync can
 /// wait longer then.
 
 @ProviderFor(accountDataWrites)
@@ -86,7 +86,7 @@ final accountDataWritesProvider = AccountDataWritesFamily._();
 
 /// What a run that found something new stores, and every local write:
 /// the account's tasks, projects, labels and queued changes. A run that
-/// finds nothing new writes none of them (D33), so the foreground sync can
+/// finds nothing new writes none of them, so the foreground sync can
 /// wait longer then.
 
 final class AccountDataWritesProvider
@@ -99,7 +99,7 @@ final class AccountDataWritesProvider
     with $Provider<Raw<Stream<void>>> {
   /// What a run that found something new stores, and every local write:
   /// the account's tasks, projects, labels and queued changes. A run that
-  /// finds nothing new writes none of them (D33), so the foreground sync can
+  /// finds nothing new writes none of them, so the foreground sync can
   /// wait longer then.
   AccountDataWritesProvider._({
     required AccountDataWritesFamily super.from,
@@ -157,7 +157,7 @@ String _$accountDataWritesHash() => r'afd2b1b72d8a189658e3fd2ae1291e601e0e2219';
 
 /// What a run that found something new stores, and every local write:
 /// the account's tasks, projects, labels and queued changes. A run that
-/// finds nothing new writes none of them (D33), so the foreground sync can
+/// finds nothing new writes none of them, so the foreground sync can
 /// wait longer then.
 
 final class AccountDataWritesFamily extends $Family
@@ -173,7 +173,7 @@ final class AccountDataWritesFamily extends $Family
 
   /// What a run that found something new stores, and every local write:
   /// the account's tasks, projects, labels and queued changes. A run that
-  /// finds nothing new writes none of them (D33), so the foreground sync can
+  /// finds nothing new writes none of them, so the foreground sync can
   /// wait longer then.
 
   AccountDataWritesProvider call(String accountId) =>

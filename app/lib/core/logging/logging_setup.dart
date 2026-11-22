@@ -69,7 +69,7 @@ typedef UncaughtErrorListener = void Function(
 });
 
 /// Hands this isolate's uncaught errors on after they are logged, with the
-/// error itself: the crash reports (D113). Null stops it.
+/// error itself: the crash reports. Null stops it.
 void listenToUncaughtErrors(UncaughtErrorListener? listener) =>
     _uncaughtListener = listener;
 

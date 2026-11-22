@@ -155,7 +155,7 @@ void main() {
   });
 
   // A translation may lack messages: Crowdin delivers what is translated
-  // and approved, and English stands in for the rest (D88).
+  // and approved, and English stands in for the rest (decision log: Languages).
   for (final locale in _arbLocales().difference({_template})) {
     test('$locale translates only English messages, each in valid ICU with '
         "the English message's placeholders", () {

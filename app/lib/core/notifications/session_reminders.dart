@@ -36,7 +36,7 @@ int sessionReminderOsId(String accountId) {
 
 /// When the account's sync or its activity sync last completed, null
 /// before either did. Each starts with a request that refreshes an access
-/// token about to expire, so the session's 72 hours (D22) began at most one
+/// token about to expire, so the session's 72 hours began at most one
 /// access token's lifetime (10 minutes) before.
 DateTime? lastServerContact(Map<String, String> syncState) {
   DateTime? read(String key) =>
@@ -68,15 +68,15 @@ DateTime beforeTheNight(
 }
 
 /// The reminder to open the app before a user account's session ends: the
-/// server ends it 72 hours after the last refresh (D22), which only a
+/// server ends it 72 hours after the last refresh, which only a
 /// contact with the server makes, and the background sync may not run
 /// (iOS, a restricted app on Android). One per signed-in user account,
 /// [ahead] of that end counted from [lastServerContact], or at the 21:00
 /// before when that falls in the night ([beforeTheNight]), on the
 /// activity channel, while the OS lets the app notify: like the "Sign in
 /// again" notice, whatever the account's Activity switch says. Never for a
-/// link-share guest, whose session signs in again with the link's hash
-/// (D62). Headless: a background run uses it like the app.
+/// link-share guest, whose session signs in again with the link's hash.
+/// Headless: a background run uses it like the app.
 final class SessionReminders {
   new({
     required this._gateway,

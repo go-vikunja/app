@@ -13,7 +13,7 @@ final class QuickAddRepeat {
 
   /// How the task stores it. One month is the server's monthly mode; other
   /// month and year amounts become days (30 per month, 365 per year), a
-  /// deliberate fix of the web, which drops them (D19 item 1).
+  /// deliberate fix of the web, which drops them (QA-1).
   ({Duration repeatAfter, RepeatMode mode}) toTaskRepeat() {
     if (unit == QuickAddRepeatUnit.months && amount == 1) {
       return (repeatAfter: Duration.zero, mode: RepeatMode.monthly);

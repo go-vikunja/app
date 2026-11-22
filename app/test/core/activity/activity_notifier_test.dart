@@ -712,7 +712,7 @@ void main() {
     });
 
     test('tells a guest whose link this device lost that it ended here, not '
-        'on the server (D59)', () async {
+        'on the server (decision log: Sessions)', () async {
       Account guest(String id) => Account.linkShare(
         id: id,
         serverRoot: Uri.parse('https://tasks.example.com'),

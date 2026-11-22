@@ -558,8 +558,8 @@ void main() {
       expect(desired.map((d) => d.key), ['1:due', '3:due']);
     });
 
-    test('without them the creator and assignees decide (D17), whatever '
-        'is followed', () {
+    test('without them the creator and assignees decide, whatever is '
+        'followed (decision log: Notifications and widgets)', () {
       final tasks = [task(1, createdBy: alice), task(2, projectId: garden)];
 
       expect(plannedTasks(plan(tasks)), [1]);

@@ -1,8 +1,8 @@
 import 'package:vikunja_mobile/features/quick_add/application/quick_add_plan.dart';
 
 /// Why a line's due date may not be the one the user typed, for a hint
-/// under the title field. The grammar stays the web's (D38); this only
-/// points at what it does not read.
+/// under the title field. The grammar stays the web's; this only points
+/// at what it does not read (decision log: Quick add).
 sealed class QuickAddDateHint {
   const new();
 }
@@ -14,7 +14,7 @@ final class ForeignDateWords extends QuickAddDateHint {
 }
 
 /// A clock time follows the line's date without `at` or `@`, so it stays
-/// in the title (D102-2). [time] is the time as typed.
+/// in the title (QA-14). [time] is the time as typed.
 final class TimeWithoutAt extends QuickAddDateHint {
   const new(this.time);
 
@@ -45,7 +45,7 @@ QuickAddDateHint? quickAddDateHint(QuickAddPlan plan) {
 
 final _timePhrase = RegExp('^(?:at|@) ', caseSensitive: false);
 
-// The forms the parser reads after `at` (D102-2), with minutes or am/pm,
+// The forms the parser reads after `at` (QA-14), with minutes or am/pm,
 // so that `tomorrow 3 apples` gives no hint.
 const _clock12 = '(?:0?[1-9]|1[0-2])(?::[0-5][0-9])? ?[ap]m';
 const _clock24 = '(?:[01]?[0-9]|2[0-3]):[0-5][0-9]';

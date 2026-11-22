@@ -303,7 +303,7 @@ final class TaskDetailActions extends ChangeNotifier {
 
   /// A change that went through is said, as the project's follow is; an
   /// unfollow also says that the task no longer notifies where the server
-  /// reminds only its followers (D80).
+  /// reminds only its followers.
   Future<void> toggleFollow(Task task, Map<int, String> projectTitles) async {
     final l10n = _context.l10n;
     if (task.id < 0) {

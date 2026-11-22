@@ -11,7 +11,8 @@ import 'package:vikunja_mobile/features/session/presentation/sign_in_button.dart
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 
 /// [ReauthBanner] for a user's account, telling when and why its session
-/// ended from the record of that end, when the app noted one (D59).
+/// ended from the record of that end, when the app noted one
+/// (decision log: Sessions).
 class AccountReauthBanner extends ConsumerWidget {
   const new({
     required this.entry,
@@ -53,7 +54,7 @@ class AccountReauthBanner extends ConsumerWidget {
 
 /// The account's end a reauth banner tells of, from the record read once
 /// the account was marked; null until then, so that the banner's live
-/// region is built with its final words and announced once (D59). A read
+/// region is built with its final words and announced once. A read
 /// that failed tells of no end, which words it as the server's, and so
 /// does a banner for a failed sync whose mark has not arrived. A resolved
 /// record belongs to an earlier end.
@@ -87,10 +88,10 @@ class ReauthBanner extends StatelessWidget {
   final VoidCallback onSignInAgain;
   final bool guest;
 
-  /// This device's storage ended the session, not the server (D59).
+  /// This device's storage ended the session, not the server.
   final bool endedOnDevice;
 
-  /// When and why the session ended, when the app noted it (D59).
+  /// When and why the session ended, when the app noted it.
   final String? reason;
 
   @override

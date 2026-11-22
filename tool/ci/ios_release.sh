@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# The iOS release for TestFlight (docs/releasing.md), run by hand on the
-# owner's Mac (D74); no CI job calls it yet. Builds the IPA with the version
-# from the tag, signed automatically for the team in DEVELOPMENT_TEAM, checks
-# it and uploads it to App Store Connect with an API key.
+# The iOS release for TestFlight (docs/releasing.md), run by hand on the owner's
+# Mac (decision log: Releases); no CI job calls it yet. Builds the IPA with the
+# version from the tag, signed automatically for the team in DEVELOPMENT_TEAM,
+# checks it and uploads it to App Store Connect with an API key.
 #
 # Usage: tool/ci/ios_release.sh [--tag TAG] [--dry-run]
 #
@@ -17,7 +17,7 @@
 # URL (default https://github.com/go-vikunja/app), whose tree at the tag the
 # build links as its source; VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN, a patch
 # release's tag that may go without every German text (release_lib.sh);
-# VIKUNJA_APP_SENTRY_DSN, the opt-in crash reports' Sentry DSN (D113), without
+# VIKUNJA_APP_SENTRY_DSN, the opt-in crash reports' Sentry DSN, without
 # which the build has none, on sentry.io (check_sentry_dsn in release_lib.sh),
 # never printed.
 set -euo pipefail

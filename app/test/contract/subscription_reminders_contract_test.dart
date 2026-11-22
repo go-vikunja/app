@@ -36,10 +36,11 @@ Future<void> _sleepUntil(DateTime instant) async {
   if (wait > Duration.zero) await Future<void>.delayed(wait);
 }
 
-// The acceptance of step 37g (D80): on 2.8.0 the follow state the app reads
-// is stored per task and project, and the device plans the reminders of
-// exactly the tasks the server's cron reminds each user of. Two users: the
-// owner shares two projects with the follower.
+// The acceptance of step 37g: on 2.8.0 the follow state the app reads is
+// stored per task and project, and the device plans the reminders of exactly
+// the tasks the server's cron reminds each user of
+// (decision log: Notifications and widgets). Two users: the owner shares two
+// projects with the follower.
 void main() {
   group(
     'reminders that follow subscriptions against the local Docker server',

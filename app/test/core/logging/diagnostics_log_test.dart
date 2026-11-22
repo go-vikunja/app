@@ -382,8 +382,9 @@ void main() {
               file.readAsStringSync().contains("import '$library';"))
             file.path,
       };
-      // The crash reports (D113) take a record as the log keeps it
-      // (DiagnosticsEntry.capture), never the log itself.
+      // The crash reports take a record as the log keeps it
+      // (DiagnosticsEntry.capture), never the log itself
+      // (decision log: Diagnostics).
       const recordsOnly = {
         'lib/core/crash_reports/crash_reporter.dart',
         'lib/core/crash_reports/sentry_crash_report_sdk.dart',

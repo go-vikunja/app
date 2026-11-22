@@ -255,9 +255,9 @@ class ConnectServerController extends _$ConnectServerController {
 
   /// The question before [connection] is used over http, or null when it
   /// needs none: https, or an http origin the user accepted before on this
-  /// device (D8), until revoked. Reached because https failed for the
-  /// address typed as [input], it is asked every time, as the network may
-  /// be blocking https.
+  /// device, until revoked (decision log: Connections). Reached because https
+  /// failed for the address typed as [input], it is asked every time, as the
+  /// network may be blocking https.
   Future<ConnectServerAwaitingInsecureConsent?> _needsConsent(
     ServerConnection connection, {
     required String? input,

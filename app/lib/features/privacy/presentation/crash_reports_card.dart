@@ -12,7 +12,7 @@ import 'package:vikunja_mobile/features/common/presentation/section_card.dart';
 
 final _log = Logger('CrashReports');
 
-/// The privacy page's switch for crash reports (D113), only in a build
+/// The privacy page's switch for crash reports, only in a build
 /// with a DSN. It takes effect at once: off closes the SDK and deletes
 /// the reports not sent yet, on starts it without a restart.
 class CrashReportsCard extends ConsumerStatefulWidget {

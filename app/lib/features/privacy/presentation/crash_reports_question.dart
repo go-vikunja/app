@@ -10,12 +10,12 @@ final _log = Logger('CrashReports');
 
 final _asking = Expando<bool>('crash report question');
 
-/// The one question about crash reports (D113): in a build with a DSN,
-/// the first time an account of any kind reaches the shell, until it is
-/// answered. Allow allows, No thanks and going back decline; from then on
-/// only the privacy page's switch changes it. Closed by the app (a
-/// notification or widget tap closes every dialog), it is not answered
-/// and comes again at the shell's next start.
+/// The one question about crash reports: in a build with a DSN, the first time
+/// an account of any kind reaches the shell, until it is answered
+/// (decision log: Diagnostics). Allow allows, No thanks and going back decline;
+/// from then on only the privacy page's switch changes it. Closed by the app (a
+/// notification or widget tap closes every dialog), it is not answered and
+/// comes again at the shell's next start.
 Future<void> askAboutCrashReportsOnce(
   BuildContext context,
   WidgetRef ref,

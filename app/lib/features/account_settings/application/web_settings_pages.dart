@@ -2,7 +2,8 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 
 /// The web's own settings pages the app sends the user to, because they ask
-/// for the password or a TOTP code, which the app never handles (D14).
+/// for the password or a TOTP code, which the app never handles
+/// (decision log: Accounts and sign-in).
 enum WebSettingsPage {
   password('user/settings/password-update'),
   email('user/settings/email-update'),

@@ -1,9 +1,10 @@
 name: Crowdin
 
 # The English source up to Vikunja's Crowdin project and its approved
-# translations back as a pull request (D88), nightly and by hand, on main of
-# go-vikunja/app only. Crowdin's CLI runs in a job without write access; the
-# job that pushes and opens the pull request runs no third-party code.
+# translations back as a pull request, nightly and by hand, on main of
+# go-vikunja/app only (decision log: Languages). Crowdin's CLI runs in a job
+# without write access; the job that pushes and opens the pull request runs no
+# third-party code.
 on:
   schedule:
     - cron: "37 2 * * *"

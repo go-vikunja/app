@@ -81,7 +81,7 @@ final _weekday = RegExp(
   caseSensitive: false,
 );
 
-// D19-4: the web also accepts a month word that only starts after the
+// QA-5: the web also accepts a month word that only starts after the
 // day, so `13th marathon` was a date.
 final _ordinalDay = RegExp(
   r'(^| )(([1-2][0-9]|3[01]|0?[1-9])(?:st|nd|rd|th|\.))'
@@ -89,13 +89,13 @@ final _ordinalDay = RegExp(
   caseSensitive: false,
 );
 
-// D102-3: the web takes a month word from anywhere in the text, so `Ask if
+// QA-10: the web takes a month word from anywhere in the text, so `Ask if
 // we may move 5th` was 5 May; here only one right beside the ordinal.
-// D102-1: not out of `may's`, which the removal leaves too.
+// QA-4: not out of `may's`, which the removal leaves too.
 final _monthAfter = RegExp(' ($_months)$quickAddWordEnd', caseSensitive: false);
 final _monthBefore = RegExp('(?:^| )($_months) \$', caseSensitive: false);
 
-// D38-9: the web needs a space or the end after the unit; here punctuation
+// QA-6: the web needs a space or the end after the unit; here punctuation
 // may follow (`in 2 days,`) but no apostrophe (`in a day's work`).
 final _inAmount = RegExp(
   '(^| )(in ([0-9]+|an?|$amountWordsPattern) '
@@ -116,7 +116,7 @@ final _absoluteDates = [
     '(^| )(?<date>(?<year>[0-9]{3,4})-(?<month>[0-9][0-9]?)'
     r'-(?<day>[0-9][0-9]))($| )',
   ),
-  // D102-10: a final dot, as German writes `17.12.` and `17.12.2026.`.
+  // QA-13: a final dot, as German writes `17.12.` and `17.12.2026.`.
   RegExp(
     r'(^| )(?<date>(?<day>[0-9][0-9]?)\.(?<month>[0-9][0-9]?)'
     r'(?:\.(?<year>[0-9][0-9](?:[0-9][0-9])?))?\.?)($| )',
@@ -125,7 +125,7 @@ final _absoluteDates = [
 
 final RegExp _dottedDate = _absoluteDates.last;
 
-// D102-10: a standalone German `am` before a dotted date goes with it,
+// QA-13: a standalone German `am` before a dotted date goes with it,
 // unless it is the time suffix of a number before it (`at 9 am 17.12.`).
 final _amBefore = RegExp(r'(?<!\S)am $', caseSensitive: false);
 final _numberBefore = RegExp(r'(?:^|\s)[0-9][0-9]?(?::[0-9][0-9])? $');
@@ -145,21 +145,21 @@ final _absoluteDateRange = RegExp(
 
 final _timeAhead = RegExp('(?:at|@) ', caseSensitive: false);
 
-// D19-4: the web has no trailing boundary, so `12 decorations` was Dec 12.
+// QA-5: the web has no trailing boundary, so `12 decorations` was Dec 12.
 final _monthDay = RegExp(
   '(^| )((?<month1>$_months) (?<day1>[0-9][0-9]?)'
   '|(?<day2>[0-9][0-9]?) (?<month2>$_months))$quickAddWordEnd',
   caseSensitive: false,
 );
 
-// D102-2: the web reads any one or two digits after `at` as a time, also
+// QA-14: the web reads any one or two digits after `at` as a time, also
 // out of a longer number (`at 221B`) and beyond the clock (`at 90`).
 final _time = RegExp(
   r' (?:at|@) ([0-9][0-9]?)(?::([0-9][0-9]))?(?: ?([ap])m)?(?![\w:])',
   caseSensitive: false,
 );
 
-// D102-5: the web reads `Release 1.2` as 1 February; German section words
+// QA-9: the web reads `Release 1.2` as 1 February; German section words
 // keep `Kapitel 3.2` text too.
 final _versionWord = RegExp(
   r'(?:^|\s)(?:v|ver|version|release|rel|build|update|patch|rc|beta|alpha'
@@ -226,7 +226,7 @@ _FoundDate? _weekdayDate(String text, DateTime now, ClockTime? defaultTime) {
   );
   final days = (weekday - now.weekday % DateTime.daysPerWeek) % 7;
   final next = match[3]?.toLowerCase() == 'next';
-  // D38-5: the web keeps the clock time of now.
+  // QA-7: the web keeps the clock time of now.
   return _found(
     text,
     _inDays(now, next ? _nextWeekday(days) : days, defaultTime),
@@ -234,7 +234,7 @@ _FoundDate? _weekdayDate(String text, DateTime now, ClockTime? defaultTime) {
   );
 }
 
-// D102-4: on the weekday itself, `next` means a week ahead, not today.
+// QA-12: on the weekday itself, `next` means a week ahead, not today.
 int _nextWeekday(int days) => days == 0 ? DateTime.daysPerWeek : days;
 
 _FoundDate? _ordinalDate(String text, DateTime now, ClockTime? defaultTime) {
@@ -248,8 +248,8 @@ _FoundDate? _ordinalDate(String text, DateTime now, ClockTime? defaultTime) {
       _monthBefore.firstMatch(text.substring(0, start));
   DateTime date;
   if (month != null) {
-    // D102-3: a day the month does not have is no date (the web rolls it
-    // into the next month), and a passed one is next year's.
+    // QA-10, QA-11: a day the month does not have is no date (the web rolls
+    // it into the next month), and a passed one is next year's.
     final next = _nextRealDate(_monthNumber(month[1]!), day, now);
     if (next == null) return null;
     date = next;
@@ -272,7 +272,7 @@ _FoundDate? _ordinalDate(String text, DateTime now, ClockTime? defaultTime) {
       ),
     );
   }
-  // D38-5: the web keeps the clock time of now.
+  // QA-7: the web keeps the clock time of now.
   return (
     date: atDefaultTime(date, now: now, defaultTime: defaultTime),
     text: rest,
@@ -369,8 +369,8 @@ _FoundDate? _monthDayDate(String text, DateTime now, ClockTime? defaultTime) {
     match.namedGroup('month1') ?? match.namedGroup('month2')!,
   );
   final day = int.parse(match.namedGroup('day1') ?? match.namedGroup('day2')!);
-  // D38-9: the web drops such a phrase from the title without a date;
-  // D102-6: nor is a day the month does not have one (`apr 31`).
+  // QA-6: the web drops such a phrase from the title without a date;
+  // QA-11: nor is a day the month does not have one (`apr 31`).
   final date = _nextRealDate(month, day, now);
   if (date == null) return null;
   return _found(
@@ -395,7 +395,7 @@ DateTime? _calendarDate({
     final year when year < 100 => 1900 + year,
     final year => year,
   };
-  // D102-6: a day the month does not have is no date; JS rolls it into the
+  // QA-11: a day the month does not have is no date; JS rolls it into the
   // next month.
   DateTime? dateOf(int m, int d) => switch (fullYear) {
     final year? => _isRealDay(year, m, d) ? DateTime(year, m, d) : null,
@@ -410,8 +410,8 @@ bool _isRealDay(int year, int month, int day) =>
     day >= 1 &&
     DateTime(year, month, day).day == day;
 
-// D102-5: from today on, so today's date is today (the web compares it at
-// midnight with the clock time of now and moves it to next year), and a
+// QA-9, QA-11: from today on, so today's date is today (the web compares it
+// at midnight with the clock time of now and moves it to next year), and a
 // 29 February waits for a leap year.
 DateTime? _nextRealDate(int month, int day, DateTime now) {
   final today = DateTime(now.year, now.month, now.day);
@@ -465,7 +465,7 @@ DateTime _after(DayInterval interval, DateTime now, ClockTime? defaultTime) =>
 _FoundDate _found(String text, DateTime date, String phrase) =>
     (date: date, text: _removeWords(text, phrase), phrases: [phrase]);
 
-// D38-9: the web removes every occurrence, also out of longer words:
+// QA-6: the web removes every occurrence, also out of longer words:
 // `fri frisbee` became `sbee`.
 String _removeWords(String text, String phrase) => _withoutPhrase(
   text,
@@ -476,12 +476,12 @@ String _removeWords(String text, String phrase) => _withoutPhrase(
 );
 
 /// The characters before which a removed phrase takes its spaces along
-/// (D38-11) and which may follow a prefixed item (D102-7).
+/// (QA-19) and which may follow a prefixed item (QA-16).
 const punctuationClass = '[.,;:!?\u2026)\\]}"\u201d\u00bb]';
 
 final _punctuation = RegExp(punctuationClass);
 
-// D38-11: the spaces before a phrase (its first group) go with it when
+// QA-19: the spaces before a phrase (its first group) go with it when
 // punctuation follows: `Call back.`, where the web leaves `Call back .`.
 String _withoutPhrase(String text, RegExp phrase) => text.replaceAllMapped(
   phrase,

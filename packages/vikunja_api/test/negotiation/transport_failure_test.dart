@@ -406,7 +406,7 @@ void main() {
     );
   });
 
-  group('a request that never reached the server (D59)', () {
+  group('a request that never reached the server (decision log: Sessions)', () {
     for (final (transport, cause) in [
       ('dart:io', const SocketException('Failed host lookup: tasks.example')),
       (

@@ -11,8 +11,8 @@ final _log = Logger('CrashReports');
 const _dsnDefine = String.fromEnvironment('VIKUNJA_APP_SENTRY_DSN');
 
 /// The Sentry DSN the build was made with (`--dart-define=
-/// VIKUNJA_APP_SENTRY_DSN=…`, D113). Null in a build without one, which
-/// has no crash reports at all: no switch, no question, no SDK.
+/// VIKUNJA_APP_SENTRY_DSN=…`). Null in a build without one, which has no
+/// crash reports at all: no switch, no question, no SDK.
 String? get buildCrashReportsDsn {
   final dsn = _dsnDefine.trim();
   return dsn.isEmpty ? null : dsn;

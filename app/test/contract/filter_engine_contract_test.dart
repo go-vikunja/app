@@ -21,11 +21,11 @@ import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import '../helpers/test_database.dart';
 import 'helpers.dart';
 
-// The fixture of the filter engine's server probe (D51) with one user:
-// absolute dates around 2026-10-20 midnight in Europe/Berlin versus GMT
-// and New York, plus two tasks due relative to now. No stored instant
-// equals a bound of a filter below, which a SQLite server compares off by
-// one.
+// The fixture of the filter engine's server probe with one user: absolute
+// dates around 2026-10-20 midnight in Europe/Berlin versus GMT and New
+// York, plus two tasks due relative to now. No stored instant equals a
+// bound of a filter below, which a SQLite server compares off by one
+// (decision log: Tasks).
 const _zones = ['GMT', 'Europe/Berlin', 'America/New_York'];
 
 typedef _Case = ({String filter, bool nulls, bool dated});

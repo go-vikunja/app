@@ -775,7 +775,7 @@ void main() {
     );
 
     test('whose link this device lost is told that it ended here, not on '
-        'the server (D59)', () async {
+        'the server (decision log: Sessions)', () async {
       final guest = await guestSignedIn(syncedAt: monday);
       await auth.linkShareStore.delete(guest.id);
       engineOf(guest.id).onRefresh = () async {
@@ -911,7 +911,7 @@ void main() {
     });
   });
 
-  group('keeping sessions alive (D59)', () {
+  group('keeping sessions alive (decision log: Sessions)', () {
     // The seeded tokens were issued at [monday], long expired by the real
     // clock the session managers use, so every first request refreshes.
     Future<void> needsToken(String accountId) => container

@@ -1,5 +1,5 @@
 name: vikunja_widgets
-description: Home-screen widget bridge of the app (D63) - snapshot files, Android instance configs and refreshes, the iOS App Group container.
+description: Home-screen widget bridge of the app - snapshot files, Android instance configs and refreshes, the iOS App Group container.
 publish_to: none
 version: 0.1.0
 resolution: workspace

@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# The static checks of the CI job `checks` (D86); runs the same locally.
+# The static checks of the CI job `checks`; runs the same locally
+# (decision log: Releases).
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 cd "$repo_root"
 
-# Only build_runner's code is committed; git ignores the l10n code (D88).
-# Compared with the state before the generators run, so that uncommitted
-# local edits do not fail it; in CI the tree starts clean.
+# Only build_runner's code is committed; git ignores the l10n code
+# (decision log: Languages). Compared with the state before the generators run,
+# so that uncommitted local edits do not fail it; in CI the tree starts clean.
 app_lib_state() {
   git status --porcelain --untracked-files=all -- app/lib
   git diff --no-ext-diff -- app/lib | cksum

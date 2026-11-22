@@ -12,7 +12,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 /// successfully, or that it has not tried yet; the last attempt when it
 /// failed since; a hint when the system has not run it for a day
 /// (Android), or that it decides when (iOS, before the first run); and the
-/// account's last ended session, while it is recent (D59).
+/// account's last ended session, while it is recent.
 class BackgroundSyncLine extends ConsumerWidget {
   const new({
     required this.accountId,

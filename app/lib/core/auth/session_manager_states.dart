@@ -49,7 +49,7 @@ SessionStop? stopAfter(SessionStop? stop, StopEvent event) =>
     };
 
 /// What the diagnostics hold about the refresh token being sent, kept for
-/// this send's verdict (D59).
+/// this send's verdict (decision log: Sessions).
 sealed class SendNote {
   const new();
 

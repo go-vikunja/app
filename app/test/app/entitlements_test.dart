@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   // The widget extension shares files with the app, never the Keychain:
-  // tokens stay with the app (D24, D63).
+  // tokens stay with the app (decision log: Security and privacy).
   for (final path in [
     'ios/Runner/Runner.entitlements',
     'ios/VikunjaWidgets/VikunjaWidgets.entitlements',

@@ -9,14 +9,14 @@ part of 'draft_files.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
 /// Where the unsent comments and description edits are kept: files in the
-/// accounts folder, which iOS backups leave out (D66), while the
+/// accounts folder, which iOS backups leave out, while the
 /// preferences go into them.
 
 @ProviderFor(draftStore)
 final draftStoreProvider = DraftStoreProvider._();
 
 /// Where the unsent comments and description edits are kept: files in the
-/// accounts folder, which iOS backups leave out (D66), while the
+/// accounts folder, which iOS backups leave out, while the
 /// preferences go into them.
 
 final class DraftStoreProvider
@@ -28,7 +28,7 @@ final class DraftStoreProvider
         >
     with $Provider<PreferencesStore> {
   /// Where the unsent comments and description edits are kept: files in the
-  /// accounts folder, which iOS backups leave out (D66), while the
+  /// accounts folder, which iOS backups leave out, while the
   /// preferences go into them.
   DraftStoreProvider._()
     : super(

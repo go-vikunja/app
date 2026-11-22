@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# The CI job `android` (D86): the release APK with the debug key (no key
-# reaches this job), its exported components and the widgets' Kotlin tests.
+# The CI job `android`: the release APK with the debug key (no key reaches
+# this job), its exported components and the widgets' Kotlin tests (decision
+# log: Releases).
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

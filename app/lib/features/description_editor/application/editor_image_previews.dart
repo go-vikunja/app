@@ -9,10 +9,10 @@ final _log = Logger('EditorImagePreviews');
 
 /// The previews of a document's attachment images for one load of the
 /// editor page, loaded by the app with the account's session, as the page
-/// itself loads nothing (D52). Each image is sent once, at the preview size
-/// the detail sheet shows, its original where the server has no preview;
-/// an image that cannot be had keeps its placeholder. [close] ends it with
-/// the page load.
+/// itself loads nothing (decision log: Descriptions, comments, attachments).
+/// Each image is sent once, at the preview size the detail sheet shows, its
+/// original where the server has no preview; an image that cannot be had keeps
+/// its placeholder. [close] ends it with the page load.
 final class EditorImagePreviews {
   new({
     required this._images,

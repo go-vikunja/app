@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The CI job `ios` (D86, on GitHub's macOS runner): an unsigned release build
+# The CI job `ios` (on GitHub's macOS runner): an unsigned release build
 # for iOS devices, with the licence page's notices and the required-reason
 # APIs checked, then the XCTests of the native code on a simulator.
 set -euo pipefail

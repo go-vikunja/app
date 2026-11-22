@@ -32,7 +32,8 @@ jobs:
         with:
           persist-credentials: false
       # A patch release's tag that may go without every German text, and the
-      # opt-in crash reports' Sentry DSN, which no build without it has (D113).
+      # opt-in crash reports' Sentry DSN, which no build without it has
+      # (decision log: Diagnostics).
       - env:
           VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN: ${{ vars.VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN }}
           VIKUNJA_APP_SENTRY_DSN: ${{ vars.VIKUNJA_APP_SENTRY_DSN }}

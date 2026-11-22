@@ -615,7 +615,8 @@ void main() {
     }
 
     testWidgets("on an iPad a swipe from the project's own edge with a task "
-        'open closes the pane along with the project (D70)', (tester) async {
+        'open closes the pane along with the project '
+        '(decision log: Look and layout)', (tester) async {
       useWindow(tester, iPad11Landscape);
       await pumpSweepApp(tester);
       await _goTo(tester, AppRoutes.project(workProjectId));

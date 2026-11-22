@@ -1,6 +1,6 @@
 """Tests tool/ci/crowdin_sync.sh in a copy of the repository's scripts with a
 real git repository, a bare one as origin, and fake crowdin and gh first on
-PATH (D88)."""
+PATH (decision log: Languages)."""
 import hashlib
 import json
 import os

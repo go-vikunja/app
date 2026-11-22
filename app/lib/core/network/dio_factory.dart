@@ -12,7 +12,7 @@ final _log = Logger('DioFactory');
 const defaultConnectTimeout = Duration(seconds: 10);
 
 /// With [profiles], every request goes through the origin's connection
-/// profile (D65), over [httpClientAdapter] or the platform adapter.
+/// profile, over [httpClientAdapter] or the platform adapter.
 Dio createDio({
   required String userAgent,
   HttpClientAdapter? httpClientAdapter,

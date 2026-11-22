@@ -45,7 +45,8 @@ SyncFakes _longData() {
 BuildContext _page(WidgetTester tester) =>
     tester.element(find.byType(Scaffold).first);
 
-/// The six core screens of decision 4, each reached from the Overview.
+/// The six core screens, each reached from the Overview
+/// (decision log: Accessibility).
 final _screens = <(String, Future<void> Function(WidgetTester), Finder)>[
   ('Overview', (_) async {}, find.byType(OverviewScreen)),
   (

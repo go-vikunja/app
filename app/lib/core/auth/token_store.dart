@@ -57,7 +57,8 @@ final class TokenStore {
   // only costs one more refresh.
   //
   // With [recoverLostKey] secure storage may wipe everything first when its
-  // key cannot be unwrapped any more (D59): only a sign-in asks for that.
+  // key cannot be unwrapped any more: only a sign-in asks for that
+  // (decision log: Sessions).
   Future<void> write(
     String accountId,
     TokenSet tokens, {

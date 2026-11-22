@@ -65,8 +65,8 @@ final class WidgetAccount {
   final bool supportsV2;
   final bool showsAccount;
 
-  /// The session's open end happened on this device, not on the server
-  /// (D59); read from its record, which the registry does not hold.
+  /// The session's open end happened on this device, not on the server;
+  /// read from its record, which the registry does not hold.
   final bool endedOnDevice;
 
   WidgetAccount withEndedOnDevice({required bool endedOnDevice}) =>

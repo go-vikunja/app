@@ -227,7 +227,7 @@ void main() {
             (option.label, option.shown, option.selected),
         ],
         [
-          // 09:30 has passed today (D102-9).
+          // 09:30 has passed today (QA-8).
           (en.shortcutToday, '10/10/2026 23:59', false),
           (en.shortcutTomorrow, '11/10/2026 09:30', true),
           (en.shortcutNextWeek, '17/10/2026 09:30', false),

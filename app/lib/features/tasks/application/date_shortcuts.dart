@@ -49,8 +49,7 @@ int _lastDayOfMonth(int year, int month) => DateTime(year, month + 1, 0).day;
 /// The web's rules: `thisWeekend` is hidden on Sunday; `inAMonth` is
 /// clamped to the month's last day; of two shortcuts on the same day the
 /// later one is dropped. The web also hides `today` from 21:00, when its
-/// default time has passed; here `today` then takes 23:59 (D102-9), so it
-/// stays (D106).
+/// default time has passed; here `today` then takes 23:59, so it stays (QA-8).
 List<DateShortcutOption> buildDateShortcuts(DateTime now) {
   final today = _startOfDay(now);
   final weekday = now.weekday % 7;
@@ -86,7 +85,7 @@ List<DateShortcutOption> buildDateShortcuts(DateTime now) {
 
 /// [day] at a time of day: the one [current] already has, else the user's
 /// [defaultTime], else the breakpoint for [now]; on today never one that
-/// has passed, which becomes 23:59 (`notPassedToday`, D102-9; local time,
+/// has passed, which becomes 23:59 (`notPassedToday`, QA-8; local time,
 /// seconds dropped).
 DateTime dayWithTime(
   DateTime day, {

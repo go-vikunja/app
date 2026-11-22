@@ -83,14 +83,15 @@ void main() {
     expect('$read', isNot(contains(tokens.accessToken)));
   });
 
-  test('a write waits until both tokens are on disk (D59)', () async {
+  test('a write waits until both tokens are on disk '
+      '(decision log: Sessions)', () async {
     await store.write('a1', issueTokens(issuedAt: issuedAt));
 
     expect(secureStore.flushes, 1);
   });
 
   test('only the refresh token of a write asked to recover a lost key may '
-      'let the platform reset storage (D59)', () async {
+      'let the platform reset storage (decision log: Sessions)', () async {
     await store.write('a1', issueTokens(issuedAt: issuedAt));
     await store.write(
       'b2',
@@ -116,7 +117,7 @@ void main() {
   });
 
   test('secure storage on Android reports what it cannot decrypt instead of '
-      'wiping it (D59)', () {
+      'wiping it (decision log: Sessions)', () {
     final options = FlutterSecureStore.defaultStorage.aOptions.toMap();
 
     expect(options['resetOnError'], 'false');

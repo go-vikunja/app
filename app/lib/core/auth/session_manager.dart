@@ -17,7 +17,8 @@ typedef SessionEndedHandler = Future<void> Function(SessionEnded failure);
 typedef RefreshGate = bool Function();
 
 /// Why a refresh was put off without an answer from the server; the
-/// [NetworkFailure] that carries it is transient for every caller (D59).
+/// [NetworkFailure] that carries it is transient for every caller
+/// (decision log: Sessions).
 enum RefreshDeferred {
   /// Too little of the background run is left for its answer to arrive.
   cutoff,
@@ -27,7 +28,7 @@ enum RefreshDeferred {
 }
 
 /// How long a token request may take in a background run, so that a
-/// rotation's answer arrives before the OS ends the run (D59). Open until
+/// rotation's answer arrives before the OS ends the run. Open until
 /// [answerWithin] sets when answers must be in; [closeNow] when the OS
 /// stops the run.
 final class RefreshCutoff {
@@ -81,14 +82,15 @@ Future<void> _delay(Duration duration) => Future<void>.delayed(duration);
 /// With `refreshes` false the manager never calls the server: it hands out
 /// the stored access token while it is valid and otherwise fails the
 /// request as a rejected token, so that a short-lived isolate (a
-/// notification action, D26) leaves the rotation to the app; a token a
+/// notification action) leaves the rotation to the app; a token a
 /// sibling isolate stored meanwhile is still adopted.
 ///
 /// A closed `mayStartRefresh` gate fails a refresh before it is sent, as
 /// deferred ([RefreshDeferred.cutoff]): a background run closes it when too
-/// little time is left for the answer (D59). Storage that refuses to read
+/// little time is left for the answer. Storage that refuses to read
 /// fails a call as a [NetworkFailure] whose cause is the
-/// [SecureStorageUnreadable]: the tokens are kept for a later try (D24).
+/// [SecureStorageUnreadable]: the tokens are kept for a later try
+/// (decision log: Sessions).
 final class SessionManager implements AccessTokenSource {
   new({
     required this.accountId,
@@ -195,7 +197,7 @@ final class SessionManager implements AccessTokenSource {
   }
 
   /// A retired manager hands out no token, also none a refresh brings whose
-  /// write began before the retirement (D26).
+  /// write began before the retirement (decision log: Sessions).
   Future<T> _unlessRetired<T>(Future<T> Function() call) async {
     final result = await call();
     if (_stop is RetiredStop) throw const _Retired();
@@ -313,7 +315,7 @@ final class SessionManager implements AccessTokenSource {
 
   /// Another isolate may have stored tokens that work after this manager
   /// ended the session: a rotation it stored late, or a restore in a
-  /// background run (D59). Only storage that names a refresh token this
+  /// background run. Only storage that names a refresh token this
   /// manager has neither seen refused nor rotated away brings the session
   /// back.
   Future<void> _reviveIfReplaced() async {

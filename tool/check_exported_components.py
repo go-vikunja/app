@@ -21,9 +21,9 @@ asserts that backups stay off (allowBackup="false" and the data extraction
 rules), that no Sentry component is left to start with the app and its
 meta-data keep it from starting on its own and from collecting network
 breadcrumbs, with no other io.sentry.* meta-data anywhere: crash reports
-start only once the user allows them, with the app's options (D113). It
-also reads the app's network security config: Sentry's hosts take https and
-the system's CAs only. --self-test checks the checker against manifests made
+start only once the user allows them, with the app's options (decision log:
+Diagnostics). It also reads the app's network security config: Sentry's hosts
+take https and the system's CAs only. --self-test checks the checker against manifests made
 from ALLOWED and configs made from the app's.
 """
 import os
@@ -37,8 +37,9 @@ ANDROID = '{http://schemas.android.com/apk/res/android}'
 COMPONENTS = ('activity', 'activity-alias', 'receiver', 'service', 'provider')
 RULES = '@xml/data_extraction_rules'
 NETWORK_CONFIG_REFERENCE = '@xml/network_security_config'
-# sentry_flutter starts Sentry from Dart; the SDK's own providers would run
-# at every start, SentryInitProvider would initialise it (D113).
+# sentry_flutter starts Sentry from Dart; the SDK's own providers would run at
+# every start, SentryInitProvider would initialise it
+# (decision log: Diagnostics).
 SENTRY_PREFIX = 'io.sentry.'
 SENTRY_META_DATA = {
     'io.sentry.auto-init': 'false',

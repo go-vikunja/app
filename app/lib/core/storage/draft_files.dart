@@ -10,7 +10,7 @@ import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 part 'draft_files.g.dart';
 
 /// Where the unsent comments and description edits are kept: files in the
-/// accounts folder, which iOS backups leave out (D66), while the
+/// accounts folder, which iOS backups leave out, while the
 /// preferences go into them.
 @Riverpod(keepAlive: true)
 PreferencesStore draftStore(Ref ref) => DraftFiles(directory: draftsDirectory);

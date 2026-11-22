@@ -238,7 +238,7 @@ final class AccountRegistry {
     ),
   );
 
-  /// A session that ended in error works again (D59).
+  /// A session that ended in error works again (decision log: Sessions).
   Future<AccountRegistryState> clearNeedsReauth(String accountId) => _update(
     (state) => AccountRegistryState(
       accounts: [

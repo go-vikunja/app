@@ -85,7 +85,7 @@ void main() {
       ]);
     });
 
-    test('from 21:00 today stays, unlike on the web (D106); a later '
+    test('from 21:00 today stays, unlike on the web (QA-8); a later '
         'shortcut landing on today is dropped for it', () {
       expect(keysAt(DateTime(2026, 9, 15, 21)), contains(DateShortcut.today));
       // Friday 21:30: later this week is today.
@@ -181,7 +181,7 @@ void main() {
       );
     });
 
-    test('gives today no time that has passed: 23:59 instead (D102-9)', () {
+    test('gives today no time that has passed: 23:59 instead (QA-8)', () {
       for (final (now, defaultTime, expected) in [
         (DateTime(2026, 9, 15, 22), null, DateTime(2026, 9, 15, 23, 59)),
         (

@@ -13,7 +13,7 @@ const _allowedUpward = <String, Map<String, String>>{
   'core/widgets/widget_snapshot_builder.dart': {
     'app/theme/legible_color.dart':
         "the widgets draw a project's colour with the lightness the app's "
-        'folders get (D81)',
+        'folders get (decision log: Look and layout)',
     'features/overview/application/due_date_groups.dart': _widgetsAsScreens,
     'features/projects/application/project_access.dart': _widgetsAsScreens,
     'features/projects/application/project_list_model.dart': _widgetsAsScreens,

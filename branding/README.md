@@ -1,6 +1,6 @@
 # Branding
 
-The app is called **Vikunja** and uses Vikunja's logo, the llama on the blue disc ([D83](../docs/decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)). Every icon is derived from the logo's SVG by script, with the icons of the previous official Vikunja app as the look to follow.
+The app is called **Vikunja** and uses Vikunja's logo, the llama on the blue disc ([Identity and scope](../docs/decisions.md#identity-and-scope)). Every icon is derived from the logo's SVG by script, with the icons of the previous official Vikunja app as the look to follow.
 
 ![Preview: iOS light, dark and tinted; Android circle, squircle and teardrop masks; the themed icon in light and dark; 96 and 48 px; the status bar icon at 48 and 24 px; the in-app logo on dark and light](png/preview-sheet.png)
 
@@ -43,7 +43,7 @@ The name "Vikunja" and the Vikunja logo belong to the Vikunja project and are no
 | Inner ears | `#F1D7D4` | The inner ears |
 | Eyes | `#2C3844` | The closed eyes |
 | Nose and mouth | `#494949` | The nose and the mouth |
-| Theme seed | `#1973FF` | `AppTheme.seedColor` in `app/lib/app/theme/app_theme.dart`, unchanged: the Vikunja web's primary blue ([D56](../docs/decisions.md#d56-design-after-the-owners-mockups-blue-scheme-cards-one-task-row)) |
+| Theme seed | `#1973FF` | `AppTheme.seedColor` in `app/lib/app/theme/app_theme.dart`, unchanged: the Vikunja web's primary blue ([Look and layout](../docs/decisions.md#look-and-layout)) |
 
 ## Files
 
@@ -108,8 +108,8 @@ for d in mdpi:24 hdpi:36 xhdpi:48 xxhdpi:72 xxxhdpi:96; do n=${d%%:*}; px=${d##*
 
 `app/test/app/app_icons_test.dart` checks the sizes of these files, the white status bar icon, the blue background, the opaque iOS icon and the in-app logo's transparent corners.
 
-The old app's status bar icon was called `vikunja_notification_logo`. That name is an alias of `ic_notification` (`app/android/app/src/main/res/values/legacy_drawables.xml`, kept from resource shrinking by `res/raw/keep.xml`), because the old app's reminders set before the update look their icon up by it ([D85](../docs/decisions.md#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept)). The icon here keeps the name `ic_notification`, and nothing is copied.
+The old app's status bar icon was called `vikunja_notification_logo`. That name is an alias of `ic_notification` (`app/android/app/src/main/res/values/legacy_drawables.xml`, kept from resource shrinking by `res/raw/keep.xml`), because the old app's reminders set before the update look their icon up by it ([The previous app](../docs/decisions.md#the-previous-app)). The icon here keeps the name `ic_notification`, and nothing is copied.
 
 ## Open points
 
-- The Vikunja maintainers confirm the wording of the name-and-logo terms and say who holds the logo's copyright ([D87](../docs/decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp)).
+- The Vikunja maintainers confirm the wording of the name-and-logo terms and say who holds the logo's copyright ([Identity and scope](../docs/decisions.md#identity-and-scope)).

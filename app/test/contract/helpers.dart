@@ -24,7 +24,8 @@ final int contractServerPort =
 
 /// The API versions the test server serves, known before the tests run:
 /// v1 only when VIKUNJA_APP_TEST_VIKUNJA_IMAGE names a release before
-/// 2.4.0, which brought /api/v2 (2.3 is the support floor, D13).
+/// 2.4.0, which brought /api/v2; 2.3 is the support floor
+/// (decision log: Servers).
 final List<ApiVersion> contractApiVersions = [
   ApiVersion.v1,
   if (_imageHasV2(Platform.environment['VIKUNJA_APP_TEST_VIKUNJA_IMAGE']))

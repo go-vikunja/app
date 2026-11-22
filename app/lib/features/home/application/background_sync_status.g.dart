@@ -101,14 +101,14 @@ final class BackgroundSyncStatusFamily extends $Family
 }
 
 /// Read again whenever the account's sign-in mark flips, as an end is
-/// recorded before the mark (D59), and every minute for other isolates'
+/// recorded before the mark, and every minute for other isolates'
 /// records. A value read before the mark tells nothing about its end.
 
 @ProviderFor(markedSessionEnd)
 final markedSessionEndProvider = MarkedSessionEndFamily._();
 
 /// Read again whenever the account's sign-in mark flips, as an end is
-/// recorded before the mark (D59), and every minute for other isolates'
+/// recorded before the mark, and every minute for other isolates'
 /// records. A value read before the mark tells nothing about its end.
 
 final class MarkedSessionEndProvider
@@ -120,7 +120,7 @@ final class MarkedSessionEndProvider
         >
     with $FutureModifier<MarkedSessionEnd>, $FutureProvider<MarkedSessionEnd> {
   /// Read again whenever the account's sign-in mark flips, as an end is
-  /// recorded before the mark (D59), and every minute for other isolates'
+  /// recorded before the mark, and every minute for other isolates'
   /// records. A value read before the mark tells nothing about its end.
   MarkedSessionEndProvider._({
     required MarkedSessionEndFamily super.from,
@@ -169,7 +169,7 @@ final class MarkedSessionEndProvider
 String _$markedSessionEndHash() => r'b94f62cbdd18f3055f79ca2d6de55ae830402a83';
 
 /// Read again whenever the account's sign-in mark flips, as an end is
-/// recorded before the mark (D59), and every minute for other isolates'
+/// recorded before the mark, and every minute for other isolates'
 /// records. A value read before the mark tells nothing about its end.
 
 final class MarkedSessionEndFamily extends $Family
@@ -184,7 +184,7 @@ final class MarkedSessionEndFamily extends $Family
       );
 
   /// Read again whenever the account's sign-in mark flips, as an end is
-  /// recorded before the mark (D59), and every minute for other isolates'
+  /// recorded before the mark, and every minute for other isolates'
   /// records. A value read before the mark tells nothing about its end.
 
   MarkedSessionEndProvider call(String accountId) =>

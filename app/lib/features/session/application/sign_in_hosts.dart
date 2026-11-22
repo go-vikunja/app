@@ -14,7 +14,7 @@ const confirmedSignInHostsKey = 'auth.confirmed_sign_in_hosts';
 
 /// A sign-in page on another origin than its server: the server receives
 /// the code and the PKCE verifier for the account signed in at that page,
-/// and can redeem them there (D23, R1).
+/// and can redeem them there (R1; decision log: Accounts and sign-in).
 @immutable
 final class OtherSignInHost {
   const new({required this.server, required this.signInPage, this.origin});

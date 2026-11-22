@@ -17,7 +17,8 @@ import org.json.JSONException
 
 // What the previous official app, which this app updates on Play, left on
 // the device: the first start reads its traces before anything of this app
-// writes secure storage, then clears what this app does not share (D83).
+// writes secure storage, then clears what this app does not share
+// (decision log: The previous app).
 internal object PreviousApp {
     // flutter_secure_storage's default file and key prefix, the same in
     // every version the previous app used.
@@ -34,7 +35,8 @@ internal object PreviousApp {
 
     // The Sentry SDK's unsent reports and scope in the cache, and its install
     // id. This app's own crash reports keep theirs there too, but only once
-    // allowed after a sign-in, which a first start comes before (D113).
+    // allowed after a sign-in, which a first start comes before
+    // (decision log: Diagnostics).
     const val SENTRY_CACHE = "sentry"
     const val SENTRY_INSTALLATION = "INSTALLATION"
 

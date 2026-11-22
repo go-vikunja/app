@@ -33,8 +33,8 @@ MULTILINE = {'full_description.txt', 'description.txt', 'promotional_text.txt', 
              CHANGELOG}
 OPTIONAL = {'release_notes.txt'}
 # The app's pages on vikunja.io, the contact and the App Store copyright
-# (D89). vikunja.io is English only, so both listing languages link the same
-# pages.
+# (decision log: Releases). vikunja.io is English only, so both listing
+# languages link the same pages.
 WEBSITE_HOST = 'vikunja.io'
 URLS = {
     'support_url.txt': 'https://vikunja.io/help/mobile',
@@ -58,7 +58,7 @@ BRITISH = re.compile(r'(?i)colour|favourit|licenc|organis|recognis|prioritis|syn
                      r'|behaviour|neighbour|catalogue|tyre|\bgrey\b|\bbins?\b|\btick(s|ed|ing)?\b|full stop')
 ENGLISH_SHARED = {'notes.txt'}
 # The name fields and the keywords must not name other apps or companies
-# (D76; App Store Connect, keywords).
+# (App Store Connect, keywords).
 NAME_FIELDS = {'title.txt', 'name.txt', 'subtitle.txt', 'keywords.txt'}
 FOREIGN_NAMES = re.compile(r'(?i)todoist|ticktick|trello|asana|notion|nextcloud|google|microsoft|apple')
 SHORT_FIELDS = {'title.txt', 'short_description.txt', 'name.txt', 'subtitle.txt', 'keywords.txt',
@@ -194,7 +194,7 @@ class Checker:
         if lang and OTHER_PLATFORM[platform].search(value):
             self.error(path, f'names the other platform: {OTHER_PLATFORM[platform].search(value).group(0)}')
         if UNOFFICIAL.search(value):
-            self.error(path, 'calls the app unofficial (D83)')
+            self.error(path, 'calls the app unofficial (decision log: Identity and scope)')
         if (lang == 'en' or name in ENGLISH_SHARED) and BRITISH.search(value):
             self.error(path, f"not the US spelling or the glossary's term: {BRITISH.search(value).group(0)}")
         if name in ('title.txt', 'name.txt') and value != APP_NAME:

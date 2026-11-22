@@ -14,7 +14,7 @@ final _log = Logger('AccountData');
 /// single read of the task or project. A task created here is addressed
 /// by its server id once the create was answered; before that it throws
 /// [TaskNotSyncedYet]. What a read or a toggle's read-back says is stored
-/// for the notifications (D80), and a task's unfollow that went through
+/// for the notifications, and a task's unfollow that went through
 /// also before its read-back; a failure to store it is logged and never
 /// fails the call.
 final class LocalSubscriptionRepository implements SubscriptionRepository {

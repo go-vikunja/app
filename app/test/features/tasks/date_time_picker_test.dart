@@ -87,7 +87,7 @@ void main() {
   });
 
   testWidgets('Cancel in the time dialog after picking today never keeps a '
-      'time that has passed: 23:59 instead (D102-9)', (tester) async {
+      'time that has passed: 23:59 instead (QA-8)', (tester) async {
     final picked = await open(tester, current: DateTime(2026, 10, 21, 9, 30));
 
     await pickDay(tester, '19');
@@ -98,7 +98,7 @@ void main() {
   });
 
   testWidgets('Cancel in the time dialog after picking today, without a '
-      'date, turns a passed default due time into 23:59 (D102-9)', (
+      'date, turns a passed default due time into 23:59 (QA-8)', (
     tester,
   ) async {
     final picked = await open(

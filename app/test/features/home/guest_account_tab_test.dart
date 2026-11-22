@@ -231,7 +231,8 @@ void main() {
       expect(guest.needsReauth, isFalse);
     });
 
-    testWidgets('is told no reason for the end (D59)', (tester) async {
+    testWidgets('is told no reason for the end '
+        '(decision log: Sessions)', (tester) async {
       await SessionDiagnostics(auth.preferences).recordEnd(
         linkShareAccountIdFor(fullServer270().rootUri, 84),
         SessionEndDiagnosis(
@@ -254,7 +255,7 @@ void main() {
     // A link that reads again is restored at the start, so the end on the
     // device that stays is a lost link.
     testWidgets('is told an end on the device as such, from the first frame '
-        'on (D59)', (tester) async {
+        'on (decision log: Sessions)', (tester) async {
       await SessionDiagnostics(auth.preferences).recordEnd(
         linkShareAccountIdFor(fullServer270().rootUri, 84),
         SessionEndDiagnosis(
@@ -284,7 +285,8 @@ void main() {
       (SessionEndCause.sharePasswordNeeded, en.sessionEndCauseSharePassword),
     ]) {
       testWidgets('once the link is opened again, the tab tells that end '
-          '(${cause.name}) in its own words (D59)', (tester) async {
+          '(${cause.name}) in its own words '
+          '(decision log: Sessions)', (tester) async {
         await SessionDiagnostics(auth.preferences).recordEnd(
           linkShareAccountIdFor(fullServer270().rootUri, 84),
           SessionEndDiagnosis(

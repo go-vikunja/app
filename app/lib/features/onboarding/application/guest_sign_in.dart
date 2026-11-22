@@ -276,8 +276,8 @@ final class GuestSignIn {
     );
   }
 
-  /// The link reads and writes again, and an ended session is replaced
-  /// (D59). Before the guest is unmarked: a record left open would let the
+  /// The link reads and writes again, and an ended session is replaced.
+  /// Before the guest is unmarked: a record left open would let the
   /// session check restore a guest marked later for a gone share, which
   /// leaves no record.
   Future<void> _settleEnded(String accountId) async {

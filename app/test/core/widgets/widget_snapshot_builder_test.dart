@@ -608,7 +608,7 @@ void main() {
   });
 
   test('an end on the device is not told as a sign-out by the server '
-      '(D59)', () async {
+      '(decision log: Sessions)', () async {
     const user = WidgetAccount(
       id: accountId,
       title: 'Alice',

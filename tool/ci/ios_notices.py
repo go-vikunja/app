@@ -23,7 +23,7 @@ page leaves out an asset it cannot read. Checks that:
 
 - every Swift package fetched by URL, which is linked into the app statically
   and has no notice in NOTICES.Z (sentry_flutter's Sentry for Apple
-  platforms, D113), is in the iOS legal asset with the version
+  platforms), is in the iOS legal asset with the version
   Runner.xcworkspace's Package.resolved pins (the one `flutter build ios`
   uses) and its checkout's licence file, and the project's own
   Package.resolved, if there is one, says the same.

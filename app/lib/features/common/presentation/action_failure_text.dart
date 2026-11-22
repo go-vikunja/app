@@ -17,7 +17,7 @@ String? actionFailureText(AppLocalizations l10n, Object error) =>
       _ => null,
     };
 
-/// Our text for a request that got no token and so was never sent (D59):
+/// Our text for a request that got no token and so was never sent:
 /// no connection was missing, and the server changed nothing. Null for any
 /// other failure. An action words it before its own network failures.
 String? notSentFailureText(AppLocalizations l10n, Object? error) =>

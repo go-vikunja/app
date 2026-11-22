@@ -46,7 +46,7 @@ List<String> matchingKeys(
   ];
 }
 
-// The filter probe's fixture on Vikunja 2.7.0 (D51; ids of the probed run):
+// The filter probe's fixture on Vikunja 2.7.0 (ids of the probed run):
 // user A owns everything, B is assigned to some tasks.
 
 const userA = 'probefbaee647';

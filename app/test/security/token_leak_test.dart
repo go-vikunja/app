@@ -270,7 +270,7 @@ void main() {
               throw ServerFailure(500, message: 'cannot use $refreshToken');
             }
             // Not 16002: after a server error that is a race, which ends
-            // nothing (D59).
+            // nothing (decision log: Sessions).
             throw SessionEnded(
               SessionEndReason.expired,
               code: 16003,

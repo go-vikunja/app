@@ -8,10 +8,19 @@ import 'world.dart';
 
 /// The app's offline writes, lost answers, comments and uploads, which
 /// every backend must serve alike. Each case seeds what it needs, in a
-/// project of its own, through [ParityBackend.server], uses UTC dates
-/// compared to the second (the server stores seconds), tells failures apart
-/// by their kind, never by a code, and never asks which backend it runs
-/// on.
+/// project of its own, through [ParityBackend.server], and never asks which
+/// backend it runs on. The cases avoid what the fakes keep different from
+/// the server on purpose:
+/// - a task's identifier and index: `-<id>` on the fakes, `#<index>` or
+///   `PREFIX-<index>` on the server;
+/// - `updated` in microseconds on the fakes, seconds on the server, so dates
+///   are UTC and compared to the second;
+/// - a gone task's code, 4002 on the fakes and 4040 from 2.8.0's trash, so
+///   failures are told apart by their kind (`taskGone`), never by a code;
+/// - a task of a deleted project, which the fakes remove and 2.8.0 keeps in
+///   the trashed project;
+/// - projects the fakes create without a permission or owner, which show as
+///   the user's own with admin permission.
 void parityScenarios(ParityBackend Function() backend) {
   test('S1: a task created offline and edited before the send goes as one '
       "create; the row moves to the server id and equals the server's "

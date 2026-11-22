@@ -1,10 +1,11 @@
 /// Where the app's source code is published: the release build passes
 /// `--dart-define=SOURCE_CODE_URL=<the repository's tree at the tag>`
-/// (tool/ci/release_build.sh, D86); other builds have none.
+/// (tool/ci/release_build.sh); other builds have none
+/// (decision log: Identity and scope).
 const String? sourceCodeUrl = _sourceCodeUrl == '' ? null : _sourceCodeUrl;
 const _sourceCodeUrl = String.fromEnvironment('SOURCE_CODE_URL');
 
-/// The app's pages on vikunja.io (D89). The site is in English only, so every
+/// The app's pages on vikunja.io. The site is in English only, so every
 /// language opens the same page.
 enum WebsitePage {
   support('https://vikunja.io/help/mobile'),

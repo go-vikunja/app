@@ -350,7 +350,8 @@ void main() {
     });
   });
 
-  group('stores its tokens like a browser sign-in (D59)', () {
+  group('stores its tokens like a browser sign-in '
+      '(decision log: Sessions)', () {
     late SessionDiagnostics diagnostics;
     late List<Duration> sleeps;
     late TokenSet tokens;

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """The source code of the desugar_jdk_libs build in the app (GPL-2.0 with the
-Classpath exception), which every release carries beside the APK (D73).
+Classpath exception), which every release carries beside the APK
+(decision log: Releases).
 
   python3 -I tool/ci/desugar_source.py --check-manifest
   python3 -I tool/ci/desugar_source.py --fetch OUT_DIR

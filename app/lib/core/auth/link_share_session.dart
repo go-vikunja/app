@@ -36,7 +36,7 @@ bool serverErrorMayMeanShareGone(ServerConnection connection) =>
 /// chose to remember it. A share that needs a password it does not have,
 /// or that is gone, ends the session: the account needs the link opened
 /// again. A remembered password the server refuses is forgotten. Every end
-/// is recorded before the guest is marked (D59).
+/// is recorded before the guest is marked (decision log: Sessions).
 final class LinkShareSession implements AccessTokenSource {
   new({
     required this.accountId,
@@ -230,10 +230,11 @@ final class LinkShareSession implements AccessTokenSource {
     return _token ??= stored;
   }
 
-  /// A good read ends a run of failed reads at app starts (D59). One that
-  /// fails is a network failure for every caller, like the session
-  /// manager's: the link is kept and tried again, and as a VikunjaFailure
-  /// it passes the transport's retries and error mapping unchanged.
+  /// A good read ends a run of failed reads at app starts
+  /// (decision log: Sessions). One that fails is a network failure for every
+  /// caller, like the session manager's: the link is kept and tried again, and
+  /// as a VikunjaFailure it passes the transport's retries and error mapping
+  /// unchanged.
   Future<StoredLinkShare?> _readShare() async {
     final StoredLinkShare? stored;
     try {
@@ -517,7 +518,7 @@ final class LinkShareSessions {
   }
 
   /// A guest marked for a new sign-in only because secure storage refused
-  /// its link at app starts for a day (D59) works again once the link
+  /// its link at app starts for a day works again once the link
   /// reads: the server refused nothing. Not after a restore or a reopened
   /// link, nor after any other end, which its record names. Never
   /// throws.

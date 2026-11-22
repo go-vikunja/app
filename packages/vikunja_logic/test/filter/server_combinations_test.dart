@@ -1,5 +1,5 @@
 // How the server combined filters with views, saved filters and searches
-// on the probe fixture (D51), rebuilt from the engine's parts.
+// on the probe fixture, rebuilt from the engine's parts.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';

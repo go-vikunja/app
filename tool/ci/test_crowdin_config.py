@@ -1,5 +1,6 @@
 """Checks crowdin.yml, which the workflow "Crowdin" gives Crowdin's CLI, and
-the commit and pull request that tool/ci/crowdin_sync.sh makes (D88)."""
+the commit and pull request that tool/ci/crowdin_sync.sh makes
+(decision log: Languages)."""
 import json
 import os
 import re

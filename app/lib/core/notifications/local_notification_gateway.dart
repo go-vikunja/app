@@ -74,7 +74,7 @@ final class LocalNotificationGateway implements NotificationGateway {
 
   /// [darwinCategoryId] with a Done that asks for the device to be
   /// unlocked, chosen while the app lock is on. Snoozing stays plain: it
-  /// only moves a local notification (D39).
+  /// only moves a local notification.
   static const darwinLockedCategoryId = 'task_locked';
 
   /// `res/drawable-*dpi/ic_notification.png`, kept by `res/raw/keep.xml`.
@@ -512,7 +512,7 @@ final class LocalNotificationGateway implements NotificationGateway {
           // (`cancelNotification`). Such an action also runs from a secure
           // lock screen, so Done is left out while the app lock is on.
           // Android shows at most three actions, so 10 minutes gives way
-          // to Tomorrow (owner, D39).
+          // (owner) to Tomorrow (decision log: Notifications and widgets).
           actions: [
             for (final (id, title) in [
               if (!privacy.doneNeedsUnlock)

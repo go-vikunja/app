@@ -137,7 +137,7 @@ class _InheritedFollowNote extends StatelessWidget {
 }
 
 /// Under the reminders of a task the user does not follow, on a server that
-/// reminds only its followers (D80): that they won't notify, and a button
+/// reminds only its followers: that they won't notify, and a button
 /// that follows it. Nothing while the user follows it or it is unknown.
 class UnfollowedRemindersNote extends StatelessWidget {
   const new({required this.follow, required this.onFollow, super.key});

@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
-# The update over the previous app (D85; threat model 8.2, item 13) on a
-# running emulator: installs the old APK fresh, waits while you sign it in
-# and set it up, installs the new APK over it with `adb install -r`, then
-# checks the first start (the note, the server filled in, the session tried
-# once, the theme from the first frame and the language), the first sync, a
-# new start and that the previous app's channels, work and reminder alarms
-# are gone while its widgets stay. Prints PASS, FAIL or SKIP per check and
-# exits 1 when one failed, 2 when the test could not run; the output folder
-# gets the log, the screen dumps, the screenshots and a recording of the
-# first start.
+# The update over the previous app (threat model 8.2, item 13) on a running
+# emulator: installs the old APK fresh, waits while you sign it in and set it
+# up, installs the new APK over it with `adb install -r`, then checks the first
+# start (the note, the server filled in, the session tried once, the theme from
+# the first frame and the language), the first sync, a new start and that the
+# previous app's channels, work and reminder alarms are gone while its widgets
+# stay (decision log: The previous app). Prints PASS, FAIL or SKIP per check and
+# exits 1 when one failed, 2 when the test could not run; the output folder gets
+# the log, the screen dumps, the screenshots and a recording of the first start.
 #
 # Usage: tool/e2e/update_test.sh [--server URL] [--task TITLE]... <emulator serial> <old.apk> <new.apk> <output folder>
 #
@@ -57,8 +56,9 @@ done
 serial="$1" old_apk="$2" new_apk="$3" out="$4"
 open_output
 
-# On http the session try refuses before it sends the token (D8), so this
-# part takes 8.2's "sign in again" settings; on https its "stay signed in".
+# On http the session try refuses before it sends the token
+# (decision log: The previous app), so this part takes 8.2's "sign in again"
+# settings; on https its "stay signed in".
 if [[ "$server" == https://* ]]; then
   kept=1
   old_settings="Settings tab: Theme Light and Dynamic Colors on; leave the language."
@@ -109,7 +109,7 @@ address_unlocked() {
 expect_dark_first_frame() {
   local mean frames="${out}/first-start.mp4"
   # The native launch screen follows the system's mode, not the app's theme
-  # (D45), so only the frames after it count.
+  # (decision log: Look and layout), so only the frames after it count.
   if command -v ffmpeg >/dev/null 2>&1 && command -v magick >/dev/null 2>&1 &&
     ffmpeg -loglevel error -y -i "${out}/first-start.mp4" -t 4 \
       -vf "fps=8,scale=120:-1,tile=8x4" -frames:v 1 "${out}/first-frames.png" 2>/dev/null; then
@@ -122,7 +122,7 @@ expect_dark_first_frame() {
     pass "dark from the first frame (first-frame.png, mean brightness ${mean})"
   else
     owner_confirms "dark from the first frame" \
-      "first-frame.png, taken as the start returned, is not dark (mean brightness ${mean:-unknown}); it may still show the launch screen, which follows the light system (D45). Look at ${frames}: is the app dark from its first own frame, right after the launch screen with the logo, without a light frame of the app?"
+      "first-frame.png, taken as the start returned, is not dark (mean brightness ${mean:-unknown}); it may still show the launch screen, which follows the light system (decision log: Look and layout). Look at ${frames}: is the app dark from its first own frame, right after the launch screen with the logo, without a light frame of the app?"
   fi
 }
 

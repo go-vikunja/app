@@ -117,7 +117,8 @@ void main() {
     );
   });
 
-  group("the follow state the account's reads record (D80)", () {
+  group("the follow state the account's reads record "
+      '(decision log: Notifications and widgets)', () {
     const ownRow = Subscription(entity: SubscriptionEntity.task, entityId: 1);
 
     Future<AppDatabase> seedTask(RegisteredAccount entry) async {

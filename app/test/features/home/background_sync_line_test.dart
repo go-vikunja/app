@@ -155,7 +155,8 @@ void main() {
   });
 
   testWidgets('in German, a failed attempt is never under the old words '
-      'that the background sync has not run yet (D59)', (tester) async {
+      'that the background sync has not run yet '
+      '(decision log: Sessions)', (tester) async {
     useLocale(tester, const Locale('de'));
     await pumpAccountTab(
       tester,
@@ -172,7 +173,7 @@ void main() {
     expect(find.textContaining('lief noch nicht'), findsNothing);
   });
 
-  group('what went wrong (D59)', () {
+  group('what went wrong (decision log: Sessions)', () {
     BackgroundRunLog log() => BackgroundRunLog(auth.preferences);
 
     String ago(DateTime at) => formatRelativeTime(en, at, now: start);

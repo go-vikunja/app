@@ -14,13 +14,13 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import '../a11y/sweep_data.dart';
 
 /// Phones in both orientations and the 800×600 test surface lay out as
-/// they did before step 36b (decision 6): every rect here was recorded at
-/// 2d70ef1, from a `git archive` export. Self-contained, so it still runs
-/// there. The overview rows lost a line or two pixels with the task
-/// identifiers, and the Account settings tile a subtitle line with the
-/// colour scheme (D75). The overview's first card sits 12 dp higher since
-/// the Overdue heading's Reschedule takes less room (D116). The Account
-/// settings tile sits in a 12 dp card like the pages it opens (D56): 16 dp
+/// they did before step 36b (decision log: Look and layout): every rect
+/// here was recorded at 2d70ef1, from a `git archive` export.
+/// Self-contained, so it still runs there. The overview rows lost a line
+/// or two pixels with the task identifiers, and the Account settings tile
+/// a subtitle line with the colour scheme. The overview's first card sits
+/// 12 dp higher since the Overdue heading's Reschedule takes less room. The
+/// Account settings tile sits in a 12 dp card like the pages it opens: 16 dp
 /// in from each side of its column, a line taller on phones.
 const Map<TargetPlatform, List<Size>> _sizes = {
   TargetPlatform.android: [

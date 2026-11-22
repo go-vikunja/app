@@ -9,7 +9,7 @@ import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
 part 'background_sync_status.g.dart';
 
 /// What the background sync last did for an account, and when the
-/// account's session last ended (D59).
+/// account's session last ended.
 typedef BackgroundSyncStatus = ({
   /// The last background run whose sync went through; null before.
   DateTime? lastSynced,
@@ -47,7 +47,7 @@ Future<BackgroundSyncStatus> backgroundSyncStatus(
 typedef MarkedSessionEnd = ({bool needsReauth, SessionEndDiagnosis? end});
 
 /// Read again whenever the account's sign-in mark flips, as an end is
-/// recorded before the mark (D59), and every minute for other isolates'
+/// recorded before the mark, and every minute for other isolates'
 /// records. A value read before the mark tells nothing about its end.
 @riverpod
 Future<MarkedSessionEnd> markedSessionEnd(Ref ref, String accountId) async {

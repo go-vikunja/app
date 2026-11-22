@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reads the signing values of a key.properties text (D86).
+"""Reads the signing values of a key.properties text (decision log: Releases).
 
   python3 -I tool/ci/key_properties.py ENV_NAME
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# The CI job `editor` (D86): audits the npm packages the page ships, runs the
-# editor's tests and checks that the committed page is what its sources build.
+# The CI job `editor`: audits the npm packages the page ships, runs the
+# editor's tests and checks that the committed page is what its sources build
+# (decision log: Releases).
 # The dev dependencies are left to the job `osv`, which blocks on esbuild,
 # which builds the page, but not on packages only the tests use.
 set -euo pipefail

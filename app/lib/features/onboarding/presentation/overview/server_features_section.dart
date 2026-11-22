@@ -35,8 +35,9 @@ class ServerFeaturesSection extends StatelessWidget {
     );
   }
 
-  /// Webhooks and project backgrounds are left out: they stay in the web
-  /// (D20), so the app would promise what it does not offer.
+  /// Webhooks and project backgrounds are left out: they stay in the web,
+  /// so the app would promise what it does not offer
+  /// (decision log: Identity and scope).
   List<(IconData, String)> _enabledFeatures(AppLocalizations l10n) {
     final capabilities = connection.capabilities;
     bool has(Capability capability) => capabilities.has(capability);

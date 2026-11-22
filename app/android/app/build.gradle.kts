@@ -7,10 +7,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
-// Release signing (D86): CI builds unsigned with VIKUNJA_APP_UNSIGNED=true,
-// and tool/ci/release_sign.sh signs the files afterwards. A local release
-// build uses all four keys of android/key.properties (never committed);
-// otherwise the debug key signs.
+// Release signing: CI builds unsigned with VIKUNJA_APP_UNSIGNED=true, and
+// tool/ci/release_sign.sh signs the files afterwards
+// (decision log: Releases). A local release build uses all four keys of
+// android/key.properties (never committed); otherwise the debug key signs.
 val unsigned = providers.environmentVariable("VIKUNJA_APP_UNSIGNED").orNull == "true"
 val releaseSigning: Map<String, String>? = run {
     val keyProperties = rootProject.file("key.properties")
@@ -45,7 +45,7 @@ android {
         minSdk = flutter.minSdkVersion
         // Not Flutter's default, so that a Flutter update cannot raise it
         // unnoticed: API 37 needs ACCESS_LOCAL_NETWORK for servers on the
-        // local network (D76).
+        // local network (decision log: Releases).
         targetSdk = 36
         // Uses the version code from pubspec.yaml. When using split APKs, 1000 * ABI_VERSION
         // is added automatically by Flutter. (https://developer.android.com/studio/build/configure-apk-splits#configure-APK-versions)
@@ -119,9 +119,10 @@ dependencyLocking {
 
 // Embedded Cronet instead of Google Play services Cronet, so that Cronet
 // works on every device without Play services, the app holds no proprietary
-// code and F-Droid stays possible (D5). cronet_http picks Play services
-// unless built with --dart-define=cronetHttpNoPlay=true; excluding it here
-// makes every build, test and CI run embedded without that define.
+// code and F-Droid stays possible (decision log: Connections). cronet_http
+// picks Play services unless built with --dart-define=cronetHttpNoPlay=true;
+// excluding it here makes every build, test and CI run embedded without that
+// define.
 // cronet-bundled's POMs also pull Google's empty transitional Cronet
 // artifacts (no classes, under the Android SDK licence), and that define
 // would pull the old cronet-embedded; nothing needs them.

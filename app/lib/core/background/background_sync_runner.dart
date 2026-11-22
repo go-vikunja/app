@@ -37,8 +37,8 @@ enum BackgroundRunKind {
 }
 
 /// One background run over every signed-in account, in a container of its
-/// own built like the app's, whose session managers refresh (D26 makes
-/// that safe across isolates). Never throws.
+/// own built like the app's, whose session managers refresh, which is safe
+/// across isolates (decision log: Sessions). Never throws.
 ///
 /// Skips everything while the app is in front (its heartbeat is younger
 /// than [heartbeatFreshness]), and stops before the next account once the
@@ -52,13 +52,13 @@ enum BackgroundRunKind {
 /// remains and the container's `RefreshCutoff` still lets a refresh start.
 ///
 /// The first request of a sync may rotate the refresh token, and a
-/// rotation whose answer is never stored ends the session (D26). So every
+/// rotation whose answer is never stored ends the session. So every
 /// token answer must arrive within [settleGrace] after the deadline, less
 /// [answerMargin], which bounds when a refresh may start and how long it
 /// waits; none starts once the OS stopped the run ([stop]). After every
 /// run the container waits up to [settleGrace] (after a stop [stopGrace])
 /// for a refresh on its way and for tokens still to be stored, then it is
-/// disposed, which aborts a sync between two requests (D59).
+/// disposed, which aborts a sync between two requests.
 final class BackgroundSyncRunner {
   new({
     required this._createContainer,
@@ -186,7 +186,8 @@ final class BackgroundSyncRunner {
     return outcome;
   }
 
-  /// A refresh whose answer is dropped ends the session (D26).
+  /// A refresh whose answer is dropped ends the session
+  /// (decision log: Sessions).
   Future<void> _settle(ProviderContainer container, Duration grace) async {
     try {
       await Future.wait([
@@ -518,7 +519,7 @@ final class _Run {
   }
 
   /// Another isolate may have stored a rotation after this one gave up,
-  /// and a guest's link may read again (D59).
+  /// and a guest's link may read again.
   Future<bool> _tryRestore(Account account) => account.isLinkShare
       ? container.read(linkShareSessionsProvider).tryRestore(account.id)
       : container.read(sessionManagersProvider).tryRestore(account.id);

@@ -4,7 +4,7 @@ import WidgetKit
 
 /// Runs in the extension: it only records the tap and takes away the task's
 /// reminders. The app sends the Done at its next run, so the extension never
-/// needs a token or the network (D24).
+/// needs a token or the network (decision log: Notifications and widgets).
 struct MarkDoneIntent: AppIntent {
   static let title: LocalizedStringResource = "Mark task as done"
   static let isDiscoverable = false

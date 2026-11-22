@@ -18,7 +18,7 @@ import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import '../helpers/test_database.dart';
 import 'helpers.dart';
 
-// The Gantt probe's fixture (D61): dates around the web's default range
+// The Gantt probe's fixture: dates around the web's default range
 // on 2026-10-26, a dateless parent, a parent with a dateless and an
 // out-of-range child, done tasks and a start a few hours into the last
 // day. Titles are lower case only, as SQLite orders titles by their bytes

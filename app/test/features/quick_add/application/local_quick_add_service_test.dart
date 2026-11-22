@@ -255,7 +255,7 @@ void main() {
         expect(service(projects: [archived]).plan('a +Old').project, isNull);
       });
 
-      test('D38-7: one that matches nothing stays in the title and the '
+      test('QA-15: one that matches nothing stays in the title and the '
           'fallback takes the task', () {
         final plan = service().plan(
           'Call +nowhere Bob tomorrow',
@@ -268,7 +268,7 @@ void main() {
         expect(plan.dueDate, tomorrowAt9);
       });
 
-      test('D38-7: archived projects are not matched', () {
+      test('QA-15: archived projects are not matched', () {
         final plan = service().plan('Clean up +Old');
 
         expect(plan.unmatchedProject, 'Old');
@@ -410,7 +410,7 @@ void main() {
       });
 
       test('the default time follows the breakpoints, after 21:00 today '
-          'at 23:59 (D102-9)', () {
+          'at 23:59 (QA-8)', () {
         for (final (hour, minute, expected) in [
           (8, 59, DateTime(2026, 10, 12, 9)),
           (12, 0, DateTime(2026, 10, 12, 12)),
@@ -788,7 +788,7 @@ void main() {
       expect(result.createdTaskIds, [-1, -2, -3]);
     });
 
-    test('D38-8: magic-only lines create no labels', () async {
+    test('QA-18: magic-only lines create no labels', () async {
       await service().submit('*Urgent\nTask *other');
 
       expect(labels.created.map((label) => label.title), ['other']);
@@ -852,12 +852,12 @@ void main() {
       ).submit('Fix **bike');
 
       // The parser takes the label without one prefix, the web's rule;
-      // D102-7: the cleanup no longer leaves one `*` behind.
+      // QA-16: the cleanup no longer leaves one `*` behind.
       expect(tasks.creates.single.title, 'Fix **bike');
       expect(result.labelsKept, ['**bike']);
     });
 
-    test('D102-7: online, a doubled prefix and a quoted label before a comma '
+    test('QA-16: online, a doubled prefix and a quoted label before a comma '
         'leave the title with their labels', () async {
       final result = await service(grammar: const QuickAddGrammar())
           .submit('Fix **bike\nPlan trip *"New York", then book');
@@ -870,7 +870,7 @@ void main() {
       expect(result.labelsKept, isEmpty);
     });
 
-    test('D102-7: a name found leaves the title before punctuation and with '
+    test('QA-16: a name found leaves the title before punctuation and with '
         'a doubled prefix', () async {
       final result = await service(grammar: const QuickAddGrammar())
           .submit('Call @bob tomorrow.\nAsk @@alice');

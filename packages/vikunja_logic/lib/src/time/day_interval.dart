@@ -12,7 +12,7 @@ enum DayInterval {
 }
 
 /// Days from the date of [now] to the day [interval] stands for; 0 is
-/// today. `nextMonday` is today on a Monday, as on the web (D38-6).
+/// today. `nextMonday` is today on a Monday, as on the web (QA-12).
 int calculateDayInterval(DayInterval interval, DateTime now) {
   // The web counts with JS `getDay()`: 0 is Sunday.
   final weekday = now.weekday % DateTime.daysPerWeek;

@@ -81,7 +81,7 @@ void main() {
     expect(parse(text), const ParsedTaskText(text: text));
   });
 
-  group('D19-4: day-and-month dates need whole words', () {
+  group('QA-5: day-and-month dates need whole words', () {
     for (final text in [
       'buy 12 decorations',
       'buy 12 decorations for the party',
@@ -110,14 +110,14 @@ void main() {
       expect(parse('buy 12 dec, quick', now: now).text, 'buy, quick');
     });
 
-    test('D38-9: a day no month has stays text (the web drops it)', () {
+    test('QA-6: a day no month has stays text (the web drops it)', () {
       for (final text in ['x dec 45', 'x 0 oct', 'x jan 0', '45 nov']) {
         expect(parse(text), ParsedTaskText(text: text), reason: text);
       }
     });
   });
 
-  group('D38-9: the in rule needs whole words', () {
+  group('QA-6: the in rule needs whole words', () {
     test('within 2 days', () {
       // Before 2.8.0 the web gave 2021-6-26 and the text "Reply with".
       expect(

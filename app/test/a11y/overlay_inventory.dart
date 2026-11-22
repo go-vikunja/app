@@ -34,8 +34,8 @@ const overlayInventory = <String, OverlayCoverage>{
   'features/about/presentation/about_page.dart '
       'AboutPage._showLicences MaterialPageRoute': Exempt(
     "Flutter's LicensePage, whose app bars mark their titles as headers "
-    'without a heading level, so it would fail the heading guideline; a D68 '
-    'deviation (framework headings without a level). Opened in '
+    'without a heading level, so it would fail the heading guideline; a '
+    'deviation (decision log: Accessibility). Opened in '
     'test/features/about/about_page_test.dart',
   ),
   'features/about/presentation/about_page.dart '

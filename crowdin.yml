@@ -1,5 +1,6 @@
 # Vikunja's Crowdin project, synced by the workflow "Crowdin"
-# (.github/workflows/crowdin.yaml, tool/ci/crowdin_sync.sh; D88).
+# (.github/workflows/crowdin.yaml, tool/ci/crowdin_sync.sh; decision log:
+# Languages).
 # No credentials here: the CLI reads CROWDIN_PERSONAL_TOKEN from the
 # environment.
 project_id: "462614"
@@ -17,7 +18,8 @@ files:
     # (app_sr.arb is committed). "no" is quoted: YAML 1.1 reads it as false.
     # The CLI took only Crowdin's standard codes here when this was written,
     # so Vikunja's custom Swiss German is mapped in the project's settings
-    # (D88); the workflow takes German from a download of its own either way.
+    # (decision log: Languages); the workflow takes German from a download of
+    # its own either way.
     languages_mapping:
       two_letters_code:
         pt-PT: pt

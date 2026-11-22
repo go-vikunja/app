@@ -204,7 +204,7 @@ void main() {
     });
   });
 
-  group('with diagnostics (D59)', () {
+  group('with diagnostics (decision log: Sessions)', () {
     late SessionDiagnostics diagnostics;
 
     setUp(() => diagnostics = SessionDiagnostics(auth.preferences));

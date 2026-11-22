@@ -8,8 +8,8 @@ export 'package:dio/dio.dart' show CancelToken;
 export 'package:vikunja_mobile/core/attachments/pending_upload.dart'
     show UploadTooLarge;
 
-/// A task's attachments on the server, online only like bucket management
-/// (D48): nothing is queued, a failure is the `VikunjaFailure` of the
+/// A task's attachments on the server, online only like bucket management:
+/// nothing is queued, a failure is the `VikunjaFailure` of the
 /// request (offline a `NetworkFailure`), and a task whose create is still
 /// queued throws `TaskNotSyncedYet` without a request. Queued uploads go
 /// through `TaskRepository.queueUpload` instead.

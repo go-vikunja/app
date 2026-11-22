@@ -173,8 +173,7 @@ class AccountTab extends ConsumerWidget {
                     Capability.accountLockout,
                   ),
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                  // Cancelling needs the password, so the web's page does it
-                  // (D14).
+                  // Cancelling needs the password, so the web's page does it.
                   onCancel: () => unawaited(
                     openWebSettingsPage(
                       context,
@@ -260,7 +259,7 @@ class AccountTab extends ConsumerWidget {
 }
 
 /// The way to the About page, with help, bug reports and the privacy
-/// policy, named above the app's version (D77).
+/// policy, named above the app's version (decision log: Look and layout).
 class _AboutLine extends ConsumerWidget {
   const new();
 

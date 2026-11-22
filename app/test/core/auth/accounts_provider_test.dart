@@ -45,7 +45,7 @@ void main() {
 
   test('a background run or notification action does neither: its fresh '
       "engine's first Keystore read is where a passing failure shows "
-      '(D59)', () async {
+      '(decision log: Sessions)', () async {
     final entry = await auth.seedAccount(
       fullServer270(),
       tokens: issueTokens(issuedAt: now),

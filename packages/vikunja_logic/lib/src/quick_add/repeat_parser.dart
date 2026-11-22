@@ -33,7 +33,7 @@ const _units = <String, QuickAddRepeatUnit>{
 };
 
 /// The web's `getRepeats`: the first repeat phrase, removed from [text].
-/// Keywords are matched in any case (D19-2: the web reads `Daily` and
+/// Keywords are matched in any case (QA-2: the web reads `Daily` and
 /// `Every Day` as hourly).
 ({String text, QuickAddRepeat? repeat, String? phrase}) parseRepeat(
   String text,

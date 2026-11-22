@@ -86,10 +86,11 @@ Future<void> _until(
 // link and a password-protected writing link; each guest opens its link in
 // the app, syncs, and is shaped by the share's permission; the writing
 // guest's edit reaches the server; the token is renewed; and a deleted
-// share ends the guest's session. Then the board's columns of D48 and D62:
-// an admin link's guest and the writing guest change boards of their own
-// through the app's bucket repository, and the server stores what the app
-// assumes. One fresh user and five share authentications.
+// share ends the guest's session. Then the board's columns
+// (decision log: Projects): an admin link's guest and the writing guest
+// change boards of their own through the app's bucket repository, and the
+// server stores what the app assumes. One fresh user and five share
+// authentications.
 void main() {
   group(
     'link-share guests against the local Docker server',

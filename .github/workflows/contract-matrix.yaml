@@ -1,10 +1,11 @@
 name: Contract matrix
 
 # The contract tests against the newest release of each supported Vikunja
-# line, from the support floor 2.3.0 (D13) to the latest, at night and for
-# every tag (D28); CI's job `contract` runs the latest release only. Each
-# image is pinned by its tag and the digest of its multi-platform index, the
-# latest one equal to the default of test_servers/docker-compose.yaml. 2.3.0
+# line, from the support floor 2.3.0 to the latest, at night and for every
+# tag; CI's job `contract` runs the latest release only (decision log:
+# Servers). Each image is pinned by its tag and the digest of its
+# multi-platform index, the latest one equal to the default of
+# test_servers/docker-compose.yaml. 2.3.0
 # runs without immediate transactions, which stop it at a comment's
 # notifications; 2.4.0 to 2.6.0 stop only at a data export, which the tests
 # skip there (the compose file).

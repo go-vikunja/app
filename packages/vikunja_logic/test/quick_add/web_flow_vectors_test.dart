@@ -46,7 +46,7 @@ void main() {
   });
 
   group('the research probes (client-logic.md 1.8)', () {
-    test('D19-3: Read todays paper stays text', () {
+    test('QA-3: Read todays paper stays text', () {
       // The web: today, "Read s paper".
       expect(
         parse('Read todays paper'),
@@ -54,7 +54,7 @@ void main() {
       );
     });
 
-    test('D19-3: Plan next weekend trip stays text', () {
+    test('QA-3: Plan next weekend trip stays text', () {
       // The web: next week, "Plan end trip".
       expect(
         parse('Plan next weekend trip'),
@@ -62,7 +62,7 @@ void main() {
       );
     });
 
-    test('D19-4: buy 12 decorations stays text', () {
+    test('QA-5: buy 12 decorations stays text', () {
       // The web: Dec 12, "buy orations".
       expect(
         parse('buy 12 decorations'),
@@ -70,7 +70,7 @@ void main() {
       );
     });
 
-    test("D102-3: Something sep 17th on Oct 8 is next year's Sep 17 (the web "
+    test("QA-10: Something sep 17th on Oct 8 is next year's Sep 17 (the web "
         'keeps it past)', () {
       expect(
         parse('Something sep 17th', now: DateTime(2026, 10, 8, 10, 30, 12)),
@@ -82,14 +82,14 @@ void main() {
       );
     });
 
-    test('D102-6: x 29th feb in 2026 is 29 Feb 2028 (the web says Mar 1)', () {
+    test('QA-11: x 29th feb in 2026 is 29 Feb 2028 (the web says Mar 1)', () {
       expect(
         ymd(parse('x 29th feb', now: DateTime(2026, 10, 8, 10)).date),
         '2028-2-29',
       );
     });
 
-    test('D102-4: next monday on a Monday is a week ahead (the web says '
+    test('QA-12: next monday on a Monday is a week ahead (the web says '
         'today)', () {
       final monday = DateTime(2026, 10, 12, 10, 30);
       expect(

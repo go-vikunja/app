@@ -29,7 +29,7 @@ final _redactions = <(RegExp, String Function(Match))>[
     ),
     (m) => '${m[1]}: $redactedPlaceholder',
   ),
-  // Cloudflare Access service tokens (connection profiles, D65): the id is
+  // Cloudflare Access service tokens (connection profiles): the id is
   // 32 hex characters, too short for the long-run rule below.
   (
     RegExp(

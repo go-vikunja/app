@@ -55,7 +55,7 @@ void main() {
     });
 
     test('after 21:00 it is 09:00 of another day, 23:59 of today '
-        '(D102-9)', () {
+        '(QA-8)', () {
       final now = DateTime(2026, 8, 4, 22, 30);
       expect(atDefaultTime(now, now: now), DateTime(2026, 8, 4, 23, 59));
       expect(

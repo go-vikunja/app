@@ -49,8 +49,9 @@ final class IndentedLine {
 /// it from the first line like one space but never reads it as indent
 /// after that); `[ ] ` without a bullet is a marker too, and a line that is
 /// only a marker is no task (its subtasks move up to its parent), as in
-/// D38's multi-line add; and grandchildren inherit the project as well,
-/// which the web gives only to direct subtasks.
+/// quick add's multi-line add (decision log: Quick add); and grandchildren
+/// inherit the project as well, which the web gives only to direct
+/// subtasks.
 List<IndentedLine> parseSubtasksViaIndention(
   String text, {
   QuickAddMagicMode mode = QuickAddMagicMode.vikunja,

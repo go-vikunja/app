@@ -572,7 +572,8 @@ void main() {
   });
 
   testWidgets('Reschedule on the Overdue heading moves the overdue tasks to '
-      'today, 23:59 where their time has passed (D106)', (tester) async {
+      'today, 23:59 where their time has passed '
+      '(decision log: Tasks)', (tester) async {
     await pumpUpcoming(tester);
 
     await tester.tap(find.text(en.overdueReschedule));
@@ -595,7 +596,7 @@ void main() {
   });
 
   testWidgets('Select tasks in the menu selects among the tasks shown '
-      '(D106)', (tester) async {
+      '(decision log: Tasks)', (tester) async {
     await pumpUpcoming(tester);
 
     await tester.tap(find.byTooltip(en.moreActions));

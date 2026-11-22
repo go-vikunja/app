@@ -387,7 +387,7 @@ void main() {
     expect(await fakes.clockOffsets.read(entry!.id), skew);
   });
 
-  group('after an ended session (D59)', () {
+  group('after an ended session (decision log: Sessions)', () {
     late SessionDiagnostics diagnostics;
     late List<Duration> sleeps;
     late TokenSet old;

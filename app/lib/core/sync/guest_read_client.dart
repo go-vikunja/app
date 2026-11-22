@@ -7,8 +7,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 /// read (`x-max-permission` on v1, the body on v2) whenever a list brings
 /// it without one or the server is older than 2.6.0 or of an unknown
 /// version: one request per sync run, and the stored permission shapes the
-/// screens as for users (D60). The shared project's title in a list goes
-/// to `onSharedProjectTitle`, for the name of a guest whose share has none.
+/// screens as for users (decision log: Projects). The shared project's title in
+/// a list goes to `onSharedProjectTitle`, for the name of a guest whose share
+/// has none.
 final class GuestReadClient implements VikunjaReadClient {
   new(
     this._client, {

@@ -5,7 +5,7 @@ import 'package:vikunja_mobile/core/platform/background_permissions.dart';
 part 'background_restriction.g.dart';
 
 /// What keeps the background sync from running, and with it the sessions
-/// alive (D22, D40).
+/// alive (decision log: Sessions, Sync).
 enum BackgroundRestriction {
   /// iOS: Background App Refresh is off, for the app or for every app.
   refreshOff,

@@ -27,7 +27,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/reminder_pick
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 
-/// The new-task sheet's shortcuts (D75), also for several tasks at once.
+/// The new-task sheet's shortcuts, also for several tasks at once.
 const Set<DateShortcut> dueDateShortcuts = {
   DateShortcut.today,
   DateShortcut.tomorrow,

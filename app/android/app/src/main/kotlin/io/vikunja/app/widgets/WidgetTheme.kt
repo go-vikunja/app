@@ -8,7 +8,7 @@ import androidx.glance.color.ColorProvider
 import androidx.glance.color.colorProviders
 
 // AppTheme.brandScheme (app/lib/app/theme/app_theme.dart), light and dark:
-// the blue tonal scheme with the amber tertiary of D56.
+// the blue tonal scheme with an amber tertiary (decision log: Look and layout).
 private val brandColors = colorProviders(
     primary = ColorProvider(day = Color(0xFF0058CC), night = Color(0xFFB0C6FF)),
     onPrimary = ColorProvider(day = Color(0xFFFFFFFF), night = Color(0xFF002C6F)),
@@ -40,7 +40,7 @@ private val brandColors = colorProviders(
 )
 
 // The system palette on Android 12+ once "Use system colours" is on in the
-// app (D45); the brand scheme otherwise.
+// app; the brand scheme otherwise (decision log: Look and layout).
 @Composable
 internal fun WidgetTheme(dynamicColor: Boolean, content: @Composable () -> Unit) {
     val dynamic = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S

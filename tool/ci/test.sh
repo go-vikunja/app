@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# The tests of the CI job `checks` (D86), without the contract tests.
+# The tests of the CI job `checks`, without the contract tests
+# (decision log: Releases).
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"

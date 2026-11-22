@@ -1,12 +1,13 @@
 # shellcheck shell=bash
-# The versions and checksums the CI scripts download (D73). Sourced by
-# lib.sh; values only. GitHub's hosted runner images cannot be pinned (D86).
+# The versions and checksums the CI scripts download (decision log: Releases).
+# Sourced by lib.sh; values only. GitHub's hosted runner images cannot be
+# pinned.
 # shellcheck disable=SC2034
 
 # Raising FLUTTER_VERSION means updating both Flutter checksums.
 # https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz
 # (about 1.58 GB), sha256 from releases_linux.json.
-# 3.47.7 (D73's earlier pin): af7455f540df951184c7953fbe3cf884766e7541dacf8571f9f582db03dd6230
+# 3.47.7 (the earlier pin): af7455f540df951184c7953fbe3cf884766e7541dacf8571f9f582db03dd6230
 FLUTTER_VERSION=3.47.9
 FLUTTER_LINUX_SHA256=25ed8c3c29d51a7353f2a944310b478af8214920639524b19c50a19e6c044c5a
 
@@ -21,7 +22,7 @@ OSV_SCANNER_VERSION=2.7.0
 OSV_SCANNER_LINUX_AMD64_SHA256=160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
 OSV_SCANNER_DARWIN_ARM64_SHA256=d4926ef8da134332543be276dff157e4c170f99ad91fc48e89448a8816bdf70b
 
-# The workflow "Crowdin" (tool/ci/crowdin_sync.sh, D88): Crowdin's CLI, a
+# The workflow "Crowdin" (tool/ci/crowdin_sync.sh): Crowdin's CLI, a
 # self-contained binary without Java since 5.0.0.
 # https://github.com/crowdin/crowdin-cli/releases/download/${CROWDIN_CLI_VERSION}/crowdin-linux-x64
 # (about 83 MB), sha256 from that release's crowdin-cli_checksums.sha256.

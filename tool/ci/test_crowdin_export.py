@@ -1,5 +1,5 @@
 """Runs a simulated Crowdin export through the real gen-l10n, the ARB parity
-test and tool/l10n_progress.py (D88), outside app/lib."""
+test and tool/l10n_progress.py, outside app/lib (decision log: Languages)."""
 import json
 import os
 import re

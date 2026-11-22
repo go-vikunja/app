@@ -12,8 +12,8 @@ import '../../helpers/server_connections.dart';
 
 const _accountId = 'a1';
 
-// The managers of the background action isolate (D26):
-// they never call the token endpoint.
+// The managers of the background action isolate never call the token
+// endpoint (decision log: Sessions).
 void main() {
   late DateTime now;
   late TokenStore tokenStore;

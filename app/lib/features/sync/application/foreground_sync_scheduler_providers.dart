@@ -77,7 +77,7 @@ ForegroundSyncScheduler? foregroundSyncScheduler(Ref ref) {
 
 /// What a run that found something new stores, and every local write:
 /// the account's tasks, projects, labels and queued changes. A run that
-/// finds nothing new writes none of them (D33), so the foreground sync can
+/// finds nothing new writes none of them, so the foreground sync can
 /// wait longer then.
 @Riverpod(keepAlive: true)
 Raw<Stream<void>> accountDataWrites(Ref ref, String accountId) =>

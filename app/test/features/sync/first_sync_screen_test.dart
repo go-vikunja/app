@@ -338,7 +338,7 @@ void main() {
     });
 
     testWidgets('an end on the device during the run is told as such from '
-        "the banner's first frame (D59)", (tester) async {
+        "the banner's first frame (decision log: Sessions)", (tester) async {
       run = Completer<void>();
       data.engine.onEnsureInitialSync = () => run.future;
       final auth = await pumpWithReauth(tester);

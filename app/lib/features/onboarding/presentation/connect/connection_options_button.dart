@@ -21,7 +21,7 @@ class ConnectionOptionsButton extends StatelessWidget {
   final ValueChanged<OriginKey>? onPressed;
 
   /// The address has no scheme, so [origin] is its https one, whose
-  /// settings do not apply if the server answers only over http (D8).
+  /// settings do not apply if the server answers only over http.
   final bool triesHttpsFirst;
 
   @override

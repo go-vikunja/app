@@ -1,8 +1,8 @@
 # Weekly pull requests for the GitHub Actions of .github/workflows. Each action
-# stays pinned by its full commit SHA with the version in a comment (D86), and
-# Dependabot updates both. A week's cooldown keeps a release that is pulled
-# again within days out of the pull requests. The workflow "Upstream versions"
-# watches the Flutter and Cronet pins.
+# stays pinned by its full commit SHA with the version in a comment, and
+# Dependabot updates both (decision log: Releases). A week's cooldown keeps a
+# release that is pulled again within days out of the pull requests. The
+# workflow "Upstream versions" watches the Flutter and Cronet pins.
 version: 2
 updates:
   - package-ecosystem: github-actions

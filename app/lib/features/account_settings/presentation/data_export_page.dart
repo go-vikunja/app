@@ -26,7 +26,7 @@ final _log = Logger('DataExport');
 
 /// The account's data export: what it holds, whether one is ready and
 /// until when, read again on return from the browser. Requesting and
-/// downloading need the password on the web (D14), so both open the web's
+/// downloading need the password on the web, so both open the web's
 /// pages.
 class DataExportPage extends ConsumerStatefulWidget {
   const new({super.key});

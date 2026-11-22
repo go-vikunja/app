@@ -84,7 +84,7 @@ void main() {
     expect(plan.title, 'Plan trip');
   });
 
-  test('D38-7: an unmatched project stays where it was typed', () {
+  test('QA-15: an unmatched project stays where it was typed', () {
     final plan = service().plan('Call +nowhere about the car tomorrow');
 
     expect(plan.unmatchedProject, 'nowhere');
@@ -93,7 +93,7 @@ void main() {
     expect(plan.dueDate, DateTime(2026, 10, 13, 12).toUtc());
   });
 
-  test('D38-7: quoted, archived, and followed by another project', () {
+  test('QA-15: quoted, archived, and followed by another project', () {
     final quoted = service().plan('Ask +"No Such" !2');
     expect(quoted.title, 'Ask +"No Such"');
     expect(quoted.priority, 2);
@@ -107,7 +107,7 @@ void main() {
     expect(second.project, inbox);
   });
 
-  group('D38-7: the title and every part of a line with an unmatched '
+  group('QA-15: the title and every part of a line with an unmatched '
       'project come from one parse', () {
     test('a date the project token kept from the end is no date', () {
       final plan = service().plan('Meeting 9/11 +Wrok');
@@ -217,7 +217,7 @@ void main() {
     ).plan('Dentist next monday at 15:00');
 
     expect(plan.title, 'Dentist');
-    // D102-4: on a Monday, next monday is a week ahead.
+    // QA-12: on a Monday, next monday is a week ahead.
     expect(plan.dueDate, DateTime(2026, 10, 19, 15).toUtc());
     expect(plan.reminders, const [
       TaskReminder(

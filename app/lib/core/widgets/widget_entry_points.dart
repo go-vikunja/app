@@ -68,7 +68,7 @@ Future<void> _tellWorker() async {
 
 /// Like the notification action's: session managers that never refresh,
 /// so a Done whose token has expired stays queued for a background drain
-/// (D39).
+/// (decision log: Notifications and widgets).
 Future<ProviderContainer> createWidgetActionContainer() async =>
     ProviderContainer(
       overrides: [

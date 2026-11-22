@@ -108,7 +108,7 @@ final class WidgetAction {
   final String id;
   final String accountId;
 
-  /// Negative for a task the server has not created yet (D35).
+  /// Negative for a task the server has not created yet (decision log: Outbox).
   final int taskId;
   final DateTime createdAt;
 

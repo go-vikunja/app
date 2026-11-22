@@ -130,7 +130,7 @@ void main() {
   });
 
   test("the previous app's crash report choice is not carried over: the "
-      'app asks itself (D113)', () async {
+      'app asks itself (decision log: The previous app)', () async {
     secureStore.values.addAll({
       ...previousAppValues(),
       // However the previous app stored its "Enable Sentry" switch.

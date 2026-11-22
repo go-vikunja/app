@@ -1,6 +1,6 @@
 """Tests check_german of tool/ci/release_lib.sh, the release scripts' German
-check (D88), and its override for a patch release (owner, D97), on a
-copy of the scripts beside ARB files of the test's own."""
+check, and its override for a patch release (owner), on a copy of the
+scripts beside ARB files of the test's own (decision log: Languages)."""
 import json
 import os
 import shutil
@@ -73,7 +73,7 @@ class CheckGermanTest(unittest.TestCase):
         result = self.check('v1.0.1')
         self.assertEqual(result.returncode, 1)
         self.assertIn('error: German lacks 3 of the 10 English texts: a release needs every English text in '
-                      'German (D88)', result.stderr)
+                      'German (decision log: Languages)', result.stderr)
         self.assertIn('VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN=v1.0.1', result.stderr)
         result = self.check('v1.0.1', real=False)
         self.assertEqual(result.returncode, 0, result.stderr)
@@ -86,7 +86,7 @@ class CheckGermanTest(unittest.TestCase):
                 result = self.check(tag)
                 self.assertEqual(result.returncode, 1)
                 self.assertIn(f'error: German lacks 3 of the 10 English texts: a release needs every English text in '
-                              f'German (D88), and {tag} is no patch release, so the translations must be complete',
+                              f'German (decision log: Languages), and {tag} is no patch release, so the translations must be complete',
                               result.stderr)
                 self.assertNotIn('VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN', result.stderr)
 

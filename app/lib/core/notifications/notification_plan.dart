@@ -99,17 +99,17 @@ bool sameInstant(DateTime? a, DateTime? b) =>
 
 /// The notifications an account should have, from its local data alone:
 /// undone tasks, not queued for deletion, where [userId] is the creator or
-/// an assignee (D17; a task created here under a temporary id has no
-/// creator yet and counts as the user's). With [subscribed], which is
-/// passed for a server that sends reminders only to subscribers (D80), the
-/// tasks it covers instead, for reminders and due dates alike. For each,
-/// every reminder with an instant after [now] and, when [preferences]
-/// allow, the due date at its exact instant; a reminder at that same
-/// instant is left to the due date, so the moment rings once. A snooze
-/// whose `originalFireAt` is the entry's own instant and whose `until` is
-/// still ahead moves the entry there, which is how a notification that has
-/// fired comes back. Titles and bodies are built by [describe] (localised
-/// by the caller). Sorted by [DesiredNotification.fireAt], then by key.
+/// an assignee (a task created here under a temporary id has no creator yet and
+/// counts as the user's). With [subscribed], which is passed for a server that
+/// sends reminders only to subscribers, the tasks it covers instead, for
+/// reminders and due dates alike (decision log: Notifications and widgets). For
+/// each, every reminder with an instant after [now] and, when [preferences]
+/// allow, the due date at its exact instant; a reminder at that same instant is
+/// left to the due date, so the moment rings once. A snooze whose
+/// `originalFireAt` is the entry's own instant and whose `until` is still ahead
+/// moves the entry there, which is how a notification that has fired comes
+/// back. Titles and bodies are built by [describe] (localised by the caller).
+/// Sorted by [DesiredNotification.fireAt], then by key.
 ///
 /// With [late], entries whose instant passed at most that long ago are
 /// planned too: [diffSchedule] keeps such a late entry only while the OS

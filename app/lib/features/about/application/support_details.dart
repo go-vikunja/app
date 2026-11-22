@@ -143,7 +143,8 @@ final class AccountSupport {
   final Collected<NotificationPreferences> notifications;
   final Collected<SessionEndRecord> lastSessionEnd;
 
-  /// The D59 record; its token fingerprints are never shown.
+  /// The record of why the session ended; its token fingerprints are never
+  /// shown (decision log: Sessions).
   final Collected<SessionEndDiagnosis> sessionEndDiagnosis;
 }
 

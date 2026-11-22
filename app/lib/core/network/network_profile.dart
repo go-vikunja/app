@@ -140,7 +140,7 @@ final class ProfileSecrets {
   final Map<String, String> headers;
   final Uint8List? pkcs12;
 
-  /// A file password (D65), not an account password.
+  /// A file password, not an account password.
   final String? pkcs12Password;
 
   /// The texts that must never appear in an error or a log.

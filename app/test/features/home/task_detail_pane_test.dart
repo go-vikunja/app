@@ -472,7 +472,8 @@ void main() {
   });
 
   testWidgets('while the list selects, the task in the pane is not marked; '
-      'deleting the selection takes it out of the pane (D106)', (tester) async {
+      'deleting the selection takes it out of the pane '
+      '(decision log: Tasks)', (tester) async {
     useWindow(tester, androidTabletLandscape);
     await pumpSweepApp(tester);
     await _tapRow(tester, 'Call the plumber');

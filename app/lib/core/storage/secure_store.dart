@@ -28,7 +28,7 @@ final class FlutterSecureStore implements SecureStore {
   //
   // On Android a value that cannot be decrypted is an error, not deleted
   // data: the plugin's reset would wipe every token after a passing
-  // Keystore failure in a background engine (D59).
+  // Keystore failure in a background engine.
   static const defaultStorage = FlutterSecureStorage(
     iOptions: IOSOptions(
       accessibility: KeychainAccessibility.first_unlock_this_device,

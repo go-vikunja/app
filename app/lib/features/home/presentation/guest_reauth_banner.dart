@@ -13,7 +13,7 @@ import 'package:vikunja_mobile/features/onboarding/presentation/connect/link_fai
 import 'package:vikunja_mobile/features/onboarding/presentation/guest/share_password_sheet.dart';
 
 /// [ReauthBanner] for a link-share guest the server no longer accepts, or
-/// whose link this device lost (D59): its action opens the stored link
+/// whose link this device lost: its action opens the stored link
 /// again, asks for the share's password when it has one, and says below
 /// why that failed. Success replaces the guest's entry, which ends the
 /// banner.

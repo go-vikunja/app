@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Signs the output of tool/ci/release_build.sh (D86): the bundle with the
-# upload key (jarsigner), the universal and the per-ABI APKs with the APK key
-# or else the upload key (apksigner). Checks both certificates against
-# tool/ci/release_certificates.txt and writes build/release/signed/. GitHub's
-# job `publish` in the environment release, and every dry run.
+# Signs the output of tool/ci/release_build.sh: the bundle with the upload key
+# (jarsigner), the universal and the per-ABI APKs with the APK key or else the
+# upload key (apksigner) (decision log: Releases). Checks both certificates
+# against tool/ci/release_certificates.txt and writes build/release/signed/.
+# GitHub's job `publish` in the environment release, and every dry run.
 #
 # Usage: tool/ci/release_sign.sh [--dry-run]
 #

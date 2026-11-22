@@ -186,7 +186,7 @@ class CheckerTest(unittest.TestCase):
                 tree = Tree()
                 self.addCleanup(tree.remove)
                 tree.write(f'fastlane/metadata/{name}', value + '\n')
-                self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: calls the app unofficial (D83)'])
+                self.assertEqual(tree.check(), [f'fastlane/metadata/{name}: calls the app unofficial (decision log: Identity and scope)'])
 
     def test_the_english_texts_use_us_spelling_and_the_glossary_s_terms(self):
         cases = {
@@ -257,7 +257,7 @@ class CheckerTest(unittest.TestCase):
         for en, de, (locale, message) in [
             ('Pick a colour.', 'Wähle eine Farbe.', ('en-US', "not the US spelling or the glossary's term: colour")),
             ('Fixes.', 'Jetzt auch fürs iPhone.', ('de-DE', 'names the other platform: iPhone')),
-            ('An unofficial app.', 'Eine App.', ('en-US', 'calls the app unofficial (D83)')),
+            ('An unofficial app.', 'Eine App.', ('en-US', 'calls the app unofficial (decision log: Identity and scope)')),
             ('Fixes. ', 'Fehler behoben.', ('en-US', 'leading or trailing whitespace')),
             ('', 'Fehler behoben.', ('en-US', 'empty')),
             ('a' * 501, 'Fehler behoben.', ('en-US', '501 characters, the limit is 500')),

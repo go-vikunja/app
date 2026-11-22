@@ -4,7 +4,7 @@ const _breakpointHours = [9, 12, 15, 18, 21];
 
 /// The web's `calculateNearestHours`: the next of 9, 12, 15, 18 and 21, a
 /// full hour counting as its own breakpoint; after 21:00 it is 9, which
-/// [atDefaultTime] moves to 23:59 on today (D102-9).
+/// [atDefaultTime] moves to 23:59 on today (QA-8).
 int nearestBreakpointHour(DateTime now) {
   for (final hour in _breakpointHours) {
     if (now.hour < hour || (now.hour == hour && now.minute == 0)) return hour;
@@ -44,7 +44,7 @@ DateTime withDefaultTime(
 
 /// [date], or 23:59 of today when [date] is a minute of today that has
 /// passed: a date the user gave without a time is never overdue the
-/// moment it is set (D102-9; the web keeps the passed time). The minute of
+/// moment it is set (QA-8; the web keeps the passed time). The minute of
 /// [now] itself has not passed, so 12:00 at 12:00:30 stays, as the
 /// breakpoints count a full hour as their own.
 DateTime notPassedToday(DateTime date, {required DateTime now}) =>

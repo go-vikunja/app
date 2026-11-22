@@ -47,8 +47,8 @@ const wcagMinimumTarget = Size(24, 24);
 
 /// Android's 48 dp, except for the day cells of Flutter's Material date
 /// picker, which the framework sizes to the dialog: 43.4 dp wide on a
-/// 360 dp phone. They still meet [wcagMinimumTarget]; D68 lists them as a
-/// deviation from Android's size.
+/// 360 dp phone. They still meet [wcagMinimumTarget]; a deviation from
+/// Android's size (decision log: Accessibility).
 final AccessibilityGuideline sweepAndroidTapTargetGuideline =
     _TapTargetGuideline(
       size: const Size(48, 48),
@@ -58,8 +58,8 @@ final AccessibilityGuideline sweepAndroidTapTargetGuideline =
 
 /// Apple's 44 pt, except for the segments of Cupertino's sliding segmented
 /// control, which keeps its native 28 pt height like UISegmentedControl's
-/// 32 pt. They still meet [wcagMinimumTarget]; D68 lists them as a
-/// deviation from Apple's size.
+/// 32 pt. They still meet [wcagMinimumTarget]; a deviation from Apple's
+/// size (decision log: Accessibility).
 final AccessibilityGuideline sweepIOSTapTargetGuideline = _TapTargetGuideline(
   size: const Size(44, 44),
   link: 'https://developer.apple.com/design/human-interface-guidelines/buttons',
@@ -94,8 +94,8 @@ final class _TapTargetGuideline extends MinimumTapTargetGuideline {
 
 /// Read-only selectable text, e.g. the server's message of the day: WCAG
 /// 2.5.8's inline exception, as its size is set by the line height of the
-/// text, and selecting is a text function, not a control. D68 lists it as a
-/// deviation, whatever its size.
+/// text, and selecting is a text function, not a control. A deviation,
+/// whatever its size (decision log: Accessibility).
 bool _isReadOnlySelectableText(SemanticsNode node) {
   final data = node.getSemanticsData();
   final textActions =
@@ -147,8 +147,8 @@ bool _encloses(Rect outer, Rect inner) =>
 /// The actions of an iOS alert are skipped: they keep Apple's system blue
 /// and red on the alert's translucent material (3.0–4.4:1 measured), as
 /// every iOS alert does, and turn to Apple's high-contrast variants under
-/// Increase Contrast, which the app follows (decision 6). D68 lists this as
-/// a deviation from 1.4.3.
+/// Increase Contrast, which the app follows. A deviation from 1.4.3
+/// (decision log: Accessibility).
 final AccessibilityGuideline sweepTextContrastGuideline =
     _TextContrastGuideline();
 
@@ -215,7 +215,7 @@ const AccessibilityGuideline headingNotControlGuideline =
     _HeadingNotControlGuideline();
 
 /// The headings that are also the control they name, each with the
-/// reason; every entry is also a deviation in D68.
+/// reason; every entry is also a deviation (decision log: Accessibility).
 final List<(Finder, String)> headingControls = [
   (
     find.byType(AccountHeader),
@@ -365,8 +365,8 @@ const _sameListTwice =
     'one purpose (WCAG 3.2.4), and the section headings tell them apart.';
 
 /// Names (lines joined by a space) that may repeat on one screen in the
-/// same context, each with the reason; every entry is also a deviation in
-/// D68.
+/// same context, each with the reason; every entry is also a deviation
+/// (decision log: Accessibility).
 const Map<String, String> repeatableTapLabels = {
   'Urgent Favourite': _sameListTwice,
   'Urgent Favorit': _sameListTwice,
@@ -436,8 +436,9 @@ final class _DistinctTapLabelGuideline extends AccessibilityGuideline {
   /// A sheet's barrier and its drag handle both read "Dismiss"
   /// ("Schließen") and both close the sheet, so the name keeps one purpose
   /// (WCAG 3.2.4); only Android names the route around the handle
-  /// ("Dialog"), which tells them apart there. A deviation in D68. Only a
-  /// barrier that reads Material's dismiss label is exempt.
+  /// ("Dialog"), which tells them apart there. A deviation
+  /// (decision log: Accessibility). Only a barrier that reads Material's
+  /// dismiss label is exempt.
   static bool _isModalBarrier(SemanticsData data) =>
       data.hasAction(SemanticsAction.dismiss) &&
       data.hasAction(SemanticsAction.tap) &&

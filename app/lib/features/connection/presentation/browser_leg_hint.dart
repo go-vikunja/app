@@ -17,7 +17,7 @@ final _log = Logger('BrowserLegHint');
 
 /// What the browser sign-in meets that the app's connection settings do
 /// not cover: the browser has its own trust, client certificates and
-/// cookies (D65).
+/// cookies.
 @immutable
 final class BrowserLegHint {
   const new({this.pinnedFingerprint, this.notes = const []});

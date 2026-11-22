@@ -228,7 +228,8 @@ void main() {
       expect(location(tester), AppRoutes.notificationsSetup);
       expect(find.text(en.notificationSetupExactTitle), findsOneWidget);
       expect(find.text(en.notificationSetupExactBodyLate), findsOneWidget);
-      // Android may deliver an inexact alarm up to an hour late (D39).
+      // Android may deliver an inexact alarm up to an hour late
+      // (decision log: Notifications and widgets).
       expect(en.notificationSetupExactBodyLate, contains('up to an hour late'));
       expect(find.text(en.notificationSetupReminders), findsNothing);
 

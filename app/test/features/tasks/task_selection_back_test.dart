@@ -11,8 +11,9 @@ import '../../helpers/large_screens.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/task_detail_panes.dart';
 
-/// Back ends a selection (D106) on every list that selects, also where
-/// Android asks the app for Back only while the app says it handles it.
+/// Back ends a selection on every list that selects, also where Android
+/// asks the app for Back only while the app says it handles it
+/// (decision log: Tasks).
 void main() {
   String location(WidgetTester tester) =>
       routerOf(tester).routerDelegate.state.matchedLocation;

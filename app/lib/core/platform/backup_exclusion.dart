@@ -33,9 +33,9 @@ final class PlatformBackupExclusion implements BackupExclusion {
 
 /// The accounts' databases, queued uploads and drafts, and the widgets'
 /// files in the App Group (snapshots, catalogs, Done taps), stay out of
-/// backups (D66). A restore or a move to another device clears the flag, so
-/// every UI start sets it again. Best effort: a failure is logged by its
-/// type.
+/// backups (decision log: Security and privacy). A restore or a move to another
+/// device clears the flag, so every UI start sets it again. Best effort: a
+/// failure is logged by its type.
 Future<void> excludeAppDataFromBackup({
   BackupExclusion? exclusion,
   Future<Directory> Function()? supportDirectory,

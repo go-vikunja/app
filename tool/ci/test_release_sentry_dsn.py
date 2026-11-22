@@ -1,7 +1,7 @@
 """Tests check_sentry_dsn of tool/ci/release_lib.sh, the release builds' rule
-for the crash reports' DSN (D113): unset or empty means no crash reports,
-anything else must be an https DSN on sentry.io, and a value that is not is
-never printed. The DSNs here are made up."""
+for the crash reports' DSN: unset or empty means no crash reports, anything
+else must be an https DSN on sentry.io, and a value that is not is never
+printed (decision log: Diagnostics). The DSNs here are made up."""
 import os
 import subprocess
 import unittest
@@ -77,7 +77,7 @@ class CheckSentryDsnTest(unittest.TestCase):
                 self.assertEqual(result.returncode, 1, result.stdout)
                 self.assertIn('error: VIKUNJA_APP_SENTRY_DSN must be https://<key>@<host>/<project id>, the host '
                               'sentry.io or a subdomain of it, without a port, a password, spaces, line breaks or '
-                              'anything after the id (D113); its value is not shown', result.stderr)
+                              'anything after the id (decision log: Diagnostics); its value is not shown', result.stderr)
                 self.assertNotIn('CHECKED', result.stdout)
                 for marker in MARKERS + ('public@', 'example.invalid'):
                     self.assertNotIn(marker, result.stdout + result.stderr)

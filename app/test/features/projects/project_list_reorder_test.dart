@@ -385,7 +385,7 @@ void main() {
       await pumpProject(tester);
       expect(rows(tester).last, ('Done nine', 0));
 
-      // Their long press selects them instead (D106).
+      // Their long press selects them instead (decision log: Tasks).
       for (final title in ['Alpha child', 'Done nine']) {
         await dragRow(tester, title, aboveRow(tester, 'Alpha'));
         expect(find.text(en.selectionCount(1)), findsOneWidget);
@@ -592,7 +592,7 @@ void main() {
     });
   });
 
-  group('selecting (D106)', () {
+  group('selecting (decision log: Tasks)', () {
     testWidgets('a long press held still selects, as in every other list: '
         'a row that lifts once let go, one that does not at once; moved, '
         'the row moves instead', (tester) async {

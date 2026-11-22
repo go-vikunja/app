@@ -48,9 +48,9 @@ void main() {
     DateTime(2026, 9, 20, 23, 30),
   ];
 
-  // The web's distance: today when the day is today. D102-4: `next` on
+  // The web's distance: today when the day is today. QA-12: `next` on
   // the day itself is a week ahead (the web changes nothing); `this` goes
-  // with the weekday, as in the web's open fix. D38-5: at the default
+  // with the weekday, as in the web's open fix. QA-7: at the default
   // time, not the clock time of now.
   DateTime expectedFor(DateTime now, int weekday, {required bool next}) {
     final days = (weekday - now.weekday) % 7;
@@ -116,7 +116,7 @@ void main() {
     expect(result.date, DateTime(2021, 6, 24, 14));
   });
 
-  group('D38-5: the default time, not the clock time of now', () {
+  group('QA-7: the default time, not the clock time of now', () {
     test('a weekday', () {
       final result = parse(
         'x fri',
@@ -127,7 +127,7 @@ void main() {
     });
 
     test('the day itself after 21:00 is today at 23:59, as 09:00 has '
-        'passed (D102-9)', () {
+        'passed (QA-8)', () {
       expect(
         parse('x thu', now: DateTime(2021, 6, 24, 22)).date,
         DateTime(2021, 6, 24, 23, 59),
@@ -171,7 +171,7 @@ void main() {
     expect(parse('x mon,').date, isNull);
   });
 
-  test('D38-9: removing a weekday leaves longer words alone', () {
+  test('QA-6: removing a weekday leaves longer words alone', () {
     // The web gives "Lorem  sbee" and "floor day".
     expect(parse('Lorem fri frisbee').text, 'Lorem  frisbee');
     expect(parse('mon floor monday').text, 'floor monday');

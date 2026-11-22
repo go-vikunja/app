@@ -28,8 +28,8 @@ final class LocalTaskDetailsRepository implements TaskDetailsRepository {
   final VikunjaReadClient _read;
   final VikunjaWriteClient _write;
 
-  /// The user's id on a server whose reminders follow the subscriptions
-  /// (D80): each details read then also records the user's own
+  /// The user's id on a server whose reminders follow the subscriptions:
+  /// each details read then also records the user's own
   /// subscription to the task, which only such a read carries, for the
   /// notifications. Null records nothing.
   final int? _subscriberId;

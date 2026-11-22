@@ -49,7 +49,7 @@ final _log = Logger('AccountSettingsPage');
 /// shows them. A refused value is shown at its control. Password and email,
 /// two-factor authentication, the data export's request and download and
 /// the account's deletion are left to the web's own pages in the browser,
-/// because they ask for the password or a code (D14); sessions, tokens and
+/// because they ask for the password or a code; sessions, tokens and
 /// CalDAV have pages of their own.
 class AccountSettingsPage extends ConsumerStatefulWidget {
   const new({super.key});

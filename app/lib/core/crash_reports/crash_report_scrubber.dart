@@ -12,7 +12,7 @@ import 'package:vikunja_domain/vikunja_domain.dart'
 import 'package:vikunja_mobile/core/logging/redaction.dart';
 
 /// The category of the breadcrumbs the app's warnings become; every other
-/// breadcrumb is dropped (D113).
+/// breadcrumb is dropped (decision log: Diagnostics).
 const crashReportLogCategory = 'app.log';
 
 const serverPlaceholder = '<server>';

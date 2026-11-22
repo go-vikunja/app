@@ -139,7 +139,7 @@ jobs:
       - run: tool/ci/osv.sh
 
   # macOS minutes are free only in public repositories: elsewhere the job is opt-in.
-  # The image of Xcode 27, the Xcode of the iOS releases (D74).
+  # The image of Xcode 27, the Xcode of the iOS releases (decision log: Releases).
   ios:
     if: github.event_name != 'schedule' && (github.repository == 'go-vikunja/app' || vars.VIKUNJA_APP_IOS_JOB == 'true')
     runs-on: xcode-27

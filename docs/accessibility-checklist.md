@@ -1,10 +1,10 @@
 # Accessibility checklist
 
-This is the manual accessibility pass of the Vikunja app, the Android and iOS client for self-hosted Vikunja. It goes with the automated checks of step 36a ([D68]): the route sweep, the 3.12× text check and the static rules in `app/test/a11y/`. The sweep covers what a widget test can see; this pass covers what only a screen reader, a switch and real fonts on a device show. The yardstick is WCAG 2.2 AA with the deviations listed in [D68].
+This is the manual accessibility pass of the Vikunja app, the Android and iOS client for self-hosted Vikunja. It goes with the automated checks of step 36a ([Accessibility]): the route sweep, the 3.12× text check and the static rules in `app/test/a11y/`. The sweep covers what a widget test can see; this pass covers what only a screen reader, a switch and real fonts on a device show. The yardstick is WCAG 2.2 AA with the deviations listed in [Accessibility].
 
 A sign-off goes through section 1 on the tree being signed off, section 2 on Android (TalkBack, Switch Access) for every area the change touched (all of it before a release), and section 3 once in the final iOS phase (VoiceOver). The results and the date go into the step's decision: per flow, what TalkBack (German and English) and Switch Access showed, and each finding with its screen and severity, fixed or a follow-up.
 
-**Status:** sections 2 and 3 not yet run. On 2026-10-28 the pass could not be performed on the emulator ([D68]); since step 40w TalkBack and Switch Access run in the device phase together with VoiceOver, and the Accessibility Scanner is not used, on the emulator or on a device: in its place step 40w scanned the release build's screens on an emulator from `uiautomator` dumps and fixed what it found ([D112]; owner, 2026-11-20 and 2026-11-21; [Q19]). *Note 2026-11-02, step 37d ([D77]): both passes come before 1.0.0 ([beta.md](beta.md#before-100)); App Store Connect's Accessibility Nutrition Labels stay blank until they confirm a feature ([store-listing.md](store-listing.md#app-store-connect)).*
+**Status:** sections 2 and 3 not yet run. On 2026-10-28 the pass could not be performed on the emulator ([Accessibility]); since step 40w TalkBack and Switch Access run in the device phase together with VoiceOver, and the Accessibility Scanner is not used, on the emulator or on a device: in its place step 40w scanned the release build's screens on an emulator from `uiautomator` dumps and fixed what it found ([Accessibility]; owner, 2026-11-20 and 2026-11-21; [Q19]). *Note 2026-11-02, step 37d ([Releases]): both passes come before 1.0.0 ([beta.md](beta.md#before-100)); App Store Connect's Accessibility Nutrition Labels stay blank until they confirm a feature ([store-listing.md](store-listing.md#app-store-connect)).*
 
 ## 1. Automated
 
@@ -16,9 +16,9 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 - Every route, page pushed with the Navigator and dialog, sheet, picker or menu call has a scenario or an exemption with a written reason; a new one without either fails ([CONTRIBUTING.md](../CONTRIBUTING.md#rules-for-the-code)).
 - Each scenario runs on Android and iOS, light and dark, English and German, with Flutter's tap-target, labelled-target and contrast guidelines and the project's checks for heading levels, headings that are no buttons, image labels and control names, on every scroll stop.
 - The six core screens have no overflow at 3.12× on iOS, at 375 × 667 and 320 × 568 points.
-- Since step 36b ([D69]) each scenario also runs on its platform's tablet in both orientations (Android 1280 × 800 and 800 × 1280, iPad 1194 × 834 and 834 × 1194), in dark mode, English and German: with the guidelines above and the readable-width checks, and once more at 200 % text, where it has to show without an exception at every scroll stop.
-- Since step 36c ([D70]) nine scenarios with a task open in the pane beside the list run on the tablet in landscape only (Android 1280 × 800, iPad 1194 × 834), in light and dark, English and German with the guidelines and the readable-width checks of the list beside the pane, and dark at 200 % text; two of them also on an unfolded foldable (841 × 701, Android) at 200 %. Their scroll stops go through the pane's list, then the list's.
-- Since step 36g ([D82]) the tablet passes in landscape (Android 1280 × 800, iPad 1194 × 834) run every scenario of the Projects tab of an account that is no link-share guest with the project tree's column beside it, 320 dp wide from the rail's edge, the bands of a project's or a list's screen measured from the divider of the tree's column; the guest's scenario and every other pass have no column. No scenario is new.
+- Since step 36b ([Look and layout]) each scenario also runs on its platform's tablet in both orientations (Android 1280 × 800 and 800 × 1280, iPad 1194 × 834 and 834 × 1194), in dark mode, English and German: with the guidelines above and the readable-width checks, and once more at 200 % text, where it has to show without an exception at every scroll stop.
+- Since step 36c ([Look and layout]) nine scenarios with a task open in the pane beside the list run on the tablet in landscape only (Android 1280 × 800, iPad 1194 × 834), in light and dark, English and German with the guidelines and the readable-width checks of the list beside the pane, and dark at 200 % text; two of them also on an unfolded foldable (841 × 701, Android) at 200 %. Their scroll stops go through the pane's list, then the list's.
+- Since step 36g ([Look and layout]) the tablet passes in landscape (Android 1280 × 800, iPad 1194 × 834) run every scenario of the Projects tab of an account that is no link-share guest with the project tree's column beside it, 320 dp wide from the rail's edge, the bands of a project's or a list's screen measured from the divider of the tree's column; the guest's scenario and every other pass have no column. No scenario is new.
 - Every `header: true` has a heading level, and every announcement goes through the announcer.
 
 ## 2. Manual, on Android
@@ -30,7 +30,7 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 - **Build:** the release APK, installed with `adb install -r`; the project's emulator rules apply (start lean, one emulator, stop it afterwards).
 - **Server and data:** the local test server, seeded with `tool/seed_demo_data.py` (German by default, `--reset --lang en` for the English flows; since step 37c it also sets up the Kanban view with a done column); make sure it has: an overdue task and a task due later today; a description with headings, a link and a checklist; a Kanban view with a done column; a Gantt view with one *blocking* and one *precedes* relation between tasks in range; two accounts; an API token, a CalDAV token and a second session (signed in on the web).
 - **Settings during the pass:** font size and display size at their maximum for flows 2, 5, 6 and 11 (once also at the default); dark theme for half of the flows; colour correction for deuteranomaly for flows 2 and 8; every flow in German, flows 2, 3, 5 and 8 also in English.
-- **Known until 2026-10-28:** changing the system Contrast, or the wallpaper while system colours are on, made Android relaunch the activity, and the app came back at the Overview ([D68]); since then the activity keeps its engine and the app keeps its screen.
+- **Known until 2026-10-28:** changing the system Contrast, or the wallpaper while system colours are on, made Android relaunch the activity, and the app came back at the Overview ([Accessibility]); since then the activity keeps its engine and the app keeps its screen.
 
 ### 2.2 In every flow
 
@@ -52,17 +52,17 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
   - right after a confirm dialog closes: deleting an API token ("Token gelöscht"), deleting a CalDAV token ("CalDAV-Token gelöscht"), ending the other sessions;
   - the same message twice in a row: copy a certificate fingerprint twice ("Kopiert" both times);
   - nothing stale after unlocking the app or after closing the task sheet;
-  - form errors: a wrong password for a protected share link, the client certificate page's "Wähle zuerst eine Datei aus." and its wrong password, an empty access-header value. Each is spoken once when it appears and once more when the same input is submitted unchanged. A field with a helper text (the share-link password) may say a new error twice, a framework effect ([D68]): record whether it does.
+  - form errors: a wrong password for a protected share link, the client certificate page's "Wähle zuerst eine Datei aus." and its wrong password, an empty access-header value. Each is spoken once when it appears and once more when the same input is submitted unchanged. A field with a helper text (the share-link password) may say a new error twice, a framework effect ([Accessibility]): record whether it does.
 - [ ] **Overdue:** an overdue row and card show the circled exclamation mark instead of the calendar, in the error colour, and so does the sheet's due row, which reads "Überfällig, war fällig …". Check it with an absolute date format set on the web, where the colour was the only sign before.
 - [ ] **Refresh:** Sessions, API tokens and CalDAV have "Aktualisieren" in the app bar, reachable with TalkBack and Switch Access; the list reloads.
 - [ ] **Gantt:** one text above the rows reads "Heute, *Datum*; Zeitraum: *von* bis *bis*" and is no button; the blocking row ends with "blockiert *Titel*", its target with "blockiert durch *Titel*"; the precedes pair with "geht *Titel* voraus" and "folgt auf *Titel*".
 - [ ] **Contrast:** Settings › Accessibility › Colour and motion › Contrast at medium and at high, each with "Use system colors" (Account tab › Appearance) on and off: the app uses the high-contrast scheme (stronger outlines and text), with system colours in the wallpaper's hue. Back at standard, the normal scheme returns.
 - [ ] **Remove animations** on: the board jumps to the column after a drop or a move instead of gliding; focusing the comment field jumps the task sheet to full height; "Zu heute springen" in Gantt jumps. Record any other motion that remains.
-- [ ] **Dragging without TalkBack** (WCAG 2.5.7): as a pointer user, confirm that reordering cards within a column, list rows and sibling projects has no single-pointer way, and that a card's column (Mehr › "In Spalte verschieben …" in its task detail, since step 37k), a column's place (its menu), a project's parent (project edit › parent) and a task's project (task edit › project) do. [D68] records exactly this.
+- [ ] **Dragging without TalkBack** (WCAG 2.5.7): as a pointer user, confirm that reordering cards within a column, list rows and sibling projects has no single-pointer way, and that a card's column (Mehr › "In Spalte verschieben …" in its task detail, since step 37k), a column's place (its menu), a project's parent (project edit › parent) and a task's project (task edit › project) do. [Accessibility] records exactly this.
 
 ### 2.4 Checks of step 36c
 
-On the tablet emulator in landscape (1280 × 800), with TalkBack and Switch Access ([D70]):
+On the tablet emulator in landscape (1280 × 800), with TalkBack and Switch Access ([Look and layout]):
 
 - [ ] **Open:** activate a row of the Overview and of a project's list. The task opens in the pane beside the list; TalkBack's focus moves into the pane; nothing is announced beyond what opening the sheet says on a phone; back on the list, the row reads "ausgewählt" ("selected"), and so do a Kanban card and a Gantt row in their views.
 - [ ] **Order and headings:** swiping goes through the list, then the pane; the Headings control reaches the screen's title, its section headers, the task's title (level 1) and the pane's sections. The pane's menu reads "Mehr zu „*Titel*“", the project page's menu "Mehr".
@@ -72,7 +72,7 @@ On the tablet emulator in landscape (1280 × 800), with TalkBack and Switch Acce
 
 ### 2.5 Checks of step 36g
 
-On the tablet emulator in landscape (1280 × 800), with TalkBack and Switch Access, signed in to an account with a favourite project and a saved filter ([D82]):
+On the tablet emulator in landscape (1280 × 800), with TalkBack and Switch Access, signed in to an account with a favourite project and a saved filter ([Look and layout]):
 
 - [ ] **Order and regions:** open a project and a task in its pane. Swiping goes through the tree's column, then the project, then the pane, each as a region of its own; nothing of one is read inside another.
 - [ ] **Headings:** the Headings control reaches "Projekte" (the title of the tree's column), then the project's title, then the task's title, each at level 1, with their sections at level 2. With nothing open, the page beside the tree's column has "Kein Projekt geöffnet" at level 1, and going back from a project to it, or selecting "Projekte" while a project is open, announces "Kein Projekt geöffnet" as the screen's name.
@@ -84,7 +84,7 @@ On the tablet emulator in landscape (1280 × 800), with TalkBack and Switch Acce
 
 ### 2.6 Checks of step 37k
 
-On a phone in German, with TalkBack and Switch Access, signed in to an account with a project you may change and a board whose columns include two of the same title ([D84]); the pane once more on the tablet emulator in landscape:
+On a phone in German, with TalkBack and Switch Access, signed in to an account with a project you may change and a board whose columns include two of the same title ([Tasks]); the pane once more on the tablet emulator in landscape:
 
 - [ ] **The rows:** open a task with a due date, a priority and a reminder. "Fällig am", "Priorität" and "Erinnerungen" each read as one button with their value, and TalkBack's hint names the action ("Fälligkeitsdatum ändern", "Priorität ändern", "Erinnerungen bearbeiten"); start date, progress and repeat are no buttons. In a project you may only read, and in an archived one, no row is a button.
 - [ ] **The add row:** open a task without due date, priority, reminders and labels. The attribute card's last row reads "Fälligkeitsdatum festlegen", "Priorität festlegen", "Erinnerung hinzufügen" and "Label hinzufügen", four buttons, each holding the word it shows. At the largest font the row wraps inside the card and nothing is cut off.
@@ -98,18 +98,18 @@ On a phone in German, with TalkBack and Switch Access, signed in to an account w
 
 ### 2.7 Checks of step 37l
 
-On a phone in German, with TalkBack and Switch Access, signed in to a user account and a guest ([D20], [D38]):
+On a phone in German, with TalkBack and Switch Access, signed in to a user account and a guest ([Identity and scope], [Quick add]):
 
 - [ ] **The row:** Account › the version › "Über die App". After "Hilfe und Fehler melden" comes "Support-Details" with "Was du beilegen kannst, wenn du einen Fehler meldest; du siehst es, bevor du es teilst", one button. Signed out, the row is there too (the button under the Connect screen's form).
 - [ ] **The page:** it opens full screen with "Support-Details" as its level-1 heading and a close button; while the details are collected the spinner says "Support-Details", and "Teilen" is not available until the text is there. The note, the switch "Serveradressen anzeigen" with "Sonst erscheinen sie als <server-1>, <server-2> und so weiter" (TalkBack reads it as a switch with its state), then the text. Turning the switch on changes the text in place; leaving and opening the page again finds it off. Record how TalkBack reads the monospaced text block (by line, or as one long text) and whether swiping through it is usable.
 - [ ] **Share:** "Teilen" opens the system's share sheet; with the app lock on, the app is not locked on return. Switch Access reaches the close button, "Teilen" and the switch; at the largest font the text wraps inside its card.
-- [ ] **Quick add offline:** airplane mode on until the offline banner shows, then "Neue Aufgabe" and type `Einkaufen *neuesLabel`. The new label's chip reads "neuesLabel · neu", and TalkBack "Neues Label neuesLabel, wird beim Hinzufügen erstellt". After "Hinzufügen" the task carries the label at once; since step 40m it is created on the device and sent when the connection is back ([D109]).
+- [ ] **Quick add offline:** airplane mode on until the offline banner shows, then "Neue Aufgabe" and type `Einkaufen *neuesLabel`. The new label's chip reads "neuesLabel · neu", and TalkBack "Neues Label neuesLabel, wird beim Hinzufügen erstellt". After "Hinzufügen" the task carries the label at once; since step 40m it is created on the device and sent when the connection is back ([Outbox]).
 - [ ] **Quick add as a guest:** switch to the guest; the same text gives the chip "neuesLabel · bleibt im Titel" and TalkBack "Das Label neuesLabel gibt es nicht; es bleibt im Titel". The help (`?`) says under Labels that as a guest you can't create new ones.
 - [ ] **Signing straight back in:** mark a task done from a reminder notification while the server cannot be reached, then at once sign that account out and sign in to it again from the Connect screen; the wait shows only while the notification's Done still holds the account's data, so record whether it was seen. The button reads "Abmeldung wird abgeschlossen …" while it waits (TalkBack reads it once it has focus), and back leaves the screen. If the wait gives up after 30 s, the error card reads "Die Abmeldung läuft noch" with its explanation and suggestion and is read when it appears.
 
 ### 2.8 Checks of step 40o
 
-On a phone in German, with TalkBack and Switch Access ([D106]):
+On a phone in German, with TalkBack and Switch Access ([Tasks]):
 
 The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
 
@@ -120,7 +120,7 @@ The texts new in this step are English until Vikunja's Crowdin brings them; the 
 
 ### 2.9 Checks of step 40m
 
-On a phone in German, with TalkBack, offline after the task was opened once online ([D109]):
+On a phone in German, with TalkBack, offline after the task was opened once online ([Descriptions, comments, attachments]):
 
 The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
 
@@ -131,7 +131,7 @@ The texts new in this step are English until Vikunja's Crowdin brings them; the 
 
 ### 2.10 Checks of step 41
 
-On a phone in German with TalkBack and Switch Access, in a build with crash reports (`--dart-define=VIKUNJA_APP_SENTRY_DSN=…`, [D113]):
+On a phone in German with TalkBack and Switch Access, in a build with crash reports (`--dart-define=VIKUNJA_APP_SENTRY_DSN=…`, [Diagnostics]):
 
 The texts new in this step are English until Vikunja's Crowdin brings them; the steps name them in English.
 
@@ -165,23 +165,20 @@ Once, on a device (the simulator for what it can show):
 
 1. **VoiceOver:** the rotor's Headings on the screens of 2.3; the editor WebView's content; the announcements of 2.3, which on iOS go through the platform.
 2. **Largest text:** at AX5 (Settings › Accessibility › Display & Text Size › Larger Text, largest) with Bold Text on: the six core screens with the system font; the picker sheet (task edit › due date; API token › custom expiry, which has a title) shows its title on a line of its own and Cancel and Done side by side or stacked, nothing cut off; the day-range sheet (Upcoming's range button, a Gantt view's range controls) shows Cancel and Done and both From/To segments in full. Record whether the Gantt bars' titles follow Bold Text.
-3. **Increase Contrast:** the app uses the high-contrast scheme; the alerts' actions (delete task, sign out, the http question) with and without it, the 1.4.3 deviation of [D68].
-4. **Reduce Motion:** the board, the task sheet and "Go to today" jump; page and sheet transitions still slide, as [D68] records.
+3. **Increase Contrast:** the app uses the high-contrast scheme; the alerts' actions (delete task, sign out, the http question) with and without it, the 1.4.3 deviation of [Accessibility].
+4. **Reduce Motion:** the board, the task sheet and "Go to today" jump; page and sheet transitions still slide, as [Accessibility] records.
 5. **The tab bar:** inactive labels readable in light and dark.
-6. **iPad** ([D69]): the task sheet and a picker as centred cards (an 11" iPad in both orientations, an iPad mini in portrait) take VoiceOver's focus, and nothing on the page beside the card is reachable; in Split View with half of a 13" iPad the sheet fills the window. At the largest text, the centred settings and forms show everything. The task pane ([D70]) on an 11" iPad in landscape and a 13" iPad in portrait: VoiceOver reads the list, then the pane; its focus moves into the pane when a task opens, and back to the row when it closes; the row reads "selected". The project tree's column ([D82]) on an 11" iPad and an iPad mini in landscape: VoiceOver reads the tree's column, the project, then the pane; the open project's rows read "selected"; a swipe from the project's own edge goes back to "No project open".
-7. **Widgets** ([D63]): VoiceOver on a Tasks widget left past midnight without the app or a background run reads the rows' dated labels (a row that showed "Tomorrow, 09:00" reads "Due Oct 27, 09:00"), and on the medium and larger sizes "Open Vikunja to update"; a row shown overdue, due earlier today or due later with its time passed, says "Overdue, due …".
+6. **iPad** ([Look and layout]): the task sheet and a picker as centred cards (an 11" iPad in both orientations, an iPad mini in portrait) take VoiceOver's focus, and nothing on the page beside the card is reachable; in Split View with half of a 13" iPad the sheet fills the window. At the largest text, the centred settings and forms show everything. The task pane ([Look and layout]) on an 11" iPad in landscape and a 13" iPad in portrait: VoiceOver reads the list, then the pane; its focus moves into the pane when a task opens, and back to the row when it closes; the row reads "selected". The project tree's column ([Look and layout]) on an 11" iPad and an iPad mini in landscape: VoiceOver reads the tree's column, the project, then the pane; the open project's rows read "selected"; a swipe from the project's own edge goes back to "No project open".
+7. **Widgets** ([Notifications and widgets]): VoiceOver on a Tasks widget left past midnight without the app or a background run reads the rows' dated labels (a row that showed "Tomorrow, 09:00" reads "Due Oct 27, 09:00"), and on the medium and larger sizes "Open Vikunja to update"; a row shown overdue, due earlier today or due later with its time passed, says "Overdue, due …".
 
-[D20]: decisions.md#d20-scope-cuts-and-mobile-forms-of-desktop-features
-[D38]: decisions.md#d38-quick-add-the-webs-grammar-with-fixes-through-the-outbox
-[D63]: decisions.md#d63-home-screen-widgets-app-written-snapshots-glance-on-android-widgetkit-on-ios
-[D68]: decisions.md#d68-screen-readers-headings-one-announcer-high-contrast-reduce-motion-route-sweep
-[D69]: decisions.md#d69-large-screens-a-window-layout-helper-readable-widths-capped-dialogs-and-sheets
-[D70]: decisions.md#d70-task-detail-pane-beside-the-list-on-two-pane-windows-the-sheet-elsewhere
-[D77]: decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers
-[D82]: decisions.md#d82-projects-listdetail-the-project-tree-beside-the-project-on-wide-windows
-[D84]: decisions.md#d84-everyday-editing-in-the-task-detail-properties-in-place-task-links-move-to-column
+[Identity and scope]: decisions.md#identity-and-scope
+[Outbox]: decisions.md#outbox
+[Tasks]: decisions.md#tasks
+[Quick add]: decisions.md#quick-add
+[Descriptions, comments, attachments]: decisions.md#descriptions-comments-attachments
+[Notifications and widgets]: decisions.md#notifications-and-widgets
+[Diagnostics]: decisions.md#diagnostics
+[Look and layout]: decisions.md#look-and-layout
+[Accessibility]: decisions.md#accessibility
+[Releases]: decisions.md#releases
 [Q19]: open-questions.md#q19-device-setup-for-the-manual-talkback-pass
-[D106]: decisions.md#d106-faster-work-in-lists-swipes-selecting-several-tasks-reschedule
-[D109]: decisions.md#d109-offline-details-stored-task-details-images-on-disk-labels-created-offline
-[D112]: decisions.md#d112-accessibility-pass-on-an-emulator-a-scan-of-the-real-screens-48-dp-chips-and-widget-targets
-[D113]: decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry

@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 /// Per account, in the preferences store (not in its database: the
 /// scheduler needs them before the database is open and they are not
-/// sync state). Defaults on, D17.
+/// sync state). Defaults on (decision log: Notifications and widgets).
 @immutable
 final class NotificationPreferences {
   const new({

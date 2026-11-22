@@ -554,7 +554,8 @@ void main() {
     }
 
     test('a request that got no token is stored as unreachable, with why it '
-        'never left, and reads back as unreachable alone (D59)', () {
+        'never left, and reads back as unreachable alone '
+        '(decision log: Sessions)', () {
       for (final (cause, notSent) in const [
         (RefreshDeferred.race, 'deferred'),
         (RefreshDeferred.cutoff, 'deferred'),

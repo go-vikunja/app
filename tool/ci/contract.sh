@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# The CI job `contract` (D86): the contract tests against the Vikunja test
-# server of test_servers/docker-compose.yaml, which the runner's own Docker
-# publishes on 127.0.0.1. Locally the servers run in the developer's Docker
-# and stay up, like tool/contract_tests.sh leaves them.
+# The CI job `contract`: the contract tests against the Vikunja test server of
+# test_servers/docker-compose.yaml, which the runner's own Docker publishes on
+# 127.0.0.1 (decision log: Servers). Locally the servers run in the developer's
+# Docker and stay up, like tool/contract_tests.sh leaves them.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -35,9 +35,10 @@ setup_flutter
 
 # Every contract test lives in test/contract; naming it spares compiling the
 # other test files only to skip them. Both suites run before a failure counts,
-# so a run against an older release shows everything that fails (D28).
-# Without immediate transactions (VIKUNJA_APP_TEST_DATABASE_PATH) parallel
-# writes fail, so the files run one at a time.
+# so a run against an older release shows everything that fails
+# (decision log: Servers). Without immediate transactions
+# (VIKUNJA_APP_TEST_DATABASE_PATH) parallel writes fail, so the files run one at
+# a time.
 api_flags=(--tags contract)
 if [[ -n "${VIKUNJA_APP_TEST_DATABASE_PATH:-}" ]]; then
   api_flags+=(--concurrency=1)

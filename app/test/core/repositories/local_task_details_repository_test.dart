@@ -64,7 +64,8 @@ void main() {
     expect(row.isUnread, isFalse);
   });
 
-  group("the user's own subscription (D80)", () {
+  group("the user's own subscription "
+      '(decision log: Notifications and widgets)', () {
     const alice = 7;
     const followWork = Subscription(
       entity: SubscriptionEntity.project,

@@ -1,6 +1,6 @@
-"""Checks .github/workflows (D86): triggers, permissions, pins, secrets and the
-scripts each job runs. Parsed with Ruby's YAML, because Python has no YAML
-parser without third-party packages."""
+"""Checks .github/workflows: triggers, permissions, pins, secrets and the
+scripts each job runs (decision log: Releases). Parsed with Ruby's YAML,
+because Python has no YAML parser without third-party packages."""
 import json
 import os
 import re

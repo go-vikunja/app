@@ -367,7 +367,8 @@ void main() {
   });
 
   test('an account whose session ended on this device is told so, from '
-      'its record as a headless container reads it (D59)', () async {
+      'its record as a headless container reads it '
+      '(decision log: Sessions)', () async {
     final (accountId, _) = await signedIn();
     await SessionDiagnostics(auth.preferences).recordEnd(
       accountId,

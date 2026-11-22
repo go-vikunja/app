@@ -4,7 +4,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 
 import '../helpers/tasks.dart';
 
-// The table probe on Vikunja 2.7.0 (D61), v1 and
+// The table probe on Vikunja 2.7.0, v1 and
 // v2 alike: task number n has id 3131 + n and was created n-th; a table
 // view's positions put newer tasks first, so the server's ties (position,
 // then id) are newest first here too. Cherry and Date were created done,

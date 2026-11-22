@@ -17,7 +17,7 @@ double metaIconSize(BuildContext context) =>
 /// which marks what is overdue; with [text] for a priority's name, which
 /// needs more contrast than its flag.
 Color urgentPriorityColor(BuildContext context, {bool text = false}) {
-  // The high-contrast schemes (D68) give their text roles 7:1.
+  // The high-contrast schemes give their text roles 7:1.
   final high = MediaQuery.highContrastOf(context);
   return legibleIn(
     context,
@@ -82,7 +82,7 @@ class PriorityFlag extends StatelessWidget {
 }
 
 /// The Table view's priority: every value, Unset and a done task's
-/// included (D61), drawn as [PriorityFlag] draws it everywhere else.
+/// included, drawn as [PriorityFlag] draws it everywhere else.
 class TablePriorityLabel extends StatelessWidget {
   const new({required this.priority, super.key});
 

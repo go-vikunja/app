@@ -126,8 +126,8 @@ void main() {
       en.legalImprint,
       'Terms of Service',
     ], findsOneWidget);
-    // Dropped and deferred features (D20) are not advertised, even when the
-    // server is licensed for them.
+    // Dropped and deferred features are not advertised, even when the server
+    // is licensed for them (decision log: Identity and scope).
     expect(find.byIcon(Icons.admin_panel_settings_outlined), findsNothing);
     expect(find.byIcon(Icons.timer_outlined), findsNothing);
     expect(

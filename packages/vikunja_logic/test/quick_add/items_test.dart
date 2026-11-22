@@ -92,27 +92,28 @@ void main() {
       expect(result.text, 'x');
     });
 
-    test('D102-7: removing a label leaves a longer one (the web cut it)', () {
+    test('QA-16: removing a label leaves a longer one (the web cut it)', () {
       final result = parse('x *a *abc');
       expect(result.labels, ['a', 'abc']);
       expect(result.text, 'x');
       expect(parse('x *bug *bugfix y').text, 'x y');
     });
 
-    test('D102-7: a doubled prefix inside a line leaves with its label', () {
+    test('QA-16: a doubled prefix inside a line leaves with its label', () {
       final result = parse('Fix **bike');
       expect(result.labels, ['bike']);
       expect(result.text, 'Fix');
     });
 
-    test('D102-7: a quoted label before punctuation leaves the text', () {
+    test('QA-16: a quoted label before punctuation leaves the text', () {
       final result = parse('Plan trip *"New York", then book');
       expect(result.labels, ['New York']);
-      // The web's cleanup leaves the space before the comma (D38's limits).
+      // The web's cleanup leaves the space before the comma
+      // (decision log: Quick add).
       expect(result.text, 'Plan trip , then book');
     });
 
-    test('D102-7: punctuation ends a token only before a space or the end, '
+    test('QA-16: punctuation ends a token only before a space or the end, '
         'and a longer label is not cut', () {
       final result = parse('x *bug *bug.');
       expect(result.labels, ['bug', 'bug.']);
@@ -165,7 +166,7 @@ void main() {
       expect(result.project, 'Other');
     });
 
-    test('D102-7: a doubled prefix inside a line leaves with its project', () {
+    test('QA-16: a doubled prefix inside a line leaves with its project', () {
       final result = parse('x ++p');
       expect(result.project, 'p');
       expect(result.text, 'x');
@@ -218,7 +219,7 @@ void main() {
       expect(parse('x !99999999999999999999999').priority, isNull);
     });
 
-    group('D102-8: only a whole number (the web reads it with parseInt)', () {
+    group('QA-17: only a whole number (the web reads it with parseInt)', () {
       test('!2fa is no priority and stays in the text', () {
         final result = parse('Set up !2fa for the admin');
         expect(result.priority, isNull);
@@ -243,13 +244,13 @@ void main() {
         }
       });
 
-      test('removing !1 leaves !12 (D102-7)', () {
+      test('removing !1 leaves !12 (QA-16)', () {
         final result = parse('x !1 !12');
         expect(result.priority, 1);
         expect(result.text, 'x !12');
       });
 
-      test('D102-7: a doubled prefix inside a line leaves with it', () {
+      test('QA-16: a doubled prefix inside a line leaves with it', () {
         final result = parse('x !!3');
         expect(result.priority, 3);
         expect(result.text, 'x');
@@ -288,7 +289,7 @@ void main() {
       expect(result.assignees, ['user with long name']);
     });
 
-    test('D102-7: a resolved name leaves before punctuation and with a '
+    test('QA-16: a resolved name leaves before punctuation and with a '
         'doubled prefix', () {
       final result = parse('Call @bob tomorrow.');
       expect(result.text, 'Call @bob.');
@@ -320,7 +321,7 @@ void main() {
     });
 
     test('a month word before an apostrophe is no date, as it stays in the '
-        'title (D102-1)', () {
+        'title (QA-4)', () {
       for (final text in [
         "Book venue for dec 12's party",
         "Book venue for 12 dec's party",
@@ -416,7 +417,7 @@ void main() {
       expect(cleanupItemText('x @ y', [''], '@'), 'x @ y');
     });
 
-    test('D102-7: only a whole token (the web cut `ice` out of `@alice`)', () {
+    test('QA-16: only a whole token (the web cut `ice` out of `@alice`)', () {
       expect(cleanupItemText('x @al @alice', ['al'], '@'), 'x @alice');
       expect(cleanupItemText('mail@al.com @al', ['al'], '@'), 'mail@al.com ');
     });

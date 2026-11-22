@@ -389,8 +389,8 @@ void main() {
     await pumpEventQueue();
     final after = stores();
 
-    // The configs and the tombstones stay until the user removes the
-    // widgets, so they say why they are empty (D63).
+    // The configs and the tombstones stay until the user removes the widgets,
+    // so they say why they are empty (decision log: Security and privacy).
     final tombstone = host.snapshot('${alice.id}.today')!;
     expect(tombstone.state, WidgetSnapshotState.accountRemoved);
     expect(tombstone.rows, isEmpty);

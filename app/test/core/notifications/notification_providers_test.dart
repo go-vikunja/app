@@ -408,7 +408,8 @@ void main() {
     });
   });
 
-  group('following subscriptions (D80)', () {
+  group('following subscriptions '
+      '(decision log: Notifications and widgets)', () {
     const bob = User(id: 8, username: 'bob');
 
     Subscription via(int projectId) =>
@@ -454,7 +455,8 @@ void main() {
       expect(gateway.pending.keys, [notificationOsIdFor(alice.id, '2:due')]);
     });
 
-    test('accounts on 2.7.0 and link-share guests keep D17', () async {
+    test('accounts on 2.7.0 and link-share guests keep the rule of older '
+        'servers (decision log: Notifications and widgets)', () async {
       final alice = await auth.seedAccount(
         fullServer270(),
         tokens: issueTokens(issuedAt: now),

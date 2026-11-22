@@ -163,7 +163,7 @@ List<MagicSpan> magicSpansOf(
 ];
 
 // A phrase ends where the parser removes it: a time as a time
-// (D102-2), anything else as a word (D102-1).
+// (QA-14), anything else as a word (QA-4).
 final _timePhrase = RegExp('^(?:at|@) ', caseSensitive: false);
 
 /// The repeat phrase where it first stands as words, the date phrases

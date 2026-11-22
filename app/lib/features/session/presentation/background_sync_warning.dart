@@ -9,10 +9,10 @@ import 'package:vikunja_mobile/features/account_settings/presentation/account_se
 import 'package:vikunja_mobile/features/session/application/background_restriction.dart';
 
 /// The device keeps the background sync from running, which is what keeps
-/// the sessions alive (D22): the server then ends one after 3 days without
+/// the sessions alive: the server then ends one after 3 days without
 /// the app opened. With the way to the app's page in the system settings,
 /// unless the user cannot change it there. Nothing while no user account
-/// is signed in, as a guest's session signs in again by itself (D62).
+/// is signed in, as a guest's session signs in again by itself.
 /// [framed] puts it on a card of its own below a gap, for a screen
 /// without sections.
 class BackgroundSyncWarning extends ConsumerWidget {

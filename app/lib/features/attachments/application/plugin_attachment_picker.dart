@@ -33,8 +33,9 @@ final class PluginAttachmentPicker implements AttachmentPicker {
   final AppExcursions? excursions;
 
   /// Takes the location out of photos and videos from the photo picker and
-  /// the camera, and out of pictures from the document picker (owner, D53);
-  /// the document picker's other files keep theirs.
+  /// the camera, and out of pictures from the document picker (owner); the
+  /// document picker's other files keep theirs
+  /// (decision log: Descriptions, comments, attachments).
   final LocationRemoval? locations;
   final DateTime Function() _now;
 

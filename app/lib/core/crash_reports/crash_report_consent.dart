@@ -10,7 +10,8 @@ final _log = Logger('CrashReports');
 enum CrashReportConsent { notAsked, allowed, declined }
 
 /// `crash_reports.consent` in the preferences: a device setting like the
-/// theme, the same for every account and kept on sign-out (D113).
+/// theme, the same for every account and kept on sign-out
+/// (decision log: Diagnostics).
 final class CrashReportConsentStore {
   new(this._preferences);
 

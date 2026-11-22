@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/app/layout/pane_split.dart';
 
-// The rail of a device; tests pump a wider one (D69).
+// The rail of a device; tests pump a wider one.
 const _rail = 80.0;
 
 DisplayFeature _fold(

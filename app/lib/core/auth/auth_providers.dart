@@ -112,7 +112,7 @@ class Accounts extends _$Accounts {
     final diagnostics = ref.watch(sessionDiagnosticsProvider);
     // A background run or notification action only uses the accounts: the
     // purge and the check belong to the app's start, and a fresh engine's
-    // first Keystore read is where a passing failure shows (D59).
+    // first Keystore read is where a passing failure shows.
     final headless = ref.watch(appPartProvider) != AppPart.app;
     final subscription = registry.changes.listen(
       (next) => state = AsyncData(next),

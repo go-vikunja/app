@@ -2,7 +2,7 @@
 # packages/*/lib must compile on the plain Dart VM: no Flutter and no dart:ui,
 # directly or through a dependency. Background isolates and a future CLI share
 # this code. The tests cannot show it, because they run under `flutter test`
-# (D9).
+# (decision log: Stack and structure).
 #
 # Needs jq and a resolved workspace (`flutter pub get` at the root).
 # Must run on macOS's bash 3.2.

@@ -80,7 +80,9 @@ void main() {
       _vectorTest(
         vector,
         () {},
-        skip: 'an order, not a filter: the lists sort themselves (D43)',
+        skip:
+            'an order, not a filter: the lists sort themselves '
+            '(decision log: Tasks)',
       );
     }
   });
@@ -91,7 +93,8 @@ void main() {
         vector,
         () => _checkResult(vector),
         skip: vector.containsKey('sort')
-            ? 'an order, not a filter: the lists sort themselves (D43)'
+            ? 'an order, not a filter: the lists sort themselves '
+                  '(decision log: Tasks)'
             : null,
       );
     }

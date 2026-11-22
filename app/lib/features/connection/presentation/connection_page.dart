@@ -34,7 +34,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/confirm_dialog.dart';
 
 final _log = Logger('ConnectionPage');
 
-/// One server address's connection settings (D65), or one of their
+/// One server address's connection settings, or one of their
 /// editors. An address that does not parse closes the page at once.
 class ConnectionPage extends StatefulWidget {
   const new({required this.origin, this.editor, super.key});
@@ -112,7 +112,7 @@ class _ConnectionOverviewState extends ConsumerState<_ConnectionOverview> {
   }
 
   /// An account keeps the address it was added with, as its id comes from
-  /// it (D25), so moving to https means adding the account there. Nothing
+  /// it, so moving to https means adding the account there. Nothing
   /// is offered for a user already signed in there too.
   Future<void> _lookForHttps() async {
     try {

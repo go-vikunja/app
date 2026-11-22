@@ -1,8 +1,8 @@
 # Beta and 1.0.0
 
-The owner's runbook for step 37d ([D77]): from the move into go-vikunja/app through the beta on Google Play's open testing track and on TestFlight to 1.0.0 in both stores. Each part comes in the order it is done, and each step says who does it, when, and why it is needed. [releasing.md](releasing.md) has how a release is cut and every one-time setting, and [store-listing.md](store-listing.md) every console form with its answer; this page links them and adds what neither covers. The tester-facing texts are in English and German. None of this is legal advice.
+The owner's runbook for step 37d ([Releases]): from the move into go-vikunja/app through the beta on Google Play's open testing track and on TestFlight to 1.0.0 in both stores. Each part comes in the order it is done, and each step says who does it, when, and why it is needed. [releasing.md](releasing.md) has how a release is cut and every one-time setting, and [store-listing.md](store-listing.md) every console form with its answer; this page links them and adds what neither covers. The tester-facing texts are in English and German. None of this is legal advice.
 
-The app is Vikunja's official app ([D83]): it is called Vikunja, its id is `io.vikunja.app` ([D15]), the Play app is the one in Vikunja's Play account, in production, and its bundles are signed with Vikunja's upload key. The repository is under the MIT License and moves into go-vikunja/app with its whole history ([D87]); there GitHub Actions run the CI and the Android releases ([D86]), the betas with the old app's repository secrets until the environment `release` is set up before 1.0.0 ([D118]). As `io.vikunja.app` is in production, Play's closed test of 12 testers for 14 days does not apply: the beta goes to Play's open testing track `beta`, and the app's pages are on vikunja.io ([D89]). The translations come from Vikunja's Crowdin project through the workflow "Crowdin" ([D88], [D118]). From the owner's decisions of 2026-11-02 ([D77]): a "Help and bug reports" row on the About page, TestFlight's external testers through a public link, testers on their own Vikunja server (2.3.0 or newer) or the public demo, `try.vikunja.io`, and iOS builds on the owner's Mac.
+The app is Vikunja's official app ([Identity and scope]): it is called Vikunja, its id is `io.vikunja.app` ([Identity and scope]), the Play app is the one in Vikunja's Play account, in production, and its bundles are signed with Vikunja's upload key. The repository is under the MIT License and moves into go-vikunja/app with its whole history ([Identity and scope]); there GitHub Actions run the CI and the Android releases ([Releases]), the betas with the old app's repository secrets until the environment `release` is set up before 1.0.0 ([Releases]). As `io.vikunja.app` is in production, Play's closed test of 12 testers for 14 days does not apply: the beta goes to Play's open testing track `beta`, and the app's pages are on vikunja.io ([Releases]). The translations come from Vikunja's Crowdin project through the workflow "Crowdin" ([Languages], [Releases]). From the owner's decisions of 2026-11-02 ([Releases]): a "Help and bug reports" row on the About page, TestFlight's external testers through a public link, testers on their own Vikunja server (2.3.0 or newer) or the public demo, `try.vikunja.io`, and iOS builds on the owner's Mac.
 
 ## Who does what on GitHub
 
@@ -55,13 +55,13 @@ Nothing else needs changing: the workflows set their own permissions and use onl
 #### 4. Outside GitHub
 
 10. **The name-and-logo text** in `NOTICE.md` (before beta.1): confirm it, and say who holds the copyright of the logo. **Why:** `NOTICE.md`, the app's notice and the About page say that the name and the logo belong to the Vikunja project and are not under the MIT License; only the project can confirm that.
-11. **The owner's Play Console permissions** for `io.vikunja.app` only ([D89]), before beta.1 (Users and permissions > the owner, or Invite new users > App permissions > Add app > `io.vikunja.app`): Manage store presence, Manage policy declarations, Release apps to testing tracks, and Manage testing tracks and edit tester lists; not the release to production. **Why:** with them the owner enters the answers of [store-listing.md](store-listing.md#google-play-console); without them kolaente enters them himself. Production goes through the release workflow's service account.
+11. **The owner's Play Console permissions** for `io.vikunja.app` only ([Releases]), before beta.1 (Users and permissions > the owner, or Invite new users > App permissions > Add app > `io.vikunja.app`): Manage store presence, Manage policy declarations, Release apps to testing tracks, and Manage testing tracks and edit tester lists; not the release to production. **Why:** with them the owner enters the answers of [store-listing.md](store-listing.md#google-play-console); without them kolaente enters them himself. Production goes through the release workflow's service account.
 12. **The pages on vikunja.io** (before beta.1): the privacy section "Mobile app", the help page `/help/mobile` and the imprint's scope sentence, drafted in [vikunja-io-drafts.md](vikunja-io-drafts.md), which kolaente puts into go-vikunja/website himself. The headings "Mobile app" and "Delete your account" and the slug `mobile` keep their words: the app and the stores link them. **Why:** every build links these addresses, and the release scripts refuse to release until each one opens with its anchor.
 13. **Vikunja Cloud's terms** or data processing agreement (before beta.1): its URL. **Why:** the privacy section links it.
 14. **The address for App Review and the testers** (before beta.1), one that reaches the app's maintainers, in place of `hello@vikunja.io` in `fastlane/metadata/review_information/email_address.txt`, TestFlight's feedback email, the open test's feedback channel and the tester texts. **Why:** testers' reports and Apple's questions should reach whoever fixes the app; until the address exists they go to `hello@vikunja.io`.
 15. **The store texts** (before beta.1): whether the full description keeps the sloth line's spirit, and whether it names Vikunja Cloud as a server ([store-listing.md](store-listing.md#texts)). **Why:** they speak for Vikunja in both stores from the first beta on.
 16. **The Apple account** that publishes the app (before the first TestFlight build): with it the App Store name (whether "Vikunja" is still held by the former contributor's team that the old app's `ios/fastlane/Appfile` names), the bundle id and the privacy label ([store-listing.md](store-listing.md#app-store-connect)). **Why:** the app record, the signing and the privacy label depend on it, so no signed iOS build is made before.
-17. **Crash reports** ([D113]), before a beta that sends reports: the new app uses the old app's Sentry project as it is, and the owner sets its DSN, so nothing needs creating. An administrator of Vikunja's Sentry organization checks:
+17. **Crash reports** ([Diagnostics]), before a beta that sends reports: the new app uses the old app's Sentry project as it is, and the owner sets its DSN, so nothing needs creating. An administrator of Vikunja's Sentry organization checks:
     - in the project's settings: Security & Privacy > "Prevent Storing of IP Addresses" on, the Data Scrubber and its default scrubbers on; as a net behind the app's own scrubbing, an advanced data scrubbing rule that removes `$user`; spike protection and a rate limit per key; the data retention. These settings hold for the old app's reports as well;
     - the organization's data region (United States or EU), for the privacy section ([vikunja-io-drafts.md](vikunja-io-drafts.md), `SENTRY-REGION` and `SENTRY-RETENTION`).
 
@@ -72,7 +72,7 @@ Nothing else needs changing: the workflows set their own permissions and use onl
 21. **The old app's `app_en.arb`** at the root of the Crowdin project, after the owner's German upload: agree that the owner, whose Developer role covers it, exports it, if anyone translated it since December 2025, and deletes it; its translations stay in the translation memory. **Why:** the app's file is `main/app_en.arb` in the version branch `main` ([the rehearsal](#the-crowdin-rehearsal)), and until the old one is deleted it counts in each language's progress.
 22. **The upload certificate's SHA-256** (before beta.1's tag): from the Play Console (Test and release > App integrity > Upload key certificate), sent to the owner, who commits it ([releasing.md](releasing.md#once-in-go-vikunjaapp) step 5). **Why:** a real release fails until it is committed, so that a swapped secret cannot sign the public APK with another key.
 23. **Google Play** (before beta.1), in Vikunja's Play Console: the key that signs the APK, the upload key unless an APK key is added, registered for [developer verification][android-verification]; and under Users and permissions, the release workflow's service account (the user whose address ends in `iam.gserviceaccount.com`) keeps "Release apps to testing tracks" and "Release to production, exclude devices, and use Play App Signing" for `io.vikunja.app` ([releasing.md](releasing.md#after-the-import-before-beta1) step 8). **Why:** certified devices that require a registered key refuse the APK from GitHub and dl.vikunja.io otherwise, in a few countries since 2026-09-30 and everywhere from 2027; and the job `publish` uploads through the service account and fails at the Play step without its rights, after the signing. The old pipeline's last uploads through it went to the `beta` track, so its right to release to production is unchecked.
-24. **The written offer** for the desugar_jdk_libs source: the Vikunja project makes it, with the contact `hello@vikunja.io` ("Ask the Vikunja project at hello@vikunja.io." in `app/assets/legal/android.md`, [D89]); confirm it. **Why:** GitHub releases carry the source itself, but Play and dl.vikunja.io rely on the offer.
+24. **The written offer** for the desugar_jdk_libs source: the Vikunja project makes it, with the contact `hello@vikunja.io` ("Ask the Vikunja project at hello@vikunja.io." in `app/assets/legal/android.md`, [Releases]); confirm it. **Why:** GitHub releases carry the source itself, but Play and dl.vikunja.io rely on the offer.
 25. **The old secrets no workflow uses:** `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, `GPG_PASS` and `SSH_PRIVATE_KEY`, left from older pipelines of the old app: whether anything still needs these keys, and if so, a copy kept outside GitHub; then, after the import, the owner deletes them with `CROWDIN_PROJECT_ID`, which the new app does not read ([his step 6](#what-the-owner-does)). **Why:** any workflow on any branch can read a repository secret, and a secret's value cannot be read back.
 26. **Optional:** CODEOWNERS for `.github/` and `tool/ci/release_certificates.txt`, FUNDING.yml, a devenv for the new app (the import removes the old app's devenv files), and whether the old app's 8 stale branches stay; the owner deletes those that go.
 
@@ -86,7 +86,7 @@ Nothing else needs changing: the workflows set their own permissions and use onl
 
 ## The move
 
-The repository joins go-vikunja/app with its whole history ([D87]), so that every commit hash the docs cite stays valid. The pull request comes from the owner's fork and has two commits of its own: the first removes the old app's files, the second merges our `main` with `--allow-unrelated-histories`, so the tree it leaves is exactly our `main`. The old app's last commit is `cdbc6e3` (`cdbc6e39ac9b52c58443cb353c324342dd7ce6c7`); its tags and releases stay, and there is no `legacy` branch. The commands were rehearsed on 2026-11-16 against a local copy of go-vikunja/app and a local stand-in for the fork, the pushes and the merge included.
+The repository joins go-vikunja/app with its whole history ([Identity and scope]), so that every commit hash the docs cite stays valid. The pull request comes from the owner's fork and has two commits of its own: the first removes the old app's files, the second merges our `main` with `--allow-unrelated-histories`, so the tree it leaves is exactly our `main`. The old app's last commit is `cdbc6e3` (`cdbc6e39ac9b52c58443cb353c324342dd7ce6c7`); its tags and releases stay, and there is no `legacy` branch. The commands were rehearsed on 2026-11-16 against a local copy of go-vikunja/app and a local stand-in for the fork, the pushes and the merge included.
 
 ### Before you start
 
@@ -111,7 +111,7 @@ The owner, in one shell:
    git config user.email "<the address of the imported commits>"
    ```
 
-   **Why:** the working copy and its parked stash stay untouched, so no push from here can publish the stash ([D59]).
+   **Why:** the working copy and its parked stash stay untouched, so no push from here can publish the stash ([Identity and scope]).
 2. **Our `main`** from the working repository, without tags:
 
    ```sh
@@ -140,7 +140,7 @@ The owner, in one shell:
      -m "Joins the new app's history to the old app's, so every commit hash of both stays valid."
    ```
 
-   The removal takes everything of the old app: its workflows and `.drone.yml`, the `Makefile`, the devenv files and `.envrc`, `renovate.json` and its `crowdin.yml` (our `main` brings its own, [D88]), `.vscode`, `.metadata` and the old Flutter tree. **Why:** the removal leaves the tree to our `main` alone, and the merge keeps every commit of both histories.
+   The removal takes everything of the old app: its workflows and `.drone.yml`, the `Makefile`, the devenv files and `.envrc`, `renovate.json` and its `crowdin.yml` (our `main` brings its own, [Languages]), `.vscode`, `.metadata` and the old Flutter tree. **Why:** the removal leaves the tree to our `main` alone, and the merge keeps every commit of both histories.
 5. **The checks before pushing:** each line must print `ok`, or show what its comment says:
 
    ```sh
@@ -172,7 +172,7 @@ The owner, in one shell:
    Push only from this clone and only this branch: `--mirror` from the working repository would also publish its parked stash, and tags have no place in the fork. `../pr-body.md`, outside the clone:
 
    ```markdown
-   This imports the new Vikunja app, announced in #343, with its whole history (D83 in `docs/decisions.md`).
+   This imports the new Vikunja app, announced in #343, with its whole history ("Identity and scope" in `docs/decisions.md`).
 
    It has two commits of its own:
    1. `chore: remove the old app before importing the new one` removes every file of the old app. Its last commit is cdbc6e3; the old tags and releases stay.
@@ -218,11 +218,11 @@ The owner, in one shell:
 
    **Why:** later work starts from the merged `main`, and a push goes to the fork, never with `--mirror`.
 10. **The GitLab project** gets a description that points to https://github.com/go-vikunja/app and is archived (Settings > General > Advanced > Archive project). None of the app's pages links it. **Why:** whoever finds it learns where the app went, and an archived project takes no new issues or merge requests.
-11. **The merge commit's hash goes into [D87].** **Why:** D87 still lists the import as open.
+11. **The merge commit's hash goes into [Identity and scope].** **Why:** its Open items still wait for the import.
 
 ## The translations on Crowdin
 
-The app's texts go into Vikunja's Crowdin project 462614, beside the web's and the API's ([D88]). The workflow "Crowdin" ([releasing.md](releasing.md#the-workflow-crowdin)) syncs them with Crowdin's CLI, the old app's repository secret `CROWDIN_PERSONAL_TOKEN` and the workflow's own token: every night, or when run by hand, it uploads the English source from `main` into the version branch `main` as `main/app_en.arb`, and it opens a pull request with the approved translations. Beside it stays the root file `/app_en.arb`, into which the old app's workflow "Crowdin Sync" uploaded the old app's 188 strings until the import removed that workflow. The app's file is a new file, so the old app's translations do not carry over: they stay in the old root file and in the translation memory. The old app's Polish is not uploaded.
+The app's texts go into Vikunja's Crowdin project 462614, beside the web's and the API's ([Languages]). The workflow "Crowdin" ([releasing.md](releasing.md#the-workflow-crowdin)) syncs them with Crowdin's CLI, the old app's repository secret `CROWDIN_PERSONAL_TOKEN` and the workflow's own token: every night, or when run by hand, it uploads the English source from `main` into the version branch `main` as `main/app_en.arb`, and it opens a pull request with the approved translations. Beside it stays the root file `/app_en.arb`, into which the old app's workflow "Crowdin Sync" uploaded the old app's 188 strings until the import removed that workflow. The app's file is a new file, so the old app's translations do not carry over: they stay in the old root file and in the translation memory. The old app's Polish is not uploaded.
 
 The owner, right after the import:
 
@@ -257,33 +257,33 @@ From then on:
 
 ### The Crowdin rehearsal
 
-The owner rehearsed the sync on 2026-11-16 ([D88] has the results). What it showed still holds for the workflow: the source goes into a version branch `main` beside the root file, so the German upload takes `-b main`; the first export reformats every ARB file once; and an English change drops that text's translations until they are approved again.
+The owner rehearsed the sync on 2026-11-16 ([Languages]). What it showed still holds for the workflow: the source goes into a version branch `main` beside the root file, so the German upload takes `-b main`; the first export reformats every ARB file once; and an English change drops that text's translations until they are approved again.
 
 ## Before beta.1
 
 ### 1. The repository and CI
 
-The releases come only from GitHub Actions in go-vikunja/app ([D86]); until the import the CI scripts run on the Mac and in the owner's test repository, and nothing is published.
+The releases come only from GitHub Actions in go-vikunja/app ([Releases]); until the import the CI scripts run on the Mac and in the owner's test repository, and nothing is published.
 
 1. **kolaente's sitting, the move and the owner's first steps** (kolaente, then the owner; before everything else): [what kolaente does](#1-github-before-the-import) steps 1 to 5, [the move](#the-move), then [what the owner does](#what-the-owner-does) steps 3 to 7. **Why:** the release workflow exists in go-vikunja/app only after the import, a release refuses an incomplete German, a real release fails without the committed certificates, and R40 waits for the bot test's result ([threat model](threat-model.md)). The import also removes the old pipeline's workflow, which uploaded every push to `main` to Play.
-2. **The crash reports' key** ([D113]; the owner, before the first tag whose builds should send reports): the new app sends its crash reports to the old app's Sentry project, as it is (owner, 2026-11-21); its reports are told apart from the old app's by their release, `io.vikunja.app@1.…`. Copy that project's DSN from the old app's code into the **repository variable** `VIKUNJA_APP_SENTRY_DSN` (Settings > Secrets and variables > Actions > Variables > New repository variable), with no spaces or line breaks. A variable, not a secret: every build carries the DSN, and the job `build` has no environment, so an environment's variable would not reach it ([releasing.md](releasing.md#crash-reports)). The DSN goes into no file of the repository. **Why:** a build without it has no crash reports at all.
+2. **The crash reports' key** ([Diagnostics]; the owner, before the first tag whose builds should send reports): the new app sends its crash reports to the old app's Sentry project, as it is (owner, 2026-11-21); its reports are told apart from the old app's by their release, `io.vikunja.app@1.…`. Copy that project's DSN from the old app's code into the **repository variable** `VIKUNJA_APP_SENTRY_DSN` (Settings > Secrets and variables > Actions > Variables > New repository variable), with no spaces or line breaks. A variable, not a secret: every build carries the DSN, and the job `build` has no environment, so an environment's variable would not reach it ([releasing.md](releasing.md#crash-reports)). The DSN goes into no file of the repository. **Why:** a build without it has no crash reports at all.
 
 ### 2. The keys
 
-The keys are Vikunja's ([D83]): the old app's upload key signs the bundles and, without a separate APK key, the APK, as in the old app, so installs of the old app's APKs keep updating. The owner creates no key; [Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)'s option A, an app signing key of the owner's, no longer applies. For the betas the release secrets, `KEYSTORE_BASE64` and `KEY_PROPERTIES`, the Play service account and the dl.vikunja.io storage keys, are the old app's repository secrets of go-vikunja/app, as they are, which the job `secret-scope` warns about on each `v1.0.0-beta.N` tag ([D118]); before 1.0.0 they are entered again in the environment `release` ([before 1.0.0](#before-100), step 3).
+The keys are Vikunja's ([Identity and scope]): the old app's upload key signs the bundles and, without a separate APK key, the APK, as in the old app, so installs of the old app's APKs keep updating. The owner creates no key; [Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)'s option A, an app signing key of the owner's, no longer applies. For the betas the release secrets, `KEYSTORE_BASE64` and `KEY_PROPERTIES`, the Play service account and the dl.vikunja.io storage keys, are the old app's repository secrets of go-vikunja/app, as they are, which the job `secret-scope` warns about on each `v1.0.0-beta.N` tag ([Releases]); before 1.0.0 they are entered again in the environment `release` ([before 1.0.0](#before-100), step 3).
 
 1. **The certificates** (kolaente sends the upload certificate's SHA-256 from the Play Console, the owner commits it; before beta.1's tag): [releasing.md](releasing.md#once-in-go-vikunjaapp) step 5. **Why:** a real release fails without it, so that a swapped secret cannot sign the public APK with another key.
 2. **Developer verification** (kolaente, in Vikunja's Play Console, before beta.1): the key that signs the APK registered ([developer verification][android-verification]). That key must be RSA: the job signs the APK twice and fails when the two files differ, as they do with an EC or DSA key. **Why:** certified devices that require a registered key refuse the APK from GitHub and dl.vikunja.io otherwise.
 
 ### 3. The Play developer account
 
-Vikunja's account, in which `io.vikunja.app` is in production ([D83], [D89]). Its identity, its contact details and its trader status are Vikunja's and are kolaente's to keep; the owner creates no developer account of his own. A new personal account's requirements, the closed test with 12 testers for 14 days and the verification of a real phone in the Play Console app, do not apply ([store-listing.md](store-listing.md#testing-and-production)).
+Vikunja's account, in which `io.vikunja.app` is in production ([Identity and scope], [Releases]). Its identity, its contact details and its trader status are Vikunja's and are kolaente's to keep; the owner creates no developer account of his own. A new personal account's requirements, the closed test with 12 testers for 14 days and the verification of a real phone in the Play Console app, do not apply ([store-listing.md](store-listing.md#testing-and-production)).
 
 1. **The owner's permissions** (kolaente, before part 4): [what kolaente does](#4-outside-github) step 11. **Why:** with them the owner fills in the listing and the forms; without them kolaente does. The release to production stays with the release workflow and Vikunja's service account ([part 2](#2-the-keys)).
 
 ### 4. The Play app
 
-The app is the one in Vikunja's Play account, `io.vikunja.app` ([D83]); the release workflow uploads through Vikunja's service account.
+The app is the one in Vikunja's Play account, `io.vikunja.app` ([Identity and scope]); the release workflow uploads through Vikunja's service account.
 
 1. **Every form** (the owner with part 3's permissions, or kolaente; before the first beta upload) as [store-listing.md](store-listing.md#google-play-console) answers it: store settings and contact details, the listing in both languages with the graphics of `branding/png/`, the privacy policy, App access with the public demo, Ads, Content rating, Target audience, News, Data safety (the union of the old app's declaration and the new app's, with the old app's opt-in Sentry crash reports as crash logs, diagnostics and other app performance data; encryption in transit "No"), Government, Financial features, Health, Advertising ID. **Why:** Play counts the open track like production and reviews the listing and the declarations with the first upload ([testing tracks][play-tracks]).
 2. **App content after the first upload** (the owner): it asks for no exact-alarm or foreground-service declaration. **Why:** the app needs neither permission; a request means that a dependency brought one in, which then has to be declared or removed.
@@ -294,22 +294,22 @@ The app is the one in Vikunja's Play account, `io.vikunja.app` ([D83]); the rele
 [releasing.md](releasing.md#once-before-the-first-upload) has each step. Which Apple account publishes the app is open ([what kolaente does](#4-outside-github) step 16); the owner does these steps in it before the first TestFlight build:
 
 1. **The Apple Developer Program,** the team id, and Xcode signed in with an iPhone registered (releasing.md steps 1 to 3); the enrolled name shows as the seller, and the membership is renewed every year. **Why:** automatic signing needs the team and a registered device, and a lapsed membership takes the app off the App Store.
-2. **The App IDs** `io.vikunja.app` and `io.vikunja.app.widgets`, both with only the App Group `group.io.vikunja.app` (Xcode creates them on the first signed build, or by hand under Identifiers). `io.vikunja.app` may already be taken at Apple; until the account and the id are settled, no build for a device with automatic signing ([D15]). **Why:** the app and its widgets share their data only through that group.
-3. **The app record** `Vikunja` with the bundle id `io.vikunja.app` (releasing.md step 4), created early; the old app's TestFlight record in a former contributor's team may hold the name and the bundle id, and a fallback name is picked only if App Store Connect refuses it ([D89]). **Why:** creating the record reserves the name.
+2. **The App IDs** `io.vikunja.app` and `io.vikunja.app.widgets`, both with only the App Group `group.io.vikunja.app` (Xcode creates them on the first signed build, or by hand under Identifiers). `io.vikunja.app` may already be taken at Apple; until the account and the id are settled, no build for a device with automatic signing ([Identity and scope]). **Why:** the app and its widgets share their data only through that group.
+3. **The app record** `Vikunja` with the bundle id `io.vikunja.app` (releasing.md step 4), created early; the old app's TestFlight record in a former contributor's team may hold the name and the bundle id, and a fallback name is picked only if App Store Connect refuses it ([Releases]). **Why:** creating the record reserves the name.
 4. **The App Store Connect API key,** outside the repository (releasing.md step 5). **Why:** `ios_release.sh` uploads each build with it.
 5. **The source link,** the tree at the tag of `VIKUNJA_APP_SOURCE_CODE_URL`, by default https://github.com/go-vikunja/app, which has the release tags once the import is merged (releasing.md step 6). **Why:** each build links its source at its tag, and the script refuses when that tree does not open signed out.
 6. **The App Store Connect forms and TestFlight's test information** ([store-listing.md](store-listing.md#app-store-connect)), with the privacy label, which is open until the account is decided: if Vikunja's account publishes, the public demo and Vikunja Cloud are the developer's own servers. **Why:** Beta App Review needs the test information before external testers get a build, and the label has to match who runs the servers.
 
 ### 6. The app's pages on vikunja.io
 
-The About page and both listings link the app's pages on vikunja.io: the section "Mobile app" of the privacy policy, the help page `/help/mobile` with "Delete your account", and the imprint ([D89], [store-listing.md](store-listing.md#the-website)).
+The About page and both listings link the app's pages on vikunja.io: the section "Mobile app" of the privacy policy, the help page `/help/mobile` with "Delete your account", and the imprint ([Releases], [store-listing.md](store-listing.md#the-website)).
 
 1. **kolaente publishes them** from the drafts in [vikunja-io-drafts.md](vikunja-io-drafts.md) ([what kolaente does](#4-outside-github) step 12), before the first rollout to testers. **Why:** until then the URLs compiled into every build lead to a policy without the app's section and to a missing page, so no build is distributed before.
 2. **Open each address** of that table signed out, each with its anchor (the owner, once they are published). **Why:** the release scripts check that each page answers with its anchor, but not that the imprint's scope sentence names the apps.
 
 ### 7. The first runs
 
-The trial of 2026-11-16 in the owner's test repository ([D86]) passed the paths that only GitHub's hosted runners take: the Flutter tarball and the macOS zip with their checksums, ShellCheck over `tool/ci/`, the contract tests on the runner's own Docker, the NDK install and JDK 21, the osv-scanner Linux binary and Gradle's memory caps, and the macOS build with Xcode 26.6.
+The trial of 2026-11-16 in the owner's test repository ([Releases]) passed the paths that only GitHub's hosted runners take: the Flutter tarball and the macOS zip with their checksums, ShellCheck over `tool/ci/`, the contract tests on the runner's own Docker, the NDK install and JDK 21, the osv-scanner Linux binary and Gradle's memory caps, and the macOS build with Xcode 26.6.
 
 1. **Watch the first runs in go-vikunja/app** (the owner, from the import's pull request to beta.1's release run):
    - anonymous pulls from Docker Hub against its rate limits (a login is not built);
@@ -317,7 +317,7 @@ The trial of 2026-11-16 in the owner's test repository ([D86]) passed the paths 
    - `ios` on the image `xcode-27` (Xcode 27, like the releases), booting a simulator for the XCTests after the build, and resolving sentry_flutter's Swift package, the `sentry-apple-binaries` checkout and its two binary archives, whose download stalled for about 18 minutes in a sandboxed local build ([releasing.md](releasing.md#each-testflight-build));
    - the per-ABI APKs in the release build and its artifact; the first runs of the workflow "Upstream versions" and of Dependabot;
    - Gradle's dependency verification on Linux, whose `aapt2` is trusted without a checksum, and of the Sentry artifacts ([releasing.md](releasing.md#gradle-dependency-verification));
-   - the workflow "Contract matrix", whose nightly run starts with the import and which pulls six server images from Docker Hub per run ([D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only));
+   - the workflow "Contract matrix", whose nightly run starts with the import and which pulls six server images from Docker Hub per run ([Servers](decisions.md#servers));
    - the release build taking the repository variable `VIKUNJA_APP_SENTRY_DSN`, whose log shows the OK line of `check_sentry_dsn` or its notice, and the DSN itself in the step's environment, as GitHub masks no variable ([releasing.md](releasing.md#crash-reports));
    - the workflow "Crowdin" ([releasing.md](releasing.md#the-workflow-crowdin)): the download of the pinned CLI and its checksum, the source upload into the version branch `main`, the two downloads and what they write, and the pull request from the workflow's token with its runs waiting for approval;
    - the job `secret-scope`'s warning on a beta tag.
@@ -326,7 +326,7 @@ The trial of 2026-11-16 in the owner's test repository ([D86]) passed the paths 
 
 ### 8. The threat model
 
-Each beta is public: its tag publishes a GitHub release with the APK, marked as a prerelease, and the APK on dl.vikunja.io ([D86]), TestFlight's link is public, and anyone can join Play's open test. So the [threat model](threat-model.md#84-sign-off)'s review "before each store release" comes before `v1.0.0-beta.1` ([D77]). The owner, with the release candidate:
+Each beta is public: its tag publishes a GitHub release with the APK, marked as a prerelease, and the APK on dl.vikunja.io ([Releases]), TestFlight's link is public, and anyone can join Play's open test. So the [threat model](threat-model.md#84-sign-off)'s review "before each store release" comes before `v1.0.0-beta.1` ([Releases]). The owner, with the release candidate:
 
 1. **Section [8.2](threat-model.md#82-manual-on-the-android-emulator) on the emulator** in full with the release build, signing in the two accounts, items 5 and 10 on a Google Play image; with it the R33 check, a start of `MainActivity` from another app's activity without `FLAG_ACTIVITY_NEW_TASK` (`adb shell am start` adds that flag, so it needs a caller app), with the fix R33 describes. **Why:** these checks need the system's surfaces, a real sign-in and a Play image, which no automated test has.
 2. **Section 8.1** on the tree to be tagged, with its checks of the settings of go-vikunja/app. **Why:** it runs the automated checks on exactly what ships and covers by hand the settings no job sees.
@@ -337,20 +337,20 @@ Each beta is public: its tag publishes a GitHub release with the APK, marked as 
 
 The owner, as [releasing.md](releasing.md#cutting-a-release) says; `app/pubspec.yaml` already has `1.0.0-beta.1+1`, and Play's What's new for 1000001 exists:
 
-1. **The checks before the tag** (releasing.md steps 1 to 8): Cronet checked, German complete, as for every `x.y.0` and its betas ([D88]), both dry runs ([Android](releasing.md#the-dry-run), [iOS](releasing.md#the-ios-dry-run)), the workflow "Contract matrix" ([D28](decisions.md#d28-contract-tests-against-the-latest-vikunja-release-only)) green on `main` or each failure recorded in D28 and accepted by the owner, the reminders after a force stop, the smoke and update tests, and a green CI run on `main`. **Why:** until the environment `release` has its reviewers, `publish` starts without an approval as soon as `ci`, `build` and `secret-scope` pass, so nothing after the tag waits for the matrix or for anyone to look.
+1. **The checks before the tag** (releasing.md steps 1 to 8): Cronet checked, German complete, as for every `x.y.0` and its betas ([Languages]), both dry runs ([Android](releasing.md#the-dry-run), [iOS](releasing.md#the-ios-dry-run)), the workflow "Contract matrix" ([Servers](decisions.md#servers)) green on `main` or each failure recorded in [Servers](decisions.md#servers) and accepted by the owner, the reminders after a force stop, the smoke and update tests, and a green CI run on `main`. **Why:** until the environment `release` has its reviewers, `publish` starts without an approval as soon as `ci`, `build` and `secret-scope` pass, so nothing after the tag waits for the matrix or for anyone to look.
 2. **Tag `v1.0.0-beta.1` and push the tag** (releasing.md step 9). **Why:** the tag's release run uploads the bundle to Play's `beta` track, the APK to dl.vikunja.io and the GitHub release.
 3. **Check all three** (releasing.md step 11). **Why:** the job checks the files it uploads, not what GitHub, dl.vikunja.io and the Play Console then show.
 4. **Build and upload the iOS build** from the Mac ([releasing.md](releasing.md#each-testflight-build)). **Why:** no CI job signs for iOS; TestFlight gets the tag's build only from the Mac.
 
 ## The beta on Google Play
 
-`io.vikunja.app` is in production in Vikunja's account, so the closed test that a new personal account needs before production, at least 12 testers opted in for 14 days in a row ([testing requirements][play-testing-14]), does not apply, and there is no production application ([D89]). Each beta goes to the track `beta`, Play's open testing, which the release workflow uploads to ([D86]), to all its testers at once. [store-listing.md](store-listing.md#testing-and-production) has the track's settings. The owner, with the permissions of [part 3](#3-the-play-developer-account):
+`io.vikunja.app` is in production in Vikunja's account, so the closed test that a new personal account needs before production, at least 12 testers opted in for 14 days in a row ([testing requirements][play-testing-14]), does not apply, and there is no production application ([Releases]). Each beta goes to the track `beta`, Play's open testing, which the release workflow uploads to ([Releases]), to all its testers at once. [store-listing.md](store-listing.md#testing-and-production) has the track's settings. The owner, with the permissions of [part 3](#3-the-play-developer-account):
 
 1. **Before the first upload:** the listing, its screenshots and every App content form, Data safety included, as [part 4](#4-the-play-app) says. **Why:** Play counts the open track like production ([testing tracks][play-tracks]).
 2. **The track** (before the first upload): anyone can join, without a list; the feedback channel is the address for the testers, `hello@vikunja.io` until kolaente has set it up, which the opt-in page shows; countries as for production. **Why:** the opt-in page shows the feedback channel to every tester, and a tester outside the track's countries cannot join.
 3. **The first beta:** the bundle of `v1.0.0-beta.1` comes from the release run ([part 9](#9-cutting-beta1)). Allow some days before it is available: Google may review the release first. **Why:** the invitation waits until testers can install it.
 4. **The opt-in link,** `https://play.google.com/apps/testing/io.vikunja.app`, then [the invitation](#the-invitation), once the release is available. **Why:** testers join only through that link.
-5. **The old app's testers:** look in the Play Console whether the track still has testers of the old app's beta. They get beta.1 as an update over the old app. **Why:** that is the update path of [D85] on real devices, so their reports come first. [uncertain: whether the track has testers; the Play Console shows it]
+5. **The old app's testers:** look in the Play Console whether the track still has testers of the old app's beta. They get beta.1 as an update over the old app. **Why:** that is the update path of [The previous app] on real devices, so their reports come first. [uncertain: whether the track has testers; the Play Console shows it]
 
 The production release of 1.0.0 is the release run's staged rollout ([cutting 1.0.0](#cutting-100)); Google may review it first (up to 7 days).
 
@@ -367,7 +367,7 @@ The production release of 1.0.0 is the release run's staged rollout ([cutting 1.
 
 ## Texts for testers
 
-The feedback address in these texts is the one kolaente sets up for the testers, which reaches the app's maintainers; until it exists, it is `hello@vikunja.io` ([D89]).
+The feedback address in these texts is the one kolaente sets up for the testers, which reaches the app's maintainers; until it exists, it is `hello@vikunja.io` ([Releases]).
 
 ### The invitation
 
@@ -465,8 +465,8 @@ TestFlight's What to Test for the first build, with Apple's names (Home Screen, 
 
 - **Where reports land:** the inbox of the feedback address, `hello@vikunja.io` until kolaente has set up the testers' address (also the replies to TestFlight's invitations and the address on Play's opt-in page); Play's private feedback from testers in the Play Console [uncertain: where the Console lists it]; TestFlight's feedback with screenshots and its crash reports in App Store Connect under TestFlight; the issues of go-vikunja/app, through its bug and feature forms. A security problem goes privately by email to security@vikunja.io, with the PGP key on [vikunja.io/security](https://vikunja.io/security/), never into a public issue ([SECURITY.md](../SECURITY.md)).
 - **The beta log:** for each report its date, channel, platform and version, what happened, and the fix with its beta.N, without testers' names or addresses. It goes into the 37d decision.
-- **Each fix ships as the next `v1.0.0-beta.N`,** never as a moved tag ([releasing.md](releasing.md#cutting-a-release)): a commit on `main` with its green CI, then the tag, whose release run uploads the bundle to Play's `beta` track, once a reviewer approves it where the environment `release` has its reviewers. Its What's new on Play is the committed `fastlane/metadata/android/<language>/changelogs/<versionCode>.txt`, written in the release commit ([D90](decisions.md#d90-fixes-from-the-code-review-before-beta1)); the iOS build goes to TestFlight with its What to Test.
-- **Crash data** comes from Play vitals, TestFlight's crash reports and, from the testers who allow them, the app's own crash reports in Vikunja's Sentry ([D113](decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry)), in the old app's project, once the owner has set its key ([part 1](#1-the-repository-and-ci)); a build without the key has none. Release builds print nothing. A tester's report can carry the support details ([D20](decisions.md#d20-scope-cuts-and-mobile-forms-of-desktop-features)): the versions, the background state, the queue's counts and failure kinds, the last session end and the app's redacted diagnostics log of the last 7 days.
+- **Each fix ships as the next `v1.0.0-beta.N`,** never as a moved tag ([releasing.md](releasing.md#cutting-a-release)): a commit on `main` with its green CI, then the tag, whose release run uploads the bundle to Play's `beta` track, once a reviewer approves it where the environment `release` has its reviewers. Its What's new on Play is the committed `fastlane/metadata/android/<language>/changelogs/<versionCode>.txt`, written in the release commit ([Releases](decisions.md#releases)); the iOS build goes to TestFlight with its What to Test.
+- **Crash data** comes from Play vitals, TestFlight's crash reports and, from the testers who allow them, the app's own crash reports in Vikunja's Sentry ([Diagnostics](decisions.md#diagnostics)), in the old app's project, once the owner has set its key ([part 1](#1-the-repository-and-ci)); a build without the key has none. Release builds print nothing. A tester's report can carry the support details ([Diagnostics](decisions.md#diagnostics)): the versions, the background state, the queue's counts and failure kinds, the last session end and the app's redacted diagnostics log of the last 7 days.
 - **The privacy section on vikunja.io** describes the testers, the stores' statistics and the downloads before any of them existed: read those statements again once the beta has started ([vikunja-io-drafts.md](vikunja-io-drafts.md), below).
 
 ## Before 1.0.0
@@ -474,11 +474,11 @@ TestFlight's What to Test for the first build, with Apple's names (Home Screen, 
 In any order unless a step says otherwise, before the tag `v1.0.0`:
 
 1. **The iOS device test** (the owner, on his iPhone or iPad, before the App Store submission): [the list below](#the-ios-device-test); the results go into the 37d decision. **Why:** the iOS checks so far ran on the simulator, so what only a device and App Store Connect show is untested until then.
-2. **TalkBack, Switch Access and VoiceOver** (the owner at the controls, in the device phase): the manual passes of [accessibility-checklist.md](accessibility-checklist.md#2-manual-on-android) ([Q19](open-questions.md#q19-device-setup-for-the-manual-talkback-pass)), with VoiceOver from the device test (owner, 2026-11-20); the Accessibility Scanner is not used (owner, 2026-11-20 and 2026-11-21; [D112](decisions.md#d112-accessibility-pass-on-an-emulator-a-scan-of-the-real-screens-48-dp-chips-and-widget-targets)). **Why:** no automated test hears what a screen reader says or moves through the app by switch.
+2. **TalkBack, Switch Access and VoiceOver** (the owner at the controls, in the device phase): the manual passes of [accessibility-checklist.md](accessibility-checklist.md#2-manual-on-android) ([Q19](open-questions.md#q19-device-setup-for-the-manual-talkback-pass)), with VoiceOver from the device test (owner, 2026-11-20); the Accessibility Scanner is not used (owner, 2026-11-20 and 2026-11-21; [Accessibility](decisions.md#accessibility)). **Why:** no automated test hears what a screen reader says or moves through the app by switch.
 3. **The environment `release`** (kolaente, then the owner): [what kolaente does](#3-github-before-100) steps 6 to 9, then [what the owner does](#what-the-owner-does) steps 10 and 11; the reviewers, the tag rule and the absent administrator bypass checked by hand ([threat model](threat-model.md) 8.1, R28). **Why:** the job `secret-scope` fails `v1.0.0` and every tag after it while a repository or organization copy of a release credential is left, and the job `publish` while the environment lacks a secret; no job checks the reviewers and the tag rule, and without them `v1.0.0` would publish without an approval.
 4. **The threat model again** (the owner, on the tree to be released; [section 9](threat-model.md#9-review-cadence)): 8.1, 8.2 again for what changed since the beta's sign-off, 8.3 from the device test, and a new row in [section 8.4](threat-model.md#84-sign-off). **Why:** 1.0.0 reaches every user of the old app through production, and section 9 asks for the review before each store release.
-5. **The public demo** (the owner asks the Vikunja maintainers): whether the testers and the stores' reviewers may use try.vikunja.io with the demo account (the review notes ask the reviewers not to delete it) and whether there are times it should not be used ([D76]), or whether the reviewers can have an account of their own on a server that is not reset. **Why:** App Review signs in with it, and a deleted or reset account during a review fails the review.
-6. **The written offer's wording** for desugar_jdk_libs (kolaente confirms it; [what kolaente does](#4-outside-github) step 24; the text is in `app/assets/legal/android.md`, [D89]). **Why:** Play and dl.vikunja.io rely on it for the library's source.
+5. **The public demo** (the owner asks the Vikunja maintainers): whether the testers and the stores' reviewers may use try.vikunja.io with the demo account (the review notes ask the reviewers not to delete it) and whether there are times it should not be used ([Releases]), or whether the reviewers can have an account of their own on a server that is not reset. **Why:** App Review signs in with it, and a deleted or reset account during a review fails the review.
+6. **The written offer's wording** for desugar_jdk_libs (kolaente confirms it; [what kolaente does](#4-outside-github) step 24; the text is in `app/assets/legal/android.md`, [Releases]). **Why:** Play and dl.vikunja.io rely on it for the library's source.
 7. **The privacy section's open points** ([vikunja-io-drafts.md](vikunja-io-drafts.md)): Vikunja Cloud's terms, the legal bases and periods that kolaente checks, what App Store Connect shows of the testers, and the statements about the stores' statistics and the testers, which the owner reads again once the beta has started. **Why:** those statements were written before any tester or download existed, and the policy must describe what actually happens.
 8. **France** ([Q23](open-questions.md#q23-french-encryption-declaration-for-the-app-store), open; the owner, before the App Store submission): Apple's [export compliance table][apple-export] asks for a French encryption declaration for an industry-standard algorithm that the operating system does not provide, and the app's `dart:io` TLS uses BoringSSL from the Flutter engine. The choices: file the declaration with the ANSSI, find an exemption that covers it, or leave France out of the App Store's availability. **Why:** App Store Connect's availability includes France unless it is left out, and the declaration is Apple's condition for it.
 9. **Step 19, the iOS widgets** (the owner, after the device test): accepted or reopened; it is still in review. **Why:** its device checks are part of the device test.
@@ -489,14 +489,14 @@ No US export report is due: since BIS's rule of 29 March 2021 ([86 FR 16482][bis
 
 ### The iOS device test
 
-The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-phase) of the threat model and the device notes of D71 and D75. It runs on the owner's iPhone or iPad with Xcode 27.2 (27B52; D74's simulator checks used 27.1), and the results go into the 37d decision.
+The list gathers the iOS phase's known gaps ([Releases]), section [8.3](threat-model.md#83-final-ios-phase) of the threat model and the device notes on the App language row and the owner's UI review ([Languages], [Look and layout]). It runs on the owner's iPhone or iPad with Xcode 27.2 (27B52; the iOS phase's simulator checks used 27.1), and the results go into the 37d decision.
 
 - [ ] The first signed build and its TestFlight upload: App Store Connect's processing passes, the real test of the privacy manifests and the required-reason APIs.
 - [ ] Whether a release build needs `DEAD_CODE_STRIPPING=NO` for the lock-screen widgets.
 - [ ] The sensitive clipboard (8.3 #3): a new API token and a share link copy, do not reach a Mac through Universal Clipboard, and the pasteboard is empty after two minutes.
 - [ ] Widget links and notification taps (8.3 #4, #5): rows carry the key, another account's widget row and notification switch accounts, the same link from Safari or Notes does not.
 - [ ] Widgets (8.3 #6): rows, titles and their VoiceOver labels redacted on the Lock Screen and in StandBy; Done from a widget asks for the unlock; the setup fields, the project picker per account, placed widgets, "+N more".
-- [ ] Widgets after midnight and Done (step 40t): with the app closed and no background run, after midnight the rows show dates instead of Today or Tomorrow, VoiceOver reads them, VoiceOver says Overdue for a row shown overdue, and the medium and larger widgets show "Open Vikunja to update". Done on a widget row takes away the task's pending reminder and one already shown in Notification Center at once, before the app runs (the extension reaches the app's notifications); a Snooze on another task's notification does not bring them back. If the extension cannot reach them, record it as a limit in D63.
+- [ ] Widgets after midnight and Done (step 40t): with the app closed and no background run, after midnight the rows show dates instead of Today or Tomorrow, VoiceOver reads them, VoiceOver says Overdue for a row shown overdue, and the medium and larger widgets show "Open Vikunja to update". Done on a widget row takes away the task's pending reminder and one already shown in Notification Center at once, before the app runs (the extension reaches the app's notifications); a Snooze on another task's notification does not bring them back. If the extension cannot reach them, record it as a limit in [Notifications and widgets].
 - [ ] The app lock (8.3 #7): the passcode fallback, the lockout, Done in a locked notification (`task_locked`) asks for the unlock.
 - [ ] The connection settings under SecTrust (8.3 #8): handshake pinning, a PKCS#12 client certificate, CA trust under the 825-day rule, access headers through NSURLSession, ASWebAuthenticationSession's warning for a pinned server.
 - [ ] A restore (8.3 #9): an encrypted backup restored to another device brings back no tokens, connection secrets, databases or widget files.
@@ -508,8 +508,8 @@ The list gathers [D74]'s known gaps, section [8.3](threat-model.md#83-final-ios-
 - [ ] An account's online flows (the simulator checks had only an expired session).
 - [ ] Increase Contrast, Bold Text, Reduce Motion and VoiceOver: [accessibility-checklist.md](accessibility-checklist.md#3-final-ios-phase) section 3.
 - [ ] iPad: the wheel popups as cards, an iPad mini and an 11-inch iPad, Split View and Slide Over.
-- [ ] [D75]'s iOS parts: the help button, the new-task sheet above the home indicator, the Cupertino Theme control on the Account tab, the project folder in light, dark and tinted rendering.
-- [ ] [D71]'s App language row: the Language entry in Settings with one and with two preferred languages.
+- [ ] The iOS parts of the owner's UI review ([Look and layout]): the help button, the new-task sheet above the home indicator, the Cupertino Theme control on the Account tab, the project folder in light, dark and tinted rendering.
+- [ ] The App language row ([Languages]): the Language entry in Settings with one and with two preferred languages.
 - [ ] The About page's "Help and bug reports" row opens the help page on vikunja.io.
 - [ ] The support details ([threat model 8.3](threat-model.md#83-final-ios-phase) #13): the Runner builds with the device channel's `backgroundState`, the page's Background App Refresh and Low Power Mode lines follow the settings, and Share opens the share sheet from its button on an iPad.
 - [ ] iOS 15 to 17.3 (8.3 #10): the sign-in fallback below iOS 17.4 and the system SQLite on iOS 15, if a device is at hand. Otherwise the owner decides: accept it untested, borrow a device (Xcode 27 is reported to debug only on iOS 17 or later, so such a device may take TestFlight builds only [unverified]), or raise the minimum.
@@ -566,19 +566,10 @@ Read on 2026-11-02.
 - GitHub and Crowdin, read on 2026-11-22 for the workflow "Crowdin": [the workflow's token and the pull requests it opens][gh-token], [approving workflow runs][gh-approve], [environments][gh-environments], [the Actions settings][gh-actions-settings], [Crowdin CLI 5.6.0][crowdin-cli-release], [the CLI's translation download][crowdin-cli-download]
 - GitHub, read on 2026-11-22 for [who does what on GitHub](#who-does-what-on-github): [repository roles][gh-roles], [secrets and variables][gh-secrets], [bypass lists of rulesets][gh-ruleset-bypass], [required reviews][gh-required-reviews]
 
-[D67]: decisions.md#d67-agpl-30-or-later-with-an-app-store-permission-dco-reserved-brand-embedded-cronet
-[D71]: decisions.md#d71-english-and-german-us-base-glossary-error-texts-live-language-changes
-[D74]: decisions.md#d74-ios-phase-app-store-prerequisites-testflight-from-the-mac-photo-locations-capture-cover
-[D75]: decisions.md#d75-owners-ui-review-no-task-identifier-coloured-folders-new-task-sheet-account-tab
-[D76]: decisions.md#d76-store-listings-and-policies-the-apps-pages-photo-locations-removed-on-android
-[D77]: decisions.md#d77-beta-preparation-new-app-id-own-signing-key-public-group-testers
-[D87]: decisions.md#d87-mit-vikunjas-contribution-rules-and-the-move-into-go-vikunjaapp
-[D88]: decisions.md#d88-translations-through-vikunjas-crowdin-project
-[D89]: decisions.md#d89-store-listing-and-web-pages-of-the-official-app
-[D15]: decisions.md#d15-app-id-iovikunjaapp-and-the-name-vikunja
-[D59]: decisions.md#d59-sessions-kept-through-lost-refresh-answers-and-storage-errors-a-record-of-why-one-ended
-[D83]: decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp
-[D85]: decisions.md#d85-update-from-the-old-app-server-prefill-one-session-try-leftovers-cleared-widgets-kept
-[D86]: decisions.md#d86-ci-and-releases-on-github-actions
-[D113]: decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry
-[D118]: decisions.md#d118-fewer-steps-for-vikunjas-maintainers-before-the-beta
+[Identity and scope]: decisions.md#identity-and-scope
+[Notifications and widgets]: decisions.md#notifications-and-widgets
+[Diagnostics]: decisions.md#diagnostics
+[Look and layout]: decisions.md#look-and-layout
+[Languages]: decisions.md#languages
+[The previous app]: decisions.md#the-previous-app
+[Releases]: decisions.md#releases

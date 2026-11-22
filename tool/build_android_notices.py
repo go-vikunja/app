@@ -17,7 +17,8 @@ and so does an AndroidX artifact that bundles another project's code
 ("external" in its name) unless ARTIFACTS names it, so that every new library
 is looked at before it ships. Google Play services libraries are refused: the
 app holds no proprietary code, so that it runs without Play services and
-F-Droid stays possible (D5). The texts are in tool/android_notices/.
+F-Droid stays possible (decision log: Connections). The texts are in
+tool/android_notices/.
 
 Embedded Cronet (cronet-bundled, with the classes in cronet) bundles other
 projects' code. Its AARs carry its licences in third_party_licenses.txt with
@@ -32,7 +33,7 @@ only that copy, so they need neither Gradle nor the network, and fail when it
 does not belong to the locked Cronet version. CRONET_SUPPLEMENT adds what the
 native library links statically but the licences do not name.
 
-The Sentry Java SDK (io.sentry:sentry, D113) vendors other projects' code,
+The Sentry Java SDK (io.sentry:sentry) vendors other projects' code,
 which the SENTRY_THIRD_PARTY_NOTICES.md in its jar lists; a copy of that file
 is tool/android_notices/sentry_third_party_notices.md, checked against
 SENTRY_NOTICES_SHA256 for the locked version. Take it from the new version's
@@ -41,7 +42,7 @@ jar (META-INF/) when Sentry is raised.
 The written offer for desugar_jdk_libs' source names the upstream commit from
 tool/android_notices/desugar_jdk_libs.source and WRITTEN_OFFER_CONTACT;
 --require-offer-contact fails while that contact is empty, which the release
-job checks (D73).
+job checks (decision log: Releases).
 """
 import datetime
 import glob
@@ -126,7 +127,7 @@ GROUPS = {
 }
 
 REFUSED_GROUPS = {
-    'com.google.android.gms': 'Google Play services libraries are proprietary and the app ships none (D5); '
+    'com.google.android.gms': 'Google Play services libraries are proprietary and the app ships none (decision log: Connections); '
                               'find what brings it (./gradlew :app:dependencyInsight in app/android) and leave it '
                               'out in app/android/app/build.gradle.kts like play-services-cronet',
 }
@@ -980,7 +981,7 @@ def main():
     if args == ['--require-offer-contact']:
         if not WRITTEN_OFFER_CONTACT:
             print('error: WRITTEN_OFFER_CONTACT in tool/build_android_notices.py is empty. The written offer for '
-                  "desugar_jdk_libs' source needs a contact before a release (D73): set it, then run this "
+                  "desugar_jdk_libs' source needs a contact before a release (decision log: Releases): set it, then run this "
                   'script to write app/assets/legal/android.md again', file=sys.stderr)
             sys.exit(1)
         print('OK: the written offer names a contact.')

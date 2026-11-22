@@ -26,7 +26,7 @@ import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
 mixin RefreshableList<W extends ConsumerStatefulWidget> on ConsumerState<W> {
   /// A server that takes the connection and never answers would otherwise
   /// keep the spinner up for the timeouts of two sync runs, about 50 s
-  /// (D97: a pull waits for the run under way, then runs its own).
+  /// (a pull waits for the run under way, then runs its own).
   static const spinnerLimit = Duration(seconds: 9);
 
   Object? _refreshFailure;

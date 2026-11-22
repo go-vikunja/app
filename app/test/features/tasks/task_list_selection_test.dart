@@ -11,7 +11,7 @@ import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 
 /// Swipes, the rows' screen reader actions, selecting several tasks and
-/// the Overdue heading's Reschedule (D106), on the Overview.
+/// the Overdue heading's Reschedule, on the Overview (decision log: Tasks).
 void main() {
   // Saturday noon.
   final now = DateTime(2026, 10, 10, 12);

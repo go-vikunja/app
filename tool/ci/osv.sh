@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# The CI job `osv` (D86): OSV advisories for the three lockfiles, with the
-# accepted ones in osv-scanner.toml. Uses osv-scanner from PATH, else
-# downloads the pinned release and checks its sha256. Packages that only the
-# editor's tests use (tool/ci/editor_test_packages.py) are scanned too, but
+# The CI job `osv`: OSV advisories for the three lockfiles, with the accepted
+# ones in osv-scanner.toml (decision log: Releases). Uses osv-scanner from PATH,
+# else downloads the pinned release and checks its sha256. Packages that only
+# the editor's tests use (tool/ci/editor_test_packages.py) are scanned too, but
 # their advisories do not fail the job, so they never block a release.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh

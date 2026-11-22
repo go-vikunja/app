@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Uploads a signed bundle to a Google Play track (D86).
+"""Uploads a signed bundle to a Google Play track (decision log: Releases).
 
   python3 -I tool/ci/play_upload.py --package P --bundle F --version-code N
       --track beta|production --release-name S --metadata-dir D

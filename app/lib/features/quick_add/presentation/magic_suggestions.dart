@@ -161,7 +161,7 @@ class _MagicSuggestionsState extends ConsumerState<MagicSuggestions> {
   }
 
   /// Projects show their display title and match it too, while a tap
-  /// completes the server's title, which quick add matches (D45).
+  /// completes the server's title, which quick add matches.
   /// Projects of the same title are told apart by their parents, and a
   /// tap completes what makes quick add take that one: the identifier
   /// when the title is not enough.

@@ -2073,7 +2073,7 @@ void main() {
     );
 
     // Such a request never left the device, though it fails as a network
-    // failure (D59).
+    // failure (decision log: Sessions).
     for (final failure in const [
       NetworkFailure(NetworkProblem.timeout, cause: RefreshDeferred.race),
       NetworkFailure(

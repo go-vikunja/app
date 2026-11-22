@@ -56,7 +56,7 @@ NotificationPreferencesStore notificationPreferencesStore(Ref ref) {
 /// content, the app lock or the app's language changes; a content that
 /// shows less also withdraws what the account has in the tray. Built
 /// again, and so reconciling at once, when a refreshed `/info` moves the
-/// server to one whose reminders follow the subscriptions (D80), and on iOS
+/// server to one whose reminders follow the subscriptions, and on iOS
 /// when the number of accounts changes their share of the window. Null
 /// once the account is gone. Disposed with the account's database on
 /// sign-out, after which [NotificationSchedulers] still holds it for the
@@ -150,8 +150,8 @@ NotificationPresentation _presentation(
   privacy: _privacyOf(settings),
 );
 
-/// While the app lock is on, Done on iOS asks for the device unlock, as D39
-/// left for the app lock, and Android leaves Done out.
+/// While the app lock is on, Done on iOS asks for the device unlock, and
+/// Android leaves Done out (decision log: Security and privacy).
 NotificationPrivacy _privacyOf(PrivacySettings settings) => NotificationPrivacy(
   hiddenOnLockScreen:
       settings.notificationContent == NotificationContent.hiddenOnLockScreen,

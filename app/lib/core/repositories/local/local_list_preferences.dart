@@ -31,7 +31,7 @@ final class LocalListPreferences implements ListPreferences {
       .listPreferencesDao
       .write(viewKey(listKey), encodeViewPreferences(preferences));
 
-  // The format the versions before D75 wrote, so their rows count again.
+  // The format earlier versions wrote, so their rows count again.
   @override
   Stream<int?> watchLastView(int projectId) => _db.listPreferencesDao
       .watchValue(lastViewKey(projectId))

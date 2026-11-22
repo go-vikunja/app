@@ -10,7 +10,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 
 import '../helpers/editor_bridge_fakes.dart';
 
-/// How a route's screen uses a large window (step 36b, D69).
+/// How a route's screen uses a large window (decision log: Look and layout).
 enum ReadableClass {
   /// Lists, the overview and the project tree: centred, at most 840.
   list840,

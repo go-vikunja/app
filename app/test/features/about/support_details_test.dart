@@ -918,7 +918,7 @@ Log: warnings and errors of the last 7 days: 2
   });
 
   test('a failure whose request got no token says why it was never sent, '
-      'not that the network failed (D59)', () {
+      'not that the network failed (decision log: Sessions)', () {
     expect(
       failureLabel(
         _failure(

@@ -107,8 +107,9 @@ final class NotificationScheduler {
   final DateTime Function() _now;
   final CreateTimer _createTimer;
 
-  /// Plans the tasks the user follows (D80) instead of D17's creator or
-  /// assignee; never for a link-share guest, who can follow nothing.
+  /// Plans the tasks the user follows instead of those the user created or
+  /// is assigned to; never for a link-share guest, who can follow nothing
+  /// (decision log: Notifications and widgets).
   final bool _followSubscriptions;
   late final StreamSubscription<Object?> _tableUpdates;
   late final StreamSubscription<Object?> _preferenceChanges;

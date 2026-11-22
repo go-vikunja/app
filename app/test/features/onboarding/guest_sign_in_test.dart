@@ -518,7 +518,7 @@ void main() {
     });
 
     test('opened again, ends a run of unreadable reads and settles the ended '
-        'session (D59)', () async {
+        'session (decision log: Sessions)', () async {
       final diagnostics = SessionDiagnostics(auth.preferences);
       final guest = await auth.seedGuest(
         server,
@@ -549,7 +549,7 @@ void main() {
     });
 
     test("opened again after its share was gone, settles that end's record "
-        'and unmarks the guest (D59)', () async {
+        'and unmarks the guest (decision log: Sessions)', () async {
       final diagnostics = SessionDiagnostics(auth.preferences);
       final guest = await auth.seedGuest(
         server,

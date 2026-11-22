@@ -7,9 +7,9 @@ import 'package:vikunja_mobile/core/text/server_address_display.dart';
 
 /// With [httpsFailed] the question says that https did not answer, which
 /// is what blocking it on the network looks like, rather than that the
-/// server uses http. It comes every time (D97); for a server on the home
-/// network, where plain http is common, it says so and how to type the
-/// address so that the app goes to http at once.
+/// server uses http. It comes every time (decision log: Connections).
+/// For a server on the home network, where plain http is common, it says so and
+/// how to type the address so that the app goes to http at once.
 Future<bool> confirmInsecureConnection(
   BuildContext context, {
   required Uri rootUri,

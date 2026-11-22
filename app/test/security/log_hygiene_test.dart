@@ -39,9 +39,10 @@ const _allowed = <String, Map<String, String>>{
         "by type and the stack by the app's frames, kept in the cache "
         'folder and leaving only through the support details.',
     'lib/core/crash_reports/crash_reporter.dart':
-        'The crash reports (D113), only while the user allows them: from '
+        'The crash reports, only while the user allows them: from '
         'WARNING up, each record as the diagnostics log keeps it '
-        '(DiagnosticsEntry.capture), then through the crash report scrubber.',
+        '(DiagnosticsEntry.capture), then through the crash report scrubber '
+        '(decision log: Diagnostics).',
   },
 };
 

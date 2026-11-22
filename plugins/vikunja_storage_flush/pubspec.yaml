@@ -1,5 +1,5 @@
 name: vikunja_storage_flush
-description: Writes pending SharedPreferences changes to disk on Android before the caller goes on (D59).
+description: Writes pending SharedPreferences changes to disk on Android before the caller goes on.
 publish_to: none
 version: 0.1.0
 resolution: workspace

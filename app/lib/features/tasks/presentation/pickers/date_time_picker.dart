@@ -13,7 +13,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/pickers/cupertino_pic
 /// Returns a local instant, or null when the user backed out of the date.
 /// Backing out of the time keeps the picked day as a date-only pick
 /// ([dayWithTime]): at the time the clock started from, except a time on
-/// today that has passed, which becomes 23:59 (D102-9).
+/// today that has passed, which becomes 23:59 (QA-8).
 Future<DateTime?> pickDateTime(
   BuildContext context, {
   required DateTime? current,

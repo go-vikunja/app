@@ -56,8 +56,8 @@ final List<({int port, String version})> contractServers = [
   (port: contractPort, version: contractServerVersion.display),
 ];
 
-/// Vikunja serves /api/v2 from 2.4.0; 2.3, the support floor (D13), has
-/// /api/v1 only.
+/// Vikunja serves /api/v2 from 2.4.0; 2.3, the support floor, has /api/v1
+/// only (decision log: Servers).
 final bool contractServerHasV2 = contractServerVersion.isAtLeast(2, 4);
 
 /// The skip reason of a group or test over [apiVersion] on a test server

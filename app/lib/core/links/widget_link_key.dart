@@ -10,8 +10,9 @@ final _log = Logger('WidgetLinkKey');
 
 /// A random key per install that the links of the app's own widgets and
 /// notifications carry (`k`): any app or web page can send such a link,
-/// but only one with the key switches accounts without asking (D66). It
-/// guards no data, so it lives in preferences, but it is never logged.
+/// but only one with the key switches accounts without asking
+/// (decision log: Security and privacy). It guards no data, so it lives in
+/// preferences, but it is never logged.
 const widgetLinkKeyPreference = 'widgets.link_key';
 
 const _keyBytes = 32;

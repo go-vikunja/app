@@ -1,6 +1,7 @@
 # shellcheck shell=bash
-# Shared by the release scripts (D86): release.sh, release_build.sh,
-# release_sign.sh, release_publish.sh and ios_release.sh source it after lib.sh.
+# Shared by the release scripts: release.sh, release_build.sh, release_sign.sh,
+# release_publish.sh and ios_release.sh source it after lib.sh (decision log:
+# Releases).
 # shellcheck disable=SC2034
 
 OFFICIAL_REPOSITORY=go-vikunja/app
@@ -41,10 +42,11 @@ check_apk_badging() {
   fi
 }
 
-# tag: German must have every English text (D88). A patch release (x.y.z with
-# z > 0) may go without when VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN names its
-# tag, so the override never carries over to the next release (owner, D97);
-# the log then says how many texts English stands in for.
+# tag: German must have every English text (decision log: Languages). A patch
+# release (x.y.z with z > 0) may go without when
+# VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN names its tag, so the override never
+# carries over to the next release (owner); the log then says how many texts
+# English stands in for.
 # Refusals go to the caller's refuse MESSAGE REASON. Run from the repository.
 check_german() {
   local tag="$1" allowed="${VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN:-}" report status=0 translated total
@@ -64,10 +66,10 @@ check_german() {
   missing=$((total - translated))
   lacks="German lacks ${missing} of the ${total} English texts"
   if [[ -z "$allowed" && "$tag" =~ $patch ]]; then
-    refuse "${lacks}: a release needs every English text in German (D88); finish it on Crowdin and merge Crowdin's pull request, or for this patch release set VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN=${tag} (docs/releasing.md)" \
+    refuse "${lacks}: a release needs every English text in German (decision log: Languages); finish it on Crowdin and merge Crowdin's pull request, or for this patch release set VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN=${tag} (docs/releasing.md)" \
       "German incomplete"
   elif [[ -z "$allowed" ]]; then
-    refuse "${lacks}: a release needs every English text in German (D88), and ${tag} is no patch release, so the translations must be complete; finish them on Crowdin and merge Crowdin's pull request" \
+    refuse "${lacks}: a release needs every English text in German (decision log: Languages), and ${tag} is no patch release, so the translations must be complete; finish them on Crowdin and merge Crowdin's pull request" \
       "German incomplete"
   elif [[ "$allowed" != "$tag" ]]; then
     refuse "${lacks}, and VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN names ${allowed}, not ${tag}" "German incomplete"
@@ -76,30 +78,30 @@ check_german() {
       "German incomplete"
   else
     echo "warning: ${lacks}; VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN releases the patch release ${tag} without them," \
-      "and English stands in for them (D88)" >&2
+      "and English stands in for them (decision log: Languages)" >&2
     if [[ "${GITHUB_ACTIONS:-}" == true ]]; then
       echo "::warning title=German incomplete::${tag} is released with ${missing} of ${total} English texts not in German (VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN)"
     fi
   fi
 }
 
-# VIKUNJA_APP_SENTRY_DSN, the opt-in crash reports' DSN (D113): unset or empty,
-# the build has no crash reports; otherwise it must be
+# VIKUNJA_APP_SENTRY_DSN, the opt-in crash reports' DSN: unset or empty, the
+# build has no crash reports; otherwise it must be
 # https://<key>@<host>/<project id> on sentry.io or a subdomain of it, since
 # the network security config takes https and the system CAs only for those
-# hosts. Exits on any other value. It never prints the value, not even in
-# part; GitHub's log still shows it with the step's env, unmasked as a
-# variable, and every build carries it.
+# hosts (decision log: Diagnostics). Exits on any other value. It never prints
+# the value, not even in part; GitHub's log still shows it with the step's
+# env, unmasked as a variable, and every build carries it.
 check_sentry_dsn() {
   local LC_ALL=C dsn="${VIKUNJA_APP_SENTRY_DSN:-}"
   local rule='^https://[A-Za-z0-9]+@([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)*sentry\.io/[0-9]+$'
   if [[ -z "$dsn" ]]; then
-    echo "notice: VIKUNJA_APP_SENTRY_DSN is not set, so this build has no crash reports (D113)"
+    echo "notice: VIKUNJA_APP_SENTRY_DSN is not set, so this build has no crash reports (decision log: Diagnostics)"
   elif [[ "$dsn" =~ $rule ]]; then
-    echo "OK: VIKUNJA_APP_SENTRY_DSN is an https DSN on sentry.io (D113)."
+    echo "OK: VIKUNJA_APP_SENTRY_DSN is an https DSN on sentry.io (decision log: Diagnostics)."
   else
     echo "error: VIKUNJA_APP_SENTRY_DSN must be https://<key>@<host>/<project id>, the host sentry.io or a" \
-      "subdomain of it, without a port, a password, spaces, line breaks or anything after the id (D113); its value" \
+      "subdomain of it, without a port, a password, spaces, line breaks or anything after the id (decision log: Diagnostics); its value" \
       "is not shown" >&2
     exit 1
   fi

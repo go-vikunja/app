@@ -1,4 +1,5 @@
-"""Tests tool/l10n_progress.py, which the release build runs (D88)."""
+"""Tests tool/l10n_progress.py, which the release build runs
+(decision log: Languages)."""
 import contextlib
 import importlib.util
 import io

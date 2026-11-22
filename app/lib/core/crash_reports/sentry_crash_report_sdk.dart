@@ -40,13 +40,13 @@ const _inAppPackages = [
   'vikunja_widgets',
 ];
 
-/// Sentry for the crash reports (D113). [native] in the app's isolate:
-/// `SentryFlutter` with the native SDKs, which keep unsent reports on the
-/// device. On Android the app starts the native SDK itself, with its own
-/// scrubber, which then also reports Java and NDK crashes and ANRs; on iOS,
-/// which has no scrubber of the app's, the native SDK captures nothing on its
-/// own. Elsewhere the Dart SDK alone, which keeps nothing on the device: the
-/// native SDKs are one per process, and a background engine may share the
+/// Sentry for the crash reports (decision log: Diagnostics). [native] in the
+/// app's isolate: `SentryFlutter` with the native SDKs, which keep unsent
+/// reports on the device. On Android the app starts the native SDK itself, with
+/// its own scrubber, which then also reports Java and NDK crashes and ANRs; on
+/// iOS, which has no scrubber of the app's, the native SDK captures nothing on
+/// its own. Elsewhere the Dart SDK alone, which keeps nothing on the device:
+/// the native SDKs are one per process, and a background engine may share the
 /// app's.
 final class SentryCrashReportSdk implements CrashReportSdk {
   new({required this.native, this._initFlutter = SentryFlutter.init});

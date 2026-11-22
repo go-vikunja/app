@@ -72,7 +72,7 @@ String quoteQuickAddItem(String item) {
 final _wholeNumber = RegExp(r'^[0-9]+$');
 
 /// The priority a priority item stands for: a whole number from 0 to 5.
-/// D102-8: the web reads it with JS `parseInt`, so `!2fa` was priority 2
+/// QA-17: the web reads it with JS `parseInt`, so `!2fa` was priority 2
 /// while the title kept `!2fa`.
 int? quickAddPriority(String item) {
   if (!_wholeNumber.hasMatch(item)) return null;

@@ -530,8 +530,9 @@ void main() {
     }
   });
 
-  // D69's band beside the rail, below the project tree's column; beside the
-  // column the open project has the room the column leaves.
+  // The readable band beside the rail, below the project tree's column;
+  // beside the column the open project has the room the column leaves
+  // (decision log: Look and layout).
   for (final (size, column) in [
     (androidBelowTreeColumn, false),
     (androidTabletLandscape, true),

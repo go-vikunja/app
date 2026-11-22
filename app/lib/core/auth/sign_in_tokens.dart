@@ -24,8 +24,8 @@ final class ReplacedTokens {
 }
 
 /// What a sign-in does with the tokens it got, a browser sign-in and the
-/// previous app's alike (D59): stores them, trying secure storage again
-/// when it fails, and settles the session they replace.
+/// previous app's alike: stores them, trying secure storage again when it
+/// fails, and settles the session they replace (decision log: Sessions).
 final class SignInTokens {
   new({
     required this._tokenStore,
@@ -69,7 +69,7 @@ final class SignInTokens {
   /// A write that fails twice may mean that secure storage lost its key
   /// for good, which only a reset of the storage repairs: the third write
   /// lets the platform reset it, which it does only when the key really
-  /// cannot be unwrapped, so a passing failure deletes nothing (D59).
+  /// cannot be unwrapped, so a passing failure deletes nothing.
   Future<void> _write(String accountId, TokenSet tokens) async {
     for (var attempt = 1; ; attempt++) {
       try {
@@ -92,9 +92,9 @@ final class SignInTokens {
   }
 
   /// Ends the session [replaced] replaces, and for an account whose session
-  /// ended notes what became of it (D59): a session the server still lists
+  /// ended notes what became of it: a session the server still lists
   /// although it refuses the old refresh token is revoked with the new
-  /// [session]. Never throws.
+  /// [session] (decision log: Sessions). Never throws.
   Future<void> settleReplaced(
     ServerConnection connection,
     String accountId,

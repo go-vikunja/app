@@ -4,8 +4,9 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-// The built editor page as the app bundles it (D52): checked here too, so
-// that a page swapped without the editor's own Node tests is noticed.
+// The built editor page as the app bundles it, checked here too, so that a
+// page swapped without the editor's own Node tests is noticed
+// (decision log: Descriptions, comments, attachments).
 void main() {
   final page = File('assets/editor/editor.html').readAsStringSync();
 

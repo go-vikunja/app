@@ -244,7 +244,7 @@ void main() {
     });
   });
 
-  group('the note of a send (D59)', () {
+  group('the note of a send (decision log: Sessions)', () {
     late SessionDiagnostics diagnostics;
 
     setUp(() => diagnostics = SessionDiagnostics(preferences));

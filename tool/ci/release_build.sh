@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
-# The unsigned Play bundle, the universal APK and the per-ABI APKs of a
-# release tag, with the desugar_jdk_libs source and release.env, in
-# build/release/unsigned/ (D86): GitHub's job `build` and the first step of
-# tool/ci/release.sh. No secret reaches this script; release_sign.sh signs its
-# output.
+# The unsigned Play bundle, the universal APK and the per-ABI APKs of a release
+# tag, with the desugar_jdk_libs source and release.env, in
+# build/release/unsigned/: GitHub's job `build` and the first step of
+# tool/ci/release.sh (decision log: Releases). No secret reaches this script;
+# release_sign.sh signs its output.
 #
 # Usage: tool/ci/release_build.sh [--tag TAG] [--dry-run]
 #
-# Anything but a tag run of go-vikunja/app on GitHub Actions is a dry run,
-# whose failed checks become reasons in NOT_RELEASABLE. Outside GitHub
-# Actions, only --dry-run runs. VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN, the
-# repository variable of the same name in the job, names a patch release's tag
-# that may go without every German text (check_german in release_lib.sh).
-# VIKUNJA_APP_SENTRY_DSN, the repository variable of the same name, is the
-# opt-in crash reports' Sentry DSN (D113); a build without it has none, and
-# one on another host than sentry.io fails (check_sentry_dsn in
-# release_lib.sh). The scripts never print it; GitHub's log still shows it
-# with the step's env, unmasked as a variable, and every build carries it.
+# Anything but a tag run of go-vikunja/app on GitHub Actions is a dry run, whose
+# failed checks become reasons in NOT_RELEASABLE. Outside GitHub Actions, only
+# --dry-run runs. VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN, the repository variable
+# of the same name in the job, names a patch release's tag that may go without
+# every German text (check_german in release_lib.sh). VIKUNJA_APP_SENTRY_DSN,
+# the repository variable of the same name, is the opt-in crash reports' Sentry
+# DSN; a build without it has none, and one on another host than sentry.io fails
+# (check_sentry_dsn in release_lib.sh; decision log: Diagnostics). The scripts
+# never print it; GitHub's log still shows it with the step's env, unmasked as a
+# variable, and every build carries it.
 set -euo pipefail
 # shellcheck source=tool/ci/lib.sh
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
@@ -153,7 +153,7 @@ fi
 l10n_status=0
 python3 -I tool/l10n_progress.py --shipped-list --min 50 || l10n_status=$?
 if ((l10n_status == 1)); then
-  echo "warning: a shipped language has less than 50 % of the English texts: translate it on Crowdin or take it out of app/lib/app/l10n/shipped_locales.dart (D88)" >&2
+  echo "warning: a shipped language has less than 50 % of the English texts: translate it on Crowdin or take it out of app/lib/app/l10n/shipped_locales.dart (decision log: Languages)" >&2
 elif ((l10n_status != 0)); then
   exit "$l10n_status"
 fi
@@ -203,7 +203,7 @@ mkdir -p "$release_unsigned_dir"
 cp "$aab_built" "${release_unsigned_dir}/app-release.aab"
 cp "$apk_built" "${release_unsigned_dir}/app-release.apk"
 # Without the property Flutter adds 1000 times the ABI's number to the version
-# code, which would collide with D73's codes of later releases.
+# code, which would collide with the version codes of later releases.
 release_flutter_build apk --split-per-abi --android-project-arg=force-version-code-ignoring-abi=true
 for built in "${abi_apks[@]}"; do
   must_exist "$built"

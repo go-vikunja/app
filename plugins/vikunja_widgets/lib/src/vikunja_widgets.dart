@@ -5,10 +5,11 @@ import 'dart:math';
 import 'package:flutter/services.dart';
 import 'package:vikunja_widgets/src/widget_models.dart';
 
-/// The app's side of the home-screen widgets (D63). Dart does all file
-/// work with `dart:io` (temp file + rename, never a lock); the natives only
-/// report directories, list placed widgets and ask the OS to refresh them.
-/// Every engine with registered plugins can use it, headless ones included.
+/// The app's side of the home-screen widgets
+/// (decision log: Notifications and widgets). Dart does all file work with
+/// `dart:io` (temp file + rename, never a lock); the natives only report
+/// directories, list placed widgets and ask the OS to refresh them. Every
+/// engine with registered plugins can use it, headless ones included.
 class VikunjaWidgets {
   new({
     this._channel = const MethodChannel(channelName),

@@ -88,7 +88,7 @@ void main() {
     }
   });
 
-  group('D19-2: keywords in any case mean what they mean in lower case', () {
+  group('QA-2: keywords in any case mean what they mean in lower case', () {
     final cases = {
       'Daily': _repeat(1, QuickAddRepeatUnit.days),
       'Every Day': _repeat(1, QuickAddRepeatUnit.days),
@@ -205,7 +205,7 @@ void main() {
       );
     });
 
-    test('D38-9: an amount above 100000 is text', () {
+    test('QA-6: an amount above 100000 is text', () {
       expect(
         parse('x every 100000 years').repeats,
         _repeat(100000, QuickAddRepeatUnit.years),
@@ -273,7 +273,7 @@ void main() {
       'every month': (repeatAfter: Duration.zero, mode: RepeatMode.monthly),
       'every 1 month': (repeatAfter: Duration.zero, mode: RepeatMode.monthly),
       'monthly': (repeatAfter: Duration.zero, mode: RepeatMode.monthly),
-      // D38-1: the web sends no repeat for the rest of this table.
+      // QA-1: the web sends no repeat for the rest of this table.
       'every 2 months': (
         repeatAfter: const Duration(days: 60),
         mode: afterAmount,

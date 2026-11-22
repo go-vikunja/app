@@ -515,7 +515,7 @@ void main() {
   });
 
   group("every end of a guest's session is recorded before the guest is "
-      'marked (D59)', () {
+      'marked (decision log: Sessions)', () {
     late SessionDiagnostics diagnostics;
     late List<SessionEndDiagnosis?> recordedWhenMarked;
 
@@ -586,7 +586,8 @@ void main() {
     });
   });
 
-  group('a link that secure storage refuses to read (D59)', () {
+  group('a link that secure storage refuses to read '
+      '(decision log: Sessions)', () {
     test('fails a request through the transport as a network failure that '
         'names the storage, without a request, and ends nothing', () async {
       final guest = await seed(issuedAgo(const Duration(hours: 1)));
