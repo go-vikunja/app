@@ -71,4 +71,91 @@ void main() {
     expect(tester.getRect(find.byType(AppBar)).width, 1280);
     expect(tester.getRect(find.byKey(const ValueKey('bottom'))).width, 1280);
   });
+
+  testWidgets("a leading button takes the back button's place, and the "
+      'colours reach the bar, its title and its buttons, on a phone and on a '
+      'tablet', (tester) async {
+    const background = Color(0xffd0e4ff);
+    const foreground = Color(0xff001d36);
+
+    Color? iconColor(IconData icon) => tester
+        .widget<RichText>(
+          find.descendant(
+            of: find.byIcon(icon),
+            matching: find.byType(RichText),
+          ),
+        )
+        .text
+        .style
+        ?.color;
+
+    /// From [start]: the close button's centre and the title's start.
+    Future<(double, double)> placesIn(
+      WidgetTester tester, {
+      required double start,
+    }) async {
+      await tester.pumpWidget(
+        MaterialApp(navigatorKey: navigator, home: page('Upcoming')),
+      );
+      navigator.currentState!.push(
+        MaterialPageRoute<void>(
+          builder: (_) => Scaffold(
+            appBar: ReadableAppBar(
+              maxWidth: ReadableWidth.list,
+              automaticallyImplyLeading: false,
+              leading: IconButton(
+                onPressed: () {},
+                tooltip: 'Close',
+                icon: const Icon(Icons.close),
+              ),
+              backgroundColor: background,
+              foregroundColor: foreground,
+              title: const Text('2 selected'),
+              actions: [
+                IconButton(
+                  onPressed: () {},
+                  tooltip: 'Search',
+                  icon: const Icon(Icons.search),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(BackButton), findsNothing);
+      final bar = find.byType(AppBar);
+      expect(
+        tester
+            .widget<Material>(
+              find.descendant(of: bar, matching: find.byType(Material)).first,
+            )
+            .color,
+        background,
+      );
+      expect(
+        DefaultTextStyle.of(tester.element(find.text('2 selected')))
+            .style
+            .color,
+        foreground,
+      );
+      expect(iconColor(Icons.close), foreground);
+      expect(iconColor(Icons.search), foreground);
+      return (
+        tester.getCenter(find.byTooltip('Close')).dx - start,
+        tester.getTopLeft(find.text('2 selected')).dx - start,
+      );
+    }
+
+    useWindow(tester, androidPhone);
+    final phone = await placesIn(tester, start: 0);
+    expect(phone, (
+      kToolbarHeight / 2,
+      kToolbarHeight + NavigationToolbar.kMiddleSpacing,
+    ));
+
+    useWindow(tester, androidTabletLandscape);
+    expect(await placesIn(tester, start: 220), phone);
+  });
 }

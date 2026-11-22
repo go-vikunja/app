@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -15,6 +16,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 import 'package:vikunja_mobile/features/trash/presentation/trash_failure_text.dart';
 import 'package:vikunja_mobile/features/trash/presentation/trash_page.dart';
 
+import '../../helpers/large_screens.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
@@ -238,6 +240,45 @@ void main() {
     final tabsBottom = tester.getBottomLeft(find.byType(AppBar)).dy;
     final note = tester.getTopLeft(find.text(en.trashRetentionNote)).dy;
     expect(note - tabsBottom, lessThan(40));
+  });
+
+  testWidgets("on a tablet the app bar's back button, title and refresh and "
+      "the tabs keep to the list's band, where the cards are, while its "
+      'surface spans the window', (tester) async {
+    await pumpPage(tester, size: androidTabletLandscape);
+
+    final band = readableBand(tester, ReadableWidth.list, left: 0);
+    expect(band, (left: 220, right: 1060));
+    final appBar = find.byType(AppBar);
+    expect(tester.getRect(appBar).width, androidTabletLandscape.width);
+    expect(
+      tester.getCenter(find.byType(BackButton)).dx,
+      band.left + kToolbarHeight / 2,
+    );
+    expect(
+      tester
+          .getTopLeft(
+            find.descendant(of: appBar, matching: find.text(en.trashTitle)),
+          )
+          .dx,
+      band.left + kToolbarHeight + NavigationToolbar.kMiddleSpacing,
+    );
+    expect(
+      tester
+          .getRect(
+            find.ancestor(
+              of: find.byTooltip(en.refresh),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .right,
+      band.right,
+    );
+    expectFillsBand(tester.getRect(find.byType(TabBar)), band);
+    expectFillsBand(tester.getRect(rowOf('Call the plumber')), (
+      left: band.left + 16,
+      right: band.right - 16,
+    ));
   });
 
   testWidgets('a project row shows its subprojects, who deleted it when and '

@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart' show TaskById;
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
@@ -124,7 +125,8 @@ class _SearchPageState extends ConsumerState<SearchPage>
     // While the next query's results come, the last ones stay.
     final results = query.isEmpty ? null : found ?? _lastResults;
     return Scaffold(
-      appBar: AppBar(
+      appBar: ReadableAppBar(
+        maxWidth: ReadableWidth.list,
         // The field is no heading; it still names the route on Android, as
         // an app bar's title does, by its label.
         excludeHeaderSemantics: true,

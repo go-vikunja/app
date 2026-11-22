@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
 import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
@@ -329,7 +330,8 @@ class _TrashPageState extends ConsumerState<TrashPage>
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: ReadableAppBar(
+          maxWidth: ReadableWidth.list,
           title: ScreenTitle(l10n.trashTitle),
           actions: [
             RefreshButton(

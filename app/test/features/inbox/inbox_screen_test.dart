@@ -5,12 +5,14 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/accounts/application/account_switcher.dart';
 import 'package:vikunja_mobile/features/common/presentation/data_failure_card.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_button.dart';
+import 'package:vikunja_mobile/features/inbox/presentation/inbox_row.dart';
 import 'package:vikunja_mobile/features/inbox/presentation/inbox_screen.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tasks_screen.dart';
 import 'package:vikunja_mobile/features/sync/presentation/offline_notice.dart';
@@ -19,6 +21,7 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dar
 import 'package:vikunja_mobile/features/teams/presentation/team_page.dart';
 
 import '../../helpers/label_user_fakes.dart';
+import '../../helpers/large_screens.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
@@ -762,5 +765,49 @@ void main() {
       findsOneWidget,
     );
     expect(find.text(de.inboxQuoted('Done with the balcony')), findsOneWidget);
+  });
+
+  testWidgets("on a tablet the app bar's back button, title and menu keep to "
+      "the list's band, where the cards are, while its surface spans the "
+      'window', (tester) async {
+    useWindow(tester, androidTabletLandscape);
+    await openInbox(tester);
+
+    final band = readableBand(tester, ReadableWidth.list, left: 0);
+    expect(band, (left: 220, right: 1060));
+    final appBar = inInbox(find.byType(AppBar));
+    expect(tester.getRect(appBar).width, androidTabletLandscape.width);
+    expect(
+      tester.getCenter(inInbox(find.byType(BackButton))).dx,
+      band.left + kToolbarHeight / 2,
+    );
+    expect(
+      tester
+          .getTopLeft(
+            find.descendant(of: appBar, matching: find.text(en.activityTitle)),
+          )
+          .dx,
+      band.left + kToolbarHeight + NavigationToolbar.kMiddleSpacing,
+    );
+    expect(
+      tester
+          .getRect(
+            find.ancestor(
+              of: inInbox(find.byTooltip(en.moreActions)),
+              matching: find.byType(IconButton),
+            ),
+          )
+          .right,
+      band.right,
+    );
+    expectFillsBand(
+      tester.getRect(
+        find.ancestor(
+          of: find.text(commentText),
+          matching: find.byType(InboxRow),
+        ),
+      ),
+      (left: band.left + 16, right: band.right - 16),
+    );
   });
 }

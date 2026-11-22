@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_tick_provider.dart';
@@ -78,7 +79,8 @@ class _LabelTasksScreenState extends ConsumerState<LabelTasksScreen>
       child: Scaffold(
         appBar: selecting
             ? selectionBar(selectable)
-            : AppBar(
+            : ReadableAppBar(
+                maxWidth: ReadableWidth.list,
                 title: ScreenTitle(title),
                 actions: [
                   RefreshButton(onPressed: refreshing ? null : refresh),

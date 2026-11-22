@@ -8,6 +8,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
@@ -114,7 +115,8 @@ class _LabelsPageState extends ConsumerState<LabelsPage>
     final l10n = context.l10n;
     final labels = ref.watch(allLabelsProvider);
     return Scaffold(
-      appBar: AppBar(
+      appBar: ReadableAppBar(
+        maxWidth: ReadableWidth.form,
         title: ScreenTitle(l10n.labelsTitle),
         actions: [RefreshButton(onPressed: refreshing ? null : refresh)],
       ),

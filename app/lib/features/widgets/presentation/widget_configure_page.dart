@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
@@ -304,7 +305,10 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
     final l10n = context.l10n;
     if (_refused) {
       return Scaffold(
-        appBar: AppBar(title: ScreenTitle(l10n.widgetConfigureTitle)),
+        appBar: ReadableAppBar(
+          maxWidth: ReadableWidth.form,
+          title: ScreenTitle(l10n.widgetConfigureTitle),
+        ),
         body: CenteredScrollView(
           maxWidth: ReadableWidth.form,
           child: EmptyState(
@@ -320,7 +324,8 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
     final kind = _kind;
     final entry = accountId == null ? null : registry?.find(accountId);
     return Scaffold(
-      appBar: AppBar(
+      appBar: ReadableAppBar(
+        maxWidth: ReadableWidth.form,
         title: ScreenTitle(l10n.widgetConfigureTitle),
         actions: [
           AppBarTextAction(

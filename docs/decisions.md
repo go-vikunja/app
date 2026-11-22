@@ -1448,7 +1448,7 @@ Limits:
   - **640 dp:** forms, sheets and settings pages, such as the Account tab's pages and task edit.
   - **560 dp:** dialogs (at least 280, Flutter's own).
   - **Their own caps:** the connect screen (480 dp), first sync, the notification setup and the lock screen (420 dp).
-  - **The whole width:** app bars, the offline banner, the floating action buttons, the board, the Gantt timeline, the editors, the image viewer and Flutter's licence page.
+  - **The whole width:** app bars (on capped windows their title and actions keep to the band, [D117]), the offline banner, the floating action buttons, the board, the Gantt timeline, the editors, the image viewer and Flutter's licence page.
   - **Snackbars:** at most 640 dp, centred in the scaffold that shows them ([D98]) (why: a snackbar then fits inside every band and lines up with the form cards).
   - Every route scenario of the sweep ([D68]) has its width class, and the sweep checks it.
 - **How the band is made:** the content is centred inside a scroll view that keeps the whole width, so the margins scroll and the scrollbar and indicators stay at the window's edge; no scroll view sits in a `ConstrainedBox`, `Align` or `Center`. The wrappers stay in the tree with no inset while the gate is off, so a rotation across the gate keeps every screen's state.
@@ -3022,7 +3022,7 @@ Limits:
 
 ## D115: The decision log shortened
 
-*In review since 2026-11-21 (step 43), the owner's decision of 2026-11-21.*
+*Accepted 2026-11-22 (step 43), the owner's decision of 2026-11-21.*
 
 - **Decision and reason only** (owner, 2026-11-21): the log had grown to 1.1 MB in 114 entries and could no longer be overseen. Each entry now says what holds today and why: every owner decision with its marker, the reasons and outside facts the code cannot show, the numbers that are rules, and the gaps still open. Gone from the entries' text are earlier states, "since step" qualifiers (the status lines keep theirs), the review process, test runs, and most names of classes, functions, keys and files that the code shows. The log is about 0.5 MB now; the full text from before is in `git show 41e9fc9:docs/decisions.md`.
 - **Numbers and headings stay** (why: the code cites the numbers and the other docs link the headings' anchors). An overview at the top groups the entries by topic; links between entries take the short form `[D34]`, defined at the end of the file.
@@ -3081,7 +3081,7 @@ Limits:
 
 ## D117: Fixes from the UI/UX review, part two
 
-*In review since 2026-11-22 (step 44b), the owner's decisions of 2026-11-22 where marked.*
+*Accepted 2026-11-22 (step 44b), the owner's decisions of 2026-11-22 where marked.*
 
 The rest of the UI/UX review of 2026-11-21 ([D116]): its larger findings, and twelve questions the owner answered on 2026-11-22.
 
@@ -3116,7 +3116,7 @@ The rest of the UI/UX review of 2026-11-21 ([D116]): its larger findings, and tw
 - The Projects tab lists Favorites, All projects, then Saved filters ([D45]).
 - Urgent and Do now are orange, a fixed hue shifted to 3:1 for the flag and 4.5:1 for the name (4.5:1 and 7:1 under high contrast), in rows, cards, the Table, the sheet and the widgets; error red stays for overdue (why: Urgent looked overdue, and a scheme role harmonised to the blue primary would turn red again). This deviates from [D56]'s scheme roles.
 - From 1.5× text the list screens' New task button is the 56 dp icon button ([D68]). On Android rail layouts New task is the rail's leading button, offered by the screen in front ([D69]).
-- On capped windows the app bars of Upcoming, the Projects tab, a project, saved filters and the Account tab keep their title and actions to the content band; the bar's surface stays full width ([D69]).
+- On capped windows every app bar over a page that keeps to a content band keeps its back button, title and actions to that band: the tabs' lists, the selection bar, search, Activity, a label's tasks, the trash and the form and settings pages; the bar's surface stays full width ([D69]).
 - A project row's details keep each count with its word and wrap between the parts, in every language.
 
 **Quick add:** the typed project's chip and a locked Project field show the project's coloured folder; a row set from the title says "Set in the title"; a suggestion the typed token already names in full is hidden; project suggestions show and match the display title ("Eingang"), while completion and matching keep the server's titles ([D45]).
@@ -3129,7 +3129,7 @@ The rest of the UI/UX review of 2026-11-21 ([D116]): its larger findings, and tw
 
 Limits:
 - After a due date changes, the row moves at once while its Undo shows.
-- The selection bar and the pages over the shell keep the full-width app bar; saved filters show no open counts; label colour dots keep the stored colour.
+- Saved filters show no open counts; label colour dots keep the stored colour. The connect screen's Close bar keeps the whole width beside its own 480 dp column.
 - A dotted date inside a title without `at` after it (`Am 17.12. Zahnarzt`) is still no date, as the boundary rule for absolute dates stays.
 - New texts show in English in the German app until Crowdin delivers them ([D88]).
 - The widgets' new colours and their orange are checked in tests only so far, on devices at the device tests ([D74]).

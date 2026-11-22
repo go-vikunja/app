@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/network/client_certificate.dart';
 import 'package:vikunja_mobile/core/network/network_profile_providers.dart';
@@ -175,7 +176,8 @@ class _ClientCertificatePageState extends ConsumerState<ClientCertificatePage> {
         profile?.pin != null || profile?.caCertificate != null;
 
     final page = Scaffold(
-      appBar: AppBar(
+      appBar: ReadableAppBar(
+        maxWidth: ReadableWidth.form,
         title: ScreenTitle(l10n.connectionClientCertificateHeading),
         bottom: SavingProgressBar(saving: _busy),
       ),

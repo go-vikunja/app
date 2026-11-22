@@ -5,6 +5,8 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/widgets/status_card.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/account_security_repository_providers.dart';
@@ -96,7 +98,10 @@ class _DataExportPageState extends ConsumerState<DataExportPage>
       ),
     );
     return Scaffold(
-      appBar: AppBar(title: ScreenTitle(l10n.dataExportTitle)),
+      appBar: ReadableAppBar(
+        maxWidth: ReadableWidth.form,
+        title: ScreenTitle(l10n.dataExportTitle),
+      ),
       body: SecurityListBody(
         loading: _export.loading && !hasData,
         loadingLabel: l10n.dataExportLoading,

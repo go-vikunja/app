@@ -6,6 +6,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/failed_without_token.dart';
@@ -478,7 +479,10 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
     if (_removedSelf &&
         (gone || _shares.failure is Forbidden || _shares.failure is NotFound)) {
       return Scaffold(
-        appBar: AppBar(title: ScreenTitle(title)),
+        appBar: ReadableAppBar(
+          maxWidth: ReadableWidth.form,
+          title: ScreenTitle(title),
+        ),
         body: CenteredScrollView(
           maxWidth: ReadableWidth.form,
           child: EmptyState(
@@ -491,7 +495,10 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
     }
     if (gone) {
       return Scaffold(
-        appBar: AppBar(title: ScreenTitle(title)),
+        appBar: ReadableAppBar(
+          maxWidth: ReadableWidth.form,
+          title: ScreenTitle(title),
+        ),
         body: CenteredScrollView(
           maxWidth: ReadableWidth.form,
           child: EmptyState(
@@ -527,7 +534,8 @@ class _ProjectSharePageState extends ConsumerState<ProjectSharePage>
         linksFailure is! Forbidden;
 
     return Scaffold(
-      appBar: AppBar(
+      appBar: ReadableAppBar(
+        maxWidth: ReadableWidth.form,
         title: ScreenTitle(title),
         actions: [
           RefreshButton(

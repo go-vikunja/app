@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/bulk_task_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
@@ -227,7 +229,8 @@ class _SelectionHoldsBackState extends State<_SelectionHoldsBack> {
 }
 
 /// The app bar while tasks are selected: close, how many, and Select all
-/// (Deselect all once [allSelected]).
+/// (Deselect all once [allSelected]), kept to the band of the list below
+/// it ([ReadableAppBar]).
 class TaskSelectionBar extends StatelessWidget implements PreferredSizeWidget {
   const new({
     required this.selectedCount,
@@ -252,7 +255,8 @@ class TaskSelectionBar extends StatelessWidget implements PreferredSizeWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
-    return AppBar(
+    return ReadableAppBar(
+      maxWidth: ReadableWidth.list,
       backgroundColor: colors.secondaryContainer,
       foregroundColor: colors.onSecondaryContainer,
       automaticallyImplyLeading: false,

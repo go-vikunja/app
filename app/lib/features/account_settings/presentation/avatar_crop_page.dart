@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/features/account_settings/application/square_avatar.dart';
@@ -139,7 +140,8 @@ class _AvatarCropPageState extends State<AvatarCropPage> {
     return PopScope(
       canPop: !_uploading,
       child: Scaffold(
-        appBar: AppBar(
+        appBar: ReadableAppBar(
+          maxWidth: ReadableWidth.form,
           title: ScreenTitle(l10n.avatarCropTitle),
           actions: [
             AppBarTextAction(

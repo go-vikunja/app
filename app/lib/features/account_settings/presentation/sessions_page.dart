@@ -7,6 +7,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
+import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/core/repositories/account_security_repository.dart';
 import 'package:vikunja_mobile/core/repositories/account_security_repository_providers.dart';
@@ -181,7 +183,8 @@ class _SessionsPageState extends ConsumerState<SessionsPage> with LatestReads {
     ];
     final busy = _busy != null;
     return Scaffold(
-      appBar: AppBar(
+      appBar: ReadableAppBar(
+        maxWidth: ReadableWidth.form,
         title: ScreenTitle(l10n.sessionsTitle),
         actions: [
           RefreshButton(

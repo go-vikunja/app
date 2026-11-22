@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/security/app_excursions.dart';
@@ -161,7 +162,10 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
     final needsScreenLock = supported == false && !settings.appLock;
 
     return Scaffold(
-      appBar: AppBar(title: ScreenTitle(l10n.privacyEntryTitle)),
+      appBar: ReadableAppBar(
+        maxWidth: ReadableWidth.form,
+        title: ScreenTitle(l10n.privacyEntryTitle),
+      ),
       body: SafeArea(
         top: false,
         child: ReadableWidth.builder(

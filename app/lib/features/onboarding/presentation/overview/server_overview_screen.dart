@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
@@ -204,7 +205,8 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
+        appBar: ReadableAppBar(
+          maxWidth: ReadableWidth.form,
           // Shown disabled rather than hidden, so the title does not jump and
           // the arrow does not look like it works.
           leading: isSigningIn

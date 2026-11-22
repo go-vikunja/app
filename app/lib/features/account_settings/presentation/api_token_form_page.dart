@@ -7,6 +7,7 @@ import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/core/repositories/account_security_repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
@@ -239,7 +240,10 @@ class _ApiTokenFormPageState extends ConsumerState<ApiTokenFormPage> {
     final secret = _secret;
     if (secret != null) {
       return Scaffold(
-        appBar: AppBar(title: ScreenTitle(l10n.apiTokenFormTitle)),
+        appBar: ReadableAppBar(
+          maxWidth: ReadableWidth.form,
+          title: ScreenTitle(l10n.apiTokenFormTitle),
+        ),
         body: SafeArea(
           top: false,
           child: OneTimeSecretView(
@@ -258,7 +262,8 @@ class _ApiTokenFormPageState extends ConsumerState<ApiTokenFormPage> {
         if (!didPop && !_saving) unawaited(_leaveIfConfirmed());
       },
       child: Scaffold(
-        appBar: AppBar(
+        appBar: ReadableAppBar(
+          maxWidth: ReadableWidth.form,
           title: ScreenTitle(l10n.apiTokenFormTitle),
           actions: [
             AppBarTextAction(

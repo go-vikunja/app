@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/layout/window_layout.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/features/about/presentation/support_details_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/sessions_page.dart';
 import 'package:vikunja_mobile/features/common/presentation/settings_section.dart';
@@ -12,6 +13,7 @@ import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/overview_actions.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_header.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
+import 'package:vikunja_mobile/features/search/presentation/search_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 
 import '../a11y/sweep_data.dart';
@@ -112,6 +114,45 @@ void _expectFormBand(
       left: band.left + margin,
       right: band.right - margin,
     ));
+  }
+}
+
+/// The app bar of [page] across the window, with its back button, [title]
+/// and [lastAction] in the form band, as a phone has them in its window:
+/// [lastAction] ends [actionGap] before the band's end.
+void _expectAppBarInBand(
+  WidgetTester tester,
+  Finder page, {
+  required Finder title,
+  double maxWidth = ReadableWidth.form,
+  Type leading = BackButtonIcon,
+  Finder? lastAction,
+  double actionGap = 0,
+}) {
+  final band = readableBand(tester, maxWidth);
+  expect(band.left, greaterThan(0));
+  final bar = find.descendant(of: page, matching: find.byType(AppBar));
+  expectFillsBand(tester.getRect(bar), (
+    left: 0,
+    right: windowSize(tester).width,
+  ));
+  final back = find.descendant(of: bar, matching: find.byType(leading));
+  expect(
+    tester.getCenter(back).dx,
+    moreOrLessEquals(band.left + kToolbarHeight / 2, epsilon: layoutTolerance),
+  );
+  expect(
+    tester.getTopLeft(find.descendant(of: bar, matching: title)).dx,
+    moreOrLessEquals(
+      band.left + kToolbarHeight + NavigationToolbar.kMiddleSpacing,
+      epsilon: layoutTolerance,
+    ),
+  );
+  if (lastAction != null) {
+    expect(
+      tester.getRect(find.descendant(of: bar, matching: lastAction)).right,
+      moreOrLessEquals(band.right - actionGap, epsilon: layoutTolerance),
+    );
   }
 }
 
@@ -286,5 +327,104 @@ void main() {
         }
       }, variant: TargetPlatformVariant.only(window.platform));
     }
+  });
+
+  group("on a tablet a page's app bar keeps its back button, title and "
+      'actions to the band of the page below it', () {
+    final window = _window(androidTabletLandscape);
+    final android = TargetPlatformVariant.only(TargetPlatform.android);
+
+    testWidgets('a settings page with a progress bar below its app bar, '
+        '${_title(window, window.page)}', (tester) async {
+      useWindow(tester, window.size);
+      await pumpSweepApp(tester);
+      pushTo(tester, AppRoutes.accountSettings);
+      await tester.pumpAndSettle();
+
+      _expectAppBarInBand(
+        tester,
+        find.byType(AccountSettingsPage),
+        title: find.text(en.accountSettingsTitle),
+      );
+    }, variant: android);
+
+    testWidgets('a list with an icon action, '
+        '${_title(window, window.page)}', (tester) async {
+      useWindow(tester, window.size);
+      await pumpSweepApp(tester);
+      pushTo(tester, AppRoutes.accountSessions);
+      await tester.pumpAndSettle();
+
+      _expectAppBarInBand(
+        tester,
+        find.byType(SessionsPage),
+        title: find.text(en.sessionsTitle),
+        lastAction: find.widgetWithIcon(IconButton, Icons.refresh),
+      );
+    }, variant: android);
+
+    testWidgets('a form with a text action, '
+        '${_title(window, window.page)}', (tester) async {
+      useWindow(tester, window.size);
+      await pumpSweepApp(tester);
+      pushTo(tester, AppRoutes.taskEdit(1));
+      await tester.pumpAndSettle();
+
+      _expectAppBarInBand(
+        tester,
+        find.byType(TaskEditPage),
+        title: find.text(en.taskEditTitle),
+        lastAction: find.widgetWithText(TextButton, en.taskEditSave),
+        actionGap: 8,
+      );
+    }, variant: android);
+
+    testWidgets('a page pushed as a full-screen dialog, with its close '
+        'button, ${_title(window, window.page)}', (tester) async {
+      useWindow(tester, window.size);
+      await pumpVikunjaApp(tester);
+      pushTo(tester, AppRoutes.about);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text(en.supportDetailsTitle));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(en.supportDetailsTitle));
+      await tester.pumpAndSettle();
+
+      _expectAppBarInBand(
+        tester,
+        find.byType(SupportDetailsPage),
+        title: find.text(en.supportDetailsTitle),
+        leading: CloseButtonIcon,
+        lastAction: find.widgetWithText(TextButton, en.supportDetailsShare),
+        actionGap: 8,
+      );
+    }, variant: android);
+
+    testWidgets('search, its field in the band of its results, '
+        '${_title(window, window.page)}', (tester) async {
+      useWindow(tester, window.size);
+      await pumpSweepApp(tester);
+      pushTo(tester, AppRoutes.search);
+      await tester.pumpAndSettle();
+
+      _expectAppBarInBand(
+        tester,
+        find.byType(SearchPage),
+        title: find.byType(TextField),
+        maxWidth: ReadableWidth.list,
+      );
+    }, variant: android);
+
+    testWidgets('the server overview, signed out, '
+        '${_title(window, window.page)}', (tester) async {
+      useWindow(tester, window.size);
+      await pumpServerOverview(tester, fullServer270());
+
+      _expectAppBarInBand(
+        tester,
+        find.byType(ServerOverviewScreen),
+        title: find.text(en.overviewTitle),
+      );
+    }, variant: android);
   });
 }

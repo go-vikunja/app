@@ -9,20 +9,32 @@ import 'package:vikunja_mobile/app/layout/window_layout.dart';
 class ReadableAppBar extends StatelessWidget implements PreferredSizeWidget {
   const new({
     required this.maxWidth,
+    this.leading,
     this.title,
     this.actions,
     this.bottom,
     this.automaticallyImplyLeading = true,
+    this.excludeHeaderSemantics = false,
+    this.backgroundColor,
+    this.foregroundColor,
     super.key,
   });
 
   final double maxWidth;
+
+  /// In place of the implied back or close button.
+  final Widget? leading;
   final Widget? title;
   final List<Widget>? actions;
   final PreferredSizeWidget? bottom;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
 
   /// As [AppBar.automaticallyImplyLeading]; no screen with one has a drawer.
   final bool automaticallyImplyLeading;
+
+  /// As [AppBar.excludeHeaderSemantics], for a title that is no heading.
+  final bool excludeHeaderSemantics;
 
   @override
   Size get preferredSize =>
@@ -41,15 +53,22 @@ class ReadableAppBar extends StatelessWidget implements PreferredSizeWidget {
         if (inset == 0) {
           return AppBar(
             automaticallyImplyLeading: automaticallyImplyLeading,
+            leading: this.leading,
             title: title,
             actions: actions,
             bottom: bottom,
+            excludeHeaderSemantics: excludeHeaderSemantics,
+            backgroundColor: backgroundColor,
+            foregroundColor: foregroundColor,
           );
         }
-        final leading = automaticallyImplyLeading
-            ? _impliedLeading(context)
-            : null;
+        final leading =
+            this.leading ??
+            (automaticallyImplyLeading ? _impliedLeading(context) : null);
         return AppBar(
+          excludeHeaderSemantics: excludeHeaderSemantics,
+          backgroundColor: backgroundColor,
+          foregroundColor: foregroundColor,
           leadingWidth: inset + (leading == null ? 0 : kToolbarHeight),
           leading: Padding(
             padding: EdgeInsetsDirectional.only(start: inset),
