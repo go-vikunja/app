@@ -253,7 +253,7 @@ Never send passwords or tokens. We will never ask for them.
 
 ## Report a security problem
 
-Report it privately, never in a public issue: through GitHub's [private vulnerability reporting](https://github.com/go-vikunja/app/security/advisories/new) or by email to security@vikunja.io. The app's [security policy](https://github.com/go-vikunja/app/blob/main/SECURITY.md) has the details, and [Security](/security) has the PGP key.
+Report it privately, by email to security@vikunja.io, never in a public issue. [Security](/security) has the PGP key, and the app's [security policy](https://github.com/go-vikunja/app/blob/main/SECURITY.md) has the details.
 
 ## Privacy and source code
 

@@ -16,7 +16,7 @@ The decisions of step 38f (2026-11-17, [D89](decisions.md#d89-store-listing-and-
 - **US English** (`en-US`) replaces British English in both stores, with the glossary's terms, and the descriptions say that the app has no server of its own, not that the developer runs none ([Texts](#texts)).
 - **Play's short description** stays the old listing's, kolaente's "Plan your projects with the elegance of a sloth on a sunny day.", in German too (owner).
 - **Data safety:** the union of the old app's declaration and the new app's, and encryption in transit "No" (owner; [Data safety](#app-content)). The union also declares the old app's opt-in crash reports to Sentry, which its declaration left out (found in the step's review), and since step 41 the new app's own opt-in crash reports ([D113](decisions.md#d113-opt-in-crash-reports-through-vikunjas-sentry)). **Apple's privacy label** is open until the Apple account is decided.
-- **Contacts** name no person: `hello@vikunja.io` in public, `security@vikunja.io` and GitHub's private vulnerability reporting for security, and for App Review and the testers an address that kolaente sets up for the app's maintainers, `hello@vikunja.io` until it exists. The App Store copyright is "2026 Vikunja and contributors".
+- **Contacts** name no person: `hello@vikunja.io` in public, `security@vikunja.io` for security, and for App Review and the testers an address that kolaente sets up for the app's maintainers, `hello@vikunja.io` until it exists. The App Store copyright is "2026 Vikunja and contributors".
 - **Play's closed test** of 12 testers for 14 days does not apply, as `io.vikunja.app` is in production; the beta goes to Play's open testing track `beta` ([Testing and production](#testing-and-production)).
 - **All 20 Play screenshots are retaken** with the current build (owner; [Screenshots](#screenshots)).
 
@@ -65,7 +65,7 @@ The app's pages are part of vikunja.io, which Vikunja's repository [go-vikunja/w
 | Help | `https://vikunja.io/help/mobile`, a help page like the desktop app's `/help/desktop` | `support_url.txt` and `marketing_url.txt` (en-US, de-DE), Play's contact website, the About page's "Help and bug reports" |
 | Account deletion | `https://vikunja.io/help/mobile#delete-your-account`, the heading "Delete your account" | Play's deletion URL |
 | Legal notice | `https://vikunja.io/imprint/`, whose scope sentence names the Vikunja apps | the About page; no store asks for it |
-| Security | `https://vikunja.io/security/`; `security@vikunja.io` and GitHub's private vulnerability reporting | [SECURITY.md](../SECURITY.md), the help page |
+| Security | `https://vikunja.io/security/`, with the PGP key; `security@vikunja.io` | [SECURITY.md](../SECURITY.md), the help page |
 | Email | `hello@vikunja.io` | Play's developer email (as today), the help page, the privacy section, the written source offer (`WRITTEN_OFFER_CONTACT` in `tool/build_android_notices.py`: "Ask the Vikunja project at hello@vikunja.io.") |
 | Email for App Review and the testers | an address kolaente sets up that reaches the app's maintainers; `hello@vikunja.io` until it exists | `review_information/email_address.txt`, App Review, TestFlight's feedback email, the feedback channel of Play's open test, the tester texts of [beta.md](beta.md#texts-for-testers) |
 | Copyright | `2026 Vikunja and contributors`, the line of `LICENSE` with the year | `copyright.txt` (App Store) |

@@ -10,7 +10,7 @@ Contributors keep the copyright in their contributions and license them under th
 
 ## Earlier history
 
-Every commit of this app's own history before the move, the history the import merged into go-vikunja/app, has the same author, named in the commits. That author licenses this earlier work under the MIT License as well. The previous app's history, up to the tag `legacy-final`, keeps its own licence and its contributors' copyright. Third-party material in old commits keeps its own licence. Examples are the editor code before commit f44e04f and the texts that followed Vikunja's web frontend (AGPL-3.0-or-later) closely.
+Every commit of this app's own history before the move, the history the import merged into go-vikunja/app, has the same author, named in the commits. That author licenses this earlier work under the MIT License as well. The previous app's history, up to its last commit `cdbc6e3`, keeps its own licence and its contributors' copyright. Third-party material in old commits keeps its own licence. Examples are the editor code before commit f44e04f and the texts that followed Vikunja's web frontend (AGPL-3.0-or-later) closely.
 
 ## Name and logo
 

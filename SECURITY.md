@@ -2,10 +2,7 @@
 
 ## Reporting a problem
 
-Report a security problem in the app privately, never in a public issue, a pull request or the forum:
-
-- through GitHub's [private vulnerability reporting](https://github.com/go-vikunja/app/security/advisories/new) for this repository, or
-- by email to security@vikunja.io. Vikunja's [security page](https://vikunja.io/security/) has its PGP key.
+Report a security problem in the app privately, by email to security@vikunja.io, never in a public issue, a pull request or the forum. Vikunja's [security page](https://vikunja.io/security/) has the PGP key for it.
 
 Check the problem against the latest release or `main` first. Describe what you found and how to reproduce it, with the app version, the platform and its version, and the Vikunja server version. Leave out passwords, tokens and other people's data. If an AI helped with the report, say so, check its claims on a device against a running server, and be ready to answer questions about it.
 

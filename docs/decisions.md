@@ -1680,7 +1680,7 @@ Limits:
 
 **The app's pages** are on vikunja.io, in go-vikunja/website, where kolaente publishes them from [vikunja-io-drafts.md](vikunja-io-drafts.md) ([D89]); English only, so each address serves every language. The addresses must not change once they are in the stores ([store-listing.md](store-listing.md#the-website)):
 - privacy `https://vikunja.io/privacy/#mobile-app` (the stores link the whole policy, `https://vikunja.io/privacy/`); legal notice `https://vikunja.io/imprint/`; help and support `https://vikunja.io/help/mobile` (why not `/support`: it is about supporting the project), with Play's deletion URL at `#delete-your-account`; security `https://vikunja.io/security/` and [SECURITY.md](../SECURITY.md).
-- Contacts without a person's name: `hello@vikunja.io` in public and for the written source offer ([D67]); `security@vikunja.io` and GitHub's private vulnerability reporting for security; for App Review and the testers an address kolaente sets up for the maintainers, `hello@vikunja.io` until then.
+- Contacts without a person's name: `hello@vikunja.io` in public and for the written source offer ([D67]); `security@vikunja.io` for security; for App Review and the testers an address kolaente sets up for the maintainers, `hello@vikunja.io` until then.
 - The privacy section says: no server of the app's own, no analytics, ads or tracking, crash reports only if the user allows them ([D113]); apart from those, data goes only to the servers the user adds, a server named in a link the user opens, or `try.vikunja.io`, and reaches Vikunja only on a server Vikunja runs or through allowed crash reports. It also says which files keep their location. The help page says never to report a bug with a password or a token.
 - The About page's section "Help, privacy and legal notice" holds the help row ([D77]), "Privacy policy" and "Legal notice", each opening its page above in the browser, the same in every build and language. Delete account shows on every server, as both stores ask ([D55]).
 
@@ -1709,7 +1709,7 @@ Limits:
 - **The About page's row "Help and bug reports"** („Hilfe und Fehler melden“, the owner's words), first under "Help, privacy and legal notice" ([D76]), opens `https://vikunja.io/help/mobile` in every language ([D89]), so that testers and users find how to report a bug (owner).
 - **The beta's testers** (owner): Play's open testing track `beta` ([D86]) and a public TestFlight link, with their own Vikunja server (2.3.0 or newer, [D13]) or the demo `try.vikunja.io`. No closed test of 12 testers for 14 days, which only a new personal account needs: `io.vikunja.app` is in production, so Play's open testing takes the beta ([D72], [D89]). Feedback goes to an address kolaente sets up for the maintainers (`hello@vikunja.io` until then) and to GitHub issues.
 - **The threat model is signed off before the first beta tag and again before 1.0.0,** because the beta is public: each `v*` tag publishes a signed APK as a GitHub release (a beta as a prerelease) and on dl.vikunja.io ([D86]), and anyone can join TestFlight and Play's open test. Before `v1.0.0-beta.1` [threat model](threat-model.md) sections 8.1 and 8.2 run, with the emulator check of R33's fix, and the owner signs 8.4; 8.3 waits for the device test. Before 1.0.0 the owner signs again, with 8.1, 8.2 for what changed and 8.3.
-- **Security reports go privately** to security@vikunja.io or through GitHub's private vulnerability reporting on go-vikunja/app, never in a public issue ([SECURITY.md](../SECURITY.md), [D87]); the vikunja.io help page says so too ([D89]).
+- **Security reports go privately** to security@vikunja.io, never in a public issue ([SECURITY.md](../SECURITY.md), [D87]); the vikunja.io help page says so too ([D89]).
 - **The French encryption declaration** ([Q23](open-questions.md#q23-french-encryption-declaration-for-the-app-store)) is settled before the App Store release in France.
 - **App Store Connect's Accessibility Nutrition Labels stay blank** until the device and screen-reader passes ([Q19](open-questions.md#q19-device-setup-for-the-manual-talkback-pass)) confirm what can be claimed.
 - **Versions:** Flutter as [D1] pins it; the build number comes from the tag ([D73]). Vikunja 2.7.1's changes are in the entries they concern ([D48], [D53], [D55]).
@@ -1874,7 +1874,7 @@ Limits:
 - **Language:** US English like the Vikunja web; the German stays (owner, 2026-11-13; [D71]).
 - **Translations:** Vikunja's existing Crowdin project, in place of step 36f ([D88]).
 - **Identity:** every id derives from `io.vikunja.app`, the scheme and client id are `vikunja-io.vikunja.app` ([D15], [D23]), the User-Agent is `Vikunja-App/…` ([D55]), and the internal names that ship or that contributors see carry the new name too. Nothing that fixes an id was created before the switch: no signing keys, Play app, Apple App IDs or release tag (why: [D15] makes an id permanent once these exist). The beta of 37d follows the switch, in the official listing.
-- **The histories** are joined by the import pull request of [D87]: a commit that removes the old app's files, then a merge of this repository's `main` without a common history, merged with a merge commit, so that every commit hash of both histories stays. The old app's last commit is tagged `legacy-final`.
+- **The histories** are joined by the import pull request of [D87]: a commit that removes the old app's files, then a merge of this repository's `main` without a common history, merged with a merge commit, so that every commit hash of both histories stays. The old app's last commit is `cdbc6e3`, untagged ([D118]).
 - **Vikunja's accounts and addresses:** the release keys keep the old app's secret names ([D86]); the app's pages are on vikunja.io; `hello@vikunja.io` and the address kolaente sets up serve App Review and the testers, and the Vikunja project makes the written offer for the desugar_jdk_libs source ([D67], [D89]).
 - **Test data** carries the new names as well, so no file names the former name (owner, 2026-11-20, reversing the decision of 2026-11-18 to keep the E2E users' usernames; [D15], [D97]).
 
@@ -1994,7 +1994,7 @@ Open:
 - The order is Play (the strictest check of the bundle and the key), dl.vikunja.io (https only, the keys on that one command; the old `/app/unstable/` is no longer updated), then the GitHub release, the announcement, with the workflow's own token, a beta as a prerelease, with `SHA256SUMS` and the desugar_jdk_libs source. A re-run needs the approval again; each step skips what is already there with the same SHA-256 and fails on other content. "Re-run all jobs" builds again, and a new build need not give the same files.
 - `tool/ci/release.sh --dry-run` runs it all locally; without `--dry-run` it refuses. iOS releases stay manual on the owner's Mac ([D74]).
 
-**What Vikunja's maintainers set up in go-vikunja/app** ([releasing.md](releasing.md#once-in-go-vikunjaapp)), the repository's settings by the owner once he is an admin ([D118]): before the first final release, the environment `release` with the owner and kolaente as its required reviewers, either of whom may approve a release, their own tag's too ("Prevent self-review" off, owner, 2026-11-14), and no administrator bypass, deploying from `v*` tags only; its secrets at environment level, and no repository or organisation copy of the seven credentials; the certificates in `release_certificates.txt`; rulesets for `v*` tags and for `main` with the six checks; read-only workflow permissions, with "Allow GitHub Actions to create and approve pull requests" on for the Crowdin workflow ([D118]), and approval for outside contributors' workflows.
+**What Vikunja's maintainers set up in go-vikunja/app** ([releasing.md](releasing.md#once-in-go-vikunjaapp)), kolaente as its admin in one sitting before the import and the environment before 1.0.0 ([D118]): the ruleset for `main` with the six checks and merge commits allowed; a ruleset for `v*` tags that only the admin and Maintain roles bypass; "Allow GitHub Actions to create and approve pull requests" on for the Crowdin workflow; before the first final release, the environment `release` with the owner and kolaente as its required reviewers, either of whom may approve a release, their own tag's too ("Prevent self-review" off, owner, 2026-11-14), and no administrator bypass, deploying from `v*` tags only, with its secrets at environment level and no repository or organisation copy of the seven credentials; the certificates in `release_certificates.txt`.
 
 Limits:
 - The workflows have run only in the owner's test repository, public rather than private as planned, with throwaway keys; the environment, the rulesets, real signing, Play, dl.vikunja.io, a real release and the XCTests show only in go-vikunja/app; pull requests and runs by hand were not tried.
@@ -2010,20 +2010,20 @@ Open:
 
 ## D87: MIT, Vikunja's contribution rules and the move into go-vikunja/app
 
-*Accepted 2026-11-16 (step 38d), the owner's decisions of 2026-11-16 where marked. The move is still to come: kolaente changes the ruleset, and then the tag `legacy-final` and the import pull request follow. The written offer and the last places that named the owner changed with step 38f, accepted 2026-11-17 ([D89]).*
+*Accepted 2026-11-16 (step 38d), the owner's decisions of 2026-11-16 where marked. The move is still to come: kolaente changes the ruleset, and then the import pull request follows. The written offer and the last places that named the owner changed with step 38f, accepted 2026-11-17 ([D89]).*
 
 Step 38d of [D83]. The points marked (owner) are the owner's answers of 2026-11-16; the others are defaults the owner was shown and did not object to.
 
 **The licence** (in place of [D67]'s AGPL):
 - MIT for the whole repository ([D83]). `LICENSE` is the standard MIT text with the line `Copyright (c) Vikunja and contributors`, exactly so, without a year (owner); the same line is in `NOTICE.md`, the app's notice and on the About page, which says the app is "open source under the MIT License". Contributors keep the copyright in their contributions and license them under the MIT License.
-- **Earlier history** (`NOTICE.md`): this app's own commits before the move are MIT too; the previous app's history up to `legacy-final` and third-party material in old commits keep their own licences (for example the editor code before commit f44e04f, and texts that followed Vikunja's AGPL web frontend closely). The test files with vectors from Vikunja's tests stay AGPL-3.0-or-later and never ship.
+- **Earlier history** (`NOTICE.md`): this app's own commits before the move are MIT too; the previous app's history up to `cdbc6e3` and third-party material in old commits keep their own licences (for example the editor code before commit f44e04f, and texts that followed Vikunja's AGPL web frontend closely). The test files with vectors from Vikunja's tests stay AGPL-3.0-or-later and never ship.
 - The former name and its llama logo are no longer reserved in the history, and no file is to name the former name (owner, 2026-11-20; [D15], [D42]).
 - **Name and logo** (owner: the clause now; kolaente confirms the text later): the name "Vikunja" and the Vikunja logo belong to the Vikunja project and are not licensed under the MIT License; the app's icons derive from `logo.svg` of go-vikunja/vikunja and are used with the project's permission; a fork that distributes its own build uses its own name and logo. `NOTICE.md` (with the files derived from the logo, [D42]; the scripts, the Markdown files and the files that wire the icons in are MIT), the app's notice, `CONTRIBUTING.md`, `branding/README.md` and the About page carry the clause. The app's notice holds only the copyright line and this clause, beside the MIT `LICENSE` ([D67]).
 - **What stays of [D67]:** the source link with its release-only test and the public-repository and signed-out checks, the About page's row and the release notes' line, without the AGPL reasons ([D86]); the written offer for the desugar_jdk_libs source (GPL-2.0 with the Classpath exception), which the Vikunja project makes with `hello@vikunja.io` ([D89]); and, with [D5]'s reason, embedded Cronet and no Play services library, so Cronet works on every device without Play, the app holds no proprietary code and F-Droid stays possible.
 
 **The contribution rules are Vikunja's;** `CONTRIBUTING.md` keeps the app's own rules for the code:
 - Pull requests disclose AI help and answer for every line, follow an agreed issue for a feature and use Conventional Commits; one whose review questions stay unanswered may be closed after two weeks. Translations come only through Vikunja's Crowdin project, German included ([D88]). **No CLA and no DCO.**
-- **Security reports** go privately to security@vikunja.io or through GitHub's private vulnerability reporting, never in a public issue ([D77]); `SECURITY.md` covers the app, its widgets and editor, and the scripts and workflows that build and release it.
+- **Security reports** go privately to security@vikunja.io, never in a public issue ([D77], [D118]); `SECURITY.md` covers the app, its widgets and editor, and the scripts and workflows that build and release it.
 - **Not added** (owner): `AGENTS.md`, `CLAUDE.md`, `CODEOWNERS` and `FUNDING.yml`; CODEOWNERS and FUNDING go to kolaente as suggestions. Not copied: the paragraph of Vikunja's CONTRIBUTING that asks automated agents to put a marker in the pull request's title.
 
 **GitLab CI is deleted** (owner), with its DCO job and the Mac as a GitLab runner ([D73]); [Q22](open-questions.md#q22-ci-runners-on-gitlab) is obsolete. So `test_servers/docker-compose.yaml` publishes on `127.0.0.1` only ([D28]), and `ios_release.sh` links `<repository>/tree/<tag>` for every host ([D74]). The app's earlier GitLab project is public; the owner archives it with a pointer to go-vikunja/app once the import is merged.
@@ -2032,23 +2032,22 @@ Step 38d of [D83]. The points marked (owner) are the owner's answers of 2026-11-
 
 **The move:**
 - The import pull request, from the owner's fork, holds only a commit that removes the old app's files (among them its workflows, `renovate.json` and its `crowdin.yml`) and a merge of our `main` with `--allow-unrelated-histories --no-ff`, so that the tree equals our `main`.
-- **`legacy-final`:** an annotated tag on the old `main`'s last commit (cdbc6e3), pushed when the freeze of that `main` starts; no `legacy` branch; the old tags and releases stay.
-- kolaente changes the ruleset "main protect" for the import (merge commits allowed, [D86]'s six checks required) and restores it afterwards, the recommendation being squash only. The owner merges with "Create a merge commit" (why: squash or rebase would rewrite or drop the imported commits, whose hashes the docs cite).
-- **The history goes public unchanged:** it holds no real secrets, only documented test fixtures and fake values, and the GitLab project is public already. Only the import branch and `legacy-final` are pushed, never with `--mirror` or `--all`, which would publish the parked stash of the session hardening ([D59]).
+- **No tag for the old app** (owner, 2026-11-22, [D118]): its last commit, `cdbc6e3`, is named by its hash; nothing is merged into that `main` between preparing the import and merging it (why: the removal commit is based on it); the old tags and releases stay.
+- kolaente changes the ruleset "main protect" before the import: [D86]'s six checks required in place of the old app's, and merge commits allowed, which they stay ([D118]). The owner merges with "Create a merge commit" (why: squash or rebase would rewrite or drop the imported commits, whose hashes the docs cite).
+- **The history goes public unchanged:** it holds no real secrets, only documented test fixtures and fake values, and the GitLab project is public already. Only the import branch is pushed, never with `--mirror` or `--all`, which would publish the parked stash of the session hardening ([D59]).
 - **The owner's GitHub account** must have the commits' author address verified, without "Block command line pushes that expose my email" for it (why: every commit before the move has that author address, [D114]).
 
 **R17**, the Glance weakness ([D66]), stays as it is; it is public on GitLab already.
 
-**For kolaente**, a list that the owner forwards in English: the ruleset; the name-and-logo text and who holds the logo's copyright; private vulnerability reporting, with the owner as a security manager; CODEOWNERS for `.github/` and `tool/ci/release_certificates.txt` and FUNDING.yml as suggestions; the stale branches of go-vikunja/app; the owner as an admin, and the secrets as environment secrets before 1.0.0 ([releasing.md](releasing.md#once-in-go-vikunjaapp), [D118]); the certificate fingerprints ([D86]); the written offer ([D89]).
+**For kolaente**, a list that the owner forwards in English ([beta.md](beta.md#what-kolaente-does)): one sitting of GitHub settings before the import (the ruleset "main protect", the Actions setting the Crowdin workflow needs, a ruleset for `v*` tags) and the environment `release` before 1.0.0 ([D118]); the name-and-logo text and who holds the logo's copyright; CODEOWNERS, FUNDING.yml and devenv as optional suggestions; the stale branches of go-vikunja/app; the certificate fingerprints ([D86]); the written offer ([D89]).
 
 Limits:
-- Until an admin switches on private vulnerability reporting, only the email route of `SECURITY.md` works.
 - The app's texts reach Crowdin only after the import, through the workflow `crowdin.yaml` ([D88]).
 - The old app's workflows stay in its commits: a `v*` tag pushed onto an old commit would run that commit's release workflow. The secrets only in the environment `release` and a ruleset for `v*` tags close this ([releasing.md](releasing.md#once-in-go-vikunjaapp)); until the secrets move there before 1.0.0, only the ruleset does ([D118]).
 
 Open:
-- kolaente's confirmations: the name-and-logo text and who holds the logo's copyright, the ruleset and private vulnerability reporting.
-- The import pull request waits for the ruleset. Until it is merged, go-vikunja/app's `main` is the old app, frozen from the push of `legacy-final` on.
+- kolaente's confirmations: the name-and-logo text and who holds the logo's copyright, and the ruleset.
+- The import pull request waits for the ruleset. Until it is merged, go-vikunja/app's `main` is the old app, frozen at `cdbc6e3`.
 
 ## D88: Translations through Vikunja's Crowdin project
 
@@ -2088,7 +2087,7 @@ Step 38e of [D83]. The points marked (owner) are the owner's answers of 2026-11-
 - Native strings stay English and German until a third language is about to ship. The old app's Polish is not uploaded (why: written for its 188 strings, few recur).
 - Pre-translation from the web's translations waits for kolaente's OK (why: the web is under the AGPL, the app under the MIT License), then runs without auto-approval; until then [D71]'s "no web texts are copied" stands.
 
-**For kolaente** ([beta.md](beta.md#what-kolaente-does)): the owner made an admin of go-vikunja/app, who then turns on the Actions setting the workflow needs; the old nightly workflow disabled if the import is delayed; Swiss German's mapping (only to export `app_gsw.arb`); whose Crowdin account the token belongs to and when it expires; pre-translation from the web; the old root file.
+**For kolaente** ([beta.md](beta.md#what-kolaente-does)): the Actions setting the workflow needs, right after the import; the old nightly workflow disabled if the import is delayed; Swiss German's mapping (only to export `app_gsw.arb`); whose Crowdin account the token belongs to and when it expires; pre-translation from the web; the old root file.
 
 Limits:
 - Nothing reaches Crowdin before the import; until the owner's German upload, German written in `app_de.arb` is kept, and a Crowdin pull request before it fails the tests that pin German texts.
@@ -2121,7 +2120,7 @@ Step 38f of [D83]. Points marked (owner) are the owner's answers of 2026-11-17; 
 
 **Apple's privacy label** ("Data Not Collected", [D76]) stays open until the Apple account is decided (why: with Vikunja as the publisher, what a user sends to its servers reaches the developer). Whatever the account, the opt-in crash reports add Crash Data and Other Diagnostic Data ([D113]).
 
-**Contacts**, no person's name or private address: `hello@vikunja.io`; `security@vikunja.io` and GitHub's private vulnerability reporting ([D87]); for App Review and the testers an address kolaente sets up, until then `hello@vikunja.io`.
+**Contacts**, no person's name or private address: `hello@vikunja.io`; `security@vikunja.io` ([D87]); for App Review and the testers an address kolaente sets up, until then `hello@vikunja.io`.
 
 **Legal:** "the Vikunja project" makes the written offer for the desugar_jdk_libs source at `hello@vikunja.io` ([D67]) (why: GPL-2.0 section 3, as Play and dl.vikunja.io do not hold the source; GitHub releases carry it). The App Store copyright is "2026 Vikunja and contributors", like `LICENSE` ([D87]); the App Store shows the seller, the enrolled account's name, apart from it. No repository file names the owner, except the commit authorship and the log's history ([D87]).
 
@@ -2867,7 +2866,7 @@ Finding P6 of the code review, planned for 1.0 (owner, 2026-11-19): the update a
 **The update and smoke tests** ([D85], [threat model 8.2](threat-model.md#82-manual-on-the-android-emulator) item 13, which says what is automatic, what the owner judges and what stays by hand; commands in the [developer guide](development.md#update-and-smoke-tests-on-an-emulator)):
 - `tool/e2e/update_test.sh` and `tool/e2e/smoke_test.sh` find the screen by the app's own texts from the ARB files and run on macOS's bash 3.2. They touch only an `emulator-<port>` whose AVD is `Vikunja_Screens` or `Vikunja_Tablet`, the project's own, else they stop before anything is installed; every command goes to the adb transport id recorded at the start, rechecked by AVD name before every install or uninstall, so an emulator that took over the serial gets nothing. The APKs must share one package and signing certificate, the new one with a higher version code.
 - The owner does every sign-in: nothing prints a password or a token, the sign-in hint offers only the clipboard route, and the recording of the first start stops before a browser takes the focus or Connect takes input, so it never holds a sign-in. Dart's uncaught errors show only in a debug build's log, so for a release build the owner reads its support details' log.
-- The old APK is 0.1.8-beta (490) from `cdbc6e3`, the commit `legacy-final` is to tag ([D87]); both APKs are re-signed with one throwaway key whose passwords stay in a private file.
+- The old APK is 0.1.8-beta (490) from `cdbc6e3`, the old app's last commit ([D87]); both APKs are re-signed with one throwaway key whose passwords stay in a private file.
 
 **Rejected alternatives:**
 - Raising the floor above the releases with bugs: the owner chose the fixes (owner, 2026-11-20).
@@ -3140,21 +3139,23 @@ Limits:
 
 *In review since 2026-11-22 (step 45), the owner's decisions of 2026-11-22.*
 
-kolaente has little time, so the owner does what he can himself, and what is left for kolaente is short (owner, 2026-11-22; [beta.md](beta.md#what-kolaente-does)).
+kolaente has little time, so his part is kept short and the owner does what he can with write access (owner, 2026-11-22; [beta.md](beta.md#what-kolaente-does)).
 
 - **German complete now:** the 222 missing German texts and the 6 whose English had changed are in `app_de.arb`, by the glossary. Until the owner's one-time upload of `app_de.arb` to Crowdin, a change of English also writes its German (why: Crowdin's export overwrites whole files only once the sync runs, and a release needs German complete, [D88]).
 - **The betas use the old app's repository secrets:** the release keys, the Play service account and the S3 keys stay repository secrets of go-vikunja/app, used as they are, until the first final release (why: moving them into the environment `release` needs whoever holds the keys to enter them again). `secret-scope` only warns for a pre-release of 1.0.0 (or 0.x) and fails every other tag, later betas and hotfixes included, so the secrets sit in the environment before 1.0.0; its reviewers, tag rule and bypass are a check by hand then ([D86]; threat model R28, 8.1).
 - **Crowdin through a workflow,** not the integration with a bot account (why: the integration authorizes through a person's OAuth, reaching every repository of that account, and needs admin on the repository for its webhook, which could change the rulesets and the environments; the old app's token serves): the workflow `crowdin.yaml` with Crowdin's pinned CLI ([D88]).
-- **"Allow GitHub Actions to create and approve pull requests" is on,** as the workflow opens its pull request with `GITHUB_TOKEN`. A `github-actions` approval is taken to meet the approval "main protect" requires, as GitHub's changelog of 2022 says, until the owner's one-time test shows otherwise; "Require approval of the most recent reviewable push" is recommended ([releasing.md](releasing.md#once-in-go-vikunjaapp) step 6; threat model R40).
-- **The owner as an admin of go-vikunja/app** is kolaente's first item. The owner then does the repository's settings himself: the rulesets, the Actions settings, security reporting, the environments, the stale branches and the old secrets no workflow uses. What needs the secret values, the organisation, Play, Apple, Sentry, vikunja.io or Crowdin's project settings stays with kolaente.
+- **"Allow GitHub Actions to create and approve pull requests" is on,** as the workflow opens its pull request with `GITHUB_TOKEN`. A `github-actions` approval is taken to meet the approval "main protect" requires, as GitHub's changelog of 2022 says, until the owner's one-time test shows otherwise; "Require approval of the most recent reviewable push" is recommended ([releasing.md](releasing.md#once-in-go-vikunjaapp) step 4; threat model R40).
+- **The owner stays without admin rights on go-vikunja/app** (owner, 2026-11-22). With the Maintain role a ruleset can let him push release tags (why: a ruleset's bypass list takes roles and teams, not single people); kolaente raises him to it if he has only Write.
+- **kolaente's GitHub settings are only what is needed,** in one sitting before the import (owner, 2026-11-22): "main protect" requires the six checks in place of the old app's (why: the import deletes the old workflows, so nothing could be merged otherwise) and allows merge commits (why: the import must keep the commit hashes the docs cite); the Actions setting above; a ruleset for `v*` tags that only the admin and Maintain roles bypass (why: with the keys as repository secrets, any `v*` tag publishes to Google Play). The environment `release` follows before 1.0.0. GitHub's private vulnerability reporting and the Actions hardening settings are not set up: security reports go by email, and the repository's tests enforce GitHub's own actions pinned by commit SHA.
 
 Limits:
-- Until the first final release any workflow on any branch, or on an old commit of the old app, can read the release keys; only the ruleset for `v*` tags gates a release (threat model R28).
+- Until the first final release any workflow on any branch, or on an old commit of the old app, can read the release keys; only the ruleset for `v*` tags gates a release (threat model R28). Without the Actions hardening settings, a pull request that adds a third-party action or an unpinned one is caught only by the repository's tests and the review.
 - The workflow has not run against Crowdin or GitHub yet: the CLI's flags and `crowdin.yml` under CLI 5.x, `gh` as git's credential helper and the shallow fetch are untested until its first run after the import.
 
 Open:
 - Whether a `github-actions` approval meets "main protect"'s required approval; if it does, the owner chooses between the risk, Code Owners (which [D87] did not add) and the setting off with a maintainer opening each translation pull request.
 - Moving `CROWDIN_PERSONAL_TOKEN` into the environment `crowdin`, limited to `main`; whose Crowdin account it belongs to and when it expires (kolaente).
+- "main protect" requires an approval and an author cannot approve his own pull request, so each of the owner's pull requests waits for kolaente; whether he wants another arrangement (kolaente).
 
 [D1]: #d1-flutter-pub-workspace-with-pure-dart-packages
 [D2]: #d2-material_ui-and-cupertino_ui-instead-of-the-sdks-libraries

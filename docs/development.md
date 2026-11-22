@@ -301,9 +301,10 @@ tool/e2e/update_test.sh --server https://try.vikunja.io emulator-5554 <old.apk> 
   ```
 
   On a new emulator, go through Chrome's first-run screens once.
-- **The APKs:** one package, a higher version code for the new one and one signing certificate for both, or `adb install -r` fails; the update test checks all three first. The old app is built from a clone of go-vikunja/app at `legacy-final` (`cdbc6e3`), as 0.1.8-beta with version code 490; its release build wants an `android/key.properties` (its `storeFile` relative to `android/app`), and any key does, as both APKs are signed again. This app is built unsigned, with a higher version code such as the 1000001 of `v1.0.0-beta.1`:
+- **The APKs:** one package, a higher version code for the new one and one signing certificate for both, or `adb install -r` fails; the update test checks all three first. The old app is built from its last commit, `cdbc6e3`, in a clone of go-vikunja/app, as 0.1.8-beta with version code 490; its release build wants an `android/key.properties` (its `storeFile` relative to `android/app`), and any key does, as both APKs are signed again. This app is built unsigned, with a higher version code such as the 1000001 of `v1.0.0-beta.1`:
 
   ```sh
+  git clone https://github.com/go-vikunja/app.git <the old app's clone> && git -C <the old app's clone> switch --detach cdbc6e3
   (cd <the old app's clone> && flutter build apk --release --target-platform android-arm64 --build-number=490 --build-name=0.1.8-beta)
   (cd app && VIKUNJA_APP_UNSIGNED=true flutter build apk --release --target-platform android-arm64 --build-number=1000001)
   ```

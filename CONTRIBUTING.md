@@ -24,7 +24,7 @@ AI tools are allowed. If an AI wrote a meaningful part of your change, say so in
 - Allow edits by maintainers, so that a maintainer can add a small fix or the German of a native text ([Translations](#translations)).
 - Write the commit messages and the pull request's title as [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `perf:` or `chore:`, then what changes.
 - The description says what changes and why. A UI change shows screenshots after the change. Each issue the pull request closes gets a line of its own, `Fixes #N`. The [template](.github/PULL_REQUEST_TEMPLATE.md) asks for these.
-- The checks pass ([Setup and checks](#setup-and-checks)). The workflows of a pull request from outside the project wait until a maintainer approves them.
+- The checks pass ([Setup and checks](#setup-and-checks)). The workflows of a first-time contributor's pull request wait until a maintainer approves them.
 - A pull request whose review questions stay unanswered for two weeks may be closed. Answer, and it can be reopened.
 
 ## Setup and checks
