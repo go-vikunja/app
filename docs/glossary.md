@@ -97,7 +97,10 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - Bezeichner for an identifier (not Kennung);
   - Zugriff for access and Berechtigung for permission, not Rechte;
   - accounts: Account, as in Vikunja's German translation instructions (der Account, die Accounts, Account-Einstellungen, Account-Passwort), never Konto; Anmeldename for the username, never Benutzername (both checked by `app/test/l10n/german_texts_test.dart`); anmelden/Anmeldung, abmelden; a session the server ended is "beendet", not "abgelaufen";
-  - Synchronisierung;
+  - Synchronisierung; „Synchronisierung im Hintergrund“, never „Hintergrundsynchronisierung“; one background run is a „Durchlauf“, which the system „abgebrochen“ or the app „zurückgestellt“ has (never „verschoben“, which stays for moving);
+  - „der sichere Speicher deines Geräts“ for the Keychain or Keystore; the stored sign-in is „die Anmeldung“ (bei {host}), which the app „erneuert“ („Erneuerung“);
+  - Zeitraum for a date range („Zeitraum wählen“), never Datumsbereich; Standort for where a photo or video was taken;
+  - retry buttons: „Noch einmal versuchen“, „Alle noch einmal versuchen“;
   - Aktivitäten for the notification category, its switch and the page the bell opens („Aktivitäten“, „Keine neuen Aktivitäten“); Benachrichtigungen only for what the device shows and their settings;
   - working through several tasks: Auswählen („Aufgaben auswählen“, „Alle auswählen“), „{count} ausgewählt“, „Auswahl beenden“; Neu planen for reschedule („Neu planen“, „{count} überfällige Aufgaben neu planen“), never Verschieben, which stays for move („Verschieben“, „In Spalte verschieben …“); Erledigt and Nicht erledigt for the actions Done and Not done;
   - Gerät for the device, also in the connect tagline; Smartphone for another phone (`linkShareQrHint`); never Handy (`german_texts_test.dart`);
