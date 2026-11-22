@@ -612,7 +612,7 @@ expect_shell() {
   local description="$1" seconds="$2" name="$3" wait=0
   shift 3
   wait_until "$seconds" "$name" shows_or_asks "$name" "$@" || true
-  if decline_crash_reports; then wait=30; fi
+  if decline_crash_reports 4; then wait=30; fi
   expect_screen "$description" "$wait" "$name" "$@"
 }
 
