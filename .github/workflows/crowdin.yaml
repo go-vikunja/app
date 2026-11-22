@@ -1,0 +1,76 @@
+name: Crowdin
+
+# The English source up to Vikunja's Crowdin project and its approved
+# translations back as a pull request (D88), nightly and by hand, on main of
+# go-vikunja/app only. Crowdin's CLI runs in a job without write access; the
+# job that pushes and opens the pull request runs no third-party code.
+on:
+  schedule:
+    - cron: "37 2 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: crowdin
+  cancel-in-progress: false
+
+jobs:
+  translations:
+    if: github.repository == 'go-vikunja/app' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Its secret can move into the environment, limited to main; until then
+    # the repository secret serves (docs/releasing.md).
+    environment: crowdin
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.download.outputs.changed }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Upload the English source
+        env:
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+        run: tool/ci/crowdin_sync.sh upload
+      - name: Download the approved translations
+        id: download
+        env:
+          CROWDIN_PERSONAL_TOKEN: ${{ secrets.CROWDIN_PERSONAL_TOKEN }}
+        run: tool/ci/crowdin_sync.sh download
+      - if: steps.download.outputs.changed == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: crowdin-translations
+          path: build/crowdin/
+          if-no-files-found: error
+          retention-days: 1
+
+  pull-request:
+    needs: translations
+    if: >-
+      github.repository == 'go-vikunja/app' && github.ref == 'refs/heads/main'
+      && needs.translations.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: crowdin-translations
+          path: build/crowdin
+      - name: Commit, push and open the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: tool/ci/crowdin_sync.sh pull-request

@@ -113,6 +113,7 @@ The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 20
 - **Options:** Hosted Weblate (Libre plan; the repository prepared in 36f, the project connected in step 37 once the repository is public); Crowdin's open-source plan (commits as a bot, proprietary); self-hosted Weblate; no platform, merge requests only.
 - **Recommendation:** Hosted Weblate. It is libre, keeps each translator's authorship in git, offers contributor agreements, checks ICU messages and also handles the Android and Apple string formats of the widgets and permission texts.
 - **Since step 38e** ([D88](decisions.md#d88-translations-through-vikunjas-crowdin-project)): Crowdin's GitHub integration, which kolaente connects through a bot account, opens the translation pull requests; `crowdin.yml` in the repository holds the paths and the languages, and no token, workflow or secret. The native strings stay English and German until a later step.
+- **Since step 45** (owner, 2026-11-22): the workflow "Crowdin" opens them instead, with Crowdin's CLI, the old app's repository secret `CROWDIN_PERSONAL_TOKEN` and the workflow's own token, so neither the integration nor a bot account is needed ([releasing.md](releasing.md#once-in-go-vikunjaapp)).
 
 ## Q17: Licence path for community translations
 
@@ -161,6 +162,7 @@ The project owner answered Q1–Q15 on 2026-10-09, took up the deferred Q3 on 20
 
   When creating the app the owner checks in the console whether the provided key gets hybrid signing, and so whether Play's builds and an APK signed with RSA alone still update each other on Android 17 and later. If they would not, this question comes back before a release reaches open testing or production, after which the key cannot change.
 - **Since step 38c** ([D86](decisions.md#d86-ci-and-releases-on-github-actions)): the app ships in Vikunja's listing ([D83](decisions.md#d83-successor-of-the-official-vikunja-app-in-go-vikunjaapp)), so option A no longer applies and no key of the owner's is created. Vikunja's upload key, the old app's `KEYSTORE_BASE64` and `KEY_PROPERTIES` in the environment `release` of go-vikunja/app, signs the bundle and, without a separate APK key (`APK_KEYSTORE_BASE64`), the APK, as in the old app, so installs of the old app's APKs keep updating. A real release needs the upload certificate's SHA-256 committed in `tool/ci/release_certificates.txt`, which Vikunja's maintainers read in the Play Console; it is not committed yet.
+- **Since step 45** (owner, 2026-11-22): until the first final release the betas use these as the old app's repository secrets; the environment `release` gets them before 1.0.0 ([releasing.md](releasing.md#once-in-go-vikunjaapp), [threat model](threat-model.md) R28).
 
 ## Q21: A server for the store reviewers
 

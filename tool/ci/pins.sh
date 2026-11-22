@@ -20,3 +20,10 @@ FLUTTER_MACOS_ARM64_SHA256=6545b85938745dc5070e9faf2adf70233c1811009d87fe6d27bfc
 OSV_SCANNER_VERSION=2.7.0
 OSV_SCANNER_LINUX_AMD64_SHA256=160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
 OSV_SCANNER_DARWIN_ARM64_SHA256=d4926ef8da134332543be276dff157e4c170f99ad91fc48e89448a8816bdf70b
+
+# The workflow "Crowdin" (tool/ci/crowdin_sync.sh, D88): Crowdin's CLI, a
+# self-contained binary without Java since 5.0.0.
+# https://github.com/crowdin/crowdin-cli/releases/download/${CROWDIN_CLI_VERSION}/crowdin-linux-x64
+# (about 83 MB), sha256 from that release's crowdin-cli_checksums.sha256.
+CROWDIN_CLI_VERSION=5.6.0
+CROWDIN_CLI_LINUX_X64_SHA256=cce779df4046a10e8728b4f5ba873e882ab3e1ba4ee7b9d766e2bfa1240ddfcc

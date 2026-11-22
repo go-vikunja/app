@@ -14,7 +14,7 @@ Each entry has a number, a status and the step that took it. It says what was de
 - **Notifications and widgets:** [D17] notification policy · [D39] local notifications · [D40] background sync, inbox · [D63] home-screen widgets
 - **Look, accessibility, languages:** [D20] scope cuts, support details · [D21] [D71] English and German · [D45] app shell · [D56] design · [D68] screen readers · [D69] large screens · [D70] the task pane · [D75] the owner's UI review · [D82] projects list–detail · [D100] small things · [D112] accessibility pass
 - **Security and privacy:** [D64] app lock · [D66] threat model · [D92] security fixes · [D113] opt-in crash reports
-- **Identity, release, the official app:** [D15] app id and name · [D42] app icon · [D72] first release · [D73] CI from local scripts · [D74] iOS phase · [D76] store listings and policies · [D77] beta preparation · [D83] successor of the official app · [D85] update from the old app · [D86] GitHub Actions · [D87] MIT and the move · [D88] Crowdin · [D89] the official store listing · [D67] notices, the licence and About pages, no F-Droid · replaced: [D10]
+- **Identity, release, the official app:** [D15] app id and name · [D42] app icon · [D72] first release · [D73] CI from local scripts · [D74] iOS phase · [D76] store listings and policies · [D77] beta preparation · [D83] successor of the official app · [D85] update from the old app · [D86] GitHub Actions · [D87] MIT and the move · [D88] Crowdin · [D89] the official store listing · [D67] notices, the licence and About pages, no F-Droid · replaced: [D10] · [D118] fewer steps for the maintainers
 - **Code review fixes:** [D90] before beta.1 · [D91] the description editor, leaving pages for a switch · [D93] quick fixes · [D94] outbox retries, notifications, the diagnostics log, session reminders · [D95] small things users notice · [D96] robustness · [D97] security and release · [D98] the limits' review · [D107] the make-up reviews · [D116] [D117] the UI/UX review
 - **The repository:** [D105] architecture overview · [D114] cleanup before the move · [D115] this log shortened
 
@@ -1961,19 +1961,20 @@ Open:
 - GitHub Actions run the CI and the Android releases in go-vikunja/app ([D83], [D87]), each job running scripts of `tool/ci/` that run the same way locally ([D73]). They are the only CI: the GitLab pipeline, which had kept working beside them with a release job that only rehearsed (owner, 2026-11-14), is deleted (owner, 2026-11-16).
 - **Builds only from tags** (owner; why: the old app uploaded every push to `main` to Play): a beta tag `vX.Y.Z-beta.N` goes to Play's `beta` track, a final tag `vX.Y.Z` to production as a staged rollout, and every release puts the APKs on GitHub Releases and on dl.vikunja.io. Pushes and pull requests run the checks only.
 - Releases are published from no repository but go-vikunja/app, and the release jobs have a dry run without secrets (`VIKUNJA_APP_RELEASE_DRY_RUN=true`, with throwaway keys, publishing nothing), so the workflows can be tried first in a private test repository of the owner's (owner).
-- **Keys only at the end:** the build jobs make unsigned files (`VIKUNJA_APP_UNSIGNED=true`) and never see a key; one job in the protected environment `release` signs, checks and publishes them.
+- **Keys only at the end:** the build jobs make unsigned files (`VIKUNJA_APP_UNSIGNED=true`) and never see a key; one job in the protected environment `release` signs, checks and publishes them; the betas before 1.0.0 use the old app's repository secrets instead (owner, 2026-11-22, [D118]).
 
 **The workflows** (`.github/workflows/`, checked by `tool/ci/test_github_workflows.py`):
 - `ci.yaml` runs on pushes to `main`, pull requests and by hand, and weekly with `osv` only. Its jobs `checks`, `editor`, `contract`, `android`, `osv` and `ios` are [D73]'s and the checks the ruleset on `main` requires; `contract` uses the runner's own Docker, published on `127.0.0.1` ([D28]). `ios` (Xcode 27, like the owner's releases, [D97]) builds unsigned, checks the notices and the required-reason APIs ([D74]) and runs the native XCTests on a simulator ([D111]); it runs in go-vikunja/app, where macOS runners are free, and elsewhere only with `VIKUNJA_APP_IOS_JOB=true` (why: a private repository pays about ten times the Linux price for macOS).
 - `release.yaml` runs on `v*` tags only, and a malformed tag fails:
   - `ci` calls `ci.yaml` without secrets, so a release waits for the whole CI, `ios` included (why: a tag that does not build for iOS cannot be released from the Mac either);
   - `build` runs with no environment, no secret and no cache, and keeps the unsigned files as an artifact for 14 days;
-  - `secret-scope` fails when any of the seven release credentials (the two key pairs, the Play service account and the two S3 keys) is a repository or organisation secret (why: such a copy can be read by any workflow on any branch, without the environment's reviewers);
+  - `secret-scope` checks whether any of the seven release credentials (the two key pairs, the Play service account and the two S3 keys) is a repository or organisation secret (why: such a copy can be read by any workflow on any branch, without the environment's reviewers): it only warns for a pre-release of 1.0.0 (or 0.x) and fails every other tag ([D118]);
   - `publish` needs `ci`, `build` and `secret-scope` and runs in the environment `release`, so a reviewer approves it; it is the only job with `contents: write`, publishes one tag at a time, never cancelled ([D97]), and gives each step only its own secrets;
 - `contract-matrix.yaml` runs the contract tests nightly, on `v*` tags and by hand, against one release per minor line from the support floor to the test servers' default image, each image pinned by tag and digest ([D28], [D111]). It is no required check and does not hold `publish`: its run on a tag is read before the approval ([releasing.md](releasing.md#cutting-a-release)).
 - `upstream.yaml` runs weekly without a secret; Dependabot updates the actions only, with a cooldown of 7 days (owner, 2026-11-18, [D97]). The update and smoke tests ([D85]) stay outside CI, as they need an emulator and the owner's sign-in.
 - **Hardening:** `permissions: {}` at the top and `contents: read` per job; `persist-credentials: false` on every checkout; no `pull_request_target` or `workflow_run`; only GitHub's own actions, each pinned by its full commit SHA with the version beside it, and no Flutter setup action, as none verifies the SDK's checksum; no `${{ … }}` inside `run:` (values reach the scripts through `env:`), each `run` one `tool/ci/` script; never `secrets: inherit`; no cache in the release jobs; runner labels by name (`ubuntu-24.04`, `xcode-27`), never `-latest`, so an image switch shows in a diff; exactly these four workflow files, with no filters or inputs.
-- No DCO job, as Vikunja has none ([D87]), and no Crowdin workflow: Crowdin's GitHub integration opens the translation pull requests, with no workflow and no secret in the repository ([D88]).
+- No DCO job, as Vikunja has none ([D87]).
+- `crowdin.yaml` syncs the translations nightly and by hand on `main` ([D88], [D118]): its job `translations` runs Crowdin's pinned CLI with the token and a read-only `GITHUB_TOKEN`; its job `pull-request`, the only one besides `publish` with a write token (`contents` and `pull-requests`), runs no third-party code and checks the first job's files as untrusted (why: the CLI, an 83 MB binary, could otherwise reach the write token).
 - **Runners:** the bare hosted images, not a container (why: they cannot be pinned anyway, `contract` needs the host's Docker and `ios` macOS). JDK 21 is set explicitly, as the Ubuntu image defaults to 17. Flutter comes from the checksum-verified download of `pins.sh` ([D73]), for Linux x86_64 or macOS arm64 only (the macOS SHA-256 from Homebrew's cask), so the runners stay on those.
 
 **The build** (`tool/ci/release_build.sh`):
@@ -1993,7 +1994,7 @@ Open:
 - The order is Play (the strictest check of the bundle and the key), dl.vikunja.io (https only, the keys on that one command; the old `/app/unstable/` is no longer updated), then the GitHub release, the announcement, with the workflow's own token, a beta as a prerelease, with `SHA256SUMS` and the desugar_jdk_libs source. A re-run needs the approval again; each step skips what is already there with the same SHA-256 and fails on other content. "Re-run all jobs" builds again, and a new build need not give the same files.
 - `tool/ci/release.sh --dry-run` runs it all locally; without `--dry-run` it refuses. iOS releases stay manual on the owner's Mac ([D74]).
 
-**What Vikunja's maintainers set up in go-vikunja/app** ([releasing.md](releasing.md#once-in-go-vikunjaapp)): the environment `release` with the owner and kolaente as its required reviewers, either of whom may approve a release, their own tag's too ("Prevent self-review" off, owner, 2026-11-14), and no administrator bypass, deploying from `v*` tags only; its secrets at environment level, and no repository or organisation copy of the seven credentials; the certificates in `release_certificates.txt`; rulesets for `v*` tags and for `main` with the six checks; read-only workflow permissions and approval for outside contributors' workflows.
+**What Vikunja's maintainers set up in go-vikunja/app** ([releasing.md](releasing.md#once-in-go-vikunjaapp)), the repository's settings by the owner once he is an admin ([D118]): before the first final release, the environment `release` with the owner and kolaente as its required reviewers, either of whom may approve a release, their own tag's too ("Prevent self-review" off, owner, 2026-11-14), and no administrator bypass, deploying from `v*` tags only; its secrets at environment level, and no repository or organisation copy of the seven credentials; the certificates in `release_certificates.txt`; rulesets for `v*` tags and for `main` with the six checks; read-only workflow permissions, with "Allow GitHub Actions to create and approve pull requests" on for the Crowdin workflow ([D118]), and approval for outside contributors' workflows.
 
 Limits:
 - The workflows have run only in the owner's test repository, public rather than private as planned, with throwaway keys; the environment, the rulesets, real signing, Play, dl.vikunja.io, a real release and the XCTests show only in go-vikunja/app; pull requests and runs by hand were not tried.
@@ -2038,12 +2039,12 @@ Step 38d of [D83]. The points marked (owner) are the owner's answers of 2026-11-
 
 **R17**, the Glance weakness ([D66]), stays as it is; it is public on GitLab already.
 
-**For kolaente**, a list that the owner forwards in English: the ruleset; the name-and-logo text and who holds the logo's copyright; private vulnerability reporting, with the owner as a security manager; CODEOWNERS for `.github/` and `tool/ci/release_certificates.txt` and FUNDING.yml as suggestions; the stale branches of go-vikunja/app; the secrets as environment secrets ([releasing.md](releasing.md#once-in-go-vikunjaapp)); the certificate fingerprints ([D86]); the written offer ([D89]).
+**For kolaente**, a list that the owner forwards in English: the ruleset; the name-and-logo text and who holds the logo's copyright; private vulnerability reporting, with the owner as a security manager; CODEOWNERS for `.github/` and `tool/ci/release_certificates.txt` and FUNDING.yml as suggestions; the stale branches of go-vikunja/app; the owner as an admin, and the secrets as environment secrets before 1.0.0 ([releasing.md](releasing.md#once-in-go-vikunjaapp), [D118]); the certificate fingerprints ([D86]); the written offer ([D89]).
 
 Limits:
 - Until an admin switches on private vulnerability reporting, only the email route of `SECURITY.md` works.
-- The app's texts reach Crowdin only after the import, once kolaente has connected the integration ([D88]).
-- The old app's workflows stay in its commits: a `v*` tag pushed onto an old commit would run that commit's release workflow. The secrets only in the environment `release` and a ruleset for `v*` tags close this ([releasing.md](releasing.md#once-in-go-vikunjaapp)).
+- The app's texts reach Crowdin only after the import, through the workflow `crowdin.yaml` ([D88]).
+- The old app's workflows stay in its commits: a `v*` tag pushed onto an old commit would run that commit's release workflow. The secrets only in the environment `release` and a ruleset for `v*` tags close this ([releasing.md](releasing.md#once-in-go-vikunjaapp)); until the secrets move there before 1.0.0, only the ruleset does ([D118]).
 
 Open:
 - kolaente's confirmations: the name-and-logo text and who holds the logo's copyright, the ruleset and private vulnerability reporting.
@@ -2051,13 +2052,13 @@ Open:
 
 ## D88: Translations through Vikunja's Crowdin project
 
-*Accepted 2026-11-16 (step 38e), the owner's decisions of 2026-11-16 where marked, with the results of the owner's Crowdin rehearsal of the same day. The Crowdin integration and the German upload are still to come: they follow the import and kolaente's setup in Crowdin.*
+*Accepted 2026-11-16 (step 38e), the owner's decisions of 2026-11-16 where marked, with the results of the owner's Crowdin rehearsal of the same day; the sync through a workflow and German written before the upload since 2026-11-22 ([D118]). The workflow's first run and the German upload are still to come: they follow the import.*
 
 Step 38e of [D83]. The points marked (owner) are the owner's answers of 2026-11-16; the others are defaults the owner was shown and did not object to. The Crowdin behaviour below is what the owner's rehearsal showed ([beta.md](beta.md#the-crowdin-rehearsal)).
 
 **The generated l10n code leaves git** (owner, answers [Q18](open-questions.md#q18-generated-localisation-code-in-git)): `app/lib/l10n/generated/` is git-ignored (why: Crowdin's pull requests change only ARB files and would fail the check for stale generated code; each language adds about 224 KB). `flutter pub get`, `build` and `run` write it, `analyze` and `test` do not ([developer guide](development.md#generated-code)); every CI script runs pub get first ([D73]). Only build_runner's `*.g.dart` files stay committed and checked ([D3]).
 
-**German comes through Crowdin** (owner), like every language, by Vikunja's rule (why: Crowdin's export writes whole files and would overwrite German changed in a pull request). A pull request changes only the English.
+**German comes through Crowdin** (owner), like every language, by Vikunja's rule (why: Crowdin's export writes whole files and would overwrite German changed in a pull request). Once the owner's upload has taken German to Crowdin, a pull request changes only the English; until then German is written with the English (owner, 2026-11-22, [D118]).
 - German may lag English on `main`, English standing in. The ARB parity test allows missing messages but fails on extra keys, empty texts, ICU gen-l10n refuses, changed placeholders (why: a renamed one passes gen-l10n and breaks the call sites) or a wrong `@@locale`.
 - **A release needs German complete:** `tool/ci/release_build.sh` ([D86]) and `ios_release.sh` ([D74]) refuse otherwise. A patch release may go without them, logged (owner, 2026-11-18, relaxing the rule above): only when `VIKUNJA_APP_ALLOW_INCOMPLETE_GERMAN` equals its tag, never for an `x.y.0` or its betas, naming how many texts German lacks; English stands in ([releasing.md](releasing.md#a-hotfix), [D97]).
 
@@ -2072,23 +2073,25 @@ Step 38e of [D83]. The points marked (owner) are the owner's answers of 2026-11-
 
 **Crowdin's codes as Flutter's locales:** for example `pt-BR` → `pt_BR`, `zh-TW` → `zh_Hant`, `no` → `nb` (what Norwegian devices report), `de-swiss` → `gsw`. Every regional or script file has a base file (why: gen-l10n fails without one). The template has no `@@locale` (why: Crowdin would write codes such as `pt-BR` there, which gen-l10n refuses).
 
-**The integration** is Crowdin's GitHub integration, set up by kolaente through a dedicated bot account:
-- `crowdin.yml` (checked by `tool/ci/test_crowdin_config.py`): project 462614, the English source, the translations as `app_%two_letters_code%.arb`, only approved translations, untranslated strings skipped, `append_commit_message: false` (why: Crowdin appends `[ci skip]` by default, which skips the checks); `"no"` quoted (why: YAML 1.1 reads a bare `no` as false). No token in it, and no workflow and no secret in the repository ([D86]): the integration keeps its credential in Crowdin, and the CLI takes its token from the environment.
-- Its pull requests come from a branch of go-vikunja/app and run `ci.yaml` like any other; later syncs add commits to that branch without force-pushing it. The credential can push branches and open pull requests, but not merge while "main protect" requires a maintainer's approval, and not release: `v*` tags are protected and the environment `release` needs a reviewer (why the bot account: the credential reaches only what that account reaches; [threat model](threat-model.md) M47, R40). This holds while the account has Write, not admin, and is on no bypass list (an admin can change the rulesets and the environment).
+**The sync** is the workflow `crowdin.yaml`, nightly and by hand on `main` of go-vikunja/app (owner, 2026-11-22, [D118]; why: no bot account and no integration for kolaente to set up, and the old app's secret serves):
+- Crowdin's CLI, pinned by version and SHA-256 ([D86]), uploads the English into the version branch `main` and downloads only approved translations, untranslated strings skipped. German comes only from its own download, and no other export may write `app_de.arb` or `app_en.arb` (why: Vikunja's custom Swiss German could export as `app_de.arb` without the project's mapping); a file left out is named in the run and the pull request.
+- The files go to the branch `crowdin`, reset from `main`, and into one pull request, which runs `ci.yaml` like any other once a maintainer approves its runs (why: a pull request from `GITHUB_TOKEN` starts no checks by itself). The token can push and open pull requests, but not merge while "main protect" requires a maintainer's approval, and not release ([threat model](threat-model.md) M47, R40).
+- The token is the old app's repository secret `CROWDIN_PERSONAL_TOKEN` until someone moves it into the environment `crowdin`, limited to `main`.
+- `crowdin.yml` (checked by `tool/ci/test_crowdin_config.py`): project 462614, the English source, the translations as `app_%two_letters_code%.arb`, only approved translations, untranslated strings skipped; `"no"` quoted (why: YAML 1.1 reads a bare `no` as false). No token in it.
 - A translation cannot inject code: gen-l10n escapes it. Broken ICU or a renamed placeholder fails Crowdin's pull request; the fix is made on Crowdin.
 - The source lands in a version branch `main` as `main/app_en.arb`, beside the old app's root file, so the old translations do not carry over; kolaente removes the root file after exporting it if translated since December 2025 (why: until then Crowdin's progress counts both).
 
-**The uploads:** the source goes up only once the old app's nightly "Crowdin Sync" workflow is off (why: it would bring the old file back); the integration uploads it itself once connected. Right after, the owner uploads the German once with the CLI after a dry run, auto-approved, with `-b main` (why: else it writes into the old root file, which is not exported) and `--import-eq-suggestions` (why: 63 German texts equal the English, Crowdin skips them otherwise and German would never count as complete), and `--translate-hidden` if the project hides duplicates; commands in [beta.md](beta.md#the-translations-on-crowdin).
+**The uploads:** the source goes up only once the old app's nightly "Crowdin Sync" workflow is off (why: it would bring the old file back); the workflow uploads it on its first run. Right after, the owner uploads the German once with the CLI after a dry run, auto-approved, with `-b main` (why: else it writes into the old root file, which is not exported) and `--import-eq-suggestions` (why: 63 German texts equal the English, Crowdin skips them otherwise and German would never count as complete), and `--translate-hidden` if the project hides duplicates; commands in [beta.md](beta.md#the-translations-on-crowdin).
 
 **The texts:**
 - Every English plural has a `one{…}` branch that shows its number, no `=1{…}` (why: some languages use the one form for 21 or 31, French for 0, and translators copy the English); wording for exactly one, such as "Every day", is a message of its own. Every message with a placeholder or plural has a description, the translators' only context.
 - Native strings stay English and German until a third language is about to ship. The old app's Polish is not uploaded (why: written for its 188 strings, few recur).
 - Pre-translation from the web's translations waits for kolaente's OK (why: the web is under the AGPL, the app under the MIT License), then runs without auto-approval; until then [D71]'s "no web texts are copied" stands.
 
-**For kolaente** ([beta.md](beta.md#what-kolaente-does)): the integration's "Push Sources" and its imports from the repository off, as the owner's upload brings the German (why: that upload can be dry-run and takes `-b main` and `--translate-hidden`, which the integration's page does not mention); the bot account lowered to Write once synced; the old nightly workflow disabled; Swiss German's mapping; no manager role for the owner, whose Developer role in 462614 covers the integration, approving the German and the old root file; "Skip untranslated strings" and "Export only approved translations" in the settings (why: Crowdin does not document whether the integration follows `crowdin.yml` there); the old secrets `CROWDIN_PROJECT_ID` and `CROWDIN_PERSONAL_TOKEN` deleted (why: any workflow on any branch can read them), and no other repository or organisation secret than the S3 ones, which hold no credential.
+**For kolaente** ([beta.md](beta.md#what-kolaente-does)): the owner made an admin of go-vikunja/app, who then turns on the Actions setting the workflow needs; the old nightly workflow disabled if the import is delayed; Swiss German's mapping (only to export `app_gsw.arb`); whose Crowdin account the token belongs to and when it expires; pre-translation from the web; the old root file.
 
 Limits:
-- Nothing reaches Crowdin before kolaente's part; until the German upload, German added to `app_de.arb` in the repository is kept, and a Crowdin pull request before it fails the tests that pin German texts. Where the integration puts the source is not documented; kolaente checks it first.
+- Nothing reaches Crowdin before the import; until the owner's German upload, German written in `app_de.arb` is kept, and a Crowdin pull request before it fails the tests that pin German texts.
 - A changed English text keeps its translations unapproved, and the export drops them: after every English change a maintainer re-approves or retranslates its German on Crowdin, or the next Crowdin pull request lacks it, which a release refuses, and fails where a test pins the text; feature pull requests stay green.
 - The first Crowdin pull request reformats every ARB file once into Crowdin's layout, which the tests accept.
 - An untranslated message shows in English, so a language at 50 % is half English, and an untranslated language name shows "English" in the App language row; a third language sees English in the native strings. No right-to-left layout has been checked.
@@ -2096,8 +2099,7 @@ Limits:
 - Only the Android release build warns about a language below 50 %; `ios_release.sh` checks only German.
 
 Open:
-- Whether the integration keeps working once the bot account has Write only: the rehearsal used the owner's admin account.
-- kolaente's part, then the German upload and the first Crowdin pull request; pre-translation from the web; native strings on Crowdin and a right-to-left pass.
+- The workflow's first run, then the German upload and the first Crowdin pull request ([D118]); pre-translation from the web; native strings on Crowdin and a right-to-left pass.
 
 ## D89: Store listing and web pages of the official app
 
@@ -3134,6 +3136,26 @@ Limits:
 - New texts show in English in the German app until Crowdin delivers them ([D88]).
 - The widgets' new colours and their orange are checked in tests only so far, on devices at the device tests ([D74]).
 
+## D118: Fewer steps for Vikunja's maintainers before the beta
+
+*In review since 2026-11-22 (step 45), the owner's decisions of 2026-11-22.*
+
+kolaente has little time, so the owner does what he can himself, and what is left for kolaente is short (owner, 2026-11-22; [beta.md](beta.md#what-kolaente-does)).
+
+- **German complete now:** the 222 missing German texts and the 6 whose English had changed are in `app_de.arb`, by the glossary. Until the owner's one-time upload of `app_de.arb` to Crowdin, a change of English also writes its German (why: Crowdin's export overwrites whole files only once the sync runs, and a release needs German complete, [D88]).
+- **The betas use the old app's repository secrets:** the release keys, the Play service account and the S3 keys stay repository secrets of go-vikunja/app, used as they are, until the first final release (why: moving them into the environment `release` needs whoever holds the keys to enter them again). `secret-scope` only warns for a pre-release of 1.0.0 (or 0.x) and fails every other tag, later betas and hotfixes included, so the secrets sit in the environment before 1.0.0; its reviewers, tag rule and bypass are a check by hand then ([D86]; threat model R28, 8.1).
+- **Crowdin through a workflow,** not the integration with a bot account (why: the integration authorizes through a person's OAuth, reaching every repository of that account, and needs admin on the repository for its webhook, which could change the rulesets and the environments; the old app's token serves): the workflow `crowdin.yaml` with Crowdin's pinned CLI ([D88]).
+- **"Allow GitHub Actions to create and approve pull requests" is on,** as the workflow opens its pull request with `GITHUB_TOKEN`. A `github-actions` approval is taken to meet the approval "main protect" requires, as GitHub's changelog of 2022 says, until the owner's one-time test shows otherwise; "Require approval of the most recent reviewable push" is recommended ([releasing.md](releasing.md#once-in-go-vikunjaapp) step 6; threat model R40).
+- **The owner as an admin of go-vikunja/app** is kolaente's first item. The owner then does the repository's settings himself: the rulesets, the Actions settings, security reporting, the environments, the stale branches and the old secrets no workflow uses. What needs the secret values, the organisation, Play, Apple, Sentry, vikunja.io or Crowdin's project settings stays with kolaente.
+
+Limits:
+- Until the first final release any workflow on any branch, or on an old commit of the old app, can read the release keys; only the ruleset for `v*` tags gates a release (threat model R28).
+- The workflow has not run against Crowdin or GitHub yet: the CLI's flags and `crowdin.yml` under CLI 5.x, `gh` as git's credential helper and the shallow fetch are untested until its first run after the import.
+
+Open:
+- Whether a `github-actions` approval meets "main protect"'s required approval; if it does, the owner chooses between the risk, Code Owners (which [D87] did not add) and the setting off with a maintainer opening each translation pull request.
+- Moving `CROWDIN_PERSONAL_TOKEN` into the environment `crowdin`, limited to `main`; whose Crowdin account it belongs to and when it expires (kolaente).
+
 [D1]: #d1-flutter-pub-workspace-with-pure-dart-packages
 [D2]: #d2-material_ui-and-cupertino_ui-instead-of-the-sdks-libraries
 [D3]: #d3-riverpod-3-with-code-generation
@@ -3251,3 +3273,4 @@ Limits:
 [D115]: #d115-the-decision-log-shortened
 [D116]: #d116-fixes-from-the-uiux-review-part-one
 [D117]: #d117-fixes-from-the-uiux-review-part-two
+[D118]: #d118-fewer-steps-for-vikunjas-maintainers-before-the-beta

@@ -1,13 +1,9 @@
-# Vikunja's Crowdin project, synced by Crowdin's GitHub integration (D88).
-# No credentials here: the integration holds its own, and the CLI reads
-# CROWDIN_PERSONAL_TOKEN from the environment.
+# Vikunja's Crowdin project, synced by the workflow "Crowdin"
+# (.github/workflows/crowdin.yaml, tool/ci/crowdin_sync.sh; D88).
+# No credentials here: the CLI reads CROWDIN_PERSONAL_TOKEN from the
+# environment.
 project_id: "462614"
 preserve_hierarchy: true
-# Crowdin appends "[ci skip]" by default, which leaves the pull request's
-# required checks unreported.
-commit_message: "chore(i18n): update translations via Crowdin"
-append_commit_message: false
-pull_request_title: "chore(i18n): update translations via Crowdin"
 
 files:
   - source: /app/lib/l10n/arb/app_en.arb
@@ -19,8 +15,9 @@ files:
     skip_untranslated_strings: true
     # Every regional or script file needs its base language's file
     # (app_sr.arb is committed). "no" is quoted: YAML 1.1 reads it as false.
-    # The CLI accepts only Crowdin's standard codes here, so Vikunja's custom
-    # Swiss German is mapped in the project's settings (D88).
+    # The CLI took only Crowdin's standard codes here when this was written,
+    # so Vikunja's custom Swiss German is mapped in the project's settings
+    # (D88); the workflow takes German from a download of its own either way.
     languages_mapping:
       two_letters_code:
         pt-PT: pt

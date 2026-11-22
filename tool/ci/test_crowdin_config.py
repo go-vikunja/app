@@ -1,4 +1,5 @@
-"""Checks crowdin.yml, which Crowdin's GitHub integration reads (D88)."""
+"""Checks crowdin.yml, which the workflow "Crowdin" gives Crowdin's CLI, and
+the commit and pull request that tool/ci/crowdin_sync.sh makes (D88)."""
 import json
 import os
 import re
@@ -8,6 +9,7 @@ from test_github_workflows import load
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CONFIG = os.path.join(ROOT, 'crowdin.yml')
+SYNC = os.path.join(ROOT, 'tool', 'ci', 'crowdin_sync.sh')
 # Crowdin's language codes and the ARB names gen-l10n reads; every other
 # language keeps its two-letter code.
 MAPPING = {'pt-PT': 'pt', 'pt-BR': 'pt_BR', 'zh-CN': 'zh', 'zh-TW': 'zh_Hant', 'no': 'nb', 'sr-CS': 'sr_Latn'}
@@ -43,11 +45,16 @@ class CrowdinConfigTest(unittest.TestCase):
             self.assertNotRegex(f.read(), r'(?i)\b(?:ghp|github_pat|gho)_\w+')
 
     def test_commits_and_pull_requests_run_ci(self):
-        self.assertIs(self.config['append_commit_message'], False)
-        for key in ('commit_message', 'pull_request_title'):
+        with open(SYNC, encoding='utf-8') as f:
+            script = f.read()
+        (message,) = re.findall(r'(?m)^COMMIT_MESSAGE="([^"]*)"$', script)
+        self.assertEqual(message, 'chore(i18n): update translations via Crowdin')
+        self.assertNotRegex(message, SKIP_CI)
+        self.assertNotRegex(script, SKIP_CI)
+        # The settings of Crowdin's GitHub integration, which is not used.
+        for key in ('commit_message', 'append_commit_message', 'pull_request_title'):
             with self.subTest(key):
-                self.assertNotRegex(self.config[key], SKIP_CI)
-                self.assertRegex(self.config[key], r'^chore\(i18n\): ')
+                self.assertNotIn(key, self.config)
 
     def test_the_paths(self):
         arb_dir = '/app/' + self.l10n['arb-dir']

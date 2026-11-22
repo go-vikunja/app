@@ -16,7 +16,7 @@ COMPOSE = os.path.join(ROOT, 'test_servers', 'docker-compose.yaml')
 SERVER_CAPABILITIES = os.path.join(ROOT, 'packages', 'vikunja_domain', 'lib', 'src', 'server',
                                    'server_capabilities.dart')
 
-WORKFLOW_FILES = {'ci.yaml', 'release.yaml', 'upstream.yaml', 'contract-matrix.yaml'}
+WORKFLOW_FILES = {'ci.yaml', 'release.yaml', 'upstream.yaml', 'contract-matrix.yaml', 'crowdin.yaml'}
 ALLOWED_ACTIONS = {'actions/checkout', 'actions/cache', 'actions/setup-node', 'actions/upload-artifact',
                    'actions/download-artifact'}
 RUNNERS = {'ubuntu-24.04', 'xcode-27'}
@@ -37,11 +37,19 @@ SECRETS = SIGNING_SECRETS + (PLAY_SECRET,) + S3_SECRETS
 # hold: the job secret-scope sees only those.
 CREDENTIALS = SIGNING_SECRETS + (PLAY_SECRET, 'S3_ACCESS_KEY', 'S3_SECRET_KEY')
 OUTSIDE_RELEASE_ENVIRONMENT = '${{ ' + ' || '.join(f"secrets.{name} != ''" for name in CREDENTIALS) + ' }}'
+# Each job's token: write access only to publish a release and to push the
+# Crowdin branch with its pull request.
+JOB_PERMISSIONS = {'release.yaml: publish': {'contents': 'write'},
+                   'crowdin.yaml: pull-request': {'contents': 'write', 'pull-requests': 'write'}}
+ENVIRONMENTS = {'release.yaml: publish': 'release', 'crowdin.yaml: translations': 'crowdin'}
+CROWDIN_TOKEN = {'CROWDIN_PERSONAL_TOKEN': '${{ secrets.CROWDIN_PERSONAL_TOKEN }}'}
+CROWDIN_ARTIFACT = 'crowdin-translations'
 BANNED = ('pull_request_target', 'workflow_run', 'self-hosted', 'fetch-depth', 'ACTIONS_STEP_DEBUG',
           'ACTIONS_RUNNER_DEBUG', 'secrets: inherit')
 
 NOT_SCHEDULED = "github.event_name != 'schedule'"
 OFFICIAL = "github.repository == 'go-vikunja/app'"
+OFFICIAL_MAIN = f"{OFFICIAL} && github.ref == 'refs/heads/main'"
 DRY_RUN_VARIABLE = "vars.VIKUNJA_APP_RELEASE_DRY_RUN == 'true'"
 UNSIGNED = {'name': 'release-unsigned', 'path': 'build/release/unsigned'}
 PUBLISH_RUNS = ['tool/ci/release_publish.sh check', 'tool/ci/release_sign.sh', 'tool/ci/release_publish.sh play',
@@ -114,6 +122,7 @@ class GitHubWorkflowsTest(unittest.TestCase):
         cls.release = cls.workflows['release.yaml']
         cls.upstream = cls.workflows['upstream.yaml']
         cls.matrix = cls.workflows['contract-matrix.yaml']
+        cls.crowdin = cls.workflows['crowdin.yaml']
 
     def all_jobs(self):
         for file, workflow in self.workflows.items():
@@ -146,6 +155,10 @@ class GitHubWorkflowsTest(unittest.TestCase):
         self.assertEqual(matrix['push'], {'tags': ['v*']})
         self.assertEqual(len(matrix['schedule']), 1)
         self.assertIsNone(matrix['workflow_dispatch'])
+        crowdin = triggers(self.crowdin)
+        self.assertEqual(set(crowdin), {'schedule', 'workflow_dispatch'})
+        self.assertEqual(len(crowdin['schedule']), 1)
+        self.assertIsNone(crowdin['workflow_dispatch'])
         for file, workflow in self.workflows.items():
             with self.subTest(file):
                 self.assertNotIn('pull_request_target', triggers(workflow))
@@ -158,8 +171,7 @@ class GitHubWorkflowsTest(unittest.TestCase):
                 self.assertEqual(workflow['permissions'], {})
         for label, job in self.all_jobs():
             with self.subTest(label):
-                expected = 'write' if label == 'release.yaml: publish' else 'read'
-                self.assertEqual(job.get('permissions'), {'contents': expected})
+                self.assertEqual(job.get('permissions'), JOB_PERMISSIONS.get(label, {'contents': 'read'}))
 
     def test_actions_are_pinned(self):
         pins = {}
@@ -227,6 +239,7 @@ class GitHubWorkflowsTest(unittest.TestCase):
         self.assertNotIn('concurrency', self.release)
         self.assertEqual(self.release['jobs']['publish']['concurrency'],
                          {'group': 'release-publish', 'cancel-in-progress': False, 'queue': 'max'})
+        self.assertEqual(self.crowdin['concurrency'], {'group': 'crowdin', 'cancel-in-progress': False})
 
     def test_the_schedule_runs_osv_only(self):
         for name, job in self.ci['jobs'].items():
@@ -333,9 +346,9 @@ class GitHubWorkflowsTest(unittest.TestCase):
                     if path.strip():
                         self.assertTrue(path.strip().startswith('.cache/'), path)
                         self.assertNotIn('..', path)
-        for name in RELEASE_JOBS:
-            job = self.release['jobs'][name]
-            with self.subTest(name):
+        for label, job in [*((name, self.release['jobs'][name]) for name in RELEASE_JOBS),
+                           *self.crowdin['jobs'].items()]:
+            with self.subTest(label):
                 self.assertEqual(steps_using(job, 'actions/cache'), [])
                 for step in steps(job):
                     if action(step).startswith('actions/setup-'):
@@ -399,14 +412,14 @@ class GitHubWorkflowsTest(unittest.TestCase):
                 self.assertEqual(kinds(job), ['actions/checkout', 'actions/download-artifact'] + ['run'] * 5)
                 self.assertEqual(steps_using(job, 'actions/download-artifact')[0]['with'], UNSIGNED)
         for label, job in self.all_jobs():
-            if label != 'release.yaml: publish':
-                with self.subTest(label):
-                    self.assertNotIn('environment', job)
+            with self.subTest(label):
+                self.assertEqual(job.get('environment'), ENVIRONMENTS.get(label))
 
     def test_secrets_only_in_publish(self):
         self.assertNotRegex(self.texts['ci.yaml'], SECRETS_REFERENCE)
         self.assertNotRegex(self.texts['upstream.yaml'], SECRETS_REFERENCE)
         self.assertNotRegex(self.texts['contract-matrix.yaml'], SECRETS_REFERENCE)
+        self.assertNotRegex(json.dumps(self.crowdin['jobs']['pull-request']), SECRETS_REFERENCE)
         others = dict(self.release, jobs={name: job for name, job in self.release['jobs'].items()
                                           if name not in ('publish', 'secret-scope')})
         self.assertNotRegex(json.dumps(others), SECRETS_REFERENCE)
@@ -445,6 +458,51 @@ class GitHubWorkflowsTest(unittest.TestCase):
             with self.subTest(name):
                 value = f'${{{{ secrets.{name} }}}}'
                 self.assertEqual(sum(value in json.dumps(step) for step in steps(publish)), 1)
+
+    def test_the_crowdin_jobs(self):
+        jobs = self.crowdin['jobs']
+        self.assertEqual(list(jobs), ['translations', 'pull-request'])
+
+        translations = jobs['translations']
+        self.assertEqual(translations['if'], OFFICIAL_MAIN)
+        self.assertNotIn('needs', translations)
+        self.assertEqual(kinds(translations), ['actions/checkout', 'run', 'run', 'actions/upload-artifact'])
+        self.assertEqual(runs(translations), ['tool/ci/crowdin_sync.sh upload', 'tool/ci/crowdin_sync.sh download'])
+        download = step_running(translations, 'tool/ci/crowdin_sync.sh download')
+        self.assertEqual(download['id'], 'download')
+        self.assertEqual(translations['outputs'], {'changed': '${{ steps.download.outputs.changed }}'})
+        (upload,) = steps_using(translations, 'actions/upload-artifact')
+        self.assertEqual(upload['if'], "steps.download.outputs.changed == 'true'")
+        self.assertEqual(upload['with'], {'name': CROWDIN_ARTIFACT, 'path': 'build/crowdin/',
+                                          'if-no-files-found': 'error', 'retention-days': 1})
+
+        pull_request = jobs['pull-request']
+        self.assertEqual(pull_request['needs'], 'translations')
+        self.assertEqual(' '.join(pull_request['if'].split()),
+                         f"{OFFICIAL_MAIN} && needs.translations.outputs.changed == 'true'")
+        self.assertEqual(kinds(pull_request), ['actions/checkout', 'actions/download-artifact', 'run'])
+        self.assertEqual(runs(pull_request), ['tool/ci/crowdin_sync.sh pull-request'])
+        self.assertEqual(steps_using(pull_request, 'actions/download-artifact')[0]['with'],
+                         {'name': CROWDIN_ARTIFACT, 'path': 'build/crowdin'})
+
+    def test_the_crowdin_token_only_where_the_cli_runs(self):
+        translations = self.crowdin['jobs']['translations']
+        self.assertNotIn('env', self.crowdin)
+        for label, job in self.crowdin['jobs'].items():
+            with self.subTest(label):
+                self.assertNotIn('env', job)
+        for command in ('tool/ci/crowdin_sync.sh upload', 'tool/ci/crowdin_sync.sh download'):
+            with self.subTest(command):
+                self.assertEqual(step_running(translations, command)['env'], CROWDIN_TOKEN)
+        for step in steps(translations):
+            if 'uses' in step:
+                self.assertNotRegex(json.dumps(step), SECRETS_REFERENCE)
+        self.assertEqual(set(re.findall(r'secrets\.(\w+)', self.texts['crowdin.yaml'])), {'CROWDIN_PERSONAL_TOKEN'})
+        self.assertNotIn('github.token', json.dumps(translations))
+        pull_request = self.crowdin['jobs']['pull-request']
+        self.assertEqual(step_running(pull_request, 'tool/ci/crowdin_sync.sh pull-request')['env'],
+                         {'GH_TOKEN': '${{ github.token }}'})
+        self.assertEqual(self.texts['crowdin.yaml'].count('github.token'), 1)
 
     def test_bans(self):
         for file, text in self.texts.items():
