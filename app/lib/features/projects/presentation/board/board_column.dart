@@ -208,6 +208,9 @@ class BoardColumnViewState extends State<BoardColumnView> {
                       label: tasks.isEmpty
                           ? l10n.boardAddTask
                           : l10n.boardAddAnotherTask,
+                      semanticsLabel: tasks.isEmpty
+                          ? l10n.boardAddTaskTo(column.bucket.title)
+                          : l10n.boardAddAnotherTaskTo(column.bucket.title),
                       onPressed: full ? null : addTask,
                     ),
                   ),
@@ -315,9 +318,17 @@ class _ColumnHeader extends StatelessWidget {
 /// "Add a task" at the bottom of a column; disabled, with the web's limit
 /// text as its tooltip, while the column is full.
 class _AddTaskButton extends StatelessWidget {
-  const new({required this.label, required this.onPressed});
+  const new({
+    required this.label,
+    required this.semanticsLabel,
+    required this.onPressed,
+  });
 
   final String label;
+
+  /// The shown text and the column's title, as every column has the
+  /// button.
+  final String semanticsLabel;
   final VoidCallback? onPressed;
 
   @override
@@ -325,7 +336,7 @@ class _AddTaskButton extends StatelessWidget {
     final button = TextButton.icon(
       onPressed: onPressed,
       icon: const Icon(Icons.add),
-      label: Text(label),
+      label: Text(label, semanticsLabel: semanticsLabel),
       style: TextButton.styleFrom(alignment: AlignmentDirectional.centerStart),
     );
     return onPressed == null

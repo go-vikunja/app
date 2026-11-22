@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/core/text/project_titles.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
 import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
@@ -37,6 +38,7 @@ Future<Project?> pickProject(
     case _:
       return showModalBottomSheet<Project>(
         context: context,
+        barrierLabel: sheetBarrierLabel(context),
         useRootNavigator: true,
         isScrollControlled: true,
         useSafeArea: true,
@@ -69,7 +71,6 @@ class _ProjectList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     return ListView.builder(
       controller: scrollController,
       itemCount: rows.length + 1,
@@ -77,14 +78,7 @@ class _ProjectList extends StatelessWidget {
         if (index == 0) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Semantics(
-              header: true,
-              headingLevel: 1,
-              child: Text(
-                l10n.taskEditProjectPickerTitle,
-                style: theme.textTheme.titleMedium,
-              ),
-            ),
+            child: SheetTitle(l10n.taskEditProjectPickerTitle),
           );
         }
         final row = rows[index - 1];

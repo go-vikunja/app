@@ -103,6 +103,7 @@ Future<void> showTaskDetail(
     case _:
       return showModalBottomSheet<void>(
         context: context,
+        barrierLabel: sheetBarrierLabel(context),
         // Over the tab bar, not inside the tab's own navigator.
         useRootNavigator: true,
         isScrollControlled: true,

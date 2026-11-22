@@ -267,7 +267,7 @@ final class _AccountBuild {
       kind,
       title: l10n.widgetUpcomingTitle(days),
       tasks: await _upcoming(days),
-      empty: WidgetText(l10n.upcomingEmptyTitle, body: l10n.upcomingEmptyBody),
+      empty: WidgetText(l10n.upcomingEmptyRangeTitle),
     ),
     OverdueKind() => _list(
       kind,

@@ -281,6 +281,8 @@ void main() {
     expect(titles(fourteen).last, 'Saturday');
     expect(fourteen.rows.last.dueLabel, 'Sat, 18:00');
     expect(fourteen.rows.last.absoluteDueLabel, 'Oct 31, 18:00');
+    // Days, not today alone: the range's neutral text, not the cheerful one.
+    expect(three.empty, const WidgetText('Nothing due in this range'));
   });
 
   test('Overdue lists only what is overdue, outside archived '

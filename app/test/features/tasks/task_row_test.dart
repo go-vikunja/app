@@ -114,10 +114,10 @@ void main() {
     expect(find.text('Work'), findsOneWidget);
     expect(find.byType(ProjectIcon), findsOneWidget);
     expect(find.byType(ColorDot), findsOneWidget);
-    expect(find.text('1 day ago'), findsOneWidget);
-    final context = tester.element(find.text('1 day ago'));
+    expect(find.text('yesterday'), findsOneWidget);
+    final context = tester.element(find.text('yesterday'));
     expect(
-      tester.widget<Text>(find.text('1 day ago')).style?.color,
+      tester.widget<Text>(find.text('yesterday')).style?.color,
       Theme.of(context).colorScheme.error,
     );
     expect(find.text(en.priorityMedium), findsOneWidget);
@@ -146,9 +146,9 @@ void main() {
       tester.widget<Text>(find.text('Pay the bill')).style?.decoration,
       TextDecoration.lineThrough,
     );
-    final context = tester.element(find.text('1 day ago'));
+    final context = tester.element(find.text('yesterday'));
     expect(
-      tester.widget<Text>(find.text('1 day ago')).style?.color,
+      tester.widget<Text>(find.text('yesterday')).style?.color,
       isNot(Theme.of(context).colorScheme.error),
     );
     expect(find.byType(PriorityFlag), findsNothing);
@@ -260,18 +260,18 @@ void main() {
     expect(node.label.split('\n'), [
       'Pay the bill',
       'Work',
-      en.taskOverdueSemantics('1 day ago'),
+      en.taskOverdueSemantics('yesterday'),
       en.prioritySemantics(en.priorityMedium),
       en.labelSemantics('alpha'),
       en.labelSemantics('Beta'),
       en.taskAssigneesSemantics('Anna, ben, Cleo, Dan'),
       en.taskHasDescription,
       en.taskRepeats,
-      en.taskChecklistProgress(1, 2),
+      en.taskChecklistChecked(1, 2),
       en.taskPercentDone(40),
       en.taskNotYetSynced,
     ]);
-    expect(tester.getSemantics(find.text('1 day ago')), same(node));
+    expect(tester.getSemantics(find.text('yesterday')), same(node));
     expect(tester.getSemantics(find.text(en.priorityMedium)), same(node));
 
     await pumpRow(tester, richTask(done: true));

@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/theme/app_theme.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences.dart';
 import 'package:vikunja_mobile/core/repositories/task_lists.dart';
@@ -17,6 +18,7 @@ import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_header.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_overlay.dart';
 import 'package:vikunja_mobile/features/projects/presentation/timeline/timeline_row.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/selected_task_highlight.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
 import '../../helpers/pump_app.dart';
@@ -435,6 +437,90 @@ void main() {
       startsText.right,
       lessThanOrEqualTo(starts.left + 0.6 * starts.width),
     );
+  });
+
+  testWidgets('every bar has a border that stands out from the chart (WCAG '
+      '1.4.11): primary around the default colour, done too, outline around '
+      "a task's colour", (tester) async {
+    await pumpTimeline(tester);
+    final colors = Theme.of(tester.element(find.byType(TimelineChart)))
+        .colorScheme;
+    Finder bar(String title) => find.descendant(
+      of: rowFinder(title),
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is CustomPaint &&
+            '${widget.painter.runtimeType}' == '_BarPainter',
+      ),
+    );
+
+    expect(
+      bar('Blocker'),
+      paints
+        ..rrect(color: colors.primaryContainer)
+        ..rrect(
+          color: colors.primary,
+          style: PaintingStyle.stroke,
+          strokeWidth: 1,
+        ),
+    );
+    expect(
+      bar('Done one'),
+      paints
+        ..rrect()
+        ..rrect(color: colors.primary, style: PaintingStyle.stroke),
+    );
+    expect(
+      bar('Scheduled'),
+      paints
+        ..rrect(color: parseHexColor('1973ff'))
+        ..rrect(color: colors.outline, style: PaintingStyle.stroke),
+    );
+    // Faded with the fill toward the missing end.
+    expect(
+      bar('Starts only'),
+      paints
+        ..rrect(style: PaintingStyle.fill)
+        ..rrect(style: PaintingStyle.stroke),
+    );
+  });
+
+  group("a bar's border on the chart in each scheme (WCAG 1.4.11)", () {
+    final schemes = {
+      'brand light': AppTheme.light(),
+      'brand dark': AppTheme.dark(),
+      'high-contrast light': AppTheme.highContrastLight(),
+      'high-contrast dark': AppTheme.highContrastDark(),
+    };
+    for (final MapEntry(key: name, value: theme) in schemes.entries) {
+      test(name, () {
+        final colors = theme.colorScheme;
+        final backgrounds = {
+          'a weekday': colors.surface,
+          'a weekend': Color.alphaBlend(
+            colors.surfaceContainerHighest.withValues(alpha: 0.45),
+            colors.surface,
+          ),
+          'the selected row': Color.alphaBlend(
+            SelectedTaskHighlight.fillOf(colors).withValues(alpha: 0.6),
+            colors.surface,
+          ),
+        };
+        for (final (border, color) in [
+          ('primary', colors.primary),
+          ('outline', colors.outline),
+        ]) {
+          for (final MapEntry(key: where, value: background)
+              in backgrounds.entries) {
+            expect(
+              contrast(color, background),
+              greaterThanOrEqualTo(3),
+              reason: '$border on $where',
+            );
+          }
+        }
+      });
+    }
   });
 
   testWidgets("a done bar's title reads well on its muted colour, in the "

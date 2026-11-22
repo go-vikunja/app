@@ -82,6 +82,7 @@ class DateField extends ConsumerWidget {
         DateShortcutChips(
           options: shortcuts,
           selectedDay: selectedDay,
+          fieldLabel: label,
           onSelected: (option) => onChanged(
             option == null
                 ? null

@@ -903,7 +903,7 @@
   },
   "favouriteLabel": "Favorite",
   "@favouriteLabel": {
-    "description": "Semantic label of the star shown on favorite projects and tasks."
+    "description": "Screen reader: the star of a favorite project or saved filter, and the name of a task's star, which is read as a switch with its state, on for a favorite task."
   },
   "projectTasksLoading": "Loading tasks…",
   "projectTasksEmptyTitle": "No open tasks",
@@ -1438,7 +1438,7 @@
   },
   "accountBackgroundSyncNoneSucceeded": "No successful background sync yet",
   "@accountBackgroundSyncNoneSucceeded": {
-    "description": "In the Account tab's Sync section: no background sync of the account has gone through yet, though attempts may have failed (accountBackgroundTurn follows then)."
+    "description": "In the Account tab's Sync section: the background sync has tried the account, but none of its attempts has gone through yet (the last failed attempt usually follows in accountBackgroundTurn). Before any attempt, accountBackgroundSyncNotRunYet shows instead."
   },
   "accountBackgroundSyncIosHint": "iOS decides when apps may sync in the background.",
   "accountBackgroundTurn": "Last attempt {when}: {outcome}",
@@ -1652,11 +1652,11 @@
   "undo": "Undo",
   "taskAddFavourite": "Add to favorites",
   "@taskAddFavourite": {
-    "description": "Tooltip and screen reader label of the star button of a task that is not among the favorites."
+    "description": "Tooltip of the star button of a task that is not among the favorites; screen readers hear the star as the switch favouriteLabel instead."
   },
   "taskRemoveFavourite": "Remove from favorites",
   "@taskRemoveFavourite": {
-    "description": "Tooltip and screen reader label of the star button of a task that is among the favorites."
+    "description": "Tooltip of the star button of a task that is among the favorites; screen readers hear the star as the switch favouriteLabel instead."
   },
   "taskNotYetSynced": "Not yet synced",
   "@taskNotYetSynced": {
@@ -2740,16 +2740,6 @@
   },
   "notificationsMayBeLate": "Reminders may be late",
   "notificationsAllowExactAlarms": "Allow exact alarms",
-  "notificationsScheduled": "{count, plural, =0{Nothing scheduled} one{{count} scheduled} other{{count} scheduled}}",
-  "@notificationsScheduled": {
-    "description": "How many notifications the OS holds for this account.",
-    "placeholders": {
-      "count": {
-        "type": "int",
-        "example": "12"
-      }
-    }
-  },
   "notificationsSendTest": "Send a test notification",
   "notificationTestTitle": "Test notification",
   "notificationTestBody": "The app's notifications work on this device.",
@@ -3127,7 +3117,13 @@
   },
   "taskDuplicateFailedUnknown": "Couldn't duplicate the task.",
   "followTask": "Follow task",
+  "@followTask": {
+    "description": "The task sheet's follow bell: its tooltip while the user does not follow the task, and its name for screen readers, which read the bell as a switch with its state, on while the user follows the task."
+  },
   "unfollowTask": "Unfollow task",
+  "@unfollowTask": {
+    "description": "Tooltip of the task sheet's follow bell while the user follows the task; screen readers hear the bell as the switch followTask instead."
+  },
   "followProject": "Follow project",
   "unfollowProject": "Unfollow project",
   "followNeedsConnection": "Following needs a connection to the server.",
@@ -3156,7 +3152,7 @@
   },
   "followingViaSomeProject": "Following through a project",
   "@followingViaSomeProject": {
-    "description": "Under the task title when the user follows the task through a project whose title the app does not know. On a server older than Vikunja 2.6.0 also the label of the follow bell, and of a project's follow item, for a follow through the project or a parent project, which only unfollowing that project stops there."
+    "description": "Under the task title when the user follows the task through a project whose title the app does not know. On a server older than Vikunja 2.6.0 also the tooltip of the follow bell, and the label of a project's follow item, for a follow through the project or a parent project, which only unfollowing that project stops there."
   },
   "followInheritedTaskTitle": "Stop following this task?",
   "followInheritedTaskBody": "You follow the project “{project}”, which includes this task. You will stop getting notifications about this task only and keep following the project.",
@@ -3219,7 +3215,13 @@
   },
   "tabUpcoming": "Upcoming",
   "upcomingEmptyTitle": "Nothing due — enjoy your day!",
+  "@upcomingEmptyTitle": {
+    "description": "Upcoming when no open task is due and its date range is today alone, above upcomingEmptyBody."
+  },
   "upcomingEmptyBody": "No open task is due in this date range.",
+  "@upcomingEmptyBody": {
+    "description": "Upcoming, below upcomingEmptyTitle when no open task is due and its date range is today alone."
+  },
   "upcomingShowOverdue": "Show overdue tasks",
   "upcomingShowWithoutDate": "Show tasks without a date",
   "@upcomingShowWithoutDate": {
@@ -3511,30 +3513,6 @@
       "count": {
         "type": "int",
         "example": "2"
-      }
-    }
-  },
-  "taskChecklistProgress": "{checked} of {total} tasks",
-  "@taskChecklistProgress": {
-    "description": "The checkboxes in a task's description, some still open.",
-    "placeholders": {
-      "checked": {
-        "type": "int",
-        "example": "2"
-      },
-      "total": {
-        "type": "int",
-        "example": "5"
-      }
-    }
-  },
-  "taskChecklistAllDone": "{total, plural, one{{total} task} other{{total} tasks}}",
-  "@taskChecklistAllDone": {
-    "description": "The checkboxes in a task's description, all checked.",
-    "placeholders": {
-      "total": {
-        "type": "int",
-        "example": "5"
       }
     }
   },
@@ -4911,7 +4889,10 @@
   "@searchPreparing": {
     "description": "Screen-reader label of the progress bar while the search reads this device's data for the first time."
   },
-  "searchHint": "Tasks, projects, filters, labels",
+  "searchHint": "Tasks, projects, saved filters, labels",
+  "@searchHint": {
+    "description": "Placeholder of the search field on the Search page: what a search finds on this device."
+  },
   "searchTasks": "Tasks",
   "searchProjects": "Projects",
   "searchLabels": "Labels",
@@ -6018,7 +5999,10 @@
   "@commentPosted": {
     "description": "Read by screen readers once a comment written in the app is on the server."
   },
-  "commentComposerOffline": "Needs a connection. What you wrote stays here.",
+  "commentComposerOffline": "Commenting needs a connection. What you wrote stays here.",
+  "@commentComposerOffline": {
+    "description": "Above the task sheet's comment field while the device is offline: the field is disabled, and the draft is kept until the connection is back."
+  },
   "commentReplyingTo": "Replying to {name}",
   "@commentReplyingTo": {
     "description": "Above the comment field while replying to a comment; name is the comment author's name, for example Anna.",
@@ -7357,10 +7341,6 @@
   "overviewSignInPageOffersBoth": "The sign-in page also lets you create an account and reset your password.",
   "overviewSignInPageOffersRegistration": "The sign-in page also lets you create an account.",
   "overviewSignInPageOffersPasswordReset": "The sign-in page also lets you reset your password.",
-  "overviewDemoNote": "This is a demo server. Its data may be deleted at any time.",
-  "@overviewDemoNote": {
-    "description": "Account tab, Server section, when the server reports demo mode."
-  },
   "guestAccountSubtitle": "Guest · {host}",
   "@guestAccountSubtitle": {
     "description": "Second line of a link-share guest in the account list, the switcher and the Account tab's header.",
@@ -8054,11 +8034,11 @@
   },
   "privacyTitle": "Privacy",
   "@privacyTitle": {
-    "description": "Heading of the Account tab's privacy section and title of the privacy page (app lock, screenshots, notification content, widget titles and, in builds that have them, crash reports)."
+    "description": "Heading of the Account tab's section that holds the entry to the privacy page (privacyEntryTitle)."
   },
   "privacyEntryTitle": "App lock and privacy",
   "@privacyEntryTitle": {
-    "description": "The Account tab entry to the privacy page."
+    "description": "The Account tab's entry to the privacy page, and that page's title (app lock, screenshots, notification content, widget titles and, in builds that have them, crash reports)."
   },
   "privacyEntryAppLockOff": "App lock: Off",
   "@privacyEntryAppLockOff": {
@@ -9266,7 +9246,7 @@
   "@aboutLicences": {
     "description": "Opens the license page (Flutter's LicensePage)."
   },
-  "aboutLicencesSubtitle": "The app's license under “vikunja_app”, and the licenses of the software the app contains",
+  "aboutLicencesSubtitle": "Licenses of the app (listed as “vikunja_app”) and of the software it contains",
   "@aboutLicencesSubtitle": {
     "description": "Under Licenses on the About page; “vikunja_app” is the entry's name on the license page (the workspace root package that carries the repository's LICENSE), kept exactly as written."
   },
@@ -9297,10 +9277,6 @@
   "aboutPrivacyPolicy": "Privacy policy",
   "@aboutPrivacyPolicy": {
     "description": "Opens the privacy policy on vikunja.io at its section on the app, in the browser; the server's own legal links are elsewhere (legalPrivacy)."
-  },
-  "aboutPrivacyPolicySubtitle": "How the app handles your data",
-  "@aboutPrivacyPolicySubtitle": {
-    "description": "Under aboutPrivacyPolicy on the About page."
   },
   "aboutLegalNotice": "Legal notice",
   "@aboutLegalNotice": {
@@ -9935,5 +9911,165 @@
         "example": "2"
       }
     }
+  },
+  "accountBackgroundSyncNotRunYet": "Background sync hasn't run yet.",
+  "@accountBackgroundSyncNotRunYet": {
+    "description": "In the Account tab's Sync section, before the background sync has had a turn for the account: nothing was attempted yet, so nothing failed. Once it ran, accountBackgroundSyncSucceeded or accountBackgroundSyncNoneSucceeded takes its place."
+  },
+  "notificationsScheduledOnDevice": "{count, plural, =0{No notifications scheduled on this device} one{{count} notification scheduled on this device} other{{count} notifications scheduled on this device}}",
+  "@notificationsScheduledOnDevice": {
+    "description": "Status line in the Account tab's Notifications section, under the switches: how many of this account's reminder and due-date notifications are scheduled with the system on this device.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "6"
+      }
+    }
+  },
+  "demoServerNote": "This is a demo server. Its data may be deleted at any time. If you sign in with a shared demo account, anyone can see and change what you add, so don't add anything personal.",
+  "@demoServerNote": {
+    "description": "On the server overview and in the Account tab's Server section when the server reports demo mode, such as Vikunja's public demo, whose shared demo account is open to every visitor."
+  },
+  "connectionCleartextTrustedNetwork": "Only connect on a network you trust, such as your home network or a VPN.",
+  "@connectionCleartextTrustedNetwork": {
+    "description": "On the Connection page of a plain http address, under connectionCleartextAllowedSince: the advice of the question that allowed unencrypted connections (insecureDialogBody), as everything at this address travels unencrypted."
+  },
+  "connectionOptionsNeedAddress": "Type the server address first.",
+  "@connectionOptionsNeedAddress": {
+    "description": "Under Connection options (connectionOptions) on the connect screen while the address field holds no server address; the button is disabled until it does."
+  },
+  "aboutPrivacyPolicySummary": "The app has no server of its own: apart from crash reports you allow, it talks only to the servers you add.",
+  "@aboutPrivacyPolicySummary": {
+    "description": "Under aboutPrivacyPolicy on the About page, in builds that can send crash reports: the privacy policy's point in short, the same sentence as in the store listings."
+  },
+  "aboutPrivacyPolicySummaryNoCrashReports": "The app has no server of its own: it talks only to the servers you add.",
+  "@aboutPrivacyPolicySummaryNoCrashReports": {
+    "description": "aboutPrivacyPolicySummary in builds that cannot send crash reports."
+  },
+  "taskChecklistChecked": "{checked} of {total} checked",
+  "@taskChecklistChecked": {
+    "description": "The checklist items (checkboxes) in a task's description while some are unchecked, beside the task sheet's Description heading and in a task row's spoken summary; checked is the number of checked items, total the number of all items.",
+    "placeholders": {
+      "checked": {
+        "type": "int",
+        "example": "2"
+      },
+      "total": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "taskChecklistAllChecked": "{total, plural, one{{total} of {total} checked} other{All {total} checked}}",
+  "@taskChecklistAllChecked": {
+    "description": "The checklist items (checkboxes) in a task's description once all are checked, beside the task sheet's Description heading and in a task row's spoken summary; total is the number of items.",
+    "placeholders": {
+      "total": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
+  "momentShortDateTime": "{date} {time}",
+  "@momentShortDateTime": {
+    "description": "A date and its time of day where the app shows a moment itself (the task sheet's dates and reminders, the edit page, the new-task sheet, tokens and sessions), while the user picked no date display on the web; date is the device's short date, time the time of day. Order and separate them as your language writes a date with a time.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Oct 19, 2026"
+      },
+      "time": {
+        "type": "String",
+        "example": "2:05 PM"
+      }
+    }
+  },
+  "relativeTomorrow": "tomorrow",
+  "@relativeTomorrow": {
+    "description": "A relative time on the next calendar day, at least 22 hours from now, for dates and times across the app, in place of \"in 1 day\"; lowercase, as it can stand inside a sentence, for example \"Due tomorrow\"."
+  },
+  "relativeYesterday": "yesterday",
+  "@relativeYesterday": {
+    "description": "A relative time on the previous calendar day, at least 22 hours ago, for dates and times across the app, in place of \"1 day ago\"; lowercase, as it can stand inside a sentence, for example \"Overdue, was due yesterday\"."
+  },
+  "shortcutFieldSemantics": "{field}: {label}, {date}",
+  "@shortcutFieldSemantics": {
+    "description": "Screen reader: a date shortcut chip under one of the edit page's dates, read with the date's name and the day it stands for, so that the chips of the due, start and end dates differ; field is the date's name, label the chip's text, date the day.",
+    "placeholders": {
+      "field": {
+        "type": "String",
+        "example": "Start date"
+      },
+      "label": {
+        "type": "String",
+        "example": "Tomorrow"
+      },
+      "date": {
+        "type": "String",
+        "example": "Sat, Oct 10"
+      }
+    }
+  },
+  "taskEditDiscardBodyDescriptionSaved": "Your other edits will be lost. The description is already saved.",
+  "@taskEditDiscardBodyDescriptionSaved": {
+    "description": "Body of the edit page's discard dialog once the description, which the description editor saves on its own, was saved during this visit, so that only the page's other fields are lost."
+  },
+  "sectionTaskCount": "{count, plural, one{{count} task} other{{count} tasks}}",
+  "@sectionTaskCount": {
+    "description": "Screen reader: read with the heading of a section of tasks (Overdue, Today, the other due sections and Done on the Overview, in saved filters and in a label's tasks; Overdue, each day and No due date on Upcoming; Done in a project's list) in place of the bare number shown at the heading's end.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "3"
+      }
+    }
+  },
+  "upcomingDaySubtitle": "{day} · {count, plural, =0{nothing open} one{{count} open} other{{count} open}}",
+  "@upcomingDaySubtitle": {
+    "description": "Under Upcoming's app bar while one day is picked in the day strip, in place of upcomingSubtitle: the day and how many open tasks are due on it.",
+    "placeholders": {
+      "day": {
+        "type": "String",
+        "example": "Sun, Nov 22"
+      },
+      "count": {
+        "type": "int",
+        "format": "decimalPattern",
+        "example": "2"
+      }
+    }
+  },
+  "upcomingAllDays": "All days",
+  "@upcomingAllDays": {
+    "description": "Button beside Upcoming's subtitle while one day is picked in the day strip: shows every day of the date range again."
+  },
+  "upcomingEmptyRangeTitle": "Nothing due in this range",
+  "@upcomingEmptyRangeTitle": {
+    "description": "Upcoming when no open task is due in its date range, above upcomingEmptyRangeBody; a range of today alone shows upcomingEmptyTitle instead. Also the Upcoming home-screen widget's text (next 3, 7 or 14 days) when no open task is due in its days."
+  },
+  "boardAddTaskTo": "Add a task to {column}",
+  "@boardAddTaskTo": {
+    "description": "Screen reader: name of the button at the bottom of an empty kanban column, which shows boardAddTask; {column} is the column's title.",
+    "placeholders": {
+      "column": {
+        "type": "String",
+        "example": "To do"
+      }
+    }
+  },
+  "boardAddAnotherTaskTo": "Add another task to {column}",
+  "@boardAddAnotherTaskTo": {
+    "description": "Screen reader: name of the button at the bottom of a kanban column that has cards, which shows boardAddAnotherTask; {column} is the column's title.",
+    "placeholders": {
+      "column": {
+        "type": "String",
+        "example": "To do"
+      }
+    }
+  },
+  "upcomingEmptyRangeBody": "To see other days, select another date range.",
+  "@upcomingEmptyRangeBody": {
+    "description": "Upcoming, below upcomingEmptyRangeTitle when no open task is due in its date range of more than today; the range button in the app bar is named upcomingSelectRange."
   }
 }

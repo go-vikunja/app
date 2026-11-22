@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_tile.dart';
 
@@ -32,6 +33,7 @@ Future<String?> pickAccount(
     case _:
       return showModalBottomSheet<String>(
         context: context,
+        barrierLabel: sheetBarrierLabel(context),
         useRootNavigator: true,
         isScrollControlled: true,
         useSafeArea: true,
@@ -70,16 +72,11 @@ class AccountPickerSheet extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-            child: Semantics(
-              header: true,
-              headingLevel: 1,
-              child: Text(
-                title ??
-                    (single
-                        ? l10n.deepLinkSwitchAccountTitle
-                        : l10n.deepLinkPickAccountTitle),
-                style: theme.textTheme.titleLarge,
-              ),
+            child: SheetTitle(
+              title ??
+                  (single
+                      ? l10n.deepLinkSwitchAccountTitle
+                      : l10n.deepLinkPickAccountTitle),
             ),
           ),
           Padding(

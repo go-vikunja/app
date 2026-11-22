@@ -356,11 +356,22 @@ void main() {
         ),
       );
       expect(button().onPressed, isNull);
+      expect(optionsText(tester), contains(en.connectionOptionsNeedAddress));
+      expect(
+        find.bySemanticsLabel(
+          RegExp(RegExp.escape(en.connectionOptionsNeedAddress)),
+        ),
+        findsOneWidget,
+      );
 
       await tester.enterText(_addressField, 'vikunja.example.com');
       await tester.pumpAndSettle();
       expect(button().onPressed, isNotNull);
       expect(optionsText(tester), contains(en.connectionOptionsFor('$origin')));
+      expect(
+        optionsText(tester),
+        isNot(contains(en.connectionOptionsNeedAddress)),
+      );
 
       await tester.enterText(_addressField, 'vikunja.example.com:3456');
       await tester.pumpAndSettle();
@@ -379,6 +390,7 @@ void main() {
       await tester.enterText(_addressField, 'not an address');
       await tester.pumpAndSettle();
       expect(button().onPressed, isNull);
+      expect(optionsText(tester), contains(en.connectionOptionsNeedAddress));
     });
 
     testWidgets('mark an address with saved settings and open its screen', (

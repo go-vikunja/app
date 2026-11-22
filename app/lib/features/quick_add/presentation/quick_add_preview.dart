@@ -262,7 +262,7 @@ class QuickAddPreview extends ConsumerWidget {
     );
     return _PartChip(
       kind: MagicSpanKind.date,
-      icon: const Icon(Icons.event),
+      icon: const Icon(Icons.calendar_today_outlined),
       label: l10n.quickAddDueLabel(date, relative),
       semanticsLabel: l10n.quickAddDueSemantics(
         formatter.semanticsLabel(due) ?? date,

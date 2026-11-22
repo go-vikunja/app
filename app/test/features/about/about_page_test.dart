@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/legal.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_report_providers.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/about/presentation/about_page.dart';
@@ -15,6 +16,7 @@ import 'package:vikunja_mobile/features/home/presentation/account_tab.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 
 import '../../helpers/auth_fakes.dart';
+import '../../helpers/crash_report_fakes.dart';
 import '../../helpers/fakes.dart';
 import '../../helpers/guest_app.dart';
 import '../../helpers/pump_app.dart';
@@ -252,6 +254,7 @@ void main() {
     Future<FakeExternalLinkOpener> pumpAbout(
       WidgetTester tester, {
       bool opens = true,
+      String? crashReportsDsn,
     }) async {
       final opener = FakeExternalLinkOpener(succeeds: opens);
       usePhoneSurface(tester);
@@ -260,6 +263,7 @@ void main() {
           overrides: [
             appVersionProvider.overrideWithValue(testAppVersion),
             externalLinkOpenerProvider.overrideWithValue(opener),
+            crashReportsDsnProvider.overrideWithValue(crashReportsDsn),
           ],
           child: const MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,
@@ -326,6 +330,30 @@ void main() {
       }
     });
 
+    testWidgets('the privacy policy says in short that the app talks only '
+        'to the servers added, in a build without crash reports', (
+      tester,
+    ) async {
+      await pumpAbout(tester);
+
+      expect(
+        find.text(en.aboutPrivacyPolicySummaryNoCrashReports),
+        findsOneWidget,
+      );
+      expect(find.text(en.aboutPrivacyPolicySummary), findsNothing);
+    });
+
+    testWidgets('the privacy policy names the crash reports the user allows, '
+        'in a build that can send them', (tester) async {
+      await pumpAbout(tester, crashReportsDsn: testCrashReportsDsn);
+
+      expect(find.text(en.aboutPrivacyPolicySummary), findsOneWidget);
+      expect(
+        find.text(en.aboutPrivacyPolicySummaryNoCrashReports),
+        findsNothing,
+      );
+    });
+
     testWidgets('a link that does not open says so', (tester) async {
       await pumpAbout(tester, opens: false);
 
@@ -341,6 +369,7 @@ void main() {
     Future<FakeExternalLinkOpener> pumpAbout(
       WidgetTester tester, {
       bool opens = true,
+      String? crashReportsDsn,
     }) async {
       final opener = FakeExternalLinkOpener(succeeds: opens);
       usePhoneSurface(tester);
@@ -349,6 +378,7 @@ void main() {
           overrides: [
             appVersionProvider.overrideWithValue(testAppVersion),
             externalLinkOpenerProvider.overrideWithValue(opener),
+            crashReportsDsnProvider.overrideWithValue(crashReportsDsn),
           ],
           child: const MaterialApp(
             localizationsDelegates: appLocalizationsDelegates,

@@ -1,6 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
-import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/overview/demo_note.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/legal_links.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/motd_card.dart';
 
@@ -26,49 +26,10 @@ class ServerNotices extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 8,
         children: [
-          if (info.demoModeEnabled) const _DemoNote(),
+          if (info.demoModeEnabled) const DemoNote(),
           if (motd.isNotEmpty) MotdCard(message: motd),
           if (hasLegal) LegalLinksRow(links: legal),
         ],
-      ),
-    );
-  }
-}
-
-class _DemoNote extends StatelessWidget {
-  const new();
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    return Card.filled(
-      color: colors.tertiaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Semantics(
-          container: true,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              ExcludeSemantics(
-                child: Icon(
-                  Icons.science_outlined,
-                  color: colors.onTertiaryContainer,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  context.l10n.overviewDemoNote,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: colors.onTertiaryContainer,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

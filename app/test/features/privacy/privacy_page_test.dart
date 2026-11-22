@@ -522,6 +522,10 @@ void main() {
       containerOf(tester).read(appRouterProvider).state.matchedLocation,
       AppRoutes.privacy,
     );
+    // The page is named like the entry, which the crash report question
+    // names as the way there.
+    expect(find.widgetWithText(AppBar, en.privacyEntryTitle), findsOneWidget);
+    expect(find.widgetWithText(AppBar, en.privacyTitle), findsNothing);
   });
 
   testWidgets('a link-share guest has the section and the page too', (

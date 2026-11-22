@@ -3,6 +3,8 @@ import 'package:material_ui/material_ui.dart';
 /// A section heading in the detail sheet in the primary colour, with
 /// [trailing] (a count, a summary or a text button) after it, at the end
 /// when both fit on one line, and icon buttons as [actions] at the end.
+/// The heading and [trailing] are nodes of their own, so that heading
+/// navigation lands on the title alone and the summary follows it.
 class DetailSectionHeader extends StatelessWidget {
   const new({
     required this.title,
@@ -38,6 +40,7 @@ class DetailSectionHeader extends StatelessWidget {
                 spacing: 8,
                 children: [
                   Semantics(
+                    container: true,
                     header: true,
                     headingLevel: 2,
                     child: Text(
@@ -48,11 +51,14 @@ class DetailSectionHeader extends StatelessWidget {
                     ),
                   ),
                   if (trailing != null)
-                    DefaultTextStyle.merge(
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: colors.onSurfaceVariant,
+                    Semantics(
+                      container: true,
+                      child: DefaultTextStyle.merge(
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                        child: trailing,
                       ),
-                      child: trailing,
                     ),
                 ],
               ),

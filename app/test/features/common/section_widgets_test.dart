@@ -222,7 +222,7 @@ void main() {
           today: false,
           rows: [tile()],
         ),
-        'Accounts\n1',
+        'Accounts\n${en.sectionTaskCount(1)}',
       ),
     };
     for (final MapEntry(key: name, value: (section, heading))
@@ -259,6 +259,48 @@ void main() {
     });
   });
 
+  testWidgets('both section cards hand the spoken count to their header', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    await pump(
+      tester,
+      CustomScrollView(
+        slivers: [
+          const SliverToBoxAdapter(
+            child: SectionCard(
+              title: 'Today',
+              count: 1,
+              countLabel: '1 task',
+              children: [Text('One')],
+            ),
+          ),
+          SliverSectionCard(
+            title: 'Overdue',
+            count: 2,
+            countLabel: '2 tasks',
+            action: TextButton(
+              onPressed: () {},
+              child: const Text('Reschedule'),
+            ),
+            itemCount: 2,
+            itemBuilder: (context, index) => Text('Late $index'),
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      tester.getSemantics(find.text('Today')),
+      isSemantics(isHeader: true, label: 'Today\n1 task'),
+    );
+    expect(
+      tester.getSemantics(find.text('Overdue')),
+      isSemantics(isHeader: true, label: 'Overdue\n2 tasks'),
+    );
+    semantics.dispose();
+  });
+
   testWidgets('a section header is a header with its count', (tester) async {
     final semantics = tester.ensureSemantics();
     await pump(tester, const ListSectionHeader(title: 'Overdue', count: 3));
@@ -268,6 +310,116 @@ void main() {
       isSemantics(isHeader: true, label: 'Overdue\n3'),
     );
     semantics.dispose();
+  });
+
+  testWidgets('a section header with an action reads its count with the '
+      'heading, and its title sits level with the action and where the '
+      "other headers' titles sit", (tester) async {
+    final semantics = tester.ensureSemantics();
+    const padding = EdgeInsetsDirectional.fromSTEB(20, 16, 20, 4);
+    await pump(
+      tester,
+      Column(
+        children: [
+          const ListSectionHeader(
+            title: 'Today',
+            count: 2,
+            countLabel: '2 tasks',
+            padding: padding,
+          ),
+          ListSectionHeader(
+            title: 'Overdue',
+            count: 3,
+            countLabel: '3 tasks',
+            action: TextButton(
+              onPressed: () {},
+              child: const Text('Reschedule'),
+            ),
+            padding: padding,
+          ),
+          ListSectionHeader(
+            title: 'Later',
+            count: 4,
+            action: TextButton(onPressed: () {}, child: const Text('Move')),
+            padding: padding,
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      tester.getSemantics(find.text('Today')),
+      isSemantics(isHeader: true, label: 'Today\n2 tasks'),
+    );
+    expect(
+      tester.getSemantics(find.text('Overdue')),
+      isSemantics(isHeader: true, label: 'Overdue\n3 tasks'),
+    );
+    expect(
+      tester.getSemantics(find.text('Later')),
+      isSemantics(isHeader: true, label: 'Later\n4'),
+    );
+    final labels = [for (final node in _visitedNodes(tester)) node.label];
+    expect(labels, isNot(contains('3')));
+    expect(labels, isNot(contains('4')));
+
+    double titleFromTop(String title) =>
+        tester.getCenter(find.text(title)).dy -
+        tester.getTopLeft(find.widgetWithText(ListSectionHeader, title)).dy;
+    expect(
+      tester.getCenter(find.text('Overdue')).dy,
+      closeTo(tester.getCenter(find.text('Reschedule')).dy, 0.5),
+    );
+    expect(titleFromTop('Overdue'), closeTo(titleFromTop('Today'), 0.5));
+    expect(
+      tester.getSize(find.widgetWithText(ListSectionHeader, 'Overdue')).height,
+      lessThanOrEqualTo(
+        tester.getSize(find.widgetWithText(ListSectionHeader, 'Today')).height +
+            4,
+      ),
+    );
+    semantics.dispose();
+  });
+
+  testWidgets('a section header whose action wraps below the title keeps '
+      "its title where the other headers' titles sit", (tester) async {
+    const padding = EdgeInsetsDirectional.fromSTEB(16, 16, 16, 4);
+    await pump(
+      tester,
+      Align(
+        alignment: AlignmentDirectional.topStart,
+        child: SizedBox(
+          width: 220,
+          child: Column(
+            children: [
+              const ListSectionHeader(
+                title: 'Today',
+                count: 2,
+                padding: padding,
+              ),
+              ListSectionHeader(
+                title: 'Overdue',
+                count: 3,
+                action: TextButton(
+                  onPressed: () {},
+                  child: const Text('Reschedule all of them'),
+                ),
+                padding: padding,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getTopLeft(find.text('Reschedule all of them')).dy,
+      greaterThan(tester.getBottomLeft(find.text('Overdue')).dy),
+    );
+    double titleFromTop(String title) =>
+        tester.getCenter(find.text(title)).dy -
+        tester.getTopLeft(find.widgetWithText(ListSectionHeader, title)).dy;
+    expect(titleFromTop('Overdue'), closeTo(titleFromTop('Today'), 0.5));
   });
 
   testWidgets('a section header takes another title colour, and a long '

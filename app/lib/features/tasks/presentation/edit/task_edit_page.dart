@@ -65,6 +65,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
   Task? _current;
   TaskDraft? _draft;
   bool _saving = false;
+  bool _descriptionSaved = false;
   Map<int, int> _labelRemaps = const {};
 
   bool get _dirty {
@@ -162,6 +163,7 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
       AppRoutes.taskDescription(current.id),
     );
     if (saved ?? false) {
+      _descriptionSaved = true;
       messenger
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(l10n.descriptionEditorSaved)));
@@ -202,7 +204,11 @@ class _TaskEditPageState extends ConsumerState<TaskEditPage> {
 
   Future<void> _leaveIfConfirmed() async {
     final router = GoRouter.of(context);
-    if (await confirmDiscardChanges(context) && mounted) router.pop();
+    final discard = await confirmDiscardChanges(
+      context,
+      descriptionSaved: _descriptionSaved,
+    );
+    if (discard && mounted) router.pop();
   }
 
   @override
@@ -409,7 +415,7 @@ class _Form extends ConsumerWidget {
           DateField(
             label: l10n.taskDetailDueDate,
             clearLabel: l10n.taskEditClearDueDate,
-            icon: Icons.event_outlined,
+            icon: Icons.calendar_today_outlined,
             value: draft.dueDate,
             now: now,
             shortcuts: shortcuts,
@@ -458,19 +464,25 @@ class _Form extends ConsumerWidget {
             ),
           ),
           _SectionTitle(l10n.taskDetailProgress),
+          // Read once, as the slider's value. The slider has no value
+          // bubble: its text would be read as the slider's name too.
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(l10n.taskPercentDone(percent)),
+            child: ExcludeSemantics(child: Text(l10n.taskPercentDone(percent))),
           ),
-          Slider.adaptive(
-            value: percent.toDouble(),
-            max: 100,
-            divisions: 10,
-            label: l10n.taskPercentDone(percent),
-            semanticFormatterCallback: (value) =>
-                l10n.taskPercentDone(value.round()),
-            onChanged: (value) => onChanged(
-              (draft) => draft.copyWith(percentDone: value.round() / 100),
+          MergeSemantics(
+            child: Semantics(
+              label: l10n.taskDetailProgress,
+              child: Slider.adaptive(
+                value: percent.toDouble(),
+                max: 100,
+                divisions: 10,
+                semanticFormatterCallback: (value) =>
+                    l10n.taskPercentDone(value.round()),
+                onChanged: (value) => onChanged(
+                  (draft) => draft.copyWith(percentDone: value.round() / 100),
+                ),
+              ),
             ),
           ),
           _SectionTitle(l10n.taskEditColour),

@@ -12,6 +12,7 @@ import '../../helpers/auth_fakes.dart';
 import '../../helpers/connection_fakes.dart';
 import '../../helpers/guest_app.dart';
 import '../../helpers/pump_app.dart';
+import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 import '../../helpers/tls_fixtures.dart';
 
@@ -73,6 +74,41 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ConnectionPage), findsOneWidget);
       expect(find.text(en.connectionMismatchTitle), findsOneWidget);
+    });
+
+    Icon leadingIcon(WidgetTester tester) =>
+        tester
+                .widget<ListTile>(
+                  find.descendant(
+                    of: find.byType(ConnectionTile),
+                    matching: find.byType(ListTile),
+                  ),
+                )
+                .leading!
+            as Icon;
+
+    testWidgets('shows the shield, without a colour, for an encrypted '
+        'server', (tester) async {
+      await pumpSignedInApp(tester, auth: auth);
+      await showConnectionTile(tester);
+
+      expect(leadingIcon(tester).icon, Icons.security_outlined);
+      expect(leadingIcon(tester).color, isNull);
+    });
+
+    testWidgets('marks an unencrypted server as the server overview does, '
+        'also once unencrypted connections are allowed', (tester) async {
+      final server = insecureServer();
+      await profilesOver(auth).consentToCleartext(OriginKey.of(server.rootUri));
+      await pumpSignedInApp(tester, auth: auth, connection: server);
+      await showConnectionTile(tester);
+
+      expect(subtitle(tester), en.connectionSummaryCleartext);
+      expect(leadingIcon(tester).icon, Icons.no_encryption_outlined);
+      expect(
+        leadingIcon(tester).color,
+        Theme.of(tester.element(find.byType(ConnectionTile))).colorScheme.error,
+      );
     });
 
     testWidgets('is there for a guest too', (tester) async {

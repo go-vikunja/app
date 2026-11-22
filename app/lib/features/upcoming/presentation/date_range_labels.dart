@@ -45,14 +45,19 @@ String rangeDates(BuildContext context, DateRange range, DateTime now) {
 /// "Today", "Tomorrow", or the weekday with the date.
 String dayTitle(BuildContext context, DateTime day, DateTime now) {
   final l10n = context.l10n;
-  final materialL10n = MaterialLocalizations.of(context);
   final local = now.toLocal();
   final today = DateTime(local.year, local.month, local.day);
   if (day == today) return l10n.sectionToday;
   if (day == DateTime(today.year, today.month, today.day + 1)) {
     return l10n.sectionTomorrow;
   }
-  return day.year == today.year
+  return dayDate(context, day, now);
+}
+
+/// The weekday with the date, and the year when it is not [now]'s.
+String dayDate(BuildContext context, DateTime day, DateTime now) {
+  final materialL10n = MaterialLocalizations.of(context);
+  return day.year == now.toLocal().year
       ? materialL10n.formatMediumDate(day)
       : materialL10n.formatFullDate(day);
 }

@@ -485,7 +485,10 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.descendant(of: sheet, matching: find.byIcon(Icons.event_outlined)),
+      find.descendant(
+        of: sheet,
+        matching: find.byIcon(Icons.calendar_today_outlined),
+      ),
       findsNothing,
     );
     expect(
@@ -501,7 +504,10 @@ void main() {
 
     final sheet = find.byType(TaskDetailSheet);
     expect(
-      find.descendant(of: sheet, matching: find.byIcon(Icons.event_outlined)),
+      find.descendant(
+        of: sheet,
+        matching: find.byIcon(Icons.calendar_today_outlined),
+      ),
       findsOneWidget,
     );
     expect(

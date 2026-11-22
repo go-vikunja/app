@@ -34,7 +34,7 @@ A sign-off goes through section 1 on the tree being signed off, section 2 on And
 
 ### 2.2 In every flow
 
-- **Name, role and state** of every control, e.g. "Als erledigt markieren, Kästchen, nicht aktiviert".
+- **Name, role and state** of every control, e.g. "Als erledigt markieren, Kästchen, nicht aktiviert". A toggle keeps its name while only its state changes: a task's star reads "Favorit" and the task sheet's bell "Aufgabe folgen", each as a switch that is on or off, never also "ausgewählt".
 - **Reading order** follows the visual order; no stop without a name ("Schaltfläche" alone), nothing read twice.
 - **Headings:** with the Headings reading control, TalkBack steps through the screen's title (level 1) and its section headers (level 2).
 - **Actions:** the Actions menu lists the custom actions; their result is announced or visible.
@@ -88,7 +88,7 @@ On a phone in German, with TalkBack and Switch Access, signed in to an account w
 
 - [ ] **The rows:** open a task with a due date, a priority and a reminder. "Fällig am", "Priorität" and "Erinnerungen" each read as one button with their value, and TalkBack's hint names the action ("Fälligkeitsdatum ändern", "Priorität ändern", "Erinnerungen bearbeiten"); start date, progress and repeat are no buttons. In a project you may only read, and in an archived one, no row is a button.
 - [ ] **The add row:** open a task without due date, priority, reminders and labels. The attribute card's last row reads "Fälligkeitsdatum festlegen", "Priorität festlegen", "Erinnerung hinzufügen" and "Label hinzufügen", four buttons, each holding the word it shows. At the largest font the row wraps inside the card and nothing is cut off.
-- [ ] **Labels:** each label pill is a button of its own that opens the label's tasks, then "Labels ändern" follows; Switch Access reaches both.
+- [ ] **Labels:** the attribute card starts with the due date's row, and "Labels" is read in its own place, after the rows above it; then each label pill is a button of its own that opens the label's tasks, then "Labels ändern" follows; Switch Access reaches both.
 - [ ] **The lists:** the due date's list takes focus with "Fälligkeitsdatum" as a level-1 heading; "Heute", "Morgen" and "Nächste Woche" each read their date and time in words, the current day "ausgewählt"; after a pick TalkBack says the new due date once, and "Fälligkeitsdatum entfernt" after "Fälligkeitsdatum entfernen". The priority's list reads its six levels, the current one "ausgewählt", and a pick says "Priorität: Dringend". Record where focus lands when a list closes.
 - [ ] **The reminders sheet:** activate "Erinnerungen". The sheet takes focus with "Erinnerungen" as its heading; each reminder reads its wording, edit and remove; adding, changing and removing are each said once ("Erinnerung hinzugefügt", "Erinnerung geändert", "Erinnerung entfernt"); the same reminder again reads "Diese Erinnerung gibt es schon." under the title, and is said. "Fertig" closes it.
 - [ ] **Copy link and Share:** in the sheet's menu ("Mehr", in the pane "Mehr zu „*Titel*“") "Link kopieren" is confirmed by the system on Android 13 and later, else by "Link kopiert" in the sheet; "Teilen" opens the system's share sheet, and with the app lock on the app is not locked on return. In a project you may only read, the menu holds just these two.

@@ -217,6 +217,7 @@ void main() {
           )
           .first,
     );
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(OutlinedButton, en.homeSignOut));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(TextButton, en.signOutDialogConfirm));

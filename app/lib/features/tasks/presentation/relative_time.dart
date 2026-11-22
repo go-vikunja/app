@@ -3,8 +3,9 @@ import 'package:vikunja_mobile/core/time/moments.dart';
 
 /// "in 3 days" / "2 days ago", with the web's (dayjs) rounding thresholds
 /// below a day. From a day on the count follows the local calendar, like the
-/// overview's sections, so a task due tonight never reads "in 1 day" and one
-/// due within the next seven days never "in 8 days".
+/// overview's sections, so a task due tonight never reads "tomorrow" and one
+/// due within the next seven days never "in 8 days"; one calendar day away
+/// reads "tomorrow" or "yesterday".
 String formatRelativeTime(
   AppLocalizations l10n,
   DateTime moment, {
@@ -25,6 +26,7 @@ String formatRelativeTime(
   if (hours < 22 || days == 0) {
     return future ? l10n.relativeInHours(hours) : l10n.relativeHoursAgo(hours);
   }
+  if (days == 1) return future ? l10n.relativeTomorrow : l10n.relativeYesterday;
   if (days < 26) {
     return future ? l10n.relativeInDays(days) : l10n.relativeDaysAgo(days);
   }

@@ -55,7 +55,9 @@ List<Widget> attributeSection(
   final attributes = [
     if (task.dueDate case final dueDate?)
       dateAttribute(
-        dueTone == DueTone.overdue ? Icons.error_outline : Icons.event_outlined,
+        dueTone == DueTone.overdue
+            ? Icons.error_outline
+            : Icons.calendar_today_outlined,
         l10n.taskDetailDueDateRow,
         dueDate,
         semanticsText: dueTone == DueTone.overdue
@@ -364,7 +366,11 @@ class _Attribute extends StatelessWidget {
             onTapHint: tapHint,
             child: InkWell(onTap: onTap, child: padded),
           );
-    return merge ? MergeSemantics(child: row) : row;
+    // Unmerged, the row is still a node of its own: else its name would
+    // join the card's node, ahead of the rows above it.
+    return merge
+        ? MergeSemantics(child: row)
+        : Semantics(container: true, child: row);
   }
 }
 

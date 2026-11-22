@@ -403,11 +403,13 @@ void main() {
       ),
       Tristate.isTrue,
     );
-    // Around the bar, meeting it at its edge, 1 dp inside the box.
+    // Around the bar and its own border, meeting it at its edge, 1 dp
+    // inside the box.
     expect(
       tester.renderObject(bar('Write the report')),
       paints
         ..rrect()
+        ..rrect(strokeWidth: 1, style: PaintingStyle.stroke)
         ..rrect(
           rrect: RRect.fromRectAndRadius(
             Offset.zero & tester.getSize(bar('Write the report')),
@@ -429,7 +431,7 @@ void main() {
     );
     expect(
       tester.renderObject(bar('Plan the team day')),
-      paintsExactlyCountTimes(#drawRRect, 1),
+      paintsExactlyCountTimes(#drawRRect, 2),
     );
 
     await _tap(

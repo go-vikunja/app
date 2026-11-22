@@ -450,6 +450,37 @@ void main() {
       ));
     });
 
+    testWidgets('Due date: Pick date with the clock cancelled still sets the '
+        'day picked, at the default time, for all; Undo puts each one back', (
+      tester,
+    ) async {
+      await pumpOverview(tester);
+      await select(tester, ['Call mum', 'Write report']);
+      await act(tester, en.taskDetailDueDate);
+      await tester.tap(find.text(en.newTaskPickDate));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('20'));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      final picked = dueChange(DateTime(2026, 10, 20, 12));
+      expect(data.tasks.updates, [
+        (3, TaskChanges(dueDate: picked)),
+        (5, TaskChanges(dueDate: picked)),
+      ]);
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+      expect(
+        [for (final update in data.tasks.updates.skip(2)) update.$2.dueDate],
+        [
+          dueChange(today.add(const Duration(hours: 18))),
+          dueChange(DateTime(2026, 10, 13, 10)),
+        ],
+      );
+    });
+
     testWidgets('Priority sets it; Undo puts each one back', (tester) async {
       await pumpOverview(tester);
       await select(tester, ['Call mum']);

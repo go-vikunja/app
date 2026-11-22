@@ -18,7 +18,8 @@ import '../a11y/sweep_data.dart';
 /// 2d70ef1, from a `git archive` export. Self-contained, so it still runs
 /// there. The overview rows lost a line or two pixels with the task
 /// identifiers, and the Account settings tile a subtitle line with the
-/// colour scheme (D75).
+/// colour scheme (D75). The overview's first card sits 12 dp higher since
+/// the Overdue heading's Reschedule takes less room (D116).
 const Map<TargetPlatform, List<Size>> _sizes = {
   TargetPlatform.android: [
     Size(360, 740),
@@ -30,20 +31,20 @@ const Map<TargetPlatform, List<Size>> _sizes = {
 };
 
 const _expected = <String, Rect>{
-  'android 360×740 overview card': Rect.fromLTRB(16, 388, 344, 540),
-  'android 360×740 overview row': Rect.fromLTRB(16, 388, 344, 540),
+  'android 360×740 overview card': Rect.fromLTRB(16, 376, 344, 528),
+  'android 360×740 overview row': Rect.fromLTRB(16, 376, 344, 528),
   'android 360×740 task sheet': Rect.fromLTRB(0, 242.2, 360, 740),
   'android 360×740 long dialog': Rect.fromLTRB(40, 24, 320, 716),
   'android 360×740 account tile': Rect.fromLTRB(0, 236, 360, 400),
   'android 360×740 task edit field': Rect.fromLTRB(16, 64, 344, 120),
-  'android 740×360 overview card': Rect.fromLTRB(144, 276, 724, 366),
-  'android 740×360 overview row': Rect.fromLTRB(144, 276, 724, 366),
+  'android 740×360 overview card': Rect.fromLTRB(144, 264, 724, 354),
+  'android 740×360 overview row': Rect.fromLTRB(144, 264, 724, 354),
   'android 740×360 task sheet': Rect.fromLTRB(50, 109.19999999999999, 690, 360),
   'android 740×360 long dialog': Rect.fromLTRB(40, 24, 700, 336),
   'android 740×360 account tile': Rect.fromLTRB(128, 148, 740, 248),
   'android 740×360 task edit field': Rect.fromLTRB(16, 64, 724, 120),
-  'android 952×427 overview card': Rect.fromLTRB(144, 276, 936, 346),
-  'android 952×427 overview row': Rect.fromLTRB(144, 276, 936, 346),
+  'android 952×427 overview card': Rect.fromLTRB(144, 264, 936, 334),
+  'android 952×427 overview row': Rect.fromLTRB(144, 264, 936, 334),
   'android 952×427 task sheet': Rect.fromLTRB(
     156,
     132.64999999999998,
@@ -53,24 +54,24 @@ const _expected = <String, Rect>{
   'android 952×427 long dialog': Rect.fromLTRB(40, 24, 912, 403),
   'android 952×427 account tile': Rect.fromLTRB(128, 148, 952, 228),
   'android 952×427 task edit field': Rect.fromLTRB(16, 64, 936, 120),
-  'android 800×600 overview card': Rect.fromLTRB(144, 276, 784, 346),
-  'android 800×600 overview row': Rect.fromLTRB(144, 276, 784, 346),
+  'android 800×600 overview card': Rect.fromLTRB(144, 264, 784, 334),
+  'android 800×600 overview row': Rect.fromLTRB(144, 264, 784, 334),
   'android 800×600 task sheet': Rect.fromLTRB(80, 193.2, 720, 600),
   'android 800×600 long dialog': Rect.fromLTRB(40, 24, 760, 576),
   'android 800×600 account tile': Rect.fromLTRB(128, 148, 800, 228),
   'android 800×600 task edit field': Rect.fromLTRB(16, 64, 784, 120),
-  'iOS 375×667 overview card': Rect.fromLTRB(16, 368, 359, 520),
-  'iOS 375×667 overview row': Rect.fromLTRB(16, 368, 359, 520),
+  'iOS 375×667 overview card': Rect.fromLTRB(16, 356, 359, 508),
+  'iOS 375×667 overview row': Rect.fromLTRB(16, 356, 359, 508),
   'iOS 375×667 task sheet': Rect.fromLTRB(0, 53.36, 375, 667),
   'iOS 375×667 account tile': Rect.fromLTRB(0, 208, 375, 372),
   'iOS 375×667 task edit field': Rect.fromLTRB(16, 64, 359, 120),
-  'iOS 844×390 overview card': Rect.fromLTRB(63, 276, 781, 346),
-  'iOS 844×390 overview row': Rect.fromLTRB(63, 276, 781, 346),
+  'iOS 844×390 overview card': Rect.fromLTRB(63, 264, 781, 334),
+  'iOS 844×390 overview row': Rect.fromLTRB(63, 264, 781, 334),
   'iOS 844×390 task sheet': Rect.fromLTRB(0, 31.2, 844, 390),
   'iOS 844×390 account tile': Rect.fromLTRB(47, 148, 797, 228),
   'iOS 844×390 task edit field': Rect.fromLTRB(16, 64, 828, 120),
-  'iOS 800×600 overview card': Rect.fromLTRB(16, 276, 784, 346),
-  'iOS 800×600 overview row': Rect.fromLTRB(16, 276, 784, 346),
+  'iOS 800×600 overview card': Rect.fromLTRB(16, 264, 784, 334),
+  'iOS 800×600 overview row': Rect.fromLTRB(16, 264, 784, 334),
   'iOS 800×600 task sheet': Rect.fromLTRB(0, 48, 800, 600),
   'iOS 800×600 account tile': Rect.fromLTRB(0, 148, 800, 228),
   'iOS 800×600 task edit field': Rect.fromLTRB(16, 64, 784, 120),

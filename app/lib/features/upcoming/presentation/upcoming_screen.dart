@@ -315,6 +315,7 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
                 ? _selectedDay
                 : null;
             final local = now.toLocal();
+            final today = DateTime(local.year, local.month, local.day);
             return _UpcomingSections(
               sections: switch (selectedDay) {
                 null => upcomingSections(selection),
@@ -327,11 +328,29 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
               pendingIds: pendingIds,
               now: now,
               minimumPriority: minimumPriority,
-              subtitle: l10n.upcomingSubtitle(
-                name,
-                dates,
-                selection.inRange.where(open).length,
-              ),
+              subtitle: switch (selectedDay) {
+                null => l10n.upcomingSubtitle(
+                  name,
+                  dates,
+                  selection.inRange.where(open).length,
+                ),
+                final day => l10n.upcomingDaySubtitle(
+                  dayDate(context, day, now),
+                  (byDay[day] ?? const []).where(open).length,
+                ),
+              },
+              onShowAllDays: selectedDay == null
+                  ? null
+                  : () => setState(() => _selectedDay = null),
+              empty: daysOf(range) == (today, today)
+                  ? (
+                      title: l10n.upcomingEmptyTitle,
+                      body: l10n.upcomingEmptyBody,
+                    )
+                  : (
+                      title: l10n.upcomingEmptyRangeTitle,
+                      body: l10n.upcomingEmptyRangeBody,
+                    ),
               strip: stripDays == null
                   ? null
                   : DayStrip(
@@ -342,7 +361,7 @@ class _UpcomingScreenState extends ConsumerState<UpcomingScreen>
                             in byDay.entries)
                           day: tasks.where(open).length,
                       },
-                      today: DateTime(local.year, local.month, local.day),
+                      today: today,
                       selected: selectedDay,
                       onSelected: (day) => setState(() => _selectedDay = day),
                     ),
@@ -414,6 +433,8 @@ class _UpcomingSections extends StatelessWidget {
     required this.now,
     required this.minimumPriority,
     required this.subtitle,
+    required this.onShowAllDays,
+    required this.empty,
     required this.strip,
     required this.notice,
     required this.onDoneChanged,
@@ -434,8 +455,14 @@ class _UpcomingSections extends StatelessWidget {
   final DateTime now;
   final int minimumPriority;
 
-  /// The range, its days and the open count, above the [strip].
+  /// The range, its days and the open count, above the [strip]; or the
+  /// day picked in it and its open count.
   final String subtitle;
+
+  /// For the button beside the [subtitle] while a day is picked; null
+  /// hides it.
+  final VoidCallback? onShowAllDays;
+  final ({String title, String body}) empty;
 
   /// Null for a range too long for it.
   final Widget? strip;
@@ -483,16 +510,30 @@ class _UpcomingSections extends StatelessWidget {
       for (final section in sections)
         if (section is DaySection) section,
     ];
+    final subtitleText = Text(
+      subtitle,
+      style: theme.textTheme.bodyMedium?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+    );
     final header = [
       SliverPadding(
-        padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        padding: onShowAllDays == null
+            ? const EdgeInsets.fromLTRB(16, 4, 16, 8)
+            : const EdgeInsets.fromLTRB(16, 0, 8, 0),
         sliver: SliverToBoxAdapter(
-          child: Text(
-            subtitle,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+          child: switch (onShowAllDays) {
+            null => subtitleText,
+            final showAll => Row(
+              children: [
+                Expanded(child: subtitleText),
+                TextButton(
+                  onPressed: showAll,
+                  child: Text(l10n.upcomingAllDays),
+                ),
+              ],
             ),
-          ),
+          },
         ),
       ),
       if (strip case final strip?) SliverToBoxAdapter(child: strip),
@@ -514,8 +555,8 @@ class _UpcomingSections extends StatelessWidget {
                   child: Center(
                     child: EmptyState(
                       icon: Icons.event_available,
-                      title: l10n.upcomingEmptyTitle,
-                      body: l10n.upcomingEmptyBody,
+                      title: empty.title,
+                      body: empty.body,
                     ),
                   ),
                 ),
@@ -537,6 +578,7 @@ class _UpcomingSections extends StatelessWidget {
                 SliverSectionCard(
                   title: l10n.sectionOverdue,
                   count: tasks.length,
+                  countLabel: l10n.sectionTaskCount(tasks.length),
                   action: onReschedule == null
                       ? null
                       : TextButton(
@@ -569,6 +611,7 @@ class _UpcomingSections extends StatelessWidget {
                 SliverSectionCard(
                   title: l10n.sectionNoDueDate,
                   count: tasks.length,
+                  countLabel: l10n.sectionTaskCount(tasks.length),
                   itemCount: tasks.length,
                   itemBuilder: (context, index) => _row(context, tasks[index]),
                 ),

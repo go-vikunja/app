@@ -488,6 +488,31 @@ void main() {
       expect(find.text(en.connectionHeadersUnencrypted), findsOneWidget);
     });
 
+    testWidgets('with only the permission, the page reminds of trusted '
+        'networks and offers Revoke, not also Forget, which would do the '
+        'same', (tester) async {
+      await profilesOver(auth).consentToCleartext(plain);
+      await pumpSignedOut(tester);
+      await open(tester, AppRoutes.connectionFor(plain));
+
+      expect(find.text(en.connectionCleartextTrustedNetwork), findsOneWidget);
+      expect(find.text(en.connectionCleartextRevoke), findsOneWidget);
+      expect(find.text(en.connectionForget), findsNothing);
+    });
+
+    testWidgets('with headers beside the permission, Forget is offered', (
+      tester,
+    ) async {
+      final profiles = profilesOver(auth);
+      await profiles.consentToCleartext(plain);
+      await profiles.setHeaders(plain, {'X-Token': 'dummy-http-header'});
+      await pumpSignedOut(tester);
+      await open(tester, AppRoutes.connectionFor(plain));
+
+      expect(find.text('X-Token'), findsOneWidget);
+      expect(find.text(en.connectionForget), findsOneWidget);
+    });
+
     testWidgets('Revoke explains that requests will fail, then removes the '
         'consent', (tester) async {
       await profilesOver(auth).consentToCleartext(plain);

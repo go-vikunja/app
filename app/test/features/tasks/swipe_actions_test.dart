@@ -118,6 +118,33 @@ void main() {
     expect(find.text('start'), findsNothing);
   });
 
+  testWidgets("each strip keeps its icon at the row's edge and names the "
+      'action only once the name fits whole', (tester) async {
+    await pumpRow(tester);
+    Rect icon() => tester.getRect(find.byIcon(Icons.check));
+
+    for (final (direction, edge, name) in [
+      (-1.0, (Rect rect) => rect.right, 'end'),
+      (1.0, (Rect rect) => rect.left, 'start'),
+    ]) {
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.text('Row')),
+      );
+      await gesture.moveBy(Offset(40 * direction, 0));
+      await gesture.moveBy(Offset(30 * direction, 0));
+      await tester.pump();
+      expect(edge(icon()), direction < 0 ? 400 - 20 : 20, reason: name);
+      expect(find.text(name), findsNothing);
+
+      await gesture.moveBy(Offset(130 * direction, 0));
+      await tester.pump();
+      expect(edge(icon()), direction < 0 ? 400 - 20 : 20, reason: name);
+      expect(find.text(name), findsOneWidget);
+      await gesture.up();
+      await tester.pumpAndSettle();
+    }
+  });
+
   testWidgets('right to left, the start edge is on the right', (tester) async {
     await pumpRow(tester, direction: TextDirection.rtl);
 

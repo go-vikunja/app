@@ -2,6 +2,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/core/text/server_address_display.dart';
 
 enum SharedLinkChoice { openAsGuest, newTask }
@@ -32,6 +33,7 @@ Future<SharedLinkChoice?> askToOpenSharedLink(
     case _:
       return showModalBottomSheet<SharedLinkChoice>(
         context: context,
+        barrierLabel: sheetBarrierLabel(context),
         useRootNavigator: true,
         isScrollControlled: true,
         useSafeArea: true,
@@ -65,14 +67,7 @@ class OpenSharedLinkSheet extends StatelessWidget {
         shrinkWrap: true,
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
         children: [
-          Semantics(
-            header: true,
-            headingLevel: 1,
-            child: Text(
-              l10n.guestShareTitle,
-              style: theme.textTheme.titleLarge,
-            ),
-          ),
+          SheetTitle(l10n.guestShareTitle),
           const SizedBox(height: 8),
           Text(
             l10n.guestShareBody(displayHost(link.base)),

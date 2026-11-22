@@ -171,8 +171,9 @@ class _SwipeActionsState extends State<SwipeActions>
   }
 }
 
-/// The uncovered part beside the row: the action's colour, its icon and,
-/// once there is room, its name; fainter until the swipe would act.
+/// The uncovered part beside the row: the action's colour, its icon at
+/// the row's edge and, once it fits whole, its name; fainter until the
+/// swipe would act.
 class _Strip extends StatelessWidget {
   const new({
     required this.action,
@@ -186,10 +187,39 @@ class _Strip extends StatelessWidget {
   final double width;
   final bool armed;
 
+  static const _padding = 20.0;
+  static const _gap = 8.0;
+
+  bool _labelFits(BuildContext context, TextStyle? style) {
+    final bold = MediaQuery.boldTextOf(context);
+    final painter = TextPainter(
+      text: TextSpan(
+        text: action.label,
+        style: DefaultTextStyle.of(context).style
+            .merge(style)
+            .merge(bold ? const TextStyle(fontWeight: FontWeight.bold) : null),
+      ),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final needed =
+        2 * _padding +
+        (IconTheme.of(context).size ?? 24) +
+        _gap +
+        painter.width;
+    painter.dispose();
+    return width >= needed;
+  }
+
   @override
   Widget build(BuildContext context) {
     final style = Theme.of(context).textTheme.labelLarge
         ?.copyWith(color: action.onColor);
+    final icon = Icon(action.icon, color: action.onColor);
+    final label = _labelFits(context, style)
+        ? [Text(action.label, style: style)]
+        : const <Widget>[];
     return Align(
       alignment: atStart
           ? AlignmentDirectional.centerStart
@@ -207,14 +237,14 @@ class _Strip extends StatelessWidget {
                   : AlignmentDirectional.centerEnd,
               maxWidth: double.infinity,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: _padding),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(action.icon, color: action.onColor),
-                    const SizedBox(width: 8),
-                    Text(action.label, style: style),
-                  ],
+                  mainAxisAlignment: atStart
+                      ? MainAxisAlignment.start
+                      : MainAxisAlignment.end,
+                  spacing: _gap,
+                  children: atStart ? [icon, ...label] : [...label, icon],
                 ),
               ),
             ),

@@ -7,6 +7,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/project_views_page.dart';
 import 'package:vikunja_mobile/features/projects/presentation/manage/view_form_sheet.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/view_labels.dart';
 
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
@@ -101,6 +102,33 @@ void main() {
     ]);
     expect(find.text(de.projectViewsIntro('Work')), findsOneWidget);
     expect(find.textContaining('nur im Web'), findsNothing);
+  });
+
+  testWidgets("a view's kind shows under its title only where the title "
+      'names another', (tester) async {
+    data.projects.all = [
+      sampleProject(
+        id: 1,
+        title: 'Work',
+        views: [
+          sampleListView(id: 10, projectId: 1),
+          sampleKanbanView(id: 11, projectId: 1, title: 'Sprint'),
+        ],
+      ),
+    ];
+    await pumpViews(tester, 1);
+
+    ListTile row(String title) => tester.widget<ListTile>(
+      find.descendant(
+        of: find.byType(ProjectViewsPage),
+        matching: find.widgetWithText(ListTile, title),
+      ),
+    );
+    expect(row(en.projectViewList).subtitle, isNull);
+    expect(
+      (row('Sprint').subtitle! as Text).data,
+      viewKindLabel(en, ProjectViewKind.kanban),
+    );
   });
 
   testWidgets('a new list view hides done tasks like the web unless told '

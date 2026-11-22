@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/core/repositories/account_security_repository.dart';
 import 'package:vikunja_mobile/core/repositories/account_security_repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
@@ -420,14 +421,7 @@ class _SessionDetails extends ConsumerWidget {
       shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       children: [
-        Semantics(
-          header: true,
-          headingLevel: 1,
-          child: Text(
-            sessionDeviceLine(l10n, device),
-            style: theme.textTheme.titleLarge,
-          ),
-        ),
+        SheetTitle(sessionDeviceLine(l10n, device)),
         if (current)
           Padding(
             padding: const EdgeInsets.only(top: 4),

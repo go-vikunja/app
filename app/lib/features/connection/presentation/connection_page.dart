@@ -337,7 +337,8 @@ class _ConnectionOverviewState extends ConsumerState<_ConnectionOverview> {
       ] else
         _cleartextSection(context, profile, host: host),
       _headersSection(context, profile, host: host),
-      if (profile != null && !profile.isEmpty)
+      // The consent alone has its own Revoke, which does the same.
+      if (profile != null && _holdsMoreThanConsent(profile))
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
           child: Center(
@@ -362,6 +363,9 @@ class _ConnectionOverviewState extends ConsumerState<_ConnectionOverview> {
         ),
     ];
   }
+
+  static bool _holdsMoreThanConsent(NetworkProfile profile) =>
+      !profile.copyWith(clearCleartextConsent: true).isEmpty;
 
   Widget _certificateSection(
     BuildContext context,
@@ -532,6 +536,7 @@ class _ConnectionOverviewState extends ConsumerState<_ConnectionOverview> {
                 formatConnectionDate(l10n, consentAt),
               ),
             ),
+            subtitle: Text(l10n.connectionCleartextTrustedNetwork),
           ),
           _Actions(
             children: [

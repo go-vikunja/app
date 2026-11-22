@@ -17,9 +17,10 @@ String shortcutLabel(AppLocalizations l10n, DateShortcut shortcut) =>
 
 /// Date shortcut toggles: the chip whose day the current value falls on is
 /// selected, and tapping it again clears ([onSelected] gets null). Each
-/// chip reads out its day; the selected one also shows [selectedTime]. One
-/// row scrolling sideways, followed by [trailing]. Without [enabled] they
-/// only show the value.
+/// chip reads out its day, after [fieldLabel] where several dates have
+/// chips; the selected one also shows [selectedTime]. One row scrolling
+/// sideways, followed by [trailing]. Without [enabled] they only show the
+/// value.
 class DateShortcutChips extends StatelessWidget {
   const new({
     required this.options,
@@ -28,6 +29,7 @@ class DateShortcutChips extends StatelessWidget {
     this.trailing = const [],
     this.enabled = true,
     this.selectedTime,
+    this.fieldLabel,
     super.key,
   });
 
@@ -39,6 +41,7 @@ class DateShortcutChips extends StatelessWidget {
   final List<Widget> trailing;
   final bool enabled;
   final String? selectedTime;
+  final String? fieldLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -65,13 +68,14 @@ class DateShortcutChips extends StatelessWidget {
       final time? when selected => l10n.shortcutAtTime(shortcut, time),
       _ => shortcut,
     };
+    final day = MaterialLocalizations.of(context).formatMediumDate(option.day);
     return ChoiceChip(
       label: Text(
         label,
-        semanticsLabel: l10n.shortcutSemantics(
-          label,
-          MaterialLocalizations.of(context).formatMediumDate(option.day),
-        ),
+        semanticsLabel: switch (fieldLabel) {
+          final field? => l10n.shortcutFieldSemantics(field, label, day),
+          null => l10n.shortcutSemantics(label, day),
+        },
       ),
       selected: selected,
       onSelected: enabled

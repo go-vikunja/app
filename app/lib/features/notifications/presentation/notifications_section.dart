@@ -205,12 +205,17 @@ class NotificationsSection extends ConsumerWidget {
               child: Text(l10n.notificationsAllowExactAlarms),
             ),
           ),
+        if (scheduled != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            child: Text(
+              l10n.notificationsScheduledOnDevice(scheduled),
+              style: secondary,
+            ),
+          ),
         ListTile(
           leading: const Icon(Icons.notification_add_outlined),
           title: Text(l10n.notificationsSendTest),
-          subtitle: scheduled == null
-              ? null
-              : Text(l10n.notificationsScheduled(scheduled)),
           // It goes through the Reminders channel.
           enabled: remindersShown,
           onTap: () => unawaited(_sendTest(ref, l10n)),

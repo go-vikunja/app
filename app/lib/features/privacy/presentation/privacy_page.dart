@@ -146,7 +146,7 @@ class _PrivacyPageState extends ConsumerState<PrivacyPage> {
         : l10n.privacyAppLockSubtitle;
 
     return Scaffold(
-      appBar: AppBar(title: ScreenTitle(l10n.privacyTitle)),
+      appBar: AppBar(title: ScreenTitle(l10n.privacyEntryTitle)),
       body: SafeArea(
         top: false,
         child: ReadableWidth.builder(

@@ -15,7 +15,7 @@ Each entry has a number, a status and the step that took it. It says what was de
 - **Look, accessibility, languages:** [D20] scope cuts, support details · [D21] [D71] English and German · [D45] app shell · [D56] design · [D68] screen readers · [D69] large screens · [D70] the task pane · [D75] the owner's UI review · [D82] projects list–detail · [D100] small things · [D112] accessibility pass
 - **Security and privacy:** [D64] app lock · [D66] threat model · [D92] security fixes · [D113] opt-in crash reports
 - **Identity, release, the official app:** [D15] app id and name · [D42] app icon · [D72] first release · [D73] CI from local scripts · [D74] iOS phase · [D76] store listings and policies · [D77] beta preparation · [D83] successor of the official app · [D85] update from the old app · [D86] GitHub Actions · [D87] MIT and the move · [D88] Crowdin · [D89] the official store listing · [D67] notices, the licence and About pages, no F-Droid · replaced: [D10]
-- **Code review fixes:** [D90] before beta.1 · [D91] the description editor, leaving pages for a switch · [D93] quick fixes · [D94] outbox retries, notifications, the diagnostics log, session reminders · [D95] small things users notice · [D96] robustness · [D97] security and release · [D98] the limits' review · [D107] the make-up reviews
+- **Code review fixes:** [D90] before beta.1 · [D91] the description editor, leaving pages for a switch · [D93] quick fixes · [D94] outbox retries, notifications, the diagnostics log, session reminders · [D95] small things users notice · [D96] robustness · [D97] security and release · [D98] the limits' review · [D107] the make-up reviews · [D116] the UI/UX review, part one
 - **The repository:** [D105] architecture overview · [D114] cleanup before the move · [D115] this log shortened
 
 ## D1: Flutter pub workspace with pure-Dart packages
@@ -1419,6 +1419,7 @@ Limits:
 - Read-only selectable text, such as the server's message of the day, is skipped by both tap-target guidelines (2.5.8's inline exception; [D69]).
 - Beyond AA, 2.3.3: under iOS Reduce Motion page and sheet transitions still slide, because the framework follows only `disableAnimations`; the board's settle after a fling follows the finger.
 - Flutter's `LicensePage` marks its titles as headers at level 0 (1.3.1, 2.4.6); fixing it takes a licence page of our own.
+- The sweep's distinct-tap-label check allows a sheet's barrier and its drag handle to share Material's dismiss label ("Dismiss"), as both close the sheet (3.2.4 holds; [D116]); a barrier with a label of its own does not pass.
 - The sweep's distinct-tap-label check allows one repeat: on the Projects tab a favourite saved filter is listed in Favourites and again in Saved filters under the same name, as both rows open the same list (3.2.4 holds) and the section headings tell them apart.
 - A new field error with a helper text may be spoken twice on Android, because Material builds it again when its fade-in ends.
 - Colour-coded text inside merged labels is checked at scheme level only (4.5:1 for the text roles and for label pills over server colours, 3:1 for outline), for the brand and high-contrast schemes, light and dark; dynamic schemes are not checked.
@@ -1475,7 +1476,7 @@ Limits:
 - **Selection:** the top task's row, card or timeline row is marked and reads as selected: a `surfaceContainerHighest` fill with a 4 dp `primary` bar on a row's start edge, a 2 dp `primary` outline on a card (why this fill: `secondaryContainer` fails in both high-contrast schemes).
 - **Back**, for the button and the swipe alike: first what is over the shell or in the tab, then the task before in the pane, then the pane, then the tab's own pages, then [D45]'s tab rule.
 - **Pages inside a tab have no predictive back preview on Android, at every size** (why: the predictive back detector took swipes for routes in covered or offstage navigators, which popped the wrong page on Android 14+ with gesture navigation). Pages over the shell keep the preview.
-- **Resets:** a change of the active account closes every pane. A tab's pane closes when that tab's own location changes (another project, another smart list), not for pages over the shell, another view of the same project or a list's filters; selecting the current tab again closes it. The app lock keeps the pane ([D64]).
+- **Resets:** a change of the active account closes every pane. A tab's pane closes when that tab's own location changes (another project, another smart list), a pop inside the tab included ([D116]), not for pages over the shell, another view of the same project or a list's filters; selecting the current tab again closes it. The app lock keeps the pane ([D64]).
 - **Links, widget taps and notification taps** keep [D44]'s rules, then open the task in the Overview's pane when it fits and nothing covers the shell, else in a sheet.
 - **Resize:** when the window stops being two-pane, the top task moves to a sheet with its comment draft; a sheet stays a sheet when the window grows.
 - **Accessibility:** while the pane shows, list and pane are regions of their own, the list first; the pane's task title keeps its level-1 heading ([D68]). Nothing is announced. Focus moves into the pane on every open and change and back to the row last used on close.
@@ -1846,7 +1847,7 @@ Limits:
 - **Where:** only the Projects tab, beside a project, Favorite tasks or a saved filter; other tabs keep [D70]'s two panes.
 - **Layout:** the rail, the tree's column (320 dp, the narrowest phone width the app lays out for), a divider, the tab's pages, the pane. The pane keeps [D70]'s rule (40 % of the content beside the rail, 360–480 dp), so it looks the same in every tab (owner). The pages get the rest and behave as on a phone at that width ([D69]).
 - **Nothing open:** beside the column the tab's first page says "No project open"; no project opens by itself, as nothing remembers a last project ([D75]).
-- **The route is the source:** a row goes to the project's route exactly as on a phone, so links, search and widgets work unchanged. The open list's rows get [D70]'s selected look and read as selected.
+- **The route is the source:** a row goes to the project's route exactly as on a phone, so links, search and widgets work unchanged. The open list's rows get [D70]'s selected look and read as selected. The column marks the project actually shown, so after Back no row is marked ([D116]).
 - **Back:** the pane's stack, the pane, the project, the note, then [D45]'s tab rule. Beside the column a project's app bar has no back arrow; the system back and the iOS swipe from the project's own edge still go back.
 - **Resize:** crossing the gate adds or removes only the column; the open project and the pane with its comment draft stay.
 - **One tree at a time:** the column holds the same projects screen, built only while the Projects tab shows.
@@ -2606,7 +2607,7 @@ Finding B10 of the code review and two fixes from the web's open pull requests (
 6. **A day the month never has is no date** (`apr 31`, `31st feb`), where JS rolls it over (#4426); `29 February` without a year is the next leap year's.
 7. **Labels, projects and priorities leave the title only as whole tokens**, so removing `*bug` keeps `*bugfix`. A quoted token or a found name also ends at punctuation before a space or the end (as a removed date can leave punctuation there); an unquoted token before punctuation includes it (`!3,` stays). Every token takes along the repeated prefix the web drops (`**bike`). The service and the composer use the parser's own tokenizer ([D38], [D110]).
 8. **A priority is a whole number from 0 to 5:** `!2fa` is none, `!03` is 3 (the web used `parseInt`, #4421). The composer highlights the token the parser removes, whole.
-9. **A date on today never takes a default time that has passed** (owner, 2026-11-19): the date becomes 23:59 of today instead (why: the web keeps the passed time, so the task is overdue the moment it is set). This holds for quick add's date phrases and repeats without a date, and in the pickers for a date-only pick of today and for Today on a task whose time of day has passed. A time typed with `at` or picked stays; other days keep the default time (`tomorrow` after 21:00 is 09:00).
+9. **A date on today never takes a default time that has passed** (owner, 2026-11-19): the date becomes 23:59 of today instead (why: the web keeps the passed time, so the task is overdue the moment it is set). This holds for quick add's date phrases and repeats without a date, and in the pickers for a date-only pick of today and for Today on a task whose time of day has passed. A time typed with `at` or picked stays; other days keep the default time (`tomorrow` after 21:00 is 09:00). Cancelling the clock after a day was picked counts as a date-only pick of that day ([D116]).
 
 Limits:
 - The version words are an English fixed list; `Release 1.2` in another language still reads as a date.
@@ -2681,7 +2682,7 @@ Finding N7 of the code review: working through a list took a tap on each task. T
 **Selecting several tasks:**
 - Starts with a long press, the "Select" action or "Select tasks" in the list's menu; in a list sorted by hand a long press lifts the row, so only the menu starts it there, and while the list selects no row lifts.
 - The app bar shows "N selected" (a live region) and Select all; a bottom bar holds Done, Due date, Priority, Move and Delete (why: five named actions do not fit beside the count on a phone, and the thumb reaches them there). A selected row reads as checked; the start and the end are announced.
-- Only tasks the user may change can be selected; the actions take only the selected tasks the list shows. Back, the close button, an action that wrote something, another view or another account end it.
+- Only tasks the user may change can be selected; the actions take only the selected tasks the list shows. Back, the close button, an action that wrote something, another view or another account end it. On Android Back ends it before anything else goes back, on the Overview too; on iOS the edge swipe goes back and ends it with the page ([D116]).
 - Each action writes one queued change per task ([D34]), never the server's bulk endpoints, which replace whole sets ([D36]), and offers Undo. Due date asks once when some tasks would get two reminders on one moment, and its Undo sends their reminders too, as the server kept only one. Move offers the projects the user may write to. Delete asks "Delete N tasks?" in the words of the single delete (for the trash, a guest and a server without it) and takes the tasks out of the pane; with the trash its Undo removes a delete still queued and restores one the server made; without the trash there is no Undo.
 
 **Reschedule** on the Overdue heading (Overview, Upcoming, saved filters, a label's tasks) works like the selection's Due date for every open overdue task the user may change. Today keeps each task's time while still ahead and takes 23:59 otherwise, so none is overdue again at once ([D102] point 9). Not offered while the list selects.
@@ -3032,6 +3033,53 @@ Limits:
 Open:
 - Whether test results still go into a step's entry, as the accessibility checklist, beta.md (the beta log, the iOS device test) and the threat model's sign-off still ask.
 
+## D116: Fixes from the UI/UX review, part one
+
+*Accepted 2026-11-22 (step 44a).*
+
+The owner asked for a UI/UX review of 1.0.0-beta.1 on an Android 16 emulator (2026-11-21). This entry holds its two bugs and the small fixes that reverse no owner decision; the larger items and the questions for the owner come next.
+
+**Back during a selection** ([D106]):
+- On Android a list that selects holds back for its own page and for the shell, so Back and the predictive back gesture end the selection first, on the Overview too (why: with predictive back Android asks beforehand whether the app handles back, and on the first tab the shell said no, so Android closed the app). A sheet, a dialog or the search page over the selecting list closes first; a selection in a hidden tab holds nothing.
+- On iOS the edge swipe still goes back from a selecting list and ends the selection with the page (why: iOS has no Back to end it with, and holding back would turn the swipe off, which [D82] keeps).
+
+**The shell reads the location of the tab's top page** (why: go_router keeps the shell's matched location after a pop inside a tab). The project tree's column therefore marks only the project actually shown: after Back no row is marked, and a tap opens the project again ([D82]). A tab's pane also closes when a pop inside the tab changes its location, such as the iOS edge swipe from a project with a task open ([D70]).
+
+**Cancelling the clock** after a day was picked keeps that day as a date-only pick, at the task's own time or the default time, and at 23:59 when that time on today has passed ([D102] point 9). This holds in every flow, Reschedule and the selection's Due date included, which offer Undo (why: Cancel used to drop the day the user had just picked).
+
+**Screen readers** ([D68]):
+- A section heading speaks its count with its unit ("Overdue, 3 tasks").
+- A toggle keeps its name and says its state: the star is "Favorite", the task sheet's bell "Follow task", each a switch that is on or off (why: a name that changes with the state, plus "selected", sounds like two controls).
+- In the task sheet the attribute card's rows are read in their visual order, with Labels after the rows above it. The checklist ring is not read as a progress bar inside the Description heading. The edit page's progress slider says its name and value once, and the date chips name their field.
+- Board cards are buttons at least 48 dp tall. A column's add button says which column it adds to and keeps its visible words ("Add another task to Doing", 2.5.3).
+- Every bottom sheet's barrier reads Material's dismiss label ("Dismiss"), not "Scrim" ("Gitter" in German).
+
+**Look:**
+- Every sheet title has one style, a level-1 heading in `titleLarge`. At 200 % text on a 320 dp phone a picker's list gets shorter (the share sheet in German from 301 to 165 px), but every row still scrolls into reach (why: the pickers' header titles 24 sheets, so a smaller size there would bring two sizes back).
+- A section heading with an action (Overdue with Reschedule) puts its title on the action's 48 dp line, where the other headings' titles sit, also when the action wraps below it.
+- The due date has one icon everywhere, the outlined calendar, with the error icon when overdue; start and end keep play and stop. The meta line's icons grow with the text, from 14 to 28 dp.
+- The Table's priority column draws the rows' flag ([D61]).
+- Gantt bars have a 1 dp border, primary around the default fill and outline around a task's own colour, at least 3:1 on every row background in the four schemes (1.4.11); derived bars keep their dashes.
+- A swipe keeps its icon at the row's edge on both sides and shows its name only where the name fits.
+- The project's views list shows a view's kind under its name only when the two differ.
+
+**Texts:**
+- Upcoming: a day picked in the strip shows in the subtitle ("Sun, Nov 22 · 2 open") beside an "All days" button. An empty range other than today says "Nothing due in this range", and so does the Upcoming widget.
+- Checklist progress reads "2 of 5 checked" and "All 5 checked" (the glossary's checklist item, never "task"). One day away is "tomorrow" or "yesterday". A date and a time are joined by a message of their own, so each language sets their order and separator.
+- The search field names what it searches: tasks, projects, saved filters, labels.
+- Leaving the edit page with changes says when the description is already saved. Commenting offline says "Commenting needs a connection."
+- The Account tab: background sync says it "hasn't run yet" before its first turn; how many notifications are scheduled on this device is a status line of its own, not the test notification's subtitle; the privacy page's title is its row's, "App lock and privacy" ([D64]).
+- The server overview reads the host first, then the badges, Unencrypted and Demo server before the API chips ([D6]). The support card keeps "Fully supported", as its body already says every feature works ([D71] changes a text only when it is inconsistent, wrong, unclear or misspelt). The demo note, on the server overview and in the Account tab, also warns that anyone can see and change what a shared demo account adds.
+- Connection options say "Type the server address first." while no address parses. An allowed cleartext connection shows the no-encryption icon in the error colour and repeats the trusted-network advice ([D8]); "Forget connection settings" shows only when there is more to forget than that consent.
+- About: the privacy policy's row sums up the policy, no server of the app's own and, where the build has them, the crash reports the user allows ([D113]); the licences row explains the package name it lists ([D67]).
+
+Limits:
+- While a day is picked in Upcoming, the strip sits about 16 dp lower, for the 48 dp "All days" button (why: one height for both states moved the default view down instead).
+- Checked in widget tests and on the Android emulator only; the TalkBack pass is still open ([D68]).
+
+Open:
+- `titleMedium` for every sheet title instead, which keeps more of a picker's list at 200 % text (owner).
+
 [D1]: #d1-flutter-pub-workspace-with-pure-dart-packages
 [D2]: #d2-material_ui-and-cupertino_ui-instead-of-the-sdks-libraries
 [D3]: #d3-riverpod-3-with-code-generation
@@ -3147,3 +3195,4 @@ Open:
 [D113]: #d113-opt-in-crash-reports-through-vikunjas-sentry
 [D114]: #d114-cleanup-before-the-move
 [D115]: #d115-the-decision-log-shortened
+[D116]: #d116-fixes-from-the-uiux-review-part-one

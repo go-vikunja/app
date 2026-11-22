@@ -19,8 +19,8 @@ class ColorDot extends StatelessWidget {
   );
 }
 
-/// The description's checkboxes: a progress ring and "2 of 5 tasks", or
-/// "5 tasks" once all are checked.
+/// The description's checklist items: a progress ring and "2 of 5
+/// checked", or "All 5 checked" once all are.
 class ChecklistSummary extends StatelessWidget {
   const new({required this.statistics, required this.style, super.key});
 
@@ -29,8 +29,8 @@ class ChecklistSummary extends StatelessWidget {
 
   static String text(AppLocalizations l10n, ChecklistStatistics statistics) =>
       statistics.allDone
-      ? l10n.taskChecklistAllDone(statistics.total)
-      : l10n.taskChecklistProgress(statistics.checked, statistics.total);
+      ? l10n.taskChecklistAllChecked(statistics.total)
+      : l10n.taskChecklistChecked(statistics.checked, statistics.total);
 
   @override
   Widget build(BuildContext context) {
@@ -38,13 +38,17 @@ class ChecklistSummary extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        SizedBox.square(
-          dimension: 12,
-          child: CircularProgressIndicator(
-            value: statistics.checked / statistics.total,
-            strokeWidth: 2,
-            backgroundColor: colors.outlineVariant,
-            color: colors.primary,
+        // The text says the same; a screen reader would read the ring as a
+        // progress bar with a bare number.
+        ExcludeSemantics(
+          child: SizedBox.square(
+            dimension: 12,
+            child: CircularProgressIndicator(
+              value: statistics.checked / statistics.total,
+              strokeWidth: 2,
+              backgroundColor: colors.outlineVariant,
+              color: colors.primary,
+            ),
           ),
         ),
         const SizedBox(width: 4),

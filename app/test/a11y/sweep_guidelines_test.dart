@@ -165,6 +165,58 @@ void main() {
     expect(sameHeading.reason, contains('under "Certificate"'));
   });
 
+  testWidgets("a sheet's barrier may share its name with the drag handle, "
+      'as both close the sheet', (tester) async {
+    await _pump(
+      tester,
+      Builder(
+        builder: (context) => TextButton(
+          onPressed: () => showModalBottomSheet<void>(
+            context: context,
+            barrierLabel: 'Dismiss',
+            showDragHandle: true,
+            builder: (_) => const SizedBox(height: 120, child: Text('Sheet')),
+          ),
+          child: const Text('open'),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Dismiss'), findsNWidgets(2));
+    expect((await _evaluate(tester, distinctTapLabelGuideline)).passed, isTrue);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('a barrier with a label of its own still needs a distinct '
+      'name', (tester) async {
+    await _pump(
+      tester,
+      Builder(
+        builder: (context) => TextButton(
+          onPressed: () => showModalBottomSheet<void>(
+            context: context,
+            barrierLabel: 'Close',
+            builder: (_) => Semantics(
+              label: 'Close',
+              onTap: () {},
+              child: const SizedBox(width: 48, height: 48),
+            ),
+          ),
+          child: const Text('open'),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('Close'), findsNWidgets(2));
+    expect(
+      (await _evaluate(tester, distinctTapLabelGuideline)).passed,
+      isFalse,
+    );
+  }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
   testWidgets("iOS keeps the segmented control's native height, and nothing "
       'else below 44 pt', (tester) async {
     await _pump(

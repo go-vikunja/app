@@ -2,7 +2,9 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_spans.dart';
 import 'package:vikunja_mobile/features/quick_add/presentation/magic_text_controller.dart';
 
@@ -14,6 +16,7 @@ Future<void> showQuickAddHelp(
   bool guest = false,
 }) => showModalBottomSheet<void>(
   context: context,
+  barrierLabel: sheetBarrierLabel(context),
   useRootNavigator: true,
   isScrollControlled: true,
   useSafeArea: true,
@@ -111,7 +114,6 @@ class QuickAddHelpSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     final example =
         '${l10n.quickAddHelpExampleTask} '
         '${prefixes.label}${l10n.quickAddHelpExampleLabel} '
@@ -126,14 +128,7 @@ class QuickAddHelpSheet extends StatelessWidget {
       controller: scrollController,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       children: [
-        Semantics(
-          header: true,
-          headingLevel: 1,
-          child: Text(
-            l10n.quickAddHelpTitle,
-            style: theme.textTheme.titleLarge,
-          ),
-        ),
+        SheetTitle(l10n.quickAddHelpTitle),
         const SizedBox(height: 8),
         Text(l10n.quickAddHelpIntro),
         _Section(
@@ -190,7 +185,7 @@ class QuickAddHelpSheet extends StatelessWidget {
         ),
         _Section(
           kind: MagicSpanKind.date,
-          icon: Icons.event,
+          icon: Icons.calendar_today_outlined,
           title: l10n.quickAddHelpDatesTitle,
           children: [
             Text(l10n.quickAddHelpDatesBody),

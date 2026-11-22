@@ -122,8 +122,9 @@ class TaskRow extends ConsumerWidget {
     final mutedSmall = theme.textTheme.bodySmall?.copyWith(
       color: colors.onSurfaceVariant,
     );
+    final iconSize = metaIconSize(context);
     Widget metaIcon(IconData icon) =>
-        Icon(icon, size: 14, color: colors.onSurfaceVariant);
+        Icon(icon, size: iconSize, color: colors.onSurfaceVariant);
 
     final titleStyle = task.done
         ? TextStyle(
@@ -154,7 +155,7 @@ class TaskRow extends ConsumerWidget {
       final project? => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ProjectIcon(hexColor: projectHexColor ?? '', size: 14),
+          ProjectIcon(hexColor: projectHexColor ?? '', size: iconSize),
           const SizedBox(width: 4),
           Flexible(child: Text(project, style: mutedSmall)),
         ],
@@ -359,7 +360,7 @@ class TaskRow extends ConsumerWidget {
       endAction: !swipes || onDueDate == null
           ? null
           : SwipeAction(
-              icon: Icons.event,
+              icon: Icons.calendar_today_outlined,
               label: l10n.taskDetailDueDate,
               color: colors.tertiary,
               onColor: colors.onTertiary,
@@ -422,7 +423,7 @@ class _ChecklistCount extends StatelessWidget {
     children: [
       Icon(
         statistics.allDone ? Icons.check_box : Icons.check_box_outlined,
-        size: 14,
+        size: metaIconSize(context),
         color: style?.color,
       ),
       const SizedBox(width: 2),

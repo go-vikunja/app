@@ -104,7 +104,7 @@ void main() {
     expect(find.text('Pay the bill'), findsOneWidget);
     expect(find.widgetWithText(LabelPill, 'Bills'), findsOneWidget);
     expect(find.byType(AvatarStack), findsOneWidget);
-    expect(find.widgetWithText(TableDateItem, '1 day ago'), findsOneWidget);
+    expect(find.widgetWithText(TableDateItem, 'yesterday'), findsOneWidget);
     expect(find.byIcon(Icons.calendar_today_outlined), findsOneWidget);
 
     expect(find.text('Work'), findsNothing);
@@ -126,7 +126,7 @@ void main() {
     await pumpRow(tester, fullTask(), columns: TableColumn.defaults);
 
     expect(find.byType(DoneBadge), findsNothing);
-    final due = find.text('1 day ago');
+    final due = find.text('yesterday');
     final context = tester.element(due);
     expect(
       colorOf(tester, due),
@@ -170,7 +170,7 @@ void main() {
           ),
         )
         .text;
-    expect(dateAfter(Icons.calendar_today_outlined), '1 day ago');
+    expect(dateAfter(Icons.calendar_today_outlined), 'yesterday');
     expect(dateAfter(Icons.play_arrow_outlined), '3 days ago');
     expect(dateAfter(Icons.stop_outlined), 'in 2 days');
     expect(dateAfter(Icons.task_alt), '2 hours ago');
@@ -201,8 +201,10 @@ void main() {
     expect(find.text(en.projectTableCellPercent(0)), findsOneWidget);
   });
 
-  testWidgets('the priority column follows the web table: every priority, '
-      "a done task's too, in the web's three colours", (tester) async {
+  testWidgets("the priority column shows every priority, a done task's "
+      'too, with the flag of every other list, never the overdue icon', (
+    tester,
+  ) async {
     const priority = {TableColumn.title, TableColumn.priority};
     Future<(Color?, IconData?)> look(TaskPriority value, String text) async {
       await pumpRow(
@@ -213,7 +215,7 @@ void main() {
       final label = find.text(text);
       final icon = tester.widget<Icon>(
         find.descendant(
-          of: find.byType(TablePriorityLabel),
+          of: find.byType(PriorityFlag),
           matching: find.byType(Icon),
         ),
       );
@@ -221,25 +223,27 @@ void main() {
     }
 
     final colors = AppTheme.light().colorScheme;
-    expect(await look(TaskPriority.unset, en.priorityUnset), (
-      colors.primary,
-      Icons.priority_high,
-    ));
-    expect(await look(TaskPriority.low, en.priorityLow), (
-      colors.primary,
-      Icons.priority_high,
-    ));
-    expect(await look(TaskPriority.medium, en.priorityMedium), (
+    for (final (value, text) in [
+      (TaskPriority.unset, en.priorityUnset),
+      (TaskPriority.low, en.priorityLow),
+      (TaskPriority.medium, en.priorityMedium),
+    ]) {
+      expect(await look(value, text), (
+        colors.onSurfaceVariant,
+        Icons.outlined_flag,
+      ));
+    }
+    expect(await look(TaskPriority.high, en.priorityHigh), (
       colors.tertiary,
-      Icons.priority_high,
+      Icons.flag,
     ));
     for (final (value, text) in [
-      (TaskPriority.high, en.priorityHigh),
       (TaskPriority.urgent, en.priorityUrgent),
       (TaskPriority.doNow, en.priorityDoNow),
     ]) {
-      expect(await look(value, text), (colors.error, Icons.error_outline));
+      expect(await look(value, text), (colors.error, Icons.flag));
     }
+    expect(find.byIcon(Icons.error_outline), findsNothing);
   });
 
   testWidgets('progress is a whole percent, rounded', (tester) async {
@@ -287,7 +291,7 @@ void main() {
       en.labelSemantics('Bills'),
       en.taskAssigneesSemantics('Anna'),
       en.taskCommentCountUnread(3),
-      en.taskDueSemantics('1 day ago'),
+      en.taskDueSemantics('yesterday'),
       en.projectTableStartsSemantics('3 days ago'),
       en.projectTableEndsSemantics('in 2 days'),
       en.taskPercentDone(29),

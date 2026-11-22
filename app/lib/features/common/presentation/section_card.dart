@@ -17,6 +17,7 @@ class SectionCard extends StatelessWidget {
     required this.children,
     this.title,
     this.count,
+    this.countLabel,
     this.trailing,
     this.titleColor,
     this.margin = _margin,
@@ -26,6 +27,7 @@ class SectionCard extends StatelessWidget {
   final List<Widget> children;
   final String? title;
   final int? count;
+  final String? countLabel;
   final Widget? trailing;
   final Color? titleColor;
   final EdgeInsetsGeometry margin;
@@ -40,6 +42,7 @@ class SectionCard extends StatelessWidget {
           ListSectionHeader(
             title: title,
             count: count,
+            countLabel: countLabel,
             trailing: trailing,
             color: titleColor,
             padding: _headerPadding,
@@ -73,6 +76,7 @@ class SliverSectionCard extends StatelessWidget {
     required this.itemBuilder,
     this.title,
     this.count,
+    this.countLabel,
     this.trailing,
     this.action,
     this.titleColor,
@@ -84,6 +88,7 @@ class SliverSectionCard extends StatelessWidget {
   final NullableIndexedWidgetBuilder itemBuilder;
   final String? title;
   final int? count;
+  final String? countLabel;
   final Widget? trailing;
 
   /// A text button after the count, see [ListSectionHeader.action].
@@ -101,6 +106,7 @@ class SliverSectionCard extends StatelessWidget {
             child: ListSectionHeader(
               title: title,
               count: count,
+              countLabel: countLabel,
               trailing: trailing,
               action: action,
               color: titleColor,

@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/theme/hex_color.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/platform/app_backgrounding.dart';
@@ -240,6 +242,7 @@ class _WidgetConfigurePageState extends ConsumerState<WidgetConfigurePage> {
     required int? selectedId,
   }) => showModalBottomSheet<int>(
     context: context,
+    barrierLabel: sheetBarrierLabel(context),
     useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
@@ -592,11 +595,7 @@ class _ChoiceList extends StatelessWidget {
         if (index == 0) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
-            child: Semantics(
-              header: true,
-              headingLevel: 1,
-              child: Text(title, style: theme.textTheme.titleMedium),
-            ),
+            child: SheetTitle(title),
           );
         }
         if (choices.isEmpty) {

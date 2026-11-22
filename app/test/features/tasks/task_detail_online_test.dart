@@ -125,10 +125,7 @@ void main() {
       for (final title in ['Work', 'Clients', 'Acme']) {
         expect(inSheet(find.text(title)), findsOneWidget);
       }
-      expect(
-        inSheet(find.text(en.taskChecklistProgress(1, 2))),
-        findsOneWidget,
-      );
+      expect(inSheet(find.text(en.taskChecklistChecked(1, 2))), findsOneWidget);
     });
 
     testWidgets('the project path starts at the first ancestor on this '

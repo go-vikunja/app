@@ -38,6 +38,7 @@ The terms and the style of the app's texts in English and German ([D71](decision
   - other objects: label; team; saved filter; view (List, Gantt, Table, Kanban);
   - boards: column (a kanban bucket, never "bucket"); board (a kanban view); card (a task on a board);
   - on a task: favorites; assignee; reminder; due date, start date, end date; done (the state; "Mark as done"; checked off in a list or widget, never "ticked off"); open (the state); identifier; comment; attachment;
+  - checklist item for a checkbox in a task's description, which is checked or unchecked ("2 of 5 checked", "All 5 checked"); never "task" or "subtask", which name tasks of their own;
   - sharing: link share (what an admin creates) vs shared link (what a guest opens); guest access;
   - device settings: connection settings; access headers; app lock;
   - the app's pages on the website: help (the support page, "Help and bug reports"), privacy policy, legal notice (the Impressum); a server's own are its privacy policy and imprint;

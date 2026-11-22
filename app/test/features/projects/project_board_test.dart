@@ -466,7 +466,7 @@ void main() {
       );
       final due = find.descendant(
         of: card,
-        matching: find.text(en.relativeDaysAgo(1)),
+        matching: find.text(en.relativeYesterday),
       );
       expect(tester.widget<Text>(due).style?.color, colors.error);
       expect(
@@ -504,7 +504,7 @@ void main() {
         label,
         startsWith(
           'Write report\n'
-          '${en.taskOverdueSemantics(en.relativeDaysAgo(1))}\n',
+          '${en.taskOverdueSemantics(en.relativeYesterday)}\n',
         ),
       );
       expect(label, isNot(contains('WORK-1')));
@@ -514,6 +514,35 @@ void main() {
         tester.getSemantics(find.text('Finished')).getSemanticsData().label,
         contains(en.taskDoneSemantics),
       );
+      semantics.dispose();
+    });
+
+    testWidgets('a card is a button at least 48 dp tall, a one-line card '
+        "too, and each column's add button names its column", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await pumpBoard(tester, size: const Size(1600, 900));
+
+      final cards = find.byType(BoardCard);
+      expect(cards, findsWidgets);
+      for (final card in cards.evaluate()) {
+        final size = (card.renderObject! as RenderBox).size;
+        expect(size.height, greaterThanOrEqualTo(48), reason: '${card.widget}');
+        final title = (card.widget as BoardCard).task.title;
+        expect(
+          tester
+              .getSemantics(find.text(title))
+              .getSemanticsData()
+              .flagsCollection
+              .isButton,
+          isTrue,
+          reason: title,
+        );
+      }
+      for (final column in ['To-Do', 'Doing', 'Done']) {
+        final name = en.boardAddAnotherTaskTo(column);
+        expect(name, startsWith(en.boardAddAnotherTask));
+        expect(find.bySemanticsLabel(name), findsOneWidget, reason: column);
+      }
       semantics.dispose();
     });
 
@@ -601,7 +630,9 @@ void main() {
     });
 
     testWidgets('empty columns offer to add a task; "Add another task" '
-        'where there are cards', (tester) async {
+        'where there are cards; the spoken name starts with the shown '
+        'text', (tester) async {
+      final semantics = tester.ensureSemantics();
       storeBoard(columns: [...buckets(), bucket(24, 'Later')]);
       await pumpBoard(tester, size: const Size(1600, 900));
 
@@ -613,6 +644,14 @@ void main() {
         findsOne,
       );
       expect(find.text(en.boardAddAnotherTask), findsNWidgets(3));
+      final emptyName = en.boardAddTaskTo('Later');
+      expect(emptyName, startsWith(en.boardAddTask));
+      expect(find.bySemanticsLabel(emptyName), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(en.boardAddAnotherTaskTo('Later')),
+        findsNothing,
+      );
+      semantics.dispose();
     });
   });
 

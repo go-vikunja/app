@@ -90,7 +90,7 @@ void main() {
     await pumpAccountTab(tester, fullServer270(demoMode: true));
 
     await scrollTo(tester, find.byType(ServerNotices));
-    expect(find.text(en.overviewDemoNote), findsOneWidget);
+    expect(find.text(en.demoServerNote), findsOneWidget);
     expect(find.text(en.motdHeading), findsOneWidget);
     expect(find.widgetWithText(SelectableText, _motd), findsOneWidget);
     expect(find.text(en.legalImprint), findsOneWidget);
@@ -115,10 +115,10 @@ void main() {
     final semantics = tester.ensureSemantics();
     await pumpAccountTab(tester, fullServer270(demoMode: true));
 
-    await scrollTo(tester, find.text(en.overviewDemoNote));
+    await scrollTo(tester, find.text(en.demoServerNote));
     expect(
-      tester.getSemantics(find.text(en.overviewDemoNote)),
-      matchesSemantics(label: en.overviewDemoNote),
+      tester.getSemantics(find.text(en.demoServerNote)),
+      matchesSemantics(label: en.demoServerNote),
     );
     semantics.dispose();
   });
@@ -129,7 +129,7 @@ void main() {
     await pumpAccountTab(tester, fullServer270());
 
     await scrollTo(tester, find.byType(ServerNotices));
-    expect(find.text(en.overviewDemoNote), findsNothing);
+    expect(find.text(en.demoServerNote), findsNothing);
     expect(find.widgetWithText(SelectableText, _motd), findsOneWidget);
     expect(find.text(en.legalImprint), findsOneWidget);
   });
@@ -210,7 +210,7 @@ void main() {
     await scrollTo(tester, find.byType(ServerNotices));
     expect(tester.getSize(find.byType(ServerNotices)).height, 0);
     for (final text in [
-      en.overviewDemoNote,
+      en.demoServerNote,
       en.motdHeading,
       en.legalImprint,
       en.legalPrivacy,
@@ -239,7 +239,7 @@ void main() {
     );
 
     await scrollTo(tester, find.byType(ServerNotices));
-    expect(find.text(de.overviewDemoNote), findsOneWidget);
+    expect(find.text(de.demoServerNote), findsOneWidget);
     expect(find.text(de.motdHeading), findsOneWidget);
     expect(find.text(de.legalImprint), findsOneWidget);
     expect(find.text('Terms of Service'), findsOneWidget);

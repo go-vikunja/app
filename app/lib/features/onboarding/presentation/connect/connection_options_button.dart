@@ -4,9 +4,9 @@ import 'package:vikunja_mobile/core/network/origin_key.dart';
 
 /// Under the address field: the connection settings of the address typed,
 /// named exactly, because a profile for `https://host:443` is not one for
-/// `https://host:3456`. Disabled while the text names no address; marked
-/// when settings are stored, which is how settings without an account are
-/// found again.
+/// `https://host:3456`. Disabled while the text names no address, saying
+/// so; marked when settings are stored, which is how settings without an
+/// account are found again.
 class ConnectionOptionsButton extends StatelessWidget {
   const new({
     required this.origin,
@@ -26,10 +26,12 @@ class ConnectionOptionsButton extends StatelessWidget {
     final origin = this.origin;
     final onPressed = this.onPressed;
     final enabled = origin != null && onPressed != null;
-    final details = [
-      if (origin != null) l10n.connectionOptionsFor('$origin'),
-      if (origin != null && hasSettings) l10n.connectionOptionsSaved,
-    ].join(' · ');
+    final details = origin == null
+        ? l10n.connectionOptionsNeedAddress
+        : [
+            l10n.connectionOptionsFor('$origin'),
+            if (hasSettings) l10n.connectionOptionsSaved,
+          ].join(' · ');
     return Align(
       alignment: AlignmentDirectional.centerStart,
       child: TextButton.icon(
@@ -39,15 +41,15 @@ class ConnectionOptionsButton extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(l10n.connectionOptions),
-            if (details.isNotEmpty)
-              Text(
-                details,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: enabled
-                      ? theme.colorScheme.onSurfaceVariant
-                      : theme.disabledColor,
-                ),
+            Text(
+              details,
+              style: theme.textTheme.bodySmall?.copyWith(
+                // The hint to type an address stays readable.
+                color: enabled || origin == null
+                    ? theme.colorScheme.onSurfaceVariant
+                    : theme.disabledColor,
               ),
+            ),
           ],
         ),
       ),

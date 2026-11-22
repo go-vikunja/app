@@ -7,6 +7,11 @@ import 'package:vikunja_mobile/app/theme/hex_color.dart';
 import 'package:vikunja_mobile/features/common/presentation/user_avatar.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart';
 
+/// The size of a meta line's icons: 14 dp, growing with the text up to
+/// twice that, so that the overdue mark stays legible at large text sizes.
+double metaIconSize(BuildContext context) =>
+    MediaQuery.textScalerOf(context).scale(14).clamp(14, 28);
+
 /// A priority as a flag and its name: urgent and up in the error colour,
 /// high with an amber flag, lower ones muted.
 class PriorityFlag extends StatelessWidget {
@@ -52,43 +57,15 @@ class PriorityFlag extends StatelessWidget {
   }
 }
 
-/// A priority as the web's table shows it, every value, Unset too: low
-/// ones in the primary colour, medium in amber, high and up in the error
-/// colour with a circled exclamation mark.
+/// The Table view's priority: every value, Unset and a done task's
+/// included (D61), drawn as [PriorityFlag] draws it everywhere else.
 class TablePriorityLabel extends StatelessWidget {
   const new({required this.priority, super.key});
 
   final TaskPriority priority;
 
   @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-    final (
-      IconData icon,
-      Color iconColor,
-      Color textColor,
-    ) = switch (priority.value) {
-      >= 3 => (Icons.error_outline, colors.error, colors.error),
-      2 => (
-        Icons.priority_high,
-        HighlightColors.of(context).highlight,
-        colors.tertiary,
-      ),
-      _ => (Icons.priority_high, colors.primary, colors.primary),
-    };
-    final text = priorityLabel(l10n, priority);
-    return _MetaItem(
-      icon: icon,
-      iconColor: iconColor,
-      child: Text(
-        text,
-        style: theme.textTheme.labelMedium?.copyWith(color: textColor),
-        semanticsLabel: l10n.prioritySemantics(text),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => PriorityFlag(priority: priority);
 }
 
 /// A table column's icon in the columns sheet; a row's dates lead with
@@ -97,7 +74,7 @@ IconData tableColumnIcon(TableColumn column) => switch (column) {
   TableColumn.done => Icons.check_circle_outline,
   TableColumn.project => Icons.folder_outlined,
   TableColumn.title => Icons.title,
-  TableColumn.priority => Icons.priority_high,
+  TableColumn.priority => Icons.flag_outlined,
   TableColumn.labels => Icons.label_outline,
   TableColumn.assignees => Icons.people_outline,
   TableColumn.commentCount => Icons.chat_bubble_outline,
@@ -301,6 +278,7 @@ class CommentCount extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
     final color = unread ? colors.primary : colors.onSurfaceVariant;
+    final iconSize = metaIconSize(context);
     return Semantics(
       label: unread
           ? l10n.taskCommentCountUnread(count)
@@ -310,11 +288,11 @@ class CommentCount extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox.square(
-            dimension: 14,
+            dimension: iconSize,
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                Icon(Icons.chat_bubble_outline, size: 14, color: color),
+                Icon(Icons.chat_bubble_outline, size: iconSize, color: color),
                 if (unread)
                   PositionedDirectional(
                     top: -2,
@@ -408,7 +386,8 @@ class LabelPill extends StatelessWidget {
   }
 }
 
-/// An item of a task's meta line: a 14 dp icon before its text.
+/// An item of a task's meta line: an icon of [metaIconSize] before its
+/// text.
 class _MetaItem extends StatelessWidget {
   const new({required this.icon, required this.iconColor, required this.child});
 
@@ -420,7 +399,9 @@ class _MetaItem extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     mainAxisSize: MainAxisSize.min,
     children: [
-      ExcludeSemantics(child: Icon(icon, size: 14, color: iconColor)),
+      ExcludeSemantics(
+        child: Icon(icon, size: metaIconSize(context), color: iconColor),
+      ),
       const SizedBox(width: 4),
       Flexible(child: child),
     ],

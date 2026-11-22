@@ -8,6 +8,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/core/repositories/list_preferences_providers.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
@@ -67,6 +69,7 @@ Future<void> showNewTaskSheet(
   final animation = BottomSheet.createAnimationController(navigator);
   return showModalBottomSheet<void>(
     context: context,
+    barrierLabel: sheetBarrierLabel(context),
     useRootNavigator: true,
     routeSettings: const RouteSettings(name: newTaskSheetRouteName),
     isScrollControlled: true,
@@ -818,16 +821,7 @@ class _NewTaskSheetState extends ConsumerState<NewTaskSheet> {
           padding: const EdgeInsets.fromLTRB(16, 0, 4, 0),
           child: Row(
             children: [
-              Expanded(
-                child: Semantics(
-                  header: true,
-                  headingLevel: 1,
-                  child: Text(
-                    l10n.newTask,
-                    style: theme.textTheme.headlineSmall,
-                  ),
-                ),
-              ),
+              Expanded(child: SheetTitle(l10n.newTask)),
               // One node: the button's own node would otherwise sit below
               // the flag.
               MergeSemantics(

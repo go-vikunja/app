@@ -96,6 +96,7 @@ Future<ShareOutcome?> showShareSheet(
     case _:
       return showModalBottomSheet<ShareOutcome>(
         context: context,
+        barrierLabel: sheetBarrierLabel(context),
         routeSettings: settings,
         useRootNavigator: true,
         isScrollControlled: true,

@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/legal.dart';
+import 'package:vikunja_mobile/core/crash_reports/crash_report_providers.dart';
 import 'package:vikunja_mobile/core/links/external_link_opener.dart';
 import 'package:vikunja_mobile/features/about/presentation/support_details_page.dart';
 import 'package:vikunja_mobile/features/account_settings/presentation/account_settings_rows.dart';
@@ -66,7 +67,9 @@ class AboutPage extends ConsumerWidget {
                     WebsitePage.privacy,
                     icon: Icons.privacy_tip_outlined,
                     title: l10n.aboutPrivacyPolicy,
-                    subtitle: l10n.aboutPrivacyPolicySubtitle,
+                    subtitle: ref.watch(crashReportsDsnProvider) == null
+                        ? l10n.aboutPrivacyPolicySummaryNoCrashReports
+                        : l10n.aboutPrivacyPolicySummary,
                   ),
                   _websiteTile(
                     context,

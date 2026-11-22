@@ -20,6 +20,7 @@ import 'package:vikunja_mobile/features/onboarding/application/browser_sign_in_m
 import 'package:vikunja_mobile/features/onboarding/application/current_server.dart';
 import 'package:vikunja_mobile/features/onboarding/application/web_auth_pages.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connection_error_card.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/overview/demo_note.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/legal_links.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/motd_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/overview_actions.dart';
@@ -248,6 +249,10 @@ class _ServerOverviewScreenState extends ConsumerState<ServerOverviewScreen> {
                 ServerHeader(connection: connection),
                 const SizedBox(height: 20),
                 SupportStatusCard(connection: connection),
+                if (connection.info.demoModeEnabled) ...[
+                  const SizedBox(height: 16),
+                  const DemoNote(),
+                ],
                 if (motd.isNotEmpty) ...[
                   const SizedBox(height: 16),
                   MotdCard(message: motd),

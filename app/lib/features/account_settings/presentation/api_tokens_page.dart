@@ -8,6 +8,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/router/pushed_pages.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/account_security_repository_providers.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
@@ -281,14 +282,7 @@ class _TokenDetails extends ConsumerWidget {
       shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       children: [
-        Semantics(
-          header: true,
-          headingLevel: 1,
-          child: Text(
-            token.title.trim().isEmpty ? '–' : token.title,
-            style: theme.textTheme.titleLarge,
-          ),
-        ),
+        SheetTitle(token.title.trim().isEmpty ? '–' : token.title),
         const SizedBox(height: 8),
         Text(
           expired

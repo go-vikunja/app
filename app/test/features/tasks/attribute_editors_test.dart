@@ -364,9 +364,8 @@ void main() {
       expect(options(tester).first.shown, '10/10/2026 23:59');
     });
 
-    testWidgets('Cancel in the time dialog after Pick date writes nothing', (
-      tester,
-    ) async {
+    testWidgets('Cancel in the time dialog after Pick date sets the day '
+        'picked at the time the task had', (tester) async {
       await pumpApp(tester);
       await open(tester, 2);
 
@@ -380,6 +379,32 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(TimePickerDialog), findsNothing);
+      expect(data.tasks.updates, [
+        (
+          2,
+          TaskChanges(
+            dueDate: DateChange.set(DateTime(2026, 10, 20, 9, 30).toUtc()),
+          ),
+        ),
+      ]);
+      expect(said(tester), [
+        en.taskDueSemantics(written('Tuesday, October 20, 2026', '09:30')),
+      ]);
+    });
+
+    testWidgets('Cancel in the date dialog after Pick date writes nothing', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await open(tester, 2);
+
+      await tapIn(tester, find.byType(BottomSheet), en.newTaskPickDate);
+      expect(find.byType(DatePickerDialog), findsOneWidget);
+      tester.takeAnnouncements();
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DatePickerDialog), findsNothing);
       expect(data.tasks.updates, isEmpty);
       expect(task(2).dueDate, due.toUtc());
       expect(said(tester), isEmpty);

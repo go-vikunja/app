@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/features/common/presentation/option_sheet.dart';
 
 void main() {
@@ -95,6 +96,24 @@ void main() {
     await tester.pumpAndSettle();
     expect(await picked, 2);
     semantics.dispose();
+  }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+  testWidgets('the title is the sheet title of every sheet: a level-1 '
+      'heading in titleLarge', (tester) async {
+    await open(tester, const [SheetOption(value: 1, label: 'Today')]);
+
+    final title = find.text('Due date');
+    expect(
+      find.ancestor(of: title, matching: find.byType(SheetTitle)),
+      findsOneWidget,
+    );
+    expect(
+      tester.widget<Text>(title).style,
+      Theme.of(tester.element(title)).textTheme.titleLarge,
+    );
+    final data = tester.getSemantics(title).getSemanticsData();
+    expect(data.flagsCollection.isHeader, isTrue);
+    expect(data.headingLevel, 1);
   }, variant: TargetPlatformVariant.only(TargetPlatform.android));
 
   testWidgets('the subtitle shows in the iOS sheet too', (tester) async {

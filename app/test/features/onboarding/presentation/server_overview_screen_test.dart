@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/overview/server_overview_screen.dart';
 
@@ -292,6 +293,55 @@ void main() {
         findsOneWidget,
       );
     });
+  });
+
+  testWidgets('a screen reader hears the host first, then the version and '
+      'the badges, Unencrypted and Demo server before the API versions', (
+    tester,
+  ) async {
+    useTallSurface(tester);
+    final server = fullServer270(
+      root: 'http://192.168.1.20:3456',
+      demoMode: true,
+    );
+    final host = displayHost(server.rootUri);
+    await pumpServerOverview(tester, server);
+
+    final labels = [
+      for (final node in tester.semantics.simulatedAccessibilityTraversal())
+        node.label,
+    ];
+    final details = [
+      en.overviewVikunjaVersion('2.7.0'),
+      en.overviewInsecureBadge,
+      en.overviewDemoBadge,
+      en.overviewApiBadge('v2'),
+      en.overviewApiBadge('v1'),
+    ].join('\n');
+    expect(labels, contains(host));
+    expect(labels, contains(details));
+    expect(labels.indexOf(host), lessThan(labels.indexOf(details)));
+  });
+
+  testWidgets('a demo server warns about its shared demo account', (
+    tester,
+  ) async {
+    useTallSurface(tester);
+    await pumpServerOverview(tester, fullServer270(demoMode: true));
+
+    expect(find.text(en.overviewDemoBadge), findsOneWidget);
+    expect(find.text(en.demoServerNote), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text(en.demoServerNote)).dy,
+      greaterThan(tester.getTopLeft(find.text(en.tierFullTitle)).dy),
+    );
+  });
+
+  testWidgets('a server without demo mode has no demo note', (tester) async {
+    useTallSurface(tester);
+    await pumpServerOverview(tester, fullServer270());
+
+    expect(find.text(en.demoServerNote), findsNothing);
   });
 
   testWidgets('"Use a different server" returns to the connect screen', (

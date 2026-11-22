@@ -126,7 +126,7 @@ void main() {
     );
     expect(find.textContaining('WORK-'), findsNothing);
     expect(find.textContaining('#'), findsNothing);
-    expect(find.text('1 day ago'), findsOneWidget);
+    expect(find.text(en.relativeYesterday), findsOneWidget);
     expect(find.text('in 6 hours'), findsOneWidget);
     expect(find.text('in 3 days'), findsOneWidget);
     expect(find.text('in 20 days'), findsOneWidget);
@@ -211,13 +211,14 @@ void main() {
 
     final headers = tester
         .widgetList<ListSectionHeader>(find.byType(ListSectionHeader))
-        .map((header) => (header.title, header.count));
+        .map((header) => (header.title, header.count, header.countLabel));
+    final oneTask = en.sectionTaskCount(1);
     expect(headers, [
-      (en.sectionOverdue, 1),
-      (en.sectionToday, 1),
-      (en.sectionNextSevenDays, 1),
-      (en.sectionLater, 1),
-      (en.sectionNoDueDate, 1),
+      (en.sectionOverdue, 1, oneTask),
+      (en.sectionToday, 1, oneTask),
+      (en.sectionNextSevenDays, 1, oneTask),
+      (en.sectionLater, 1, oneTask),
+      (en.sectionNoDueDate, 1, oneTask),
     ]);
     expect(find.byType(SectionCardItem), findsNWidgets(5));
     final context = tester.element(find.byType(OverviewScreen));
@@ -248,8 +249,8 @@ void main() {
   testWidgets('overdue due dates use the error colour', (tester) async {
     await pumpOverview(tester);
 
-    final overdue = tester.widget<Text>(find.text('1 day ago'));
-    final context = tester.element(find.text('1 day ago'));
+    final overdue = tester.widget<Text>(find.text(en.relativeYesterday));
+    final context = tester.element(find.text(en.relativeYesterday));
     expect(overdue.style?.color, Theme.of(context).colorScheme.error);
     final upcoming = tester.widget<Text>(find.text('in 3 days'));
     expect(upcoming.style?.color, isNot(Theme.of(context).colorScheme.error));
@@ -282,7 +283,7 @@ void main() {
     expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
     expect(node.label, isNot(contains(en.taskMarkDone)));
     expect(node.label, contains('Pay the bill'));
-    expect(node.label, contains(en.taskOverdueSemantics('1 day ago')));
+    expect(node.label, contains(en.taskOverdueSemantics(en.relativeYesterday)));
     expect(node.label, contains(en.prioritySemantics(en.priorityUrgent)));
     expect(node.label, contains(en.labelSemantics('Sunny')));
     expect(
@@ -762,7 +763,7 @@ void main() {
     await pumpOverview(tester);
 
     expect(sectionTitles(tester).first, de.sectionOverdue);
-    expect(find.text('vor 1 Tag'), findsOneWidget);
+    expect(find.text(de.relativeYesterday), findsOneWidget);
     expect(find.text('in 3 Tagen'), findsOneWidget);
 
     data.engine.onRefresh = () async =>

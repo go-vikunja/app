@@ -9,10 +9,10 @@ import 'package:vikunja_mobile/features/home/presentation/session_end_text.dart'
 import 'package:vikunja_mobile/features/tasks/presentation/relative_time.dart';
 
 /// When the system last let the app sync this account in the background
-/// successfully; the last attempt when it failed since; a hint when the
-/// system has not run it for a day (Android), or that it decides when
-/// (iOS, before the first run); and the account's last ended session,
-/// while it is recent (D59).
+/// successfully, or that it has not tried yet; the last attempt when it
+/// failed since; a hint when the system has not run it for a day
+/// (Android), or that it decides when (iOS, before the first run); and the
+/// account's last ended session, while it is recent (D59).
 class BackgroundSyncLine extends ConsumerWidget {
   const new({
     required this.accountId,
@@ -77,6 +77,7 @@ class BackgroundSyncLine extends ConsumerWidget {
           final at? when isJustNow(at, now: now) =>
             l10n.accountBackgroundSyncSucceededJustNow,
           final at? => l10n.accountBackgroundSyncSucceeded(ago(at)),
+          null when turn == null => l10n.accountBackgroundSyncNotRunYet,
           null => l10n.accountBackgroundSyncNoneSucceeded,
         }, style: style),
         if (failedTurn case (:final outcome, :final at, :final stopReason))

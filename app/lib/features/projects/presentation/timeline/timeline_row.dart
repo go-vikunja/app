@@ -353,7 +353,9 @@ class TimelineRow extends StatelessWidget {
 /// A bar's colours: the task's own, else the scheme's primary container;
 /// an estimated bar neutral. A done task's are mixed with the surface
 /// rather than drawn translucent, so that its title's colour is chosen
-/// against the colour on screen.
+/// against the colour on screen. A fill can be as light as the chart, so
+/// every bar has a border that stands out from it (WCAG 1.4.11), also
+/// when done.
 @immutable
 final class _BarLook {
   const new({
@@ -383,7 +385,11 @@ final class _BarLook {
     return _BarLook(
       fill: fill,
       onBar: onBar,
-      border: row.bar.derived ? onBar.withValues(alpha: 0.7) : null,
+      border: switch ((row.bar.derived, own)) {
+        (true, _) => onBar.withValues(alpha: 0.7),
+        (false, null) => colors.primary,
+        (false, _) => colors.outline,
+      },
       dashed: row.bar.derived,
     );
   }
@@ -447,28 +453,33 @@ class _BarPainter extends CustomPainter {
       topRight: clippedEnd ? Radius.zero : _radius,
       bottomRight: clippedEnd ? Radius.zero : _radius,
     );
-    final fill = Paint();
-    final transparent = look.fill.withValues(alpha: 0);
-    switch (kind) {
-      case GanttBarKind.startOnly:
-        fill.shader = LinearGradient(
-          colors: [look.fill, look.fill, transparent],
-          stops: const [0, fadeOutFrom, 1],
-        ).createShader(full);
-      case GanttBarKind.endOnly:
-        fill.shader = LinearGradient(
-          colors: [transparent, look.fill, look.fill],
-          stops: const [0, fadeInUntil, 1],
-        ).createShader(full);
-      case GanttBarKind.scheduled || GanttBarKind.estimated:
-        fill.color = look.fill;
+    // The border fades with the fill where a date is missing.
+    void colour(Paint paint, Color color) {
+      final transparent = color.withValues(alpha: 0);
+      switch (kind) {
+        case GanttBarKind.startOnly:
+          paint.shader = LinearGradient(
+            colors: [color, color, transparent],
+            stops: const [0, fadeOutFrom, 1],
+          ).createShader(full);
+        case GanttBarKind.endOnly:
+          paint.shader = LinearGradient(
+            colors: [transparent, color, color],
+            stops: const [0, fadeInUntil, 1],
+          ).createShader(full);
+        case GanttBarKind.scheduled || GanttBarKind.estimated:
+          paint.color = color;
+      }
     }
+
+    final fill = Paint();
+    colour(fill, look.fill);
     canvas.drawRRect(shape, fill);
     if (look.border case final border?) {
       final stroke = Paint()
-        ..color = border
         ..style = PaintingStyle.stroke
         ..strokeWidth = kind == GanttBarKind.estimated ? 1.5 : 1;
+      colour(stroke, border);
       if (look.dashed) {
         _dashed(canvas, Path()..addRRect(shape), stroke);
       } else {

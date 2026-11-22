@@ -9,11 +9,13 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/widgets/adaptive_navigation_bar.dart';
 import 'package:vikunja_mobile/features/common/presentation/project_icon.dart';
+import 'package:vikunja_mobile/features/description_editor/presentation/description_editor_page.dart';
 import 'package:vikunja_mobile/features/tasks/application/color_palette.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/color_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/edit/task_edit_page.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 
+import '../../helpers/editor_bridge_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/sync_fakes.dart';
@@ -260,6 +262,41 @@ void main() {
       expect(find.text('Quarterly report'), findsOneWidget);
     });
 
+    testWidgets('once the description was saved here, the dialog says that '
+        'only the other edits are lost', (tester) async {
+      final bridges = FakeEditorBridges();
+      usePhoneSurface(tester, logicalSize: const Size(360, 2200));
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        now: now,
+        overrides: [bridges.override],
+      );
+      unawaited(routerOf(tester).push(AppRoutes.taskEdit(1)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(en.taskDetailDescription));
+      await tester.pumpAndSettle();
+      bridges.last.edit('<p>Only numbers</p>');
+      await tester.pump();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(DescriptionEditorPage),
+          matching: find.widgetWithText(TextButton, en.taskEditSave),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(DescriptionEditorPage), findsNothing);
+
+      await tester.enterText(titleField(), 'Changed');
+      await tester.pumpAndSettle();
+      await pressBack(tester);
+
+      expect(find.text(en.taskEditDiscardTitle), findsOneWidget);
+      expect(find.text(en.taskEditDiscardBodyDescriptionSaved), findsOneWidget);
+      expect(find.text(en.taskEditDiscardBody), findsNothing);
+    });
+
     testWidgets('the system back is guarded the same way', (tester) async {
       await openEditPage(tester, 1);
       await tester.enterText(titleField(), 'Changed');
@@ -299,7 +336,11 @@ void main() {
       final tomorrow = find.text(en.shortcutTomorrow).first;
       expect(
         tester.getSemantics(tomorrow).label,
-        en.shortcutSemantics(en.shortcutTomorrow, 'Sun, Oct 11'),
+        en.shortcutFieldSemantics(
+          en.taskDetailDueDate,
+          en.shortcutTomorrow,
+          'Sun, Oct 11',
+        ),
       );
       await tester.tap(tomorrow);
       await tester.pumpAndSettle();
@@ -422,6 +463,31 @@ void main() {
       );
     });
 
+    testWidgets("each date's chips name their date, so that the same "
+        'shortcut under the three dates differs', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await openEditPage(tester, 2);
+
+      final tomorrow = find.text(en.shortcutTomorrow);
+      expect(tomorrow, findsNWidgets(3));
+      expect(
+        [for (var i = 0; i < 3; i++) tester.getSemantics(tomorrow.at(i)).label],
+        [
+          for (final field in [
+            en.taskDetailDueDate,
+            en.taskDetailStartDate,
+            en.taskDetailEndDate,
+          ])
+            en.shortcutFieldSemantics(
+              field,
+              en.shortcutTomorrow,
+              'Sun, Oct 11',
+            ),
+        ],
+      );
+      semantics.dispose();
+    });
+
     testWidgets('a start date set by chip and an end date cleared go '
         'together', (tester) async {
       await openEditPage(tester, 1);
@@ -452,6 +518,25 @@ void main() {
       expect(find.text(en.taskPercentDone(50)), findsOneWidget);
       await save(tester);
       expect(data.tasks.updates.single.$2, const TaskChanges(percentDone: 0.5));
+    });
+
+    testWidgets('progress is read once: the slider is named Progress and '
+        'says the percent as its value', (tester) async {
+      final semantics = tester.ensureSemantics();
+      await openEditPage(tester, 1);
+
+      final slider = tester.getSemantics(find.byType(Slider));
+      final data = slider.getSemanticsData();
+      expect(data.label, en.taskDetailProgress);
+      expect(data.value, en.taskPercentDone(50));
+      expect(data.flagsCollection.isSlider, isTrue);
+      final percent = tester.getSemantics(find.text(en.taskPercentDone(50)));
+      expect(percent, isNot(same(slider)));
+      expect(
+        percent.getSemanticsData().label,
+        isNot(contains(en.taskPercentDone(50))),
+      );
+      semantics.dispose();
     });
 
     testWidgets('a colour swatch sets the colour, No colour clears it', (

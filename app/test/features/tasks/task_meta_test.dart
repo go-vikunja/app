@@ -154,6 +154,42 @@ void main() {
     }
   });
 
+  group('icon size', () {
+    for (final (scale, size) in [(1.0, 14.0), (1.5, 21.0), (2.0, 28.0)]) {
+      testWidgets('meta icons grow with the text: ${scale}x gives $size dp', (
+        tester,
+      ) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await pump(
+          tester,
+          const Column(
+            children: [
+              DueBadge(text: 'Overdue', tone: DueTone.overdue),
+              PriorityFlag(priority: TaskPriority.high),
+              CommentCount(count: 2, unread: true),
+            ],
+          ),
+        );
+
+        expect(iconOf(tester, DueBadge).size, size);
+        expect(iconOf(tester, PriorityFlag).size, size);
+        expect(iconOf(tester, CommentCount).size, size);
+      });
+    }
+
+    testWidgets('they stop at twice their size', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 3.12;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pump(
+        tester,
+        const DueBadge(text: 'Overdue', tone: DueTone.overdue),
+      );
+
+      expect(iconOf(tester, DueBadge).size, 28);
+    });
+  });
+
   group('label pill', () {
     testWidgets('keeps the label colour with readable text', (tester) async {
       await pump(

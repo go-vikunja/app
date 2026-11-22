@@ -63,10 +63,12 @@ void main() {
     return entry.id;
   }
 
-  testWidgets('says when the background sync has not run yet', (tester) async {
+  testWidgets('before its first attempt, says that the background sync has '
+      'not run yet, not that it failed', (tester) async {
     await pumpAccountTab(tester);
 
-    expect(find.text(en.accountBackgroundSyncNoneSucceeded), findsOneWidget);
+    expect(find.text(en.accountBackgroundSyncNotRunYet), findsOneWidget);
+    expect(find.text(en.accountBackgroundSyncNoneSucceeded), findsNothing);
     expect(find.text(en.accountBackgroundSyncIosHint), findsNothing);
   });
 
@@ -75,9 +77,35 @@ void main() {
   ) async {
     await pumpAccountTab(tester);
 
-    expect(find.text(en.accountBackgroundSyncNoneSucceeded), findsOneWidget);
+    expect(find.text(en.accountBackgroundSyncNotRunYet), findsOneWidget);
     expect(find.text(en.accountBackgroundSyncIosHint), findsOneWidget);
   }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+  testWidgets('once an attempt failed, says that none went through, and '
+      'how the attempt ended', (tester) async {
+    final at = start.subtract(const Duration(hours: 1));
+    await pumpAccountTab(
+      tester,
+      prepare: (accountId) => BackgroundRunLog(auth.preferences)
+          .recordAccountOutcome(
+            accountId,
+            BackgroundAccountOutcome.unreachable,
+            at: at,
+          ),
+    );
+
+    expect(find.text(en.accountBackgroundSyncNoneSucceeded), findsOneWidget);
+    expect(find.text(en.accountBackgroundSyncNotRunYet), findsNothing);
+    expect(
+      find.text(
+        en.accountBackgroundTurn(
+          formatRelativeTime(en, at, now: start),
+          en.accountBackgroundTurnUnreachable,
+        ),
+      ),
+      findsOneWidget,
+    );
+  });
 
   testWidgets('shows how long ago it last ran, without the hint', (
     tester,
@@ -99,7 +127,7 @@ void main() {
     tester,
   ) async {
     final accountId = await pumpAccountTab(tester);
-    expect(find.text(en.accountBackgroundSyncNoneSucceeded), findsOneWidget);
+    expect(find.text(en.accountBackgroundSyncNotRunYet), findsOneWidget);
 
     await auth.preferences.setString(
       BackgroundRunLog.lastRunAtKey(accountId),

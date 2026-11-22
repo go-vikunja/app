@@ -29,10 +29,17 @@ class ConnectionTile extends ConsumerWidget {
       null || ConnectionProfileStatus.ok => false,
       _ => true,
     };
+    // As the server overview marks it, also once unencrypted connections
+    // are allowed.
+    final unencrypted = !origin.isSecure;
     return ListTile(
       leading: Icon(
-        attention ? Icons.gpp_maybe_outlined : Icons.security_outlined,
-        color: attention ? theme.colorScheme.error : null,
+        attention
+            ? Icons.gpp_maybe_outlined
+            : unencrypted
+            ? Icons.no_encryption_outlined
+            : Icons.security_outlined,
+        color: attention || unencrypted ? theme.colorScheme.error : null,
       ),
       title: Text(l10n.connectionTitle),
       subtitle: subtitle == null ? null : Text(subtitle),

@@ -690,7 +690,27 @@ void main() {
       held.complete();
       await tester.pumpAndSettle();
       await stepThrough(settle: true);
-      expect(find.text(l10n.shareFileUnreadable), findsOneWidget);
+      // The list builds lazily: in German at 200 % its end lies too far
+      // below the unreadable file's row.
+      final unreadable = find.text(l10n.shareFileUnreadable);
+      final files =
+          tester
+              .state<ScrollableState>(
+                find
+                    .descendant(
+                      of: find.byType(ShareSheet),
+                      matching: find.byType(Scrollable),
+                    )
+                    .first,
+              )
+              .position
+            ..jumpTo(0);
+      await tester.pumpAndSettle();
+      while (unreadable.evaluate().isEmpty && files.extentAfter > 0) {
+        files.jumpTo(files.pixels + 100);
+        await tester.pumpAndSettle();
+      }
+      expect(unreadable, findsOneWidget);
 
       final segment = find.text(l10n.shareAddToTask);
       tester
@@ -704,6 +724,8 @@ void main() {
           )
           .position
           .jumpTo(0);
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(segment);
       await tester.pumpAndSettle();
       await tester.tap(segment);
       await tester.pumpAndSettle();
@@ -728,7 +750,9 @@ void main() {
       }
       await tester.ensureVisible(task.first);
       await tester.pumpAndSettle();
-      await tester.tap(task.first);
+      // Its first line: in German at 200 % the wrapped title's centre lies
+      // below the sheet's short list.
+      await tester.tapAt(tester.getTopLeft(task.first) + const Offset(8, 8));
       await tester.pumpAndSettle();
       await stepThrough(settle: true);
     });
@@ -3337,7 +3361,7 @@ void main() {
 
       // Near the end of the tab, far down at this size.
       await tester.scrollUntilVisible(
-        find.text(l10n.overviewDemoNote),
+        find.text(l10n.demoServerNote),
         100,
         maxScrolls: 200,
         scrollable: find

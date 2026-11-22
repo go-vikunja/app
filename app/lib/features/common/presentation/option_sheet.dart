@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 
 final class SheetOption<T> {
   const new({
@@ -57,6 +58,7 @@ Future<T?> showOptionSheet<T extends Object>(
     case _:
       return showModalBottomSheet<T>(
         context: context,
+        barrierLabel: sheetBarrierLabel(context),
         useRootNavigator: true,
         isScrollControlled: true,
         useSafeArea: true,
@@ -96,11 +98,7 @@ class _OptionList<T extends Object> extends StatelessWidget {
         if (index == 0) {
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Semantics(
-              header: true,
-              headingLevel: 1,
-              child: Text(title, style: theme.textTheme.titleMedium),
-            ),
+            child: SheetTitle(title),
           );
         }
         final option = options[index - 1];

@@ -257,6 +257,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
         ? listGroupsOf(model.rows, effectivePositionsOf(widget.source))
         : const [];
     final doneRows = model.doneRows ?? const [];
+    final doneCount = doneRows.where((row) => row.depth == 0).length;
     return ReadableWidth.builder(
       maxWidth: ReadableWidth.list,
       builder: (context, contentWidth, inset) => DragTarget<_RowDrag>(
@@ -280,7 +281,8 @@ class _ProjectListBodyState extends State<ProjectListBody> {
                     SliverToBoxAdapter(
                       child: ListSectionHeader(
                         title: l10n.projectTasksDoneSection,
-                        count: doneRows.where((row) => row.depth == 0).length,
+                        count: doneCount,
+                        countLabel: l10n.sectionTaskCount(doneCount),
                       ),
                     ),
                     _rows(doneRows),

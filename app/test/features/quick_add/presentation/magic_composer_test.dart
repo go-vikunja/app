@@ -667,7 +667,7 @@ void main() {
 
       await removeChip(
         tester,
-        en.quickAddDueLabel('Sun, Oct 11 12:00 PM', en.relativeInDays(1)),
+        en.quickAddDueLabel('Sun, Oct 11 12:00 PM', en.relativeTomorrow),
       );
       expect(composerText(tester), 'Call Sam');
       tomorrow = tester.widget<ChoiceChip>(choiceChip(en.shortcutTomorrow));

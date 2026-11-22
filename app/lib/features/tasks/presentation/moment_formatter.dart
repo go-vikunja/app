@@ -60,7 +60,10 @@ final class MomentFormatter {
   /// reminders, the edit page and the new-task sheet.
   String absolute(DateTime moment) =>
       chosenAbsolute(moment) ??
-      '${material.formatShortDate(moment.toLocal())} ${timeOfDay(moment)}';
+      l10n.momentShortDateTime(
+        material.formatShortDate(moment.toLocal()),
+        timeOfDay(moment),
+      );
 
   /// For screen readers once the user picked a date display: the long date
   /// with the weekday, as the web's tooltips show every date. Null before,

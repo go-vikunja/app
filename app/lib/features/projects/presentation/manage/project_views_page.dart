@@ -239,11 +239,14 @@ class _ViewRow extends StatelessWidget {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
     final title = viewTitle(l10n, view);
+    final kind = viewKindLabel(l10n, view.kind);
     return ListTile(
       enabled: enabled,
       leading: Icon(viewKindIcon(view.kind), color: colors.onSurfaceVariant),
       title: Text(title),
-      subtitle: Text(viewKindLabel(l10n, view.kind)),
+      subtitle: title.trim().toLowerCase() == kind.toLowerCase()
+          ? null
+          : Text(kind),
       onTap: onTap,
       trailing: busy
           ? SizedBox.square(

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -120,15 +121,18 @@ mixin TaskSelectionActions<W extends ConsumerStatefulWidget>
   /// [child] with Back ending the selection first, while this screen is the
   /// one in front: an offstage tab, or a page, sheet or dialog over it in
   /// any navigator, leaves Back alone.
-  Widget selectionBackHandler({required Widget child}) => BackButtonListener(
-    onBackButtonPressed: () async {
-      if (!selecting || !mounted) return false;
-      if (!TickerMode.valuesOf(context).enabled) return false;
-      if (!_inFront(context)) return false;
-      endSelection();
-      return true;
-    },
-    child: child,
+  Widget selectionBackHandler({required Widget child}) => _SelectionHoldsBack(
+    selecting: selecting,
+    child: BackButtonListener(
+      onBackButtonPressed: () async {
+        if (!selecting || !mounted) return false;
+        if (!TickerMode.valuesOf(context).enabled) return false;
+        if (!_inFront(context)) return false;
+        endSelection();
+        return true;
+      },
+      child: child,
+    ),
   );
 
   /// Whether every route around [context], up through the navigators that
@@ -141,6 +145,85 @@ mixin TaskSelectionActions<W extends ConsumerStatefulWidget>
     }
     return true;
   }
+}
+
+/// The route of the shell around the tabs, for the lists in the tabs.
+/// Android sends Back to the app only while the app says that it handles
+/// Back, and on the first tab's first screen only the shell's route can
+/// say so: else Back would close the app and leave the selection.
+class SelectionBackScope extends InheritedWidget {
+  const new({required this.route, required super.child, super.key});
+
+  final ModalRoute<Object?> route;
+
+  @override
+  bool updateShouldNotify(SelectionBackScope oldWidget) =>
+      route != oldWidget.route;
+}
+
+final class _BackHold extends PopEntry<Object?> {
+  @override
+  final ValueNotifier<bool> canPopNotifier = ValueNotifier(true);
+}
+
+/// While the list selects and its tab shows, on Android it holds its own
+/// route, so that a predictive back swipe ends the selection instead of
+/// popping the list, and the route of [SelectionBackScope]. iOS has no
+/// Back to end it with: its edge swipe still pops the list.
+class _SelectionHoldsBack extends StatefulWidget {
+  const new({required this.selecting, required this.child});
+
+  final bool selecting;
+  final Widget child;
+
+  @override
+  State<_SelectionHoldsBack> createState() => _SelectionHoldsBackState();
+}
+
+class _SelectionHoldsBackState extends State<_SelectionHoldsBack> {
+  final _hold = _BackHold();
+  var _routes = <ModalRoute<Object?>>{};
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    final routes = {
+      ?ModalRoute.of(context),
+      ?context.dependOnInheritedWidgetOfExactType<SelectionBackScope>()?.route,
+    };
+    for (final route in _routes.difference(routes)) {
+      route.unregisterPopEntry(_hold);
+    }
+    for (final route in routes.difference(_routes)) {
+      route.registerPopEntry(_hold);
+    }
+    _routes = routes;
+    _update();
+  }
+
+  @override
+  void didUpdateWidget(_SelectionHoldsBack oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _update();
+  }
+
+  // A hidden tab's selection waits; Back on the first tab must still be
+  // able to close the app.
+  void _update() => _hold.canPopNotifier.value =
+      !widget.selecting || !TickerMode.valuesOf(context).enabled;
+
+  @override
+  void dispose() {
+    for (final route in _routes) {
+      route.unregisterPopEntry(_hold);
+    }
+    _hold.canPopNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// The app bar while tasks are selected: close, how many, and Select all
@@ -241,7 +324,7 @@ class TaskSelectionActionBar extends ConsumerWidget {
                 markTasksDone,
               ),
               button(
-                Icons.event,
+                Icons.calendar_today_outlined,
                 l10n.taskDetailDueDate,
                 (context, ref, tasks) => rescheduleTasks(
                   context,

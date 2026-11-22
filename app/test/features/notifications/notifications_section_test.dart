@@ -81,7 +81,7 @@ void main() {
     expect(find.text(en.notificationsHeading), findsOneWidget);
     expect(switchValue(tester, en.notificationsReminders), isTrue);
     expect(switchValue(tester, en.notificationsDueDates), isTrue);
-    expect(find.text(en.notificationsScheduled(12)), findsOneWidget);
+    expect(find.text(en.notificationsScheduledOnDevice(12)), findsOneWidget);
     expect(find.text(en.notificationsOff), findsNothing);
     expect(find.text(en.notificationsMayBeLate), findsNothing);
   });
@@ -243,7 +243,7 @@ void main() {
     notifications.scheduledCount = 0;
     await pumpSection(tester);
 
-    expect(find.text(en.notificationsScheduled(0)), findsOneWidget);
+    expect(find.text(en.notificationsScheduledOnDevice(0)), findsOneWidget);
   });
 
   testWidgets('denied at the OS level: off, with the settings', (tester) async {
@@ -368,7 +368,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(en.notificationsOff), findsNothing);
-    expect(find.text(en.notificationsScheduled(12)), findsOneWidget);
+    expect(find.text(en.notificationsScheduledOnDevice(12)), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -411,6 +411,6 @@ void main() {
     expect(find.text(de.notificationsHeading), findsOneWidget);
     expect(find.text(de.notificationsForOwnTasks), findsOneWidget);
     expect(find.text(de.notificationsReminders), findsOneWidget);
-    expect(find.text(de.notificationsScheduled(12)), findsOneWidget);
+    expect(find.text(de.notificationsScheduledOnDevice(12)), findsOneWidget);
   });
 }

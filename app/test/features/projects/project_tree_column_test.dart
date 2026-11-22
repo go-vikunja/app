@@ -575,6 +575,63 @@ void main() {
       });
     }
 
+    for (final (how, back) in [('swipe', swipeBack), ('button', _pressBack)]) {
+      testWidgets('by $how from a project opened in the column: its row is '
+          'no longer marked, and a tap on it opens it again', (tester) async {
+        useWindow(tester, androidTabletLandscape);
+        final semantics = tester.ensureSemantics();
+        await pumpSweepApp(tester);
+        await _goTo(tester, AppRoutes.projects);
+        await tester.tap(_treeRow(gardenProjectId));
+        await tester.pumpAndSettle();
+        _expectSelected(
+          tester,
+          _projectRows(gardenProjectId),
+          count: 1,
+          selected: true,
+        );
+
+        await back(tester);
+        expect(_location(tester), AppRoutes.projects);
+        expect(find.byType(NoProjectOpen), findsOneWidget);
+        _expectSelected(
+          tester,
+          _projectRows(gardenProjectId),
+          count: 1,
+          selected: false,
+        );
+
+        await tester.tap(_treeRow(gardenProjectId));
+        await tester.pumpAndSettle();
+        expect(_location(tester), AppRoutes.project(gardenProjectId));
+        _expectSelected(
+          tester,
+          _projectRows(gardenProjectId),
+          count: 1,
+          selected: true,
+        );
+        semantics.dispose();
+      });
+    }
+
+    testWidgets("on an iPad a swipe from the project's own edge with a task "
+        'open closes the pane along with the project (D70)', (tester) async {
+      useWindow(tester, iPad11Landscape);
+      await pumpSweepApp(tester);
+      await _goTo(tester, AppRoutes.project(workProjectId));
+      await tapTaskRow(tester, 4);
+      expectPane(tester, taskId: 4);
+
+      await tester.dragFrom(
+        Offset(contentLeft(tester) + 5, 400),
+        const Offset(300, 0),
+      );
+      await tester.pumpAndSettle();
+      expect(_location(tester), AppRoutes.projects);
+      expect(find.byType(NoProjectOpen), findsOneWidget);
+      expect(find.byType(TaskDetailPane), findsNothing);
+    }, variant: iOSOnly);
+
     testWidgets("on an iPad a swipe from the project's own edge goes back "
         'to the tree', (tester) async {
       useWindow(tester, iPad11Landscape);

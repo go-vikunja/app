@@ -5,6 +5,7 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/l10n/picker_localizations.dart';
 import 'package:vikunja_mobile/features/tasks/application/display_settings.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/moment_formatter.dart';
+import 'package:vikunja_mobile/l10n/generated/app_localizations_en.dart';
 
 import '../../helpers/pump_app.dart';
 
@@ -303,6 +304,16 @@ void main() {
       );
     });
 
+    test('a translation orders and separates the date and the time', () {
+      final reordered = MomentFormatter(
+        l10n: _TimeFirst(),
+        material: materialEn,
+        settings: const DisplaySettings(),
+        alwaysUse24HourFormat: false,
+      );
+      expect(reordered.absolute(moments[0]), '2:05 PM · Oct 19, 2026');
+    });
+
     test('screen readers keep what each place read out', () {
       expect(formatter().semanticsLabel(moments[0]), isNull);
       expect(
@@ -456,4 +467,9 @@ void main() {
     expect(const DisplaySettings(weekStart: 6).firstDayOfWeekIndex, 6);
     expect(const DisplaySettings(weekStart: 7).firstDayOfWeekIndex, isNull);
   });
+}
+
+final class _TimeFirst extends AppLocalizationsEn {
+  @override
+  String momentShortDateTime(String date, String time) => '$time · $date';
 }

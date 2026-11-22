@@ -121,6 +121,7 @@ class DueSectionsList extends StatelessWidget {
               SliverSectionCard(
                 title: dueSectionTitle(l10n, section.group),
                 count: section.tasks.length,
+                countLabel: l10n.sectionTaskCount(section.tasks.length),
                 action: _overdueAction(context, section),
                 titleColor: section.group == DueGroup.overdue
                     ? Theme.of(context).colorScheme.error
@@ -133,6 +134,7 @@ class DueSectionsList extends StatelessWidget {
               SliverSectionCard(
                 title: l10n.projectTasksDoneSection,
                 count: doneTasks.length,
+                countLabel: l10n.sectionTaskCount(doneTasks.length),
                 itemCount: doneTasks.length,
                 itemBuilder: (context, index) =>
                     _row(context, doneTasks[index]),

@@ -1,5 +1,6 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/rich_text/rich_html.dart';
 
@@ -36,7 +37,6 @@ class DescriptionConflictSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     final web = this.web;
     void choose(DescriptionChoice choice) => Navigator.of(context).pop(choice);
     return SingleChildScrollView(
@@ -45,14 +45,7 @@ class DescriptionConflictSheet extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Semantics(
-            header: true,
-            headingLevel: 1,
-            child: Text(
-              l10n.syncProblemCompareTitle,
-              style: theme.textTheme.titleLarge,
-            ),
-          ),
+          SheetTitle(l10n.syncProblemCompareTitle),
           const SizedBox(height: 16),
           _Version(label: l10n.syncProblemYourVersion, html: mine),
           const SizedBox(height: 16),

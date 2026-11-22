@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart' show MaterialLocalizations;
 import 'package:vikunja_mobile/features/home/presentation/account_header.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/details/detail_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
@@ -381,6 +382,7 @@ final class _DistinctTapLabelGuideline extends AccessibilityGuideline {
 
   @override
   FutureOr<Evaluation> evaluate(WidgetTester tester) {
+    final dismissBarriers = _dismissBarrierNames(tester);
     final byName = <(String, String, String), List<SemanticsNode>>{};
     var heading = '';
     void visit(SemanticsNode node) {
@@ -391,6 +393,7 @@ final class _DistinctTapLabelGuideline extends AccessibilityGuideline {
         if ((data.hasAction(SemanticsAction.tap) ||
                 data.hasAction(SemanticsAction.longPress)) &&
             name.isNotEmpty &&
+            !(dismissBarriers.contains(name) && _isModalBarrier(data)) &&
             !repeatableTapLabels.containsKey(name.replaceAll('\n', ' '))) {
           byName
               .putIfAbsent((name, _context(node), heading), () => [])
@@ -429,6 +432,29 @@ final class _DistinctTapLabelGuideline extends AccessibilityGuideline {
     }
     return result;
   }
+
+  /// A sheet's barrier and its drag handle both read "Dismiss"
+  /// ("Schließen") and both close the sheet, so the name keeps one purpose
+  /// (WCAG 3.2.4); only Android names the route around the handle
+  /// ("Dialog"), which tells them apart there. A deviation in D68. Only a
+  /// barrier that reads Material's dismiss label is exempt.
+  static bool _isModalBarrier(SemanticsData data) =>
+      data.hasAction(SemanticsAction.dismiss) &&
+      data.hasAction(SemanticsAction.tap) &&
+      !data.flagsCollection.isButton;
+
+  static Set<String> _dismissBarrierNames(WidgetTester tester) => {
+    for (final element in find.byType(ModalBarrier).evaluate())
+      if ((
+            (element.widget as ModalBarrier).semanticsLabel,
+            Localizations.of<MaterialLocalizations>(
+              element,
+              MaterialLocalizations,
+            )?.modalBarrierDismissLabel,
+          )
+          case (final label?, final dismiss?) when label == dismiss)
+        label,
+  };
 
   static String _context(SemanticsNode node) {
     for (var parent = node.parent; parent != null; parent = parent.parent) {

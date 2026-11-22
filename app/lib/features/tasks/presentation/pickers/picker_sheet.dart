@@ -1,6 +1,7 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 
 /// A picker over the page: a Cupertino sheet on iOS, a modal bottom sheet
 /// elsewhere, both above the keyboard. With [heightFactor] the content gets
@@ -39,6 +40,7 @@ Future<T?> showPickerSheet<T>(
     case _:
       return showModalBottomSheet<T>(
         context: context,
+        barrierLabel: sheetBarrierLabel(context),
         // Over the tab bar, not inside the tab's own navigator.
         useRootNavigator: true,
         isScrollControlled: true,
@@ -94,13 +96,7 @@ class PickerHeader extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               ?leading,
-              Flexible(
-                child: Semantics(
-                  header: true,
-                  headingLevel: 1,
-                  child: Text(title, style: theme.textTheme.titleMedium),
-                ),
-              ),
+              Flexible(child: SheetTitle(title)),
             ],
           ),
           if (label != null)

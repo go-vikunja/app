@@ -3,10 +3,12 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/follow/follow_controller.dart';
 
 /// The detail sheet's bell: on while the user follows the task, through
-/// its own subscription or its project's, off while not. While the state
-/// is unknown (loading, offline, a task not yet synced) it is a dimmed
-/// plain button, not an unselected toggle, and tells on tap why. On a
-/// [fixed] follow through the project a tap tells how to stop it.
+/// its own subscription or its project's, off while not; a screen reader
+/// hears a switch of the fixed name "Follow task", while the tooltip names
+/// what a tap does. While the state is unknown (loading, offline, a task
+/// not yet synced) it is a dimmed plain button, not an unselected toggle,
+/// and tells on tap why. On a [fixed] follow through the project a tap
+/// tells how to stop it.
 class FollowButton extends StatelessWidget {
   const new({
     required this.state,
@@ -33,7 +35,7 @@ class FollowButton extends StatelessWidget {
       FollowUnknown(:final loading) => loading,
       FollowKnown(:final saving) => saving,
     };
-    return IconButton(
+    final button = IconButton(
       onPressed: busy ? null : onPressed,
       tooltip: switch (state) {
         FollowUnknown(loading: true) => l10n.followChecking,
@@ -50,6 +52,19 @@ class FollowButton extends StatelessWidget {
             : null,
       ),
       selectedIcon: Icon(Icons.notifications_active, color: colors.primary),
+    );
+    if (following == null) return button;
+    // The button's own semantics would add its tooltip, which flips with
+    // the state, and a selected state besides the toggled one.
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: !busy && onPressed != null,
+      toggled: following,
+      label: l10n.followTask,
+      onTap: busy ? null : onPressed,
+      excludeSemantics: true,
+      child: button,
     );
   }
 }

@@ -1,6 +1,13 @@
 import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:material_ui/material_ui.dart' show MaterialLocalizations;
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
 import 'package:vikunja_mobile/app/layout/window_layout.dart';
+
+/// The `barrierLabel` of every `showModalBottomSheet`: without it, screen
+/// readers name the dimmed area by Material's scrim label, "Scrim"
+/// ("Gitter" in German).
+String sheetBarrierLabel(BuildContext context) =>
+    MaterialLocalizations.of(context).modalBarrierDismissLabel;
 
 /// The app's iOS sheet: `showCupertinoSheet` with its content in a
 /// [ReadableSheetWidth] that closes it on a tap beside the card.

@@ -22,7 +22,8 @@ void main() {
     expect(relative(const Duration(minutes: 45)), 'in 1 hour');
     expect(relative(const Duration(hours: 3)), 'in 3 hours');
     expect(relative(const Duration(hours: -21)), '21 hours ago');
-    expect(relative(const Duration(hours: 22)), 'in 1 day');
+    expect(relative(const Duration(hours: 22)), en.relativeTomorrow);
+    expect(relative(const Duration(hours: -22)), en.relativeYesterday);
     expect(relative(const Duration(days: 3)), 'in 3 days');
     expect(relative(const Duration(days: -2)), '2 days ago');
     expect(relative(const Duration(days: 25)), 'in 25 days');
@@ -35,7 +36,7 @@ void main() {
 
   test('German', () {
     expect(relative(const Duration(days: 3), german: true), 'in 3 Tagen');
-    expect(relative(const Duration(days: -1), german: true), 'vor 1 Tag');
+    expect(relative(const Duration(days: -2), german: true), 'vor 2 Tagen');
     expect(relative(const Duration(hours: -2), german: true), 'vor 2 Stunden');
   });
 
@@ -44,7 +45,7 @@ void main() {
         formatRelativeTime(en, moment, now: now);
     final afterMidnight = DateTime(2026, 10, 10, 0, 30);
     expect(at(afterMidnight, DateTime(2026, 10, 10, 23, 59)), 'in 23 hours');
-    expect(at(afterMidnight, DateTime(2026, 10, 11, 0, 30)), 'in 1 day');
+    expect(at(afterMidnight, DateTime(2026, 10, 11, 0, 30)), 'tomorrow');
     expect(at(afterMidnight, DateTime(2026, 10, 8, 23, 30)), '2 days ago');
     final morning = DateTime(2026, 10, 10, 8);
     expect(at(morning, DateTime(2026, 10, 17, 23)), 'in 7 days');
@@ -61,6 +62,19 @@ void main() {
       ),
       'in 23 Stunden',
     );
+  });
+
+  test('one calendar day away is tomorrow or yesterday, never a count of '
+      'one day', () {
+    String at(DateTime now, DateTime moment) =>
+        formatRelativeTime(en, moment, now: now);
+    final evening = DateTime(2026, 10, 10, 20);
+    expect(at(evening, DateTime(2026, 10, 11, 23)), 'tomorrow');
+    expect(at(evening, DateTime(2026, 10, 9, 8)), 'yesterday');
+    expect(at(evening, DateTime(2026, 10, 12, 9)), 'in 2 days');
+    expect(at(evening, DateTime(2026, 10, 8, 23)), '2 days ago');
+    // Closer than 22 hours the hours still count, as on the web.
+    expect(at(evening, DateTime(2026, 10, 11, 9)), 'in 13 hours');
   });
 
   test('agrees with the overview sections at the day boundaries', () {

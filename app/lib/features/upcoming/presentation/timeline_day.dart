@@ -38,6 +38,9 @@ class TimelineDay extends StatelessWidget {
           ListSectionHeader(
             title: title,
             count: rows.isEmpty ? null : rows.length,
+            countLabel: rows.isEmpty
+                ? null
+                : l10n.sectionTaskCount(rows.length),
             padding: const EdgeInsetsDirectional.fromSTEB(4, 2, 4, 4),
           ),
           if (rows.isEmpty)

@@ -57,8 +57,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Cancel in the time dialog after a date backs out of the '
-      'whole pick', (tester) async {
+  testWidgets('Cancel in the time dialog keeps the day just picked, at the '
+      'time the clock started from', (tester) async {
     final picked = await open(tester, current: DateTime(2026, 10, 21, 9, 30));
 
     await pickDay(tester, '24');
@@ -66,6 +66,77 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TimePickerDialog), findsNothing);
+    expect(picked, [DateTime(2026, 10, 24, 9, 30)]);
+  });
+
+  testWidgets('Cancel in the time dialog of a date without a time keeps the '
+      "day at the user's default due time", (tester) async {
+    final picked = await open(
+      tester,
+      display: const DisplaySettings(
+        timeFormat: TimeFormat.twentyFourHour,
+        defaultDueTime: ClockTime(17, 45),
+      ),
+    );
+
+    await pickDay(tester, '24');
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(picked, [DateTime(2026, 10, 24, 17, 45)]);
+  });
+
+  testWidgets('Cancel in the time dialog after picking today never keeps a '
+      'time that has passed: 23:59 instead (D102-9)', (tester) async {
+    final picked = await open(tester, current: DateTime(2026, 10, 21, 9, 30));
+
+    await pickDay(tester, '19');
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(picked, [DateTime(2026, 10, 19, 23, 59)]);
+  });
+
+  testWidgets('Cancel in the time dialog after picking today, without a '
+      'date, turns a passed default due time into 23:59 (D102-9)', (
+    tester,
+  ) async {
+    final picked = await open(
+      tester,
+      display: const DisplaySettings(
+        timeFormat: TimeFormat.twentyFourHour,
+        defaultDueTime: ClockTime(9, 0),
+      ),
+    );
+
+    await pickDay(tester, '19');
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(picked, [DateTime(2026, 10, 19, 23, 59)]);
+  });
+
+  testWidgets('Cancel in the time dialog after picking today keeps a time '
+      'still ahead', (tester) async {
+    final picked = await open(tester, current: DateTime(2026, 10, 21, 17));
+
+    await pickDay(tester, '19');
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(picked, [DateTime(2026, 10, 19, 17)]);
+  });
+
+  testWidgets('Cancel in the date dialog backs out of the whole pick', (
+    tester,
+  ) async {
+    final picked = await open(tester, current: DateTime(2026, 10, 21, 9, 30));
+
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TimePickerDialog), findsNothing);
+    expect(find.byType(DatePickerDialog), findsNothing);
     expect(picked, [null]);
   });
 

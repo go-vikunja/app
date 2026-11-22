@@ -76,6 +76,7 @@ class BoardCard extends ConsumerWidget {
 
     return Semantics(
       container: true,
+      button: onTap != null,
       label: summary.semanticsLabel(l10n, pending: pending),
       selected: selected ? true : null,
       onTap: onTap,
@@ -98,68 +99,73 @@ class BoardCard extends ConsumerWidget {
             cardRadius: _radius,
             child: InkWell(
               onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (taskColor == null)
-                      title
-                    else
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text.rich(
-                            WidgetSpan(
-                              alignment: PlaceholderAlignment.middle,
-                              child: ColorDot(color: taskColor),
-                            ),
-                            style: theme.textTheme.bodyMedium,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(child: title),
-                        ],
-                      ),
-                    if (summary.labels.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8),
-                        child: Wrap(
-                          spacing: 4,
-                          runSpacing: 4,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(
+                  minHeight: kMinInteractiveDimension,
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (taskColor == null)
+                        title
+                      else
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
                           children: [
-                            for (final label in summary.labels)
-                              LabelPill(label: label),
-                          ],
-                        ),
-                      ),
-                    if (summary.percent > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: TaskProgressBar(percentDone: task.percentDone),
-                      ),
-                    if (meta.isNotEmpty || task.assignees.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 10),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Expanded(
-                              child: Wrap(
-                                spacing: 10,
-                                runSpacing: 4,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: meta,
+                            Text.rich(
+                              WidgetSpan(
+                                alignment: PlaceholderAlignment.middle,
+                                child: ColorDot(color: taskColor),
                               ),
+                              style: theme.textTheme.bodyMedium,
                             ),
-                            if (task.assignees.isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              AvatarStack(users: task.assignees),
-                            ],
+                            const SizedBox(width: 6),
+                            Expanded(child: title),
                           ],
                         ),
-                      ),
-                  ],
+                      if (summary.labels.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: [
+                              for (final label in summary.labels)
+                                LabelPill(label: label),
+                            ],
+                          ),
+                        ),
+                      if (summary.percent > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: TaskProgressBar(percentDone: task.percentDone),
+                        ),
+                      if (meta.isNotEmpty || task.assignees.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Expanded(
+                                child: Wrap(
+                                  spacing: 10,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: meta,
+                                ),
+                              ),
+                              if (task.assignees.isNotEmpty) ...[
+                                const SizedBox(width: 8),
+                                AvatarStack(users: task.assignees),
+                              ],
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

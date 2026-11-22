@@ -1,6 +1,7 @@
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
 /// Our own short choice; the web offers a full emoji picker instead.
@@ -51,17 +52,12 @@ class _ReactionPickerState extends State<_ReactionPicker> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     return ListView(
       controller: widget.scrollController,
       shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       children: [
-        Semantics(
-          header: true,
-          headingLevel: 1,
-          child: Text(l10n.reactionAdd, style: theme.textTheme.titleMedium),
-        ),
+        SheetTitle(l10n.reactionAdd),
         const SizedBox(height: 12),
         Wrap(
           spacing: 4,

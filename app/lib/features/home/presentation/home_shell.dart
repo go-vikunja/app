@@ -33,6 +33,7 @@ import 'package:vikunja_mobile/features/tasks/application/task_providers.dart'
     show taskByIdProvider;
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_pane.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/task_selection.dart';
 
 /// The signed-in app: the tab bar (or, in a wide window, the rail) around
 /// the Overview, Upcoming, Projects and Account branches, each tab's task
@@ -171,8 +172,15 @@ class _HomeShellState extends ConsumerState<HomeShell>
 
   int get _currentTab => widget.navigationShell.currentIndex;
 
-  String get _location =>
-      widget.navigationShell.shellRouteContext.routerState.matchedLocation;
+  /// The location the current tab shows. Not the shell's router state:
+  /// go_router keeps its matched location after a pop inside the tab.
+  String get _location {
+    RouteMatchBase match = widget.navigationShell.shellRouteContext.match;
+    while (match is ShellRouteMatch) {
+      match = match.matches.last;
+    }
+    return match.matchedLocation;
+  }
 
   bool get _paneShown =>
       (_paneMode ?? false) &&
@@ -574,7 +582,8 @@ class _HomeShellState extends ConsumerState<HomeShell>
     final treeColumn = treeBeside && tab == _projectsTab && !_resettingTabs
         ? ProjectTreeColumn(selectedId: AppRoutes.projectIdIn(_location))
         : null;
-    final tabs = TaskDetailPaneScope(
+    final route = ModalRoute.of(context);
+    final paneScope = TaskDetailPaneScope(
       available: (_paneMode ?? false) && tab != _accountTab,
       selectedTaskId: top == null
           ? null
@@ -595,6 +604,9 @@ class _HomeShellState extends ConsumerState<HomeShell>
         ),
       ),
     );
+    final tabs = route == null
+        ? paneScope
+        : SelectionBackScope(route: route, child: paneScope);
     final pane = top != null
         ? TaskDetailPane(
             entry: top,
@@ -638,7 +650,8 @@ class _HomeShellState extends ConsumerState<HomeShell>
     // with it the isolate, which would cut off a token exchange or sign-out.
     // Back on another tab's root returns to the first tab instead, as Android
     // expects; a tab's own stack is popped before a pop reaches the shell,
-    // and an open pane before both.
+    // and an open pane before both. On Android a list that selects holds
+    // this route too ([SelectionBackScope]).
     return PopScope(
       canPop: !signingIn && !signingOut && onFirstTab && !paneShown,
       onPopInvokedWithResult: (didPop, _) {

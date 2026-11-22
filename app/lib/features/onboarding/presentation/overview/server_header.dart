@@ -34,41 +34,54 @@ class ServerHeader extends StatelessWidget {
             style: theme.textTheme.headlineMedium,
           ),
         ),
-        if (subPath != null)
-          Text(
-            subPath,
-            style: theme.textTheme.titleMedium?.copyWith(
-              color: colors.onSurfaceVariant,
-            ),
-          ),
-        const SizedBox(height: 8),
-        Text(switch ((version, connection.info.rawVersion)) {
-          (final ServerVersion v, _) => l10n.overviewVikunjaVersion(v.display),
-          (null, final raw) when raw.isNotEmpty => l10n.overviewVikunjaVersion(
-            raw.length > 40 ? '${raw.substring(0, 40)}…' : raw,
-          ),
-          _ => l10n.overviewVikunjaVersionUnknown,
-        }, style: theme.textTheme.titleMedium),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final api in apiVersions)
-              _Badge(label: l10n.overviewApiBadge(api.pathSegment)),
-            if (connection.info.demoModeEnabled)
-              _Badge(
-                label: l10n.overviewDemoBadge,
-                icon: Icons.science_outlined,
+        // A node of its own: merged into the list item's node, these texts
+        // were read before the host.
+        Semantics(
+          container: true,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (subPath != null)
+                Text(
+                  subPath,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
+              const SizedBox(height: 8),
+              Text(switch ((version, connection.info.rawVersion)) {
+                (final ServerVersion v, _) => l10n.overviewVikunjaVersion(
+                  v.display,
+                ),
+                (null, final raw) when raw.isNotEmpty =>
+                  l10n.overviewVikunjaVersion(
+                    raw.length > 40 ? '${raw.substring(0, 40)}…' : raw,
+                  ),
+                _ => l10n.overviewVikunjaVersionUnknown,
+              }, style: theme.textTheme.titleMedium),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  if (connection.isInsecure)
+                    _Badge(
+                      label: l10n.overviewInsecureBadge,
+                      icon: Icons.lock_open,
+                      background: colors.errorContainer,
+                      foreground: colors.onErrorContainer,
+                    ),
+                  if (connection.info.demoModeEnabled)
+                    _Badge(
+                      label: l10n.overviewDemoBadge,
+                      icon: Icons.science_outlined,
+                    ),
+                  for (final api in apiVersions)
+                    _Badge(label: l10n.overviewApiBadge(api.pathSegment)),
+                ],
               ),
-            if (connection.isInsecure)
-              _Badge(
-                label: l10n.overviewInsecureBadge,
-                icon: Icons.lock_open,
-                background: colors.errorContainer,
-                foreground: colors.onErrorContainer,
-              ),
-          ],
+            ],
+          ),
         ),
       ],
     );

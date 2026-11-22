@@ -3,7 +3,9 @@ import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/theme/app_theme.dart';
 
 /// The star of a task row or its detail sheet, muted when off and amber
-/// when on; an indicator only without [onChanged].
+/// when on; an indicator only without [onChanged]. A screen reader hears
+/// a switch of the fixed name "Favorite"; the tooltip names what a tap
+/// does.
 class FavouriteButton extends StatelessWidget {
   const new({required this.isFavorite, required this.onChanged, super.key});
 
@@ -14,19 +16,24 @@ class FavouriteButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final colors = Theme.of(context).colorScheme;
-    // One node: the button's own node would otherwise sit below the flag.
-    return MergeSemantics(
-      child: Semantics(
-        toggled: isFavorite,
-        child: IconButton(
-          onPressed: onChanged == null ? null : () => onChanged!(!isFavorite),
-          tooltip: isFavorite
-              ? l10n.taskRemoveFavourite
-              : l10n.taskAddFavourite,
-          isSelected: isFavorite,
-          icon: Icon(Icons.star_border, color: colors.onSurfaceVariant),
-          selectedIcon: const FilledStar(),
-        ),
+    final onChanged = this.onChanged;
+    final toggle = onChanged == null ? null : () => onChanged(!isFavorite);
+    // The button's own semantics would add its tooltip, which flips with
+    // the state, and a selected state besides the toggled one.
+    return Semantics(
+      container: true,
+      button: true,
+      enabled: toggle != null,
+      toggled: isFavorite,
+      label: l10n.favouriteLabel,
+      onTap: toggle,
+      excludeSemantics: true,
+      child: IconButton(
+        onPressed: toggle,
+        tooltip: isFavorite ? l10n.taskRemoveFavourite : l10n.taskAddFavourite,
+        isSelected: isFavorite,
+        icon: Icon(Icons.star_border, color: colors.onSurfaceVariant),
+        selectedIcon: const FilledStar(),
       ),
     );
   }

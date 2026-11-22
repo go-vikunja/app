@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_sheet.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/widgets/sheet_title.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
@@ -29,6 +30,7 @@ Future<void> showAccountSwitcher(BuildContext context) {
     case _:
       return showModalBottomSheet<void>(
         context: context,
+        barrierLabel: sheetBarrierLabel(context),
         useRootNavigator: true,
         isScrollControlled: true,
         useSafeArea: true,
@@ -67,7 +69,6 @@ class AccountSwitcherSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
     final state = ref.watch(accountsProvider).value;
     final accounts = state?.accountsByRecency ?? const <RegisteredAccount>[];
     // Like the Accounts section: a switch during a sign-out would race its
@@ -90,14 +91,7 @@ class AccountSwitcherSheet extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-            child: Semantics(
-              header: true,
-              headingLevel: 1,
-              child: Text(
-                l10n.accountsHeading,
-                style: theme.textTheme.headlineSmall,
-              ),
-            ),
+            child: SheetTitle(l10n.accountsHeading),
           ),
           for (final entry in accounts)
             AccountTile(

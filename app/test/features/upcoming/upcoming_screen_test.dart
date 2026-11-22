@@ -162,6 +162,13 @@ void main() {
     await toggleMenuItem(tester, en.upcomingShowWithoutDate);
     expect(sectionTitles(tester).last, en.sectionNoDueDate);
     expect(rowTitles(tester).last, 'Someday');
+    final headers = tester.widgetList<ListSectionHeader>(
+      find.byType(ListSectionHeader),
+    );
+    expect({
+      for (final header in headers) header.title: header.countLabel,
+    }, containsPair(en.sectionOverdue, en.sectionTaskCount(2)));
+    expect(headers.last.countLabel, en.sectionTaskCount(1));
     expect(data.listPreferences.upcoming.showWithoutDueDate, isTrue);
 
     await toggleMenuItem(tester, en.upcomingShowOverdue);
@@ -347,6 +354,33 @@ void main() {
     semantics.dispose();
   });
 
+  testWidgets('a picked day names itself and its open tasks in the subtitle, '
+      'and All days shows the whole range again', (tester) async {
+    await pumpUpcoming(tester);
+    final range = en.upcomingSubtitle(en.rangeNext7Days, 'Oct 13 – Oct 20', 3);
+    expect(find.text(en.upcomingAllDays), findsNothing);
+
+    await tester.tap(day('Tue, Oct 13'));
+    await tester.pumpAndSettle();
+    expect(find.text(range), findsNothing);
+    expect(find.text(en.upcomingDaySubtitle('Tue, Oct 13', 2)), findsOneWidget);
+
+    await tester.tap(day('Thu, Oct 15'));
+    await tester.pumpAndSettle();
+    expect(find.text(en.upcomingDaySubtitle('Thu, Oct 15', 0)), findsOneWidget);
+
+    await tester.tap(find.text(en.upcomingAllDays));
+    await tester.pumpAndSettle();
+    expect(find.text(range), findsOneWidget);
+    expect(find.text(en.upcomingAllDays), findsNothing);
+    expect(sectionTitles(tester), [
+      en.sectionOverdue,
+      en.sectionToday,
+      en.sectionTomorrow,
+      'Fri, Oct 16',
+    ]);
+  });
+
   testWidgets('a picked day shows its overdue tasks too; a day without '
       'tasks has nothing planned', (tester) async {
     await pumpUpcoming(tester);
@@ -400,9 +434,8 @@ void main() {
     expect(find.byType(InboxScreen), findsOneWidget);
   });
 
-  testWidgets('without tasks in the range says there is nothing to do', (
-    tester,
-  ) async {
+  testWidgets('without tasks in the range says there is nothing to do; '
+      'cheerfully only for today alone', (tester) async {
     data.tasks.all = [
       sampleTask(
         id: 6,
@@ -412,8 +445,19 @@ void main() {
     ];
     await pumpUpcoming(tester);
 
-    expect(find.text(en.upcomingEmptyTitle), findsOneWidget);
+    expect(find.text(en.upcomingEmptyRangeTitle), findsOneWidget);
+    expect(find.text(en.upcomingEmptyRangeBody), findsOneWidget);
+    expect(find.text(en.upcomingEmptyTitle), findsNothing);
+    expect(find.text(en.upcomingEmptyBody), findsNothing);
     expect(find.byType(TaskRow), findsNothing);
+
+    await openRangeSheet(tester);
+    await tester.tap(find.text(en.rangeToday));
+    await tester.pumpAndSettle();
+    expect(find.text(en.upcomingEmptyTitle), findsOneWidget);
+    expect(find.text(en.upcomingEmptyBody), findsOneWidget);
+    expect(find.text(en.upcomingEmptyRangeTitle), findsNothing);
+    expect(find.text(en.upcomingEmptyRangeBody), findsNothing);
   });
 
   testWidgets('a task marked done stays until its snackbar hides', (
