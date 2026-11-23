@@ -228,7 +228,7 @@ final class WidgetPublishersProvider
   }
 }
 
-String _$widgetPublishersHash() => r'80bc294a14f93de6b77d358f4828aa70a882403e';
+String _$widgetPublishersHash() => r'6dd3aa28971cb0768d3652f6dbf02f696bad8b19';
 
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back to the front, when the
@@ -312,7 +312,7 @@ final class WidgetPublisherProvider
   }
 }
 
-String _$widgetPublisherHash() => r'05c6f2ce061eaf2a8b23fa1e7b6c2c4b1c80a067';
+String _$widgetPublisherHash() => r'1fcffb6671cc575d5e61dad9c9c7b243b85c0543';
 
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back to the front, when the

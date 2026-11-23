@@ -80,8 +80,9 @@ final class WidgetSnapshot {
   final String? subtitle;
   final DateTime generatedAt;
 
-  /// When the rows go stale (the next local midnight at the latest); the
-  /// app writes a new snapshot before, whenever it runs.
+  /// When the rows go stale: the next local midnight at the latest, or
+  /// when the next task joins an Overdue or Upcoming list. The app writes
+  /// a new snapshot before, whenever it runs.
   final DateTime validUntil;
 
   /// Instants before [validUntil] at which a row's tone changes (a due

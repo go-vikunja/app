@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show driftRuntimeOptions;
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
@@ -26,6 +28,8 @@ import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/core/widgets/widget_host.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/app_lock_fakes.dart';
@@ -35,6 +39,7 @@ import '../../helpers/notification_fakes.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
+import '../../helpers/widget_fakes.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -43,6 +48,7 @@ void main() {
   late AuthFakes auth;
   late FakeAccountDatabaseFiles files;
   late FakeNotificationGateway gateway;
+  late WidgetHost widgets;
   late ProviderContainer container;
 
   List<Override> overrides({OpenDatabases? databases}) => [
@@ -57,6 +63,7 @@ void main() {
     ),
     clockProvider.overrideWithValue(() => now),
     notificationGatewayProvider.overrideWithValue(gateway),
+    widgetHostProvider.overrideWithValue(widgets),
   ];
 
   setUp(() {
@@ -68,6 +75,7 @@ void main() {
     auth = AuthFakes();
     files = FakeAccountDatabaseFiles();
     gateway = FakeNotificationGateway();
+    widgets = FakeWidgetHost();
     container = ProviderContainer(overrides: overrides());
     addTearDown(container.dispose);
   });
@@ -98,19 +106,21 @@ void main() {
   }
 
   test('the window is 60 on iOS, shared evenly by the accounts with a '
-      'session reminder each, and 100 per account elsewhere', () {
-    expect(notificationWindow(platform: TargetPlatform.iOS), 59);
-    expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 2), 29);
-    expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 3), 19);
-    expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 7), 7);
-    for (var accounts = 1; accounts <= 30; accounts++) {
+      'session reminder and a snoozed entry each, and 100 per account '
+      'elsewhere', () {
+    expect(notificationWindow(platform: TargetPlatform.iOS), 58);
+    expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 2), 28);
+    expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 3), 18);
+    expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 5), 10);
+    expect(notificationWindow(platform: TargetPlatform.iOS, accounts: 7), 6);
+    for (var accounts = 1; accounts <= 21; accounts++) {
       final window = notificationWindow(
         platform: TargetPlatform.iOS,
         accounts: accounts,
       );
       expect(
-        accounts * (window + 1),
-        lessThanOrEqualTo(60),
+        accounts * (window + 2),
+        lessThanOrEqualTo(64),
         reason: '$accounts',
       );
     }
@@ -160,7 +170,7 @@ void main() {
       activate: false,
     );
 
-    test("two accounts hold 29 each, so neither drops the other's "
+    test("two accounts hold 28 each, so neither drops the other's "
         'soonest', () async {
       final (alice, bob) = await twoAccounts();
       await fortyOwnTasks(alice, 7);
@@ -169,7 +179,7 @@ void main() {
       container.listen(accountNotificationSchedulersProvider, (_, _) {});
       await pumpEventQueue();
 
-      expect(pendingPerAccount(), {alice: 29, bob: 29});
+      expect(pendingPerAccount(), {alice: 28, bob: 28});
       expect(gateway.pending.keys, contains(notificationOsIdFor(bob, '1:due')));
       expect(
         gateway.pending.keys,
@@ -177,14 +187,15 @@ void main() {
       );
     });
 
-    test('a third account takes its share from the others: 19 each and a '
-        'session reminder each, 60 in all', () async {
+    test('a third account takes its share from the others: 18 each and a '
+        'session reminder each, 57 in all, room left for a snoozed entry '
+        'each', () async {
       final (alice, bob) = await twoAccounts();
       await fortyOwnTasks(alice, 7);
       await fortyOwnTasks(bob, 8);
       container.listen(accountNotificationSchedulersProvider, (_, _) {});
       await pumpEventQueue();
-      expect(pendingPerAccount(), {alice: 29, bob: 29});
+      expect(pendingPerAccount(), {alice: 28, bob: 28});
 
       final carol = await carolSignsIn();
       container.invalidate(accountsProvider);
@@ -200,7 +211,7 @@ void main() {
       }
       await pumpEventQueue();
 
-      expect(pendingPerAccount(), {alice: 20, bob: 20, carol.id: 20});
+      expect(pendingPerAccount(), {alice: 19, bob: 19, carol.id: 19});
       expect(
         gateway.pending.keys,
         containsAll([
@@ -208,7 +219,7 @@ void main() {
             sessionReminderOsId(account),
         ]),
       );
-      expect(gateway.pending, hasLength(60));
+      expect(gateway.pending, hasLength(57));
     });
   });
 
@@ -380,6 +391,32 @@ void main() {
 
       expect(gateway.calls.where((c) => c == 'pendingIds').length, 2);
       expect(schedulesAndCancels(), isEmpty);
+    });
+
+    test('on Android re-arms without waiting for the widget taps, so a '
+        'rebuild while they are imported does not lose it', () async {
+      final (alice, due) = await scheduledByAnEarlierProcess();
+      gateway.forceStop();
+      final taps = _HeldTaps();
+      widgets = taps;
+
+      final app = process()
+        ..listen(notificationSchedulerProvider(alice), (_, _) {})
+        ..listen(widgetTapImporterProvider, (_, _) {});
+      await pumpEventQueue();
+      expect(taps.taken, 1);
+      final first = app.read(notificationSchedulerProvider(alice));
+      app.invalidate(notificationSchedulerProvider(alice));
+      await pumpEventQueue();
+      expect(
+        app.read(notificationSchedulerProvider(alice)),
+        isNot(same(first)),
+      );
+      taps.release();
+      await pumpEventQueue();
+
+      expect(schedulesAndCancels(), ['schedule $due']);
+      expect(gateway.alarms, [due]);
     });
 
     test('in a headless container leaves the re-arming to the app', () async {
@@ -747,5 +784,103 @@ void main() {
       expect(gateway.activities.single.title, 'Water the plants');
       expect(gateway.activities.single.privacy.hiddenOnLockScreen, isTrue);
     });
+
+    test('a headless container reads the content anew for every activity '
+        'shown, as the app may have changed it since it started', () async {
+      container = ProviderContainer(
+        overrides: [
+          ...overrides(),
+          runsHeadlessProvider.overrideWithValue(true),
+        ],
+      );
+      addTearDown(container.dispose);
+      final (alice, _) = await twoAccounts();
+      final entry = container.read(accountsProvider).value!.find(alice)!;
+      final db = container.read(appDatabaseProvider(alice));
+      Future<void> showNew(int id) async {
+        await db.serverNotificationsDao.upsertAll([
+          sampleNotification(
+            id: id,
+            extra: {
+              'assignee': const {'id': 7},
+            },
+          ),
+        ], handled: false);
+        await container
+            .read(activityNoticesProvider)
+            .show(
+              account: entry.account,
+              db: db,
+              fresh: await db.serverNotificationsDao.unhandledUnread(),
+            );
+      }
+
+      await showNew(1);
+      expect(gateway.activities.last.title, 'Water the plants');
+
+      await storePrivacySettings(
+        auth.preferences,
+        const PrivacySettings(
+          notificationContent: NotificationContent.noTitles,
+        ),
+      );
+      await showNew(2);
+
+      expect(gateway.activities.last.title, 'New activity');
+    });
   });
+
+  test('in the app on iOS, the start and resume runs wait until the widget '
+      'taps are imported, whose reminders they would schedule again '
+      '(decision log: Notifications and widgets)', () async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    final taps = _HeldTaps();
+    widgets = taps;
+    container = ProviderContainer(overrides: overrides());
+    addTearDown(container.dispose);
+    await twoAccounts();
+    Iterable<String> runs() => gateway.calls.where((c) => c == 'capabilities');
+
+    container
+      ..listen(accountNotificationSchedulersProvider, (_, _) {})
+      ..listen(widgetTapImporterProvider, (_, _) {});
+    await pumpEventQueue();
+    expect(taps.taken, 1);
+    expect(runs(), isEmpty);
+
+    taps.release();
+    await pumpEventQueue();
+    expect(runs(), hasLength(2));
+
+    gateway.calls.clear();
+    taps.hold();
+    TestWidgetsFlutterBinding.instance
+      ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+      ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await pumpEventQueue();
+    expect(taps.taken, 2);
+    expect(runs(), isEmpty);
+
+    taps.release();
+    await pumpEventQueue();
+    expect(runs(), hasLength(2));
+  });
+}
+
+/// Holds each import of the widget taps at its start until released.
+final class _HeldTaps extends Fake implements WidgetHost {
+  var _held = Completer<void>();
+  int taken = 0;
+
+  void hold() => _held = Completer<void>();
+
+  void release() => _held.complete();
+
+  @override
+  Future<List<WidgetDoneTap>> takeActions() async {
+    taken++;
+    await _held.future;
+    return const [];
+  }
 }

@@ -60,6 +60,10 @@ final class FakeWidgetHost implements WidgetHost {
   /// Thrown by every write while set.
   Exception? failure;
 
+  /// Thrown by [writeCatalog] while set, which a publish writes after the
+  /// snapshots.
+  Exception? catalogFailure;
+
   /// Thrown by [configs] while set.
   Exception? configsFailure;
 
@@ -85,6 +89,7 @@ final class FakeWidgetHost implements WidgetHost {
   @override
   Future<void> writeCatalog(String accountId, String json) async {
     _fail();
+    if (catalogFailure case final failure?) throw failure;
     calls.add('writeCatalog $accountId');
     catalogs[accountId] = json;
   }

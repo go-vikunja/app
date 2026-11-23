@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings_store.dart';
 
@@ -76,7 +77,17 @@ class PrivacySettingsController extends _$PrivacySettingsController {
 }
 
 /// The settings everything else follows ([StoredPrivacySettings.effective]);
-/// for the background containers too, which read them fresh on every run.
+/// a headless container reads them through [currentPrivacySettings].
 @Riverpod(keepAlive: true)
 Future<PrivacySettings> privacySettings(Ref ref) async =>
     (await ref.watch(privacySettingsControllerProvider.future)).effective;
+
+/// [privacySettingsProvider], read anew in a headless container: the app
+/// may have changed the settings since the container started, and nothing
+/// tells the container.
+Future<PrivacySettings> currentPrivacySettings(Ref ref) {
+  if (ref.read(runsHeadlessProvider)) {
+    ref.invalidate(privacySettingsControllerProvider);
+  }
+  return ref.read(privacySettingsProvider.future);
+}

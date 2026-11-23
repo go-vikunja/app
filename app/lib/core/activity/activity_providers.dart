@@ -21,8 +21,7 @@ ActivityNotifier activityNotices(Ref ref) => ActivityNotifier(
   preferences: ref.watch(notificationPreferencesStoreProvider),
   store: ref.watch(preferencesStoreProvider),
   l10n: ref.watch(deviceAppLocalizationsProvider),
-  content: () async =>
-      (await ref.read(privacySettingsProvider.future)).notificationContent,
+  content: () async => (await currentPrivacySettings(ref)).notificationContent,
   endedOnDevice: ref.watch(sessionDiagnosticsProvider).endedOnDevice,
 );
 

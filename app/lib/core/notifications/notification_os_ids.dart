@@ -7,8 +7,14 @@ import 'package:crypto/crypto.dart';
 /// `<accountId>:<key>`, so the same notification gets the same id in every
 /// isolate and across restarts without a counter to share. Two keys of one
 /// account that hash alike are told apart by probing upwards from the
-/// hash ([nextFreeNotificationOsId]); two accounts may collide, which only
-/// costs the other account a reschedule on its next reconcile.
+/// hash ([nextFreeNotificationOsId]). Two accounts may collide too, and a
+/// schedule or a cancel under an id acts on whatever is pending there. So
+/// a reconcile probes past the ids other accounts hold pending (by the
+/// payload's account) and moves an entry whose id another account has
+/// taken over to a free one. Races between two accounts' runs and the
+/// cancels made without asking the OS (sign-out, Done) remain: what they
+/// take is missing until its account's next reconcile, and lost if due
+/// before it.
 abstract final class NotificationOsIds {
   static const testNotification = 1;
   static const first = 2;

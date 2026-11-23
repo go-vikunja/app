@@ -132,12 +132,14 @@ final class WidgetSnapshotBuilder {
     required this._texts,
     this._showTaskTitles = true,
     this._linkKey,
+    this._joinsEndValidity = true,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
 
   final AppDatabase _db;
   final WidgetTexts _texts;
   final bool _showTaskTitles;
+  final bool _joinsEndValidity;
   final String? _linkKey;
   final DateTime Function() _now;
 
@@ -155,6 +157,7 @@ final class WidgetSnapshotBuilder {
       _now(),
       showTaskTitles: _showTaskTitles,
       linkKey: _linkKey,
+      joinsEndValidity: _joinsEndValidity,
     );
     return (
       snapshots: {
@@ -200,6 +203,7 @@ final class _AccountBuild {
     required this.settings,
     required this.showTaskTitles,
     required this.linkKey,
+    required this.joinsEndValidity,
   }) : projectsById = {for (final project in projects) project.id: project},
        archived = archivedProjectIds(projects).toSet(),
        formatter = texts.formatter(DisplaySettings.from(settings)),
@@ -212,6 +216,7 @@ final class _AccountBuild {
     DateTime now, {
     required bool showTaskTitles,
     required String? linkKey,
+    required bool joinsEndValidity,
   }) async {
     final state = await db.syncStateDao.readAll();
     return _AccountBuild._(
@@ -225,6 +230,7 @@ final class _AccountBuild {
       settings: decodeUserSettings(state[SyncStateKeys.userSettings]),
       showTaskTitles: showTaskTitles,
       linkKey: linkKey,
+      joinsEndValidity: joinsEndValidity,
     );
   }
 
@@ -238,6 +244,7 @@ final class _AccountBuild {
   final UserSettings settings;
   final bool showTaskTitles;
   final String? linkKey;
+  final bool joinsEndValidity;
   final Map<int, Project> projectsById;
   final Set<int> archived;
   final MomentFormatter formatter;
@@ -270,6 +277,7 @@ final class _AccountBuild {
       title: l10n.widgetUpcomingTitle(days),
       tasks: await _upcoming(days),
       empty: WidgetText(l10n.upcomingEmptyRangeTitle),
+      nextJoinAt: await _nextIntoUpcoming(days),
     ),
     OverdueKind() => _list(
       kind,
@@ -279,6 +287,9 @@ final class _AccountBuild {
           if (task.isOverdue(now)) task,
       ],
       empty: WidgetText(l10n.widgetOverdueEmptyTitle),
+      nextJoinAt: _earliestAfterNow([
+        for (final task in await activeOpenTasks) ?task.dueDate,
+      ]),
     ),
     ProjectTasksKind(:final projectId) => await _project(kind, projectId),
     LabelTasksKind(:final labelId) => await _label(kind, labelId),
@@ -321,12 +332,40 @@ final class _AccountBuild {
   Future<List<Task>> _upcoming(int days) async {
     final selection = selectUpcoming(
       await activeOpenTasks,
-      range: DateRange(from: now, to: evaluateDatemath('now+${days}d', now)),
+      range: DateRange(from: now, to: _upcomingEnd(days)),
       now: now,
       showOverdue: true,
       showWithoutDueDate: false,
     );
     return [...selection.overdue, ...selection.inRange];
+  }
+
+  DateTime _upcomingEnd(int days) => evaluateDatemath('now+${days}d', now);
+
+  /// When the next open task beyond the range comes within [days] of the
+  /// clock: its due date that many days earlier, on the wall clock the
+  /// range is measured by.
+  Future<DateTime?> _nextIntoUpcoming(int days) async {
+    final end = _upcomingEnd(days);
+    return _earliestAfterNow([
+      for (final task in await activeOpenTasks)
+        if (task.dueDate case final due? when !due.isBefore(end))
+          evaluateDatemath(
+            'now-${days}d',
+            now.isUtc ? due.toUtc() : due.toLocal(),
+          ),
+    ]);
+  }
+
+  DateTime? _earliestAfterNow(Iterable<DateTime> instants) {
+    DateTime? earliest;
+    for (final instant in instants) {
+      if (instant.isAfter(now) &&
+          (earliest == null || instant.isBefore(earliest))) {
+        earliest = instant;
+      }
+    }
+    return earliest;
   }
 
   /// The project's first list view, in its filter and the sort the user
@@ -457,6 +496,11 @@ final class _AccountBuild {
     newTaskLabel: l10n.newTask,
   );
 
+  /// [nextJoinAt] is when the next task joins a list whose members depend
+  /// on the clock. Where [joinsEndValidity], the snapshot is valid until
+  /// then at the latest, as the widget worker or the running app writes it
+  /// again then; the count changes too, so this holds while task titles
+  /// are hidden as well.
   WidgetSnapshot _list(
     WidgetKind kind, {
     required String title,
@@ -464,13 +508,18 @@ final class _AccountBuild {
     required WidgetText empty,
     int? listProjectId,
     int? newTaskProjectId,
+    DateTime? nextJoinAt,
   }) {
     final rows = [
       if (showTaskTitles)
         for (final task in tasks.take(WidgetSnapshot.maxRows))
           _row(task, listProjectId: listProjectId),
     ];
-    final validUntil = nextLocalMidnight(now);
+    final midnight = nextLocalMidnight(now);
+    final validUntil =
+        joinsEndValidity && nextJoinAt != null && nextJoinAt.isBefore(midnight)
+        ? nextJoinAt
+        : midnight;
     final more = tasks.length - rows.length;
     return WidgetSnapshot(
       key: snapshotKey(account.id, kind),

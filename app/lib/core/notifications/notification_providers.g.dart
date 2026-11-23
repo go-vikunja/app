@@ -160,7 +160,7 @@ final class NotificationSchedulerProvider
 }
 
 String _$notificationSchedulerHash() =>
-    r'50df8fbc7cc4c1bec3063ef82089974f6ace39ad';
+    r'07c137c335760423520ea245bc0a40fb854c7254';
 
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action; the app's first build in a process

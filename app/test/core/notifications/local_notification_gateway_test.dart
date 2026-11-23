@@ -553,15 +553,15 @@ void main() {
     });
   });
 
-  test('cancel, pendingIds and showNow', () async {
+  test('cancel, pendingIds with their payloads and showNow', () async {
     answers['pendingNotificationRequests'] = [
-      {'id': 4, 'title': 't', 'body': 'b', 'payload': 'p'},
-      {'id': 9, 'title': 't', 'body': 'b', 'payload': 'p'},
+      {'id': 4, 'title': 't', 'body': 'b', 'payload': 'p4'},
+      {'id': 9, 'title': 't', 'body': 'b', 'payload': null},
     ];
     final gateway0 = gateway();
 
     await gateway0.cancel(4);
-    expect(await gateway0.pendingIds(), {4, 9});
+    expect(await gateway0.pendingIds(), {4: 'p4', 9: null});
     await gateway0.showNow(osId: 1, title: 'Test', body: 'Body', payload: 'p');
 
     expect(args(call('cancel'))['id'], 4);

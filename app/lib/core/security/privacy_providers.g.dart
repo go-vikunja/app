@@ -127,13 +127,13 @@ abstract class _$PrivacySettingsController
 }
 
 /// The settings everything else follows ([StoredPrivacySettings.effective]);
-/// for the background containers too, which read them fresh on every run.
+/// a headless container reads them through [currentPrivacySettings].
 
 @ProviderFor(privacySettings)
 final privacySettingsProvider = PrivacySettingsProvider._();
 
 /// The settings everything else follows ([StoredPrivacySettings.effective]);
-/// for the background containers too, which read them fresh on every run.
+/// a headless container reads them through [currentPrivacySettings].
 
 final class PrivacySettingsProvider
     extends
@@ -144,7 +144,7 @@ final class PrivacySettingsProvider
         >
     with $FutureModifier<PrivacySettings>, $FutureProvider<PrivacySettings> {
   /// The settings everything else follows ([StoredPrivacySettings.effective]);
-  /// for the background containers too, which read them fresh on every run.
+  /// a headless container reads them through [currentPrivacySettings].
   PrivacySettingsProvider._()
     : super(
         from: null,

@@ -66,9 +66,11 @@ final class FakeNotificationOs implements NotificationGateway {
   }
 
   @override
-  Future<Set<int>> pendingIds() async {
+  Future<Map<int, String?>> pendingIds() async {
     await _call('pendingIds');
-    return pending.keys.toSet();
+    return {
+      for (final MapEntry(:key, :value) in pending.entries) key: value.payload,
+    };
   }
 
   @override

@@ -21,6 +21,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_providers.dart';
 import 'package:vikunja_mobile/core/security/privacy_settings.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations.dart';
 
 part 'notification_providers.g.dart';
@@ -29,15 +30,16 @@ final _log = Logger('Notifications');
 
 /// How many of an account's soonest notifications the OS is given. iOS
 /// keeps 64 pending for the whole app and drops what goes beyond, so the
-/// [accounts] signed in share 60 evenly, leaving slack for the test
-/// notification and a snooze. Each share keeps one for the account's
-/// reminder to open the app before its session ends (`SessionReminders`),
-/// which is pending too. An even share needs nothing from the other
-/// accounts' schedulers, which a headless isolate does not run. Android
-/// keeps 100 per account; it has room for more but gains nothing from it.
+/// [accounts] signed in share 60 evenly. Each share keeps one for the
+/// account's reminder to open the app before its session ends
+/// (`SessionReminders`) and one for the snoozed entry `diffSchedule` adds
+/// beyond the window, both pending too. An even share needs nothing from
+/// the other accounts' schedulers, which a headless isolate does not run.
+/// Android keeps 100 per account; it has room for more but gains nothing
+/// from it.
 int notificationWindow({TargetPlatform? platform, int accounts = 1}) =>
     (platform ?? defaultTargetPlatform) == TargetPlatform.iOS
-    ? math.max(1, 60 ~/ math.max(1, accounts) - 1)
+    ? math.max(1, 60 ~/ math.max(1, accounts) - 2)
     : 100;
 
 @Riverpod(keepAlive: true)
@@ -86,7 +88,7 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
     gateway: gateway,
     preferences: ref.watch(notificationPreferencesStoreProvider),
     presentation: () async {
-      final privacy = await _currentPrivacy(ref);
+      final privacy = await currentPrivacySettings(ref);
       return _presentation(ref.read(deviceAppLocalizationsProvider), privacy);
     },
     window: window,
@@ -109,12 +111,25 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
       deviceAppLocalizationsProvider,
       (_, _) => scheduler.reconcileQuietly(force: true),
     );
-  final lifecycle = AppLifecycleListener(onResume: scheduler.reconcileQuietly);
+  // On iOS the app imports the widgets' Done taps first: the widget removed
+  // their reminders, which this run would schedule again (decision log:
+  // Notifications and widgets). Android's widget removes none, and there a
+  // rebuild while waiting would lose the first run's re-arm.
+  final waitsForWidgetTaps =
+      defaultTargetPlatform == TargetPlatform.iOS &&
+      !ref.read(runsHeadlessProvider);
+  void reconcileStartOrResume({bool rearm = false}) {
+    void reconcile() => scheduler.reconcileQuietly(rearm: rearm);
+    if (!waitsForWidgetTaps) return reconcile();
+    unawaited(afterWidgetTapImports(ref, reconcile));
+  }
+
+  final lifecycle = AppLifecycleListener(onResume: reconcileStartOrResume);
   ref.onDispose(() {
     lifecycle.dispose();
     unawaited(scheduler.dispose());
   });
-  scheduler.reconcileQuietly(rearm: rearmDue && _rearmsFirstRun(ref));
+  reconcileStartOrResume(rearm: rearmDue && _rearmsFirstRun(ref));
   return scheduler;
 }
 
@@ -127,17 +142,6 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
 bool _rearmsFirstRun(Ref ref) =>
     defaultTargetPlatform == TargetPlatform.android &&
     !ref.read(runsHeadlessProvider);
-
-/// The device's privacy settings, which a headless container reads anew
-/// for every run: the app may have changed them since the container
-/// started, and a run with older ones would schedule every entry again
-/// with those.
-Future<PrivacySettings> _currentPrivacy(Ref ref) {
-  if (ref.read(runsHeadlessProvider)) {
-    ref.invalidate(privacySettingsControllerProvider);
-  }
-  return ref.read(privacySettingsProvider.future);
-}
 
 NotificationPresentation _presentation(
   AppLocalizations l10n,

@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 
 /**
  * The launcher's answer to a pin request: it names the new widget's id, which
@@ -20,9 +21,13 @@ class PinnedWidgetReceiver : BroadcastReceiver() {
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID || config == null) return
         val pending = goAsync()
         Thread {
+            // Uncaught here, a full disk would end the app's process; the
+            // widget is placed already and shows its default.
             try {
                 val widgets = WidgetInstances(context.applicationContext)
                 if (widgets.saveConfigIfAbsent(appWidgetId, config)) widgets.updateIds(intArrayOf(appWidgetId))
+            } catch (error: Exception) {
+                Log.w(TAG, "Could not save a pinned widget's config: ${error.javaClass.simpleName}")
             } finally {
                 pending.finish()
             }
@@ -31,5 +36,6 @@ class PinnedWidgetReceiver : BroadcastReceiver() {
 
     companion object {
         const val EXTRA_CONFIG = "io.vikunja.vikunja_widgets.CONFIG"
+        private const val TAG = "VikunjaWidgets"
     }
 }

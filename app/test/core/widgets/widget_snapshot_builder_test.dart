@@ -318,6 +318,92 @@ void main() {
     expect(overdue.empty?.title, 'Nothing overdue');
   });
 
+  group('a list whose tasks join by the clock is valid until the next '
+      'joins, its count too', () {
+    Future<WidgetSnapshot> at(
+      DateTime at,
+      WidgetKind kind, {
+      bool showTaskTitles = true,
+      bool joinsEndValidity = true,
+    }) async => (await WidgetSnapshotBuilder(
+      db: db,
+      texts: texts,
+      showTaskTitles: showTaskTitles,
+      joinsEndValidity: joinsEndValidity,
+      now: () => at,
+    ).build(alice, {kind}, withCatalog: false)).snapshots.values.single;
+
+    test('Overdue: until the next open task falls due', () async {
+      final overdue = await at(now, const OverdueKind());
+      final hidden = await at(now, const OverdueKind(), showTaskTitles: false);
+
+      expect(overdue.validUntil.toUtc(), DateTime(2026, 10, 26, 15).toUtc());
+      expect(hidden.validUntil, overdue.validUntil);
+      expect(titles(await at(overdue.validUntil, const OverdueKind())), [
+        'Yesterday',
+        'This afternoon',
+      ]);
+      expect(
+        (await at(
+          overdue.validUntil,
+          const OverdueKind(),
+          showTaskTitles: false,
+        )).total,
+        2,
+      );
+    });
+
+    test('Upcoming: until the next task comes within its days, on the '
+        'wall clock across a change of the clocks', () async {
+      await db.tasksDao.upsertAll([
+        sampleTask(
+          id: 8,
+          title: 'Tuesday afternoon',
+          due: DateTime(2026, 10, 27, 15),
+        ),
+      ], syncRunId: 'run');
+      // Before the clocks went back on the 25th.
+      final saturday = DateTime(2026, 10, 24, 10);
+      const three = UpcomingKind(3);
+
+      final upcoming = await at(saturday, three);
+      final hidden = await at(saturday, three, showTaskTitles: false);
+
+      expect(upcoming.validUntil.toLocal(), DateTime(2026, 10, 24, 15));
+      expect(hidden.validUntil, upcoming.validUntil);
+      expect(titles(upcoming), isNot(contains('Tuesday afternoon')));
+      final justBefore = upcoming.validUntil.subtract(
+        const Duration(seconds: 1),
+      );
+      expect(
+        titles(await at(justBefore, three)),
+        isNot(contains('Tuesday afternoon')),
+      );
+      final justAfter = upcoming.validUntil.add(const Duration(seconds: 1));
+      expect(titles(await at(justAfter, three)), contains('Tuesday afternoon'));
+    });
+
+    test('the others until midnight', () async {
+      for (final kind in [
+        const TodayKind(),
+        const ProjectTasksKind(1),
+        const FavoritesKind(),
+      ]) {
+        expect((await at(now, kind)).validUntil, DateTime(2026, 10, 27));
+      }
+    });
+
+    test('until midnight where nothing writes it again at a join (iOS), '
+        'which would draw it as stale until then', () async {
+      for (final kind in [const OverdueKind(), const UpcomingKind(3)]) {
+        expect(
+          (await at(now, kind, joinsEndValidity: false)).validUntil,
+          DateTime(2026, 10, 27),
+        );
+      }
+    });
+  });
+
   group('Project', () {
     test("its first list view's open top-level tasks, with its own new "
         'task link', () async {

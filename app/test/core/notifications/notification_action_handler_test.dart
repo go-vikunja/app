@@ -124,6 +124,9 @@ void main() {
       MapEntry(water.id, water),
       MapEntry(second.id, second),
     ]);
+    container.read(notificationSchedulerProvider(entry.id));
+    // The app's start run waits a turn for the widget taps' import.
+    await pumpEventQueue();
     await container.read(notificationSchedulerProvider(entry.id))!.reconcile();
     gateway.calls.clear();
     return (entry.id, db);
@@ -495,7 +498,7 @@ void main() {
       // The OS is told before the reconcile's own calls.
       expect(
         gateway.calls.indexOf('schedule $reminderId'),
-        lessThan(gateway.calls.indexOf('pendingIds')),
+        lessThan(gateway.calls.lastIndexOf('pendingIds')),
       );
       var row = (await db.scheduledNotificationsDao.find('1:reminder:0'))!;
       expect(row.fireAt, until);

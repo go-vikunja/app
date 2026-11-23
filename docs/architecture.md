@@ -184,7 +184,7 @@ Background containers never send queued uploads; those are left to the UI.
 
 ### 6.1 Local notifications
 
-The server sends no push to phones, so the app schedules reminders and due dates itself from the database ([Notifications and widgets](decisions.md#notifications-and-widgets)). A scheduler per account diffs the soonest notifications, and every snoozed one, against `scheduled_notifications` and hands the OS only the difference. iOS allows 64 pending notifications per app, so the accounts share 60 there, leaving room for snoozes and the test notification; Android gets 100 per account. Actions are Done, snooze for an hour and snooze until tomorrow, on iOS also snooze for ten minutes; a Done runs through the outbox, in the background isolate when the app is closed.
+The server sends no push to phones, so the app schedules reminders and due dates itself from the database ([Notifications and widgets](decisions.md#notifications-and-widgets)). A scheduler per account diffs the soonest notifications, and every snoozed one, against `scheduled_notifications` and hands the OS only the difference. iOS allows 64 pending notifications per app, so the accounts share 60 there, each share leaving room for its session reminder and one snoozed entry, the rest for the test notification; Android gets 100 per account. Actions are Done, snooze for an hour and snooze until tomorrow, on iOS also snooze for ten minutes; a Done runs through the outbox, in the background isolate when the app is closed.
 
 ### 6.2 Background sync and the inbox
 

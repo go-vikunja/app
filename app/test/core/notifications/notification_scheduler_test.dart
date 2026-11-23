@@ -7,9 +7,11 @@ import 'package:vikunja_mobile/core/db/app_database.dart';
 import 'package:vikunja_mobile/core/notifications/notification_actions.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_os_ids.dart';
+import 'package:vikunja_mobile/core/notifications/notification_plan.dart';
 import 'package:vikunja_mobile/core/notifications/notification_preferences.dart';
 import 'package:vikunja_mobile/core/notifications/notification_scheduler.dart';
 import 'package:vikunja_mobile/core/notifications/notification_texts.dart';
+import 'package:vikunja_mobile/core/notifications/session_reminders.dart';
 import 'package:vikunja_mobile/l10n/generated/app_localizations_en.dart';
 
 import '../../helpers/fake_timers.dart';
@@ -400,6 +402,131 @@ void main() {
     expect(pendingCalls, 3);
   });
 
+  ScheduledNotification pendingOf(String account, int osId, String key) =>
+      ScheduledNotification(
+        osId: osId,
+        fireAt: dueAt,
+        title: 'Elsewhere',
+        body: 'Due now',
+        payload: NotificationPayload(
+          accountId: account,
+          taskId: parseNotificationKey(key)!.taskId,
+          key: key,
+        ).toJson(),
+        exact: true,
+      );
+
+  group('what the OS holds pending beyond the table', () {
+    test('a task done during a run that scheduled it again: the next pass '
+        'cancels what that run could not record', () async {
+      final notifications = scheduler();
+      await notifications.reconcile();
+      // The iOS widget's Done removes the task's pending notifications.
+      gateway.pending.clear();
+      final gate = Completer<void>();
+      gateway.beforeCall = (call) =>
+          call == 'schedule $reminderId' && !gate.isCompleted
+          ? gate.future
+          : Future.value();
+
+      final run = notifications.reconcile();
+      await pumpEventQueue();
+      // The tap's import commits the Done and withdraws the task's
+      // notifications before the run's schedules reach the OS.
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 1, title: 'Water the plants', projectId: 7, done: true),
+      ], syncRunId: 'run');
+      for (final row in await db.scheduledNotificationsDao.forTasks([1])) {
+        await gateway.cancel(row.osId);
+      }
+      await db.scheduledNotificationsDao.deleteForTasks([1]);
+      gate.complete();
+      await run;
+
+      expect(gateway.pending, isEmpty);
+      expect(await rows(), isEmpty);
+    });
+
+    test("only this account's reminders and due dates go: its session "
+        "reminder, other accounts' and what the tray shows stay", () async {
+      final notifications = scheduler();
+      await notifications.reconcile();
+      now = reminderAt.add(const Duration(minutes: 1));
+      final shown = gateway.pending[reminderId]!.payload;
+      gateway
+        ..fire(reminderId)
+        ..tray[reminderId] = shown;
+      final unrecorded = notificationOsIdFor(accountId, '2:due');
+      final bobs = notificationOsIdFor('b1', '1:due');
+      gateway.pending.addAll({
+        unrecorded: pendingOf(accountId, unrecorded, '2:due'),
+        bobs: pendingOf('b1', bobs, '1:due'),
+      });
+      await gateway.scheduleActivity(
+        osId: sessionReminderOsId(accountId),
+        fireAt: dueAt,
+        title: 'Open Vikunja',
+        body: 'alice',
+        payload: NotificationPayload(
+          accountId: accountId,
+          taskId: 0,
+          key: SessionReminders.key(accountId),
+        ).toJson(),
+      );
+      gateway.calls.clear();
+
+      await notifications.reconcile();
+
+      expect(gateway.cancelled, [unrecorded]);
+      expect(
+        gateway.pending.keys,
+        unorderedEquals([dueId, bobs, sessionReminderOsId(accountId)]),
+      );
+      expect(gateway.tray.keys, [reminderId]);
+      expect((await rows()).map((r) => r.key), ['1:due']);
+    });
+
+    test('a new key probes past an id another account holds pending, which '
+        "stays that account's", () async {
+      final bobs = pendingOf('b1', reminderId, '9:due');
+      gateway.pending[reminderId] = bobs;
+
+      await scheduler().reconcile();
+
+      final moved = nextFreeNotificationOsId(reminderId, {reminderId, dueId});
+      expect(gateway.pending[reminderId], same(bobs));
+      expect(gateway.pending[moved]!.fireAt, reminderAt);
+      expect(gateway.cancelled, isEmpty);
+      expect((await rows()).map((r) => (r.key, r.osId)), [
+        ('1:reminder:0', moved),
+        ('1:due', dueId),
+      ]);
+    });
+
+    test('an entry whose id another account has taken over moves to a free '
+        'id, without a cancel', () async {
+      final notifications = scheduler();
+      await notifications.reconcile();
+      final bobs = pendingOf('b1', reminderId, '9:due');
+      gateway.pending[reminderId] = bobs;
+
+      await notifications.reconcile();
+
+      final moved = nextFreeNotificationOsId(reminderId, {reminderId, dueId});
+      expect(gateway.pending[reminderId], same(bobs));
+      expect(gateway.pending[moved]!.fireAt, reminderAt);
+      expect(gateway.cancelled, isEmpty);
+      expect((await rows()).map((r) => (r.key, r.osId)), [
+        ('1:reminder:0', moved),
+        ('1:due', dueId),
+      ]);
+
+      gateway.calls.clear();
+      await notifications.reconcile();
+      expect(gateway.calls, idle);
+    });
+  });
+
   group('privacy', () {
     const hidden = NotificationPrivacy(
       hiddenOnLockScreen: true,
@@ -685,7 +812,11 @@ void main() {
       );
 
       final until = now.add(const Duration(minutes: 10));
-      expect(gateway.calls.take(2), ['capabilities', 'schedule $reminderId']);
+      expect(gateway.calls.take(3), [
+        'capabilities',
+        'pendingIds',
+        'schedule $reminderId',
+      ]);
       expect(gateway.pending[reminderId]!.fireAt, until);
       expect(gateway.pending[reminderId]!.title, 'Water the plants');
       expect(gateway.pending[reminderId]!.body, 'Reminder · Work');
@@ -695,6 +826,62 @@ void main() {
       expect(stored.snoozedUntil, until);
       expect(stored.snoozeOriginalFireAt, reminderAt);
       expect(stored.exact, isTrue);
+    });
+
+    test('without a row, it probes past an id another account holds '
+        'pending', () async {
+      final notifications = scheduler();
+      await notifications.reconcile();
+      now = reminderAt.add(const Duration(minutes: 1));
+      gateway.fire(reminderId);
+      await notifications.reconcile();
+      final bobs = pendingOf('b1', reminderId, '9:due');
+      gateway.pending[reminderId] = bobs;
+
+      await notifications.snooze(
+        key: '1:reminder:0',
+        taskId: 1,
+        duration: const Duration(minutes: 10),
+      );
+
+      final moved = nextFreeNotificationOsId(reminderId, {reminderId, dueId});
+      expect(gateway.pending[reminderId], same(bobs));
+      expect(
+        gateway.pending[moved]!.fireAt,
+        now.add(const Duration(minutes: 10)),
+      );
+      expect(
+        (await db.scheduledNotificationsDao.find('1:reminder:0'))!.osId,
+        moved,
+      );
+      expect(gateway.cancelled, isEmpty);
+    });
+
+    test('with a row, it moves past an id another account has taken over '
+        "since it fired, which stays that account's", () async {
+      final notifications = scheduler();
+      await notifications.reconcile();
+      now = reminderAt.add(const Duration(minutes: 1));
+      gateway.fire(reminderId);
+      final bobs = pendingOf('b1', reminderId, '9:due');
+      gateway.pending[reminderId] = bobs;
+
+      await notifications.snooze(
+        key: '1:reminder:0',
+        taskId: 1,
+        duration: const Duration(minutes: 10),
+      );
+
+      final moved = nextFreeNotificationOsId(reminderId, {reminderId, dueId});
+      expect(gateway.pending[reminderId], same(bobs));
+      expect(
+        gateway.pending[moved]!.fireAt,
+        now.add(const Duration(minutes: 10)),
+      );
+      final stored = await db.scheduledNotificationsDao.find('1:reminder:0');
+      expect(stored!.osId, moved);
+      expect(stored.snoozeOriginalFireAt, reminderAt);
+      expect(gateway.cancelled, isEmpty);
     });
 
     test('until tomorrow behind a full window stays, and is still there once '

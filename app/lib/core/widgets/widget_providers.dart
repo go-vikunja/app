@@ -82,15 +82,33 @@ Set<WidgetKind> widgetAlwaysPublishedKinds(Ref ref) =>
     : {};
 
 @Riverpod(keepAlive: true)
-WidgetPublishers widgetPublishers(Ref ref) => WidgetPublishers(
-  host: ref.watch(widgetHostProvider),
-  removedSnapshot: (key, accountId) => removedAccountSnapshot(
-    key,
-    accountId: accountId,
-    l10n: ref.read(deviceAppLocalizationsProvider),
-    now: ref.read(clockProvider)(),
-  ),
-);
+WidgetPublishers widgetPublishers(Ref ref) {
+  final registry = ref.watch(runsHeadlessProvider)
+      ? ref.watch(accountRegistryProvider)
+      : null;
+  return WidgetPublishers(
+    host: ref.watch(widgetHostProvider),
+    removedSnapshot: (key, accountId) => removedAccountSnapshot(
+      key,
+      accountId: accountId,
+      l10n: ref.read(deviceAppLocalizationsProvider),
+      now: ref.read(clockProvider)(),
+    ),
+    signedOutMeanwhile: registry == null
+        ? null
+        : (accountId) => _signedOutInStorage(registry, accountId),
+  );
+}
+
+/// The stored registry, not this isolate's copy of it (decision log:
+/// Several accounts). An unreadable one signs nobody out, so it never puts
+/// "Account removed" on the widgets of an account still signed in.
+Future<bool> _signedOutInStorage(
+  AccountRegistry registry,
+  String accountId,
+) async =>
+    await registry.knownAccountIds() != null &&
+    await registry.find(accountId) == null;
 
 /// One account's publisher; null once the account is gone. In the app it
 /// publishes when built, when the app comes back to the front, when the
@@ -116,7 +134,7 @@ WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
     account: () => _widgetAccount(ref.read(accountsProvider).value, accountId),
     build: (account, kinds, {required withCatalog}) async {
       final texts = await ref.read(widgetTextsProvider.future);
-      final privacy = await ref.read(privacySettingsProvider.future);
+      final privacy = await currentPrivacySettings(ref);
       final linkKey = await readWidgetLinkKey(
         ref.read(preferencesStoreProvider),
       );
@@ -128,6 +146,9 @@ WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
         texts: texts,
         showTaskTitles: privacy.widgetTitles,
         linkKey: linkKey,
+        // iOS draws a snapshot past its validity as stale, and nothing
+        // writes it again at a join while the app is closed.
+        joinsEndValidity: defaultTargetPlatform != TargetPlatform.iOS,
         now: now,
       ).build(
         account.withEndedOnDevice(endedOnDevice: endedOnDevice),
@@ -213,6 +234,13 @@ final class _ProviderWidgetRefresher implements WidgetRefresher {
   @override
   Future<void> refresh(String accountId) async {
     try {
+      // Before the publisher, which would open the database again, and
+      // create an empty one where the sign-out deleted it.
+      if (await _ref
+          .read(widgetPublishersProvider)
+          .signedOutMeanwhile(accountId)) {
+        return;
+      }
       await _ref.read(widgetPublisherProvider(accountId))?.publishNow();
     } on Object catch (error) {
       _log.warning(
@@ -264,6 +292,19 @@ WidgetTapImporter widgetTapImporter(Ref ref) {
   return importer;
 }
 
+/// Runs [action] once the widget taps' imports requested so far have
+/// finished, including one requested later in this turn of the event loop:
+/// the shell builds the importer after the schedulers, and a resume reaches
+/// the listeners in either order. At once while nothing imports them.
+Future<void> afterWidgetTapImports(Ref ref, void Function() action) async {
+  await Future<void>.microtask(() {});
+  if (!ref.mounted) return;
+  if (ref.exists(widgetTapImporterProvider)) {
+    await ref.read(widgetTapImporterProvider).idle;
+  }
+  action();
+}
+
 final class WidgetTapImporter {
   new(this._import);
 
@@ -276,6 +317,8 @@ final class WidgetTapImporter {
     _requested = true;
     _running ??= _loop().whenComplete(() => _running = null);
   }
+
+  Future<void> get idle => _running ?? Future.value();
 
   Future<void> _loop() async {
     while (_requested) {

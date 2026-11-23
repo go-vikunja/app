@@ -92,6 +92,7 @@ final class WidgetPublisher {
   Timer? _debounceTimer;
   DateTime? _firstChangeAt;
   Timer? _validityTimer;
+  WidgetPublishers? _registeredIn;
 
   /// The keys this publisher wrote, for the tombstones of a sign-out.
   Set<String> get writtenKeys => Set.of(_written.keys);
@@ -185,6 +186,18 @@ final class WidgetPublisher {
     _alsoKinds.clear();
     final build = await _build(account, kinds, withCatalog: true);
     if (_disposed) return;
+    var wipedAgain = false;
+    try {
+      await _write(build);
+    } finally {
+      // Also after a write that failed: one before it may have landed
+      // after the app's wipe.
+      wipedAgain = await _registeredIn?._wipeAgainIfSignedOut(this) ?? false;
+    }
+    if (!wipedAgain) _refreshAtValidity(build.snapshots.values);
+  }
+
+  Future<void> _write(WidgetBuild build) async {
     final changed = <String>{};
     for (final MapEntry(:key, value: snapshot) in build.snapshots.entries) {
       final content = snapshot.contentFingerprint();
@@ -213,7 +226,6 @@ final class WidgetPublisher {
       'Published ${changed.length} of ${build.snapshots.length} widget '
       'snapshots of account $accountId',
     );
-    _refreshAtValidity(build.snapshots.values);
   }
 
   void _refreshAtValidity(Iterable<WidgetSnapshot> snapshots) {
@@ -235,10 +247,18 @@ final class WidgetPublisher {
 /// sign-out has replaced the account's widgets: by then the registry
 /// change has already rebuilt the providers and closed the database.
 final class WidgetPublishers {
-  new({required this._host, required this._removedSnapshot});
+  new({
+    required this._host,
+    required this._removedSnapshot,
+    this._signedOutMeanwhile,
+  });
 
   final WidgetHost _host;
   final WidgetSnapshot Function(String key, String accountId) _removedSnapshot;
+
+  /// In a headless isolate: whether the app has signed the account out
+  /// since this isolate read the registry, which nothing tells it.
+  final Future<bool> Function(String accountId)? _signedOutMeanwhile;
   final _publishers = <String, WidgetPublisher>{};
 
   WidgetPublisher? find(String accountId) => _publishers[accountId];
@@ -249,8 +269,13 @@ final class WidgetPublishers {
     if (previous != null && !identical(previous, publisher)) {
       unawaited(previous.dispose());
     }
+    publisher._registeredIn = this;
     _publishers[publisher.accountId] = publisher;
   }
+
+  /// Always false in the app, whose registry is current.
+  Future<bool> signedOutMeanwhile(String accountId) async =>
+      await _signedOutMeanwhile?.call(accountId) ?? false;
 
   /// Sign-out and removal: deletes the account's snapshots, catalog and
   /// queued widget actions, and its widgets say "Account removed" until
@@ -260,8 +285,29 @@ final class WidgetPublishers {
     await publisher?.dispose();
     // A run already writing must not land after the tombstones.
     await publisher?.idle;
+    await _replaceWithTombstones(accountId, {...?publisher?.writtenKeys});
+  }
+
+  /// After a headless run of [publisher] wrote: the app's [wipe] may have
+  /// come before those writes, so its tombstones are written again.
+  Future<bool> _wipeAgainIfSignedOut(WidgetPublisher publisher) async {
+    final accountId = publisher.accountId;
+    if (!await signedOutMeanwhile(accountId)) return false;
+    if (identical(_publishers[accountId], publisher)) {
+      _publishers.remove(accountId);
+    }
+    await publisher.dispose();
+    await _replaceWithTombstones(accountId, publisher.writtenKeys);
+    _log.info('Account $accountId was signed out meanwhile: widgets wiped');
+    return true;
+  }
+
+  Future<void> _replaceWithTombstones(
+    String accountId,
+    Set<String> written,
+  ) async {
     final keys = {
-      ...?publisher?.writtenKeys,
+      ...written,
       for (final config in await _host.displayedConfigs())
         if (config.accountId == accountId) config.key,
     };

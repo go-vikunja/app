@@ -16,6 +16,8 @@ import 'package:vikunja_mobile/core/time/timers.dart';
 
 final _log = Logger('Notifications');
 
+typedef _Pending = ({Set<int> own, Set<int> foreign});
+
 /// The texts of one notification; [project] is the task's project when it
 /// is known locally.
 typedef NotificationDescriber = ({String title, String body}) Function(
@@ -48,7 +50,10 @@ typedef NotificationPresentation = ({
 /// still lists, an inexact alarm Android deferred, stays while its task and
 /// its instant do. Each run also withdraws the account's reminders and due
 /// dates from the tray once their task is done or gone, or has moved to
-/// another instant than the one they showed.
+/// another instant than the one they showed, and cancels those pending
+/// that neither the table nor the window holds. An id that another
+/// account's notification holds stays that account's: a new key probes
+/// past it, and an entry it has replaced moves to a free id.
 /// It runs after every change to the tasks, reminders, assignees or
 /// projects (debounced), after a change of this account's preferences, and
 /// whenever the caller asks. Without the notification permission, or with
@@ -286,8 +291,17 @@ final class NotificationScheduler {
       ),
     };
     final existing = await dao.find(key) ?? await dao.find(resolvedKey);
+    final foreign = (await _pending())?.foreign ?? const <int>{};
     if (existing != null) {
       return existing.copyWith(
+        // Another account may have taken the id over since it fired; the
+        // id stays that account's, uncancelled.
+        osId: foreign.contains(existing.osId)
+            ? nextFreeNotificationOsId(
+                notificationOsIdFor(accountId, existing.key),
+                {...await dao.osIds(), ...foreign},
+              )
+            : null,
         fireAt: until,
         exact: exact,
         hiddenOnLockScreen: privacy.hiddenOnLockScreen,
@@ -313,7 +327,7 @@ final class NotificationScheduler {
       key: resolvedKey,
       osId: nextFreeNotificationOsId(
         notificationOsIdFor(accountId, resolvedKey),
-        await dao.osIds(),
+        {...await dao.osIds(), ...foreign},
       ),
       taskId: resolvedId,
       kind: parsed.kind.name,
@@ -403,7 +417,7 @@ final class NotificationScheduler {
     final linkKey = await _linkKey();
     final now = _now();
     final rows = await _db.scheduledNotificationsDao.all();
-    final held = await _pendingIds();
+    final pending = await _pending();
     final openTasks = await _db.tasksDao.loadOpenTasks();
     final outdated = await _outdatedInTray({
       for (final task in openTasks) task.id: task,
@@ -411,8 +425,9 @@ final class NotificationScheduler {
     final scheduled = [
       for (final row in rows)
         // A past entry counts as pending only when the gateway says so, and
-        // one withdrawn now is scheduled again if it is still wanted.
-        if ((held?.contains(row.osId) ?? row.fireAt.isAfter(now)) &&
+        // one withdrawn now is scheduled again if it is still wanted. An id
+        // another account's notification has replaced is not this entry's.
+        if ((pending?.own.contains(row.osId) ?? row.fireAt.isAfter(now)) &&
             !outdated.contains(row.osId))
           (
             key: row.key,
@@ -468,7 +483,7 @@ final class NotificationScheduler {
       now: now,
       everything: force || rearm,
     );
-    final osIds = _assignOsIds(window, rows);
+    final osIds = _assignOsIds(window, rows, pending?.foreign ?? const {});
 
     // Before the schedules: an outdated one may share its id with the
     // task's next occurrence.
@@ -530,11 +545,24 @@ final class NotificationScheduler {
       );
       return;
     }
+    // Scheduled by a run that could not record it (another isolate's write
+    // overtook it, or it was disposed of), for a task that may be done by
+    // now. Only after a write of this run's that succeeded: no other
+    // isolate has recorded anything since the read. Only what is pending,
+    // as a cancel also takes what the tray shows under the id.
+    final unrecorded = (pending?.own ?? const <int>{}).difference({
+      for (final row in rows) row.osId,
+      ...osIds.values,
+      ...cancels,
+    });
+    for (final osId in unrecorded) {
+      await _gateway.cancel(osId);
+    }
     _log.fine(
       'Reconciled the notifications of account $accountId: '
       '${outdated.length} withdrawn, ${cancelOsIds.length} cancelled, '
-      '${schedule.length} scheduled, ${window.length} of ${desired.length} '
-      'pending',
+      '${unrecorded.length} unrecorded cancelled, ${schedule.length} '
+      'scheduled, ${window.length} of ${desired.length} pending',
     );
   }
 
@@ -573,11 +601,13 @@ final class NotificationScheduler {
     return outdated;
   }
 
-  /// Null when the gateway cannot say, which leaves the table as the only
-  /// record.
-  Future<Set<int>?> _pendingIds() async {
+  /// The pending ids of this account's reminders and due dates, and those
+  /// whose payload is another account's or none of the app's. Null when
+  /// the gateway cannot say, which leaves the table as the only record.
+  Future<_Pending?> _pending() async {
+    final Map<int, String?> pending;
     try {
-      return await _gateway.pendingIds();
+      pending = await _gateway.pendingIds();
     } on Object catch (error) {
       _log.info(
         'Could not list the pending notifications: '
@@ -585,17 +615,34 @@ final class NotificationScheduler {
       );
       return null;
     }
+    final own = <int>{};
+    final foreign = <int>{};
+    for (final MapEntry(key: osId, value: json) in pending.entries) {
+      final payload = NotificationPayload.tryParse(json);
+      if (payload == null || payload.accountId != accountId) {
+        foreign.add(osId);
+      } else if (parseNotificationKey(payload.key) != null) {
+        own.add(osId);
+      }
+    }
+    return (own: own, foreign: foreign);
   }
 
-  /// A key keeps the id its row has; a new key takes the hash of the
-  /// account and the key, or the next free id above it.
+  /// A key keeps the id its row has unless [foreign] holds it, as another
+  /// account's notification has replaced it; any other key takes the hash
+  /// of the account and the key, or the next id above it that neither
+  /// this window nor [foreign] holds.
   Map<String, int> _assignOsIds(
     List<DesiredNotification> window,
     List<ScheduledNotificationRow> rows,
+    Set<int> foreign,
   ) {
-    final existing = {for (final row in rows) row.key: row.osId};
+    final existing = {
+      for (final row in rows)
+        if (!foreign.contains(row.osId)) row.key: row.osId,
+    };
     final assigned = <String, int>{};
-    final taken = <int>{};
+    final taken = {...foreign};
     for (final entry in window) {
       if (existing[entry.key] case final osId?) {
         assigned[entry.key] = osId;

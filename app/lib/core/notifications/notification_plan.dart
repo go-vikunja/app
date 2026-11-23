@@ -220,8 +220,8 @@ int _byFireAtThenKey(DesiredNotification a, DesiredNotification b) {
 /// yet, and scheduling it anew would show one that has fired once more.
 /// The first snoozed entry after those joins the window too: the snooze
 /// lives only in the entry's row, which the caller keeps only for the
-/// window, and the task alone cannot bring it back. Only one, as iOS keeps
-/// room under its cap for one snooze per account beside the windows.
+/// window, and the task alone cannot bring it back. Only one, as each
+/// account's iOS share keeps room for one (`notificationWindow`).
 ///
 /// Only what left the window is cancelled. A key still wanted is scheduled
 /// again under its id, which replaces it, when anything differs (instant,

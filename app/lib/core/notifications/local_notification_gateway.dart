@@ -367,10 +367,10 @@ final class LocalNotificationGateway implements NotificationGateway {
   }
 
   @override
-  Future<Set<int>> pendingIds() async {
+  Future<Map<int, String?>> pendingIds() async {
     await initialize();
     final pending = await _plugin.pendingNotificationRequests();
-    return {for (final request in pending) request.id};
+    return {for (final request in pending) request.id: request.payload};
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
@@ -399,6 +400,107 @@ void main() {
 
     expect(host.snapshot('$accountId.today')!.rows, isEmpty);
     expect(host.snapshot('$accountId.today')!.total, 2);
+  });
+
+  test('a headless container reads the switch anew for every build, as the '
+      'app may have turned task titles off since it started', () async {
+    final (accountId, _) = await signedIn();
+    await container.read(widgetRefresherProvider).refresh(accountId);
+    expect(todayTitles(accountId), hasLength(2));
+
+    await storePrivacySettings(
+      auth.preferences,
+      const PrivacySettings(widgetTitles: false),
+    );
+    await container.read(widgetRefresherProvider).refresh(accountId);
+
+    expect(host.snapshot('$accountId.today')!.rows, isEmpty);
+    expect(host.snapshot('$accountId.today')!.total, 2);
+  });
+
+  group('an account the app signs out while a headless container runs', () {
+    late ProviderContainer app;
+
+    setUp(() {
+      app = newContainer(headless: false);
+      addTearDown(app.dispose);
+    });
+
+    Future<void> signOutInApp(String accountId) async {
+      await app.read(accountsProvider.future);
+      await app.read(signOutProvider).call(accountId);
+      expect(
+        host.snapshot('$accountId.today')?.state,
+        WidgetSnapshotState.accountRemoved,
+      );
+    }
+
+    test('keeps "Account removed" on its widgets when a run of the '
+        "container writes after the app's wipe", () async {
+      final (accountId, _) = await signedIn();
+      final publisher = container.read(widgetPublisherProvider(accountId))!;
+      await signOutInApp(accountId);
+
+      await publisher.publishNow();
+
+      final today = host.snapshot('$accountId.today')!;
+      expect(today.state, WidgetSnapshotState.accountRemoved);
+      expect(today.rows, isEmpty);
+      expect(host.catalogs, isEmpty);
+      await publisher.publishNow();
+      expect(host.snapshot('$accountId.today')!.rows, isEmpty);
+    });
+
+    test('keeps "Account removed" on its widgets when a write of that run '
+        'fails after one landed', () async {
+      final (accountId, _) = await signedIn();
+      final publisher = container.read(widgetPublisherProvider(accountId))!;
+      await signOutInApp(accountId);
+      host.catalogFailure = Exception('disk full');
+
+      await expectLater(publisher.publishNow(), throwsException);
+
+      final today = host.snapshot('$accountId.today')!;
+      expect(today.state, WidgetSnapshotState.accountRemoved);
+      expect(today.rows, isEmpty);
+      expect(host.writesOf('$accountId.today'), 3);
+    });
+
+    test('is not published again, and its database not opened again, by a '
+        'later refresh', () async {
+      final entry = await auth.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now, userId: alice.id),
+      );
+      await container.read(accountsProvider.future);
+      host.placed[1] = WidgetConfig(
+        accountId: entry.id,
+        kind: const TodayKind(),
+      );
+      await signOutInApp(entry.id);
+      host.calls.clear();
+
+      await container.read(widgetRefresherProvider).refreshAll();
+
+      expect(container.exists(appDatabaseProvider(entry.id)), isFalse);
+      expect(host.calls, isEmpty);
+      expect(
+        host.snapshot('${entry.id}.today')!.state,
+        WidgetSnapshotState.accountRemoved,
+      );
+    });
+  });
+
+  test('a registry that turns unreadable while a headless container runs '
+      'signs nobody out of its widgets', () async {
+    final (accountId, _) = await signedIn();
+    auth.preferences.values[AccountRegistry.storageKey] = 'not json';
+
+    await container.read(widgetRefresherProvider).refresh(accountId);
+
+    expect(host.snapshot('$accountId.today')!.state, WidgetSnapshotState.ok);
+    expect(todayTitles(accountId), hasLength(2));
+    expect(host.catalogs, contains(accountId));
   });
 
   group('in the app', () {
