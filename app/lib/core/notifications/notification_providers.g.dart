@@ -61,13 +61,13 @@ String _$notificationPreferencesStoreHash() =>
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action; the app's first build in a process
 /// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
-/// to the front, and rescheduling everything when the notification
-/// content, the app lock or the app's language changes; a content that
-/// shows less also withdraws what the account has in the tray. Built
-/// again, and so reconciling at once, when a refreshed `/info` moves the
-/// server to one whose reminders follow the subscriptions, and on iOS
-/// when the number of accounts changes their share of the window. Null
-/// once the account is gone. Disposed with the account's database on
+/// to the front after it was hidden, and rescheduling everything when the
+/// notification content, the app lock or the app's language changes; a
+/// content that shows less also withdraws what the account has in the
+/// tray. Built again, and so reconciling at once, when a refreshed `/info`
+/// moves the server to one whose reminders follow the subscriptions, and
+/// on iOS when the number of accounts changes their share of the window.
+/// Null once the account is gone. Disposed with the account's database on
 /// sign-out, after which [NotificationSchedulers] still holds it for the
 /// wipe.
 
@@ -77,13 +77,13 @@ final notificationSchedulerProvider = NotificationSchedulerFamily._();
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action; the app's first build in a process
 /// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
-/// to the front, and rescheduling everything when the notification
-/// content, the app lock or the app's language changes; a content that
-/// shows less also withdraws what the account has in the tray. Built
-/// again, and so reconciling at once, when a refreshed `/info` moves the
-/// server to one whose reminders follow the subscriptions, and on iOS
-/// when the number of accounts changes their share of the window. Null
-/// once the account is gone. Disposed with the account's database on
+/// to the front after it was hidden, and rescheduling everything when the
+/// notification content, the app lock or the app's language changes; a
+/// content that shows less also withdraws what the account has in the
+/// tray. Built again, and so reconciling at once, when a refreshed `/info`
+/// moves the server to one whose reminders follow the subscriptions, and
+/// on iOS when the number of accounts changes their share of the window.
+/// Null once the account is gone. Disposed with the account's database on
 /// sign-out, after which [NotificationSchedulers] still holds it for the
 /// wipe.
 
@@ -98,13 +98,13 @@ final class NotificationSchedulerProvider
   /// One account's scheduler, reconciling when built (app start, and the
   /// first run of a background action; the app's first build in a process
   /// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
-  /// to the front, and rescheduling everything when the notification
-  /// content, the app lock or the app's language changes; a content that
-  /// shows less also withdraws what the account has in the tray. Built
-  /// again, and so reconciling at once, when a refreshed `/info` moves the
-  /// server to one whose reminders follow the subscriptions, and on iOS
-  /// when the number of accounts changes their share of the window. Null
-  /// once the account is gone. Disposed with the account's database on
+  /// to the front after it was hidden, and rescheduling everything when the
+  /// notification content, the app lock or the app's language changes; a
+  /// content that shows less also withdraws what the account has in the
+  /// tray. Built again, and so reconciling at once, when a refreshed `/info`
+  /// moves the server to one whose reminders follow the subscriptions, and
+  /// on iOS when the number of accounts changes their share of the window.
+  /// Null once the account is gone. Disposed with the account's database on
   /// sign-out, after which [NotificationSchedulers] still holds it for the
   /// wipe.
   NotificationSchedulerProvider._({
@@ -160,18 +160,18 @@ final class NotificationSchedulerProvider
 }
 
 String _$notificationSchedulerHash() =>
-    r'07c137c335760423520ea245bc0a40fb854c7254';
+    r'1529ccf6b77d9370fe004c0c3f0fd01a5c6724f5';
 
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action; the app's first build in a process
 /// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
-/// to the front, and rescheduling everything when the notification
-/// content, the app lock or the app's language changes; a content that
-/// shows less also withdraws what the account has in the tray. Built
-/// again, and so reconciling at once, when a refreshed `/info` moves the
-/// server to one whose reminders follow the subscriptions, and on iOS
-/// when the number of accounts changes their share of the window. Null
-/// once the account is gone. Disposed with the account's database on
+/// to the front after it was hidden, and rescheduling everything when the
+/// notification content, the app lock or the app's language changes; a
+/// content that shows less also withdraws what the account has in the
+/// tray. Built again, and so reconciling at once, when a refreshed `/info`
+/// moves the server to one whose reminders follow the subscriptions, and
+/// on iOS when the number of accounts changes their share of the window.
+/// Null once the account is gone. Disposed with the account's database on
 /// sign-out, after which [NotificationSchedulers] still holds it for the
 /// wipe.
 
@@ -189,13 +189,13 @@ final class NotificationSchedulerFamily extends $Family
   /// One account's scheduler, reconciling when built (app start, and the
   /// first run of a background action; the app's first build in a process
   /// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
-  /// to the front, and rescheduling everything when the notification
-  /// content, the app lock or the app's language changes; a content that
-  /// shows less also withdraws what the account has in the tray. Built
-  /// again, and so reconciling at once, when a refreshed `/info` moves the
-  /// server to one whose reminders follow the subscriptions, and on iOS
-  /// when the number of accounts changes their share of the window. Null
-  /// once the account is gone. Disposed with the account's database on
+  /// to the front after it was hidden, and rescheduling everything when the
+  /// notification content, the app lock or the app's language changes; a
+  /// content that shows less also withdraws what the account has in the
+  /// tray. Built again, and so reconciling at once, when a refreshed `/info`
+  /// moves the server to one whose reminders follow the subscriptions, and
+  /// on iOS when the number of accounts changes their share of the window.
+  /// Null once the account is gone. Disposed with the account's database on
   /// sign-out, after which [NotificationSchedulers] still holds it for the
   /// wipe.
 

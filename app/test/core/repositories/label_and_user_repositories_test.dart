@@ -1,3 +1,4 @@
+import 'package:drift/drift.dart' show TableUpdateQuery;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
@@ -577,6 +578,33 @@ void main() {
 
       expect(await repository.search('  '), isEmpty);
       expect(read.requests, isEmpty);
+    });
+
+    test('a search writes only the users that are new or changed', () async {
+      await repository.searchAssignees(7, 'lima');
+      var updates = 0;
+      final subscription = db
+          .tableUpdates(TableUpdateQuery.onTable(db.users))
+          .listen((_) => updates++);
+      addTearDown(subscription.cancel);
+
+      await repository.searchAssignees(7, 'lima');
+      read.allUsers = [ana, ben];
+      await repository.search('ana');
+      await pumpEventQueue();
+      expect(updates, 0, reason: 'nothing differs from the stored rows');
+
+      await repository.searchAssignees(7, '');
+      await pumpEventQueue();
+      expect(updates, 1, reason: 'one new user');
+      expect(await repository.knownUsers(), [ana, ben]);
+
+      const renamed = User(id: 21, username: 'ben', name: 'Ben Ito');
+      read.allUsers = [ana, renamed];
+      await repository.search('ben');
+      await pumpEventQueue();
+      expect(updates, 2);
+      expect(await repository.knownUsers(), [ana, renamed]);
     });
 
     test('the known users stream follows searches and syncs', () async {

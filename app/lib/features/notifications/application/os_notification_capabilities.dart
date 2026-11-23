@@ -1,9 +1,14 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:vikunja_mobile/core/notifications/local_notification_gateway_provider.dart';
 import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/notifications/notification_schedulers.dart';
+import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 
 part 'os_notification_capabilities.g.dart';
 
@@ -30,7 +35,22 @@ class OsNotificationCapabilities extends _$OsNotificationCapabilities {
       final capabilities = await ref
           .read(notificationGatewayProvider)
           .capabilities();
+      final before = state.value;
       state = AsyncData(capabilities);
+      // The schedulers reconcile on a resume only after a hide; the shade
+      // and a settings page beside the app come back without one. On iOS
+      // after the widgets' Done taps, whose reminders a run would schedule
+      // again (decision log: Notifications and widgets).
+      if (before != null &&
+          (before.permission != capabilities.permission ||
+              before.exactAlarms != capabilities.exactAlarms)) {
+        final schedulers = ref.read(notificationSchedulersProvider);
+        if (defaultTargetPlatform == TargetPlatform.iOS) {
+          unawaited(afterWidgetTapImports(ref, schedulers.reconcileAll));
+        } else {
+          schedulers.reconcileAll();
+        }
+      }
     } on Object catch (error) {
       _log.warning(
         'Could not read what the OS allows for notifications: '
@@ -40,7 +60,7 @@ class OsNotificationCapabilities extends _$OsNotificationCapabilities {
   }
 
   /// The schedulers see the answer through the registry: the OS dialog
-  /// does not always come with a resume.
+  /// does not always come with a resume, and comes without a hide.
   Future<NotificationCapabilities> requestPermission() async {
     final gateway = ref.read(notificationGatewayProvider);
     await gateway.initialize();

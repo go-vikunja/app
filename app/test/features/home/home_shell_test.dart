@@ -1,12 +1,15 @@
 import 'dart:async';
 
 import 'package:cupertino_ui/cupertino_ui.dart';
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/layout/main_action.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
+import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/notifications/notification_gateway.dart';
 import 'package:vikunja_mobile/core/realtime/realtime_connection.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
@@ -28,6 +31,7 @@ import 'package:vikunja_mobile/features/upcoming/presentation/upcoming_screen.da
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/guest_app.dart';
+import '../../helpers/notification_ui_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
 import '../../helpers/server_connections.dart';
@@ -605,6 +609,43 @@ void main() {
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(dotIn(NavigationBar), findsNothing);
     });
+  });
+
+  testWidgets('a permission granted beside the app (a split screen) '
+      'reconciles the notifications of a link-share guest alone, who has '
+      'no session reminders', (tester) async {
+    final notifications = NotificationFakes(
+      schedulers: true,
+      capabilities: const NotificationCapabilities(
+        permission: NotificationPermission.denied,
+        exactAlarms: true,
+      ),
+    );
+    final db = AppDatabase(NativeDatabase.memory());
+    await pumpGuestApp(
+      tester,
+      auth: AuthFakes(),
+      data: SyncFakes(now: now),
+      notifications: notifications,
+      overrides: [
+        openDatabasesProvider.overrideWithValue(
+          OpenDatabases(FakeAccountDatabaseFiles(), open: (_, _) => db),
+        ),
+      ],
+    );
+    notifications.gateway
+      ..calls.clear()
+      ..current = const NotificationCapabilities(
+        permission: NotificationPermission.granted,
+        exactAlarms: true,
+      );
+
+    tester.binding
+      ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
+      ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    expect(notifications.calls('delivered'), 1, reason: 'a granted run');
   });
 
   group('quiet sync', () {

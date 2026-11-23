@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart' show AppLifecycleListener;
+import 'package:flutter/widgets.dart'
+    show AppLifecycleListener, AppLifecycleState, WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -49,7 +50,7 @@ Future<bool> widgetAlwaysUse24HourFormat(Ref ref) async {
     return await preferences.getString(widgetAlwaysUse24HourFormatKey) ==
         'true';
   }
-  final value = PlatformDispatcher.instance.alwaysUse24HourFormat;
+  final value = _deviceUses24HourFormat();
   await preferences.setString(widgetAlwaysUse24HourFormatKey, '$value');
   return value;
 }
@@ -111,10 +112,11 @@ Future<bool> _signedOutInStorage(
     await registry.find(accountId) == null;
 
 /// One account's publisher; null once the account is gone. In the app it
-/// publishes when built, when the app comes back to the front, when the
-/// account's registry entry changes, when the "Show task titles in
-/// widgets" switch changes, when the app's language changes and when its
-/// snapshots go stale; a headless container publishes on request
+/// publishes when built, when the app comes back after it was hidden or
+/// the device's 24-hour switch or time zone changed, when the account's
+/// registry entry changes, when the "Show task titles in widgets" switch
+/// changes, when the app's language changes and when its snapshots go
+/// stale; a headless container publishes on request
 /// ([widgetRefresherProvider]).
 @Riverpod(keepAlive: true)
 WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
@@ -180,15 +182,7 @@ WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
       (_, _) => publisher.publishQuietly(),
     );
   }
-  final lifecycle = headless
-      ? null
-      : AppLifecycleListener(
-          onResume: () {
-            // The device's 24-hour switch may have changed meanwhile.
-            ref.invalidate(widgetAlwaysUse24HourFormatProvider);
-            publisher.publishQuietly();
-          },
-        );
+  final lifecycle = headless ? null : _publishOnReturn(ref, publisher, now);
   ref.onDispose(() {
     lifecycle?.dispose();
     unawaited(publisher.dispose());
@@ -196,6 +190,43 @@ WidgetPublisher? widgetPublisher(Ref ref, String accountId) {
   if (!headless) publisher.publishQuietly();
   return publisher;
 }
+
+/// Publishes on a resume after the app was hidden. The notification shade,
+/// a system dialog and the app lock's own prompt only make it inactive,
+/// which changes nothing a widget shows; the device's 24-hour switch and
+/// time zone, which a split screen changes without a hide, are compared on
+/// every resume.
+AppLifecycleListener _publishOnReturn(
+  Ref ref,
+  WidgetPublisher publisher,
+  DateTime Function() now,
+) {
+  ({bool use24HourFormat, Duration utcOffset}) device() => (
+    use24HourFormat: _deviceUses24HourFormat(),
+    utcOffset: ref.read(utcOffsetAtProvider)(now().toUtc()),
+  );
+  var hidden = !_inFront();
+  var seen = device();
+  return AppLifecycleListener(
+    onHide: () => hidden = true,
+    onResume: () {
+      final current = device();
+      if (!hidden && current == seen) return;
+      hidden = false;
+      seen = current;
+      ref.invalidate(widgetAlwaysUse24HourFormatProvider);
+      publisher.publishQuietly();
+    },
+  );
+}
+
+bool _inFront() => switch (WidgetsBinding.instance.lifecycleState) {
+  null || AppLifecycleState.resumed || AppLifecycleState.inactive => true,
+  _ => false,
+};
+
+bool _deviceUses24HourFormat() =>
+    WidgetsBinding.instance.platformDispatcher.alwaysUse24HourFormat;
 
 WidgetAccount? _widgetAccount(AccountRegistryState? state, String accountId) =>
     switch (state?.find(accountId)) {

@@ -344,9 +344,9 @@ final class NotificationScheduler {
 
   /// Cancels every notification the account holds and empties the table.
   /// Works after [dispose] and after the database has closed, from the ids
-  /// of the last run and those a run scheduled since; sign-out needs that,
-  /// because the registry change disposes the providers before the wipe
-  /// runs.
+  /// of the last run, those a run scheduled since and those the OS lists
+  /// as pending for the account; sign-out needs that, because the registry
+  /// change disposes the providers before the wipe runs.
   Future<void> cancelAll() async {
     var osIds = _heldOsIds;
     try {
@@ -357,6 +357,9 @@ final class NotificationScheduler {
         '${error.runtimeType}',
       );
     }
+    // Another isolate's snooze or run since this one's last: only the
+    // table records them, and sign-out has closed it by now.
+    osIds = {...osIds, ...?(await _pending())?.own};
     for (final osId in osIds) {
       await _gateway.cancel(osId);
     }

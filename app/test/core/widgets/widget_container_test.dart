@@ -1,4 +1,5 @@
 import 'package:drift/native.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
@@ -69,7 +70,10 @@ void main() {
   late FakeWidgetHost host;
   late ProviderContainer container;
 
-  ProviderContainer newContainer({bool headless = true}) {
+  ProviderContainer newContainer({
+    bool headless = true,
+    Duration Function(DateTime utc)? utcOffsetAt,
+  }) {
     final files = FakeAccountDatabaseFiles();
     return ProviderContainer(
       overrides: [
@@ -90,6 +94,8 @@ void main() {
         backgroundSchedulerProvider.overrideWithValue(background),
         widgetHostProvider.overrideWithValue(host),
         runsHeadlessProvider.overrideWithValue(headless),
+        if (utcOffsetAt != null)
+          utcOffsetAtProvider.overrideWithValue(utcOffsetAt),
       ],
     );
   }
@@ -607,6 +613,96 @@ void main() {
         auth.preferences.values[widgetAlwaysUse24HourFormatKey],
         anyOf('true', 'false'),
       );
+    });
+
+    group('a resume', () {
+      final binding = TestWidgetsFlutterBinding.instance;
+      late Duration offset;
+      late ProviderContainer shown;
+      late String accountId;
+
+      setUp(() async {
+        binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        offset = const Duration(hours: 1);
+        shown = newContainer(headless: false, utcOffsetAt: (_) => offset);
+        addTearDown(shown.dispose);
+        final entry = await auth.seedAccount(
+          fullServer270(),
+          tokens: issueTokens(issuedAt: now, userId: alice.id),
+        );
+        accountId = entry.id;
+        await shown.read(accountsProvider.future);
+        shown.listen(accountWidgetPublishersProvider, (_, _) {});
+        await pumpEventQueue();
+      });
+
+      /// A list the host shows from now on, which only a publish writes.
+      String shownFromNow(WidgetKind kind) {
+        final config = WidgetConfig(accountId: accountId, kind: kind);
+        host.requested.add(config);
+        return config.key;
+      }
+
+      Future<void> back({required bool hidden}) async {
+        binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+        if (hidden) {
+          binding
+            ..handleAppLifecycleStateChanged(AppLifecycleState.hidden)
+            ..handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+        }
+        binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+        await pumpEventQueue();
+      }
+
+      test('without a hide before it (the notification shade, a system '
+          "dialog, the app lock's prompt) publishes nothing", () async {
+        final key = shownFromNow(const OverdueKind());
+
+        await back(hidden: false);
+
+        expect(host.snapshots, isNot(contains(key)));
+      });
+
+      test('after a hide publishes once', () async {
+        final key = shownFromNow(const OverdueKind());
+
+        await back(hidden: true);
+        expect(host.writesOf(key), 1);
+
+        final next = shownFromNow(const UpcomingKind(3));
+        await back(hidden: false);
+        expect(host.snapshots, isNot(contains(next)));
+      });
+
+      test("without a hide publishes when the device's 24-hour switch "
+          'changed, which a split screen allows', () async {
+        final before = await shown.read(
+          widgetAlwaysUse24HourFormatProvider.future,
+        );
+        binding.platformDispatcher.alwaysUse24HourFormatTestValue = !before;
+        addTearDown(binding.platformDispatcher.clearAlwaysUse24HourTestValue);
+        final key = shownFromNow(const OverdueKind());
+
+        await back(hidden: false);
+
+        expect(host.writesOf(key), 1);
+        expect(
+          auth.preferences.values[widgetAlwaysUse24HourFormatKey],
+          '${!before}',
+        );
+      });
+
+      test('without a hide publishes when the time zone changed', () async {
+        offset = const Duration(hours: 2);
+        final key = shownFromNow(const OverdueKind());
+
+        await back(hidden: false);
+        expect(host.writesOf(key), 1);
+
+        final next = shownFromNow(const UpcomingKind(3));
+        await back(hidden: false);
+        expect(host.snapshots, isNot(contains(next)));
+      });
     });
   });
 }

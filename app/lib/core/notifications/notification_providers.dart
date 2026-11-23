@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart' show AppLifecycleListener;
+import 'package:flutter/widgets.dart'
+    show AppLifecycleListener, AppLifecycleState, WidgetsBinding;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logging/logging.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -54,13 +55,13 @@ NotificationPreferencesStore notificationPreferencesStore(Ref ref) {
 /// One account's scheduler, reconciling when built (app start, and the
 /// first run of a background action; the app's first build in a process
 /// re-arms on Android, see [_rearmsFirstRun]) and when the app comes back
-/// to the front, and rescheduling everything when the notification
-/// content, the app lock or the app's language changes; a content that
-/// shows less also withdraws what the account has in the tray. Built
-/// again, and so reconciling at once, when a refreshed `/info` moves the
-/// server to one whose reminders follow the subscriptions, and on iOS
-/// when the number of accounts changes their share of the window. Null
-/// once the account is gone. Disposed with the account's database on
+/// to the front after it was hidden, and rescheduling everything when the
+/// notification content, the app lock or the app's language changes; a
+/// content that shows less also withdraws what the account has in the
+/// tray. Built again, and so reconciling at once, when a refreshed `/info`
+/// moves the server to one whose reminders follow the subscriptions, and
+/// on iOS when the number of accounts changes their share of the window.
+/// Null once the account is gone. Disposed with the account's database on
 /// sign-out, after which [NotificationSchedulers] still holds it for the
 /// wipe.
 @Riverpod(keepAlive: true)
@@ -124,7 +125,18 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
     unawaited(afterWidgetTapImports(ref, reconcile));
   }
 
-  final lifecycle = AppLifecycleListener(onResume: reconcileStartOrResume);
+  // The notification shade, a system dialog and the app lock's own prompt
+  // only make the app inactive. A permission or exact-alarm answer that
+  // arrives that way reconciles through OsNotificationCapabilities.
+  var hidden = !_inFront();
+  final lifecycle = AppLifecycleListener(
+    onHide: () => hidden = true,
+    onResume: () {
+      if (!hidden) return;
+      hidden = false;
+      reconcileStartOrResume();
+    },
+  );
   ref.onDispose(() {
     lifecycle.dispose();
     unawaited(scheduler.dispose());
@@ -142,6 +154,11 @@ NotificationScheduler? notificationScheduler(Ref ref, String accountId) {
 bool _rearmsFirstRun(Ref ref) =>
     defaultTargetPlatform == TargetPlatform.android &&
     !ref.read(runsHeadlessProvider);
+
+bool _inFront() => switch (WidgetsBinding.instance.lifecycleState) {
+  null || AppLifecycleState.resumed || AppLifecycleState.inactive => true,
+  _ => false,
+};
 
 NotificationPresentation _presentation(
   AppLocalizations l10n,

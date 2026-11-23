@@ -1109,6 +1109,36 @@ void main() {
     expect(gateway.pending, isEmpty);
   });
 
+  test('cancelAll once the database is closed also cancels what another '
+      "isolate scheduled since this one's last run: a snooze without a "
+      'row', () async {
+    final closable = AppDatabase(NativeDatabase.memory());
+    await closable.projectsDao.upsertAll([sampleProject(id: 7, title: 'W')]);
+    await closable.tasksDao.upsertAll([water()], syncRunId: 'run');
+    final app = scheduler(database: closable);
+    await app.reconcile();
+    now = reminderAt.add(const Duration(minutes: 1));
+    gateway.fire(reminderId);
+    await app.reconcile();
+    final kept = await closable.scheduledNotificationsDao.all();
+    expect(kept.map((r) => r.key), ['1:due']);
+
+    await scheduler(database: closable).snooze(
+      key: '1:reminder:0',
+      taskId: 1,
+      duration: const Duration(hours: 1),
+    );
+    expect(gateway.pending.keys, contains(reminderId));
+    await app.dispose();
+    await closable.close();
+    gateway.cancelled.clear();
+
+    await app.cancelAll();
+
+    expect(gateway.cancelled, unorderedEquals([reminderId, dueId]));
+    expect(gateway.pending, isEmpty);
+  });
+
   group('the tray', () {
     /// Both fired and are shown with the payloads they were scheduled with.
     Future<NotificationScheduler> bothShown() async {

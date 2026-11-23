@@ -30,6 +30,7 @@ import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/widgets/widget_host.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
+import 'package:vikunja_mobile/features/notifications/application/os_notification_capabilities.dart';
 import 'package:vikunja_mobile/features/session/application/sign_out_providers.dart';
 
 import '../../helpers/app_lock_fakes.dart';
@@ -280,19 +281,112 @@ void main() {
     );
   });
 
-  test('coming back to the front reconciles every scheduler', () async {
+  test('coming back after a hide reconciles every scheduler once', () async {
     await twoAccounts();
     container.listen(accountNotificationSchedulersProvider, (_, _) {});
     await pumpEventQueue();
     gateway.calls.clear();
 
-    TestWidgetsFlutterBinding.instance
-      ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
-      ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await pumpEventQueue();
+    await _comeBack(hidden: true);
 
     expect(gateway.calls.where((c) => c == 'capabilities').length, 2);
     expect(gateway.calls.where((c) => c.startsWith('schedule')), isEmpty);
+
+    gateway.calls.clear();
+    await _comeBack(hidden: false);
+    expect(gateway.calls, isEmpty);
+  });
+
+  test('a resume without a hide (the notification shade, a system dialog, '
+      "the app lock's prompt) reconciles nothing", () async {
+    await twoAccounts();
+    container.listen(accountNotificationSchedulersProvider, (_, _) {});
+    await pumpEventQueue();
+    gateway.calls.clear();
+
+    await _comeBack(hidden: false);
+
+    expect(gateway.calls, isEmpty);
+  });
+
+  group('without a hide, what the OS allows reconciles where it arrives', () {
+    Iterable<String> runs() => gateway.calls.where((c) => c == 'pendingIds');
+
+    test('a permission granted in the OS dialog schedules the reminders at '
+        'once', () async {
+      gateway.current = const NotificationCapabilities(
+        permission: NotificationPermission.notAsked,
+        exactAlarms: true,
+      );
+      final (alice, bob) = await twoAccounts();
+      container
+        ..listen(accountNotificationSchedulersProvider, (_, _) {})
+        ..listen(osNotificationCapabilitiesProvider, (_, _) {});
+      await pumpEventQueue();
+      expect(gateway.pending, isEmpty);
+
+      gateway.current = const NotificationCapabilities(
+        permission: NotificationPermission.granted,
+        exactAlarms: true,
+      );
+      TestWidgetsFlutterBinding.instance.handleAppLifecycleStateChanged(
+        AppLifecycleState.inactive,
+      );
+      await container
+          .read(osNotificationCapabilitiesProvider.notifier)
+          .requestPermission();
+      await _comeBack(hidden: false);
+
+      expect(
+        gateway.pending.keys,
+        unorderedEquals([
+          notificationOsIdFor(alice, '1:due'),
+          notificationOsIdFor(bob, '1:due'),
+        ]),
+      );
+    });
+
+    test('a permission or exact alarms changed beside the app (the shade, '
+        'a split screen) reconcile on the next resume', () async {
+      final (alice, bob) = await twoAccounts();
+      container
+        ..listen(accountNotificationSchedulersProvider, (_, _) {})
+        ..listen(osNotificationCapabilitiesProvider, (_, _) {});
+      await pumpEventQueue();
+      expect(gateway.pending, hasLength(2));
+      gateway.calls.clear();
+
+      await _comeBack(hidden: false);
+      expect(runs(), isEmpty, reason: 'nothing changed');
+
+      gateway.current = const NotificationCapabilities(
+        permission: NotificationPermission.denied,
+        exactAlarms: true,
+      );
+      await _comeBack(hidden: false);
+      expect(gateway.pending, isEmpty);
+
+      gateway.current = const NotificationCapabilities(
+        permission: NotificationPermission.granted,
+        exactAlarms: false,
+      );
+      await _comeBack(hidden: false);
+      expect(
+        gateway.pending.keys,
+        unorderedEquals([
+          notificationOsIdFor(alice, '1:due'),
+          notificationOsIdFor(bob, '1:due'),
+        ]),
+      );
+
+      gateway.calls.clear();
+      gateway.current = const NotificationCapabilities(
+        permission: NotificationPermission.granted,
+        exactAlarms: true,
+      );
+      await _comeBack(hidden: false);
+      expect(runs(), hasLength(2));
+    });
   });
 
   test('a scheduler built from the provider keeps the same os ids across '
@@ -384,10 +478,7 @@ void main() {
         app.read(notificationSchedulerProvider(alice)),
         isNot(same(first)),
       );
-      TestWidgetsFlutterBinding.instance
-        ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
-        ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-      await pumpEventQueue();
+      await _comeBack(hidden: true);
 
       expect(gateway.calls.where((c) => c == 'pendingIds').length, 2);
       expect(schedulesAndCancels(), isEmpty);
@@ -855,10 +946,7 @@ void main() {
 
     gateway.calls.clear();
     taps.hold();
-    TestWidgetsFlutterBinding.instance
-      ..handleAppLifecycleStateChanged(AppLifecycleState.inactive)
-      ..handleAppLifecycleStateChanged(AppLifecycleState.resumed);
-    await pumpEventQueue();
+    await _comeBack(hidden: true);
     expect(taps.taken, 2);
     expect(runs(), isEmpty);
 
@@ -866,6 +954,105 @@ void main() {
     await pumpEventQueue();
     expect(runs(), hasLength(2));
   });
+
+  for (final hidden in [true, false]) {
+    test('in the app on iOS, a permission granted in the settings '
+        '${hidden ? 'app' : 'beside the app'} waits for the widget taps too '
+        '(decision log: Notifications and widgets)', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final taps = _HeldTaps();
+      widgets = taps;
+      gateway.current = const NotificationCapabilities(
+        permission: NotificationPermission.denied,
+        exactAlarms: true,
+      );
+      container = ProviderContainer(overrides: overrides());
+      addTearDown(container.dispose);
+      final (alice, bob) = await twoAccounts();
+      container
+        ..listen(accountNotificationSchedulersProvider, (_, _) {})
+        ..listen(widgetTapImporterProvider, (_, _) {})
+        ..listen(osNotificationCapabilitiesProvider, (_, _) {});
+      taps.release();
+      await pumpEventQueue();
+      expect(gateway.pending, isEmpty);
+
+      gateway
+        ..calls.clear()
+        ..current = const NotificationCapabilities(
+          permission: NotificationPermission.granted,
+          exactAlarms: true,
+        );
+      taps.hold();
+      await _comeBack(hidden: hidden);
+      expect(taps.taken, 2);
+      expect(gateway.calls, ['capabilities'], reason: 'only the read itself');
+
+      taps.release();
+      await pumpEventQueue();
+      expect(
+        gateway.pending.keys,
+        unorderedEquals([
+          notificationOsIdFor(alice, '1:due'),
+          notificationOsIdFor(bob, '1:due'),
+        ]),
+      );
+    });
+  }
+
+  test(
+    'in the app on Android, a permission granted beside the app '
+    'schedules at once, without waiting for an import of widget taps',
+    () async {
+      final taps = _HeldTaps();
+      widgets = taps;
+      gateway.current = const NotificationCapabilities(
+        permission: NotificationPermission.denied,
+        exactAlarms: true,
+      );
+      container = ProviderContainer(overrides: overrides());
+      addTearDown(container.dispose);
+      final (alice, bob) = await twoAccounts();
+      container
+        ..listen(accountNotificationSchedulersProvider, (_, _) {})
+        ..listen(widgetTapImporterProvider, (_, _) {})
+        ..listen(osNotificationCapabilitiesProvider, (_, _) {});
+      taps.release();
+      await pumpEventQueue();
+      expect(gateway.pending, isEmpty);
+
+      gateway.current = const NotificationCapabilities(
+        permission: NotificationPermission.granted,
+        exactAlarms: true,
+      );
+      taps.hold();
+      await _comeBack(hidden: false);
+
+      expect(
+        gateway.pending.keys,
+        unorderedEquals([
+          notificationOsIdFor(alice, '1:due'),
+          notificationOsIdFor(bob, '1:due'),
+        ]),
+      );
+      taps.release();
+    },
+  );
+}
+
+/// Back in front after the shade or a dialog, or with [hidden] from
+/// another app.
+Future<void> _comeBack({required bool hidden}) async {
+  final binding = TestWidgetsFlutterBinding.instance
+    ..handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+  if (hidden) {
+    binding
+      ..handleAppLifecycleStateChanged(AppLifecycleState.hidden)
+      ..handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+  }
+  binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+  await pumpEventQueue();
 }
 
 /// Holds each import of the widget taps at its start until released.

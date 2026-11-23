@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:drift/drift.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/time/timers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_host.dart';
@@ -27,9 +28,10 @@ typedef BuildWidgets = Future<WidgetBuild> Function(
 /// asks the OS to redraw the widgets of those keys. While task titles are
 /// hidden it deletes the account's other snapshots, which may still list
 /// them (a widget removed meanwhile, a list an iOS widget picks next). A
-/// change to the tables a widget reads publishes after [debounce] of
-/// quiet, and at the latest [maxWait] after the first change, so a change
-/// reaches the widget within seconds even while changes keep coming.
+/// change to what a widget reads in the database publishes after
+/// [debounce] of quiet, and at the latest [maxWait] after the first change,
+/// so a change reaches the widget within seconds even while changes keep
+/// coming.
 final class WidgetPublisher {
   new({
     required this.accountId,
@@ -55,10 +57,20 @@ final class WidgetPublisher {
             _db.listSnapshots,
             _db.listSnapshotTasks,
             _db.listPreferenceEntries,
-            _db.syncState,
           ]),
         )
         .listen((_) => publishSoon());
+    // A sync writes its lease and checkpoints to the same table before and
+    // after every page, so only a change of the keys a build reads
+    // publishes (decision log: Sync). Not a drift query stream: one
+    // cancelled just before the database closes breaks its close.
+    var settings = _readSettings();
+    _settingsUpdates = _db
+        .tableUpdates(TableUpdateQuery.onTable(_db.syncState))
+        .listen((_) {
+          final before = settings;
+          unawaited(_publishIfChanged(before, settings = _readSettings()));
+        });
   }
 
   final String accountId;
@@ -81,6 +93,7 @@ final class WidgetPublisher {
   final DateTime Function() _now;
   final CreateTimer _createTimer;
   late final StreamSubscription<Object?> _tableUpdates;
+  late final StreamSubscription<Object?> _settingsUpdates;
 
   /// What this publisher last wrote, by key, without `generatedAt`.
   final _written = <String, String>{};
@@ -165,6 +178,28 @@ final class WidgetPublisher {
     _debounceTimer?.cancel();
     _validityTimer?.cancel();
     await _tableUpdates.cancel();
+    await _settingsUpdates.cancel();
+  }
+
+  /// Null when the database could not be read, closed meanwhile.
+  Future<(String?, String?)?> _readSettings() async {
+    try {
+      final state = await _db.syncStateDao.readAll();
+      return (
+        state[SyncStateKeys.userSettings],
+        state[SyncStateKeys.savedFilters],
+      );
+    } on Object {
+      return null;
+    }
+  }
+
+  Future<void> _publishIfChanged(
+    Future<(String?, String?)?> before,
+    Future<(String?, String?)?> after,
+  ) async {
+    final (was, now) = (await before, await after);
+    if (was != null && now != null && was != now) publishSoon();
   }
 
   Future<void> _loop() async {

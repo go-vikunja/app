@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/db/app_database.dart';
+import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/widgets/widget_catalog.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
 import 'package:vikunja_mobile/core/widgets/widget_publisher.dart';
@@ -252,6 +253,60 @@ void main() {
       firstWrite!.difference(start),
       lessThanOrEqualTo(const Duration(seconds: 3)),
     );
+  });
+
+  test("a sync's lease renewals and checkpoints publish nothing "
+      '(decision log: Sync)', () async {
+    place(1, alice, const TodayKind());
+    publisher();
+    await pumpEventQueue();
+    await db.syncStateDao.write({
+      SyncStateKeys.userSettings: '{}',
+      SyncStateKeys.savedFilters: '[]',
+    });
+    await pumpEventQueue();
+    timers.fireNext();
+    await pumpEventQueue();
+    expect(host.writesOf('$alice.today'), 1);
+
+    for (var page = 1; page <= 3; page++) {
+      await db.syncStateDao.write({
+        SyncStateKeys.syncLease: 'lease $page',
+        SyncStateKeys.lastId: '$page',
+        SyncStateKeys.phase: 'tasks',
+      });
+      await db.syncStateDao.write({
+        SyncStateKeys.lastSyncedAt: now.toIso8601String(),
+        SyncStateKeys.userSettings: '{}',
+      });
+      await pumpEventQueue();
+    }
+
+    expect(timers.active, isEmpty);
+  });
+
+  test('a change of the user settings or the saved filters publishes '
+      'soon', () async {
+    place(1, alice, const TodayKind());
+    publisher();
+    await pumpEventQueue();
+    expect(timers.active, isEmpty, reason: 'nothing changed yet');
+
+    for (final key in [
+      SyncStateKeys.userSettings,
+      SyncStateKeys.savedFilters,
+    ]) {
+      await db.syncStateDao.write({key: '{"changed": "$key"}'});
+      await pumpEventQueue();
+      expect(timers.pendingWait, const Duration(seconds: 1), reason: key);
+      timers.fireNext();
+      await pumpEventQueue();
+    }
+    expect(host.writesOf('$alice.today'), 1);
+
+    await db.syncStateDao.write({SyncStateKeys.savedFilters: null});
+    await pumpEventQueue();
+    expect(timers.pendingWait, const Duration(seconds: 1), reason: 'removed');
   });
 
   test('builds once more when asked during a run', () async {

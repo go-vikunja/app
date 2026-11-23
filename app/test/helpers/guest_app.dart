@@ -6,6 +6,7 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'auth_fakes.dart';
 import 'guest_entry_fakes.dart';
 import 'guest_fakes.dart';
+import 'notification_ui_fakes.dart';
 import 'pump_app.dart';
 import 'sample_data.dart';
 import 'server_connections.dart';
@@ -32,6 +33,7 @@ Future<RegisteredAccount> pumpGuestApp(
   Permission? permission = Permission.read,
   bool needsReauth = false,
   ServerConnection? connection,
+  NotificationFakes? notifications,
   List<Override> overrides = const [],
 }) async {
   if (data.projects.all.isEmpty) {
@@ -49,6 +51,7 @@ Future<RegisteredAccount> pumpGuestApp(
     tester,
     auth: auth,
     sync: data,
+    notifications: notifications,
     overrides: [...guestEntryOverrides(), ...overrides],
   );
   return entry;

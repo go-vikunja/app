@@ -45,7 +45,7 @@ final class OsNotificationCapabilitiesProvider
 }
 
 String _$osNotificationCapabilitiesHash() =>
-    r'17d28340a03b06e4d7401f00ca6b3b1b032f386a';
+    r'4655990127a1eb493640c5c4ca734a1c5f524015';
 
 /// What the OS allows right now; read again whenever the app comes back to
 /// the front, because the user changes it in the system settings.

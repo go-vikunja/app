@@ -91,7 +91,7 @@ final class WidgetAlwaysUse24HourFormatProvider
 }
 
 String _$widgetAlwaysUse24HourFormatHash() =>
-    r'ab67222fafa895f303e779c7c0de71411f7aabb7';
+    r'230f8dedb3d2b32a69ad9ecbc42c2116a887b863';
 
 @ProviderFor(widgetTexts)
 final widgetTextsProvider = WidgetTextsProvider._();
@@ -231,20 +231,22 @@ final class WidgetPublishersProvider
 String _$widgetPublishersHash() => r'6dd3aa28971cb0768d3652f6dbf02f696bad8b19';
 
 /// One account's publisher; null once the account is gone. In the app it
-/// publishes when built, when the app comes back to the front, when the
-/// account's registry entry changes, when the "Show task titles in
-/// widgets" switch changes, when the app's language changes and when its
-/// snapshots go stale; a headless container publishes on request
+/// publishes when built, when the app comes back after it was hidden or
+/// the device's 24-hour switch or time zone changed, when the account's
+/// registry entry changes, when the "Show task titles in widgets" switch
+/// changes, when the app's language changes and when its snapshots go
+/// stale; a headless container publishes on request
 /// ([widgetRefresherProvider]).
 
 @ProviderFor(widgetPublisher)
 final widgetPublisherProvider = WidgetPublisherFamily._();
 
 /// One account's publisher; null once the account is gone. In the app it
-/// publishes when built, when the app comes back to the front, when the
-/// account's registry entry changes, when the "Show task titles in
-/// widgets" switch changes, when the app's language changes and when its
-/// snapshots go stale; a headless container publishes on request
+/// publishes when built, when the app comes back after it was hidden or
+/// the device's 24-hour switch or time zone changed, when the account's
+/// registry entry changes, when the "Show task titles in widgets" switch
+/// changes, when the app's language changes and when its snapshots go
+/// stale; a headless container publishes on request
 /// ([widgetRefresherProvider]).
 
 final class WidgetPublisherProvider
@@ -256,10 +258,11 @@ final class WidgetPublisherProvider
         >
     with $Provider<WidgetPublisher?> {
   /// One account's publisher; null once the account is gone. In the app it
-  /// publishes when built, when the app comes back to the front, when the
-  /// account's registry entry changes, when the "Show task titles in
-  /// widgets" switch changes, when the app's language changes and when its
-  /// snapshots go stale; a headless container publishes on request
+  /// publishes when built, when the app comes back after it was hidden or
+  /// the device's 24-hour switch or time zone changed, when the account's
+  /// registry entry changes, when the "Show task titles in widgets" switch
+  /// changes, when the app's language changes and when its snapshots go
+  /// stale; a headless container publishes on request
   /// ([widgetRefresherProvider]).
   WidgetPublisherProvider._({
     required WidgetPublisherFamily super.from,
@@ -312,13 +315,14 @@ final class WidgetPublisherProvider
   }
 }
 
-String _$widgetPublisherHash() => r'1fcffb6671cc575d5e61dad9c9c7b243b85c0543';
+String _$widgetPublisherHash() => r'7860391b49a576d4d2888aaccc7df289b49a5879';
 
 /// One account's publisher; null once the account is gone. In the app it
-/// publishes when built, when the app comes back to the front, when the
-/// account's registry entry changes, when the "Show task titles in
-/// widgets" switch changes, when the app's language changes and when its
-/// snapshots go stale; a headless container publishes on request
+/// publishes when built, when the app comes back after it was hidden or
+/// the device's 24-hour switch or time zone changed, when the account's
+/// registry entry changes, when the "Show task titles in widgets" switch
+/// changes, when the app's language changes and when its snapshots go
+/// stale; a headless container publishes on request
 /// ([widgetRefresherProvider]).
 
 final class WidgetPublisherFamily extends $Family
@@ -333,10 +337,11 @@ final class WidgetPublisherFamily extends $Family
       );
 
   /// One account's publisher; null once the account is gone. In the app it
-  /// publishes when built, when the app comes back to the front, when the
-  /// account's registry entry changes, when the "Show task titles in
-  /// widgets" switch changes, when the app's language changes and when its
-  /// snapshots go stale; a headless container publishes on request
+  /// publishes when built, when the app comes back after it was hidden or
+  /// the device's 24-hour switch or time zone changed, when the account's
+  /// registry entry changes, when the "Show task titles in widgets" switch
+  /// changes, when the app's language changes and when its snapshots go
+  /// stale; a headless container publishes on request
   /// ([widgetRefresherProvider]).
 
   WidgetPublisherProvider call(String accountId) =>

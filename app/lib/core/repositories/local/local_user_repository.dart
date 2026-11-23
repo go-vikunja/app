@@ -16,14 +16,14 @@ final class LocalUserRepository implements UserRepository {
       projectId,
       query: query.trim(),
     );
-    await _db.usersDao.upsertAll(found);
+    await _db.usersDao.upsertChanged(found);
     return found;
   }
 
   @override
   Future<List<User>> search(String query) async {
     final found = await _read.users.searchUsers(query.trim());
-    await _db.usersDao.upsertAll(found);
+    await _db.usersDao.upsertChanged(found);
     return found;
   }
 

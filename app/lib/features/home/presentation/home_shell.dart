@@ -18,6 +18,7 @@ import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/widgets/widget_providers.dart';
 import 'package:vikunja_mobile/features/accounts/presentation/account_actions.dart';
 import 'package:vikunja_mobile/features/inbox/application/inbox_providers.dart';
+import 'package:vikunja_mobile/features/notifications/application/os_notification_capabilities.dart';
 import 'package:vikunja_mobile/features/privacy/presentation/crash_reports_question.dart';
 import 'package:vikunja_mobile/features/projects/application/board_moves.dart';
 import 'package:vikunja_mobile/features/projects/presentation/project_tree_column.dart';
@@ -118,6 +119,10 @@ class _HomeShellState extends ConsumerState<HomeShell>
       ..listenManual(realtimeConnectionProvider, (_, _) {})
       ..listenManual(inactiveOutboxesProvider, (_, _) {})
       ..listenManual(accountNotificationSchedulersProvider, (_, _) {})
+      // Reconciles a permission or exact alarms changed beside the app,
+      // which comes back without the hide the schedulers wait for; also
+      // for a guest alone, whom the session reminders skip.
+      ..listenManual(osNotificationCapabilitiesProvider, (_, _) {})
       ..listenManual(sessionReminderUpdatesProvider, (_, _) {})
       ..listenManual(accountWidgetPublishersProvider, (_, _) {})
       ..listenManual(widgetTapImporterProvider, (_, _) {})
