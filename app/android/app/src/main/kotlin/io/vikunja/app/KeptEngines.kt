@@ -32,6 +32,8 @@ internal class EngineState {
 
     @Volatile
     var picked: Set<Uri> = emptySet()
+
+    var relaunching = false
 }
 
 internal class WindowState {

@@ -61,11 +61,13 @@ class KeptEnginesTest {
             window.backMovesTaskToBack = true
             pick.start(RecordingResult())
             saveAs.start(File("a") to RecordingResult())
+            relaunching = true
         }
 
         KeptEngines.forget(id)
 
         val fresh = KeptEngines.state(id)
+        assertFalse(fresh.relaunching)
         assertFalse(fresh.window.secure)
         assertNull(fresh.window.recentsScreenshotEnabled)
         assertFalse(fresh.window.backMovesTaskToBack)

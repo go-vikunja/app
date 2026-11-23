@@ -44,33 +44,30 @@ class MainActivity : FlutterFragmentActivity() {
             finish()
             return
         }
-        // Reopened from Recents, the activity gets the task's root intent
-        // again; when a home screen shortcut started the task, quick_actions
-        // would report that shortcut a second time, when a task link started
-        // it, Flutter's deep linking would open the task again, and a share
-        // would be offered again. A restore after the process died replays
-        // the launch intent too.
-        if ((intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0) {
-            intent = Intent(intent).setAction(Intent.ACTION_MAIN).replaceExtras(Bundle()).setData(null)
-                .also { it.clipData = null }
-        } else if (savedInstanceState != null) {
-            if (intent.action == ShareInbox.ACTION_SHARE) {
-                intent = ShareInbox.withoutShare(intent)
-            } else if (intent.data != null) {
-                intent = Intent(intent).setData(null)
-            }
-        } else if (intent.action == ShareInbox.ACTION_SHARE) {
-            ShareInbox.receive(this, intent)
-            intent = ShareInbox.withoutShare(intent)
-        }
         // Before super: a restored FlutterFragment looks its engine up at once.
         // A state saved before engines were kept restores a fragment with an
         // engine of its own.
         engineId = if (savedInstanceState == null) KeptEngines.newId() else savedInstanceState.getString(ENGINE_ID)
-        engineId?.let {
-            keepEngine(it)
-            engineState = KeptEngines.state(it)
+        val engineKept = engineId?.let { FlutterEngineCache.getInstance().contains(it) } == true
+        engineId?.let { engineState = KeptEngines.state(it) }
+        val launch = intent
+        // Reopened from Recents, or restored after Android ended the process or
+        // destroyed the activity, the activity gets the intent that started its
+        // task once more: flutter_local_notifications would report that
+        // notification tap again, quick_actions that home screen shortcut,
+        // Flutter's deep linking would open that task link, and a share would
+        // be offered again. A new tap, shortcut or link that restores the
+        // activity comes through onNewIntent. A relaunch for a configuration
+        // change keeps the intent: the engine carries on, its plugins only
+        // reattach, and Dart may not have read the notification tap yet.
+        val restored = savedInstanceState != null
+        if (LaunchReplay.isReplay(intent.flags, restored, engineKept && engineState.relaunching)) {
+            intent = LaunchReplay.withoutLaunch(intent)
+        } else if (!restored && intent.action == ShareInbox.ACTION_SHARE) {
+            ShareInbox.receive(this, intent)
+            intent = ShareInbox.withoutShare(intent)
         }
+        engineId?.let { keepEngine(it, launch) }
         super.onCreate(savedInstanceState)
         onBackPressedDispatcher.addCallback(this, backWhileLocked)
     }
@@ -88,6 +85,8 @@ class MainActivity : FlutterFragmentActivity() {
             FlutterEngineCache.getInstance().get(id)?.destroy()
             FlutterEngineCache.getInstance().remove(id)
             KeptEngines.forget(id)
+        } else {
+            engineState.relaunching = isChangingConfigurations
         }
     }
 
@@ -98,14 +97,15 @@ class MainActivity : FlutterFragmentActivity() {
 
     override fun shouldDestroyEngineWithHost(): Boolean = engineId == null
 
-    private fun keepEngine(id: String) {
+    private fun keepEngine(id: String, launch: Intent) {
         if (FlutterEngineCache.getInstance().contains(id)) return
         // What FlutterFragmentActivity does for an engine of its own: the link
         // that started the app becomes the initial route, and the engine takes
-        // the flags of `flutter run`; here only in debuggable builds, since any
-        // app can start this activity with extras.
+        // the flags of `flutter run`, on a restore too, from the intent as it
+        // came; here only in debuggable builds, since any app can start this
+        // activity with extras.
         val debuggable = (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
-        val args = if (debuggable) FlutterShellArgs.fromIntent(intent).toArray() else null
+        val args = if (debuggable) FlutterShellArgs.fromIntent(launch).toArray() else null
         val engine = FlutterEngine(applicationContext, args)
         val link = intent.data?.takeIf { shouldHandleDeeplinking() }?.toString()
         engine.navigationChannel.setInitialRoute(link ?: "/")
