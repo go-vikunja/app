@@ -16,7 +16,7 @@ from test_play_upload import EMAIL, OPENSSL, FakePlay, generate_key
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCRIPT = os.path.join(ROOT, 'tool/ci/release_publish.sh')
 METADATA = os.path.join(ROOT, 'fastlane/metadata/android')
-OFFICIAL = {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': 'go-vikunja/app', 'GITHUB_REPOSITORY_ID': '395095540',
+OFFICIAL = {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': 'go-vikunja/app', 'GITHUB_REPOSITORY_ID': '1468952826',
             'GITHUB_REF_TYPE': 'tag'}
 SECRETS = ('KEYSTORE_BASE64', 'KEY_PROPERTIES', 'APK_KEYSTORE_BASE64', 'APK_KEY_PROPERTIES',
            'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON', 'S3_ACCESS_KEY', 'S3_SECRET_KEY', 'S3_ENDPOINT', 'S3_BUCKET',
@@ -512,7 +512,7 @@ class CheckTest(Fixture):
     def test_dry_run_in_the_official_repository(self):
         result = self.check('--dry-run')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('  a tag run of go-vikunja/app (id 395095540) on GitHub Actions', result.stdout)
+        self.assertIn('  a tag run of go-vikunja/app (id 1468952826) on GitHub Actions', result.stdout)
         self.assertEqual(self.not_published(result), '--dry-run')
 
 

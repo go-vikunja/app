@@ -13,7 +13,7 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCRIPTS = ('crowdin_sync.sh', 'lib.sh', 'pins.sh', 'release_lib.sh')
 ARB = 'app/lib/l10n/arb'
-OFFICIAL = {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': 'go-vikunja/app', 'GITHUB_REPOSITORY_ID': '395095540',
+OFFICIAL = {'GITHUB_ACTIONS': 'true', 'GITHUB_REPOSITORY': 'go-vikunja/app', 'GITHUB_REPOSITORY_ID': '1468952826',
             'GITHUB_REF': 'refs/heads/main'}
 CROWDIN_TOKEN = 'fake-crowdin-token-5e1f0a7c'
 GH_TOKEN = 'ghs_fakecrowdinsync42'
