@@ -4,7 +4,7 @@ This log holds the app's important decisions by topic, each with its reason ("wh
 
 How to cite it: in code comments, tests and tool messages, `(decision log: <Title>)` with the topic's heading exactly as written, at the end of the sentence, such as `(decision log: Sessions)` or, for two topics, `(decision log: Sync, Outbox)`; a deviation of quick add from the web as `QA-<n>` alone, such as `QA-8`. Docs link the heading's anchor: `[Sessions](decisions.md#sessions)` from `docs/`, `[Sessions](docs/decisions.md#sessions)` from the repository root. A heading is renamed only together with its citations.
 
-The earlier numbered log (D1 to D118) is in git: `git show 9b97ecb:docs/decisions.md`.
+The earlier numbered log (D1 to D118) is in git: `git show ae594a5:docs/decisions.md`.
 
 ## Topics
 

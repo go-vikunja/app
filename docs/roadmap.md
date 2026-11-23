@@ -1,6 +1,6 @@
 # Roadmap
 
-Steps 1 to 46 and 47a to 47i are built, except the ones listed below: the iOS fixes from the code review of 2026-11-23 (47g), the release itself (37d) and the four planned after 1.0; 19 is built but still in review until the iOS device test. The [decision log](decisions.md) holds the decisions that still apply, by topic. This page lists only what is left. The full plan, with every step, how the steps were reviewed, the milestones and the dated notes on each change, stays in git: `git show c2bf10d:docs/roadmap.md`. After the move the rows after 1.0 become GitHub issues, and this file can go.
+Steps 1 to 46 and 47a to 47i are built, except the ones listed below: the iOS fixes from the code review of 2026-11-23 (47g), the release itself (37d) and the four planned after 1.0; 19 is built but still in review until the iOS device test. The [decision log](decisions.md) holds the decisions that still apply, by topic. This page lists only what is left. The full plan, with every step, how the steps were reviewed, the milestones and the dated notes on each change, stays in git: `git show 3044f4d:docs/roadmap.md`. After the move the rows after 1.0 become GitHub issues, and this file can go.
 
 ## Before 1.0.0
 
