@@ -9,9 +9,7 @@
 # Usage: tool/ci/release_publish.sh [--dry-run] scope|check|play|dl|github
 #
 #   scope   OUTSIDE_RELEASE_ENVIRONMENT=true|false: whether a release secret
-#           is a repository or organisation secret (job secret-scope), which
-#           warns on a pre-release tag of 1.0.0 or 0.x and fails any other
-#           (GITHUB_REF_NAME)
+#           is a repository or organisation secret (job secret-scope)
 #   check   HAS_<secret>=true|false for the ten secrets of the publish job,
 #           GITHUB_SHA; reads build/release/unsigned, the others
 #           build/release/signed
@@ -63,42 +61,24 @@ esac
 
 # A job outside any environment sees only repository and organisation
 # secrets: a release secret there is readable without the environment's
-# reviewers, by any workflow pushed to any branch. Until the first final
-# release the old app's repository secrets serve the betas (owner,
-# 2026-11-22; threat model R28): only a pre-release tag of 1.0.0, or of 0.x,
-# gets past such a copy, with a warning. v1.0.0 and every tag after it fail.
+# reviewers, by any workflow pushed to any branch.
 if [[ "$step" == scope ]]; then
   outside="KEYSTORE_BASE64, KEY_PROPERTIES, APK_KEYSTORE_BASE64, APK_KEY_PROPERTIES,"
   outside+=" GOOGLE_PLAY_SERVICE_ACCOUNT_JSON, S3_ACCESS_KEY or S3_SECRET_KEY"
   if ((dry_run)); then
-    echo "Would check that no ${outside} is a repository or organisation secret of ${OFFICIAL_REPOSITORY}:" \
-      "while one is, a pre-release tag of 1.0.0 or 0.x warns and any other tag fails."
+    echo "Would check that no ${outside} is a repository or organisation secret of ${OFFICIAL_REPOSITORY}."
     exit 0
   fi
-  prerelease_pattern='^v(0\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)|1\.0\.0)-[0-9A-Za-z.-]+$'
   case "${OUTSIDE_RELEASE_ENVIRONMENT:-}" in
     false)
       echo "No release secret is readable outside the environment release."
       exit 0
       ;;
     true)
-      if [[ "${GITHUB_REF_NAME:-}" =~ $prerelease_pattern ]]; then
-        warning="${GITHUB_REPOSITORY:-this repository} can read ${outside} as a repository or organisation"
-        warning+=" secret, outside the reviewers of the environment release. Allowed for the pre-release tag"
-        warning+=" ${GITHUB_REF_NAME} until the first final release (threat model R28); v1.0.0 and every tag after"
-        warning+=" it fail while it holds, so move these secrets into the environment release before"
-        warning+=" (docs/releasing.md)."
-        echo "::warning title=Release secrets outside the environment release::${warning}"
-        if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
-          printf '%s\n' "**Warning:** ${warning}" >>"$GITHUB_STEP_SUMMARY"
-        fi
-        exit 0
-      fi
       fail "${GITHUB_REPOSITORY:-this repository} can read ${outside} as a repository or organisation" \
-        "secret, outside the reviewers of the environment release, and ${GITHUB_REF_NAME:-this tag} is no" \
-        "pre-release tag of 1.0.0 or 0.x. Enter these secrets in the environment release, delete these" \
-        "repository secrets and remove the repository from the access list of organisation secrets of these" \
-        "names (docs/releasing.md)"
+        "secret, outside the reviewers of the environment release. Delete these repository secrets and remove" \
+        "the repository from the access list of organisation secrets of these names; keep them in the" \
+        "environment release only (docs/releasing.md)"
       ;;
     *) fail "OUTSIDE_RELEASE_ENVIRONMENT is ${OUTSIDE_RELEASE_ENVIRONMENT:-unset}, not true or false" ;;
   esac
@@ -297,8 +277,7 @@ run_check() {
   if ((${#reasons[@]})); then
     print_plan "Would release"
     if ((dry_run)); then
-      echo "The publish job uses these secrets of ${OFFICIAL_REPOSITORY}, from the environment release or, for a"
-      echo "pre-release tag of 1.0.0 or 0.x, the repository:"
+      echo "The publish job uses these secrets of the environment release in ${OFFICIAL_REPOSITORY}:"
       echo "  KEYSTORE_BASE64                   the upload keystore, base64 (required)"
       echo "  KEY_PROPERTIES                    its storePassword, keyAlias and keyPassword (required)"
       echo "  APK_KEYSTORE_BASE64               a separate APK keystore (optional, with APK_KEY_PROPERTIES)"
@@ -311,9 +290,8 @@ run_check() {
       echo "  S3_REGION                         (optional; us-east-1 when unset, which Cloudflare R2 takes as auto)"
       echo "and the repository variable VIKUNJA_APP_PLAY_ROLLOUT (production's user fraction, 0.1 when unset)."
       echo "None of these secrets but S3_ENDPOINT, S3_BUCKET and S3_REGION may be a repository or organisation"
-      echo "secret: the job secret-scope then warns on a pre-release tag of 1.0.0 or 0.x and fails any other."
-      echo "Before signing and before the GitHub release, the tag must still point at the built commit GITHUB_SHA"
-      echo "(${GITHUB_SHA:-unset})."
+      echo "secret: the job secret-scope fails then. Before signing and before the GitHub release, the tag must"
+      echo "still point at the built commit GITHUB_SHA (${GITHUB_SHA:-unset})."
       echo "Guard: GITHUB_ACTIONS=${GITHUB_ACTIONS:-unset} GITHUB_REPOSITORY=${GITHUB_REPOSITORY:-unset}" \
         "GITHUB_REPOSITORY_ID=${GITHUB_REPOSITORY_ID:-unset} GITHUB_REF_TYPE=${GITHUB_REF_TYPE:-unset}" \
         "GITHUB_REF_NAME=${GITHUB_REF_NAME:-unset}"
@@ -343,18 +321,17 @@ run_check() {
     missing+=(APK_KEYSTORE_BASE64)
   fi
   if ((${#missing[@]})); then
-    fail "secrets missing for the job publish: ${missing[*]}, in neither the environment release nor the" \
-      "repository (docs/releasing.md)"
+    fail "secrets missing in the environment release: ${missing[*]} (docs/releasing.md)"
   fi
   if ! has KEYSTORE_BASE64; then
     printf '%s\n' \
       '************************************************************************' \
-      'warning: no signing secrets for the job publish: this run signs' \
+      'warning: no signing secrets in the environment release: this run signs' \
       'with throwaway keys, publishes nothing and fails at the publish step.' \
       '************************************************************************' >&2
     return
   fi
-  echo "The job publish has every secret this release needs."
+  echo "The environment release has every secret this release needs."
   if ! has S3_REGION; then
     echo "S3_REGION is not set: dl uses us-east-1, which Cloudflare R2 takes as auto."
   fi

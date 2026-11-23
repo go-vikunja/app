@@ -46,9 +46,7 @@ jobs:
           retention-days: 14
 
   # Outside an environment a job sees only repository and organisation
-  # secrets: a release secret there is readable without the reviewers. Fails
-  # every tag then but a pre-release of 1.0.0, which gets a warning, as the
-  # old app's repository secrets serve the betas (threat model R28).
+  # secrets: a release secret there is readable without the reviewers.
   secret-scope:
     if: github.repository == 'go-vikunja/app'
     runs-on: ubuntu-24.04

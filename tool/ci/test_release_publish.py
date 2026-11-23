@@ -459,24 +459,24 @@ class CheckTest(Fixture):
     def test_no_signing_secrets_warns(self):
         result = self.check(KEYSTORE_BASE64='false', KEY_PROPERTIES='false', S3_BUCKET='false')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('no signing secrets for the job publish: this run signs\n'
+        self.assertIn('no signing secrets in the environment release: this run signs\n'
                       'with throwaway keys, publishes nothing and fails at the publish step.', result.stderr)
 
     def test_half_a_signing_pair(self):
         result = self.check(KEY_PROPERTIES='false')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('error: secrets missing for the job publish: KEY_PROPERTIES, ', result.stderr)
+        self.assertIn('error: secrets missing in the environment release: KEY_PROPERTIES ', result.stderr)
         result = self.check(KEYSTORE_BASE64='')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('missing for the job publish: KEYSTORE_BASE64, ', result.stderr)
+        self.assertIn('missing in the environment release: KEYSTORE_BASE64 ', result.stderr)
 
     def test_publishing_secrets_required_with_the_keys(self):
         result = self.check(S3_BUCKET='false')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('missing for the job publish: S3_BUCKET, ', result.stderr)
+        self.assertIn('missing in the environment release: S3_BUCKET ', result.stderr)
         result = self.check(GOOGLE_PLAY_SERVICE_ACCOUNT_JSON='True', S3_ENDPOINT='1')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('missing for the job publish: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON S3_ENDPOINT, ',
+        self.assertIn('missing in the environment release: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON S3_ENDPOINT ',
                       result.stderr)
 
     def test_the_region_is_optional(self):
@@ -489,10 +489,10 @@ class CheckTest(Fixture):
         self.assertEqual(self.check(APK_KEYSTORE_BASE64='false', APK_KEY_PROPERTIES='false').returncode, 0)
         result = self.check(APK_KEY_PROPERTIES='false')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('missing for the job publish: APK_KEY_PROPERTIES, ', result.stderr)
+        self.assertIn('missing in the environment release: APK_KEY_PROPERTIES ', result.stderr)
         result = self.check(APK_KEYSTORE_BASE64='false')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('missing for the job publish: APK_KEYSTORE_BASE64, ', result.stderr)
+        self.assertIn('missing in the environment release: APK_KEYSTORE_BASE64 ', result.stderr)
 
     def test_outside_the_official_repository(self):
         result = self.publish('check', env={f'HAS_{name}': 'true' for name in SECRETS})
@@ -528,63 +528,28 @@ class ScopeTest(Fixture):
         self.assertEqual(result.stdout, 'No release secret is readable outside the environment release.\n')
         self.assertEqual(self.calls(), [])
 
-    def test_a_repository_or_organisation_copy_fails_a_final_tag(self):
-        for tag in ('v1.0.0', 'v1.2.1', 'v1.0', 'v1.0.0+1', 'release-1', '', 'v1.0.1-beta.1', 'v1.1.0-beta.1',
-                    'v2.0.0-rc.1', 'v10.0.0-beta.1'):
-            with self.subTest(tag=tag):
-                summary = os.path.join(self.tmp, 'summary.md')
-                result = self.scope(OUTSIDE_RELEASE_ENVIRONMENT='true', GITHUB_REF_NAME=tag,
-                                    GITHUB_STEP_SUMMARY=summary)
-                self.assertEqual(result.returncode, 1)
-                message = ' '.join(result.stderr.split())
-                self.assertIn(f'go-vikunja/app can read {", ".join(CREDENTIALS[:-1])} or {CREDENTIALS[-1]} '
-                              'as a repository or organisation secret', message)
-                self.assertIn('is no pre-release tag of 1.0.0 or 0.x', message)
-                self.assertIn('remove the repository from the access list of organisation secrets', message)
-                self.assertNotIn('::warning', result.stdout)
-                self.assertFalse(os.path.exists(summary))
+    def test_a_repository_or_organisation_copy_fails(self):
+        result = self.scope(OUTSIDE_RELEASE_ENVIRONMENT='true')
+        self.assertEqual(result.returncode, 1)
+        message = ' '.join(result.stderr.split())
+        self.assertIn(f'go-vikunja/app can read {", ".join(CREDENTIALS[:-1])} or {CREDENTIALS[-1]} '
+                      'as a repository or organisation secret', message)
+        self.assertIn('remove the repository from the access list of organisation secrets', message)
         self.assertEqual(self.calls(), [])
-
-    def test_a_repository_or_organisation_copy_warns_on_a_pre_release_tag(self):
-        for tag in ('v1.0.0-beta.1', 'v1.0.0-beta.12', 'v1.0.0-rc.1', 'v0.9.0-beta.1'):
-            with self.subTest(tag=tag):
-                summary = os.path.join(self.tmp, f'summary-{tag}.md')
-                result = self.scope(OUTSIDE_RELEASE_ENVIRONMENT='true', GITHUB_REF_NAME=tag,
-                                    GITHUB_STEP_SUMMARY=summary)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                (line,) = result.stdout.splitlines()
-                self.assertTrue(line.startswith('::warning title=Release secrets outside the environment release::'
-                                                'go-vikunja/app can read KEYSTORE_BASE64, '), line)
-                self.assertIn(f'Allowed for the pre-release tag {tag} until the first final release', line)
-                self.assertIn('v1.0.0 and every tag after it fail', line)
-                with open(summary, encoding='utf-8') as f:
-                    self.assertEqual(f.read(), f'**Warning:** {line.split("::", 2)[2]}\n')
-        self.assertEqual(self.calls(), [])
-
-    def test_no_copy_passes_any_tag(self):
-        for tag in ('v1.0.0', 'v1.0.0-beta.1'):
-            with self.subTest(tag=tag):
-                result = self.scope(OUTSIDE_RELEASE_ENVIRONMENT='false', GITHUB_REF_NAME=tag)
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(result.stdout, 'No release secret is readable outside the environment release.\n')
 
     def test_fails_closed(self):
         for value in (None, '', 'True', '1', 'false '):
-            for tag in ('v1.0.0', 'v1.0.0-beta.1'):
-                with self.subTest(value=value, tag=tag):
-                    env = {'GITHUB_REF_NAME': tag}
-                    if value is not None:
-                        env['OUTSIDE_RELEASE_ENVIRONMENT'] = value
-                    result = self.scope(**env)
-                    self.assertEqual(result.returncode, 1)
-                    self.assertIn('not true or false', result.stderr)
+            with self.subTest(value=value):
+                env = {} if value is None else {'OUTSIDE_RELEASE_ENVIRONMENT': value}
+                result = self.scope(**env)
+                self.assertEqual(result.returncode, 1)
+                self.assertIn('not true or false', result.stderr)
 
     def test_dry_run(self):
         result = self.publish('--dry-run', 'scope')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('Would check that no KEYSTORE_BASE64, ', result.stdout)
-        self.assertIn(' is a repository or organisation secret of go-vikunja/app: while one is, a pre-release tag of'
-                      ' 1.0.0 or 0.x warns and any other tag fails.', result.stdout)
+        self.assertIn(' is a repository or organisation secret of go-vikunja/app.', result.stdout)
 
 
 class TagTest(Fixture):

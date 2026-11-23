@@ -25,8 +25,8 @@ jobs:
     if: github.repository == 'go-vikunja/app' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    # Its secret can move into the environment, limited to main; until then
-    # the repository secret serves (docs/releasing.md).
+    # Its token is a secret of the environment, limited to main
+    # (docs/releasing.md).
     environment: crowdin
     permissions:
       contents: read

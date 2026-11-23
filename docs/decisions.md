@@ -45,16 +45,16 @@ The earlier numbered log (D1 to D118) is in git: `git show 9b97ecb:docs/decision
 
 ### License and contributions
 
-- **MIT,** with the line `Copyright (c) Vikunja and contributors`, exactly so, without a year (owner, 2026-11-16). The previous app's history up to `cdbc6e3` and third-party material in old commits keep their own licenses; test files with vectors from Vikunja's tests stay AGPL-3.0-or-later and never ship.
+- **MIT,** with the line `Copyright (c) Vikunja and contributors`, exactly so, without a year (owner, 2026-11-16). The previous app, in go-vikunja/app-legacy, is not part of this history, and third-party material in old commits keeps its own license; test files with vectors from Vikunja's tests stay AGPL-3.0-or-later and never ship.
 - **Nothing of Vikunja's ships but its logo** (why: Vikunja's server and web are AGPL-3.0-or-later, which the MIT-licensed app cannot take in): the app reads the web for behavior and writes its own code and texts ([Languages](#languages)), and the editor keeps only what the stored HTML needs.
 - **Vikunja's contribution rules** apply, the app's code rules in `CONTRIBUTING.md`: no CLA and no DCO; translations only through Crowdin; security reports privately to security@vikunja.io. Not added (owner, 2026-11-16): `AGENTS.md`, `CLAUDE.md`, `CODEOWNERS`, `FUNDING.yml`. The GitLab CI is deleted (owner, 2026-11-16).
 - **Source and offer:** only release builds carry the source link, to the tree at the release's tag, which must open signed out (why: every release links its source for everyone; [Releases](#releases)). The Vikunja project makes the written offer for the desugar_jdk_libs source (GPL-2.0 with the Classpath exception) through hello@vikunja.io; GitHub releases carry that source, Google Play and dl.vikunja.io rely on the offer.
 
 ### The move into go-vikunja/app
 
-- The import pull request holds a commit that removes the old app's files and a merge of this repository's `main` with `--allow-unrelated-histories --no-ff`, merged with "Create a merge commit" (why: squash or rebase would rewrite or drop the imported commits, whose hashes the docs cite).
-- No tag for the old app (owner, 2026-11-22): its last commit is named by its hash, `cdbc6e3`, and nothing is merged into the old `main` until the import is merged (why: the removal commit is based on it).
-- Only the import branch is pushed, never with `--mirror` or `--all` (why: that would publish the parked stash of the session hardening). The owner's GitHub account must have the commits' author address verified and allowed for command-line pushes (why: every commit before the move has that author).
+- **A new, empty go-vikunja/app** (owner and kolaente, 2026-11-23): the old app's repository becomes go-vikunja/app-legacy, archived, and the owner pushes this repository's `main` with its whole history into the new one (why: every commit hash the docs cite stays valid, and nothing of the old app needs removing or merging).
+- No tag for the old app (owner, 2026-11-22): its last commit, `cdbc6e3`, stays in go-vikunja/app-legacy with its tags, releases and issues.
+- Only `main` is pushed, never with `--mirror`, `--all` or `--tags` (why: that would publish the parked stash of the session hardening). The owner's GitHub account must have the commits' author address verified and allowed for command-line pushes (why: every commit before the move has that author).
 
 ### Scope
 
@@ -67,7 +67,7 @@ The earlier numbered log (D1 to D118) is in git: `git show 9b97ecb:docs/decision
 
 Open:
 - The Apple account, and whether `io.vikunja.app` is still free there: the old app's fastlane configuration named it with another team, which uploaded TestFlight builds, and App Store Connect refuses an id another team used. Until then, no device build with automatic signing under the owner's team (why: Xcode would register the ids in that team for good); simulator builds register nothing.
-- kolaente's confirmations ([beta.md](beta.md#what-kolaente-does)): the name-and-logo text and who holds the logo's copyright, the written offer's contact, the ruleset the import waits for, and the owner's rights in Vikunja's Play Console.
+- kolaente's part ([beta.md](beta.md#what-kolaente-does)): the two sittings before and after the push, the name-and-logo text and who holds the logo's copyright, the written offer's contact, and the owner's rights in Vikunja's Play Console.
 
 ## Stack and structure
 
@@ -849,7 +849,7 @@ Open:
 
 ### Crowdin
 
-- **The sync is the workflow `crowdin.yaml`** (owner, 2026-11-22), nightly and by hand on `main` of go-vikunja/app, not Crowdin's GitHub integration (why: that authorizes through a person's OAuth, reaching all their repositories, and needs admin on the repository; the old app's token serves). The pinned CLI uploads the English and downloads only approved translations.
+- **The sync is the workflow `crowdin.yaml`** (owner, 2026-11-22), nightly and by hand on `main` of go-vikunja/app, not Crowdin's GitHub integration (why: that authorizes through a person's OAuth, reaching all their repositories, and needs admin on the repository). Its Crowdin token is a secret of the environment `crowdin`, which deploys from `main` only. The pinned CLI uploads the English and downloads only approved translations.
 - German comes only from its own download, and no other export may write `app_de.arb` or `app_en.arb` (why: the custom Swiss German could export as `app_de.arb` without the project's mapping).
 - The files become one pull request from the branch `crowdin`, whose CI runs once a maintainer approves it (why: a pull request opened with `GITHUB_TOKEN` starts no checks by itself). The job with the write token runs no third-party code and treats the CLI's files as untrusted; gen-l10n escapes every translation.
 - `crowdin.yml` keeps the source in the version branch `main`, beside the old app's root file, so old translations do not carry over, and quotes `"no"` (why: YAML 1.1 reads a bare `no` as false). Crowdin's `no` becomes `nb`, what Norwegian devices report; every regional file needs a base file (why: gen-l10n fails without one), and the template has no `@@locale` (why: Crowdin would write codes gen-l10n refuses).
@@ -869,8 +869,8 @@ Limits:
 - On iOS the App language row and the app's Language page wait for the device test.
 
 Open:
-- The workflow's first run after the import, the owner's German upload, and the first Crowdin pull request, which reformats every ARB file once.
-- For kolaente ([beta.md](beta.md#what-kolaente-does)): the Swiss German mapping; the token's owner, expiry and move into an environment `crowdin` limited to `main`; pre-translation from the web; removing the old root file.
+- The workflow's first run after the push, the owner's German upload, and the first Crowdin pull request, which reformats every ARB file once.
+- For kolaente ([beta.md](beta.md#what-kolaente-does)): the Swiss German mapping; the token's owner and expiry; pre-translation from the web; removing the old root file.
 
 ## The previous app
 
@@ -934,9 +934,8 @@ The checklist is [releasing.md](releasing.md), the beta's runbook [beta.md](beta
 - The logic lives in `tool/ci/` scripts that run the same locally and on GitHub Actions, the only CI; every download is pinned by SHA-256, Flutter included, and Gradle's verification metadata pins every Android dependency.
 - **Only go-vikunja/app publishes:** a real run needs a tag of that repository, checked by its numeric id (why: another repository renamed to that name does not pass); anything else is a dry run without secrets, so the workflows can be tried in a test repository first (owner).
 - **Keys only at the end:** build jobs make unsigned files; only `publish` signs and publishes, after the whole CI, `ios` included, which runs on `xcode-27`, the Xcode of the iOS releases (why: a tag that does not build for iOS cannot be released from the Mac either). The contract matrix's run on the tag is read before the approval ([Servers](#servers)).
-- **The environment `release`** (owner, 2026-11-14), set up before 1.0.0: the owner and kolaente as required reviewers, either may approve, their own tag's too ("Prevent self-review" off), no administrator bypass. It deploys from `v*` tags only and holds the seven release credentials as its own secrets, with no repository or organization copy (why: such a copy can be read by any workflow on any branch, without the reviewers).
-- **The betas use the old app's repository secrets** (owner, 2026-11-22; why: moving them needs whoever holds the keys to enter them again). `secret-scope` only warns about such copies for a pre-release of 1.0.0 and fails every other tag.
-- **The owner stays without admin rights on go-vikunja/app** (owner, 2026-11-22), and kolaente sets only what is needed, in one sitting (owner, 2026-11-22): "main protect" with the six checks and merge commits allowed (why: the import must keep the hashes the docs cite), Actions allowed to open pull requests (for Crowdin), and a `v*` tag ruleset that only the admin and Maintain roles bypass (why: with repository secrets any `v*` tag publishes to Play).
+- **The environment `release`** (owner, 2026-11-14), set up before the push, so every release, the betas included, waits for a reviewer (owner, 2026-11-23; why: the old repository's secrets cannot move, so the keys are entered again anyway): the owner and kolaente as required reviewers, either may approve, their own tag's too ("Prevent self-review" off), no administrator bypass. It deploys from `v*` tags only and holds the seven release credentials as its own secrets, with no repository or organization copy (why: such a copy can be read by any workflow on any branch, without the reviewers).
+- **The owner has the role Maintain on go-vikunja/app, not admin** (owner, 2026-11-22), and kolaente sets only what is needed (owner, 2026-11-22): before the push the environments `release` and `crowdin` with their secrets and Actions allowed to open pull requests (for Crowdin); after it "main protect" with a pull request, one approval and the six checks, and a `v*` tag ruleset that only the admin and Maintain roles bypass (why: only maintainers start a release, and a release tag is never moved).
 - Workflows are hardened as a test checks (least permissions, GitHub's own actions pinned by commit SHA, runner labels never `-latest`). Dependabot updates only the actions, with a 7-day cooldown, and a weekly workflow fails while Flutter or `cronet-bundled` is newer than its pin (owner, 2026-11-18; why not a bot's pull request: raising either needs new checksums, notices and verification metadata).
 
 ### Signing and publishing
@@ -964,7 +963,6 @@ The checklist is [releasing.md](releasing.md), the beta's runbook [beta.md](beta
 - **The threat model is signed off before the first beta tag and again before 1.0.0** (why: the beta is public).
 
 Limits:
-- Until the first final release any workflow on any branch can read the release keys; only the `v*` ruleset gates a release (threat model R28).
 - The workflows ran only in a test repository with throwaway keys, the Play path only against a fake server.
 - A leaked key moves the APK's installs only through signature rotation, which the scripts do not support; whether Play's installs and the APK update each other is unknown ([Q20](open-questions.md#q20-signing-keys-and-the-apk-beside-the-play-build)).
 - A vikunja.io page moved after a release breaks the stores' links unnoticed until the next one.
