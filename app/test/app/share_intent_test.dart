@@ -320,6 +320,55 @@ void main() {
     expect(find.text(en.shareTaskCreated(0)), findsOneWidget);
   });
 
+  testWidgets('dragged shut, a Create that fails during the closing says so, '
+      'as nothing else shows it', (tester) async {
+    final held = Completer<void>();
+    data.tasks.beforeWrite = () => held.future;
+    await pumpSignedInApp(tester, sync: data);
+    data.shareSource.push(const IncomingShare(text: 'Scans'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(action(en.shareCreate));
+    await tester.pump();
+    final height = tester.getSize(sheet).height;
+    await tester.drag(
+      inSheet(find.text(en.shareSheetTitle)),
+      Offset(0, height * .7),
+    );
+    await tester.pump();
+
+    held.completeError(StateError('the database went away'));
+    await tester.pumpAndSettle();
+
+    expect(sheet, findsNothing);
+    expect(data.tasks.writes, ['create -1 Scans']);
+    expect(data.shareSource.calls.last, 'clear');
+    expect(find.text(en.shareFailed), findsOneWidget);
+  });
+
+  testWidgets('a Create that failed in the open sheet is not reported again '
+      'once the sheet is closed', (tester) async {
+    data.tasks.beforeWrite = () async =>
+        throw StateError('the database went away');
+    await pumpSignedInApp(tester, sync: data);
+    data.shareSource.push(const IncomingShare(text: 'Scans'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(action(en.shareCreate));
+    await tester.pumpAndSettle();
+    expect(inSheet(find.text(en.shareFailed)), findsOneWidget);
+
+    final height = tester.getSize(sheet).height;
+    await tester.drag(
+      inSheet(find.text(en.shareSheetTitle)),
+      Offset(0, height * .7),
+    );
+    await tester.pumpAndSettle();
+
+    expect(sheet, findsNothing);
+    expect(find.text(en.shareFailed), findsNothing);
+  });
+
   testWidgets('Add to task keeps the shared text field while it is emptied '
       'to be typed over', (tester) async {
     await pumpSignedInApp(tester, sync: data);

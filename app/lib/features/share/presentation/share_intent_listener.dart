@@ -169,23 +169,34 @@ class _ShareIntentListenerState extends ConsumerState<ShareIntentListener> {
     ref.read(rootModalRoutesProvider).closeAll();
     final shown = Completer<ShareOutcome?>();
     Future<ShareOutcome?>? submitted;
+    var submittedSettled = false;
     await _opener.showAfterFrame(
       (context) => shown.complete(
         showShareSheet(
           context,
           share: share,
-          onSubmit: (work) => submitted = work,
+          onSubmit: (work) {
+            submittedSettled = false;
+            submitted = work;
+            unawaited(work.whenComplete(() => submittedSettled = true));
+          },
         ),
       ),
     );
     if (!shown.isCompleted) shown.complete(null);
     var outcome = await shown.future;
+    // Its sheet went before the work ended, so a failure shows nowhere else.
+    final unseen = outcome == null && submitted != null && !submittedSettled;
     // The sheet went while its files were still being moved out of the
     // inbox; clearing it now would delete the rest.
     if (outcome == null && submitted != null) outcome = await submitted;
     if (!current()) return;
     await _clear(generation);
-    if (outcome != null) await _announce(outcome);
+    if (outcome != null) {
+      await _announce(outcome);
+    } else if (unseen) {
+      await _opener.showMessage((l10n) => l10n.shareFailed);
+    }
   }
 
   /// True when [share] was a project's link or an invite and is done with;
