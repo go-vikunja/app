@@ -122,6 +122,22 @@ void main() {
         final request = adapterOf(dio).requests.single;
         expect(request.method, 'GET');
         expect(request.headers['Accept'], '*/*');
+        expect(request.extra[maxBodyBytesKey], maxAttachmentBytes);
+      });
+
+      test('the cap of other answers does not apply', () async {
+        final bytes = Uint8List(64 * 1024);
+        final dio = Dio()
+          ..httpClientAdapter = BodyCapAdapter(
+            FakeHttpAdapter({
+              '$base/tasks/17/attachments/14': _file(bytes, 'image/png'),
+            }),
+            defaultMaxBytes: 1024,
+          );
+
+        final blob = await _attachments(dio, hasV2: hasV2).fetch(17, 14);
+
+        expect(blob.bytes, hasLength(bytes.length));
       });
 
       test('a preview by preview_size over v1, images accepted', () async {

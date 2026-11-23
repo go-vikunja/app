@@ -35,6 +35,14 @@ void main() {
         expect(externalTeamProvider(name), isNull, reason: name);
       }
     });
+
+    test('a long name is read quickly, with or without a closing bracket', () {
+      final long = 'y' * 80000;
+      final watch = Stopwatch()..start();
+      expect(externalTeamProvider('a ($long'), isNull);
+      expect(externalTeamProvider('a ($long)'), long);
+      expect(watch.elapsed, lessThan(const Duration(seconds: 20)));
+    });
   });
 
   group('TeamGuards', () {

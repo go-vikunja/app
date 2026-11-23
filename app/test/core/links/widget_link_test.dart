@@ -122,6 +122,16 @@ void main() {
         expect(parse(link), isNull, reason: link);
       }
     });
+
+    test('is null for an escape that is no UTF-8', () {
+      for (final link in [
+        '$scheme://widget/open?account=%FF',
+        '$scheme://widget/list?account=$account&kind=today&k=%C3',
+        '$scheme://widget/task/%FF?account=$account',
+      ]) {
+        expect(parse(link), isNull, reason: link);
+      }
+    });
   });
 
   test('every link reads back as itself', () {

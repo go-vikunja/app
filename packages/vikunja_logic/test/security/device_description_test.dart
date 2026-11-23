@@ -373,5 +373,26 @@ void main() {
       expect(describeUserAgent(long).kind, DeviceKind.browser);
       expect(stopwatch.elapsed, lessThan(const Duration(seconds: 5)));
     });
+
+    test(
+      'a long run of device names without an OS version is read quickly',
+      () {
+        final names = 'iPad' * 96000;
+        final watch = Stopwatch()..start();
+        expect(
+          describeUserAgent('Mozilla/5.0 ($names'),
+          isA<DeviceDescription>()
+              .having((d) => d.kind, 'kind', DeviceKind.browser)
+              .having((d) => d.osName, 'osName', isNull),
+        );
+        expect(
+          describeUserAgent('Mozilla/5.0 ($names; CPU OS 17_4 like Mac OS X)'),
+          isA<DeviceDescription>()
+              .having((d) => d.osName, 'osName', 'iOS')
+              .having((d) => d.osVersion, 'osVersion', '17.4'),
+        );
+        expect(watch.elapsed, lessThan(const Duration(seconds: 20)));
+      },
+    );
   });
 }

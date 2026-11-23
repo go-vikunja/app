@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:vikunja_api/vikunja_api.dart' show BodyCapAdapter;
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/network/client_identity.dart';
 import 'package:vikunja_mobile/core/network/network_profile.dart';
@@ -49,8 +50,13 @@ void main() {
     final providers = container();
     final dio = providers.read(dioProvider);
     final authDio = providers.read(authDioProvider);
-    expect(dio.httpClientAdapter, isA<NetworkProfileAdapter>());
-    expect(authDio.httpClientAdapter, isA<NetworkProfileAdapter>());
+    final cappedProfiles = isA<BodyCapAdapter>().having(
+      (adapter) => adapter.inner,
+      'inner',
+      isA<NetworkProfileAdapter>(),
+    );
+    expect(dio.httpClientAdapter, cappedProfiles);
+    expect(authDio.httpClientAdapter, cappedProfiles);
     expect(
       identical(dio.httpClientAdapter, authDio.httpClientAdapter),
       isFalse,

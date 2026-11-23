@@ -76,4 +76,51 @@ void main() {
       'Hi @anna',
     );
   });
+
+  // A collaborator's description or comment is hostile input; a search that
+  // starts again from every position takes minutes on most of these runs.
+  group('a long run finishes quickly', () {
+    String run(String unit) => unit * (300000 ~/ unit.length);
+
+    // The test's own timeout cannot stop synchronous work, so the time is
+    // checked after it.
+    void timedTest(String description, void Function() body) {
+      test(description, () {
+        final watch = Stopwatch()..start();
+        body();
+        expect(watch.elapsed, lessThan(const Duration(seconds: 20)));
+      });
+    }
+
+    timedTest("of '<' without a '>'", () {
+      expect(htmlToPlainText(run('<')), run('<'));
+    });
+
+    timedTest("of '<li ', with and without a '>'", () {
+      expect(htmlToPlainText(run('<li ')), run('<li ').trim());
+      expect(htmlToPlainText('${run('<li ')}>'), '•');
+    });
+
+    timedTest("of '</p>', with and without a '</li>' after it", () {
+      expect(htmlToPlainText('a${run('</p>')}b'), 'a\n\nb');
+      expect(htmlToPlainText('<li>a${run('</p>')}</li>'), '• a');
+    });
+
+    timedTest("of '<p>'", () {
+      expect(htmlToPlainText('${run('<p>')}a'), 'a');
+    });
+
+    timedTest('of spaces, with and without a line break after them', () {
+      expect(htmlToPlainText('a${run(' ')}b'), 'a${run(' ')}b');
+      expect(htmlToPlainText('a${run(' ')}\nb'), 'a\nb');
+    });
+
+    timedTest("of '<mention-user ', with and without a '>'", () {
+      expect(
+        htmlToPlainText(run('<mention-user ')),
+        run('<mention-user ').trim(),
+      );
+      expect(htmlToPlainText('${run('<mention-user ')}>'), '');
+    });
+  });
 }

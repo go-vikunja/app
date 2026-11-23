@@ -144,6 +144,7 @@ Limits:
 - **Platform stacks:** Cronet on Android and NSURLSession on iOS, through native_dio_adapter (why: on Android `dart:io` ignores user-installed CAs and system proxies, dart-lang/sdk#50435). `dart:io` serves only servers with a pinned certificate, a trusted CA or a client certificate (why: only it can pin in the handshake or present a client certificate; it lacks the OS proxy and Android's user CAs, so every other server stays on the platform stack).
 - **Embedded Cronet, never Play services' Cronet or any other Play services library** (owner). Why: Cronet then works on every device without Play services, user CAs and proxies included, the app holds no proprietary code, and F-Droid stays possible. The Gradle build excludes `play-services-cronet` everywhere, and the notice generator refuses Play services.
 - **No HTTP flags, no telemetry:** the manifest's disabled `android.net.http.MetaDataHolder` sets `ReadHttpFlags` and `EnableTelemetry` to false (why: otherwise Cronet applies a flags file from a system-image package, which can change its features or swap in the platform's `HttpEngine`).
+- **Every answer's body has a size cap in the transport:** 64 MiB, 2 MiB for avatars, 25 MiB for attachments read into memory; a larger one is refused, its connection closed, and never retried (why: one endless answer from a hostile server would take the app's memory). Downloads to a file and the `/info` probe, which cuts its own body, are exempt.
 - **Cronet's security fixes come only with an app update,** so a newer `cronet-bundled` is looked for at each Chrome stable release that fixes `net/`, BoringSSL or QUICHE and before each release; the weekly "Upstream versions" workflow fails while one is newer ([releasing.md](releasing.md#raising-cronet)).
 
 ### Unencrypted connections
@@ -177,6 +178,7 @@ Limits:
 - Chromium's network stack lags Chrome stable by weeks ([threat model](threat-model.md) R34), and the protobuf shaded into Cronet is named by no lockfile, so no scan sees it.
 - `NSAllowsArbitraryLoads` also drops ATS's TLS 1.2 and forward-secrecy minimums for `https`.
 - An `http` account's unsent changes go with it unless sent before it is removed.
+- WebSocket messages and downloads to a file have no size cap ([threat model](threat-model.md) R49, R50).
 - A server's `frontend_url` and legal links with user info are still accepted; a server's own `error_page` for 495 and 496 is not recognized.
 - Not offered: SPKI pins, `Proxy-Authorization`, client certificates from the OS key store, a SOCKS proxy.
 - Waiting for the iOS device test: pinning and PKCS#12 under SecTrust, the 825-day rule, headers through NSURLSession.
@@ -551,7 +553,7 @@ The server stores the HTML of descriptions, comments and titles unsanitized, so 
 ### Rich text
 
 - **The app has its own parser and a native renderer** (why: the HTML widget packages applied inline styles, loaded images without the token or made `javascript:` links tappable). Only the web editor's schema and allowed links come out, and reading uses no WebView.
-- **Parsing stays within work budgets** (why: package:html has paths whose time grows with the square of the input, tens of seconds for under 1 MB). A document past a budget is cut and ends in `…`; the pinned package:html is in [Stack and structure](#stack-and-structure).
+- **Parsing stays within work budgets** (why: package:html has paths whose time grows with the square of the input, tens of seconds for under 1 MB). A document past a budget is cut and ends in `…`; the pinned package:html is in [Stack and structure](#stack-and-structure). The plain text behind search, the inbox, notifications and the edit pages comes from a linear scan instead and is never cut (why: its regular expressions took minutes on a long run of `<` or spaces).
 - **A link that may mislead asks before it opens:** its text begins with a web address on another host, holds a bidirectional control character, or has user info (why: a text that reads like one address could open another). Other schemes go through the external opener's allowlist.
 - **Images** above 25 MB or 40 megapixels are refused before decoding. External images load only on a tap, which opens the browser, and SVG is never decoded.
 

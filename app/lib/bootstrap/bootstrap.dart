@@ -2,8 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/app/vikunja_app.dart';
 import 'package:vikunja_mobile/app/widgets/release_error_widget.dart';
 import 'package:vikunja_mobile/bootstrap/appearance_start.dart';
@@ -15,6 +17,8 @@ import 'package:vikunja_mobile/core/background/background_entry_point.dart';
 import 'package:vikunja_mobile/core/background/background_providers.dart';
 import 'package:vikunja_mobile/core/crash_reports/crash_report_providers.dart';
 import 'package:vikunja_mobile/core/legal/app_licenses.dart';
+import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
+import 'package:vikunja_mobile/core/links/deep_link_relay.dart';
 import 'package:vikunja_mobile/core/links/widget_link_key.dart';
 import 'package:vikunja_mobile/core/logging/logging_setup.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -34,11 +38,12 @@ final _log = Logger('Bootstrap');
 
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final earlyRoutes = EarlyPushedRoutes();
   configureLogging(part: AppPart.app);
   installErrorWidget();
   registerAppLicenses();
   final (:clientIdentity, :deviceL10n) = await loadStartValues();
-  final container = ProviderContainer(
+  final container = createAppContainer(
     overrides: [
       clientIdentityProvider.overrideWithValue(clientIdentity),
       notificationBackgroundEntryPointProvider.overrideWithValue(
@@ -46,6 +51,7 @@ Future<void> bootstrap() async {
       ),
       deviceAppLocalizationsProvider.overrideWithBuild((_, _) => deviceL10n),
     ],
+    earlyRoutes: earlyRoutes,
   );
   // Awaited even when the rest fails, so that the first frame is already
   // locked while the app lock is on.
@@ -95,6 +101,44 @@ Future<void> bootstrap() async {
   unawaited(_finishSignOuts(container));
   if (defaultTargetPlatform == TargetPlatform.iOS) {
     unawaited(_excludeFromBackup());
+  }
+}
+
+ProviderContainer createAppContainer({
+  required List<Override> overrides,
+  EarlyPushedRoutes? earlyRoutes,
+}) {
+  // First among the binding's observers once [earlyRoutes] leaves: the
+  // binding offers a pushed route to each in turn until one takes it, and
+  // the others (every AppLifecycleListener, runApp's View) read its query,
+  // which throws on an escape that is no UTF-8 and gets reported.
+  final container = ProviderContainer(overrides: overrides)
+    ..listen(appSchemeLinksProvider, (_, _) {});
+  earlyRoutes?._handTo(container.read(deepLinkRelayProvider));
+  return container;
+}
+
+/// Holds the routes the platform pushes before the app's container exists,
+/// which the binding would drop with no observer to take them, for
+/// [createAppContainer] to hand on.
+final class EarlyPushedRoutes with WidgetsBindingObserver {
+  new() {
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  final _uris = <Uri>[];
+
+  @override
+  Future<bool> didPushRouteInformation(RouteInformation routeInformation) {
+    _uris.add(routeInformation.uri);
+    return SynchronousFuture(true);
+  }
+
+  void _handTo(DeepLinkRelay relay) {
+    WidgetsBinding.instance.removeObserver(this);
+    _uris
+      ..forEach(relay.accept)
+      ..clear();
   }
 }
 

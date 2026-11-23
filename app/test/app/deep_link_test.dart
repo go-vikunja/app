@@ -1,10 +1,14 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
+import 'package:vikunja_mobile/app/vikunja_app.dart';
+import 'package:vikunja_mobile/bootstrap/bootstrap.dart';
 import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/links/deep_link_providers.dart';
@@ -245,6 +249,109 @@ void main() {
 
       expect(location(tester), AppRoutes.overview);
       expect(inSheet('Water the plants'), findsOneWidget);
+    });
+
+    group('pushed before the app runs', () {
+      setUp(() {
+        data.tasks.all = [
+          ...data.tasks.all,
+          sampleTask(id: 8, title: 'Feed the cat', identifier: 'WORK-8'),
+        ];
+      });
+
+      Future<ProviderContainer> signedInContainer({
+        EarlyPushedRoutes? earlyRoutes,
+      }) async {
+        final auth = AuthFakes();
+        await auth.seedAccount(
+          fullServer270(),
+          tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+        );
+        final container = createAppContainer(
+          overrides: appOverrides(auth: auth, sync: data),
+          earlyRoutes: earlyRoutes,
+        );
+        addTearDown(container.dispose);
+        return container;
+      }
+
+      Future<void> runAppWith(
+        WidgetTester tester,
+        ProviderContainer container,
+      ) async {
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: const VikunjaApp(),
+          ),
+        );
+        await tester.pumpAndSettle();
+      }
+
+      /// Explicitly too, so that the app's timers do not outlive the test.
+      Future<void> unmount(
+        WidgetTester tester,
+        ProviderContainer container,
+      ) async {
+        await tester.pumpWidget(const SizedBox());
+        container.dispose();
+      }
+
+      testWidgets('a link waits and opens once the shell shows', (
+        tester,
+      ) async {
+        final container = await signedInContainer();
+
+        expect(
+          await tester.binding.handlePushRoute('$_scheme://task/7'),
+          isTrue,
+        );
+        await runAppWith(tester, container);
+
+        expect(location(tester), AppRoutes.overview);
+        expect(inSheet('Water the plants'), findsOneWidget);
+        expect(data.resolver.resolved, [const TaskById(7)]);
+        expect(tester.takeException(), isNull);
+
+        await unmount(tester, container);
+      });
+
+      testWidgets('a link opens instead of the older start link', (
+        tester,
+      ) async {
+        startWith(tester, '$_scheme://task/8');
+        final container = await signedInContainer();
+
+        await tester.binding.handlePushRoute('$_scheme://task/7');
+        await runAppWith(tester, container);
+
+        expect(inSheet('Water the plants'), findsOneWidget);
+        expect(data.resolver.resolved, [const TaskById(7)]);
+
+        await unmount(tester, container);
+      });
+
+      testWidgets('even before the container exists, a link waits too, and '
+          'the ones after reach the app', (tester) async {
+        final earlyRoutes = EarlyPushedRoutes();
+        addTearDown(() => tester.binding.removeObserver(earlyRoutes));
+
+        expect(
+          await tester.binding.handlePushRoute('$_scheme://task/7'),
+          isTrue,
+        );
+        final container = await signedInContainer(earlyRoutes: earlyRoutes);
+        await runAppWith(tester, container);
+
+        expect(inSheet('Water the plants'), findsOneWidget);
+
+        await push(tester, '$_scheme://task/8');
+
+        expect(inSheet('Feed the cat'), findsOneWidget);
+        expect(data.resolver.resolved, [const TaskById(7), const TaskById(8)]);
+
+        await unmount(tester, container);
+      });
     });
 
     testWidgets('an OAuth callback as the start link opens nothing', (

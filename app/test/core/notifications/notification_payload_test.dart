@@ -83,4 +83,29 @@ void main() {
       expect(() => NotificationPayload.fromJson(json), throwsFormatException);
     }
   });
+
+  test('refuses an instant outside the range of a date', () {
+    String withAt(String at) =>
+        '{"account":"acc","task":7,"key":"7:due","at":$at}';
+
+    for (final at in [
+      '8640000000000001',
+      '-8640000000000001',
+      '9000000000000000',
+      '-9223372036854775808',
+    ]) {
+      expect(
+        () => NotificationPayload.fromJson(withAt(at)),
+        throwsFormatException,
+        reason: at,
+      );
+      expect(NotificationPayload.tryParse(withAt(at)), isNull, reason: at);
+    }
+    for (final at in [8640000000000000, -8640000000000000]) {
+      expect(
+        NotificationPayload.fromJson(withAt('$at')).occurrence,
+        DateTime.fromMillisecondsSinceEpoch(at, isUtc: true),
+      );
+    }
+  });
 }

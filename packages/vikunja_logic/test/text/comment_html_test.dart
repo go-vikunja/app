@@ -97,6 +97,13 @@ void main() {
       }
     });
 
+    test('of text that is only punctuation and brackets is its start', () {
+      expect(withoutSentenceEnd(''), '');
+      expect(withoutSentenceEnd('.)'), '');
+      expect(withoutSentenceEnd('a)!'), 'a');
+      expect(withoutSentenceEnd('(a)'), '(a)');
+    });
+
     test('is found in linear time', () {
       for (final address in [
         'https://example.com/${')' * 40000}',

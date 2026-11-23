@@ -34,7 +34,15 @@ sealed class WidgetLink {
         uri.host.toLowerCase() != host) {
       return null;
     }
-    final query = uri.queryParameters;
+    final Map<String, String> query;
+    final List<String> segments;
+    try {
+      query = uri.queryParameters;
+      segments = uri.pathSegments;
+    } on FormatException {
+      // An escape that is no UTF-8.
+      return null;
+    }
     final account = query['account'];
     final hasAccount = account != null && account.isNotEmpty;
     final linkKey = switch (query['k']) {
@@ -42,7 +50,7 @@ sealed class WidgetLink {
       _ => null,
     };
     int? queryInt(String name) => int.tryParse(query[name] ?? '');
-    return switch (uri.pathSegments.where((s) => s.isNotEmpty).toList()) {
+    return switch (segments.where((s) => s.isNotEmpty).toList()) {
       ['task', final id] when hasAccount => switch (int.tryParse(id)) {
         final taskId? => WidgetTaskLink(
           accountId: account,

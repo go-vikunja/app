@@ -140,7 +140,8 @@ String? _browserOf(String text) {
 }
 
 final _windows = RegExp(r'Windows NT (\d+\.\d+)');
-final _ios = RegExp(r'(?:iPhone|iPad|iPod).*?\bOS (\d+(?:_\d+)*)');
+final _iosDevice = RegExp('iPhone|iPad|iPod');
+final _iosVersion = RegExp(r'.*?\bOS (\d+(?:_\d+)*)');
 final _android = RegExp(r'Android (\d+(?:\.\d+)*)(;\s*K\))?');
 final _mac = RegExp(r'Mac OS X (\d+(?:[_.]\d+)*)');
 const _windowsVersions = {'6.1': '7', '6.2': '8', '6.3': '8.1'};
@@ -152,8 +153,8 @@ const _frozenMacVersions = {'10.15', '10.15.7'};
     return (osName: 'Windows', osVersion: _windowsVersions[match.group(1)]);
   }
   if (text.contains('Windows')) return (osName: 'Windows', osVersion: null);
-  if (_ios.firstMatch(text) case final match?) {
-    return (osName: 'iOS', osVersion: match.group(1)!.replaceAll('_', '.'));
+  if (_iosVersionOf(text) case final version?) {
+    return (osName: 'iOS', osVersion: version.replaceAll('_', '.'));
   }
   if (_android.firstMatch(text) case final match?) {
     final reduced = match.group(2) != null;
@@ -173,4 +174,13 @@ const _frozenMacVersions = {'10.15', '10.15.7'};
     return (osName: 'Linux', osVersion: null);
   }
   return (osName: null, osVersion: null);
+}
+
+// From the first device name only: where it finds no version, a later name
+// on the same line finds none either, and trying each one is quadratic.
+String? _iosVersionOf(String text) {
+  final device = _iosDevice.firstMatch(text);
+  return device == null
+      ? null
+      : _iosVersion.matchAsPrefix(text, device.end)?.group(1);
 }

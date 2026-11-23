@@ -1088,7 +1088,8 @@ void main() {
     notifications.taps
       ..tap(payload(accountId: 'nobody'))
       ..tap('{"account": 1}')
-      ..tap('not json');
+      ..tap('not json')
+      ..tap('{"account":"acc","task":7,"key":"7:due","at":9000000000000000}');
     await tester.pumpAndSettle();
 
     expect(sheet, findsNothing);

@@ -58,6 +58,58 @@ final class RootModalRoutesProvider
 
 String _$rootModalRoutesHash() => r'255be473fc2f430716d2ce192c908c9a02d81559';
 
+/// Registers [_AppSchemeLinks] with the binding while it lives.
+
+@ProviderFor(appSchemeLinks)
+final appSchemeLinksProvider = AppSchemeLinksProvider._();
+
+/// Registers [_AppSchemeLinks] with the binding while it lives.
+
+final class AppSchemeLinksProvider
+    extends
+        $FunctionalProvider<
+          WidgetsBindingObserver,
+          WidgetsBindingObserver,
+          WidgetsBindingObserver
+        >
+    with $Provider<WidgetsBindingObserver> {
+  /// Registers [_AppSchemeLinks] with the binding while it lives.
+  AppSchemeLinksProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appSchemeLinksProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appSchemeLinksHash();
+
+  @$internal
+  @override
+  $ProviderElement<WidgetsBindingObserver> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  WidgetsBindingObserver create(Ref ref) {
+    return appSchemeLinks(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(WidgetsBindingObserver value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<WidgetsBindingObserver>(value),
+    );
+  }
+}
+
+String _$appSchemeLinksHash() => r'00c7dfa771a44f86fce7aae2d3b2bf50d5ca7960';
+
 @ProviderFor(appRouter)
 final appRouterProvider = AppRouterProvider._();
 
@@ -97,4 +149,4 @@ final class AppRouterProvider
   }
 }
 
-String _$appRouterHash() => r'ab82334873a952d5f5df1e7c48c61bfd6f261347';
+String _$appRouterHash() => r'35fba4faf877431f6e90d7e6261111485d8f4fff';

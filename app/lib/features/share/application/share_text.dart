@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:vikunja_logic/vikunja_logic.dart' show withoutSentenceEnd;
 import 'package:vikunja_mobile/core/text/task_title_limit.dart';
 
 /// A new task's title and the rest of what another app shared, as text.
@@ -77,7 +78,6 @@ String appendToDescription(String description, String addition) {
 }
 
 final _webAddress = RegExp(r'https?://[^\s<>"]+', caseSensitive: false);
-final _trailingPunctuation = RegExp(r'''[.,;:!?'"]+$''');
 const _elementText = HtmlEscape(HtmlEscapeMode.element);
 const _attributeText = HtmlEscape(HtmlEscapeMode.attribute);
 
@@ -85,15 +85,7 @@ String _linked(String line) {
   final out = StringBuffer();
   var start = 0;
   for (final match in _webAddress.allMatches(line)) {
-    var address = match[0]!.replaceFirst(_trailingPunctuation, '');
-    // A closing bracket after an address belongs to the sentence unless
-    // the address opened one.
-    while (address.endsWith(')') &&
-        ')'.allMatches(address).length > '('.allMatches(address).length) {
-      address = address
-          .substring(0, address.length - 1)
-          .replaceFirst(_trailingPunctuation, '');
-    }
+    final address = withoutSentenceEnd(match[0]!);
     if (Uri.tryParse(address)?.host.isEmpty ?? true) continue;
     out
       ..write(_elementText.convert(line.substring(start, match.start)))

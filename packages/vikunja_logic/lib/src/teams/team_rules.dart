@@ -6,7 +6,9 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 String? externalTeamProvider(String name) =>
     _providerSuffix.firstMatch(name.trimRight())?[1]?.trim().nonEmpty;
 
-final _providerSuffix = RegExp(r'\S\s+\(([^()]*[^()\s][^()]*)\)$');
+// One class inside the brackets keeps a long name without a closing one
+// linear; a blank suffix ends empty after the trim.
+final _providerSuffix = RegExp(r'\S\s+\(([^()]*)\)$');
 
 enum TeamLeaveRule {
   allowed,

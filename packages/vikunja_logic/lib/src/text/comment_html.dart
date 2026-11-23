@@ -197,7 +197,7 @@ final _webAddress = RegExp(r'https?://[^\s<>"]+', caseSensitive: false);
 void _writeLinked(StringBuffer out, String text) {
   var start = 0;
   for (final match in _webAddress.allMatches(text)) {
-    final address = _withoutSentenceEnd(match[0]!);
+    final address = withoutSentenceEnd(match[0]!);
     if (Uri.tryParse(address)?.host.isEmpty ?? true) continue;
     out
       ..write(_text(text.substring(start, match.start)))
@@ -211,17 +211,18 @@ void _writeLinked(StringBuffer out, String text) {
   out.write(_text(text.substring(start)));
 }
 
-// Trailing punctuation belongs to the sentence, and so does a closing
-// bracket that the address did not open.
-String _withoutSentenceEnd(String address) {
+/// [address] without the punctuation after it, which belongs to the
+/// sentence, and so does a closing bracket that the address did not open.
+/// Linear in the length, however many brackets follow.
+String withoutSentenceEnd(String address) {
   var unopened =
       ')'.allMatches(address).length - '('.allMatches(address).length;
   var end = address.length;
   while (true) {
-    while (_sentencePunctuation.contains(address[end - 1])) {
+    while (end > 0 && _sentencePunctuation.contains(address[end - 1])) {
       end--;
     }
-    if (address[end - 1] != ')' || unopened <= 0) break;
+    if (end == 0 || address[end - 1] != ')' || unopened <= 0) break;
     end--;
     unopened--;
   }

@@ -27,6 +27,8 @@ final _png = Uint8List.fromList([
 // The initials provider's answer on 2.7.0.
 const _svg = '<svg viewBox="0 0 100 100"><text>A</text></svg>';
 
+const int _maxAvatarBytes = 2 * 1024 * 1024;
+
 AvatarsPort _avatars(Dio dio, {bool hasV2 = true}) => createReadClient(
   dio: dio,
   connection: testConnection(hasV2: hasV2),
@@ -60,7 +62,39 @@ void main() {
         final request = adapterOf(dio).requests.single;
         expect(request.method, 'GET');
         expect(request.headers['Accept'], 'image/*');
-        expect(request.responseType, ResponseType.bytes);
+        expect(request.responseType, ResponseType.stream);
+        expect(request.extra[maxBodyBytesKey], _maxAvatarBytes);
+      });
+
+      test('an answer above 2 MiB is refused', () async {
+        final dio = fakeDio({
+          '$base/avatar/alice?size=64': _image(
+            Uint8List(_maxAvatarBytes + 1),
+            'image/png',
+          ),
+          '$base/avatar/bob?size=64': _image(
+            Uint8List(_maxAvatarBytes),
+            'image/png',
+          ),
+        });
+        final avatars = _avatars(dio, hasV2: hasV2);
+
+        await expectLater(
+          avatars.fetch('alice', size: 64),
+          throwsA(
+            isA<UnexpectedResponse>()
+                .having((f) => f.statusCode, 'statusCode', 200)
+                .having(
+                  (f) => f.message,
+                  'message',
+                  'a body larger than $_maxAvatarBytes bytes',
+                ),
+          ),
+        );
+        expect(
+          (await avatars.fetch('bob', size: 64)).bytes,
+          hasLength(_maxAvatarBytes),
+        );
       });
 
       test('an SVG, the media type without its parameters', () async {

@@ -182,9 +182,10 @@ final class FilterSpan {
 // The server's quoting rule, on ASCII classes as Go's RE2 has them: a
 // field, an operator and a value running to the next `&`, `|`, `(` or `)`.
 // The word operators need a space on each side, as the server's rewrite
-// does.
+// does. A field starts only where a word does: the matches stay the same,
+// and a long word without an operator takes linear time, not quadratic.
 final _condition = RegExp(
-  r'([0-9A-Za-z_]+)([\t\n\f\r ]*)(>=|<=|!=|\?!=|\?=|~|=|>|<| not in | in | like )([^&|()]*)',
+  r'(?<![0-9A-Za-z_])([0-9A-Za-z_]+)([\t\n\f\r ]*)(>=|<=|!=|\?!=|\?=|~|=|>|<| not in | in | like )([^&|()]*)',
 );
 
 /// Where [text]'s fields, operators, values and joins are, in order: a

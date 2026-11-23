@@ -20,6 +20,7 @@ import 'package:vikunja_api/src/errors/streamed_error_body.dart';
 import 'package:vikunja_api/src/read/read_ports.dart';
 import 'package:vikunja_api/src/read/task_query_params.dart';
 import 'package:vikunja_api/src/transport/all_pages.dart';
+import 'package:vikunja_api/src/transport/body_cap_adapter.dart';
 import 'package:vikunja_api/src/transport/path_segment.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
@@ -243,15 +244,16 @@ final class _AttachmentsApi implements AttachmentsPort {
       ),
       final size => (original, {'preview_size': size.wireName}),
     };
-    final (:bytes, :contentType) = await _transport.getCappedBytes(
-      path,
-      query: query,
-      // Servers before 2.7.1 answer the original for anything they cannot
-      // preview, so a preview request has to take any image.
-      accept: preview == null ? '*/*' : 'image/*',
-      maxBytes: maxAttachmentBytes,
-      over: preview == null ? null : _previewApi,
-    );
+    final (:bytes, :contentType, statusCode: _) = await _transport
+        .getCappedBytes(
+          path,
+          query: query,
+          // Servers before 2.7.1 answer the original for anything they cannot
+          // preview, so a preview request has to take any image.
+          accept: preview == null ? '*/*' : 'image/*',
+          maxBytes: maxAttachmentBytes,
+          over: preview == null ? null : _previewApi,
+        );
     return AttachmentBlob(
       bytes: bytes,
       contentType: contentType.isEmpty
@@ -278,33 +280,27 @@ final class _AvatarsApi implements AvatarsPort {
 
   final _ReadTransport _transport;
 
+  // An avatar is at most a few hundred pixels across.
+  static const int _maxBytes = 2 * 1024 * 1024;
+
   @override
   Future<AvatarImage> fetch(String username, {required int size}) async {
-    final response = await _transport.getBytes(
+    final (:bytes, :contentType, :statusCode) = await _transport.getCappedBytes(
       '/avatar/${pathSegment(username)}',
       query: {'size': size},
       accept: 'image/*',
+      maxBytes: _maxBytes,
     );
-    final contentType =
-        (response.headers.value(Headers.contentTypeHeader) ?? '')
-            .split(';')
-            .first
-            .trim()
-            .toLowerCase();
-    final bytes = response.data;
     final isImage =
         contentType.startsWith('image/') ||
         contentType == 'application/octet-stream';
-    if (!isImage || bytes == null || bytes.isEmpty) {
+    if (!isImage || bytes.isEmpty) {
       throw UnexpectedResponse(
-        response.statusCode,
+        statusCode,
         message: 'not an image: $contentType',
       );
     }
-    return AvatarImage(
-      bytes: bytes is Uint8List ? bytes : Uint8List.fromList(bytes),
-      contentType: contentType,
-    );
+    return AvatarImage(bytes: bytes, contentType: contentType);
   }
 }
 
@@ -728,7 +724,8 @@ final class _ReadTransport {
   /// (by its `Content-Length` or by what arrives), with the media type of
   /// the response without parameters. [over] asks another API version than
   /// the preferred one.
-  Future<({Uint8List bytes, String contentType})> getCappedBytes(
+  Future<({Uint8List bytes, String contentType, int? statusCode})>
+  getCappedBytes(
     String path, {
     required Map<String, Object?> query,
     required String accept,
@@ -748,6 +745,7 @@ final class _ReadTransport {
         options: Options(
           responseType: ResponseType.stream,
           headers: {'Accept': accept},
+          extra: {maxBodyBytesKey: maxBytes},
         ),
       );
     } on DioException catch (error) {
@@ -789,7 +787,11 @@ final class _ReadTransport {
       cancel.cancel();
       throw tooLarge;
     }
-    return (bytes: bytes.takeBytes(), contentType: contentType);
+    return (
+      bytes: bytes.takeBytes(),
+      contentType: contentType,
+      statusCode: response.statusCode,
+    );
   }
 
   /// See [AttachmentsPort.download].
@@ -813,6 +815,8 @@ final class _ReadTransport {
         options: Options(
           responseType: ResponseType.stream,
           headers: {'Accept': '*/*', if (offset > 0) 'Range': 'bytes=$offset-'},
+          // It goes to a file, not into memory.
+          extra: {maxBodyBytesKey: null},
         ),
       );
     } on DioException catch (error) {
@@ -883,26 +887,6 @@ final class _ReadTransport {
     if (bytes.length > maxErrorBodyBytes) cancel.cancel();
     response.data = bytes;
     return error;
-  }
-
-  Future<Response<List<int>>> getBytes(
-    String path, {
-    required Map<String, Object?> query,
-    required String accept,
-  }) async {
-    try {
-      return await _dio.get<List<int>>(
-        _base.replace(path: '${_base.path}$path').toString(),
-        queryParameters: query,
-        options: Options(
-          responseType: ResponseType.bytes,
-          headers: {'Accept': accept},
-        ),
-      );
-    } on DioException catch (error) {
-      if (error.type == DioExceptionType.cancel) rethrow;
-      throw normalizeError(error);
-    }
   }
 
   T decode<T>(Response<Object?> response, T Function(Object?) parse) {

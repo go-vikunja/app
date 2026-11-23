@@ -101,6 +101,7 @@ Between the folders, `core/` sits below `features/` and `app/`, which use each o
 
 - On Android requests go through an embedded Cronet, on iOS through NSURLSession, both through `native_dio_adapter`, so the system's certificate store and proxy apply.
 - `NetworkProfileAdapter` applies the connection settings a user set for a server address (extra headers, a pinned certificate, a private CA, a client certificate). Addresses with a pin, a CA or a client certificate go through `dart:io`, one adapter per address; header values and keys never reach an interceptor.
+- `BodyCapAdapter` wraps it and refuses a body over its request's cap (`maxBodyBytesKey` in `Options.extra`, 64 MiB by default, null for none); `createAuthenticatedDio` borrows the whole chain.
 - The realtime WebSocket runs on `dart:io`; on Android it gets the user-installed CAs and the system proxy through a platform channel.
 - Tests use dio's default `dart:io` adapter.
 

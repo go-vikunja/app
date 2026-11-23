@@ -8,17 +8,20 @@ part of 'deep_link_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// What the router feeds: it hands every pushed URI to `accept` first.
+/// What `appSchemeLinksProvider` hands every pushed URI to (`accept`); the
+/// router's redirect checks each location with it too.
 
 @ProviderFor(deepLinkRelay)
 final deepLinkRelayProvider = DeepLinkRelayProvider._();
 
-/// What the router feeds: it hands every pushed URI to `accept` first.
+/// What `appSchemeLinksProvider` hands every pushed URI to (`accept`); the
+/// router's redirect checks each location with it too.
 
 final class DeepLinkRelayProvider
     extends $FunctionalProvider<DeepLinkRelay, DeepLinkRelay, DeepLinkRelay>
     with $Provider<DeepLinkRelay> {
-  /// What the router feeds: it hands every pushed URI to `accept` first.
+  /// What `appSchemeLinksProvider` hands every pushed URI to (`accept`); the
+  /// router's redirect checks each location with it too.
   DeepLinkRelayProvider._()
     : super(
         from: null,

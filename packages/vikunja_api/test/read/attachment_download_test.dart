@@ -108,6 +108,20 @@ void main() {
     expect(target.readAsBytesSync(), bytes);
   });
 
+  test('a file larger than the cap of other answers lands whole', () async {
+    final bytes = Uint8List(64 * 1024);
+    final adapter = FakeHttpAdapter({
+      '$_v2/tasks/1/attachments/2': _bytes(bytes),
+    });
+    final dio = Dio()
+      ..httpClientAdapter = BodyCapAdapter(adapter, defaultMaxBytes: 1024);
+
+    await _attachments(dio).download(1, 2, target: target);
+
+    expect(target.readAsBytesSync(), bytes);
+    expect(adapter.requests.single.extra, containsPair(maxBodyBytesKey, null));
+  });
+
   test('replaces a target that is there already', () async {
     target
       ..createSync(recursive: true)

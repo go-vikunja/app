@@ -62,6 +62,37 @@ void main() {
       expect(await relay.widgetLinks.initialLink(), widgetLink);
       expect(await relay.widgetLinks.initialLink(), isNull);
     });
+
+    test('is replaced by a task or widget link that arrives before it is '
+        'read, on either host', () async {
+      for (final (start, arrives) in [
+        (widgetLink, taskLink),
+        (taskLink, widgetLink),
+        (taskLink, identifierLink),
+      ]) {
+        final relay = DeepLinkRelay(defaultRouteName: () => '$start');
+        addTearDown(relay.dispose);
+
+        relay.accept(arrives);
+
+        expect(await relay.initialLink(), isNull, reason: '$start');
+        expect(await relay.widgetLinks.initialLink(), isNull, reason: '$start');
+      }
+    });
+
+    test(
+      'stays when a sign-in callback or another host arrives first',
+      () async {
+        final relay = DeepLinkRelay(defaultRouteName: () => '$taskLink');
+        addTearDown(relay.dispose);
+
+        relay
+          ..accept(oauthCallback)
+          ..accept(Uri.parse('$scheme://project/3'));
+
+        expect(await relay.initialLink(), taskLink);
+      },
+    );
   });
 
   group('links while the app runs', () {

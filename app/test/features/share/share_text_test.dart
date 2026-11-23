@@ -111,6 +111,22 @@ void main() {
       );
     });
 
+    test('a long run of brackets or punctuation after an address takes linear '
+        'time', () {
+      const link =
+          '<a target="_blank" rel="noopener noreferrer nofollow" '
+          'href="https://a.b/">https://a.b/</a>';
+      final brackets = ')' * 100000;
+      expect(sharedTextHtml('https://a.b/$brackets'), '<p>$link$brackets</p>');
+      final mixed = ').' * 50000;
+      expect(sharedTextHtml('https://a.b/$mixed'), '<p>$link$mixed</p>');
+      final dots = '.' * 100000;
+      expect(
+        sharedTextHtml('https://a.b/${dots}x'),
+        contains('href="https://a.b/${dots}x"'),
+      );
+    }, timeout: const Timeout(Duration(seconds: 20)));
+
     test('an address with a query keeps it, escaped in the attribute', () {
       expect(
         sharedTextHtml('https://example.org/?a=1&b="2"'),

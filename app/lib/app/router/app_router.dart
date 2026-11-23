@@ -243,8 +243,23 @@ abstract final class AppRoutes {
 @Riverpod(keepAlive: true)
 RootModalRoutes rootModalRoutes(Ref ref) => RootModalRoutes();
 
+/// Registers [_AppSchemeLinks] with the binding while it lives.
+@Riverpod(keepAlive: true)
+WidgetsBindingObserver appSchemeLinks(Ref ref) {
+  final links = _AppSchemeLinks(
+    (uri) => ref.read(deepLinkRelayProvider).accept(uri),
+  );
+  WidgetsBinding.instance.addObserver(links);
+  ref.onDispose(() => WidgetsBinding.instance.removeObserver(links));
+  return links;
+}
+
 @Riverpod(keepAlive: true)
 GoRouter appRouter(Ref ref) {
+  // Before the router exists: its own observer, which routes what the
+  // platform pushes, registers once the app subscribes to it, so this one
+  // is asked first.
+  ref.watch(appSchemeLinksProvider);
   final currentServer = ValueNotifier(ref.read(currentServerProvider));
   // Only what triggers a redirect; it reads the registry and the status
   // itself, because a listener notified before these may already route.
@@ -263,13 +278,6 @@ GoRouter appRouter(Ref ref) {
     ..onDispose(accounts.dispose)
     ..onDispose(syncStatus.dispose)
     ..onDispose(onboarded.dispose);
-
-  // Before the router exists: its own observer, which routes what the
-  // platform pushes, registers once the app subscribes to it, so this one
-  // is asked first.
-  final links = _AppSchemeLinks(ref.read(deepLinkRelayProvider).accept);
-  WidgetsBinding.instance.addObserver(links);
-  ref.onDispose(() => WidgetsBinding.instance.removeObserver(links));
 
   final rootNavigatorKey = GlobalKey<NavigatorState>();
   final commentEdits = _PushedTargets<CommentTarget>();

@@ -7,12 +7,15 @@ import 'package:vikunja_mobile/core/links/deep_link_source.dart';
 /// Whether [uri] is on the app's own scheme, which the router never routes.
 bool isAppSchemeUri(Uri uri) => uri.scheme.toLowerCase() == oauthCallbackScheme;
 
-/// The [DeepLinkSource] of the running app: the router hands every URI of
-/// the app's scheme the platform pushes to [accept], and the start link is
-/// read once from the platform's default route (Android passes the launch
-/// URI as the initial route). Only `task` links go on here and `widget`
-/// links through [widgetLinks]; a link that arrives before anyone listens
-/// waits for the first listener.
+/// The [DeepLinkSource] of the running app: every URI of the app's scheme
+/// the platform pushes goes to [accept] (through `appSchemeLinksProvider`,
+/// which the app's container registers first, and bootstrap's
+/// `EarlyPushedRoutes` before that), and the start link is read once from
+/// the platform's default route (Android passes the launch URI as the
+/// initial route). Only `task` links go on here and `widget` links through
+/// [widgetLinks]; a link that arrives before anyone listens waits for the
+/// first listener, and one that arrives before the start link is read
+/// replaces it.
 final class DeepLinkRelay implements DeepLinkSource {
   new({String Function()? defaultRouteName})
     : _defaultRouteName =
@@ -38,7 +41,12 @@ final class DeepLinkRelay implements DeepLinkSource {
   /// callback that arrived after its sign-in ended) is dropped.
   bool accept(Uri uri) {
     if (!isAppSchemeUri(uri)) return false;
-    for (final hostLinks in [_tasks, _widgets]) {
+    final hosts = [_tasks, _widgets];
+    if (!hosts.any((hostLinks) => hostLinks.takes(uri))) return true;
+    for (final hostLinks in hosts) {
+      // A listener reads the start link after taking the waiting links, so
+      // its older request would reach the opener last and win.
+      hostLinks.forgetStartLink();
       if (hostLinks.takes(uri)) hostLinks.add(uri);
     }
     return true;
@@ -73,6 +81,8 @@ final class _HostLinks implements DeepLinkSource {
   }
 
   bool takes(Uri uri) => uri.host.toLowerCase() == _host;
+
+  void forgetStartLink() => _initialRead = true;
 
   void add(Uri uri) {
     if (_links.hasListener) {

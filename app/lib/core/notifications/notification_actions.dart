@@ -43,7 +43,11 @@ final class NotificationPayload {
           _ => null,
         },
         occurrence: switch (fields['at']) {
-          final int at => DateTime.fromMillisecondsSinceEpoch(at, isUtc: true),
+          final int at
+              when at >= -_maxDateTimeMilliseconds &&
+                  at <= _maxDateTimeMilliseconds =>
+            DateTime.fromMillisecondsSinceEpoch(at, isUtc: true),
+          int() => throw FormatException('not an instant', json),
           _ => null,
         },
       );
@@ -83,3 +87,5 @@ final class NotificationPayload {
     'at': ?occurrence?.millisecondsSinceEpoch,
   });
 }
+
+const _maxDateTimeMilliseconds = 8640000000000000;

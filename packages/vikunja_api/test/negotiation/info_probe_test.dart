@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/src/negotiation/info_probe.dart';
+import 'package:vikunja_api/src/transport/body_cap_adapter.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 import '../helpers/fake_http_adapter.dart';
@@ -11,9 +12,10 @@ import '../helpers/fake_http_adapter.dart';
 /// Answers every request with [body] and records whether the probe closed
 /// the connection, which only a cancel does.
 final class _StreamingAdapter implements HttpClientAdapter {
-  new(this.body);
+  new(this.body, {this.declaredLength});
 
   final Stream<Uint8List> Function() body;
+  final int? declaredLength;
   bool closedByCaller = false;
   int sentBytes = 0;
 
@@ -32,6 +34,8 @@ final class _StreamingAdapter implements HttpClientAdapter {
       200,
       headers: {
         Headers.contentTypeHeader: ['text/html'],
+        if (declaredLength != null)
+          Headers.contentLengthHeader: ['$declaredLength'],
       },
     );
   }
@@ -103,6 +107,31 @@ void main() {
     },
     timeout: const Timeout(Duration(seconds: 10)),
   );
+
+  test('an answer that declares more than the transport cap is still read '
+      'up to the limit', () async {
+    final adapter = _StreamingAdapter(
+      () => _endless(64 * 1024),
+      declaredLength: defaultMaxBodyBytes + 1,
+    );
+    final dio = Dio()..httpClientAdapter = BodyCapAdapter(adapter);
+
+    final result = await probeInfo(
+      dio,
+      _root,
+      ApiVersion.v1,
+      timeout: const Duration(seconds: 2),
+    );
+
+    expect(
+      result,
+      isA<InfoAnswer>()
+          .having((a) => a.statusCode, 'statusCode', 200)
+          .having((a) => a.body.length, 'body length', maxProbeBodyBytes),
+    );
+    await pumpEventQueue();
+    expect(adapter.closedByCaller, isTrue);
+  }, timeout: const Timeout(Duration(seconds: 10)));
 
   test('a server that sends without end ends the probe after twice the '
       'timeout, as one that could not be reached in time', () async {

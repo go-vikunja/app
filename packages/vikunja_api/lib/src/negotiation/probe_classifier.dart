@@ -34,8 +34,10 @@ final _loginLikeTarget = RegExp(
   caseSensitive: false,
 );
 
+// Each start stops at the next '<', so a body of '<input' runs takes linear
+// time; the body comes before any trust in the server.
 final _passwordInput = RegExp(
-  r'''<input[^>]*type\s*=\s*["']?password''',
+  r'''<input[^<>]*type\s*=\s*["']?password''',
   caseSensitive: false,
 );
 
@@ -45,7 +47,9 @@ final _vikunjaWebApp = RegExp(
   caseSensitive: false,
 );
 
-final _trailingSlashes = RegExp(r'/+$');
+// Only a run's first slash starts a match, so a long run before the end of
+// a redirect target takes linear time.
+final _trailingSlashes = RegExp(r'(?<!/)/+$');
 
 /// Decides what the `/info` answers of both API versions at [root] mean.
 CandidateOutcome classifyProbes(

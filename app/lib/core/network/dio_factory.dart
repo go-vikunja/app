@@ -3,6 +3,8 @@ import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:logging/logging.dart';
 import 'package:native_dio_adapter/native_dio_adapter.dart';
+import 'package:vikunja_api/vikunja_api.dart'
+    show BodyCapAdapter, defaultMaxBodyBytes;
 import 'package:vikunja_mobile/core/network/network_profile_adapter.dart';
 import 'package:vikunja_mobile/core/network/network_profiles.dart';
 import 'package:vikunja_mobile/core/network/request_log_interceptor.dart';
@@ -12,7 +14,9 @@ final _log = Logger('DioFactory');
 const defaultConnectTimeout = Duration(seconds: 10);
 
 /// With [profiles], every request goes through the origin's connection
-/// profile, over [httpClientAdapter] or the platform adapter.
+/// profile, over [httpClientAdapter] or the platform adapter. Every answer
+/// is held to a body size, [defaultMaxBodyBytes] unless its request sets
+/// another ([BodyCapAdapter]).
 Dio createDio({
   required String userAgent,
   HttpClientAdapter? httpClientAdapter,
@@ -32,7 +36,7 @@ Dio createDio({
       // no caller follows one.
       followRedirects: false,
     ),
-  )..httpClientAdapter = _withProfiles(transport, profiles);
+  )..httpClientAdapter = BodyCapAdapter(_withProfiles(transport, profiles));
   if (logRequests) dio.interceptors.add(RequestLogInterceptor());
   return dio;
 }

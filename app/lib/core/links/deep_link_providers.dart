@@ -6,7 +6,8 @@ import 'package:vikunja_mobile/core/links/deep_link_source.dart';
 
 part 'deep_link_providers.g.dart';
 
-/// What the router feeds: it hands every pushed URI to `accept` first.
+/// What `appSchemeLinksProvider` hands every pushed URI to (`accept`); the
+/// router's redirect checks each location with it too.
 @Riverpod(keepAlive: true)
 DeepLinkRelay deepLinkRelay(Ref ref) {
   final relay = DeepLinkRelay();

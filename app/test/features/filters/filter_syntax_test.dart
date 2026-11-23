@@ -91,6 +91,23 @@ void main() {
       ]);
       expect(parts('just words'), isEmpty);
     });
+
+    test('a field starts where its word does, so a long word without an '
+        'operator takes linear time', () {
+      expect(parts('${'a' * 200000} && done = true'), [
+        ('&&', FilterSpanKind.join),
+        ('done', FilterSpanKind.field),
+        ('=', FilterSpanKind.operator),
+        ('true', FilterSpanKind.value),
+      ]);
+      for (final text in ['x.done = 1', 'ädone = 1']) {
+        expect(parts(text), [
+          ('done', FilterSpanKind.field),
+          ('=', FilterSpanKind.operator),
+          ('1', FilterSpanKind.value),
+        ], reason: text);
+      }
+    }, timeout: const Timeout(Duration(seconds: 20)));
   });
 
   group('filterCompletionContext', () {

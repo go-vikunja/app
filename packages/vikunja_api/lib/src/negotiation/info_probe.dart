@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
+import 'package:vikunja_api/src/transport/body_cap_adapter.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 
 sealed class InfoProbeResult;
@@ -68,7 +69,12 @@ const int maxProbeBodyBytes = 256 * 1024;
 
 Options _probeOptions(Duration timeout) => Options(
   headers: {'Accept': 'application/json'},
-  extra: {preConsentProbeKey: true},
+  extra: {
+    preConsentProbeKey: true,
+    // The probe cuts the body itself, so an answer that declares a huge one
+    // is still classified, not taken for no answer.
+    maxBodyBytesKey: null,
+  },
   connectTimeout: timeout,
   receiveTimeout: timeout,
   followRedirects: false,
