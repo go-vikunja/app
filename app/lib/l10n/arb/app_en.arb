@@ -9803,6 +9803,20 @@
       }
     }
   },
+  "tasksChangedPartly": "{changed, plural, one{{changed} of {total} tasks was changed; the change to the others could not be saved on this device.} other{{changed} of {total} tasks were changed; the change to the others could not be saved on this device.}}",
+  "@tasksChangedPartly": {
+    "description": "Snackbar with an Undo action when this device could store a change to only some of the selected tasks (its storage is full or failed), such as marking them as done, a due date, a priority or a move; Undo takes back the change to those it stored. changed is how many were changed, for example 2, and total how many were to be changed, for example 5; changed is always less than total. Worded like localChangeFailed.",
+    "placeholders": {
+      "changed": {
+        "type": "int",
+        "example": "2"
+      },
+      "total": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
   "tasksMovedToTrash": "{count, plural, one{{count} task moved to the trash} other{{count} tasks moved to the trash}}",
   "@tasksMovedToTrash": {
     "description": "Snackbar after the selected tasks were deleted on a server with the trash, with an Undo action; count is how many, for example 3.",
@@ -9820,6 +9834,20 @@
       "count": {
         "type": "int",
         "example": "3"
+      }
+    }
+  },
+  "tasksDeletedPartly": "{deleted, plural, one{{deleted} of {total} tasks was deleted; the change to the others could not be saved on this device.} other{{deleted} of {total} tasks were deleted; the change to the others could not be saved on this device.}}",
+  "@tasksDeletedPartly": {
+    "description": "Snackbar when this device could store the delete of only some of the selected tasks (its storage is full or failed); on a server with the trash it has an Undo action, which takes those deletes back. deleted is how many were deleted, for example 2, and total how many were to be deleted, for example 5; deleted is always less than total. Worded like localChangeFailed.",
+    "placeholders": {
+      "deleted": {
+        "type": "int",
+        "example": "2"
+      },
+      "total": {
+        "type": "int",
+        "example": "5"
       }
     }
   },
@@ -9866,6 +9894,44 @@
   "tasksDeleteDialogBodyTrashGuest": "{count, plural, one{{count} task moves to the trash, for everyone. It can be restored from there for 30 days.} other{{count} tasks move to the trash, for everyone. They can be restored from there for 30 days.}}",
   "@tasksDeleteDialogBodyTrashGuest": {
     "description": "Body of the question tasksDeleteDialogTitle on servers with the trash, for a link-share guest, who has no trash page; count is how many, for example 3.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksDeleteDialogBodyUnsent": "{count, plural, one{{count} task hasn't reached the server yet. It is deleted and won't be in the trash.} other{{count} tasks haven't reached the server yet. They are deleted and won't be in the trash.}}",
+  "@tasksDeleteDialogBodyUnsent": {
+    "description": "Body of the question tasksDeleteDialogTitle on servers with the trash, for signed-in users and guests, when every selected task was created on this device and hasn't reached the server yet, so none of them goes to the trash; count is how many, for example 3. Worded like taskDeleteDialogBodyUnsent.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "tasksDeleteDialogBodyPartlyUnsent": "{unsent, plural, one{{unsent} of the {count} tasks hasn't reached the server yet. It is deleted and won't be in the trash;} other{{unsent} of the {count} tasks haven't reached the server yet. They are deleted and won't be in the trash;}} {trashed, plural, one{{trashed} other task moves to the trash, for everyone.} other{{trashed} other tasks move to the trash, for everyone.}}",
+  "@tasksDeleteDialogBodyPartlyUnsent": {
+    "description": "Body of the question tasksDeleteDialogTitle on servers with the trash, for signed-in users and guests, when some of the selected tasks were created on this device and haven't reached the server yet: those don't go to the trash, the others do. unsent is how many haven't reached it, for example 1, count how many are deleted, for example 3, and trashed how many of them move to the trash, for example 2; unsent and trashed add up to count, and each is at least 1.",
+    "placeholders": {
+      "unsent": {
+        "type": "int",
+        "example": "1"
+      },
+      "count": {
+        "type": "int",
+        "example": "3"
+      },
+      "trashed": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "tasksDeleteDialogBodyUnconfirmed": "{count, plural, one{{count} task may not have reached the server yet. If it has, it moves to the trash, for everyone; if not, it is deleted and won't be in the trash.} other{{count} tasks may not all have reached the server yet. Those that have move to the trash, for everyone; the others are deleted and won't be in the trash.}}",
+  "@tasksDeleteDialogBodyUnconfirmed": {
+    "description": "Body of the question tasksDeleteDialogTitle on servers with the trash, for signed-in users and guests, when at least one selected task was created on this device and its create was sent without an answer (a timeout or a lost connection), so the server may have it; count is how many are deleted, for example 3. Like taskDeleteDialogBodyUnconfirmed, it promises the trash only for the tasks the server has.",
     "placeholders": {
       "count": {
         "type": "int",

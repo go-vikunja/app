@@ -328,6 +328,25 @@ void main() {
       expect(find.text(en.taskEditDiscardTitle), findsNothing);
     });
 
+    testWidgets('a title stored with whitespace around it is no change, and '
+        'a save of another field leaves it as the server has it', (
+      tester,
+    ) async {
+      data.tasks.all = [sampleTask(id: 3, title: ' Bare task\n')];
+      await openEditPage(tester, 3);
+      expect(saveEnabled(tester), isFalse);
+
+      await pressBack(tester);
+      expect(find.text(en.taskEditDiscardTitle), findsNothing);
+      expect(find.byType(TaskEditPage), findsNothing);
+
+      popped = routerOf(tester).push<bool>(AppRoutes.taskEdit(3));
+      await tester.pumpAndSettle();
+      await tapVisible(tester, find.text(en.priorityUrgent));
+      await save(tester);
+      expect(data.tasks.updates, [(3, const TaskChanges(priority: 4))]);
+    });
+
     testWidgets('back asks, Keep editing stays, Discard leaves unsaved', (
       tester,
     ) async {

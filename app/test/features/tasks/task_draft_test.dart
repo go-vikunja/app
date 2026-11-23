@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/features/tasks/application/repeat_editor.dart';
@@ -44,6 +46,39 @@ void main() {
   test('a title edited back to its value is no change', () {
     final draft = TaskDraft.fromTask(task).copyWith(title: 'Report ');
     expect(draft.diff(task).isEmpty, isTrue);
+  });
+
+  group('a title another client stored with whitespace around it', () {
+    for (final stored in [' Report ', 'Report\n', 'Re\nport']) {
+      test('${jsonEncode(stored)} untouched is no change and is not sent with '
+          'another field', () {
+        final original = task.copyWith(title: stored);
+        final draft = TaskDraft.fromTask(original);
+        expect(draft.diff(original).isEmpty, isTrue);
+        expect(
+          draft.copyWith(priority: TaskPriority.low).diff(original),
+          const TaskChanges(priority: 1),
+        );
+      });
+    }
+
+    test('cleaned up by the user, it goes trimmed', () {
+      final original = task.copyWith(title: ' Report ');
+      expect(
+        TaskDraft.fromTask(original).copyWith(title: 'Report').diff(original),
+        const TaskChanges(title: 'Report'),
+      );
+    });
+
+    test(
+      'a stored title over the limit keeps Save possible while untouched',
+      () {
+        final original = task.copyWith(title: '${'a' * 1200} ');
+        final draft = TaskDraft.fromTask(original);
+        expect(draft.titleFits(original), isTrue);
+        expect(draft.copyWith(title: 'a' * 1200).titleFits(original), isFalse);
+      },
+    );
   });
 
   test('dates are set or cleared and compared as instants', () {

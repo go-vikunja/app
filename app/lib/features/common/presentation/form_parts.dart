@@ -3,6 +3,21 @@ import 'dart:math' as math;
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
 
+/// Whether the sheet of [route] is still open; dragged shut while its form
+/// waited, it is closing or gone.
+bool sheetIsOpen(ModalRoute<Object?>? route) => route?.isActive ?? false;
+
+/// Closes the sheet of [route] with [result] while it is open. Once it is
+/// closing, a pop would close the page below.
+void closeSheet(ModalRoute<Object?>? route, [Object? result]) {
+  if (route == null || !route.isActive) return;
+  if (route.isCurrent) {
+    route.navigator?.pop(result);
+  } else {
+    route.navigator?.removeRoute(route, result);
+  }
+}
+
 /// Keeps a field within [maxLength] code points, as the server counts.
 /// Flutter's `LengthLimitingTextInputFormatter` counts characters as shown,
 /// and one emoji can be several code points. A text already over the limit,

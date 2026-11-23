@@ -667,6 +667,75 @@ void main() {
       expect(find.text('Guests'), findsOneWidget);
     });
 
+    group('the link form dragged shut while it creates', () {
+      late Completer<void> answer;
+
+      Future<void> createAndDragShut(WidgetTester tester) async {
+        answer = Completer();
+        await pumpSharePage(tester);
+        data.sharing.beforeCall = (call) async {
+          if (call.startsWith('createLinkShare')) await answer.future;
+        };
+        await scrollTo(tester, find.text(en.linkShareCreate));
+        await tester.tap(find.text(en.linkShareCreate));
+        await tester.pumpAndSettle();
+        await tester.tap(sheetText(en.linkShareFormSubmit));
+        await tester.pump();
+        // Past half its height closes it, with the closing still to run.
+        final height = tester.getSize(find.byType(LinkShareFormSheet)).height;
+        await tester.drag(
+          sheetText(en.linkShareFormTitle),
+          Offset(0, height * .7),
+        );
+        await tester.pump();
+        expect(find.byType(LinkShareFormSheet), findsOneWidget);
+      }
+
+      testWidgets('an answer during the closing shows the link over the '
+          'page, which stays open', (tester) async {
+        await createAndDragShut(tester);
+
+        answer.complete();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(LinkShareFormSheet), findsNothing);
+        expect(find.byType(LinkShareSheet), findsOneWidget);
+        expect(sheetText(en.linkShareCreated), findsOneWidget);
+        expect(find.byType(ProjectSharePage), findsOneWidget);
+      });
+
+      testWidgets('a refusal during the closing is a snackbar', (tester) async {
+        data.sharing.failures['createLinkShare'] = const NetworkFailure(
+          NetworkProblem.unreachable,
+        );
+        await createAndDragShut(tester);
+
+        answer.complete();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(LinkShareFormSheet), findsNothing);
+        expect(find.byType(ProjectSharePage), findsOneWidget);
+        expect(find.text(en.shareFailureOffline), findsOneWidget);
+      });
+
+      testWidgets('a refusal that leaves the list out of date during the '
+          'closing reads it again, and the page stays open', (tester) async {
+        data.sharing.failures['createLinkShare'] = const Forbidden();
+        await createAndDragShut(tester);
+
+        answer.complete();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(LinkShareFormSheet), findsNothing);
+        expect(find.byType(ProjectSharePage), findsOneWidget);
+        expect(find.text(en.shareFailureForbidden), findsOneWidget);
+        expect(
+          data.sharing.calls.where((call) => call == 'linkShares 1'),
+          hasLength(2),
+        );
+      });
+    });
+
     testWidgets('a session that ended is said so, not that it did not work', (
       tester,
     ) async {

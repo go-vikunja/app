@@ -752,6 +752,87 @@ void main() {
       expect(data.tasks.placements, isEmpty);
     });
 
+    group('a card a sync takes out of its column while held', () {
+      /// Holds 'Call Anna' over the gap between 'Fix bike' and 'Read book',
+      /// then [sync] runs.
+      Future<TestGesture> holdThenSync(
+        WidgetTester tester,
+        VoidCallback sync,
+      ) async {
+        final from = tester.getCenter(cardOf('Call Anna'));
+        final to = gapBelow(tester, 'Fix bike', below: 'Read book');
+        final gesture = await tester.startGesture(from);
+        await tester.pump(const Duration(milliseconds: 600));
+        for (var step = 1; step <= 6; step++) {
+          await gesture.moveTo(Offset.lerp(from, to, step / 6)!);
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        expect(tester.widget<BoardColumnView>(columnOf('Doing')).dropIndex, 1);
+        sync();
+        for (var i = 0; i < 3; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        return gesture;
+      }
+
+      void expectNoDrag(WidgetTester tester) {
+        for (final column in tester.widgetList<BoardColumnView>(
+          find.byType(BoardColumnView),
+        )) {
+          expect(column.draggedTaskId, isNull);
+          expect(column.dropIndex, isNull);
+        }
+      }
+
+      testWidgets('to another column is not dropped where the finger was', (
+        tester,
+      ) async {
+        await pumpBoard(tester);
+
+        final gesture = await holdThenSync(
+          tester,
+          () => storeBoard(
+            cards: {...snapshot, 2: (bucketId: 23, position: 600)},
+          ),
+        );
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(data.tasks.placements, isEmpty);
+        expect(cardsIn(tester, 'Doing'), ['Fix bike', 'Read book']);
+        expect(cardsIn(tester, 'Done'), ['Finished', 'Call Anna']);
+        expectNoDrag(tester);
+      });
+
+      testWidgets('as deleted ends the drag, also let go beside the board', (
+        tester,
+      ) async {
+        await pumpBoard(tester);
+
+        final gesture = await holdThenSync(tester, () {
+          data.tasks.all = [
+            for (final task in tasks())
+              if (task.id != 2) task,
+          ];
+          storeBoard(
+            cards: {
+              for (final MapEntry(:key, :value) in snapshot.entries)
+                if (key != 2) key: value,
+            },
+          );
+        });
+        expect(cardsIn(tester, 'To-Do'), ['Write report', 'Plan trip']);
+        expectNoDrag(tester);
+        await gesture.moveTo(const Offset(550, 20));
+        await tester.pump(const Duration(milliseconds: 16));
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(data.tasks.placements, isEmpty);
+        expectNoDrag(tester);
+      });
+    });
+
     testWidgets('into the done column the task is marked done', (tester) async {
       await pumpBoard(tester);
 

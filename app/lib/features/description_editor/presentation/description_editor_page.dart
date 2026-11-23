@@ -380,7 +380,8 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     _mentions.end();
     final bridge = ref.read(editorBridgeFactoryProvider)();
     final theme = editorThemeOf(context);
-    final links = _links = editorLinksOf(ref.read(activeLinkBasesProvider));
+    final bases = ref.read(activeLinkBasesProvider);
+    final links = _links = editorLinksOf(bases);
     final l10n = context.l10n;
     setState(() {
       _bridge = bridge;
@@ -396,7 +397,7 @@ class _DescriptionEditorPageState extends ConsumerState<DescriptionEditorPage> {
     _previews = switch (ref.read(attachmentImagesProvider)) {
       final images? => EditorImagePreviews(
         images: images,
-        apiRoot: Uri.parse(links.apiRoot),
+        roots: bases?.taskLinkBases ?? const [],
       ),
       null => null,
     };

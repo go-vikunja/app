@@ -142,6 +142,34 @@ void main() {
     expect(find.text(en.projectCreated), findsOneWidget);
   });
 
+  testWidgets('dragged shut, a refusal during the closing comes in a '
+      'snackbar', (tester) async {
+    final answer = Completer<void>();
+    data.projects.beforeCall = (_) => answer.future;
+    data.projects.failures['createProject'] = const DomainError(
+      412,
+      code: 3008,
+    );
+    await pumpProjects(tester);
+    await openSheet(tester);
+
+    await tester.enterText(titleField(), 'Launch');
+    await tester.pump();
+    await tester.tap(find.text(en.projectCreate));
+    await tester.pump();
+    // Past half its height closes it, with the closing still to run.
+    final height = tester.getSize(find.byType(NewProjectSheet)).height;
+    await tester.drag(find.text(en.projectNew).last, Offset(0, height * .7));
+    await tester.pump();
+    expect(find.byType(NewProjectSheet), findsOneWidget);
+
+    answer.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(NewProjectSheet), findsNothing);
+    expect(find.text(en.projectParentArchived), findsOneWidget);
+    expect(find.byType(ProjectTasksScreen), findsNothing);
+  });
+
   testWidgets('the title takes at most 250 code points, as the server counts '
       'them', (tester) async {
     await pumpProjects(tester);

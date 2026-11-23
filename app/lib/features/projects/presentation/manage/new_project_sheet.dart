@@ -100,6 +100,7 @@ class _NewProjectSheetState extends ConsumerState<NewProjectSheet> {
     if (repository == null || _creating) return;
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
+    final route = ModalRoute.of(context);
     final onCreated = widget.onCreated;
     setState(() {
       _creating = true;
@@ -113,13 +114,13 @@ class _NewProjectSheetState extends ConsumerState<NewProjectSheet> {
           hexColor: _hexColor,
         ),
       );
-      if (mounted) Navigator.of(context).pop();
+      closeSheet(route);
       onCreated(projectId);
     } on Object catch (error) {
       _log.warning('Creating a project failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
       final text = projectChangeFailureText(l10n, error, ProjectChange.create);
-      if (!mounted) {
+      if (!mounted || !sheetIsOpen(route)) {
         showFailureAfterClose(messenger, text);
         return;
       }

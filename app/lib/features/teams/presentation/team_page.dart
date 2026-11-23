@@ -198,13 +198,14 @@ class _TeamPageState extends ConsumerState<TeamPage>
     if (mounted) await _load();
   }
 
-  Future<void> _edit(Team team) async {
-    final l10n = context.l10n;
-    final saved = await showTeamEditSheet(context, team: team);
-    if (saved == null || !mounted) return;
-    setState(() => _team.value = saved);
-    _showMessage(l10n.teamSaved);
-    await _load();
+  Future<void> _edit(Team team) =>
+      showTeamEditSheet(context, team: team, onSaved: _saved);
+
+  void _saved(Team team) {
+    if (!mounted) return;
+    setState(() => _team.value = team);
+    _showMessage(context.l10n.teamSaved);
+    unawaited(_load());
   }
 
   Future<void> _editDescription(Team team) async {

@@ -362,7 +362,9 @@ class _SectionsState extends ConsumerState<_Sections> {
 
   List<ProjectTreeRow> _rows = const [];
   ProjectTreeMoves _moves = ProjectTreeMoves(const [], all: const []);
-  int? _held;
+
+  /// The held project and the parent it showed under when lifted.
+  ({int projectId, int parentId})? _held;
   Offset? _pointer;
   ({_TreeDrop drop, ProjectMovePlan plan})? _target;
   MoveProject? _sending;
@@ -376,6 +378,20 @@ class _SectionsState extends ConsumerState<_Sections> {
       _landed = false;
       _sending = null;
     }
+    if (_held == null) return;
+    // A sync may have moved or removed the held project; a removed row's
+    // draggable is unmounted, and the finger's moves no longer reach the
+    // tree. Otherwise rows may have shifted under the resting finger.
+    // Checked once the tree is rebuilt.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final held = _held;
+      if (!mounted || held == null) return;
+      if (_showsWhereLifted(held)) {
+        _followPointer();
+      } else {
+        _endDrag();
+      }
+    });
   }
 
   @override
@@ -515,7 +531,18 @@ class _SectionsState extends ConsumerState<_Sections> {
     };
   }
 
-  void _startDrag(int projectId) => setState(() => _held = projectId);
+  void _startDrag(int projectId) => setState(
+    () => _held = (
+      projectId: projectId,
+      parentId: _moves.shownParentOf(projectId),
+    ),
+  );
+
+  /// Whether the held project still shows under the parent it was lifted
+  /// from; a sync may have moved or removed it.
+  bool _showsWhereLifted(({int projectId, int parentId}) held) =>
+      _moves.shows(held.projectId) &&
+      _moves.shownParentOf(held.projectId) == held.parentId;
 
   void _endDrag() {
     _edgeScroller.stop();
@@ -534,7 +561,7 @@ class _SectionsState extends ConsumerState<_Sections> {
 
   void _followPointer() {
     final pointer = _pointer;
-    final held = _held;
+    final held = _held?.projectId;
     if (!mounted || pointer == null || held == null) return;
     final inside = _treeKey.currentContext;
     final list = inside
@@ -556,29 +583,24 @@ class _SectionsState extends ConsumerState<_Sections> {
       _Gap(parentId: final projectId) when projectId == held => null,
       final drop => drop,
     };
-    _setTarget(
-      drop == null
-          ? null
-          : (
-              drop: drop,
-              plan: switch (drop) {
-                _Gap(:final parentId, :final index) => _moves.plan(
-                  held,
-                  parentId: parentId,
-                  index: index,
-                ),
-                _Into(:final projectId) => _moves.plan(
-                  held,
-                  parentId: projectId,
-                  index: _moves
-                      .childrenOf(projectId)
-                      .where((project) => project.id != held)
-                      .length,
-                ),
-              },
-            ),
-    );
+    _setTarget(drop == null ? null : (drop: drop, plan: _planFor(drop, held)));
   }
+
+  ProjectMovePlan _planFor(_TreeDrop drop, int held) => switch (drop) {
+    _Gap(:final parentId, :final index) => _moves.plan(
+      held,
+      parentId: parentId,
+      index: index,
+    ),
+    _Into(:final projectId) => _moves.plan(
+      held,
+      parentId: projectId,
+      index: _moves
+          .childrenOf(projectId)
+          .where((project) => project.id != held)
+          .length,
+    ),
+  };
 
   void _setTarget(({_TreeDrop drop, ProjectMovePlan plan})? target) {
     if (target == _target) return;
@@ -657,11 +679,15 @@ class _SectionsState extends ConsumerState<_Sections> {
     );
   }
 
+  /// Planned again on the tree as it is now, which a sync may have changed
+  /// since the finger last moved.
   void _drop() {
-    final target = _target;
+    final held = _held;
+    final drop = _target?.drop;
     _endDrag();
-    switch (target) {
-      case (:final drop, plan: final MoveProject move):
+    if (held == null || drop == null || !_showsWhereLifted(held)) return;
+    switch (_planFor(drop, held.projectId)) {
+      case final MoveProject move:
         unawaited(
           _send(
             move,
@@ -669,7 +695,7 @@ class _SectionsState extends ConsumerState<_Sections> {
             expand: drop is _Into ? drop.projectId : null,
           ),
         );
-      case (drop: _, plan: ProjectMoveRefused(:final adminOnly)):
+      case ProjectMoveRefused(:final adminOnly):
         unawaited(HapticFeedback.heavyImpact());
         if (adminOnly) {
           ScaffoldMessenger.of(context)
@@ -678,7 +704,7 @@ class _SectionsState extends ConsumerState<_Sections> {
               SnackBar(content: Text(context.l10n.projectMoveAdminOnly)),
             );
         }
-      case _:
+      case ProjectStays():
         break;
     }
   }
@@ -766,6 +792,10 @@ class _SectionsState extends ConsumerState<_Sections> {
           onDragStarted: () => _startDrag(project.id),
           onDragUpdate: (details) => _dragMoved(details.globalPosition),
           onDragEnd: (_) => _endDrag(),
+          // Unlike onDragEnd, also called once the draggable is unmounted.
+          onDraggableCanceled: (_, _) {
+            if (mounted) _endDrag();
+          },
           child: LiftableRow(child: projectRow),
         ),
       ),
@@ -873,7 +903,7 @@ class _SectionsState extends ConsumerState<_Sections> {
         _NewSavedFilterRow(onTap: onCreateSavedFilter),
     ];
     final heldRows = {
-      ..._subtreeRows(_held),
+      ..._subtreeRows(_held?.projectId),
       ..._subtreeRows(sending?.projectId),
     };
     // Keeps the column's offset across a tab switch, but not into another

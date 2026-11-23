@@ -53,3 +53,19 @@ export function parseAttachmentUrl(url, apiRoot) {
   if (root === undefined || root !== apiRoot) return null
   return {taskId: Number(task), attachmentId: Number(attachment)}
 }
+
+// The roots an attachment image of the account may be under: the API root
+// and each base. The web writes the images it inserts under the address it
+// runs at, which need not be the one the editor writes under.
+export function attachmentRoots(apiRoot, bases) {
+  const roots = [apiRoot]
+  for (const base of Array.isArray(bases) ? bases : []) {
+    const root = normalizeApiRoot(base)
+    if (root !== '' && !roots.includes(root)) roots.push(root)
+  }
+  return roots
+}
+
+export function isAttachmentUrl(url, roots) {
+  return roots.some(root => parseAttachmentUrl(url, root) !== null)
+}

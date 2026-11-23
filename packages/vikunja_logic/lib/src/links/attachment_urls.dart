@@ -27,22 +27,25 @@ final _apiSuffix = RegExp(r'/api/v[12]$');
 
 /// The attachment an inline image points at: the web's
 /// `^(.*?)(?:/api/v[12])?/tasks/(\d+)/attachments/(\d+)$` on [src], where
-/// the captured prefix must be the server's own: [apiRoot] without any
-/// `/api/vN` and trailing slash, compared after normalising scheme and host
-/// case and default ports, and an empty prefix (a relative src) means this
-/// server, as does a root-relative prefix equal to the root's sub-path.
+/// the captured prefix must be one of the account's own [roots] (the
+/// server root and `/info`'s `frontend_url`, under which the web writes the
+/// images it inserts): a root without any `/api/vN` and trailing slash,
+/// compared after normalising scheme and host case and default ports. An
+/// empty prefix (a relative src) means this server, as does a root-relative
+/// prefix equal to a root's sub-path.
 /// Anchored at both ends: a query, a fragment or a trailing slash is a
 /// plain image. A src of another host, another API version or a prefix
 /// that differs is null; so are non-numeric ids and ids beyond 64 bits.
 /// Leading zeros are accepted (`0012` is 12). Surrounding whitespace is
 /// ignored, like a browser does for `src`.
-AttachmentRef? parseAttachmentUrl(String src, {required Uri apiRoot}) {
+AttachmentRef? parseAttachmentUrl(String src, {required Iterable<Uri> roots}) {
   final match = _attachmentUrl.firstMatch(src.trim());
   if (match == null) return null;
   final taskId = int.tryParse(match[2]!);
   final attachmentId = int.tryParse(match[3]!);
   if (taskId == null || attachmentId == null) return null;
-  if (!_isOwnPrefix(match[1]!, apiRoot)) return null;
+  final prefix = match[1]!;
+  if (!roots.any((root) => _isOwnPrefix(prefix, root))) return null;
   return AttachmentRef(taskId: taskId, attachmentId: attachmentId);
 }
 

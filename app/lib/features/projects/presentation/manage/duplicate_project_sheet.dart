@@ -93,6 +93,7 @@ class _DuplicateProjectSheetState extends ConsumerState<DuplicateProjectSheet> {
     if (repository == null || _duplicating) return;
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
+    final route = ModalRoute.of(context);
     final onDuplicated = widget.onDuplicated;
     setState(() {
       _duplicating = true;
@@ -104,7 +105,7 @@ class _DuplicateProjectSheetState extends ConsumerState<DuplicateProjectSheet> {
         parentProjectId: _parentId,
         copyShares: _copyShares,
       );
-      if (mounted) Navigator.of(context).pop();
+      closeSheet(route);
       onDuplicated(copyId);
     } on Object catch (error) {
       _log.warning('Duplicating a project failed: ${error.runtimeType}');
@@ -114,7 +115,7 @@ class _DuplicateProjectSheetState extends ConsumerState<DuplicateProjectSheet> {
         error,
         ProjectChange.duplicate,
       );
-      if (!mounted) {
+      if (!mounted || !sheetIsOpen(route)) {
         showFailureAfterClose(messenger, text);
         return;
       }

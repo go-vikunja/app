@@ -783,6 +783,36 @@ void main() {
       expect(find.text(en.projectParentArchived), findsOneWidget);
       expect(find.widgetWithText(AppBar, 'Reports'), findsOneWidget);
     });
+
+    testWidgets('a refusal during the closing comes in a snackbar', (
+      tester,
+    ) async {
+      final answer = Completer<void>();
+      data.projects.beforeCall = (_) => answer.future;
+      data.projects.failures['duplicateProject'] = const DomainError(
+        412,
+        code: 3008,
+      );
+      await pumpProject(tester, 3);
+
+      await choose(tester, en.projectDuplicate);
+      await tester.tap(find.text(en.projectDuplicate));
+      await tester.pump();
+      // Past half its height closes it, with the closing still to run.
+      final height = tester.getSize(find.byType(DuplicateProjectSheet)).height;
+      await tester.drag(
+        find.text(en.projectDuplicateTitle),
+        Offset(0, height * .7),
+      );
+      await tester.pump();
+      expect(find.byType(DuplicateProjectSheet), findsOneWidget);
+
+      answer.complete();
+      await tester.pumpAndSettle();
+      expect(find.byType(DuplicateProjectSheet), findsNothing);
+      expect(find.text(en.projectParentArchived), findsOneWidget);
+      expect(find.widgetWithText(AppBar, 'Reports'), findsOneWidget);
+    });
   });
 
   testWidgets('on iOS the questions are Cupertino alerts and the sheets '

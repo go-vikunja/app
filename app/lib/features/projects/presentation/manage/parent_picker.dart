@@ -8,8 +8,9 @@ import 'package:vikunja_mobile/features/projects/application/project_tree.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
 /// The parent for a new or moved project: 0 for the top level, null when
-/// dismissed. Leaves out archived projects and, with [movedProjectId], that
-/// project and its subprojects, which the server refuses as parents.
+/// dismissed. Leaves out archived projects and those below one and, with
+/// [movedProjectId], that project and its subprojects, which the server
+/// refuses as parents.
 Future<int?> pickParentProject(
   BuildContext context, {
   required List<Project> projects,

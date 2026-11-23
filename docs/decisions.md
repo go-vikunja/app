@@ -379,7 +379,7 @@ Limits:
 - **Lists come from the local database through the device's filter engine,** so a change shows at once, offline too. Positions come from per-view snapshots that a list downloads when it opens (older than 5 min) or on pull, never in the sync (why: positions are per view and never bump `updated`).
 - **The subtask tree follows the web's of 2.8.0 on every server** (owner): rows at depths 0 to 5, a task expanded only where it first appears.
 - **Show done,** an app addition, shows a `done = false` view's done tasks in a Done part, per view and off by default.
-- **Upcoming pins every overdue open task in an Overdue part,** on by default (why: what is late shows at a glance; the web drops the lower bound).
+- **Upcoming pins every overdue open task in an Overdue part,** on by default (why: what is late shows at a glance; the web drops the lower bound). A custom range of days starts at its first day's midnight, where the presets keep the web's exclusive bounds (why: a task due at 00:00 of the first chosen day belongs to it).
 - **A saved filter's own list shows the done tasks it matches** unless its text says `done = false`, as on the web (why: the web writes "Show done tasks" into the filter text). It shows at most the 100 most recently done (why: a filter can match a whole history, and loading it on every change makes the list stutter).
 - **The filter engine** (`vikunja_logic`) implements the server's grammar, translated from the server's fexpr reader (BSD 3-Clause) and go-datemath (ISC), with notices in `packages/vikunja_logic/THIRD_PARTY_NOTICES.md`.
   - Filters the server answers with a 500 are refused with 4019. A filter the engine refuses, or one naming `bucket_id`, falls back to the server's list, with a notice.

@@ -35,7 +35,8 @@ RichDocument buildRichDocument(
   final context = _ParseContext(
     _Rules(taskLinkBases: taskLinkBases, offsets: _SourceOffsets(html, source)),
   )..addAll(body, const []);
-  return _Converter(apiRoot).document(context.finish(), truncated: !complete);
+  return _Converter([apiRoot, ...taskLinkBases])
+      .document(context.finish(), truncated: !complete);
 }
 
 // Never visited: ProseMirror's ignored tags plus everything that embeds,
@@ -1067,9 +1068,9 @@ int? _attributeStart(String tag, String name) {
 }
 
 final class _Converter {
-  new(this._apiRoot);
+  new(this._attachmentRoots);
 
-  final Uri _apiRoot;
+  final List<Uri> _attachmentRoots;
 
   /// At least one block, like ProseMirror's `block+`, also when every
   /// block was an image that is dropped here.
@@ -1151,7 +1152,7 @@ final class _Converter {
   RichImage? _image(_Attrs attrs) {
     final attachment = parseAttachmentUrl(
       attrs.dataSrc ?? attrs.src,
-      apiRoot: _apiRoot,
+      roots: _attachmentRoots,
     );
     final RichImageSource source;
     if (attachment != null) {

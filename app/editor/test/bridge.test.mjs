@@ -462,6 +462,26 @@ describe('images', () => {
     assert.equal(posted.some(message => message.type === 'error'), false)
   })
 
+  test("an image under the account's other root gets its preview too, and its HTML stays as it came", async () => {
+    const twoRoots = {taskLinkBases: ['https://api.example.org/vikunja/', 'https://tasks.example.org/sub/'], apiRoot: 'https://tasks.example.org/sub'}
+    const server = 'https://api.example.org/vikunja/api/v1/tasks/3/attachments/9'
+    const web = 'https://tasks.example.org/sub/api/v2/tasks/3/attachments/8'
+    const elsewhere = 'https://evil.example/vikunja/api/v1/tasks/3/attachments/7'
+    const stored = `<img src="${server}"><img data-src="${web}" src="#" id="tiptap-image-3-8"><img src="${elsewhere}"><p>a</p>`
+    const editor = await open(stored, {links: twoRoots})
+    await tick(80)
+    assert.deepEqual(posted.filter(message => message.type === 'images').map(message => message.urls), [[server, web]])
+
+    send({type: 'imagePreviews', previews: {[server]: pixel, [web]: pixel, [elsewhere]: pixel}})
+    assert.equal(editor.view.dom.querySelectorAll('.image-preview img').length, 2)
+    assert.equal(editor.view.dom.querySelectorAll('.image-placeholder').length, 1)
+    assert.equal(await html(), stored)
+    assert.equal((await latestState()).dirty, false)
+
+    command('insertImage', {src: server})
+    assert.equal(editor.getHTML(), stored)
+  })
+
   test('a shown image without an alt text is named with the shown label, not the placeholder one', async () => {
     const editor = await open(`<img data-src="${src}" src="#">`, {l10n: {image: 'Image (not shown while editing)', imageShown: 'Image'}})
     send({type: 'imagePreviews', previews: {[src]: pixel}})

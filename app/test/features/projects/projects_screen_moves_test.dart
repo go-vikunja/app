@@ -523,6 +523,108 @@ void main() {
         anyOf(isNull, isEmpty),
       );
     });
+
+    group('a project a sync changes while held', () {
+      /// Holds Garden above [over], then a sync stores [projects].
+      Future<TestGesture> holdThenSync(
+        WidgetTester tester,
+        List<Project> projects, {
+        String over = 'Home',
+      }) async {
+        final from = tester.getCenter(rowOf('Garden'));
+        final to = nearTop(tester, over);
+        final gesture = await tester.startGesture(from);
+        await tester.pump(const Duration(milliseconds: 600));
+        for (var step = 1; step <= 6; step++) {
+          await gesture.moveTo(Offset.lerp(from, to, step / 6)!);
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        expect(find.byType(DropLine), findsOne);
+        data.projects.all = projects;
+        for (var i = 0; i < 3; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        return gesture;
+      }
+
+      testWidgets('is dropped on the tree as it is now', (tester) async {
+        await pumpProjects(tester);
+
+        final gesture = await holdThenSync(tester, [
+          for (final project in tree())
+            if (project.id == 2) project.copyWith(position: 40) else project,
+        ]);
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(data.projects.moves, [
+          (projectId: 7, position: 20.0, parentProjectId: 0),
+        ]);
+        expect(treeRows(tester).take(2), [('Garden', 0), ('Home', 0)]);
+      });
+
+      testWidgets('rows shifted under the finger move the line and the '
+          'drop to the row now under it', (tester) async {
+        await pumpProjects(tester);
+
+        final gesture = await holdThenSync(tester, [
+          for (final project in tree())
+            if (project.id != 2) project,
+        ], over: 'Reports');
+        expect(treeRows(tester)[3], ('Q1', 2));
+        expect(slotOf(tester, 5).lineAbove, ProjectRow.indentOf(2));
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(data.projects.moves.single.parentProjectId, 3);
+        expect(treeRows(tester).skip(2).take(3), [
+          ('Reports', 1),
+          ('Garden', 2),
+          ('Q1', 2),
+        ]);
+      });
+
+      testWidgets('moved under another project is not dropped where the '
+          'finger was', (tester) async {
+        await pumpProjects(tester);
+
+        final gesture = await holdThenSync(tester, [
+          for (final project in tree())
+            if (project.id == 7)
+              project.copyWith(parentProjectId: 1)
+            else
+              project,
+        ]);
+        expect(find.byType(DropLine), findsNothing);
+        await gesture.up();
+        await tester.pumpAndSettle();
+
+        expect(data.projects.moves, isEmpty);
+        expect(treeRows(tester).last, ('Garden', 1));
+      });
+
+      testWidgets('removed ends the drag, also let go beside the tree', (
+        tester,
+      ) async {
+        await pumpProjects(tester);
+
+        final gesture = await holdThenSync(tester, [
+          for (final project in tree())
+            if (project.id != 7) project,
+        ]);
+        expect(find.byType(DropLine), findsNothing);
+        await gesture.moveTo(const Offset(200, 10));
+        await tester.pump(const Duration(milliseconds: 16));
+        await gesture.up();
+        await tester.pumpAndSettle();
+        data.projects.all = tree();
+        await tester.pumpAndSettle();
+
+        expect(data.projects.moves, isEmpty);
+        expect(slotOf(tester, 7).held, isFalse);
+        expect(find.byType(DropLine), findsNothing);
+      });
+    });
   });
 
   group('while a move is on its way', () {

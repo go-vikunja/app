@@ -326,6 +326,70 @@ void main() {
       expect(find.text('Design team'), findsWidgets);
     });
 
+    group('the edit sheet dragged shut while it saves', () {
+      late Completer<void> answer;
+
+      Future<void> saveAndDragShut(WidgetTester tester) async {
+        answer = Completer();
+        harness.teams.beforeCall = (call) async {
+          if (call.startsWith('update')) await answer.future;
+        };
+        await openTeam(tester);
+        await tester.tap(find.byTooltip(en.teamEdit));
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.widgetWithText(TextField, en.teamNameLabel),
+          'Design team',
+        );
+        await tester.pump();
+        await tester.tap(find.widgetWithText(TextButton, en.teamSave));
+        await tester.pump();
+        // Past half its height closes it, with the closing still to run.
+        final height = tester.getSize(find.byType(TeamEditSheet)).height;
+        await tester.drag(find.text(en.teamEdit).last, Offset(0, height * .7));
+        await tester.pump();
+      }
+
+      testWidgets('still shows the team as stored', (tester) async {
+        await saveAndDragShut(tester);
+        await tester.pumpAndSettle();
+        expect(find.byType(TeamEditSheet), findsNothing);
+
+        answer.complete();
+        await tester.pumpAndSettle();
+
+        expect(currentLocation(tester), AppRoutes.team(5));
+        expect(find.text(en.teamSaved), findsOneWidget);
+        expect(find.text('Design team'), findsWidgets);
+      });
+
+      testWidgets('an answer during the closing leaves the page open', (
+        tester,
+      ) async {
+        await saveAndDragShut(tester);
+        expect(find.byType(TeamEditSheet), findsOneWidget);
+
+        answer.complete();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(TeamEditSheet), findsNothing);
+        expect(currentLocation(tester), AppRoutes.team(5));
+        expect(find.text(en.teamSaved), findsOneWidget);
+      });
+
+      testWidgets('a refusal is a snackbar', (tester) async {
+        harness.teams.failures['update'] = const Forbidden();
+        await saveAndDragShut(tester);
+        await tester.pumpAndSettle();
+
+        answer.complete();
+        await tester.pumpAndSettle();
+
+        expect(currentLocation(tester), AppRoutes.team(5));
+        expect(find.text(en.teamForbidden), findsOneWidget);
+      });
+    });
+
     testWidgets('the description opens the editor with the team and is '
         'saved online; an emptied one is written as the empty paragraph', (
       tester,

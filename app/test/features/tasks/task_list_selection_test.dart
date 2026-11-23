@@ -2,6 +2,7 @@ import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/outbox/task_deletion.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_selection.dart';
 
@@ -550,6 +551,14 @@ void main() {
       await select(tester, ['Not sent yet', 'Write report']);
 
       await act(tester, en.selectionDelete);
+      expect(
+        find.text(en.tasksDeleteDialogBodyPartlyUnsent(1, 2, 1)),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('; 1 other task moves to the trash'),
+        findsOneWidget,
+      );
       await tester.tap(find.text(en.taskDeleteDialogConfirm).last);
       await tester.pumpAndSettle();
       expect(find.text(en.tasksDeleted(2)), findsOneWidget);
@@ -562,6 +571,126 @@ void main() {
         'restore 5',
         'restore -1',
       ]);
+    });
+
+    testWidgets('Delete promises the trash only for the tasks surely on the '
+        'server, as the task sheet decides', (tester) async {
+      data.tasks.all = [
+        ...data.tasks.all,
+        sampleTask(
+          id: -1,
+          title: 'Not sent yet',
+          due: DateTime(2026, 10, 14, 9),
+        ),
+      ];
+      await pumpOverview(tester, connection: fullServer280());
+      await select(tester, ['Not sent yet', 'Write report']);
+
+      Future<void> expectBody(String body) async {
+        await act(tester, en.selectionDelete);
+        expect(find.text(body), findsOneWidget);
+        await tester.tap(find.text(en.taskDeleteDialogCancel));
+        await tester.pumpAndSettle();
+      }
+
+      await expectBody(en.tasksDeleteDialogBodyPartlyUnsent(1, 2, 1));
+      data.tasks.onServer[-1] = TaskOnServer.maybe;
+      await expectBody(en.tasksDeleteDialogBodyUnconfirmed(2));
+      data.tasks.onServer.remove(-1);
+      data.tasks.onServerFailure = StateError('unreadable');
+      await expectBody(en.tasksDeleteDialogBodyUnconfirmed(2));
+      data.tasks.onServerFailure = null;
+      data.tasks.onServer[-1] = TaskOnServer.yes;
+      await expectBody(en.tasksDeleteDialogBodyTrash(2));
+      data.tasks.onServer.remove(-1);
+      await tester.tap(find.text('Write report'));
+      await tester.pumpAndSettle();
+      await expectBody(en.tasksDeleteDialogBodyUnsent(1));
+
+      expect(data.tasks.writes, isEmpty);
+    });
+
+    testWidgets('a task created on this device stays selected once its '
+        'create is answered and it takes its server id', (tester) async {
+      data.tasks.all = [
+        ...data.tasks.all,
+        sampleTask(
+          id: -1,
+          title: 'Not sent yet',
+          due: DateTime(2026, 10, 14, 9),
+        ),
+      ];
+      await pumpOverview(tester);
+      await select(tester, ['Not sent yet', 'Write report']);
+      expect(find.text(en.selectionCount(2)), findsOneWidget);
+
+      data.tasks.remapTask(-1, 77);
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.selectionCount(2)), findsOneWidget);
+      await act(tester, en.selectionMarkDone);
+      expect(data.tasks.writes, ['setDone 5 true', 'setDone 77 true']);
+    });
+
+    testWidgets('an action this device stores only partly says so and '
+        'offers Undo for the tasks it changed', (tester) async {
+      var writes = 0;
+      data.tasks.beforeWrite = () async {
+        if (++writes == 2) throw StateError('disk full');
+      };
+      await pumpOverview(tester);
+      await select(tester, ['Call mum', 'Write report']);
+
+      await act(tester, en.selectionMarkDone);
+
+      expect(data.tasks.find(3)!.done, isTrue);
+      expect(data.tasks.find(5)!.done, isFalse);
+      expect(find.text(en.tasksChangedPartly(1, 2)), findsOneWidget);
+      expect(find.text(en.tasksMarkedDone(1)), findsNothing);
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+      expect(data.tasks.writes.skip(2), ['undoDone 3']);
+      expect(data.tasks.find(3)!.done, isFalse);
+    });
+
+    testWidgets('a delete this device stores only partly keeps saying so: '
+        'with Undo on a server with the trash', (tester) async {
+      var writes = 0;
+      data.tasks.beforeWrite = () async {
+        if (++writes == 2) throw StateError('disk full');
+      };
+      await pumpOverview(tester, connection: fullServer280());
+      await select(tester, ['Call mum', 'Write report']);
+
+      await act(tester, en.selectionDelete);
+      await tester.tap(find.text(en.taskDeleteDialogConfirm).last);
+      await tester.pumpAndSettle();
+
+      expect(data.tasks.find(3), isNull);
+      expect(data.tasks.find(5), isNotNull);
+      expect(find.text(en.tasksDeletedPartly(1, 2)), findsOneWidget);
+      expect(find.text(en.tasksMovedToTrash(1)), findsNothing);
+      await tester.tap(find.text(en.undo));
+      await tester.pumpAndSettle();
+      expect(data.tasks.writes.skip(2), ['restore 3']);
+    });
+
+    testWidgets('a delete this device stores only partly keeps saying so: '
+        'without Undo on a server without the trash', (tester) async {
+      var writes = 0;
+      data.tasks.beforeWrite = () async {
+        if (++writes == 2) throw StateError('disk full');
+      };
+      await pumpOverview(tester);
+      await select(tester, ['Call mum', 'Write report']);
+
+      await act(tester, en.selectionDelete);
+      await tester.tap(find.text(en.taskDeleteDialogConfirm).last);
+      await tester.pumpAndSettle();
+
+      expect(find.text(en.tasksDeletedPartly(1, 2)), findsOneWidget);
+      expect(find.text(en.tasksDeleted(1)), findsNothing);
+      expect(find.text(en.undo), findsNothing);
     });
 
     testWidgets('Delete without the trash says they are deleted, without '

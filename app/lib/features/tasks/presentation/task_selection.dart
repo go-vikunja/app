@@ -7,6 +7,7 @@ import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/app/layout/readable_app_bar.dart';
 import 'package:vikunja_mobile/app/layout/readable_width.dart';
+import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/bulk_task_actions.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
@@ -19,10 +20,12 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 /// it. Only tasks the user may change can be selected, which the list
 /// decides ([rowSelection]); the count and the actions take only the
 /// selected tasks the list shows, so one it hides meanwhile is left out
-/// until it shows again.
+/// until it shows again. A task created on this device stays selected when
+/// its create is answered and it takes its server id.
 mixin TaskSelectionActions<W extends ConsumerStatefulWidget>
     on ConsumerState<W> {
   Set<int>? _selected;
+  final _following = <int, StreamSubscription<Task?>>{};
 
   bool get selecting => _selected != null;
 
@@ -31,13 +34,60 @@ mixin TaskSelectionActions<W extends ConsumerStatefulWidget>
     // bar at the bottom: under a screen reader until it is dismissed.
     ScaffoldMessenger.maybeOf(context)?.hideCurrentSnackBar();
     setState(() => _selected = {?task?.id});
+    _followTemporaryIds();
     Announcer.of(context).say(context.l10n.selectionStarted);
   }
 
   void endSelection() {
     if (_selected == null) return;
     setState(() => _selected = null);
+    _followTemporaryIds();
     Announcer.of(context).say(context.l10n.selectionEnded);
+  }
+
+  /// Watches each selected temporary id, as the list's row of it does,
+  /// and swaps in the server id once the task has one.
+  void _followTemporaryIds() {
+    final selected = _selected ?? const <int>{};
+    for (final id in [..._following.keys]) {
+      if (!selected.contains(id)) unawaited(_following.remove(id)!.cancel());
+    }
+    final temporary = [
+      for (final id in selected)
+        if (id < 0 && !_following.containsKey(id)) id,
+    ];
+    if (temporary.isEmpty) return;
+    final repository = ref.read(taskRepositoryProvider);
+    if (repository == null) return;
+    for (final id in temporary) {
+      _following[id] = repository
+          .watchTask(id)
+          .listen(
+            (latest) {
+              if (latest == null || latest.id == id || !mounted) return;
+              final selected = _selected;
+              if (selected == null || !selected.contains(id)) return;
+              setState(() {
+                selected
+                  ..remove(id)
+                  ..add(latest.id);
+              });
+              _followTemporaryIds();
+            },
+            // Without the server id the task drops out of the selection
+            // once the list no longer shows its temporary id.
+            onError: (Object _) {},
+            cancelOnError: true,
+          );
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final subscription in _following.values) {
+      unawaited(subscription.cancel());
+    }
+    super.dispose();
   }
 
   /// The selected ones of [shown], in their order.
@@ -58,13 +108,16 @@ mixin TaskSelectionActions<W extends ConsumerStatefulWidget>
     return TaskRowSelection(
       selected: changeable && selected.contains(task.id),
       onChanged: changeable
-          ? (on) => setState(() {
-              if (on) {
-                selected.add(task.id);
-              } else {
-                selected.remove(task.id);
-              }
-            })
+          ? (on) {
+              setState(() {
+                if (on) {
+                  selected.add(task.id);
+                } else {
+                  selected.remove(task.id);
+                }
+              });
+              _followTemporaryIds();
+            }
           : null,
     );
   }
@@ -81,6 +134,7 @@ mixin TaskSelectionActions<W extends ConsumerStatefulWidget>
         selected.addAll(ids);
       }
     });
+    _followTemporaryIds();
   }
 
   /// Runs a bulk [action] on [tasks]; selecting ends once it wrote.

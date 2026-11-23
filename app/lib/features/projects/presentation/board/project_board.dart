@@ -155,6 +155,18 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
   }
 
   @override
+  void didUpdateWidget(ProjectBoard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final drag = _dragging;
+    if (drag == null || _heldTask(drag) != null) return;
+    // A sync took the card out of its column, which unmounts its draggable:
+    // the finger's moves no longer reach the board.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (identical(_dragging, drag)) _endDrag();
+    });
+  }
+
+  @override
   void dispose() {
     _stopAutoScroll();
     _horizontal.dispose();
@@ -174,6 +186,15 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
 
   BoardColumn? _columnOf(int bucketId) =>
       _columns.where((column) => column.bucket.id == bucketId).firstOrNull;
+
+  /// The held card as its column shows it now; null once a sync took it
+  /// out of the column it was lifted from.
+  Task? _heldTask(_CardDrag drag) => _board
+      .where((column) => column.bucket.id == drag.bucketId)
+      .firstOrNull
+      ?.tasks
+      .where((task) => task.id == drag.task.id)
+      .firstOrNull;
 
   void _refuseFullColumn() {
     unawaited(HapticFeedback.heavyImpact());
@@ -407,12 +428,13 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
     final target = _dropTarget;
     _endDrag(droppedOn: target?.bucketId);
     final column = target == null ? null : _columnOf(target.bucketId);
-    if (target == null || column == null) return;
+    final held = _heldTask(drag);
+    if (target == null || column == null || held == null) return;
     final l10n = context.l10n;
     if (target.bucketId != drag.bucketId) {
       unawaited(
         _move(
-          drag.task,
+          held,
           toBucketId: target.bucketId,
           index: target.index,
           moved: l10n.boardMovedTo(columnNamesOf(_columns)[target.bucketId]!),
@@ -427,7 +449,7 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
         : target.index;
     unawaited(
       _move(
-        drag.task,
+        held,
         toBucketId: target.bucketId,
         index: index,
         moved: index < from ? l10n.movedUp : l10n.movedDown,
@@ -795,6 +817,10 @@ class _ProjectBoardState extends ConsumerState<ProjectBoard> {
       onDragStarted: () => _startDrag(task, column.bucket.id),
       onDragUpdate: (details) => _dragMoved(details.globalPosition),
       onDragEnd: (_) => _endDrag(),
+      // Unlike onDragEnd, also called once the draggable is unmounted.
+      onDraggableCanceled: (_, _) {
+        if (mounted) _endDrag();
+      },
       child: card,
     );
   }

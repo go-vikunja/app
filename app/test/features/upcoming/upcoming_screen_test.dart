@@ -257,6 +257,51 @@ void main() {
     ]);
   });
 
+  testWidgets('a custom range shows a task due at midnight of its first day; '
+      'Tomorrow leaves it out, as the web does', (tester) async {
+    data.tasks.all = [
+      ...data.tasks.all,
+      sampleTask(id: 10, title: 'At midnight', due: DateTime(2026, 10, 14)),
+    ];
+    data.listPreferences.setUpcoming(
+      UpcomingPreferences(
+        preset: null,
+        customFrom: DateTime(2026, 10, 14),
+        customTo: DateTime(2026, 10, 16),
+      ),
+    );
+    await pumpUpcoming(tester);
+
+    expect(
+      find.text(
+        en.upcomingSubtitle(en.upcomingRangeCustom, 'Oct 14 – Oct 16', 3),
+      ),
+      findsOneWidget,
+    );
+    expect(sectionTitles(tester), [
+      en.sectionOverdue,
+      en.sectionTomorrow,
+      'Fri, Oct 16',
+    ]);
+    expect(rowTitles(tester), [
+      'Pay the bill',
+      'Earlier today',
+      'At midnight',
+      'Water plants',
+      'Write report',
+    ]);
+
+    data.listPreferences.setUpcoming(
+      const UpcomingPreferences(preset: DateRangePreset.tomorrow),
+    );
+    await tester.pumpAndSettle();
+    expect(rowTitles(tester), [
+      'Pay the bill',
+      'Earlier today',
+      'Water plants',
+    ]);
+  });
+
   testWidgets('a custom range comes from the date pickers', (tester) async {
     await pumpUpcoming(tester);
     await openRangeSheet(tester);

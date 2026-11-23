@@ -175,8 +175,9 @@ sealed class RichImageSource {
   const new();
 }
 
-/// `data-src`, else `src`, pointing at an attachment of this server
-/// (`parseAttachmentUrl`): loaded only through the authenticated client.
+/// `data-src`, else `src`, pointing at an attachment of this account
+/// (`parseAttachmentUrl`): loaded only through the authenticated client, by
+/// its ids.
 final class RichAttachmentImage extends RichImageSource {
   const new(this.attachment);
 
@@ -258,7 +259,7 @@ final class RichTaskLink extends RichInline {
 /// - marks from tags and from `style` (`font-weight`, `font-style`,
 ///   `text-decoration`, `vertical-align`), as the schema's parse rules;
 /// - `img` without a source, with a `data:` one, or with one that is
-///   neither an attachment of this server nor an absolute http(s) URL is
+///   neither an attachment of this account nor an absolute http(s) URL is
 ///   dropped (the web shows the last kind as a broken image);
 /// - markup nested deeper than 96 elements is reduced to its text;
 /// - the parse stops where the HTML would make `package:html` work too
@@ -269,8 +270,10 @@ final class RichTaskLink extends RichInline {
 /// runs once on load), and no empty paragraph is appended after a last
 /// block that is not a paragraph.
 ///
-/// [apiRoot] is the account's server root for attachment images;
-/// [taskLinkBases] are the server root and `/info`'s `frontend_url`.
+/// [taskLinkBases] are the server root and `/info`'s `frontend_url`;
+/// attachment images are recognised under them and under [apiRoot], the
+/// account's server root, as the web writes them under the address it runs
+/// at.
 RichDocument parseRichText(
   String html, {
   required Uri apiRoot,

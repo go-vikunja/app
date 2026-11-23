@@ -47,7 +47,7 @@ void main() {
     };
     for (final MapEntry(key: src, value: expected) in cases.entries) {
       test('"$src"', () {
-        expect(parseAttachmentUrl(src, apiRoot: apiRoot), expected);
+        expect(parseAttachmentUrl(src, roots: [apiRoot]), expected);
       });
     }
   });
@@ -65,37 +65,71 @@ void main() {
         expect(
           parseAttachmentUrl(
             'https://example.com/vikunja/api/v2/tasks/1/attachments/2',
-            apiRoot: apiRoot,
+            roots: [apiRoot],
           ),
           _ref(1, 2),
         );
         expect(
           parseAttachmentUrl(
             '/vikunja/api/v1/tasks/1/attachments/2',
-            apiRoot: apiRoot,
+            roots: [apiRoot],
           ),
           _ref(1, 2),
         );
         expect(
-          parseAttachmentUrl('/tasks/1/attachments/2', apiRoot: apiRoot),
+          parseAttachmentUrl('/tasks/1/attachments/2', roots: [apiRoot]),
           _ref(1, 2),
         );
         expect(
           parseAttachmentUrl(
             'https://example.com/api/v2/tasks/1/attachments/2',
-            apiRoot: apiRoot,
+            roots: [apiRoot],
           ),
           isNull,
         );
         expect(
           parseAttachmentUrl(
             '/other/api/v2/tasks/1/attachments/2',
-            apiRoot: apiRoot,
+            roots: [apiRoot],
           ),
           isNull,
         );
       });
     }
+  });
+
+  group('the server and the web at other addresses', () {
+    final roots = [
+      Uri.parse('https://api.example.org/vikunja/'),
+      Uri.parse('https://tasks.example.org/sub/'),
+    ];
+    final cases = <String, AttachmentRef?>{
+      'https://api.example.org/vikunja/api/v1/tasks/3/attachments/9': _ref(
+        3,
+        9,
+      ),
+      'https://tasks.example.org/sub/api/v2/tasks/3/attachments/9': _ref(3, 9),
+      'https://TASKS.example.org:443/sub/tasks/3/attachments/9': _ref(3, 9),
+      '/vikunja/api/v2/tasks/3/attachments/9': _ref(3, 9),
+      '/sub/api/v2/tasks/3/attachments/9': _ref(3, 9),
+      'https://tasks.example.org/api/v2/tasks/3/attachments/9': null,
+      'https://api.example.org/sub/api/v2/tasks/3/attachments/9': null,
+      'https://tasks.example.org.evil/sub/api/v2/tasks/3/attachments/9': null,
+      'http://tasks.example.org/sub/api/v2/tasks/3/attachments/9': null,
+      '/other/api/v2/tasks/3/attachments/9': null,
+    };
+    for (final MapEntry(key: src, value: expected) in cases.entries) {
+      test('"$src"', () {
+        expect(parseAttachmentUrl(src, roots: roots), expected);
+      });
+    }
+
+    test('no root, no attachment', () {
+      expect(
+        parseAttachmentUrl('/tasks/3/attachments/9', roots: const []),
+        isNull,
+      );
+    });
   });
 
   test('equality', () {

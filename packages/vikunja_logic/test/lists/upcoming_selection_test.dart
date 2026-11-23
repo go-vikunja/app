@@ -275,4 +275,22 @@ void main() {
 
     expect(idsOf(selection.inRange), [13]);
   });
+
+  test('a range that includes its start holds a task due exactly then; the '
+      'end stays exclusive', () {
+    final range = DateRange(
+      from: DateTime(2026, 10, 14),
+      to: DateTime(2026, 10, 16, 12),
+      includesFrom: true,
+    );
+    final selection = selectUpcoming(
+      _fixture,
+      range: range,
+      now: _now,
+      showOverdue: false,
+      showWithoutDueDate: false,
+    );
+
+    expect(idsOf(selection.inRange), [14, 15]);
+  });
 }

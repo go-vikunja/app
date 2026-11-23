@@ -299,6 +299,55 @@ void main() {
     expect(find.text(en.projectViewsAdminOnly), findsOneWidget);
   });
 
+  testWidgets('dragged shut, an answer during the closing leaves the page '
+      'open, and a refusal then comes in a snackbar', (tester) async {
+    var answer = Completer<void>();
+    data.views.beforeCall = (_) => answer.future;
+    await pumpViews(tester, 1);
+
+    Future<void> createAndDragShut(String title) async {
+      await tester.tap(find.byTooltip(en.projectViewNew));
+      await tester.pumpAndSettle();
+      await tester.enterText(sheetField(en.projectTitleLabel), title);
+      await tester.pump();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(ViewFormSheet),
+          matching: find.widgetWithText(TextButton, en.projectCreate),
+        ),
+      );
+      await tester.pump();
+      // Past half its height closes it, with the closing still to run.
+      final height = tester.getSize(find.byType(ViewFormSheet)).height;
+      await tester.drag(
+        find.text(en.projectViewNew).last,
+        Offset(0, height * .7),
+      );
+      await tester.pump();
+      expect(find.byType(ViewFormSheet), findsOneWidget);
+    }
+
+    await createAndDragShut('Open work');
+    tester.takeAnnouncements();
+    answer.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(ViewFormSheet), findsNothing);
+    expect(find.byType(ProjectViewsPage), findsOneWidget);
+    expect(rowTitles(tester).last, 'Open work');
+    expect(tester.takeAnnouncements(), [
+      isAccessibilityAnnouncement(en.projectViewCreated),
+    ]);
+
+    answer = Completer<void>();
+    data.views.failures['createView'] = const Forbidden();
+    await createAndDragShut('Triage');
+    answer.complete();
+    await tester.pumpAndSettle();
+    expect(find.byType(ViewFormSheet), findsNothing);
+    expect(find.byType(ProjectViewsPage), findsOneWidget);
+    expect(find.text(en.projectViewsAdminOnly), findsOneWidget);
+  });
+
   testWidgets('Move up and Move down reorder the views where they can go', (
     tester,
   ) async {

@@ -10,18 +10,21 @@ final _log = Logger('EditorImagePreviews');
 /// The previews of a document's attachment images for one load of the
 /// editor page, loaded by the app with the account's session, as the page
 /// itself loads nothing (decision log: Descriptions, comments, attachments).
+/// An image counts under any of the roots given (the server root and
+/// `/info`'s `frontend_url`), and is loaded by its ids, never from its
+/// address.
 /// Each image is sent once, at the preview size the detail sheet shows, its
 /// original where the server has no preview; an image that cannot be had keeps
 /// its placeholder. [close] ends it with the page load.
 final class EditorImagePreviews {
   new({
     required this._images,
-    required this._apiRoot,
+    required this._roots,
     this.maxTotalChars = 16 * 1024 * 1024,
   });
 
   final AttachmentImages _images;
-  final Uri _apiRoot;
+  final List<Uri> _roots;
 
   /// What one page load gets in all; an image that would go past it keeps
   /// its placeholder.
@@ -43,7 +46,7 @@ final class EditorImagePreviews {
     for (final url in urls) {
       if (_closed) return;
       if (!_sent.add(url)) continue;
-      final attachment = parseAttachmentUrl(url, apiRoot: _apiRoot);
+      final attachment = parseAttachmentUrl(url, roots: _roots);
       if (attachment == null) continue;
       final preview = await _preview(
         attachment.taskId,

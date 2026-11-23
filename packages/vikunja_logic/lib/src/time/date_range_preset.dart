@@ -33,21 +33,32 @@ enum DateRangePreset {
       values.where((preset) => preset.name == name).firstOrNull;
 }
 
-/// Both ends exclusive, as the web's Upcoming filter compares them.
+/// Both ends exclusive, as the web's Upcoming filter compares them, except
+/// that a range with [includesFrom] holds [from] itself: a custom range of
+/// whole days starts at its first day's midnight.
 @immutable
 final class DateRange {
-  const new({required this.from, required this.to});
+  const new({required this.from, required this.to, this.includesFrom = false});
 
   final DateTime from;
   final DateTime to;
+  final bool includesFrom;
+
+  bool contains(DateTime moment) =>
+      (includesFrom ? !moment.isBefore(from) : moment.isAfter(from)) &&
+      moment.isBefore(to);
 
   @override
   bool operator ==(Object other) =>
-      other is DateRange && other.from == from && other.to == to;
+      other is DateRange &&
+      other.from == from &&
+      other.to == to &&
+      other.includesFrom == includesFrom;
 
   @override
-  int get hashCode => Object.hash(from, to);
+  int get hashCode => Object.hash(from, to, includesFrom);
 
   @override
-  String toString() => 'DateRange($from, $to)';
+  String toString() =>
+      'DateRange($from, $to${includesFrom ? ', includesFrom' : ''})';
 }

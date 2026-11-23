@@ -73,6 +73,7 @@ class _NewTeamSheetState extends ConsumerState<NewTeamSheet> {
     if (repository == null || _creating) return;
     final l10n = context.l10n;
     final publicTeams = ref.read(activeServerHasPublicTeamsProvider);
+    final route = ModalRoute.of(context);
     final onCreated = widget.onCreated;
     final messenger = widget.messenger;
     setState(() {
@@ -86,13 +87,13 @@ class _NewTeamSheetState extends ConsumerState<NewTeamSheet> {
           isPublic: publicTeams ? _isPublic : null,
         ),
       );
-      if (mounted) Navigator.of(context).pop();
+      closeSheet(route);
       onCreated(team);
     } on Object catch (error) {
       _log.warning('Creating a team failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
       final text = teamFailureText(l10n, error, TeamChange.create);
-      if (!mounted) {
+      if (!mounted || !sheetIsOpen(route)) {
         showFailureAfterClose(messenger, text);
         return;
       }

@@ -55,11 +55,16 @@ Future<DateTime?> _pickWithMaterialDialogs(
     firstDayOfWeekIndex: display.firstDayOfWeekIndex,
     use24HourFormat: display.use24HourFormat,
   );
+  // A stored date outside the usual range widens it: clamping would change
+  // the date on a plain OK.
+  final initialDay = DateUtils.dateOnly(initial);
+  final usualFirst = DateTime(2000);
+  final usualLast = DateTime(now.year + 50, 12, 31);
   final day = await showDatePicker(
     context: context,
     initialDate: initial,
-    firstDate: DateTime(2000),
-    lastDate: DateTime(now.year + 50, 12, 31),
+    firstDate: initialDay.isBefore(usualFirst) ? initialDay : usualFirst,
+    lastDate: initialDay.isAfter(usualLast) ? initialDay : usualLast,
     currentDate: now,
     builder: formats,
   );

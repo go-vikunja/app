@@ -451,6 +451,37 @@ void main() {
       ]);
     });
 
+    test("attachment images the web wrote under /info's frontend_url", () {
+      final document = _parse(
+        '<img src="#" '
+        'data-src="https://web.example.com/vikunja/api/v2/tasks/3/attachments/4">'
+        '<img src="https://web.example.com/vikunja/api/v1/tasks/3/attachments/5">'
+        '<img src="/vikunja/api/v2/tasks/3/attachments/6">'
+        '<img src="https://web.example.com/api/v2/tasks/3/attachments/7">'
+        '<img src="https://evil.example/vikunja/api/v2/tasks/3/attachments/8">',
+      );
+
+      final sources = document.blocks.whereType<RichImage>().map(
+        (image) => imageSourceJson(image.source),
+      );
+      expect(sources, [
+        {
+          'attachment': [3, 4],
+        },
+        {
+          'attachment': [3, 5],
+        },
+        {
+          'attachment': [3, 6],
+        },
+        {'external': 'https://web.example.com/api/v2/tasks/3/attachments/7'},
+        {
+          'external':
+              'https://evil.example/vikunja/api/v2/tasks/3/attachments/8',
+        },
+      ]);
+    });
+
     test('code blocks keep every space, a <br> is a newline', () {
       final document = _parse(
         '<pre><code class="hljs language-dart">void main() {\n'

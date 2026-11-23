@@ -4,7 +4,7 @@
 import {Editor} from '@tiptap/core'
 import {isAllowedUri} from '@tiptap/extension-link'
 import {createExtensions, imageUrl, linkProtocols} from './extensions.js'
-import {httpBases, normalizeApiRoot, parseAttachmentUrl} from './links.js'
+import {attachmentRoots, httpBases, isAttachmentUrl, normalizeApiRoot, parseAttachmentUrl} from './links.js'
 import {applyTheme} from './theme.js'
 
 const parseOptions = {preserveWhitespace: true}
@@ -33,6 +33,7 @@ export function createBridge({mount, post, root}) {
   const context = {
     taskLinkBases: [],
     apiRoot: '',
+    attachmentRoots: [],
     placeholder: '',
     imageLabel: '',
     shownImageLabel: '',
@@ -126,7 +127,7 @@ export function createBridge({mount, post, root}) {
     editor.state.doc.descendants(node => {
       if (node.type.name !== 'image') return
       const url = imageUrl(node)
-      if (parseAttachmentUrl(url, context.apiRoot) !== null && !urls.includes(url)) urls.push(url)
+      if (isAttachmentUrl(url, context.attachmentRoots) && !urls.includes(url)) urls.push(url)
     })
     const key = JSON.stringify(urls)
     if (key === lastImages) return
@@ -140,7 +141,7 @@ export function createBridge({mount, post, root}) {
     const changed = new Set()
     for (const [url, preview] of Object.entries(previews)) {
       if (typeof preview !== 'string' || !previewUrl.test(preview)) continue
-      if (parseAttachmentUrl(url, context.apiRoot) === null) continue
+      if (!isAttachmentUrl(url, context.attachmentRoots)) continue
       context.previews.set(url, preview)
       changed.add(url)
     }
@@ -170,6 +171,7 @@ export function createBridge({mount, post, root}) {
     if (languageTag.test(textOf(l10n.locale))) root.lang = l10n.locale
     context.taskLinkBases = httpBases(message.links?.taskLinkBases)
     context.apiRoot = normalizeApiRoot(message.links?.apiRoot)
+    context.attachmentRoots = attachmentRoots(context.apiRoot, message.links?.taskLinkBases)
 
     editor?.destroy()
     editor = null

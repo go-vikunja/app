@@ -34,10 +34,11 @@ Future<void> createLinkShare(
 
 /// Create waits for the server, closes and calls [onCreated] with the new
 /// link, also when the sheet was dragged shut meanwhile; a refusal stays
-/// in the sheet. A failure after which the page's list is out of date
-/// closes it too and calls [onListOutdated]: an answer that did not come
-/// in time may have created the link, and the list shows whether it did
-/// before Create is tried again.
+/// in the sheet, or comes in a snackbar once it was dragged shut. A
+/// failure after which the page's list is out of date closes it too and
+/// calls [onListOutdated]: an answer that did not come in time may have
+/// created the link, and the list shows whether it did before Create is
+/// tried again.
 class LinkShareFormSheet extends ConsumerStatefulWidget {
   const new({
     required this.projectId,
@@ -97,6 +98,7 @@ class _LinkShareFormSheetState extends ConsumerState<LinkShareFormSheet> {
     final onCreated = widget.onCreated;
     final onListOutdated = widget.onListOutdated;
     final messenger = ScaffoldMessenger.of(context);
+    final route = ModalRoute.of(context);
     setState(() {
       _creating = true;
       _error = null;
@@ -110,15 +112,15 @@ class _LinkShareFormSheetState extends ConsumerState<LinkShareFormSheet> {
           password: password.isEmpty ? null : password,
         ),
       );
-      if (mounted) Navigator.of(context).pop();
+      closeSheet(route);
       onCreated(created);
     } on Object catch (error) {
       _log.warning('Creating a link share failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
       final text = shareFailureText(l10n, error, ShareChange.createLink);
       final outdated = shareListOutdatedBy(error);
-      if (!mounted || outdated) {
-        if (mounted) Navigator.of(context).pop();
+      if (!mounted || !sheetIsOpen(route) || outdated) {
+        closeSheet(route);
         showFailureAfterClose(messenger, text);
         if (outdated) onListOutdated();
         return;

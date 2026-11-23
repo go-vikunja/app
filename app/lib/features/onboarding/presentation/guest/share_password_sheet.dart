@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/text/server_address_display.dart';
 import 'package:vikunja_mobile/features/common/presentation/announce.dart';
+import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_state.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 
@@ -75,11 +76,12 @@ class _SharePasswordSheetState extends State<SharePasswordSheet> {
     // The note stays while the same password is tried again, so that the
     // field does not say it once more; editing the field removes it.
     final noteShown = _wrong;
+    final route = ModalRoute.of(context);
     setState(() => _submitting = true);
     final outcome = await widget.submit(password, remember: _remember);
-    if (!mounted) return;
+    if (!mounted || !sheetIsOpen(route)) return;
     if (outcome != SharePasswordOutcome.wrong) {
-      Navigator.of(context).pop(outcome);
+      closeSheet(route, outcome);
       return;
     }
     unawaited(HapticFeedback.heavyImpact());

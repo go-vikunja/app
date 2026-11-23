@@ -207,6 +207,7 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
     if (repository == null || _saving) return;
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
+    final route = ModalRoute.of(context);
     final onSaved = widget.onSaved;
     final draft = ViewDraft(
       title: title,
@@ -230,13 +231,13 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
           draft.changedFrom(view),
         );
       }
-      if (mounted) Navigator.of(context).pop();
+      closeSheet(route);
       onSaved();
     } on Object catch (error) {
       _log.warning('Saving a view failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
       final text = projectChangeFailureText(l10n, error, ProjectChange.view);
-      if (!mounted) {
+      if (!mounted || !sheetIsOpen(route)) {
         showFailureAfterClose(messenger, text);
         return;
       }

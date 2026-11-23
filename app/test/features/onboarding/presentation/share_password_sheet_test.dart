@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
@@ -112,5 +114,47 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tries, [('first', false), ('second', true)]);
+  });
+
+  testWidgets('dragged shut while a password is tried, an answer during the '
+      'closing leaves the page below open', (tester) async {
+    final answer = Completer<SharePasswordOutcome>();
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: appLocalizationsDelegates,
+        supportedLocales: appSupportedLocales,
+        builder: (context, child) => AnnouncerHost(child: child!),
+        home: const Scaffold(body: Text('First page')),
+      ),
+    );
+    tester
+        .state<NavigatorState>(find.byType(Navigator))
+        .push(
+          MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(body: Text('Second page')),
+          ),
+        );
+    await tester.pumpAndSettle();
+    final asked = askForSharePassword(
+      tester.element(find.text('Second page')),
+      serverRoot: Uri.parse('https://tasks.example.org'),
+      submit: (_, {required remember}) => answer.future,
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'secret');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
+    // Past half its height closes it, with the closing still to run.
+    final height = tester.getSize(find.byType(SharePasswordSheet)).height;
+    await tester.drag(find.text(en.guestPasswordTitle), Offset(0, height * .7));
+    await tester.pump();
+    expect(find.byType(SharePasswordSheet), findsOneWidget);
+
+    answer.complete(SharePasswordOutcome.accepted);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SharePasswordSheet), findsNothing);
+    expect(find.text('Second page'), findsOneWidget);
+    expect(await asked, isNull);
   });
 }

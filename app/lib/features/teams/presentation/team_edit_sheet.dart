@@ -9,6 +9,7 @@ import 'package:vikunja_logic/vikunja_logic.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
 import 'package:vikunja_mobile/core/repositories/team_repository_providers.dart';
 import 'package:vikunja_mobile/features/common/presentation/form_parts.dart';
+import 'package:vikunja_mobile/features/projects/presentation/manage/form_parts.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/pickers/picker_sheet.dart';
 import 'package:vikunja_mobile/features/teams/application/team_server_providers.dart';
 import 'package:vikunja_mobile/features/teams/presentation/team_failure.dart';
@@ -16,19 +17,39 @@ import 'package:vikunja_mobile/features/teams/presentation/team_failure.dart';
 final _log = Logger('TeamEdit');
 
 /// A team's name and, where the server has public teams on, whether it is
-/// public; Save sends only what changed and closes with the team as
-/// stored. Null when dismissed or unchanged.
-Future<Team?> showTeamEditSheet(BuildContext context, {required Team team}) =>
-    showPickerSheet<Team>(
-      context,
-      builder: (context, scrollController) =>
-          TeamEditSheet(team: team, scrollController: scrollController),
-    );
+/// public; Save sends only what changed, closes the sheet and calls
+/// [onSaved] with the team as stored. The sheet can be dragged shut while
+/// it saves: [onSaved] then still gets the team, or the refusal is a
+/// snackbar.
+Future<void> showTeamEditSheet(
+  BuildContext context, {
+  required Team team,
+  required ValueChanged<Team> onSaved,
+}) {
+  final messenger = ScaffoldMessenger.of(context);
+  return showPickerSheet<void>(
+    context,
+    builder: (context, scrollController) => TeamEditSheet(
+      team: team,
+      onSaved: onSaved,
+      messenger: messenger,
+      scrollController: scrollController,
+    ),
+  );
+}
 
 class TeamEditSheet extends ConsumerStatefulWidget {
-  const new({required this.team, this.scrollController, super.key});
+  const new({
+    required this.team,
+    required this.onSaved,
+    required this.messenger,
+    this.scrollController,
+    super.key,
+  });
 
   final Team team;
+  final ValueChanged<Team> onSaved;
+  final ScaffoldMessengerState messenger;
   final ScrollController? scrollController;
 
   @override
@@ -64,21 +85,28 @@ class _TeamEditSheetState extends ConsumerState<TeamEditSheet> {
     final repository = ref.read(teamRepositoryProvider);
     if (repository == null || !_canSave) return;
     final l10n = context.l10n;
-    final navigator = Navigator.of(context);
+    final route = ModalRoute.of(context);
+    final onSaved = widget.onSaved;
+    final messenger = widget.messenger;
     setState(() {
       _saving = true;
       _error = null;
     });
     try {
       final team = await repository.update(widget.team.id, _changes);
-      if (mounted) navigator.pop(team);
+      closeSheet(route);
+      onSaved(team);
     } on Object catch (error) {
       _log.warning('Saving a team failed: ${error.runtimeType}');
       unawaited(HapticFeedback.heavyImpact());
-      if (!mounted) return;
+      final text = teamFailureText(l10n, error, TeamChange.edit);
+      if (!mounted || !sheetIsOpen(route)) {
+        showFailureAfterClose(messenger, text);
+        return;
+      }
       setState(() {
         _saving = false;
-        _error = teamFailureText(l10n, error, TeamChange.edit);
+        _error = text;
       });
     }
   }

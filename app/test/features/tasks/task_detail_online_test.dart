@@ -464,6 +464,39 @@ void main() {
       expect(inSheet(find.byType(Image)), findsOneWidget);
     });
 
+    testWidgets("an image the web wrote under /info's frontend_url shows, "
+        'loaded through the account by its ids; one on another host is not '
+        'loaded', (tester) async {
+      const web = 'https://web.example.org/sub/api/v2/tasks/4/attachments/3';
+      const elsewhere = 'https://evil.example/sub/api/v2/tasks/4/attachments/5';
+      data.tasks.all = [
+        data.tasks
+            .find(4)!
+            .copyWith(
+              description: [
+                '<p>Fence</p>',
+                '<img src="#" data-src="$web">',
+                '<img src="$elsewhere">',
+              ].join(),
+            ),
+      ];
+      data.attachmentImages.images[(4, 3, AttachmentPreviewSize.extraLarge)] =
+          samplePngImage;
+      usePhoneSurface(tester, logicalSize: const Size(360, 2400));
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        now: now,
+        connection: accountPagesServer270(
+          frontendUrl: Uri.parse('https://web.example.org/sub/'),
+        ),
+      );
+      await showDetail(tester, 4);
+
+      expect(data.attachmentImages.loads, ['4 3 xl']);
+      expect(inSheet(find.byType(Image)), findsOneWidget);
+    });
+
     testWidgets('another failure says it could not load', (tester) async {
       data.details.detailsFailure = const ServerFailure(500);
       await openDetail(tester, 4);

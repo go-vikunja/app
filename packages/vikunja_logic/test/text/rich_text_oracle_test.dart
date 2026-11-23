@@ -260,7 +260,7 @@ Map<String, Object?>? _normalize(
       final src = attrs['src']! as String;
       final attachment = parseAttachmentUrl(
         (attrs['data-src'] as String?) ?? src,
-        apiRoot: _apiRoot,
+        roots: [_apiRoot, ..._bases],
       );
       final external = Uri.tryParse(_cleanUrl(src));
       final Map<String, Object?> source;

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
@@ -223,6 +225,64 @@ void main() {
 
       expect(find.byType(NewTeamSheet), findsOneWidget);
       expect(find.text(en.teamsNewOffline), findsOneWidget);
+    });
+
+    group('dragged shut while it is created', () {
+      late Completer<void> answer;
+
+      Future<void> createAndDragShut(WidgetTester tester) async {
+        answer = Completer();
+        harness.teams.beforeCall = (call) async {
+          if (call.startsWith('create')) await answer.future;
+        };
+        await harness.pump(tester, location: AppRoutes.teams);
+        await tester.tap(
+          find.widgetWithText(FloatingActionButton, en.teamsNew),
+        );
+        await tester.pumpAndSettle();
+        await tester.enterText(nameField(), 'Garden club');
+        await tester.pump();
+        await tester.tap(createButton());
+        await tester.pump();
+        // Past half its height closes it, with the closing still to run.
+        final height = tester.getSize(find.byType(NewTeamSheet)).height;
+        await tester.drag(
+          find.text(en.teamNewTitle).last,
+          Offset(0, height * .7),
+        );
+        await tester.pump();
+      }
+
+      testWidgets('an answer during the closing opens the team over the '
+          'list, which stays open', (tester) async {
+        harness.teams.nextTeamId = 12;
+        await createAndDragShut(tester);
+        expect(find.byType(NewTeamSheet), findsOneWidget);
+
+        answer.complete();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(NewTeamSheet), findsNothing);
+        expect(currentLocation(tester), AppRoutes.team(12));
+        expect(find.text(en.teamCreated), findsOneWidget);
+        await tester.pageBack();
+        await tester.pumpAndSettle();
+        expect(currentLocation(tester), AppRoutes.teams);
+      });
+
+      testWidgets('a refusal during the closing is a snackbar', (tester) async {
+        harness.teams.failures['create'] = const NetworkFailure(
+          NetworkProblem.unreachable,
+        );
+        await createAndDragShut(tester);
+
+        answer.complete();
+        await tester.pumpAndSettle();
+
+        expect(find.byType(NewTeamSheet), findsNothing);
+        expect(currentLocation(tester), AppRoutes.teams);
+        expect(find.text(en.teamsNewOffline), findsOneWidget);
+      });
     });
   });
 

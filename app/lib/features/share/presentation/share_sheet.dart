@@ -214,6 +214,7 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     final repository = ref.read(taskRepositoryProvider);
     if (repository == null || !_canSubmit(project)) return;
     final l10n = context.l10n;
+    final route = ModalRoute.of(context);
     setState(() {
       _submitting = true;
       _error = null;
@@ -250,12 +251,12 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     );
     try {
       final outcome = await work;
-      if (!mounted) return;
+      if (!mounted || !sheetIsOpen(route)) return;
       if (outcome == null) {
         setState(() => _error = l10n.taskEditGoneBody);
         return;
       }
-      Navigator.of(context).pop(outcome);
+      closeSheet(route, outcome);
     } on Object catch (error) {
       _log.warning('Adding a share failed: ${error.runtimeType}');
       if (mounted) setState(() => _error = l10n.shareFailed);

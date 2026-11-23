@@ -82,7 +82,7 @@ void main() {
     images.failures[(1, 3, AttachmentPreviewSize.extraLarge)] =
         const DomainError(422, code: 4038);
     images.images[(1, 3, null)] = png(pixel);
-    final previews = EditorImagePreviews(images: images, apiRoot: apiRoot);
+    final previews = EditorImagePreviews(images: images, roots: [apiRoot]);
     final sent = <Map<String, String>>[];
 
     await previews.provide([
@@ -101,6 +101,41 @@ void main() {
     expect(images.loads, ['1 2 xl', '1 3 xl', '1 3 original', '1 9 xl']);
   });
 
+  test(
+    "an image under the server root or under /info's frontend_url is the "
+    "account's, loaded by its ids; the same path on another host is not",
+    () async {
+      final images = FakeAttachmentImages();
+      images.images[(1, 2, AttachmentPreviewSize.extraLarge)] = png(pixel);
+      images.images[(1, 3, AttachmentPreviewSize.extraLarge)] = png(pixel);
+      final previews = EditorImagePreviews(
+        images: images,
+        roots: [
+          Uri.parse('https://api.example.org/vikunja/'),
+          Uri.parse('https://tasks.example.org/sub/'),
+        ],
+      );
+      final sent = <Map<String, String>>[];
+      const server =
+          'https://api.example.org/vikunja/api/v1/tasks/1/attachments/2';
+      const web = 'https://tasks.example.org/sub/api/v2/tasks/1/attachments/3';
+
+      await previews.provide([
+        server,
+        web,
+        'https://tasks.example.org/api/v2/tasks/1/attachments/4',
+        'https://evil.example/sub/api/v2/tasks/1/attachments/5',
+      ], (preview) async => sent.add(preview));
+
+      final expected = 'data:image/png;base64,${base64Encode(pixel)}';
+      expect(sent, [
+        {server: expected},
+        {web: expected},
+      ]);
+      expect(images.loads, ['1 2 xl', '1 3 xl']);
+    },
+  );
+
   test('a preview over the budget is left out for good, and those after it '
       'that fit are still sent', () async {
     final images = FakeAttachmentImages()..fallback = png(pixel);
@@ -110,7 +145,7 @@ void main() {
     // Two of the pixel's previews (118 characters each), not the large one.
     final previews = EditorImagePreviews(
       images: images,
-      apiRoot: apiRoot,
+      roots: [apiRoot],
       maxTotalChars: 250,
     );
     final sent = <Map<String, String>>[];
@@ -136,7 +171,7 @@ void main() {
   test('once closed, nothing more is loaded, and an image still loading is '
       'not sent', () async {
     final images = FakeAttachmentImages()..fallback = png(pixel);
-    final previews = EditorImagePreviews(images: images, apiRoot: apiRoot);
+    final previews = EditorImagePreviews(images: images, roots: [apiRoot]);
     images.beforeLoad = (_) async => previews.close();
     final sent = <Map<String, String>>[];
 
@@ -176,7 +211,7 @@ void main() {
             (throw const DomainError(422, code: 4038));
       }, disk: disk);
       final sent = <Map<String, String>>[];
-      await EditorImagePreviews(images: images, apiRoot: apiRoot).provide(
+      await EditorImagePreviews(images: images, roots: [apiRoot]).provide(
         [url(1, 2), url(1, 3), url(1, 4)],
         (preview) async {
           sent.add(preview);

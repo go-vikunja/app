@@ -123,10 +123,26 @@ class _ProjectListBodyState extends State<ProjectListBody> {
   bool _moved = false;
 
   @override
+  void didUpdateWidget(ProjectListBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_held == null) return;
+    // A sync that took the held row out of the list's top level unmounts
+    // its draggable: the finger's moves no longer reach the list. Checked
+    // once the list is rebuilt.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final held = _held;
+      if (mounted && held != null && _groupIndexOf(held) < 0) _endDrag();
+    });
+  }
+
+  @override
   void dispose() {
     _edgeScroller.stop();
     super.dispose();
   }
+
+  int _groupIndexOf(int taskId) =>
+      _groups.indexWhere((group) => group.task.id == taskId);
 
   bool _movable(Task task) =>
       widget.onReorder != null &&
@@ -243,20 +259,22 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     final index = _dropIndex;
     final held = _held;
     if (index == null || held == null) return null;
-    final from = _groups.indexWhere((group) => group.task.id == held);
+    final from = _groupIndexOf(held);
     if (from < 0) return null;
     // The index counted the held group itself, which still holds its place.
     final to = from < index ? index - 1 : index;
     return to == from ? null : (from: from, to: to);
   }
 
-  void _drop(Task task) {
+  /// Moves the held row as the list shows it now, and nothing once a sync
+  /// took it out of the list's top level.
+  void _drop() {
     final drop = _pendingDrop;
     _endDrag();
     if (drop == null) return;
     final l10n = context.l10n;
     _move(
-      task,
+      _groups[drop.from].task,
       drop.to,
       moved: drop.to < drop.from ? l10n.movedUp : l10n.movedDown,
     );
@@ -267,6 +285,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
     final l10n = context.l10n;
     final model = widget.model;
     if (model.isEmpty) {
+      _groups = const [];
       return CenteredScrollView(
         header: widget.header,
         maxWidth: ReadableWidth.list,
@@ -290,7 +309,7 @@ class _ProjectListBodyState extends State<ProjectListBody> {
       maxWidth: ReadableWidth.list,
       builder: (context, contentWidth, inset) => DragTarget<_RowDrag>(
         onWillAcceptWithDetails: (_) => widget.onReorder != null,
-        onAcceptWithDetails: (details) => _drop(details.data.task),
+        onAcceptWithDetails: (_) => _drop(),
         onLeave: (_) => _setDropIndex(null),
         builder: (context, _, _) => CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -390,6 +409,11 @@ class _ProjectListBodyState extends State<ProjectListBody> {
                 onDragStarted: () => _startDrag(task),
                 onDragUpdate: _heldMoved,
                 onDragEnd: (details) => _released(task, details),
+                // Unlike onDragEnd, also called once the draggable is
+                // unmounted.
+                onDraggableCanceled: (_, _) {
+                  if (mounted) _endDrag();
+                },
                 child: LiftableRow(liftable: movable, child: top),
               ),
               for (final (i, row) in group.rows.indexed.skip(1)) ...[

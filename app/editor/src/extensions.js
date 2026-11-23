@@ -211,6 +211,8 @@ function createImage(context) {
     },
     renderHTML({HTMLAttributes}) {
       const url = HTMLAttributes['data-src'] ?? HTMLAttributes.src
+      // Only under the root the editor writes under, so that an image under
+      // the account's other root is saved as it came.
       const attachment = parseAttachmentUrl(url, context.apiRoot)
       const written = attachment ? attachmentImageAttributes(url, attachment, HTMLAttributes) : HTMLAttributes
       return ['img', mergeAttributes(this.options.HTMLAttributes, written)]

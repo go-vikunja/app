@@ -44,6 +44,17 @@ void main() {
       expect(ids(projects), [1, 2, 4]);
     });
 
+    test('leaves out a project below an archived one, which a server '
+        'before 2.6 does not archive itself', () {
+      final underArchived = [
+        sampleProject(id: 1, title: 'Old', archived: true),
+        sampleProject(id: 2, title: 'Unarchived on the web', parent: 1),
+        sampleProject(id: 3, title: 'Its child', parent: 2),
+        sampleProject(id: 4, title: 'Home'),
+      ];
+      expect(ids(underArchived), [4]);
+    });
+
     test('leaves out the moved project and its subprojects', () {
       expect(ids(projects, moved: 1), [4]);
       expect(ids(projects, moved: 2), [1, 4]);

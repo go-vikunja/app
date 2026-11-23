@@ -290,6 +290,36 @@ void main() {
     expect(find.text(en.shareTaskCreated(2)), findsOneWidget);
   });
 
+  testWidgets('dragged shut, Create answered during the closing leaves the '
+      'page below open', (tester) async {
+    final held = Completer<void>();
+    data.tasks.beforeWrite = () => held.future;
+    await pumpSignedInApp(tester, sync: data);
+    data.shareSource.push(const IncomingShare(text: 'Scans'));
+    await tester.pumpAndSettle();
+    final router = containerOf(tester).read(appRouterProvider);
+    final location = router.routerDelegate.state.matchedLocation;
+
+    await tester.tap(action(en.shareCreate));
+    await tester.pump();
+    // Past half its height closes it, with the closing still to run.
+    final height = tester.getSize(sheet).height;
+    await tester.drag(
+      inSheet(find.text(en.shareSheetTitle)),
+      Offset(0, height * .7),
+    );
+    await tester.pump();
+    expect(sheet, findsOneWidget);
+
+    held.complete();
+    await tester.pumpAndSettle();
+
+    expect(sheet, findsNothing);
+    expect(data.tasks.writes, ['create -1 Scans']);
+    expect(router.routerDelegate.state.matchedLocation, location);
+    expect(find.text(en.shareTaskCreated(0)), findsOneWidget);
+  });
+
   testWidgets('Add to task keeps the shared text field while it is emptied '
       'to be typed over', (tester) async {
     await pumpSignedInApp(tester, sync: data);

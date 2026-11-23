@@ -331,6 +331,43 @@ void main() {
       expect(data.tasks.positions.single.$1, 2);
     });
 
+    testWidgets('a row a sync takes out of the list while held ends the '
+        'drag, also let go beside the list', (tester) async {
+      await pumpProject(tester);
+      final from = tester.getCenter(rowOf('Bravo'));
+      final to = between(tester, 'Charlie', 'Delta');
+      final gesture = await tester.startGesture(from);
+      await tester.pump(const Duration(milliseconds: 600));
+      for (var step = 1; step <= 6; step++) {
+        await gesture.moveTo(Offset.lerp(from, to, step / 6)!);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(find.byType(DropLine), findsOne);
+
+      data.tasks.all = [
+        for (final task in tasks())
+          if (task.id != 3) task,
+      ];
+      for (var i = 0; i < 3; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await gesture.moveTo(const Offset(200, 10));
+      await tester.pump(const Duration(milliseconds: 16));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      data.tasks.all = tasks();
+      await tester.pumpAndSettle();
+
+      final bravo = tester.widget<ReorderSlot<int>>(
+        find.byWidgetPredicate(
+          (widget) => widget is ReorderSlot<int> && widget.id == 3,
+        ),
+      );
+      expect(bravo.held, isFalse);
+      expect(data.tasks.positions, isEmpty);
+      expect(find.byType(TaskSelectionActionBar), findsNothing);
+    });
+
     testWidgets('a row dropped where it was changes nothing', (tester) async {
       await pumpProject(tester);
 

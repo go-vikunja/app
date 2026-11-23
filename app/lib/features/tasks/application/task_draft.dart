@@ -72,8 +72,8 @@ final class TaskDraft {
   /// it checks the limit only on a title that changes, so a stored longer
   /// one may stay.
   bool titleFits(Task original) {
-    final title = normalizedTitle;
-    return title == original.title || title.runes.length <= Task.maxTitleLength;
+    final sent = _sentTitle(original);
+    return sent == null || sent.runes.length <= Task.maxTitleLength;
   }
 
   static const _unset = Object();
@@ -126,6 +126,14 @@ final class TaskDraft {
   /// becomes a space, because a title is one line everywhere.
   String get normalizedTitle => title.trim().replaceAll(_lineBreaks, ' ');
 
+  /// A title the user left as it came stays as the server has it, also with
+  /// the whitespace another client stored around it.
+  String? _sentTitle(Task original) {
+    if (title == original.title) return null;
+    final normalized = normalizedTitle;
+    return normalized == original.title ? null : normalized;
+  }
+
   /// Only what differs from [original]; empty when nothing does. A changed
   /// repeat sends the seconds and the mode that differ from the task's
   /// own, so removing a repeat is `0` and mode `0`. Labels and assignees
@@ -135,12 +143,11 @@ final class TaskDraft {
   /// order.
   TaskChanges diff(Task original, {Map<int, int> labelRemaps = const {}}) {
     final base = TaskDraft.fromTask(original);
-    final trimmedTitle = normalizedTitle;
     final repeatChanged = repeat != base.repeat;
     final repeatAfter = repeat.repeatAfter;
     final repeatMode = repeat.repeatMode;
     return TaskChanges(
-      title: trimmedTitle != base.title ? trimmedTitle : null,
+      title: _sentTitle(original),
       projectId: projectId != base.projectId ? projectId : null,
       dueDate: _dateChange(dueDate, base.dueDate),
       startDate: _dateChange(startDate, base.startDate),

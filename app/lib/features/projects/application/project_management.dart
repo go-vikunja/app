@@ -19,8 +19,9 @@ Set<int> projectSubtreeIds(int projectId, List<Project> projects) {
 }
 
 /// The projects that can hold a new or moved project, as the tree shows
-/// them: neither archived nor only readable for the user (the server
-/// refuses both) nor [movedProjectId] and its subprojects (a cycle).
+/// them: neither archived nor below an archived project (decision log:
+/// Projects) nor only readable for the user, which the server refuses, nor
+/// [movedProjectId] and its subprojects (a cycle).
 List<ProjectTreeRow> parentCandidates(
   List<Project> projects, {
   int? movedProjectId,
@@ -28,11 +29,15 @@ List<ProjectTreeRow> parentCandidates(
   final excluded = movedProjectId == null
       ? const <int>{}
       : projectSubtreeIds(movedProjectId, projects);
+  // Servers before 2.6 do not archive the children of an archived project.
+  final byId = {for (final project in projects) project.id: project};
   return [
     for (final row in flattenProjectTree(
       buildProjectTree([
         for (final project in projects)
-          if (ProjectAccess.of(project).canCreateChild) project,
+          if (ProjectAccess.of(project).canCreateChild &&
+              !isArchivedInTree(project.id, byId))
+            project,
       ]),
       collapsedIds: const {},
     ))

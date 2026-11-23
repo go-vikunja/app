@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logging/logging.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/l10n/l10n.dart';
@@ -27,6 +28,8 @@ import 'package:vikunja_mobile/features/tasks/presentation/task_formatting.dart'
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 import 'package:vikunja_mobile/features/trash/presentation/trash_failure_text.dart';
 import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
+
+final _log = Logger('BulkTaskActions');
 
 /// Whether the user may change [task] from a list, as its row decides:
 /// not in a project they may only read, nor in an archived one, whose
@@ -54,21 +57,24 @@ Future<bool> markTasksDone(
   final messenger = ScaffoldMessenger.maybeOf(context);
   final persist = MediaQuery.accessibleNavigationOf(context);
   unawaited(HapticFeedback.selectionClick());
-  final saved = await saveLocalChangeIn(messenger, l10n, () async {
-    for (final task in changed) {
-      await repository.setDone(task.id, done: done);
-    }
+  final (:written, :failed) = await _writeEach(messenger, l10n, changed, (
+    task,
+  ) async {
+    await repository.setDone(task.id, done: done);
+    return true;
   }, action: 'Marking tasks done');
-  if (!saved) return false;
+  if (written.isEmpty) return false;
   _showUndo(
     messenger,
     l10n: l10n,
     persist: persist,
-    text: done
-        ? l10n.tasksMarkedDone(changed.length)
-        : l10n.tasksMarkedNotDone(changed.length),
+    text: failed
+        ? l10n.tasksChangedPartly(written.length, changed.length)
+        : done
+        ? l10n.tasksMarkedDone(written.length)
+        : l10n.tasksMarkedNotDone(written.length),
     undo: () async {
-      for (final task in changed) {
+      for (final task in written) {
         // A repeating task gets the dates back that its done moved on.
         await (done
             ? repository.undoDone(task)
@@ -178,22 +184,25 @@ Future<bool> rescheduleTasks(
   final messenger = ScaffoldMessenger.maybeOf(context);
   final persist = MediaQuery.accessibleNavigationOf(context);
   unawaited(HapticFeedback.selectionClick());
-  final saved = await saveLocalChangeIn(messenger, l10n, () async {
-    for (final (:task, :due) in changes) {
-      await repository.updateTask(
-        task.id,
-        TaskChanges(dueDate: dateChange(due)),
-      );
-    }
+  final (:written, :failed) = await _writeEach(messenger, l10n, changes, (
+    change,
+  ) async {
+    await repository.updateTask(
+      change.task.id,
+      TaskChanges(dueDate: dateChange(change.due)),
+    );
+    return true;
   }, action: 'Changing the due date of several tasks');
-  if (!saved) return false;
+  if (written.isEmpty) return false;
   _showUndo(
     messenger,
     l10n: l10n,
     persist: persist,
-    text: l10n.tasksDueDateChanged(changes.length),
+    text: failed
+        ? l10n.tasksChangedPartly(written.length, changes.length)
+        : l10n.tasksDueDateChanged(written.length),
     undo: () async {
-      for (final (:task, due: _) in changes) {
+      for (final (:task, due: _) in written) {
         await repository.updateTask(
           task.id,
           TaskChanges(
@@ -241,19 +250,22 @@ Future<bool> setTasksPriority(
   final messenger = ScaffoldMessenger.maybeOf(context);
   final persist = MediaQuery.accessibleNavigationOf(context);
   unawaited(HapticFeedback.selectionClick());
-  final saved = await saveLocalChangeIn(messenger, l10n, () async {
-    for (final task in changed) {
-      await repository.updateTask(task.id, TaskChanges(priority: picked.value));
-    }
+  final (:written, :failed) = await _writeEach(messenger, l10n, changed, (
+    task,
+  ) async {
+    await repository.updateTask(task.id, TaskChanges(priority: picked.value));
+    return true;
   }, action: 'Changing the priority of several tasks');
-  if (!saved) return false;
+  if (written.isEmpty) return false;
   _showUndo(
     messenger,
     l10n: l10n,
     persist: persist,
-    text: l10n.tasksPriorityChanged(changed.length),
+    text: failed
+        ? l10n.tasksChangedPartly(written.length, changed.length)
+        : l10n.tasksPriorityChanged(written.length),
     undo: () async {
-      for (final task in changed) {
+      for (final task in written) {
         await repository.updateTask(
           task.id,
           TaskChanges(priority: task.priority.value),
@@ -291,19 +303,22 @@ Future<bool> moveTasks(
   final messenger = ScaffoldMessenger.maybeOf(context);
   final persist = MediaQuery.accessibleNavigationOf(context);
   unawaited(HapticFeedback.selectionClick());
-  final saved = await saveLocalChangeIn(messenger, l10n, () async {
-    for (final task in changed) {
-      await repository.updateTask(task.id, TaskChanges(projectId: picked.id));
-    }
+  final (:written, :failed) = await _writeEach(messenger, l10n, changed, (
+    task,
+  ) async {
+    await repository.updateTask(task.id, TaskChanges(projectId: picked.id));
+    return true;
   }, action: 'Moving several tasks');
-  if (!saved) return false;
+  if (written.isEmpty) return false;
   _showUndo(
     messenger,
     l10n: l10n,
     persist: persist,
-    text: l10n.tasksMovedTo(changed.length, picked.displayTitle(l10n)),
+    text: failed
+        ? l10n.tasksChangedPartly(written.length, changed.length)
+        : l10n.tasksMovedTo(written.length, picked.displayTitle(l10n)),
     undo: () async {
-      for (final task in changed) {
+      for (final task in written) {
         await repository.updateTask(
           task.id,
           TaskChanges(projectId: task.projectId),
@@ -316,11 +331,12 @@ Future<bool> moveTasks(
 }
 
 /// Deletes [tasks] after asking, one queued delete each, and takes them
-/// out of the pane beside the list. On a server with the trash Undo takes
-/// back every delete still queued or restores the task from the trash, as
-/// the task sheet's Undo does: "N tasks moved to the trash", or "N tasks
-/// deleted" when one of them may not have reached the server yet. False
-/// when nothing was deleted.
+/// out of the pane beside the list. The question promises the trash only
+/// for tasks surely on the server, as the task sheet's does (decision log:
+/// Tasks). On a server with the trash Undo takes back every delete still
+/// queued or restores the task from the trash, as the task sheet's Undo
+/// does: "N tasks moved to the trash", or "N tasks deleted" when one of
+/// them may not be in the trash. False when nothing was deleted.
 Future<bool> deleteTasks(
   BuildContext context,
   WidgetRef ref,
@@ -332,11 +348,29 @@ Future<bool> deleteTasks(
   final trash = ref.read(activeServerHasTrashProvider);
   final guest = ref.read(activeAccountIsGuestProvider);
   final count = tasks.length;
+  final onServer = [
+    if (trash)
+      for (final task in tasks)
+        if (task.id < 0)
+          await _onServer(repository, task.id)
+        else
+          TaskOnServer.yes,
+  ];
+  if (!context.mounted) return false;
+  final unsent = onServer.where((status) => status == TaskOnServer.no).length;
   final confirmed = await confirmAdaptive(
     context,
     title: l10n.tasksDeleteDialogTitle(count),
     body: switch ((trash, guest)) {
       (false, _) => l10n.tasksDeleteDialogBody(count),
+      _ when onServer.contains(TaskOnServer.maybe) =>
+        l10n.tasksDeleteDialogBodyUnconfirmed(count),
+      _ when unsent == count => l10n.tasksDeleteDialogBodyUnsent(count),
+      _ when unsent > 0 => l10n.tasksDeleteDialogBodyPartlyUnsent(
+        unsent,
+        count,
+        count - unsent,
+      ),
       (true, false) => l10n.tasksDeleteDialogBodyTrash(count),
       (true, true) => l10n.tasksDeleteDialogBodyTrashGuest(count),
     },
@@ -349,21 +383,25 @@ Future<bool> deleteTasks(
   final persist = MediaQuery.accessibleNavigationOf(context);
   final dropFromPane = TaskDetailPaneScope.deletedOf(context);
   final restorable = <int>[];
-  final deleted = <int>{};
   unawaited(HapticFeedback.selectionClick());
-  final saved = await saveLocalChangeIn(messenger, l10n, () async {
-    for (final task in tasks) {
+  final (written: deletedTasks, :failed) = await _writeEach(
+    messenger,
+    l10n,
+    tasks,
+    (task) async {
       final deletion = await repository.deleteTask(task.id);
-      if (deletion == TaskDeletion.none) continue;
-      deleted.add(task.id);
       if (deletion == TaskDeletion.queued) restorable.add(task.id);
-    }
-  }, action: 'Deleting several tasks');
+      return deletion != TaskDeletion.none;
+    },
+    action: 'Deleting several tasks',
+  );
+  final deleted = {for (final task in deletedTasks) task.id};
   if (deleted.isNotEmpty) dropFromPane?.call(deleted);
   if (deleted.isEmpty || messenger == null || !messenger.mounted) {
-    return saved && deleted.isNotEmpty;
+    return deleted.isNotEmpty;
   }
-  if (!trash || restorable.isEmpty) {
+  final undo = trash && restorable.isNotEmpty;
+  if (!undo && !failed) {
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
@@ -373,22 +411,65 @@ Future<bool> deleteTasks(
   }
   showDeletedSnackBar(
     messenger,
-    text: restorable.every((id) => id > 0)
+    text: failed
+        ? l10n.tasksDeletedPartly(deleted.length, count)
+        : restorable.length == deleted.length &&
+              restorable.every((id) => id > 0)
         ? l10n.tasksMovedToTrash(restorable.length)
-        : l10n.tasksDeleted(restorable.length),
+        : l10n.tasksDeleted(deleted.length),
     undoLabel: l10n.undo,
     persist: persist,
-    onUndo: () => unawaited(
-      runUndo(
-        messenger,
-        l10n,
-        restore: () => _restoreAll(repository, restorable),
-        restored: l10n.tasksRestored(restorable.length),
-        action: TrashAction.restoreTask,
-      ),
-    ),
+    onUndo: undo
+        ? () => unawaited(
+            runUndo(
+              messenger,
+              l10n,
+              restore: () => _restoreAll(repository, restorable),
+              restored: l10n.tasksRestored(restorable.length),
+              action: TrashAction.restoreTask,
+            ),
+          )
+        : null,
   );
   return true;
+}
+
+/// As the task sheet decides: a create that cannot be read counts as one
+/// the server may have, which promises nothing.
+Future<TaskOnServer> _onServer(TaskRepository repository, int taskId) async {
+  try {
+    return await repository.taskOnServer(taskId);
+  } on Object catch (error) {
+    _log.warning('Reading a create failed: ${error.runtimeType}');
+    return TaskOnServer.maybe;
+  }
+}
+
+/// Writes [items] one by one, each a local change of its own, and stops at
+/// the first one this device cannot store. [write] says whether it changed
+/// something; the record's `written` holds those that did, which stay
+/// changed. Only when none did does it say that the change failed: else the
+/// caller says which part was changed, with Undo for that part.
+Future<({List<T> written, bool failed})> _writeEach<T>(
+  ScaffoldMessengerState? messenger,
+  AppLocalizations l10n,
+  List<T> items,
+  Future<bool> Function(T item) write, {
+  required String action,
+}) async {
+  final written = <T>[];
+  for (final item in items) {
+    var changed = false;
+    final saved = await saveLocalChangeIn(
+      written.isEmpty ? messenger : null,
+      l10n,
+      () async => changed = await write(item),
+      action: action,
+    );
+    if (!saved) return (written: written, failed: true);
+    if (changed) written.add(item);
+  }
+  return (written: written, failed: false);
 }
 
 /// Restores every one of [ids], then throws the first failure, so the

@@ -17,6 +17,7 @@ import '../../helpers/auth_fakes.dart';
 import '../../helpers/editor_bridge_fakes.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/sample_data.dart';
+import '../../helpers/server_connections.dart';
 import '../../helpers/sync_fakes.dart';
 
 const int _mib = 1024 * 1024;
@@ -47,13 +48,18 @@ void main() {
     picker = FakeAttachmentPicker()..photos = [photo];
   });
 
-  Future<void> openEditor(WidgetTester tester, {String? route}) async {
+  Future<void> openEditor(
+    WidgetTester tester, {
+    String? route,
+    ServerConnection? connection,
+  }) async {
     usePhoneSurface(tester);
     await pumpSignedInApp(
       tester,
       sync: data,
       auth: AuthFakes(),
       now: now,
+      connection: connection,
       overrides: [bridges.override, picker.providerOverride],
     );
     unawaited(
@@ -120,6 +126,42 @@ void main() {
     expect(bridge.imagePreviews, [
       {image: 'data:image/jpeg;base64,AQID'},
     ]);
+  });
+
+  testWidgets('where the web runs at another address, images under the '
+      "server root get their previews as well as the web's own", (
+    tester,
+  ) async {
+    await openEditor(
+      tester,
+      connection: accountPagesServer270(
+        frontendUrl: Uri.parse('https://web.example.org/'),
+      ),
+    );
+    final bridge = bridges.last;
+    expect(bridge.init!.links.apiRoot, 'https://web.example.org');
+    const server =
+        'https://tasks.example.org/vikunja/api/v1/tasks/1/attachments/9';
+    const web = 'https://web.example.org/api/v2/tasks/1/attachments/8';
+    data.attachmentImages.fallback = AttachmentImage(
+      bytes: Uint8List.fromList([1, 2, 3]),
+      contentType: 'image/jpeg',
+    );
+
+    bridge.emit(
+      const EditorImagesWanted([
+        server,
+        web,
+        'https://evil.example/vikunja/api/v1/tasks/1/attachments/7',
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(bridge.imagePreviews, [
+      {server: 'data:image/jpeg;base64,AQID'},
+      {web: 'data:image/jpeg;base64,AQID'},
+    ]);
+    expect(data.attachmentImages.loads, ['1 9 xl', '1 8 xl']);
   });
 
   testWidgets('a page load that gave way to a reload gets no more previews, '

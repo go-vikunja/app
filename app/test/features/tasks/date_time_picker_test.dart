@@ -190,4 +190,26 @@ void main() {
 
     expect(picked, [DateTime(2026, 10, 24, 9)]);
   });
+
+  for (final (name, stored) in [
+    ('before 2000', DateTime(1999, 3, 14, 9, 30)),
+    ('past the usual last year', DateTime(now.year + 100, 6, 1, 8)),
+  ]) {
+    testWidgets('a stored date $name opens on its own day and OK keeps it', (
+      tester,
+    ) async {
+      final picked = await open(tester, current: stored);
+
+      expect(tester.takeException(), isNull);
+      final dialog = tester.widget<DatePickerDialog>(
+        find.byType(DatePickerDialog),
+      );
+      expect(dialog.initialDate, DateUtils.dateOnly(stored));
+      await tester.tap(find.text('OK'));
+      await tester.pumpAndSettle();
+      await confirmTime(tester);
+
+      expect(picked, [stored]);
+    });
+  }
 }

@@ -17,7 +17,7 @@ final class UpcomingSelection {
   /// is never repeated in [inRange].
   final List<Task> overdue;
 
-  /// Open tasks due strictly inside the range.
+  /// Open tasks due inside the range ([DateRange.contains]).
   final List<Task> inRange;
 
   /// Open tasks without a due date; empty unless asked for.
@@ -26,9 +26,10 @@ final class UpcomingSelection {
 
 /// The web's Upcoming filter (`done = false && due_date < to && due_date >
 /// from`, include-nulls for tasks without a date) evaluated on [tasks],
-/// with one difference: with [showOverdue] every overdue open task goes to
-/// the pinned overdue part instead of the web's dropped lower bound. Done
-/// tasks are ignored; [tasks] may hold them.
+/// with two differences: with [showOverdue] every overdue open task goes
+/// to the pinned overdue part instead of the web's dropped lower bound, and
+/// a range that [DateRange.includesFrom] holds a task due at its start.
+/// Done tasks are ignored; [tasks] may hold them.
 UpcomingSelection selectUpcoming(
   Iterable<Task> tasks, {
   required DateRange range,
@@ -46,8 +47,7 @@ UpcomingSelection selectUpcoming(
         if (showWithoutDueDate) withoutDueDate.add(task);
       case _ when showOverdue && task.isOverdue(now):
         overdue.add(task);
-      case final DateTime due
-          when due.isAfter(range.from) && due.isBefore(range.to):
+      case final DateTime due when range.contains(due):
         inRange.add(task);
     }
   }

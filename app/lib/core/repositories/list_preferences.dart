@@ -182,9 +182,9 @@ final class UpcomingPreferences {
   final bool showOverdue;
   final bool showWithoutDueDate;
 
-  /// A custom range runs from [customFrom]'s midnight to the midnight after
-  /// [customTo]; a custom range missing either end falls back to the
-  /// default preset.
+  /// A custom range runs from [customFrom]'s midnight, included, to the
+  /// midnight after [customTo]; a custom range missing either end falls
+  /// back to the default preset, whose ends stay exclusive as on the web.
   DateRange range(DateTime now) {
     final from = customFrom;
     final to = customTo;
@@ -195,6 +195,7 @@ final class UpcomingPreferences {
     return DateRange(
       from: DateTime(from.year, from.month, from.day),
       to: DateTime(to.year, to.month, to.day + 1),
+      includesFrom: true,
     );
   }
 
