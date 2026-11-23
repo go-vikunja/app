@@ -163,9 +163,15 @@ final class TaskDetailActions extends ChangeNotifier {
     final screenMessenger = ScaffoldMessenger.maybeOf(_context);
     final l10n = _context.l10n;
     final persist = MediaQuery.accessibleNavigationOf(_context);
+    // The sheet's ref is gone by the time the Undo is handed over.
+    final container = ProviderScope.containerOf(_context, listen: false);
+    final account = container.read(activeAccountIdProvider);
     return () {
       final messenger = below?.currentState ?? screenMessenger;
       if (messenger == null || !messenger.mounted) return;
+      // An account switch closed the sheet; the Undo would act on the
+      // previous account.
+      if (container.read(activeAccountIdProvider) != account) return;
       unawaited(
         showMarkedDoneSnackBarIn(
           messenger,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui' show IsolateNameServer;
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/core/auth/oauth_client.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/network/network_providers.dart';
@@ -177,6 +179,29 @@ void main() {
 
     expect(signIn.read(), isA<SignInSucceeded>());
     expect(deletions.deleted, [alice.id]);
+  });
+
+  test('a sign-in back from the browser waits, in progress, while the data '
+      'of its account from a sign-out is still being deleted', () async {
+    final aliceId = accountIdFor(fullServer270().rootUri, _alice.id);
+    final deletion = Completer<void>();
+    noteAccountDataDeletion(aliceId, deletion.future);
+    addTearDown(forgetSignOutLeftovers);
+    auth.serveUser(_alice, now: DateTime.now().toUtc());
+
+    final signingIn = controller().signIn(fullServer270(), confirm: _yes);
+    await Future<void>.delayed(const Duration(milliseconds: 100));
+
+    expect(signIn.read(), isA<SignInInProgress>());
+    expect(auth.webAuthenticator.urls, hasLength(1));
+    expect(await auth.tokenStore.read(aliceId), isNull);
+    expect(await auth.registry.find(aliceId), isNull);
+
+    deletion.complete();
+    await signingIn;
+
+    expect(signIn.read(), isA<SignInSucceeded>());
+    expect(await auth.registry.find(aliceId), isNotNull);
   });
 
   group('after a sign-out that gave up waiting for its database', () {

@@ -40,6 +40,22 @@ final _signOutLeftovers = <String>{};
 /// leftover and a guest's for its own, so two may meet on one account.
 final _settling = <String, Future<void>>{};
 
+/// Deletions of an account's local data under way in this isolate, which
+/// close and delete the database a sign-in of the account would use.
+final _dataDeletions = <String, Future<void>>{};
+
+/// Until [deletion] completes, [settleSignedOutDatabases] holds off a
+/// sign-in of [accountId]. Errors of [deletion] are its owner's.
+void noteAccountDataDeletion(String accountId, Future<void> deletion) {
+  late final Future<void> noted;
+  noted = deletion.then<void>((_) {}, onError: (Object _) {}).whenComplete(() {
+    if (identical(_dataDeletions[accountId], noted)) {
+      unawaited(_dataDeletions.remove(accountId));
+    }
+  });
+  _dataDeletions[accountId] = noted;
+}
+
 /// True once the database isolate has closed sqlite and unregistered
 /// itself; false after [timeout], logged, when a client elsewhere keeps it
 /// alive: the account is then remembered as a leftover for
@@ -67,24 +83,29 @@ Future<bool> awaitAccountDatabaseClosed(
 /// Whether a sign-in has to settle a sign-out first.
 bool get hasSignOutLeftovers => _signOutLeftovers.isNotEmpty;
 
-/// A sign-in must not register an account again while the database
+/// A sign-in must not register an account again while its data is still
+/// being deleted ([noteAccountDataDeletion]), nor while the database
 /// isolate of its sign-out still runs: the new database would attach to
-/// it, by its port name, and work on the deleted files. Waits until the
-/// isolate of every leftover (or only [accountId]'s) has gone, deletes its
-/// files once more, and forgets it; throws [SignOutStillFinishing] when
-/// one is still running after [timeout]. Returns at once without leftovers.
+/// it, by its port name, and work on the deleted files. Waits for every
+/// deletion (or only [accountId]'s), then until the isolate of every
+/// leftover (or only [accountId]'s) has gone, deletes its files once more,
+/// and forgets it; throws [SignOutStillFinishing] when one is still running
+/// after [timeout]. Returns at once without either.
 Future<void> settleSignedOutDatabases(
   AccountDatabaseFiles files, {
   String? accountId,
   Duration timeout = const Duration(seconds: 30),
   Duration pollInterval = const Duration(milliseconds: 100),
 }) async {
+  final deadline = DateTime.now().add(timeout);
+  await _awaitDataDeletions(accountId, deadline: deadline, timeout: timeout);
+  // Read only now: a deletion that gave up waiting for its database left
+  // one.
   final leftovers = [
     for (final id in _signOutLeftovers)
       if (accountId == null || id == accountId) id,
   ];
   if (leftovers.isEmpty) return;
-  final deadline = DateTime.now().add(timeout);
   for (final id in leftovers) {
     // Settled by another sign-in meanwhile, and maybe registered again:
     // its database is a new one now.
@@ -98,6 +119,32 @@ Future<void> settleSignedOutDatabases(
       timeout: timeout,
       pollInterval: pollInterval,
     ).whenComplete(() => unawaited(_settling.remove(id))));
+  }
+}
+
+Future<void> _awaitDataDeletions(
+  String? accountId, {
+  required DateTime deadline,
+  required Duration timeout,
+}) async {
+  while (true) {
+    final running = {
+      for (final MapEntry(key: id, value: deletion) in _dataDeletions.entries)
+        if (accountId == null || id == accountId) id: deletion,
+    };
+    if (running.isEmpty) return;
+    final ids = running.keys.join(', ');
+    _log.info('Waiting for the local data of account $ids to be deleted');
+    try {
+      await Future.wait(running.values)
+          .timeout(deadline.difference(DateTime.now()));
+    } on TimeoutException {
+      _log.warning(
+        'The local data of account $ids is still being deleted after '
+        '${timeout.inSeconds} s',
+      );
+      throw const SignOutStillFinishing();
+    }
   }
 }
 
@@ -139,6 +186,7 @@ final class SignOutStillFinishing implements Exception {
 void forgetSignOutLeftovers() {
   _signOutLeftovers.clear();
   _settling.clear();
+  _dataDeletions.clear();
 }
 
 Future<bool> _awaitIsolateGone(

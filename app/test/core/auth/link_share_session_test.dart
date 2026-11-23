@@ -699,6 +699,52 @@ void main() {
       throwsA(isA<SessionEnded>()),
     );
   });
+
+  group('a session retired while its new token is being written hands it '
+      'out no more (decision log: Sessions)', () {
+    late Completer<void> writing;
+
+    void holdTokenWrite(String accountId) {
+      writing = Completer<void>();
+      fakes.secureStore.beforeWrite = (key) async {
+        if (key == LinkShareStore.tokenKey(accountId)) await writing.future;
+      };
+    }
+
+    test('a renewed one', () async {
+      final guest = await seed(issuedAgo(const Duration(hours: 37)));
+      gateway.onRenew = (_) async => issueLinkShareToken(issuedAt: now);
+      holdTokenWrite(guest.id);
+      final all = sessions();
+      final request = expectLater(
+        all.forAccount(guest.id).validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+      await pumpEventQueue();
+
+      final retiring = all.retire(guest.id);
+      writing.complete();
+      await retiring;
+
+      await request;
+    });
+
+    test('one authenticated after a rejection', () async {
+      final old = issuedAgo(const Duration(hours: 1));
+      final guest = await seed(old);
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+      holdTokenWrite(guest.id);
+      final all = sessions();
+      final refresh = all.forAccount(guest.id).refreshAfterRejection(old.jwt);
+      await pumpEventQueue();
+
+      final retiring = all.retire(guest.id);
+      writing.complete();
+      await retiring;
+
+      expect(await refresh, isNull);
+    });
+  });
 }
 
 final class _CountingAdapter implements HttpClientAdapter {

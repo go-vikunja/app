@@ -51,7 +51,10 @@ class ConnectServerController extends _$ConnectServerController {
 
   /// What runs once the user accepted a plain http server, when that is
   /// more than taking the server.
-  Future<ConnectServerState> Function(ServerConnection connection)?
+  Future<ConnectServerState> Function(
+    ServerConnection connection,
+    CancelToken cancelToken,
+  )?
   _afterConsent;
 
   /// The shared link being opened, while it waits for its password or its
@@ -165,7 +168,7 @@ class ConnectServerController extends _$ConnectServerController {
     }
     if (probed is ConnectServerAwaitingInsecureConsent) {
       // Its token goes to the server only once the user accepted http.
-      _afterConsent = (connection) => _checkInvite(connection, invite);
+      _afterConsent = (connection, _) => _checkInvite(connection, invite);
     }
     return probed;
   }
@@ -247,10 +250,11 @@ class ConnectServerController extends _$ConnectServerController {
     final question = await _needsConsent(connection, input: serverAddress);
     if (cancelToken.isCancelled) return const ConnectServerIdle();
     if (question != null) {
-      _afterConsent = (connection) => _signInAsGuest(connection, share);
+      _afterConsent = (connection, token) =>
+          _signInAsGuest(connection, share, cancelToken: token);
       return question;
     }
-    return await _signInAsGuest(connection, share);
+    return await _signInAsGuest(connection, share, cancelToken: cancelToken);
   }
 
   /// The question before [connection] is used over http, or null when it
@@ -301,6 +305,7 @@ class ConnectServerController extends _$ConnectServerController {
     ParsedLinkShareUrl share, {
     String? password,
     bool rememberPassword = false,
+    CancelToken? cancelToken,
   }) async {
     final container = ref.container;
     final GuestSignInResult result;
@@ -315,6 +320,7 @@ class ConnectServerController extends _$ConnectServerController {
             // Opened again, the guest becomes active at once, like a switch.
             beforeActivatingExisting: (accountId) =>
                 prepareSyncStatus(container, accountId),
+            commit: cancelToken == null ? null : () => _commit(cancelToken),
           );
     } on Object catch (error, stackTrace) {
       _logUnexpected(error, stackTrace);
@@ -343,7 +349,22 @@ class ConnectServerController extends _$ConnectServerController {
           serverRoot: connection.rootUri,
           error: failure,
         );
+      case GuestSignInCancelled():
+        return const ConnectServerIdle();
     }
+  }
+
+  /// A cancel before the server has answered the link stores nothing; from
+  /// the answer on, Cancel and Close are refused and the guest is kept, like
+  /// the previous app's session once its server has confirmed the account
+  /// (decision log: The first start after the update).
+  bool _commit(CancelToken cancelToken) {
+    if (!ref.mounted || cancelToken.isCancelled) return false;
+    if (identical(_cancelToken, cancelToken)) _cancelToken = null;
+    if (state case final ConnectServerConnecting connecting) {
+      state = connecting.committed;
+    }
+    return true;
   }
 
   /// One try of the shared project's password; the state follows unless
@@ -408,7 +429,7 @@ class ConnectServerController extends _$ConnectServerController {
       if (!ref.mounted || cancelToken.isCancelled) return;
       final outcome = next == null
           ? ConnectServerConnected(connection)
-          : await next(connection);
+          : await next(connection, cancelToken);
       if (!ref.mounted || cancelToken.isCancelled) return;
       _cancelToken = null;
       _apply(outcome);

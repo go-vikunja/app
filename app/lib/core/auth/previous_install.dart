@@ -14,15 +14,19 @@ const installMarkerKey = 'auth.install_marker';
 /// an update from a build before the marker existed and is left alone.
 ///
 /// Only for the UI start: a background isolate must never wipe tokens.
+/// The start waits for the wipe, but not past [wipeTimeout].
 Future<void> purgeSecretsLeftByPreviousInstall({
   required PreferencesStore preferences,
   required SecureStore secureStore,
+  Duration wipeTimeout = const Duration(seconds: 10),
 }) async {
   if (await preferences.getString(installMarkerKey) != null) return;
   final registry = await preferences.getString(AccountRegistry.storageKey);
   if (registry == null || registry.isEmpty) {
     try {
-      await secureStore.deleteAll();
+      // A wipe that answers late still deletes no token written after it:
+      // the plugin runs its calls one after another.
+      await secureStore.deleteAll().timeout(wipeTimeout);
     } on Object catch (error) {
       // Without the marker the next start tries again.
       _log.warning('Could not clear secure storage: ${error.runtimeType}');

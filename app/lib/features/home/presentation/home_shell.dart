@@ -500,6 +500,11 @@ class _HomeShellState extends ConsumerState<HomeShell>
   /// one frame disposes both.
   void _closePreviousAccount() {
     ref.read(rootModalRoutesProvider).closeAll();
+    // An Undo up or queued, such as one a closing task detail handed below,
+    // would act on the previous account.
+    ScaffoldMessenger.maybeOf(context)
+      ?..clearSnackBars()
+      ..removeCurrentSnackBar();
     GoRouter.of(context).go(AppRoutes.overview);
     setState(() {
       _clearPanes();

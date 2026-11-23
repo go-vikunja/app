@@ -79,11 +79,12 @@ void main() {
 
     expect(
       states.whereType<ConnectServerConnecting>().map(
-        (s) => (s.input, s.target),
+        (s) => (s.input, s.target, s.cancellable),
       ),
       [
-        ('${base}share/xxxx…/auth', ConnectTarget.sharedLink),
-        (base, ConnectTarget.invite),
+        ('${base}share/xxxx…/auth', ConnectTarget.sharedLink, true),
+        ('${base}share/xxxx…/auth', ConnectTarget.sharedLink, false),
+        (base, ConnectTarget.invite, true),
       ],
     );
   });
@@ -599,6 +600,72 @@ void main() {
       expect(state(), isA<ConnectServerIdle>());
       expect(auth.linkShareGateway.authentications, isEmpty);
       expect((await auth.registry.load()).accounts, isEmpty);
+    });
+
+    test('cancelled while its server answers stores nothing', () async {
+      auth.linkShareGateway.serve(token);
+      final answer = auth.linkShareGateway.holdNextAuthentication();
+
+      final connecting = controller().connect(shareLink());
+      await pumpEventQueue();
+      expect(auth.linkShareGateway.authentications, hasLength(1));
+      controller().cancel();
+      answer.complete();
+      await connecting;
+
+      expect(state(), isA<ConnectServerIdle>());
+      expect(auth.secureStore.values, isEmpty);
+      expect((await auth.registry.load()).accounts, isEmpty);
+      expect(container.read(guestLandingsProvider).take(accountId), isNull);
+    });
+
+    test('on a plain http server, cancelled after the consent while its '
+        'server answers stores nothing', () async {
+      connector.handler = (_) async => insecureServer();
+      auth.linkShareGateway.serve(token);
+      await controller().connect(shareLink(base: 'http://192.168.1.20:3456/'));
+      final answer = auth.linkShareGateway.holdNextAuthentication();
+
+      final accepting = controller().acceptInsecureConnection();
+      await pumpEventQueue();
+      expect(auth.linkShareGateway.authentications, hasLength(1));
+      controller().cancel();
+      answer.complete();
+      await accepting;
+
+      expect(state(), isA<ConnectServerIdle>());
+      expect(
+        auth.secureStore.values.keys,
+        isNot(anyElement(contains(accountId))),
+      );
+      expect((await auth.registry.load()).accounts, isEmpty);
+    });
+
+    test('once its server has answered, refuses a cancel and keeps the '
+        'guest', () async {
+      auth.linkShareGateway.serve(token);
+      final storing = Completer<void>();
+      auth.secureStore.beforeWrite = (key) async {
+        if (key == LinkShareStore.hashKey(accountId)) await storing.future;
+      };
+
+      final connecting = controller().connect(shareLink());
+      await pumpEventQueue();
+      expect(
+        state(),
+        isA<ConnectServerConnecting>().having(
+          (s) => s.cancellable,
+          'cancellable',
+          isFalse,
+        ),
+      );
+      controller().cancel();
+      expect(state(), isA<ConnectServerConnecting>());
+      storing.complete();
+      await connecting;
+
+      expect(state(), isA<ConnectServerGuestSignedIn>());
+      expect((await auth.registry.load()).activeAccountId, accountId);
     });
 
     test('opened again replaces the guest and says it was there', () async {

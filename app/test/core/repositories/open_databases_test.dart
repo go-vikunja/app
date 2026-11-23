@@ -177,6 +177,87 @@ void main() {
     });
   });
 
+  group('while the data of a signed-out account is being deleted', () {
+    const otherAccountId = 'fedcba9876543210fedcba9876543210';
+    const poll = Duration(milliseconds: 10);
+    late Completer<void> deletion;
+    late FakeAccountDatabaseFiles deletions;
+
+    setUp(() {
+      deletion = Completer<void>();
+      deletions = FakeAccountDatabaseFiles();
+      noteAccountDataDeletion(accountId, deletion.future);
+    });
+
+    Future<bool> settledSoon({String? accountId}) => settleSignedOutDatabases(
+      deletions,
+      accountId: accountId,
+      pollInterval: poll,
+    ).then((_) => true).timeout(poll * 5, onTimeout: () => false);
+
+    test('a sign-in of that account, or of any while a user signs in, waits '
+        'until it is done', () async {
+      expect(await settledSoon(accountId: accountId), isFalse);
+      expect(await settledSoon(), isFalse);
+
+      deletion.complete();
+
+      expect(await settledSoon(accountId: accountId), isTrue);
+      expect(await settledSoon(), isTrue);
+    });
+
+    test('a failed deletion holds nothing up once it has failed', () async {
+      deletion.completeError(StateError('disk'));
+
+      expect(await settledSoon(accountId: accountId), isTrue);
+    });
+
+    test('a guest of another account is not held up by it', () async {
+      expect(await settledSoon(accountId: otherAccountId), isTrue);
+    });
+
+    test('a sign-in gives up after its wait', () async {
+      await expectLater(
+        settleSignedOutDatabases(
+          deletions,
+          accountId: accountId,
+          timeout: poll,
+          pollInterval: poll,
+        ),
+        throwsA(isA<SignOutStillFinishing>()),
+      );
+      deletion.complete();
+    });
+
+    test('a database the deletion gave up waiting for is settled after '
+        'it', () async {
+      final held = ReceivePort();
+      final portName = accountDatabasePortName(accountId);
+      IsolateNameServer.registerPortWithName(held.sendPort, portName);
+      addTearDown(() {
+        IsolateNameServer.removePortNameMapping(portName);
+        held.close();
+      });
+      final settling = settleSignedOutDatabases(
+        deletions,
+        accountId: accountId,
+        pollInterval: poll,
+      );
+
+      expect(
+        await awaitAccountDatabaseClosed(accountId, timeout: Duration.zero),
+        isFalse,
+      );
+      deletion.complete();
+      await Future<void>.delayed(poll * 5);
+      expect(deletions.deleted, isEmpty);
+
+      IsolateNameServer.removePortNameMapping(portName);
+      await settling;
+      expect(deletions.deleted, [accountId]);
+    });
+  });
+
   group('two sign-ins waiting at once', () {
     const guestId = 'fedcba9876543210fedcba9876543210';
     const poll = Duration(milliseconds: 10);

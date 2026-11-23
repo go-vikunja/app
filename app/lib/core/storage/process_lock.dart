@@ -8,8 +8,9 @@ final _log = Logger('ProcessLock');
 
 /// A lock every isolate of this process honours: its holder registers a
 /// port under [name] with the `IsolateNameServer`, which takes one port per
-/// name. A file lock would not do, as POSIX record locks belong to the
-/// process (`file_lock_isolates_test.dart`).
+/// name, and its isolate's control port beside it. A file lock would not
+/// do, as POSIX record locks belong to the process
+/// (`file_lock_isolates_test.dart`).
 final class ProcessLock {
   new(
     this.name, {
@@ -31,15 +32,21 @@ final class ProcessLock {
   /// never returns must not stop every other isolate's writes for good.
   final Duration giveUpAfter;
 
+  String get _controlName => '$name/control';
+
   Future<T> run<T>(Future<T> Function() action) async {
-    final port = RawReceivePort((Object? message) {
-      if (message is SendPort) message.send(true);
-    }, 'process lock $name');
+    final port = RawReceivePort(null, 'process lock $name');
     final held = await _acquire(port.sendPort);
     try {
       return await action();
     } finally {
       if (held && IsolateNameServer.lookupPortByName(name) == port.sendPort) {
+        // First, so that no waiter finds the next holder beside this
+        // isolate's control port.
+        if (IsolateNameServer.lookupPortByName(_controlName) ==
+            Isolate.current.controlPort) {
+          IsolateNameServer.removePortNameMapping(_controlName);
+        }
         IsolateNameServer.removePortNameMapping(name);
       }
       port.close();
@@ -49,6 +56,7 @@ final class ProcessLock {
   Future<bool> _acquire(SendPort port) async {
     final waited = Stopwatch()..start();
     var nextCheck = checkHolderAfter;
+    SendPort? seenWithoutControl;
     while (!IsolateNameServer.registerPortWithName(port, name)) {
       if (waited.elapsed >= giveUpAfter) {
         _log.warning(
@@ -60,26 +68,49 @@ final class ProcessLock {
       if (waited.elapsed >= nextCheck) {
         nextCheck = waited.elapsed + checkHolderAfter;
         final holder = IsolateNameServer.lookupPortByName(name);
-        if (holder != null &&
-            !await _answers(holder) &&
-            IsolateNameServer.lookupPortByName(name) == holder) {
+        final control = IsolateNameServer.lookupPortByName(_controlName);
+        final bool gone;
+        if (holder == null) {
+          gone = false;
+        } else if (control == null) {
+          // A live holder registers its control port right after the lock
+          // and removes it right before letting go: one seen without it
+          // twice has ended in between.
+          gone = holder == seenWithoutControl;
+          seenWithoutControl = holder;
+        } else {
+          gone =
+              !await _answers(control) &&
+              IsolateNameServer.lookupPortByName(name) == holder &&
+              IsolateNameServer.lookupPortByName(_controlName) == control;
+        }
+        if (gone) {
           _log.warning('The holder of the lock $name has gone; taking it over');
+          IsolateNameServer.removePortNameMapping(_controlName);
           IsolateNameServer.removePortNameMapping(name);
           continue;
         }
       }
       await Future<void>.delayed(pollInterval);
     }
+    IsolateNameServer.removePortNameMapping(_controlName);
+    IsolateNameServer.registerPortWithName(
+      Isolate.current.controlPort,
+      _controlName,
+    );
     return true;
   }
 
-  Future<bool> _answers(SendPort holder) async {
+  /// A ping, at its default immediate priority, is answered between any two
+  /// steps of a live isolate, also one busy with a long frame, and never by
+  /// one that has ended.
+  Future<bool> _answers(SendPort control) async {
     final answer = Completer<bool>();
     final reply = RawReceivePort((Object? _) {
       if (!answer.isCompleted) answer.complete(true);
     }, 'process lock $name check');
     try {
-      holder.send(reply.sendPort);
+      Isolate(control).ping(reply.sendPort);
       return await answer.future.timeout(holderAnswer, onTimeout: () => false);
     } finally {
       reply.close();

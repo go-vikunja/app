@@ -5,7 +5,10 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
+import 'package:vikunja_mobile/app/router/pop_pages_over_shell.dart';
+import 'package:vikunja_mobile/core/auth/auth_providers.dart';
 import 'package:vikunja_mobile/core/repositories/task_repository.dart';
+import 'package:vikunja_mobile/features/tasks/presentation/open/task_opener.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_detail_sheet.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
 import 'package:vikunja_mobile/features/trash/presentation/trash_feedback.dart';
@@ -192,6 +195,66 @@ void main() {
     await markDoneAndClose(wait: markedDoneSnackBarDuration);
 
     expect(find.text(en.taskMarkedDone), findsNothing);
+  });
+
+  testWidgets('a sheet an account switch closes while its Undo is up hands '
+      "it to none of the next account's screens", (tester) async {
+    final auth = AuthFakes();
+    final bob = await auth.seedAccount(
+      oauthServer230(),
+      tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
+      activate: false,
+    );
+    data.accounts[bob.id] = AccountDataFakes(now: now);
+    usePhoneSurface(tester, logicalSize: const Size(360, 1800));
+    await pumpSignedInApp(tester, sync: data, auth: auth, now: now);
+    await tester.tap(find.text('Bare task'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      inSheet(find.widgetWithText(FilledButton, en.taskDetailMarkDone)),
+    );
+    await tester.pumpAndSettle();
+    expect(inSheet(find.text(en.taskMarkedDone)), findsOneWidget);
+
+    await containerOf(tester).read(accountRegistryProvider).setActive(bob.id);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TaskDetailSheet), findsNothing);
+    expect(find.text(en.taskMarkedDone), findsNothing);
+  });
+
+  testWidgets('an Undo handed below before a switch from outside reaches the '
+      "providers goes with the switch, so it cannot undo in the next account's "
+      'screens', (tester) async {
+    final auth = AuthFakes();
+    final bob = await auth.seedAccount(
+      oauthServer230(),
+      tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
+      activate: false,
+    );
+    data.accounts[bob.id] = AccountDataFakes(now: now);
+    usePhoneSurface(tester, logicalSize: const Size(360, 1800));
+    await pumpSignedInApp(tester, sync: data, auth: auth, now: now);
+    await tester.tap(find.text('Bare task'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      inSheet(find.widgetWithText(FilledButton, en.taskDetailMarkDone)),
+    );
+    await tester.pumpAndSettle();
+    final opener = containerOf(tester).read(taskOpenerProvider);
+    // The switch's first step closes the sheet, which hands its Undo below
+    // while the previous account is still active.
+    expect(await popPagesOverShell(opener.router), LeaveOutcome.left);
+    await tester.pumpAndSettle();
+    expect(find.byType(TaskDetailSheet), findsNothing);
+    expect(find.text(en.taskMarkedDone), findsOneWidget);
+
+    final switched = opener.activate(bob.id);
+    await tester.pumpAndSettle();
+
+    expect(await switched, isTrue);
+    expect(find.text(en.taskMarkedDone), findsNothing);
+    expect(find.text(en.undo), findsNothing);
   });
 
   group('a change the device cannot store', () {
@@ -595,6 +658,41 @@ void main() {
       await tester.pump(const Duration(seconds: 2));
       await tester.pumpAndSettle();
       expect(find.text(en.taskMovedToTrash), findsNothing);
+    });
+
+    testWidgets('a switch from outside takes the Undo away, which would '
+        'restore the task in the previous account', (tester) async {
+      final auth = AuthFakes();
+      final bob = await auth.seedAccount(
+        oauthServer230(),
+        tokens: issueTokens(issuedAt: now, userId: 8, username: 'bob'),
+        activate: false,
+      );
+      data.accounts[bob.id] = AccountDataFakes(now: now);
+      usePhoneSurface(tester, logicalSize: const Size(360, 1800));
+      await pumpSignedInApp(
+        tester,
+        sync: data,
+        auth: auth,
+        now: now,
+        connection: fullServer280(),
+      );
+      await tester.tap(find.text('Bare task'));
+      await tester.pumpAndSettle();
+      await openMenu(tester, en.moreActions);
+      await tester.tap(find.text(en.taskDelete));
+      await tester.pumpAndSettle();
+      await confirm(tester);
+      expect(find.text(en.taskMovedToTrash), findsOneWidget);
+
+      final switched = containerOf(tester)
+          .read(taskOpenerProvider)
+          .activate(bob.id);
+      await tester.pumpAndSettle();
+
+      expect(await switched, isTrue);
+      expect(find.text(en.taskMovedToTrash), findsNothing);
+      expect(find.text(en.undo), findsNothing);
     });
 
     testWidgets('under a screen reader the snackbar waits for the user', (

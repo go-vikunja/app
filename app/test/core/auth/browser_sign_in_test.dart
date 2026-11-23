@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_in_tokens.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
 import 'package:vikunja_mobile/core/auth/web_authenticator.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
@@ -375,6 +376,100 @@ void main() {
       expect(entry?.id, seeded.id);
       expect(entry?.account.needsReauth, isFalse);
     });
+  });
+
+  group('before anything of the new session is stored', () {
+    late TokenSet old;
+    late TokenSet fresh;
+
+    setUp(() async {
+      old = issueTokens(
+        issuedAt: now.subtract(const Duration(minutes: 3)),
+        userId: _alice.id,
+      );
+      await fakes.seedAccount(connection, tokens: old);
+      fresh = issueTokens(issuedAt: now, userId: _alice.id);
+      fakes.tokenGateway.onExchange = (_) async => fresh;
+    });
+
+    test('the sign-in waits there for the account the browser told', () async {
+      final waited = <String>[];
+      String? storedMeanwhile;
+
+      await signIn.signIn(
+        connection,
+        beforeStoring: (id) async {
+          waited.add(id);
+          storedMeanwhile = (await fakes.tokenStore.read(id))?.refreshToken;
+        },
+      );
+
+      expect(waited, [accountId]);
+      expect(storedMeanwhile, old.refreshToken);
+      expect(
+        (await fakes.tokenStore.read(accountId))?.refreshToken,
+        fresh.refreshToken,
+      );
+    });
+
+    test('a throw there ends the sign-in: nothing is stored, the old session '
+        'goes on, and the new one is logged out', () async {
+      await expectLater(
+        signIn.signIn(
+          connection,
+          beforeStoring: (_) async => throw const SignOutStillFinishing(),
+        ),
+        throwsA(isA<SignOutStillFinishing>()),
+      );
+      await pumpEventQueue();
+
+      expect(
+        (await fakes.tokenStore.read(accountId))?.refreshToken,
+        old.refreshToken,
+      );
+      expect(
+        await sessions.forAccount(accountId).validAccessToken(),
+        old.accessToken,
+      );
+      expect(fakes.accountGateway.logoutTokens, [fresh.accessToken]);
+    });
+  });
+
+  test('a live account whose new tokens cannot be stored goes on with the '
+      'session storage still holds, and is not marked', () async {
+    final old = issueTokens(
+      issuedAt: now.subtract(const Duration(minutes: 3)),
+      userId: _alice.id,
+    );
+    await fakes.seedAccount(connection, tokens: old);
+    expect(
+      await sessions.forAccount(accountId).validAccessToken(),
+      old.accessToken,
+    );
+    fakes.secureStore.beforeWrite = (_) async =>
+        throw StateError('the key is gone');
+    final failingStorage = BrowserSignIn(
+      authenticator: fakes.webAuthenticator,
+      tokenGateway: fakes.tokenGateway,
+      accountGateway: fakes.accountGateway,
+      tokenStore: fakes.tokenStore,
+      registry: fakes.registry,
+      sessions: sessions,
+      clock: () => now,
+      sleep: (_) async {},
+    );
+
+    await expectLater(
+      failingStorage.signIn(connection),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(
+      await sessions.forAccount(accountId).validAccessToken(),
+      old.accessToken,
+    );
+    final stored = (await fakes.registry.find(accountId))!;
+    expect(stored.account.needsReauth, isFalse);
   });
 
   test('stores the server clock offset of the sign-in', () async {

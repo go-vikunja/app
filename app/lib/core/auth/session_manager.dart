@@ -855,6 +855,16 @@ final class SessionManagers {
   /// out nothing and never writes storage, until [signedIn] replaces it.
   Future<void> retire(String accountId) => forAccount(accountId).retire();
 
+  /// For a sign-in that retired the account's manager and then could not
+  /// store its tokens: a new manager reads what storage still holds, as at
+  /// the next start, and ends the session the usual way when that does not
+  /// work. The retired one stays retired.
+  void replaceRetired(String accountId) {
+    if (_managers[accountId]?._stop is RetiredStop) {
+      _managers[accountId] = _create(accountId);
+    }
+  }
+
   /// See [SessionManager.settle], for every account.
   Future<void> settle() =>
       Future.wait([for (final manager in _managers.values) manager.settle()]);

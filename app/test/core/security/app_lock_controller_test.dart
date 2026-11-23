@@ -527,6 +527,21 @@ void main() {
       picker.complete();
     });
 
+    testLock('is used out of sight also during an excursion, for a frame '
+        'drawn before the show', (tester) async {
+      final container = await startUnlocked(tester);
+      final share = Completer<void>();
+      unawaited(controllerOf(container).excursion(() => share.future));
+
+      leave(tester);
+      expect(lockOf(container).covered, isTrue);
+
+      comeBack(tester);
+      expect(lockOf(container).covered, isFalse);
+      expect(lockOf(container).locked, isFalse);
+      share.complete();
+    });
+
     testLock('is used again once an excursion outlasts ten minutes', (
       tester,
     ) async {
@@ -1098,6 +1113,55 @@ void main() {
       expect(lockOf(container).locked, isTrue);
     });
 
+    for (final (how, check)
+        in <(String, void Function(WidgetTester, ProviderContainer))>[
+          ('the return', (tester, _) => comeBack(tester)),
+          (
+            'isLockedNow',
+            (_, container) => controllerOf(container).isLockedNow(),
+          ),
+        ]) {
+      testLock('one that starts while the app is already hidden keeps the '
+          'time before it, checked by $how', (tester) async {
+        final container = await startUnlocked(
+          tester,
+          const PrivacySettings(
+            appLock: true,
+            lockAfter: LockAfter.fiveMinutes,
+          ),
+        );
+        final download = Completer<void>();
+
+        leave(tester);
+        now = now.add(const Duration(minutes: 8));
+        unawaited(controllerOf(container).excursion(() => download.future));
+        now = now.add(const Duration(minutes: 2));
+        check(tester, container);
+
+        expect(lockOf(container).locked, isTrue);
+        download.complete();
+      });
+    }
+
+    testLock('one that starts and ends while the app is hidden keeps the '
+        'time before it', (tester) async {
+      final container = await startUnlocked(
+        tester,
+        const PrivacySettings(appLock: true, lockAfter: LockAfter.fiveMinutes),
+      );
+      final download = Completer<void>();
+
+      leave(tester);
+      now = now.add(const Duration(minutes: 3));
+      final opened = controllerOf(container).excursion(() => download.future);
+      download.complete();
+      await opened;
+      now = now.add(const Duration(minutes: 3));
+      comeBack(tester);
+
+      expect(lockOf(container).locked, isTrue);
+    });
+
     testLock('one that ends hidden with immediately locks at once', (
       tester,
     ) async {
@@ -1337,6 +1401,17 @@ void main() {
 
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
 
+      expect(lockOf(container).covered, isFalse);
+    });
+
+    testLock('still covers once out of sight where the system hides '
+        'Recents itself', (tester) async {
+      final container = await protect(tester, _locked);
+
+      leave(tester);
+      expect(lockOf(container).covered, isTrue);
+
+      comeBack(tester);
       expect(lockOf(container).covered, isFalse);
     });
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
@@ -89,4 +91,38 @@ void main() {
 
     expect(auth.preferences.values, isNot(contains(installMarkerKey)));
   });
+
+  test('a wipe that never answers does not hold the start, and leaves the '
+      'marker unset', () async {
+    await purgeSecretsLeftByPreviousInstall(
+      preferences: auth.preferences,
+      secureStore: _StuckKeystore(),
+      wipeTimeout: const Duration(milliseconds: 20),
+    ).timeout(const Duration(seconds: 5));
+
+    expect(auth.preferences.values, isNot(contains(installMarkerKey)));
+  });
+}
+
+/// Like a Keystore whose plugin thread is stuck behind a call that never
+/// answers.
+final class _StuckKeystore implements SecureStore {
+  @override
+  Future<String?> read(String key) async => null;
+
+  @override
+  Future<void> write(
+    String key,
+    String value, {
+    bool recoverLostKey = false,
+  }) async {}
+
+  @override
+  Future<void> delete(String key) async {}
+
+  @override
+  Future<void> deleteAll() => Completer<void>().future;
+
+  @override
+  Future<void> flush() async {}
 }

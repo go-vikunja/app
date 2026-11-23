@@ -78,13 +78,16 @@ final class BrowserSignIn {
 
   /// Signs in and makes the account active. Null when the user closed the
   /// browser. With [expectedAccount], only that user is accepted.
-  /// [beforeActivatingExisting] runs for an account already on this device
-  /// before it becomes active again. Throws `VikunjaFailure`,
-  /// `AuthorizationCallbackException`, [WebAuthenticationFailed] or
-  /// [SignedInAsDifferentUser].
+  /// [beforeStoring] runs once the browser has told which account it is,
+  /// before anything of its new session is stored, and a throw there ends
+  /// the sign-in. [beforeActivatingExisting] runs for an account already
+  /// on this device before it becomes active again. Throws
+  /// `VikunjaFailure`, `AuthorizationCallbackException`,
+  /// [WebAuthenticationFailed] or [SignedInAsDifferentUser].
   Future<RegisteredAccount?> signIn(
     ServerConnection connection, {
     Account? expectedAccount,
+    Future<void> Function(String accountId)? beforeStoring,
     Future<void> Function(String accountId)? beforeActivatingExisting,
   }) async {
     final request = _createRequest(connection, _client);
@@ -106,6 +109,7 @@ final class BrowserSignIn {
     final receivedAt = _clock();
 
     final User user;
+    final String accountId;
     try {
       user = await _accountGateway.currentUser(
         connection,
@@ -123,18 +127,22 @@ final class BrowserSignIn {
           expectedUsername: expectedAccount.username,
         );
       }
+      accountId = accountIdFor(connection.rootUri, user.id);
+      await beforeStoring?.call(accountId);
     } on Object {
       unawaited(_signInTokens.abandon(connection, tokens));
       rethrow;
     }
 
-    final accountId = accountIdFor(connection.rootUri, user.id);
     await _sessions.retire(accountId);
     final ReplacedTokens replaced;
     try {
       replaced = await _signInTokens.store(accountId, tokens);
     } on Object {
       unawaited(_signInTokens.abandon(connection, tokens));
+      // The account stays with what storage still holds, which a new
+      // manager reads as after a restart: the retired one hands out nothing.
+      _sessions.replaceRetired(accountId);
       rethrow;
     }
     final session = await _sessions.signedIn(

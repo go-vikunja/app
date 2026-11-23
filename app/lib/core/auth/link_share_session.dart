@@ -93,20 +93,7 @@ final class LinkShareSession implements AccessTokenSource {
   @override
   Future<String> validAccessToken() async {
     try {
-      final token = await _current();
-      if (token == null || _isExpired(token)) {
-        return (await _authenticateOnce()).jwt;
-      }
-      if (!_pastHalfLife(token) || _renewalBlocked) return token.jwt;
-      try {
-        return (await _renewOnce(token)).jwt;
-      } on SessionEnded {
-        rethrow;
-      } on VikunjaFailure catch (failure) {
-        _log.info('Renewal of guest $accountId failed: $failure');
-        if (_isExpired(token)) rethrow;
-        return token.jwt;
-      }
+      return await _unlessRetired(_validAccessToken);
     } on _Retired {
       throw const SessionEnded(SessionEndReason.expired);
     }
@@ -117,22 +104,49 @@ final class LinkShareSession implements AccessTokenSource {
   @override
   Future<String?> refreshAfterRejection(String rejectedToken) async {
     try {
-      final current = await _current();
-      if (current != null &&
-          current.jwt != rejectedToken &&
-          !_isExpired(current)) {
-        return current.jwt;
-      }
-      final stored = await _readStored();
-      if (stored != null &&
-          stored.jwt != rejectedToken &&
-          !_isExpired(stored)) {
-        return (_token = stored).jwt;
-      }
-      return (await _authenticateOnce(rejectedToken: rejectedToken)).jwt;
+      return await _unlessRetired(() => _refreshAfterRejection(rejectedToken));
     } on _Retired {
       return null;
     }
+  }
+
+  /// A retirement while a token was on its way, its write included, hands
+  /// that token out no more (decision log: Sessions).
+  Future<T> _unlessRetired<T>(Future<T> Function() call) async {
+    final result = await call();
+    if (_retired) throw const _Retired();
+    return result;
+  }
+
+  Future<String> _validAccessToken() async {
+    final token = await _current();
+    if (token == null || _isExpired(token)) {
+      return (await _authenticateOnce()).jwt;
+    }
+    if (!_pastHalfLife(token) || _renewalBlocked) return token.jwt;
+    try {
+      return (await _renewOnce(token)).jwt;
+    } on SessionEnded {
+      rethrow;
+    } on VikunjaFailure catch (failure) {
+      _log.info('Renewal of guest $accountId failed: $failure');
+      if (_isExpired(token)) rethrow;
+      return token.jwt;
+    }
+  }
+
+  Future<String?> _refreshAfterRejection(String rejectedToken) async {
+    final current = await _current();
+    if (current != null &&
+        current.jwt != rejectedToken &&
+        !_isExpired(current)) {
+      return current.jwt;
+    }
+    final stored = await _readStored();
+    if (stored != null && stored.jwt != rejectedToken && !_isExpired(stored)) {
+      return (_token = stored).jwt;
+    }
+    return (await _authenticateOnce(rejectedToken: rejectedToken)).jwt;
   }
 
   /// A request answered that the share is gone.
@@ -480,9 +494,28 @@ final class LinkShareSessions {
   final DateTime Function() _clock;
   final int? _maxAuthentications;
   final _sessions = <String, LinkShareSession>{};
+  final _gates = <String, Future<void>>{};
 
   LinkShareSession forAccount(String accountId) =>
       _sessions.putIfAbsent(accountId, () => _create(accountId));
+
+  /// Runs [action] after every earlier one for [accountId] in this isolate
+  /// has ended: a guest's link stored again and its sign-out must not
+  /// interleave, or a removed guest keeps a live session or its hash.
+  Future<T> exclusive<T>(String accountId, Future<T> Function() action) async {
+    final earlier = _gates[accountId];
+    final done = Completer<void>();
+    _gates[accountId] = done.future;
+    try {
+      if (earlier != null) await earlier;
+      return await action();
+    } finally {
+      done.complete();
+      if (identical(_gates[accountId], done.future)) {
+        unawaited(_gates.remove(accountId));
+      }
+    }
+  }
 
   /// The [LinkShareGoneInterceptor] of [accountId]'s client on
   /// [connection].

@@ -7,10 +7,13 @@ import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/sign_out.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
+import 'package:vikunja_mobile/core/storage/preferences_store.dart';
 
 import '../../helpers/auth_fakes.dart';
 import '../../helpers/guest_fakes.dart';
 import '../../helpers/server_connections.dart';
+import '../../helpers/sync_fakes.dart';
 
 void main() {
   late DateTime now;
@@ -236,6 +239,65 @@ void main() {
       expect(await second, isTrue);
       expect(wipes, 1);
     });
+
+    group('a sign-in of the account waits before it registers it', () {
+      late FakeAccountDatabaseFiles files;
+      late Map<String, Completer<void>> held;
+
+      setUp(() {
+        addTearDown(forgetSignOutLeftovers);
+        files = FakeAccountDatabaseFiles();
+        held = {};
+        wipeAccountData = (accountId) async {
+          wiped.add(accountId);
+          await (held[accountId] ??= Completer<void>()).future;
+        };
+      });
+
+      Future<bool> settledSoon(String accountId) =>
+          settleSignedOutDatabases(files, accountId: accountId)
+              .then((_) => true)
+              .timeout(
+                const Duration(milliseconds: 50),
+                onTimeout: () => false,
+              );
+
+      test('for the wipe under way', () async {
+        await fakes.registry.remove('a1');
+        final finishing = deletions.finish('a1');
+        final settling = settleSignedOutDatabases(files, accountId: 'a1');
+        await pumpEventQueue();
+
+        expect(await settledSoon('a1'), isFalse);
+        expect(await settledSoon('b2'), isTrue);
+
+        held['a1']!.complete();
+        await settling;
+        expect(await finishing, isTrue);
+        expect(await settledSoon('a1'), isTrue);
+      });
+
+      test("for its turn at the start, while another account's wipe is "
+          'under way', () async {
+        for (final id in ['a1', 'b2']) {
+          await fakes.registry.remove(id);
+        }
+        final finishing = deletions.finishAll();
+        await pumpEventQueue();
+        expect(wiped, ['a1']);
+
+        expect(await settledSoon('b2'), isFalse);
+
+        held['a1']!.complete();
+        await pumpEventQueue();
+        expect(wiped, ['a1', 'b2']);
+        expect(await settledSoon('b2'), isFalse);
+
+        held['b2']!.complete();
+        expect(await finishing, isTrue);
+        expect(await settledSoon('b2'), isTrue);
+      });
+    });
   });
 
   test('refreshes first when the access token is about to expire', () async {
@@ -372,6 +434,55 @@ void main() {
     expect(fakes.secureStore.values, isEmpty);
   });
 
+  group('a sign-out that fails after the session was retired', () {
+    test('keeps the account, marked to sign in again', () async {
+      final alice = await fakes.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now),
+      );
+      fakes.secureStore.beforeDelete = (_) async =>
+          throw StateError('Keychain locked');
+
+      await expectLater(signOut(alice.id), throwsA(isA<StateError>()));
+
+      final kept = (await fakes.registry.find(alice.id))!;
+      expect(kept.account.needsReauth, isTrue);
+      expect(wiped, isEmpty);
+    });
+
+    test('passes its own failure on when the mark cannot be stored '
+        'either', () async {
+      final alice = await fakes.seedAccount(
+        fullServer270(),
+        tokens: issueTokens(issuedAt: now),
+      );
+      final preferences = _FailingWrites(fakes.preferences);
+      final failingRegistry = AccountRegistry(preferences);
+      final failing = SignOut(
+        registry: failingRegistry,
+        tokenStore: fakes.tokenStore,
+        linkShareStore: fakes.linkShareStore,
+        clockOffsets: fakes.clockOffsets,
+        sessions: sessions,
+        linkShares: linkShares,
+        accountGateway: fakes.accountGateway,
+        deletions: deletions,
+        logoutTimeout: const Duration(milliseconds: 50),
+      );
+      preferences.failing = true;
+
+      await expectLater(
+        failing(alice.id),
+        throwsA(
+          isA<StateError>().having((e) => e.message, 'message', 'write 1'),
+        ),
+      );
+
+      expect(preferences.failures, 2);
+      expect(await fakes.registry.find(alice.id), isNotNull);
+    });
+  });
+
   test('removes the stored server clock offset', () async {
     final alice = await fakes.seedAccount(
       fullServer270(),
@@ -432,4 +543,25 @@ void main() {
       expect(fakes.secureStore.values, isEmpty);
     });
   });
+}
+
+/// Writes fail while [failing] is set, each with its number.
+final class _FailingWrites implements PreferencesStore {
+  new(this._inner);
+
+  final PreferencesStore _inner;
+  bool failing = false;
+  int failures = 0;
+
+  @override
+  Future<String?> getString(String key) => _inner.getString(key);
+
+  @override
+  Future<void> setString(String key, String value) async {
+    if (failing) throw StateError('write ${++failures}');
+    await _inner.setString(key, value);
+  }
+
+  @override
+  Future<void> remove(String key) => _inner.remove(key);
 }

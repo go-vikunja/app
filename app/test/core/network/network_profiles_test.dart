@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +9,7 @@ import 'package:vikunja_mobile/core/network/network_profile_secrets.dart';
 import 'package:vikunja_mobile/core/network/network_profiles.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
+import 'package:vikunja_mobile/core/storage/process_lock.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
 import '../../helpers/auth_fakes.dart';
@@ -643,5 +645,22 @@ void main() {
 
     final entries = stored()['profiles']! as Map<String, Object?>;
     expect(entries.keys, containsAll(['$https', '$other', '$http']));
+  });
+
+  test('a write waits while another isolate holds the lock', () async {
+    final release = Completer<void>();
+    // This isolate honours the lock like any other.
+    final elsewhere = ProcessLock(NetworkProfiles.lockName)
+        .run(() => release.future);
+    await pumpEventQueue();
+
+    final consenting = profiles().consentToCleartext(http);
+    await pumpEventQueue();
+    expect(log, isEmpty);
+
+    release.complete();
+    await elsewhere;
+    await consenting;
+    expect((await profiles().metadataFor(http))?.hasCleartextConsent, isTrue);
   });
 }

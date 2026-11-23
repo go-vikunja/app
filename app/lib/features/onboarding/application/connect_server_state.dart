@@ -15,12 +15,23 @@ final class ConnectServerIdle extends ConnectServerState {
 enum ConnectTarget { server, sharedLink, invite }
 
 final class ConnectServerConnecting extends ConnectServerState {
-  const new(this.input, {this.target = ConnectTarget.server});
+  const new(
+    this.input, {
+    this.target = ConnectTarget.server,
+    this.cancellable = true,
+  });
 
   /// What is being opened, without a link's secret: the address as entered,
   /// a shared link shortened, or an invite's web address without its token.
   final String input;
   final ConnectTarget target;
+
+  /// False once the server has answered a shared link: the guest is then
+  /// stored and kept, so neither Cancel nor Close may end it.
+  final bool cancellable;
+
+  ConnectServerConnecting get committed =>
+      ConnectServerConnecting(input, target: target, cancellable: false);
 }
 
 /// Found a Vikunja server over plain http; the user has to accept the risk.

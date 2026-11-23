@@ -411,6 +411,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
     }
     final state = ref.watch(connectServerControllerProvider);
     final isConnecting = state is ConnectServerConnecting;
+    final storingGuest = isConnecting && !state.cancellable;
     final previous = widget.adding
         ? null
         : ref.watch(previousAppProvider).value;
@@ -445,7 +446,12 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
         : previous?.record?.recentServers ?? const <Uri>[];
 
     return Scaffold(
-      appBar: widget.adding ? AppBar(leading: const CloseButton()) : null,
+      appBar: widget.adding
+          ? AppBar(
+              leading: storingGuest ? null : const CloseButton(),
+              automaticallyImplyLeading: false,
+            )
+          : null,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -623,7 +629,18 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                         ),
                       ],
                       if (state case final ConnectServerConnecting connecting)
-                        _ProgressLine(_connectingText(l10n, connecting))
+                        PopScope(
+                          canPop: connecting.cancellable,
+                          // The controller lives on while the screen slides
+                          // out, and an answer then would still store the
+                          // guest.
+                          onPopInvokedWithResult: (didPop, _) {
+                            if (didPop) _controller.cancel();
+                          },
+                          child: _ProgressLine(
+                            _connectingText(l10n, connecting),
+                          ),
+                        )
                       else if (keeping != null)
                         _ProgressLine(
                           l10n.previousAppSigningIn(
@@ -651,7 +668,7 @@ class _ConnectServerScreenState extends ConsumerState<ConnectServerScreen> {
                       ),
                       // Below the other buttons, so a double tap on either of
                       // them cannot land on it once connecting starts.
-                      if (isConnecting)
+                      if (isConnecting && !storingGuest)
                         TextButton(
                           onPressed: _controller.cancel,
                           child: Text(l10n.connectCancel),

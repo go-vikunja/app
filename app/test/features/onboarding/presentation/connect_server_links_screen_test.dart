@@ -7,8 +7,10 @@ import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/core/auth/link_share_account_id.dart';
+import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 import 'package:vikunja_mobile/features/onboarding/application/connect_server_controller.dart';
 import 'package:vikunja_mobile/features/onboarding/application/guest_sign_in.dart';
+import 'package:vikunja_mobile/features/onboarding/presentation/connect/connect_server_screen.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/connect/invite_card.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/guest/share_password_sheet.dart';
 import 'package:vikunja_mobile/features/onboarding/presentation/guest/shared_link_sheet.dart';
@@ -172,6 +174,108 @@ void main() {
         fakeShareHash,
         'tomato',
       ));
+    });
+
+    testWidgets('added as an account, offers neither Cancel nor Close once '
+        'its server has answered, until the guest is in', (tester) async {
+      usePhoneSurface(tester);
+      await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      auth.linkShareGateway.serve(token);
+      final answer = auth.linkShareGateway.holdNextAuthentication();
+      final storing = Completer<void>();
+      auth.secureStore.beforeWrite = (key) async {
+        if (key == LinkShareStore.hashKey(guestId)) await storing.future;
+      };
+      await pump(tester);
+      unawaited(
+        containerOf(tester).read(appRouterProvider).push(AppRoutes.addAccount),
+      );
+      await tester.pumpAndSettle();
+
+      await submit(tester, shareLink());
+      expect(find.text(en.connectCancel), findsOneWidget);
+      expect(find.byType(CloseButton), findsOneWidget);
+
+      answer.complete();
+      await tester.pump();
+      await tester.pump();
+
+      expect(find.text(en.connectCancel), findsNothing);
+      expect(find.byType(CloseButton), findsNothing);
+      await tester.binding.handlePopRoute();
+      await tester.pump();
+      expect(find.byType(ConnectServerScreen), findsOneWidget);
+
+      storing.complete();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConnectServerScreen), findsNothing);
+      expect((await auth.registry.load()).activeAccountId, guestId);
+    });
+
+    testWidgets('added as an account, closed before its server has answered, '
+        'stores nothing even when the answer comes while the screen slides '
+        'out', (tester) async {
+      usePhoneSurface(tester);
+      final other = await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      auth.linkShareGateway.serve(token);
+      final answer = auth.linkShareGateway.holdNextAuthentication();
+      await pump(tester);
+      unawaited(
+        containerOf(tester).read(appRouterProvider).push(AppRoutes.addAccount),
+      );
+      await tester.pumpAndSettle();
+      await submit(tester, shareLink());
+      expect(auth.linkShareGateway.authentications, hasLength(1));
+
+      await tester.tap(find.byType(CloseButton));
+      await tester.pump();
+      expect(find.byType(ConnectServerScreen), findsOneWidget);
+      answer.complete();
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConnectServerScreen), findsNothing);
+      final registry = await auth.registry.load();
+      expect(registry.find(guestId), isNull);
+      expect(registry.activeAccountId, other.id);
+      expect(
+        auth.secureStore.values.keys.where((key) => key.contains(guestId)),
+        isEmpty,
+      );
+    });
+
+    testWidgets('added as an account while the guest is on this device but '
+        "not in use, switches to it and says so after the switch's clean-up", (
+      tester,
+    ) async {
+      usePhoneSurface(tester);
+      await auth.seedGuest(server, token: token, activate: false);
+      await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: DateTime.now().toUtc()),
+      );
+      auth.linkShareGateway.serve(token);
+      await pump(tester);
+      unawaited(
+        containerOf(tester).read(appRouterProvider).push(AppRoutes.addAccount),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(_addressField, shareLink());
+      await tester.ensureVisible(_continueButton);
+      await tester.tap(_continueButton);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConnectServerScreen), findsNothing);
+      expect((await auth.registry.load()).activeAccountId, guestId);
+      expect(find.text(en.guestAlreadyAdded), findsOneWidget);
     });
 
     testWidgets('closing the password sheet returns to the address', (

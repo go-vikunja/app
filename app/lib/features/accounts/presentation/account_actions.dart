@@ -33,6 +33,10 @@ Future<void> switchToAccount(
   final messenger = ScaffoldMessenger.of(context);
   final message = context.l10n.accountSwitchedTo(accountTitle(entry.account));
   if (!await ref.read(accountSwitcherProvider).switchTo(entry.id)) return;
+  // The shell clears the previous account's snackbars once the registry
+  // change reaches it, which is after the switch returns.
+  await WidgetsBinding.instance.endOfFrame;
+  if (!messenger.mounted) return;
   messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(message)));

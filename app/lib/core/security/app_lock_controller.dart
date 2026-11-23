@@ -49,7 +49,8 @@ final class AppLockState {
   /// The system prompt is up.
   final bool authenticating;
 
-  /// The privacy cover for the app switcher, while the app is inactive.
+  /// The privacy cover for the app switcher, while the app is inactive or
+  /// out of sight.
   final bool covered;
 
   /// Of the last unlock attempt.
@@ -379,6 +380,10 @@ class AppLockController extends _$AppLockController {
       prompt.grace?.cancel();
       prompt.grace = null;
     }
+    // There the system leaves the app out of Recents itself; a cover would
+    // only blank the app whenever it loses focus (the shade, split screen).
+    if (ref.read(recentsHiddenNativelyProvider)) return;
+    if (_excursions.active && _outOfSightSince() == null) return;
     _cover();
   }
 
@@ -393,6 +398,9 @@ class AppLockController extends _$AppLockController {
     _hiddenAt = _now();
     _promptOnShow = true;
     _promptEndedOutOfSightAt = null;
+    // Also during an excursion and where Recents is hidden natively: back
+    // under a translucent sheet left in its task, Android draws a frame
+    // before the show that would lock.
     _cover();
     // With "immediately" the first frame back is already locked.
     if (_lockAfter == LockAfter.immediately) _lockIfDue();
@@ -453,18 +461,17 @@ class AppLockController extends _$AppLockController {
 
   void _onExcursionEnded(DateTime startedAt) {
     if (_visible || _prompt != null) return;
-    final now = _now();
-    _hiddenAt = overdue(startedAt, now, _excursionGrace) ? startedAt : now;
+    final hiddenAt = _hiddenAt;
+    if (hiddenAt == null || !hiddenAt.isBefore(startedAt)) {
+      final now = _now();
+      _hiddenAt = overdue(startedAt, now, _excursionGrace) ? startedAt : now;
+    }
     _promptOnShow = true;
     _lockIfDue();
   }
 
   void _cover() {
     if (!state.enabled || _prompt != null) return;
-    // There the system leaves the app out of Recents itself; a cover would
-    // only blank the app whenever it loses focus (the shade, split screen).
-    if (ref.read(recentsHiddenNativelyProvider)) return;
-    if (_excursions.active && _outOfSightSince() == null) return;
     if (!state.covered) state = state.copyWith(covered: true);
   }
 
@@ -488,6 +495,10 @@ class AppLockController extends _$AppLockController {
   DateTime? _outOfSightSince() {
     if (!_excursions.active) return _hiddenAt;
     final startedAt = _excursions.startedAt!;
+    // One that began out of sight, such as a download that finished there,
+    // keeps none of the time before it.
+    final hiddenAt = _hiddenAt;
+    if (hiddenAt != null && hiddenAt.isBefore(startedAt)) return hiddenAt;
     return overdue(startedAt, _now(), _excursionGrace) ? startedAt : null;
   }
 

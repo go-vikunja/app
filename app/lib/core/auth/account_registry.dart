@@ -151,6 +151,25 @@ final class AccountRegistry {
     toDelete: _without(entry.id),
   );
 
+  /// [upsert] only while an account with [entry]'s id is registered: false,
+  /// writing nothing, once it was removed.
+  Future<bool> replace(RegisteredAccount entry) async {
+    var replaced = false;
+    await _update((state) {
+      if (state.find(entry.id) == null) return null;
+      replaced = true;
+      return _ordered(
+        accounts: [
+          for (final existing in state.accounts)
+            if (existing.id == entry.id) entry else existing,
+        ],
+        activeAccountId: state.activeAccountId ?? entry.id,
+        recentAccountIds: state.recentAccountIds,
+      );
+    });
+    return replaced;
+  }
+
   /// Removing the active account activates the most recently active one of
   /// the rest. The account is listed in [accountsToDelete] until
   /// [dataDeleted].

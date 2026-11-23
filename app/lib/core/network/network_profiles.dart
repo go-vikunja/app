@@ -12,6 +12,7 @@ import 'package:vikunja_mobile/core/network/network_profile.dart';
 import 'package:vikunja_mobile/core/network/network_profile_secrets.dart';
 import 'package:vikunja_mobile/core/network/origin_key.dart';
 import 'package:vikunja_mobile/core/storage/preferences_store.dart';
+import 'package:vikunja_mobile/core/storage/process_lock.dart';
 import 'package:vikunja_mobile/core/storage/secure_store.dart';
 
 final _log = Logger('NetworkProfiles');
@@ -65,7 +66,9 @@ final class ConnectionProfileState {
 /// [storageKey], secrets in secure storage (decision log: Connections). Storage
 /// is the truth: other isolates (background sync, notification actions,
 /// widgets) read the same keys, so reads are cached briefly and every write
-/// reads afresh, changes only its origin and keeps everything else as stored.
+/// reads afresh, changes only its origin and keeps everything else as stored,
+/// under a lock all isolates of the process honour: the whole document is
+/// written back, so another isolate's write in between would be undone.
 ///
 /// Reads fail closed with the domain's connection-settings exceptions, so
 /// a request never goes out without the pin or headers it should carry.
@@ -80,6 +83,7 @@ final class NetworkProfiles {
        _clock = clock ?? DateTime.now;
 
   static const storageKey = 'network.profiles';
+  static const lockName = 'vikunja.network-profiles';
   static const schemaVersion = 1;
   static const metadataMaxAge = Duration(seconds: 30);
   static const lockedRetryAfter = Duration(seconds: 5);
@@ -93,6 +97,7 @@ final class NetworkProfiles {
   static final _waitingWriters = Queue<Completer<void>>();
   static int _generation = 0;
   static final _isolateChanges = StreamController<OriginKey?>.broadcast();
+  static final _processLock = ProcessLock(lockName);
 
   final PreferencesStore _preferences;
   final NetworkProfileSecrets _secrets;
@@ -642,7 +647,7 @@ final class NetworkProfiles {
       _writing = true;
     }
     try {
-      return await body();
+      return await _processLock.run(body);
     } finally {
       if (_waitingWriters.isEmpty) {
         _writing = false;

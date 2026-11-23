@@ -29,7 +29,8 @@ sealed class GuestSignInResult {
   const new();
 }
 
-/// The guest is stored and active.
+/// The guest is stored, and active unless [GuestSignIn.reopen] found
+/// another account active.
 final class GuestSignedIn extends GuestSignInResult {
   const new(this.account, {required this.isNewAccount});
 
@@ -62,6 +63,12 @@ final class GuestSignInFailed extends GuestSignInResult {
   const new(this.failure);
 
   final VikunjaFailure failure;
+}
+
+/// Ended without keeping anything: by its `commit`, or for
+/// [GuestSignIn.reopen] by the guest's removal meanwhile.
+final class GuestSignInCancelled extends GuestSignInResult {
+  const new();
 }
 
 typedef SharedProjectTitle = Future<String?> Function(
@@ -145,21 +152,26 @@ final class GuestSignIn {
   /// guest and makes it active, remembering the link's
   /// project and view for the first screen. [beforeActivatingExisting] runs
   /// for a share already on this device before it becomes active again.
-  /// Throws [SignOutStillFinishing] while the database of the same guest's
-  /// sign-out is still held.
+  /// [commit] is asked once the server has answered with a token, before
+  /// anything is stored: false ends it as [GuestSignInCancelled], and after
+  /// true it runs to its end. Throws [SignOutStillFinishing] while the
+  /// database of the same guest's sign-out is still held.
   Future<GuestSignInResult> signIn(
     ServerConnection connection,
     ParsedLinkShareUrl link, {
     String? password,
     bool rememberPassword = false,
     Future<void> Function(String accountId)? beforeActivatingExisting,
+    bool Function()? commit,
   }) => _open(
     connection,
     link,
     password: password,
     rememberPassword: rememberPassword,
     beforeActivatingExisting: beforeActivatingExisting,
+    commit: commit,
     land: true,
+    reopening: false,
   );
 
   Future<GuestSignInResult> _open(
@@ -167,8 +179,10 @@ final class GuestSignIn {
     ParsedLinkShareUrl link, {
     required String? password,
     required bool land,
+    required bool reopening,
     bool rememberPassword = false,
     Future<void> Function(String accountId)? beforeActivatingExisting,
+    bool Function()? commit,
   }) async {
     // A stored account's `/info` can be hours old (it is read again at most
     // every few hours while signed in), so only a fresh probe may save the
@@ -199,49 +213,75 @@ final class GuestSignIn {
       return GuestSignInFailed(failure);
     }
     final receivedAt = _clock();
+    // The only cancel point: once something is stored, undoing it could
+    // leave the long-lived hash behind or a replaced session gone.
+    if (commit != null && !commit()) {
+      _log.info('Opening the link share was cancelled');
+      return const GuestSignInCancelled();
+    }
 
     final accountId = linkShareAccountIdFor(connection.rootUri, auth.shareId);
-    await settleSignedOutDatabases(_files, accountId: accountId);
-    await _store.write(accountId, hash: link.hash, token: auth.token.jwt);
-    await _store.writePassword(accountId, rememberPassword ? password : null);
-    await _settleEnded(accountId);
-    // The old session goes only now: retired before, it would answer the
-    // requests in between as ended, which pauses the outbox. A token it
-    // still writes is one of the same share, which renewal does not rotate.
-    final session = _sessions.signedIn(
-      accountId,
-      auth.token,
-      receivedAt: receivedAt,
-    );
-
-    final existing = await _registry.find(accountId);
-    final title = await _titleOf(connection, session, auth.projectId);
-    if (existing != null) await beforeActivatingExisting?.call(accountId);
-    final entry = RegisteredAccount(
-      account: Account.linkShare(
-        id: accountId,
-        serverRoot: connection.rootUri,
-        shareId: auth.shareId,
-        projectId: auth.projectId,
-        shareName: auth.name,
-        displayName:
-            auth.name ??
-            title ??
-            existing?.account.displayName ??
-            'link-share-${auth.shareId}',
-        addedAt: existing?.account.addedAt ?? receivedAt.toUtc(),
-      ),
-      connection: connection,
-    );
-    if (land) {
-      _landing.remember(
+    // One at a time with the guest's sign-out (decision log: Several
+    // accounts).
+    return await _sessions.exclusive(accountId, () async {
+      await settleSignedOutDatabases(_files, accountId: accountId);
+      if (reopening && await _registry.find(accountId) == null) {
+        _log.info('Guest $accountId was removed while its link opened');
+        return const GuestSignInCancelled();
+      }
+      await _store.write(accountId, hash: link.hash, token: auth.token.jwt);
+      await _store.writePassword(accountId, rememberPassword ? password : null);
+      await _settleEnded(accountId);
+      // The old session goes only now: retired before, it would answer the
+      // requests in between as ended, which pauses the outbox. A token it
+      // still writes is one of the same share, which renewal does not rotate.
+      final session = _sessions.signedIn(
         accountId,
-        GuestLanding(projectId: auth.projectId, viewId: link.viewId),
+        auth.token,
+        receivedAt: receivedAt,
       );
-    }
-    await _registry.upsert(entry, activate: true);
-    _log.info('Opened link share as guest $accountId');
-    return GuestSignedIn(entry, isNewAccount: existing == null);
+
+      final existing = await _registry.find(accountId);
+      final title = await _titleOf(connection, session, auth.projectId);
+      if (existing != null) await beforeActivatingExisting?.call(accountId);
+      final entry = RegisteredAccount(
+        account: Account.linkShare(
+          id: accountId,
+          serverRoot: connection.rootUri,
+          shareId: auth.shareId,
+          projectId: auth.projectId,
+          shareName: auth.name,
+          displayName:
+              auth.name ??
+              title ??
+              existing?.account.displayName ??
+              'link-share-${auth.shareId}',
+          addedAt: existing?.account.addedAt ?? receivedAt.toUtc(),
+        ),
+        connection: connection,
+      );
+      if (land) {
+        _landing.remember(
+          accountId,
+          GuestLanding(projectId: auth.projectId, viewId: link.viewId),
+        );
+      }
+      if (!reopening) {
+        await _registry.upsert(entry, activate: true);
+      } else if (!await _registry.replace(entry)) {
+        // Removed by another isolate after the check above. Only what this
+        // call stored goes: a sign-in that stored the guest again keeps its
+        // own session and link.
+        await session.retire();
+        if ((await _store.read(accountId))?.token == auth.token.jwt) {
+          await _store.delete(accountId);
+        }
+        _log.info('Guest $accountId was removed while its link opened');
+        return const GuestSignInCancelled();
+      }
+      _log.info('Opened link share as guest $accountId');
+      return GuestSignedIn(entry, isNewAccount: existing == null);
+    });
   }
 
   /// The stored link of a guest, to open it again once its session ended;
@@ -257,8 +297,11 @@ final class GuestSignIn {
     );
   }
 
-  /// [signIn] with a guest's stored link and server, without a landing:
-  /// the user stays on the screen that offered to open the link again.
+  /// [signIn] with a guest's stored link and server, without a landing and
+  /// without activating the guest: the user stays on the screen that
+  /// offered to open the link again, or on the account switched to
+  /// meanwhile. A guest removed meanwhile stays removed, without its hash,
+  /// as [GuestSignInCancelled] (decision log: Several accounts).
   Future<GuestSignInResult> reopen(
     String accountId, {
     String? password,
@@ -273,6 +316,7 @@ final class GuestSignIn {
       password: password,
       rememberPassword: rememberPassword,
       land: false,
+      reopening: true,
     );
   }
 

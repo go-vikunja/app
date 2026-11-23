@@ -217,6 +217,25 @@ void main() {
     expect(state.find('a1')?.account.needsReauth, isFalse);
   });
 
+  test('replacing writes only an account still registered, keeps the '
+      'active one and leaves a removed one to delete', () async {
+    await registry.upsert(_entry('a1', fullServer270(), needsReauth: true));
+    await registry.upsert(_entry('b2', oauthServer230()), activate: true);
+
+    expect(await registry.replace(_entry('a1', fullServer270())), isTrue);
+    var state = await registry.load();
+    expect(state.find('a1')?.account.needsReauth, isFalse);
+    expect(state.activeAccountId, 'b2');
+
+    await registry.remove('a1');
+    expect(await registry.replace(_entry('a1', fullServer270())), isFalse);
+
+    state = await registry.load();
+    expect(state.find('a1'), isNull);
+    expect(state.activeAccountId, 'b2');
+    expect(await registry.accountsToDelete(), ['a1']);
+  });
+
   test('removing the active account activates the next one', () async {
     await registry.upsert(_entry('a1', fullServer270()));
     await registry.upsert(_entry('b2', oauthServer230()));

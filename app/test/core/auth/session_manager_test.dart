@@ -1079,6 +1079,33 @@ void main() {
       );
     });
 
+    test('a retired manager is replaced by one that reads what storage still '
+        'holds, and stays retired', () async {
+      final stored = await store(expiresIn: const Duration(minutes: 5));
+      await managers.retire(_accountId);
+      final retired = managers.forAccount(_accountId);
+
+      managers.replaceRetired(_accountId);
+
+      final replacement = managers.forAccount(_accountId);
+      expect(replacement, isNot(same(retired)));
+      expect(await replacement.validAccessToken(), stored.accessToken);
+      await expectLater(
+        retired.validAccessToken(),
+        throwsA(isA<SessionEnded>()),
+      );
+      expect(flagged, isEmpty);
+    });
+
+    test('a live manager is not replaced', () async {
+      await store(expiresIn: const Duration(minutes: 5));
+      final live = managers.forAccount(_accountId);
+
+      managers.replaceRetired(_accountId);
+
+      expect(managers.forAccount(_accountId), same(live));
+    });
+
     for (final (what, connectionFor)
         in <(String, Future<ServerConnection?> Function(String))>[
           ('without a stored connection', (_) async => null),

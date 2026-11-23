@@ -38,10 +38,19 @@ ForegroundActivity foregroundActivity(Ref ref) => ForegroundActivity(
 Future<void> _syncActiveAccount(Ref ref) async {
   final active = ref.read(accountsProvider).value?.activeAccount;
   if (active == null || active.account.needsReauth) return;
-  await ref.read(activityNoticesProvider).sessionRestored(active.id);
+  await _sessionRestored(ref, active.id);
   // The server keeps no activity for a guest.
   if (active.account.isLinkShare) return;
   await ref.read(activityRepositoryProvider)?.refresh();
+}
+
+/// Withdraws the "Sign in again" notification unless the stored registry
+/// says the session ended: a background run may have ended it, and posted
+/// the notification, after this isolate last read the registry.
+Future<void> _sessionRestored(Ref ref, String accountId) async {
+  final stored = await ref.read(accountRegistryProvider).find(accountId);
+  if (stored == null || stored.account.needsReauth) return;
+  await ref.read(activityNoticesProvider).sessionRestored(accountId);
 }
 
 /// Every other signed-in account that has synced before, one after the
@@ -55,7 +64,7 @@ Future<void> _syncInactiveAccounts(Ref ref) async {
     }
     try {
       // A session that ends again after this sign-in notifies again.
-      await ref.read(activityNoticesProvider).sessionRestored(entry.id);
+      await _sessionRestored(ref, entry.id);
       if (entry.account.isLinkShare) continue;
       final db = ref.read(appDatabaseProvider(entry.id));
       final synced = await db.syncStateDao.readAll();

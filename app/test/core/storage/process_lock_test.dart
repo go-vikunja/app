@@ -10,9 +10,35 @@ import 'package:vikunja_mobile/core/storage/process_lock.dart';
 Future<DateTime> _takeElsewhere(String name) =>
     Isolate.run(() => ProcessLock(name).run(() async => DateTime.now()));
 
-Future<void> _holdInAnIsolateThatEnds(String name) => Isolate.run(() {
+Future<void> _holdInAnIsolateThatEnds(String name) => Isolate.run(() async {
+  final holding = Completer<void>();
+  unawaited(
+    ProcessLock(name).run(() {
+      holding.complete();
+      return Completer<void>().future;
+    }),
+  );
+  await holding.future;
+});
+
+Future<void> _endBetweenTheTwoRegistrations(String name) => Isolate.run(() {
   IsolateNameServer.registerPortWithName(RawReceivePort().sendPort, name);
 });
+
+/// Holds the lock while its isolate's event loop is busy for [busy], as in
+/// a long frame; returns when that ended.
+Future<DateTime> _holdBusyElsewhere(
+  String name,
+  SendPort holding,
+  Duration busy,
+) => Isolate.run(
+  () => ProcessLock(name).run(() async {
+    holding.send(null);
+    final clock = Stopwatch()..start();
+    while (clock.elapsed < busy) {}
+    return DateTime.now();
+  }),
+);
 
 void main() {
   var count = 0;
@@ -20,7 +46,10 @@ void main() {
 
   setUp(() {
     name = 'process-lock-test.${count++}';
-    addTearDown(() => IsolateNameServer.removePortNameMapping(name));
+    addTearDown(() {
+      IsolateNameServer.removePortNameMapping(name);
+      IsolateNameServer.removePortNameMapping('$name/control');
+    });
   });
 
   test('another isolate waits until the holder lets go', () async {
@@ -42,6 +71,27 @@ void main() {
     expect((await other).isBefore(releasedAt), isFalse);
     expect(events, ['held', 'released']);
     expect(IsolateNameServer.lookupPortByName(name), isNull);
+    expect(IsolateNameServer.lookupPortByName('$name/control'), isNull);
+  });
+
+  test('a holder whose isolate is busy past the answer time is waited '
+      'for', () async {
+    final holding = ReceivePort();
+    final releasedAt = _holdBusyElsewhere(
+      name,
+      holding.sendPort,
+      const Duration(milliseconds: 1500),
+    );
+    await holding.first;
+
+    final ranAt = await ProcessLock(
+      name,
+      checkHolderAfter: const Duration(milliseconds: 20),
+      giveUpAfter: const Duration(seconds: 30),
+    ).run(() async => DateTime.now());
+
+    expect(ranAt.isBefore(await releasedAt), isFalse);
+    expect(IsolateNameServer.lookupPortByName(name), isNull);
   });
 
   test('two holders in one isolate take turns', () async {
@@ -57,20 +107,26 @@ void main() {
     expect(events, ['a in', 'a out', 'b in', 'b out']);
   });
 
-  test('a holder whose isolate has ended is taken over', () async {
-    await _holdInAnIsolateThatEnds(name);
-    expect(IsolateNameServer.lookupPortByName(name), isNotNull);
+  for (final (how, end) in [
+    ('while holding', _holdInAnIsolateThatEnds),
+    ('between its two registrations', _endBetweenTheTwoRegistrations),
+  ]) {
+    test('a holder whose isolate has ended $how is taken over', () async {
+      await end(name);
+      expect(IsolateNameServer.lookupPortByName(name), isNotNull);
 
-    final ran = await ProcessLock(
-      name,
-      checkHolderAfter: const Duration(milliseconds: 20),
-      holderAnswer: const Duration(milliseconds: 20),
-      giveUpAfter: const Duration(seconds: 30),
-    ).run(() async => IsolateNameServer.lookupPortByName(name) != null);
+      final ran = await ProcessLock(
+        name,
+        checkHolderAfter: const Duration(milliseconds: 20),
+        holderAnswer: const Duration(milliseconds: 20),
+        giveUpAfter: const Duration(seconds: 30),
+      ).run(() async => IsolateNameServer.lookupPortByName(name) != null);
 
-    expect(ran, isTrue);
-    expect(IsolateNameServer.lookupPortByName(name), isNull);
-  });
+      expect(ran, isTrue);
+      expect(IsolateNameServer.lookupPortByName(name), isNull);
+      expect(IsolateNameServer.lookupPortByName('$name/control'), isNull);
+    });
+  }
 
   test('a live holder that never lets go is waited for until the limit, '
       'then the action runs without the lock and leaves it alone', () async {

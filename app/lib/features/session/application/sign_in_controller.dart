@@ -115,6 +115,10 @@ class SignInController extends _$SignInController {
       final known = await registry.load();
       final account = await browserSignIn.signIn(
         connection,
+        // The wipe a start runs for an earlier sign-out can reach the
+        // account while the browser is open.
+        beforeStoring: (accountId) =>
+            settleSignedOutDatabases(files, accountId: accountId),
         // Added again, the account becomes active at once, like a switch.
         beforeActivatingExisting: (accountId) =>
             prepareSyncStatus(container, accountId),
@@ -157,6 +161,8 @@ class SignInController extends _$SignInController {
       final account = await browserSignIn.signIn(
         connection,
         expectedAccount: entry.account,
+        beforeStoring: (accountId) =>
+            settleSignedOutDatabases(files, accountId: accountId),
       );
       if (account == null) return null;
       await hosts.signedIn(account.id, otherHost);

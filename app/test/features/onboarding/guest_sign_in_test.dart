@@ -6,10 +6,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_logic/vikunja_logic.dart';
+import 'package:vikunja_mobile/core/auth/account_registry.dart';
 import 'package:vikunja_mobile/core/auth/link_share_account_id.dart';
 import 'package:vikunja_mobile/core/auth/link_share_session.dart';
 import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 import 'package:vikunja_mobile/core/auth/session_diagnostics.dart';
+import 'package:vikunja_mobile/core/auth/session_manager.dart';
+import 'package:vikunja_mobile/core/auth/sign_out.dart';
 import 'package:vikunja_mobile/core/db/account_database_files.dart';
 import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/platform/app_part.dart';
@@ -277,6 +280,50 @@ void main() {
         expect(sessions.forAccount(guestId), isNot(same(ended)));
       },
     );
+
+    test('asks to commit once the server has answered, before anything is '
+        'stored; refused, it stores nothing', () async {
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+      final asked = <(int, bool)>[];
+
+      final result = await guestSignIn.signIn(
+        server,
+        link(),
+        commit: () {
+          asked.add((
+            gateway.authentications.length,
+            auth.secureStore.values.isEmpty,
+          ));
+          return false;
+        },
+      );
+
+      expect(result, isA<GuestSignInCancelled>());
+      expect(asked, [(1, true)]);
+      expect(auth.secureStore.values, isEmpty);
+      expect((await auth.registry.load()).accounts, isEmpty);
+      expect(landings.take(guestId), isNull);
+      expect(titleReads, isEmpty);
+    });
+
+    test('refused for a guest already on this device, keeps its '
+        'session', () async {
+      final old = issueLinkShareToken(issuedAt: now);
+      await auth.seedGuest(server, token: old);
+      final session = sessions.forAccount(guestId);
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+
+      final result = await guestSignIn.signIn(
+        server,
+        link(),
+        commit: () => false,
+      );
+
+      expect(result, isA<GuestSignInCancelled>());
+      expect(sessions.forAccount(guestId), same(session));
+      expect(await session.validAccessToken(), old.jwt);
+      expect((await auth.linkShareStore.read(guestId))?.token, old.jwt);
+    });
   });
 
   group('the same share opened again', () {
@@ -483,6 +530,51 @@ void main() {
       expect(landings.take(guestId), isNull);
     });
 
+    test('opened again, leaves the account the user switched to meanwhile '
+        'active (decision log: Several accounts)', () async {
+      await auth.seedGuest(
+        server,
+        token: issueLinkShareToken(issuedAt: now),
+        needsReauth: true,
+      );
+      final other = await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: now),
+        activate: false,
+      );
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+      final answer = gateway.holdNextAuthentication();
+
+      final reopening = guestSignIn.reopen(guestId);
+      await pumpEventQueue();
+      expect(gateway.authentications, hasLength(1));
+      await auth.registry.setActive(other.id);
+      answer.complete();
+
+      expect(await reopening, isA<GuestSignedIn>());
+      final registry = await auth.registry.load();
+      expect(registry.activeAccountId, other.id);
+      expect(registry.find(guestId)?.account.needsReauth, isFalse);
+    });
+
+    test('opened again, stays active when it was', () async {
+      await auth.seedGuest(
+        server,
+        token: issueLinkShareToken(issuedAt: now),
+        needsReauth: true,
+      );
+      await auth.seedAccount(
+        fullServer270(root: 'https://other.example.org'),
+        tokens: issueTokens(issuedAt: now),
+        activate: false,
+      );
+      gateway.serve(issueLinkShareToken(issuedAt: now));
+
+      expect(await guestSignIn.reopen(guestId), isA<GuestSignedIn>());
+
+      expect((await auth.registry.load()).activeAccountId, guestId);
+    });
+
     test("keeps the guest's own server, also one whose web is on another "
         'host', () async {
       final api = accountPagesServer270(
@@ -587,6 +679,148 @@ void main() {
         (await auth.registry.find(guest.id))!.account.needsReauth,
         isFalse,
       );
+    });
+
+    group('removed while it opens again', () {
+      late SignOut signOut;
+      late RegisteredAccount other;
+
+      setUp(() async {
+        addTearDown(forgetSignOutLeftovers);
+        signOut = SignOut(
+          registry: auth.registry,
+          tokenStore: auth.tokenStore,
+          linkShareStore: auth.linkShareStore,
+          clockOffsets: auth.clockOffsets,
+          sessions: SessionManagers(
+            tokenStore: auth.tokenStore,
+            clockOffsets: auth.clockOffsets,
+            tokenGateway: auth.tokenGateway,
+            connectionFor: (id) async =>
+                (await auth.registry.find(id))?.connection,
+            markNeedsReauth: auth.registry.markNeedsReauth,
+            clock: () => now,
+          ),
+          linkShares: sessions,
+          accountGateway: auth.accountGateway,
+          deletions: AccountDeletions(
+            registry: auth.registry,
+            wipe: (_) async {},
+          ),
+        );
+        await auth.seedGuest(
+          server,
+          token: issueLinkShareToken(issuedAt: now),
+          needsReauth: true,
+        );
+        other = await auth.seedAccount(
+          fullServer270(root: 'https://other.example.org'),
+          tokens: issueTokens(issuedAt: now),
+          activate: false,
+        );
+        gateway.serve(issueLinkShareToken(issuedAt: now));
+      });
+
+      Future<void> expectGone() async {
+        final registry = await auth.registry.load();
+        expect(registry.find(guestId), isNull);
+        expect(registry.activeAccountId, other.id);
+        expect(
+          auth.secureStore.values.keys.where((key) => key.contains(guestId)),
+          isEmpty,
+        );
+        await expectLater(
+          sessions.forAccount(guestId).validAccessToken(),
+          throwsA(isA<SessionEnded>()),
+        );
+      }
+
+      test('before the server answered, stays removed and stores '
+          'nothing (decision log: Several accounts)', () async {
+        final answer = gateway.holdNextAuthentication();
+        final reopening = guestSignIn.reopen(guestId);
+        await pumpEventQueue();
+        expect(gateway.authentications, hasLength(1));
+        await signOut(guestId);
+        final writesBefore = auth.secureStore.operations.length;
+
+        answer.complete();
+
+        expect(await reopening, isA<GuestSignInCancelled>());
+        expect(
+          auth.secureStore.operations.skip(writesBefore),
+          isNot(contains(startsWith('write'))),
+        );
+        await expectGone();
+      });
+
+      test('signed out while its secrets are stored again, waits for the '
+          'open and then removes the guest with its new session', () async {
+        Future<void>? signingOut;
+        auth.secureStore.beforeWrite = (key) async {
+          if (signingOut != null || key != LinkShareStore.hashKey(guestId)) {
+            return;
+          }
+          signingOut = signOut(guestId);
+          await pumpEventQueue();
+        };
+
+        final opened = await guestSignIn.reopen(guestId);
+        await signingOut;
+
+        expect(opened, isA<GuestSignedIn>());
+        await expectGone();
+      });
+
+      test('removed by another isolate while it opens, takes back only what '
+          'it stored itself', () async {
+        const otherToken = 'token-of-a-later-sign-in';
+        auth.secureStore.beforeWrite = (key) async {
+          if (key == LinkShareStore.hashKey(guestId)) {
+            await auth.registry.remove(guestId);
+          }
+        };
+        auth.secureStore.beforeRead = (key) async {
+          // Another sign-in of the same share wrote its token meanwhile.
+          if (key == LinkShareStore.tokenKey(guestId) &&
+              auth.secureStore.values[key] != otherToken) {
+            auth.secureStore.values[key] = otherToken;
+          }
+        };
+
+        expect(await guestSignIn.reopen(guestId), isA<GuestSignInCancelled>());
+
+        expect((await auth.registry.load()).find(guestId), isNull);
+        expect(
+          auth.secureStore.values[LinkShareStore.tokenKey(guestId)],
+          otherToken,
+        );
+        await expectLater(
+          sessions.forAccount(guestId).validAccessToken(),
+          throwsA(isA<SessionEnded>()),
+        );
+      });
+
+      test('removed by another isolate while it opens, takes its own '
+          'secrets back', () async {
+        auth.secureStore.beforeWrite = (key) async {
+          if (key == LinkShareStore.hashKey(guestId)) {
+            await auth.registry.remove(guestId);
+          }
+        };
+
+        expect(await guestSignIn.reopen(guestId), isA<GuestSignInCancelled>());
+
+        auth.secureStore.beforeWrite = null;
+        expect(
+          auth.secureStore.values.keys.where((key) => key.contains(guestId)),
+          isEmpty,
+        );
+        await expectLater(
+          sessions.forAccount(guestId).validAccessToken(),
+          throwsA(isA<SessionEnded>()),
+        );
+      });
     });
   });
 }

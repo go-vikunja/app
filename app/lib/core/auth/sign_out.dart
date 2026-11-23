@@ -8,6 +8,7 @@ import 'package:vikunja_mobile/core/auth/link_share_store.dart';
 import 'package:vikunja_mobile/core/auth/server_clock_offsets.dart';
 import 'package:vikunja_mobile/core/auth/session_manager.dart';
 import 'package:vikunja_mobile/core/auth/token_store.dart';
+import 'package:vikunja_mobile/core/db/open_account_database.dart';
 import 'package:vikunja_mobile/core/logging/redaction.dart';
 
 final _log = Logger('SignOut');
@@ -44,11 +45,17 @@ final class AccountDeletions {
 
   /// False, logged, when the wipe failed: the account stays listed for the
   /// next try. An account signed in again meanwhile keeps its data.
-  Future<bool> finish(String accountId) =>
-      _running[accountId] ??= _finish(accountId).whenComplete(
-        // Not awaited: what the removal returns is this very future.
-        () => unawaited(_running.remove(accountId)),
-      );
+  Future<bool> finish(String accountId) {
+    if (_running[accountId] case final running?) return running;
+    final running = _running[accountId] = _finish(accountId).whenComplete(
+      // Not awaited: what the removal returns is this very future.
+      () => unawaited(_running.remove(accountId)),
+    );
+    // Noted before the wipe reads the list: a sign-in that registers the
+    // account after that read would lose the database the wipe deletes.
+    noteAccountDataDeletion(accountId, running);
+    return running;
+  }
 
   /// Every account still listed, then what accounts the registry does not
   /// know left; false when any listed is left. Never throws.
@@ -62,10 +69,22 @@ final class AccountDeletions {
       );
       return false;
     }
+    // Noted now, not at each account's turn: a sign-in of an account whose
+    // turn has not come yet would not wait for its wipe.
+    final turns = [
+      for (final accountId in accountIds) (accountId, Completer<void>()),
+    ];
+    for (final (accountId, done) in turns) {
+      noteAccountDataDeletion(accountId, done.future);
+    }
     var finished = true;
-    for (final accountId in accountIds) {
-      await _cancelScheduledQuietly(accountId);
-      if (!await finish(accountId)) finished = false;
+    for (final (accountId, done) in turns) {
+      try {
+        await _cancelScheduledQuietly(accountId);
+        if (!await finish(accountId)) finished = false;
+      } finally {
+        done.complete();
+      }
     }
     await _wipeUnknownQuietly();
     return finished;
@@ -168,23 +187,45 @@ final class SignOut {
         );
       }
     }
-    // Retire first: from then on nothing in this isolate writes the tokens
-    // that are wiped next.
-    await _sessions.retire(accountId);
-    await _linkShares.retire(accountId);
-    await _tokenStore.delete(accountId);
-    await _linkShareStore.delete(accountId);
+    // One at a time with a guest's link stored again, which would leave a
+    // removed guest a live session or its hash.
+    await _linkShares.exclusive(accountId, () async {
+      // Retire first: from then on nothing in this isolate writes the tokens
+      // that are wiped next.
+      await _sessions.retire(accountId);
+      try {
+        await _linkShares.retire(accountId);
+        await _tokenStore.delete(accountId);
+        await _linkShareStore.delete(accountId);
+        try {
+          await _clockOffsets.delete(accountId);
+        } on Object catch (error) {
+          _log.info(
+            'Could not remove the server clock offset: ${error.runtimeType}',
+          );
+        }
+        await _registry.remove(accountId);
+      } on Object {
+        // The account stays, but its retired session hands out nothing for
+        // good: marked, it offers to sign in again, which replaces it.
+        await _markNeedsReauthQuietly(accountId);
+        rethrow;
+      }
+      // After the registry: nothing of this account is shown by then, so no
+      // screen holds its database open or reads it again.
+      await _deletions.finish(accountId);
+    });
+    _log.info('Signed out account $accountId');
+  }
+
+  Future<void> _markNeedsReauthQuietly(String accountId) async {
     try {
-      await _clockOffsets.delete(accountId);
+      await _registry.markNeedsReauth(accountId);
     } on Object catch (error) {
-      _log.info(
-        'Could not remove the server clock offset: ${error.runtimeType}',
+      _log.warning(
+        'Could not mark account $accountId to sign in again: '
+        '${error.runtimeType}',
       );
     }
-    await _registry.remove(accountId);
-    // After the registry: nothing of this account is shown by then, so no
-    // screen holds its database open or reads it again.
-    await _deletions.finish(accountId);
-    _log.info('Signed out account $accountId');
   }
 }
