@@ -82,7 +82,9 @@ final class TaskDetailActions extends ChangeNotifier {
   final _pendingTaskReactions = <String>{};
   final _pendingCommentReactions = <int, Set<String>>{};
   bool _duplicating = false;
-  int? _undoTaskId;
+
+  /// As it was before the done whose Undo is up.
+  Task? _undoTask;
 
   /// Shows the Undo that is up below the sheet once the sheet goes.
   VoidCallback? _handOverUndo;
@@ -113,9 +115,9 @@ final class TaskDetailActions extends ChangeNotifier {
 
   /// A done shows the lists' "Marked as done · Undo" in the sheet; its Undo
   /// gives a repeating [task] its dates and reminders back. Reopening the
-  /// task whose Undo is up makes that Undo moot. A sheet closed while it is
-  /// up hands it to what is below, as the row may have left the list there;
-  /// the pane keeps it in its own messenger.
+  /// task whose Undo is up is that Undo, and takes it away. A sheet closed
+  /// while it is up hands it to what is below, as the row may have left the
+  /// list there; the pane keeps it in its own messenger.
   Future<void> setDone(
     TaskRepository repository,
     Task task, {
@@ -124,14 +126,19 @@ final class TaskDetailActions extends ChangeNotifier {
     final messenger = _messenger.currentState;
     final l10n = _context.l10n;
     if (!done) {
-      if (_undoTaskId == task.id) {
-        _undoTaskId = null;
+      final before = _undoTask?.id == task.id ? _undoTask : null;
+      if (before != null) {
+        _undoTask = null;
         _handOverUndo = null;
         messenger?.hideCurrentSnackBar();
       }
+      // A bare done: false after a done already sent would leave a
+      // repeating task on its next occurrence.
       await _save(
         'Reopening a task',
-        () => writeTaskDone(repository, task, done: false),
+        () => before != null
+            ? writeTaskUndo(repository, before)
+            : writeTaskDone(repository, task, done: false),
       );
       return;
     }
@@ -149,11 +156,11 @@ final class TaskDetailActions extends ChangeNotifier {
         action: 'Undoing a done',
       ),
     );
-    _undoTaskId = task.id;
+    _undoTask = task;
     _handOverUndo = _place().paneDeleted == null ? _undoBelow(undo) : null;
     await showMarkedDoneSnackBar(_context, messenger: messenger, onUndo: undo);
-    if (_undoTaskId == task.id) {
-      _undoTaskId = null;
+    if (_undoTask?.id == task.id) {
+      _undoTask = null;
       _handOverUndo = null;
     }
   }

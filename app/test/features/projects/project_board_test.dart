@@ -1625,6 +1625,14 @@ void main() {
       expect(data.tasks.projectListRefreshes, isEmpty);
     });
 
+    testWidgets('a board stamped ahead of the clock, which was set back '
+        'since, downloads when it opens', (tester) async {
+      storeBoard(loadedAt: now.add(const Duration(hours: 2)));
+      await pumpBoard(tester);
+
+      expect(data.tasks.boardRefreshes, [(1, 14)]);
+    });
+
     testWidgets('never downloaded, it says it is downloading, then shows the '
         'board', (tester) async {
       data.tasks.setBoard(kanban);
@@ -1726,6 +1734,31 @@ void main() {
       await tester.pump(const Duration(seconds: 1));
       await tester.pumpAndSettle();
       expect(data.tasks.boardRefreshes, [(1, 14)]);
+    });
+
+    testWidgets('the download after its own moves were sent runs once more '
+        'when another one was under way, which may have read the board '
+        'before the move', (tester) async {
+      storeBoard(loadedAt: now.subtract(const Duration(minutes: 6)));
+      final first = Completer<void>();
+      data.tasks.onRefreshBoard = (_, _) => first.future;
+      await pumpBoard(tester);
+      expect(data.tasks.boardRefreshes, [(1, 14)]);
+
+      await dragCard(
+        tester,
+        'Call Anna',
+        gapBelow(tester, 'Fix bike', below: 'Read book'),
+      );
+      data.tasks.setQueuedPlacements(14, const {});
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(data.tasks.boardRefreshes, [(1, 14)]);
+
+      data.tasks.onRefreshBoard = null;
+      first.complete();
+      await tester.pumpAndSettle();
+      expect(data.tasks.boardRefreshes, [(1, 14), (1, 14)]);
     });
   });
 }

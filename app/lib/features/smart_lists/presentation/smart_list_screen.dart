@@ -110,8 +110,11 @@ class _SmartListScreenState extends ConsumerState<SmartListScreen>
     _quietFailure = null;
   }
 
-  bool _isStale(DateTime loadedAt) =>
-      ref.read(clockProvider)().difference(loadedAt) >= _staleAfter;
+  /// One from the future was stamped before the clock was set back.
+  bool _isStale(DateTime loadedAt) {
+    final now = ref.read(clockProvider)();
+    return loadedAt.isAfter(now) || now.difference(loadedAt) >= _staleAfter;
+  }
 
   /// See [quietDownloadStep]. Decided in build, as the build reads the
   /// tasks: a page that covers the screen pauses that read until it shows

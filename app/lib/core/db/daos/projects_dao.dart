@@ -205,6 +205,17 @@ final class ProjectsDao extends DatabaseAccessor<AppDatabase>
     return row == null ? null : projectViewFromRow(row);
   }
 
+  /// Of the stored views among [viewIds], 0 for one without a done bucket.
+  Future<Map<int, int>> doneBucketIds(Iterable<int> viewIds) async {
+    final query = selectOnly(projectViews)
+      ..addColumns([projectViews.id, projectViews.doneBucketId])
+      ..where(projectViews.id.isIn(viewIds));
+    return {
+      for (final row in await query.get())
+        row.read(projectViews.id)!: row.read(projectViews.doneBucketId)!,
+    };
+  }
+
   /// Changes only the given bucket ids of the view (0: none), as a done or
   /// default bucket change answered by the server; the next sync stores
   /// the whole view again.

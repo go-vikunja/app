@@ -44,6 +44,7 @@ void main() {
     bool headless = false,
     UploadFiles? files,
     int? maxUploadBytes,
+    Duration? serverClockOffset,
   }) {
     final sender = OutboxSender(
       db: db,
@@ -57,6 +58,7 @@ void main() {
       headless: headless,
       currentUserId: () => me.id,
       maxUploadBytes: () => maxUploadBytes,
+      serverClockOffset: () async => serverClockOffset,
     );
     addTearDown(sender.dispose);
     return sender;
@@ -566,6 +568,61 @@ void main() {
       });
     }
 
+    test('a phone clock hours ahead of the server still finds the stored '
+        "file: the window moves by the server's clock offset the session "
+        'learned', () async {
+      const offset = Duration(hours: -3);
+      final id = await queueUpload(1, bytes: const [1, 2, 3, 4]);
+      await db.outboxDao.markUncertain(id, sentAt: now);
+      final stored = TaskAttachment(
+        id: 9,
+        taskId: 1,
+        name: 'photo.png',
+        size: 4,
+        created: now.add(offset),
+        createdBy: me,
+      );
+      read.taskDetails[1] = TaskDetails(attachments: [stored]);
+      final outbox = sender(serverClockOffset: offset);
+      final uploaded = <TaskAttachment>[];
+      final subscription = outbox.uploadedAttachments.listen(uploaded.add);
+      addTearDown(subscription.cancel);
+
+      await outbox.drain();
+      await pumpEventQueue();
+
+      expect(write.requests, isEmpty);
+      expect(uploaded, [stored]);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a phone clock set back after the lost attempt still finds the '
+        'stored file: the offset learned since does not move the window past '
+        'the attempt', () async {
+      final id = await queueUpload(1, bytes: const [1, 2, 3, 4]);
+      await db.outboxDao.markUncertain(id, sentAt: now);
+      final stored = TaskAttachment(
+        id: 9,
+        taskId: 1,
+        name: 'photo.png',
+        size: 4,
+        created: now,
+        createdBy: me,
+      );
+      read.taskDetails[1] = TaskDetails(attachments: [stored]);
+      final outbox = sender(serverClockOffset: const Duration(hours: 2));
+      final uploaded = <TaskAttachment>[];
+      final subscription = outbox.uploadedAttachments.listen(uploaded.add);
+      addTearDown(subscription.cancel);
+
+      await outbox.drain();
+      await pumpEventQueue();
+
+      expect(write.requests, isEmpty);
+      expect(uploaded, [stored]);
+      expect(await db.outboxDao.count(), 0);
+    });
+
     test('a lost answer without a match is sent again', () async {
       await queueUpload(1);
       final op = (await db.outboxDao.all()).single;
@@ -577,6 +634,45 @@ void main() {
       expect(read.requests, ['task details 1']);
       expect(write.requests, ['upload 1 photo.png']);
     });
+
+    for (final failure in const [Forbidden(), NotFound()]) {
+      test('a lookup the server answers with ${failure.runtimeType} is no '
+          'refusal of the upload: Retry looks again and adopts the file the '
+          'lost request stored', () async {
+        final id = await queueUpload(1, bytes: const [1, 2, 3, 4]);
+        write.afterRequest = (request) async =>
+            throw const NetworkFailure(NetworkProblem.timeout);
+        final outbox = sender();
+        await outbox.drain();
+        write.afterRequest = null;
+        read.beforeRequest = (_) async => throw failure;
+
+        await outbox.sendNow();
+        if (failure is NotFound) {
+          for (var i = 1; i < OutboxSender.maxFailedUploadAnswersInARow; i++) {
+            now = now.add(timers.pendingWait);
+            await fireNextAndSettle(outbox);
+          }
+        }
+
+        final failed = (await db.outboxDao.all()).single;
+        expect(failed.state, OutboxState.failed.name);
+        expect(failed.sentAt, isNotNull);
+
+        read.beforeRequest = null;
+        read.taskDetails[1] = TaskDetails(
+          attachments: [write.serverAttachments[1]!.single],
+        );
+        await outbox.retry(id);
+
+        expect(
+          write.requests.where((r) => r.startsWith('upload')),
+          hasLength(1),
+        );
+        expect(await db.outboxDao.count(), 0);
+        expect(await storedCopies(), isEmpty);
+      });
+    }
 
     test('too large, archived, no permission and a gone task are sync problems '
         'that keep the stored copy', () async {
@@ -801,6 +897,29 @@ void main() {
 
     await outbox.discard(problem.operationId);
 
+    expect(await db.tasksDao.findRow(1), isNull);
+    expect(await db.outboxDao.count(), 0);
+    expect(await storedCopies(), isEmpty);
+  });
+
+  test("Use the web's for a task the server no longer has takes its uploads "
+      'and their copies with it, as Discard does', () async {
+    await db.outboxDao.queueUpdate(
+      1,
+      const TaskChanges(description: '<p>Mine</p>', descriptionBase: ''),
+      now: now,
+    );
+    write.serverTasks[1] = tasks[0].copyWith(description: '<p>Web</p>');
+    final outbox = sender();
+    await outbox.drain();
+    final problem = (await db.outboxDao.loadProblems()).single;
+    expect(problem.failure, isA<DescriptionConflict>());
+    await queueUpload(1);
+    read.allTasks = [tasks[1]];
+
+    await outbox.useWebDescription(problem.operationId);
+
+    expect(write.requests.where((r) => r.startsWith('upload')), isEmpty);
     expect(await db.tasksDao.findRow(1), isNull);
     expect(await db.outboxDao.count(), 0);
     expect(await storedCopies(), isEmpty);

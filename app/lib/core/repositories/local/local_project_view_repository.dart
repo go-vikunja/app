@@ -76,6 +76,7 @@ final class LocalProjectViewRepository implements ProjectViewRepository {
         filter: view.filter,
         bucketConfigurationMode: view.bucketConfigurationMode,
         position: view.position,
+        unchanged: view.unchanged,
       ),
     );
     await _db.projectsDao.putView(updated);

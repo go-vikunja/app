@@ -918,6 +918,37 @@ void main() {
       expect((await db.outboxDao.nextInLine())!.taskId, -1);
     });
 
+    test('dates are stored in whole seconds, as the server keeps them, so '
+        "the server's copy does not read as moved", () async {
+      final fine = DateTime.utc(2026, 10, 12, 9, 30, 15, 678, 912);
+      final whole = DateTime.utc(2026, 10, 12, 9, 30, 15);
+      final id = await create(
+        NewTask(
+          projectId: 7,
+          title: 'Call Bob',
+          dueDate: fine,
+          reminders: const [
+            TaskReminder(
+              relativePeriod: Duration(hours: -1),
+              relativeTo: ReminderRelativeTo.dueDate,
+            ),
+          ],
+        ),
+      );
+      expect(
+        await queue(1, TaskChanges(endDate: DateChange.set(fine))),
+        isTrue,
+      );
+
+      final created = (await db.tasksDao.find(id))!;
+      expect(created.dueDate, whole);
+      expect(
+        created.reminders.single.reminder,
+        whole.subtract(const Duration(hours: 1)),
+      );
+      expect((await db.tasksDao.find(1))!.endDate, whole);
+    });
+
     test(
       'temporary ids are never reused, even once the rows are gone',
       () async {
@@ -1729,6 +1760,82 @@ void main() {
 
         expect(decodeTaskChanges((await ops()).single.payload), open);
         expect(await pendingOf(1), open);
+      });
+    });
+
+    group('on a board without a done column stay under a later change of '
+        'the done state, as no move there sets it back', () {
+      const onBoard = TaskChanges(
+        kanban: {81: BucketPlacement(bucketId: 12, position: 5)},
+      );
+      const doneKeeping = TaskChanges(
+        done: true,
+        kanban: {81: BucketPlacement(bucketId: 12, position: 5)},
+      );
+
+      setUp(() async {
+        await db.projectsDao.upsertAll([
+          sampleProject(
+            id: 7,
+            title: 'Work',
+            views: [
+              sampleKanbanView(id: 80, projectId: 7, doneBucketId: 3),
+              sampleKanbanView(id: 81, projectId: 7, position: 500),
+            ],
+          ),
+        ]);
+      });
+
+      test('moved on both boards, then marked done and open again: only the '
+          'move on the board with a done column goes', () async {
+        await queue(1, onBoard.merge(toDoing));
+        await queue(1, done);
+
+        expect(decodeTaskChanges((await ops()).single.payload), doneKeeping);
+        expect(await pendingOf(1), doneKeeping);
+
+        await queue(1, const TaskChanges(done: false));
+
+        const openKeeping = TaskChanges(
+          done: false,
+          kanban: {81: BucketPlacement(bucketId: 12, position: 5)},
+        );
+        expect(decodeTaskChanges((await ops()).single.payload), openKeeping);
+        expect(await pendingOf(1), openKeeping);
+      });
+
+      test("a new task's column, behind a create that has not left the "
+          'device', () async {
+        final id = await db.outboxDao.queueCreate(
+          const NewTask(projectId: 7, title: 'New'),
+          now: now,
+        );
+        await queue(id, onBoard);
+        await queue(id, done);
+
+        final all = await ops();
+        expect(all.map((op) => op.kind), ['createTask', 'updateTask']);
+        expect(decodeTaskChanges(all.last.payload), doneKeeping);
+        expect(await pendingOf(id), doneKeeping);
+      });
+
+      test('while the move is on its way, and folded in when it '
+          'failed', () async {
+        await queue(1, onBoard);
+        final failed = (await ops()).single;
+        await db.outboxDao.markSending(failed.id, at: now);
+        await queue(1, done);
+        expect(await pendingOf(1), doneKeeping);
+        await db.outboxDao.refreshPendingChanges(1);
+        expect(await pendingOf(1), doneKeeping);
+
+        await db.outboxDao.markFailed(
+          failed.id,
+          const DomainError(412, code: 10004),
+        );
+
+        expect(decodeTaskChanges((await ops()).single.payload), doneKeeping);
+        expect(await pendingOf(1), doneKeeping);
       });
     });
 

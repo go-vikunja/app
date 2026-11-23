@@ -54,6 +54,7 @@ void main() {
     DateTime Function()? clock,
     int? userId,
     int? processId,
+    Future<Duration?> Function()? serverClockOffset,
   }) {
     final sender = OutboxSender(
       db: db,
@@ -64,6 +65,7 @@ void main() {
       createTimer: timers.create,
       random: ZeroRandom(),
       currentUserId: () => userId,
+      serverClockOffset: serverClockOffset,
       processId: processId,
     );
     addTearDown(sender.dispose);
@@ -2054,6 +2056,35 @@ void main() {
       expect(outbox.state, OutboxSenderState.waiting);
     });
 
+    test('a lookup the server refuses is no refusal of the create: it keeps '
+        'its mark, an edit waits behind it, and Retry adopts the task the '
+        'lost request made', () async {
+      final id = await create();
+      write.afterRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      final outbox = sender();
+      await outbox.drain();
+      mirrorServer();
+      write.afterRequest = null;
+      read.beforeRequest = (_) => fail(const Forbidden());
+
+      await outbox.sendNow();
+
+      final failed = (await ops()).single;
+      expect(failed.state, OutboxState.failed.name);
+      expect(failed.sentAt, isNotNull);
+      await queue(id, const TaskChanges(title: 'Buy oat milk'));
+      expect(decodeNewTask((await ops()).first.payload).title, 'Buy milk');
+
+      read.beforeRequest = null;
+      await outbox.retry(failed.id);
+
+      expect(write.requests, ['create Buy milk', 'update 100']);
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(write.serverTasks[100]!.title, 'Buy oat milk');
+      expect(await db.outboxDao.count(), 0);
+    });
+
     test(
       'a 429 or a rejected token is certain: no lookup afterwards',
       () async {
@@ -2398,6 +2429,76 @@ void main() {
 
       expect(write.requests, ['create Buy milk']);
       expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a phone clock hours ahead of the server still finds the stored '
+        "task: the window moves by the server's clock offset the session "
+        'learned', () async {
+      const offset = Duration(hours: -3);
+      write = FakeWriteClient(clock: () => now.add(offset));
+      final id = await create();
+      write.afterRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      final outbox = sender(serverClockOffset: () async => offset);
+      await outbox.drain();
+      mirrorServer();
+
+      write.afterRequest = null;
+      await outbox.sendNow();
+
+      expect(
+        read.requests.single,
+        startsWith("project 7 tasks created >= '2026-10-10T08:00:00Z'"),
+      );
+      expect(write.requests, ['create Buy milk']);
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('a phone clock set back after the lost attempt still finds the '
+        'stored task: the offset learned since does not move the window past '
+        'the attempt', () async {
+      final id = await create();
+      write.afterRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      Duration? offset;
+      final outbox = sender(serverClockOffset: () async => offset);
+      await outbox.drain();
+      mirrorServer();
+
+      offset = const Duration(hours: 2);
+      write.afterRequest = null;
+      await outbox.sendNow();
+
+      expect(
+        read.requests.single,
+        startsWith("project 7 tasks created >= '2026-10-10T11:00:00Z'"),
+      );
+      expect(write.requests, ['create Buy milk']);
+      expect(await db.tasksDao.resolveId(id), 100);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('an offset that cannot be read leaves the lookup the hour before '
+        'the attempt', () async {
+      await create();
+      write.afterRequest = (_) =>
+          fail(const NetworkFailure(NetworkProblem.timeout));
+      final outbox = sender(
+        serverClockOffset: () async => throw StateError('no preferences'),
+      );
+      await outbox.drain();
+      mirrorServer();
+
+      write.afterRequest = null;
+      await outbox.sendNow();
+
+      expect(
+        read.requests.single,
+        startsWith("project 7 tasks created >= '2026-10-10T11:00:00Z'"),
+      );
+      expect(write.requests, ['create Buy milk']);
       expect(await db.outboxDao.count(), 0);
     });
 

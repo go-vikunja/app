@@ -94,6 +94,14 @@ void main() {
     );
   }
 
+  Future<void> queueDone(int id, {required bool done}) async {
+    expect(
+      await db.outboxDao.queueUpdate(id, TaskChanges(done: done), now: now),
+      isTrue,
+    );
+    expect((await db.outboxDao.all()).single.payload, contains('kanban'));
+  }
+
   test('a placement goes as the move, then the position, and the board '
       'follows', () async {
     await place(2, const BucketPlacement(bucketId: 2, position: 32768));
@@ -131,6 +139,71 @@ void main() {
       expect((await db.kanbanDao.load(80)).slots[1]?.bucketId, 3);
     },
   );
+
+  test(
+    'a placement a Done kept because the view had no done bucket is not '
+    'sent once the web chose one: moving out of it would reopen the task',
+    () async {
+      await db.projectsDao.setViewBuckets(80, doneBucketId: 0);
+      await place(1, const BucketPlacement(bucketId: 2, position: 1));
+      await queueDone(1, done: true);
+      await db.projectsDao.setViewBuckets(80, doneBucketId: 3);
+
+      await sender.drain();
+
+      expect(write.requests, ['update 1']);
+      expect(write.serverTasks[1]!.done, isTrue);
+      expect(write.bucketSlots[80]![1]?.bucketId, 3);
+      expect((await db.tasksDao.find(1))!.done, isTrue);
+      expect(await db.outboxDao.count(), 0);
+    },
+  );
+
+  test(
+    'a placement into a bucket the web made the done bucket is not sent '
+    'with an undone: moving into it would mark the task done again',
+    () async {
+      final doneOne = sampleTask(id: 1, title: 'One', projectId: 7, done: true);
+      write.serverTasks[1] = doneOne;
+      await db.tasksDao.upsertAll([doneOne], syncRunId: 'run');
+      await db.projectsDao.setViewBuckets(80, doneBucketId: 0);
+      await place(1, const BucketPlacement(bucketId: 3, position: 1));
+      await queueDone(1, done: false);
+      await db.projectsDao.setViewBuckets(80, doneBucketId: 3);
+
+      await sender.drain();
+
+      expect(write.requests, ['update 1']);
+      expect(write.serverTasks[1]!.done, isFalse);
+      expect(write.bucketSlots[80]![1]?.bucketId, 1);
+      expect(await db.outboxDao.count(), 0);
+    },
+  );
+
+  test("a repeating task's drop on the done bucket still goes to the default "
+      'bucket: its Done reopens it there', () async {
+    final daily = sampleTask(
+      id: 4,
+      title: 'Daily',
+      projectId: 7,
+      due: now,
+      repeatAfter: const Duration(days: 1),
+    );
+    read.allTasks = [one, two, daily];
+    write.serverTasks[4] = daily;
+    write.bucketSlots[80]![4] = (bucketId: 2, position: 1);
+    await db.tasksDao.upsertAll([daily], syncRunId: 'run');
+    await place(4, const BucketPlacement(bucketId: 1, position: 8), done: true);
+
+    await sender.drain();
+
+    expect(write.requests, [
+      'update 4',
+      'move 4 view 80 bucket 1',
+      'position 4 view 80 8.0',
+    ]);
+    expect(write.bucketSlots[80]![4], (bucketId: 1, position: 8.0));
+  });
 
   test('a placement queued behind a create goes once the server named the '
       'task, under its id', () async {

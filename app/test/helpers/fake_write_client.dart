@@ -997,9 +997,15 @@ final class FakeProjectViewsWritePort implements ProjectViewsWritePort {
     final current = project?.views.where((v) => v.id == viewId).firstOrNull;
     if (project == null || current == null) throw const NotFound(code: 3014);
     _check(projectId, view);
+    // Left out of the body, so the server keeps its own.
+    bool sends(ViewDraftField field) => !view.unchanged.contains(field);
+    final kind = sends(ViewDraftField.kind) ? view.kind : current.kind;
     final mode = storedBucketMode(
-      view.kind,
-      view.bucketConfigurationMode ?? current.bucketConfigurationMode,
+      kind,
+      (sends(ViewDraftField.bucketConfigurationMode)
+              ? view.bucketConfigurationMode
+              : null) ??
+          current.bucketConfigurationMode,
     );
     var buckets = (
       defaultBucketId: current.defaultBucketId,
@@ -1012,10 +1018,10 @@ final class FakeProjectViewsWritePort implements ProjectViewsWritePort {
     final updated = ProjectView(
       id: viewId,
       projectId: projectId,
-      title: view.title,
-      kind: view.kind,
+      title: sends(ViewDraftField.title) ? view.title : current.title,
+      kind: kind,
       position: view.position ?? current.position,
-      filter: view.filter,
+      filter: sends(ViewDraftField.filter) ? view.filter : current.filter,
       bucketConfigurationMode: mode,
       defaultBucketId: buckets.defaultBucketId,
       doneBucketId: buckets.doneBucketId,

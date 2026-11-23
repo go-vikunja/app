@@ -54,8 +54,8 @@ typedef _CurrentUser = ({
 /// it goes is not purged by it either. The app's engine waits for a lease
 /// another isolate holds, a [headless] one ends its run without syncing;
 /// the winner adopts the stored state the other run left. A run that finds
-/// its lease taken (it stalled past [leaseDuration]) stops quietly, and
-/// purges nothing.
+/// its lease no longer its own (it stalled past [leaseDuration]) stops
+/// quietly, and purges nothing. [dispose] lets go of the lease.
 ///
 /// The first status event arrives once the stored state has been read; the
 /// stream replays the current status to every subscriber after that.
@@ -199,19 +199,25 @@ final class DefaultSyncEngine implements SyncEngine {
     await _join(() => _leased(() => _runFull(resume: false)), full: true);
   }
 
+  /// Lets go of a running sync's lease at once, if the database is still
+  /// open: the run ends only at its next step, and another isolate's engine
+  /// would wait for the lease to run out.
   @override
   Future<void> dispose() async {
+    if (_disposed) return;
     _disposed = true;
     await _changes.close();
+    if (_current != null) await _releaseLease();
   }
 
   /// Not before the first run completed, not from a state written before
   /// incremental sync existed, and, unless [headless], not once the last
-  /// full run is a day old.
+  /// full run is a day old or seemingly in the future.
   bool get _canRunIncrementally {
     if (!_hasIncrementalState) return false;
-    return headless ||
-        _now().toUtc().difference(_lastFullSyncAt!) < fullResyncInterval;
+    if (headless) return true;
+    final age = _now().toUtc().difference(_lastFullSyncAt!);
+    return !age.isNegative && age < fullResyncInterval;
   }
 
   bool get _hasIncrementalState =>
@@ -272,10 +278,15 @@ final class DefaultSyncEngine implements SyncEngine {
   }
 
   /// Inside the transaction of a write that belongs to the run: renews the
-  /// lease, or ends the run when another one has taken it.
+  /// lease, or ends the run when it is no longer this engine's: missing or
+  /// another's, even an expired one, as another run may have taken it,
+  /// marked rows and let go again. After [dispose] released it, it must not
+  /// come back.
   Future<void> _holdLease() async {
+    _checkDisposed();
     final state = await _db.syncStateDao.readAll();
-    if (_heldElsewhere(state)) throw const _LeaseLost();
+    final lease = SyncLease.parse(state[SyncStateKeys.syncLease]);
+    if (lease?.owner != _leaseOwner) throw const _LeaseLost();
     await _db.syncStateDao.write(_leaseState());
   }
 

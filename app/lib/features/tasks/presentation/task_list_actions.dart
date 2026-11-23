@@ -157,15 +157,22 @@ mixin TaskListActions<W extends ConsumerStatefulWidget> on ConsumerState<W> {
       _settle(row);
     }
     if (!done) {
+      final leaving = _leaving[task.id];
       setState(() {
-        if (_leaving[task.id] case final row?) _drop(row);
+        if (leaving != null) _drop(leaving);
       });
       // Reopened from the row: the Undo of the done it undoes is moot.
       if (_undoRow?.id == task.id) messenger?.hideCurrentSnackBar();
+      // Reopening a row still shown done is its Undo: a bare done: false
+      // after a done already sent would leave a repeating task on its next
+      // occurrence.
+      final before = leaving != null && leaving.copy.done ? leaving.task : null;
       await saveLocalChangeIn(
         messenger,
         l10n,
-        () => writeTaskDone(repository, task, done: false),
+        () => before != null
+            ? writeTaskUndo(repository, before)
+            : writeTaskDone(repository, task, done: false),
         action: 'Reopening a task',
       );
       return;

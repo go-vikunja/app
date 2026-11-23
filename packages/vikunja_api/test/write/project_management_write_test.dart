@@ -697,6 +697,29 @@ void main() {
       expect(view.filter, isNull);
     });
 
+    test('a draft sends only what it changed, so the server keeps what '
+        'another client changed meanwhile', () async {
+      final dio = fakeDio({'$_v2$open': _write('v2_view_update')});
+
+      await _client(dio, hasV2: true).views.update(
+        _studio,
+        _open,
+        const ViewDraft(
+          title: 'Urgent',
+          kind: ProjectViewKind.list,
+          unchanged: {
+            ViewDraftField.kind,
+            ViewDraftField.filter,
+            ViewDraftField.bucketConfigurationMode,
+          },
+        ),
+      );
+
+      expect(adapterOf(dio).decodedBodies, [
+        {'title': 'Urgent'},
+      ]);
+    });
+
     test('a view that is gone is NotFound 3014', () async {
       final dio = fakeDio({'$_v2$open': _write('v2_view_delete_unknown')});
 
@@ -743,6 +766,37 @@ void main() {
       expect(view.position, 175);
       expect(view.defaultBucketId, isNot(0));
       expect(view.doneBucketId, isNot(0));
+    });
+
+    test('what the draft left unchanged is posted back as read', () async {
+      final dio = fakeDio({
+        '$_v1$board': _byMethod({
+          'GET': _write('v1_view_update_read'),
+          'POST': _write('v1_view_update'),
+        }),
+      });
+
+      await _client(dio, hasV2: false).views.update(
+        _studio,
+        _board,
+        const ViewDraft(
+          title: 'Columns',
+          kind: ProjectViewKind.list,
+          filter: ViewFilter(filter: 'done = false'),
+          bucketConfigurationMode: BucketConfigurationMode.filter,
+          unchanged: {
+            ViewDraftField.kind,
+            ViewDraftField.filter,
+            ViewDraftField.bucketConfigurationMode,
+          },
+        ),
+      );
+
+      final sent = _lastBody(dio);
+      expect(sent, containsPair('title', 'Columns'));
+      expect(sent, containsPair('view_kind', 'kanban'));
+      expect(sent, containsPair('filter', isNull));
+      expect(sent, containsPair('bucket_configuration_mode', 'manual'));
     });
   });
 

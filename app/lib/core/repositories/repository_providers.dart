@@ -374,6 +374,8 @@ OutboxSender outboxSender(Ref ref, String accountId) {
           final entry? => maxUploadBytesOf(entry.connection.info),
           null => null,
         },
+    serverClockOffset: () =>
+        ref.read(serverClockOffsetsProvider).read(accountId),
   );
   final needsReauth = accountsProvider.select(
     (accounts) => accounts.value?.find(accountId)?.account.needsReauth,

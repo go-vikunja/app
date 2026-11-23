@@ -181,7 +181,7 @@ void main() {
     await tester.tap(markNotDone('Write report'));
     await tester.pumpAndSettle();
 
-    expect(data.tasks.writes, ['setDone 3 true', 'setDone 3 false']);
+    expect(data.tasks.writes, ['setDone 3 true', 'undoDone 3']);
     expect(decorationOf(tester, 'Write report'), isNull);
     expect(find.text(en.taskMarkedDone), findsNothing);
     await tester.pump(markedDoneSnackBarDuration);
@@ -228,7 +228,7 @@ void main() {
     await tester.tap(markNotDone('Write report'));
     await tester.pumpAndSettle();
 
-    expect(data.tasks.writes.last, 'setDone 3 false');
+    expect(data.tasks.writes.last, 'undoDone 3');
     expect(decorationOf(tester, 'Write report'), isNull);
     expect(find.text(en.undo), findsOneWidget);
     await tester.tap(find.text(en.undo));

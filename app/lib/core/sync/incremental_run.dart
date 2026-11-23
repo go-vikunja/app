@@ -80,8 +80,8 @@ final class IncrementalRun {
   final DateTime Function() _now;
   final void Function() _checkActive;
 
-  /// Before every request: renews the run's hold on the account, or throws
-  /// when another run has taken it.
+  /// Before every request and inside a purge's transaction: renews the
+  /// run's hold on the account, or throws when it has lost it.
   final Future<void> Function() _keepLease;
   final SyncProgress _report;
 
@@ -422,11 +422,14 @@ final class IncrementalRun {
       seen.addAll(items.map((task) => task.id));
       if (items.length < page.perPage && !page.hasMore) break;
     }
-    final purged = await _db.tasksDao.purgeInProjectExcept(
-      projectId,
-      seen,
-      runId: runId,
-    );
+    final purged = await _db.transaction(() async {
+      await _keepLease();
+      return await _db.tasksDao.purgeInProjectExcept(
+        projectId,
+        seen,
+        runId: runId,
+      );
+    });
     _log.info(
       'Sync run $runId: project $projectId reconciled, ${seen.length} tasks, '
       '$purged purged',

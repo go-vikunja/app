@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/app/router/app_router.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_row.dart';
 import 'package:vikunja_mobile/features/tasks/presentation/task_write_feedback.dart';
@@ -242,10 +243,50 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(data.tasks.writes.last, 'setDone $serverId false');
+      expect(data.tasks.writes.last, 'undoDone $serverId');
       expect(find.text(en.taskMarkedDone), findsNothing);
       expect(rowsOf(title), findsOneWidget);
       expect(decorationOf(tester, title), isNull);
     });
+  });
+
+  testWidgets('a repeating task reopened from its done row while Undo is '
+      'offered is undone, so the dates and reminders it had go along, '
+      'whatever became of the done meanwhile', (tester) async {
+    final due = DateTime.utc(2026, 10, 12, 9);
+    final reminder = TaskReminder(reminder: DateTime.utc(2026, 10, 12, 8));
+    data.tasks.all = [
+      sampleTask(
+        id: 7,
+        title: 'Water the plants',
+        due: due,
+        reminders: [reminder],
+        repeatAfter: const Duration(days: 7),
+      ),
+    ];
+    usePhoneSurface(tester, logicalSize: const Size(360, 1800));
+    await pumpSignedInApp(tester, sync: data, now: now);
+    await tester.tap(
+      find.descendant(
+        of: rowWithId(7),
+        matching: find.byTooltip(en.taskMarkDone),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(
+      find.descendant(
+        of: rowWithId(7),
+        matching: find.byTooltip(en.taskMarkNotDone),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.writes, ['setDone 7 true', 'undoDone 7']);
+    final reopened = data.tasks.find(7)!;
+    expect(reopened.done, isFalse);
+    expect(reopened.dueDate, due);
+    expect(reopened.reminders, [reminder]);
+    expect(find.text(en.taskMarkedDone), findsNothing);
   });
 }

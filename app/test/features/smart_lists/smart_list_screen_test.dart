@@ -574,6 +574,20 @@ void main() {
       expect(data.engine.refreshInNewRunCalls, 0);
     });
 
+    testWidgets('a download stamped ahead of the clock, which was set back '
+        'since, is repeated on open', (tester) async {
+      data.tasks.setSavedFilterSnapshot(
+        filter.projectId,
+        ListSnapshot(
+          positions: const {4: 0},
+          loadedAt: now.add(const Duration(hours: 2)),
+        ),
+      );
+      await openList(tester, filter.projectId);
+
+      expect(data.tasks.savedFilterRefreshes, [filter.projectId]);
+    });
+
     testWidgets('pull to refresh downloads it again', (tester) async {
       data.tasks.setSavedFilterSnapshot(
         filter.projectId,

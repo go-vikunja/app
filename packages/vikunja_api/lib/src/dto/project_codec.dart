@@ -105,21 +105,31 @@ Map<String, Object?> encodeProjectChanges(ProjectChanges changes) => {
 /// The create body: no filter and no position when the draft has none, and
 /// never a `project_id`.
 Map<String, Object?> encodeNewView(ViewDraft view) => {
-  for (final MapEntry(:key, :value) in encodeViewChanges(view).entries)
-    key: ?value,
-};
-
-/// The update body: a draft without a filter clears the view's.
-Map<String, Object?> encodeViewChanges(ViewDraft view) => {
   'title': view.title,
   'view_kind': view.kind.wireName,
-  'filter': switch (view.filter) {
-    final filter? => encodeViewFilter(filter),
-    null => null,
-  },
+  if (view.filter case final filter?) 'filter': encodeViewFilter(filter),
   'bucket_configuration_mode': ?view.bucketConfigurationMode?.wireName,
   'position': ?view.position,
 };
+
+/// The update body: a draft without a filter clears the view's. A field
+/// the draft left unchanged is not sent, which keeps the server's on v2's
+/// merge-patch and on v1's write over a fresh read alike.
+Map<String, Object?> encodeViewChanges(ViewDraft view) {
+  bool sends(ViewDraftField field) => !view.unchanged.contains(field);
+  return {
+    if (sends(ViewDraftField.title)) 'title': view.title,
+    if (sends(ViewDraftField.kind)) 'view_kind': view.kind.wireName,
+    if (sends(ViewDraftField.filter))
+      'filter': switch (view.filter) {
+        final filter? => encodeViewFilter(filter),
+        null => null,
+      },
+    if (sends(ViewDraftField.bucketConfigurationMode))
+      'bucket_configuration_mode': ?view.bucketConfigurationMode?.wireName,
+    'position': ?view.position,
+  };
+}
 
 /// Every key, so that a v2 merge-patch replaces the stored filter instead
 /// of merging into it.

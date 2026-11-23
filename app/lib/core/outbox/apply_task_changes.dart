@@ -180,6 +180,18 @@ TaskChanges withoutPlacements(TaskChanges changes) => _rebuilt(
   positions: null,
 );
 
+TaskChanges withoutPlacementsOn(TaskChanges changes, Set<int> viewIds) {
+  final kanban = {...?changes.kanban}
+    ..removeWhere((viewId, _) => viewIds.contains(viewId));
+  return _rebuilt(
+    changes,
+    labels: changes.labels,
+    relations: changes.relations,
+    kanban: kanban.isEmpty ? null : kanban,
+    positions: changes.positions,
+  );
+}
+
 /// [changes] without any edge to the tasks in [taskIds].
 TaskChanges withoutRelatedTasks(TaskChanges changes, Set<int> taskIds) {
   final relations = changes.relations;
@@ -275,7 +287,8 @@ bool changesDates(TaskChanges changes) =>
 
 /// [reminders] with the instant of every relative one computed from the
 /// task's dates as the server computes it: the referenced date plus the
-/// period, null while that date is unset. Absolute ones are kept.
+/// period, null while that date is unset. Absolute ones are kept. Every
+/// instant is in whole seconds, as the server keeps them.
 List<TaskReminder> withLocalInstants(
   List<TaskReminder> reminders, {
   required DateTime? dueDate,
@@ -284,27 +297,45 @@ List<TaskReminder> withLocalInstants(
 }) => [
   for (final reminder in reminders)
     switch (reminder.relativeTo) {
-      null => reminder,
+      null => TaskReminder(
+        reminder: _inWholeSeconds(reminder.reminder),
+        relativePeriod: reminder.relativePeriod,
+      ),
       final relativeTo => TaskReminder(
-        reminder: switch (relativeTo) {
-          ReminderRelativeTo.dueDate => dueDate,
-          ReminderRelativeTo.startDate => startDate,
-          ReminderRelativeTo.endDate => endDate,
-        }?.toUtc().add(reminder.relativePeriod),
+        reminder: _inWholeSeconds(
+          switch (relativeTo) {
+            ReminderRelativeTo.dueDate => dueDate,
+            ReminderRelativeTo.startDate => startDate,
+            ReminderRelativeTo.endDate => endDate,
+          }?.toUtc().add(reminder.relativePeriod),
+        ),
         relativePeriod: reminder.relativePeriod,
         relativeTo: relativeTo,
       ),
     },
 ];
 
+/// [instant] without the fraction of its second, in its own time zone: the
+/// server keeps whole seconds, so a finer instant set here would read as
+/// moved once the server's copy is synced, and its notification with it.
+DateTime inWholeSeconds(DateTime instant) => instant.subtract(
+  Duration(
+    microseconds:
+        instant.microsecondsSinceEpoch % Duration.microsecondsPerSecond,
+  ),
+);
+
+DateTime? _inWholeSeconds(DateTime? instant) =>
+    instant == null ? null : inWholeSeconds(instant);
+
 DateTime? _newDate(DateChange? change, DateTime? current) => switch (change) {
   null => current,
-  SetDate(:final value) => value.toUtc(),
+  SetDate(:final value) => inWholeSeconds(value.toUtc()),
   ClearDate() => null,
 };
 
 Value<DateTime?> _date(DateChange? change) => switch (change) {
   null => const Value.absent(),
-  SetDate(:final value) => Value(value.toUtc()),
+  SetDate(:final value) => Value(inWholeSeconds(value.toUtc())),
   ClearDate() => const Value(null),
 };

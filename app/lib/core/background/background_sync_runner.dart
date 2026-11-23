@@ -43,11 +43,15 @@ enum BackgroundRunKind {
 /// Skips everything while the app is in front (its heartbeat is younger
 /// than [heartbeatFreshness]), and stops before the next account once the
 /// app came to the front: the app keeps its accounts fresh itself.
-/// Otherwise the accounts take turns, the one whose last turn is oldest
+/// Otherwise the accounts take turns, the one whose last attempt is oldest
 /// first, so one that never gets through (an unreachable server, a slow
 /// one) does not keep the others waiting. A sync run sends every account's
 /// queue before any account syncs, in the same order, so the user's own
-/// changes go out even when the OS ends the run early. Each drain and turn
+/// changes go out even when the OS ends the run early; that drain counts
+/// as the account's attempt. The queue of an account whose last attempt
+/// the server left unanswered, or the deadline or the OS cut short, waits
+/// for the account's turn instead: a server that never answers would
+/// otherwise use up every run before any turn. Each drain and turn
 /// starts only while at least [minimumTimeToStart] of the [deadline]
 /// remains and the container's `RefreshCutoff` still lets a refresh start.
 ///
@@ -58,7 +62,10 @@ enum BackgroundRunKind {
 /// waits; none starts once the OS stopped the run ([stop]). After every
 /// run the container waits up to [settleGrace] (after a stop [stopGrace])
 /// for a refresh on its way and for tokens still to be stored, then it is
-/// disposed, which aborts a sync between two requests.
+/// disposed, which aborts a sync between two requests. Meanwhile its sync
+/// engines stop and let go of their leases while the databases are still
+/// open, within [leaseReleaseGrace]: a sync the deadline cut short would
+/// otherwise hold its account for minutes, and the app wait for it.
 final class BackgroundSyncRunner {
   new({
     required this._createContainer,
@@ -70,6 +77,7 @@ final class BackgroundSyncRunner {
     this.settleGrace = const Duration(seconds: 5),
     this.stopGrace = const Duration(seconds: 10),
     this.answerMargin = const Duration(seconds: 2),
+    this.leaseReleaseGrace = const Duration(seconds: 2),
   }) : _now = now ?? DateTime.now;
 
   final BackgroundContainerFactory _createContainer;
@@ -81,6 +89,7 @@ final class BackgroundSyncRunner {
   final Duration settleGrace;
   final Duration stopGrace;
   final Duration answerMargin;
+  final Duration leaseReleaseGrace;
   final _stopped = Completer<BackgroundRunOutcome>();
   final _finished = Completer<void>();
   RefreshCutoff? _cutoff;
@@ -165,10 +174,13 @@ final class BackgroundSyncRunner {
       run.stop();
       cutoff.closeNow();
       await run.noteInterruptedTurn();
-      await _settle(
-        container,
-        outcome == BackgroundRunOutcome.stopped ? stopGrace : settleGrace,
-      );
+      await Future.wait([
+        _settle(
+          container,
+          outcome == BackgroundRunOutcome.stopped ? stopGrace : settleGrace,
+        ),
+        run.releaseLeases(leaseReleaseGrace),
+      ]);
       await _record(log, outcome);
     } on Object catch (error) {
       _log.warning('Background run failed: ${error.runtimeType}');
@@ -246,10 +258,13 @@ final class _Run {
   /// Null unless the OS stopped the run.
   final int? Function() stopReason;
   final _released = <String>{};
+  final _accountIds = <String>{};
+  final _queueInTurn = <String>{};
   var _stopped = false;
   var _failed = false;
 
-  /// The account whose turn has not noted its outcome yet.
+  /// The account whose turn, or whose drain before the turns, has not
+  /// noted its outcome yet.
   Account? _inTurn;
 
   void stop() => _stopped = true;
@@ -271,19 +286,41 @@ final class _Run {
 
   bool _goesOn(String accountId) => !_stopped && !_released.contains(accountId);
 
-  /// A turn the deadline or the OS cut short before its sync went through
-  /// notes so before the container goes; the turn itself may never get
-  /// that far.
+  /// A turn or a drain before the turns that the deadline or the OS cut
+  /// short before its sync went through notes so before the container
+  /// goes; the turn itself may never get that far.
   Future<void> noteInterruptedTurn() async {
     final account = _inTurn;
     if (account == null || kind != BackgroundRunKind.sync) return;
     await _noteOutcome(account, BackgroundAccountOutcome.stopped);
   }
 
+  /// Without waiting for a sync under way: a request can take its whole
+  /// receive timeout.
+  Future<void> releaseLeases(Duration within) async {
+    final disposals = <Future<void>>[];
+    for (final id in _accountIds) {
+      if (_released.contains(id) || !container.exists(syncEngineProvider(id))) {
+        continue;
+      }
+      try {
+        disposals.add(container.read(syncEngineProvider(id)).dispose());
+      } on Object catch (error) {
+        _log.fine('No sync engine of account $id: ${error.runtimeType}');
+      }
+    }
+    try {
+      await Future.wait(disposals).timeout(within);
+    } on Object catch (error) {
+      _log.info('A sync lease was not released: ${error.runtimeType}');
+    }
+  }
+
   Future<BackgroundRunOutcome> accounts() async {
     try {
       final state = await container.read(accountsProvider.future);
       if (state.accounts.isEmpty) return BackgroundRunOutcome.nothing;
+      _accountIds.addAll(state.accounts.map((entry) => entry.id));
       // The widgets' Done taps go into the outboxes the run then sends.
       await importWidgetTaps(container, drains: false);
       final log = container.read(backgroundRunLogProvider);
@@ -291,7 +328,7 @@ final class _Run {
       final labelled = state.accounts.length > 1;
       final sent = <String, _Step>{};
       if (kind == BackgroundRunKind.sync) {
-        if (await _sendQueues(ordered, sent) case final outcome?) {
+        if (await _sendQueues(ordered, sent, log) case final outcome?) {
           return outcome;
         }
       }
@@ -332,6 +369,7 @@ final class _Run {
   Future<BackgroundRunOutcome?> _sendQueues(
     List<(RegisteredAccount, DateTime?)> ordered,
     Map<String, _Step> sent,
+    BackgroundRunLog log,
   ) async {
     for (final (entry, lastSyncedAt) in ordered) {
       if (_stopped) return null;
@@ -340,6 +378,10 @@ final class _Run {
           lastSyncedAt == null ||
           !_goesOn(entry.id) ||
           !await _hasQueue(entry.id)) {
+        continue;
+      }
+      if (await _lastAttemptCut(log, entry.id)) {
+        _queueInTurn.add(entry.id);
         continue;
       }
       if (_tooLate) {
@@ -352,9 +394,34 @@ final class _Run {
         _log.info('The app came to the front; the run stops');
         return BackgroundRunOutcome.skipped;
       }
-      sent[entry.id] = await _network(account, 'drain', _drain);
+      await log.recordAttempt(entry.id, now());
+      _inTurn = account;
+      final step = sent[entry.id] = await _network(account, 'drain', _drain);
+      if (step.skipsNetwork && !_stopped) {
+        await _noteOutcome(
+          account,
+          step.outcome,
+          timedOut: step == _Step.timedOut,
+        );
+      } else if (identical(_inTurn, account)) {
+        _inTurn = null;
+      }
     }
     return null;
+  }
+
+  /// The server left the account's last attempt unanswered, or the
+  /// deadline or the OS cut it short. One that failed at once (offline, a
+  /// refused connection) took none of the run's time.
+  Future<bool> _lastAttemptCut(BackgroundRunLog log, String accountId) async {
+    try {
+      return (await log.lastOutcome(accountId))?.outcome ==
+              BackgroundAccountOutcome.stopped ||
+          await log.lastOutcomeTimedOut(accountId);
+    } on Object catch (error) {
+      _log.info('Could not read the last turn: ${error.runtimeType}');
+      return false;
+    }
   }
 
   bool get _tooLate =>
@@ -377,9 +444,10 @@ final class _Run {
     }
   }
 
-  /// By the start of the account's last turn, one that never had a turn
-  /// first, then the oldest synced; with each its last sync, null for one
-  /// that never synced. One whose database cannot be read is left out.
+  /// By the start of the account's last attempt (its turn, or the drain of
+  /// its queue before the turns), one that never had one first, then the
+  /// oldest synced; with each its last sync, null for one that never
+  /// synced. One whose database cannot be read is left out.
   Future<List<(RegisteredAccount, DateTime?)>> _longestWaitingFirst(
     List<RegisteredAccount> accounts,
     BackgroundRunLog log,
@@ -416,8 +484,9 @@ final class _Run {
   /// The notification window is refilled first, from what the database
   /// holds, so it is never left to the network steps' share of the time.
   /// In a sync run the queue went before the turns ([queueSent], null when
-  /// it was not sent), a restored account's in its turn, before the sync;
-  /// the turn syncs, then fetches the activity. Once the
+  /// it was not sent); a restored account's goes in its turn, before the
+  /// sync, and so does one the queue phase left to the turn. The turn
+  /// syncs, then fetches the activity. Once the
   /// server proved unreachable the account's other network steps are
   /// skipped, each would wait for its own timeout. A drain run only drains.
   Future<void> _account(
@@ -444,8 +513,9 @@ final class _Run {
     // The first-sync screen owns an account that never completed a sync.
     if (lastSyncedAt == null) return;
     var sent = queueSent;
-    // The queues went before the turns without the restored account's.
-    if (syncing && account.needsReauth && await _hasQueue(account.id)) {
+    if (syncing &&
+        (account.needsReauth || _queueInTurn.contains(account.id)) &&
+        await _hasQueue(account.id)) {
       if (_tooLate) {
         _log.info(
           'Too little time left to send the queue of account ${account.id}',
@@ -511,7 +581,13 @@ final class _Run {
       },
       _ => synced.outcome,
     };
-    if (turn != null) await _noteOutcome(account, turn);
+    if (turn != null) {
+      await _noteOutcome(
+        account,
+        turn,
+        timedOut: synced == _Step.timedOut || sent == _Step.timedOut,
+      );
+    }
     // What the sync brought (a reminder set on the web) is planned too.
     if (synced == _Step.done) await _reconcile(account);
     await _remindBeforeSessionEnds(account);
@@ -539,8 +615,9 @@ final class _Run {
 
   Future<void> _noteOutcome(
     Account account,
-    BackgroundAccountOutcome outcome,
-  ) async {
+    BackgroundAccountOutcome outcome, {
+    bool timedOut = false,
+  }) async {
     if (identical(_inTurn, account)) _inTurn = null;
     if (_released.contains(account.id)) return;
     try {
@@ -553,6 +630,8 @@ final class _Run {
             stopReason: outcome == BackgroundAccountOutcome.stopped
                 ? stopReason()
                 : null,
+            timedOut:
+                timedOut && outcome == BackgroundAccountOutcome.unreachable,
           );
     } on Object catch (error) {
       _log.info('Could not note the turn: ${error.runtimeType}');
@@ -624,6 +703,7 @@ final class _Run {
       final step = switch (failure.cause) {
         RefreshDeferred() => _Step.deferred,
         SecureStorageUnreadable() => _Step.storageUnreadable,
+        _ when failure.problem == NetworkProblem.timeout => _Step.timedOut,
         _ => _Step.unreachable,
       };
       if (!_stopped) {
@@ -652,6 +732,9 @@ enum _Step {
   done,
   failed,
   unreachable,
+
+  /// Unreachable: the server left a request unanswered.
+  timedOut,
   deferred,
   storageUnreadable,
   sessionEnded,
@@ -659,13 +742,13 @@ enum _Step {
 
   /// The account's other network steps would fail the same way.
   bool get skipsNetwork => switch (this) {
-    unreachable || deferred || storageUnreadable => true,
+    unreachable || timedOut || deferred || storageUnreadable => true,
     done || failed || sessionEnded || skipped => false,
   };
 
   BackgroundAccountOutcome get outcome => switch (this) {
     done => BackgroundAccountOutcome.synced,
-    unreachable => BackgroundAccountOutcome.unreachable,
+    unreachable || timedOut => BackgroundAccountOutcome.unreachable,
     deferred => BackgroundAccountOutcome.deferred,
     storageUnreadable => BackgroundAccountOutcome.storageUnreadable,
     sessionEnded => BackgroundAccountOutcome.sessionEnded,

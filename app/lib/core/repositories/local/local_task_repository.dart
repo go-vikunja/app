@@ -545,22 +545,27 @@ final class LocalTaskRepository
 
   /// Only the dates the task had are restored; the server never shifts an
   /// unset one. On an open task the server does not shift again, so the
-  /// dates go with `done: false` whether the done is still queued (the two
-  /// merge), in flight, or answered. The server shifts a repeating task's
-  /// reminders with its dates, so they go back too.
+  /// dates go with `done: false` whether the done is in flight or
+  /// answered; see `OutboxDao.queueUndoDone` for one still queued and for
+  /// edits made since. The server shifts a repeating task's reminders with
+  /// its dates, so they go back too.
   @override
-  Future<void> undoDone(Task previous) => _queue(
-    previous.id,
-    TaskChanges(
-      done: false,
-      dueDate: _restore(previous.repeats ? previous.dueDate : null),
-      startDate: _restore(previous.repeats ? previous.startDate : null),
-      endDate: _restore(previous.repeats ? previous.endDate : null),
-      reminders: previous.repeats && previous.reminders.isNotEmpty
-          ? previous.reminders
-          : null,
-    ),
-  );
+  Future<void> undoDone(Task previous) async {
+    final queued = await _db.outboxDao.queueUndoDone(
+      previous.id,
+      TaskChanges(
+        done: false,
+        dueDate: _restore(previous.repeats ? previous.dueDate : null),
+        startDate: _restore(previous.repeats ? previous.startDate : null),
+        endDate: _restore(previous.repeats ? previous.endDate : null),
+        reminders: previous.repeats && previous.reminders.isNotEmpty
+            ? previous.reminders
+            : null,
+      ),
+      now: _now(),
+    );
+    if (queued) _drainQuietly();
+  }
 
   @override
   Future<void> setFavorite(int taskId, {required bool favorite}) =>

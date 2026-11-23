@@ -22,4 +22,42 @@ void main() {
       expect(rewritten.coverImageAttachmentId, 0);
     }
   });
+
+  group('dates set here are in whole seconds, as the server keeps them', () {
+    final fine = DateTime.utc(2026, 11, 23, 14, 23, 45, 678, 912);
+    final whole = DateTime.utc(2026, 11, 23, 14, 23, 45);
+
+    test('in a create', () {
+      final task = applyChangesToNewTask(
+        const NewTask(projectId: 1, title: 'Call Bob'),
+        TaskChanges(
+          dueDate: DateChange.set(fine),
+          startDate: DateChange.set(fine.toLocal()),
+        ),
+      );
+
+      expect(task.dueDate, whole);
+      expect(task.startDate, whole);
+    });
+
+    test('in the reminders, absolute and relative', () {
+      final reminders = withLocalInstants(
+        [
+          TaskReminder(reminder: fine),
+          const TaskReminder(
+            relativePeriod: Duration(minutes: -15),
+            relativeTo: ReminderRelativeTo.dueDate,
+          ),
+        ],
+        dueDate: fine,
+        startDate: null,
+        endDate: null,
+      );
+
+      expect(reminders.map((reminder) => reminder.reminder), [
+        whole,
+        whole.subtract(const Duration(minutes: 15)),
+      ]);
+    });
+  });
 }

@@ -52,6 +52,40 @@ void main() {
       );
     });
 
+    test('as an update of the view it was read from, leaves unchanged '
+        'what equals that view', () {
+      const draft = ViewDraft(
+        title: ' Columns ',
+        kind: ProjectViewKind.kanban,
+        filter: ViewFilter(filter: 'done = false', sortBy: ['id']),
+        bucketConfigurationMode: BucketConfigurationMode.filter,
+      );
+
+      expect(draft.changedFrom(_board).unchanged, {
+        ViewDraftField.kind,
+        ViewDraftField.filter,
+      });
+      expect(
+        const ViewDraft(
+          title: ' Board',
+          kind: ProjectViewKind.list,
+          bucketConfigurationMode: BucketConfigurationMode.manual,
+        ).changedFrom(_board).unchanged,
+        {ViewDraftField.title, ViewDraftField.bucketConfigurationMode},
+      );
+      expect(draft.changedFrom(_board), isNot(draft));
+      expect(
+        draft.changedFrom(_board),
+        const ViewDraft(
+          title: ' Columns ',
+          kind: ProjectViewKind.kanban,
+          filter: ViewFilter(filter: 'done = false', sortBy: ['id']),
+          bucketConfigurationMode: BucketConfigurationMode.filter,
+          unchanged: {ViewDraftField.filter, ViewDraftField.kind},
+        ),
+      );
+    });
+
     test('prints neither the title nor the filter', () {
       final text = ViewDraft(
         title: _board.title,
@@ -64,6 +98,14 @@ void main() {
       expect(text, contains('kanban'));
       expect(text, contains('mode: manual'));
       expect(text, contains('position: 150'));
+      expect(
+        ViewDraft(
+          title: _board.title,
+          kind: _board.kind,
+          unchanged: const {ViewDraftField.title},
+        ).toString(),
+        contains('unchanged: title'),
+      );
       expect(text, isNot(contains('Board')));
       expect(text, isNot(contains('done = false')));
     });

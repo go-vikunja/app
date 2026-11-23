@@ -106,9 +106,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
           title: task.title,
           description: task.description,
           done: false,
-          dueDate: task.dueDate?.toUtc(),
-          startDate: task.startDate?.toUtc(),
-          endDate: task.endDate?.toUtc(),
+          dueDate: _inWholeSeconds(task.dueDate),
+          startDate: _inWholeSeconds(task.startDate),
+          endDate: _inWholeSeconds(task.endDate),
           priority: task.priority.value,
           percentDone: task.percentDone,
           hexColor: task.hexColor,
@@ -227,7 +227,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
         // one on the web would send only the dates the Undo restored and
         // rewind the task.
         if (queued.done == false) earlier = withoutDoneBase(earlier);
-        final merged = earlier.merge(queued);
+        final merged = await _merged(earlier, queued);
         await _write(existing.id, _retaken(encodeTaskChanges(merged)));
       } else {
         await _insert(
@@ -237,7 +237,7 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
           now: now,
         );
       }
-      pending = pending.merge(queued);
+      pending = await _merged(pending, queued);
     }
     final applied = applyTaskChanges(row, changes, now: now).copyWith(
       pendingChanges: Value(
@@ -247,6 +247,33 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
     await update(tasks).replace(applied);
     await attachedDatabase.tasksDao.applyChildChanges(applied, changes);
     return true;
+  });
+
+  /// Queues the Undo of a Done as [queueUpdate] does, with [restored] the
+  /// dates and reminders from before the Done, which the server moves on a
+  /// repeating task's Done. None are restored while the Done has not left
+  /// the device (it moved nothing), nor one that an edit queued since has
+  /// set (it is what the user set last).
+  Future<bool> queueUndoDone(
+    int localOrServerId,
+    TaskChanges restored, {
+    required DateTime now,
+  }) => transaction(() async {
+    final taskId = await attachedDatabase.tasksDao.resolveId(localOrServerId);
+    final unsent = switch (await _unsentUpdate(taskId)) {
+      final op? => decodeTaskChanges(op.payload),
+      null => const TaskChanges(),
+    };
+    final undo = unsent.done == true
+        ? const TaskChanges(done: false)
+        : TaskChanges(
+            done: false,
+            dueDate: unsent.dueDate == null ? restored.dueDate : null,
+            startDate: unsent.startDate == null ? restored.startDate : null,
+            endDate: unsent.endDate == null ? restored.endDate : null,
+            reminders: unsent.reminders == null ? restored.reminders : null,
+          );
+    return await queueUpdate(localOrServerId, undo, now: now);
   });
 
   /// A Done of a repeating task carries the occurrence the row shows as its
@@ -691,8 +718,10 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
       return;
     }
     if (newer.kind == OutboxOperationKind.updateTask.name) {
-      final folded = decodeTaskChanges(payload)
-          .merge(decodeTaskChanges(newer.payload));
+      final folded = await _merged(
+        decodeTaskChanges(payload),
+        decodeTaskChanges(newer.payload),
+      );
       await _write(
         newer.id,
         OutboxCompanion(payload: Value(encodeTaskChanges(folded))),
@@ -703,7 +732,8 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
 
   /// The sender gave up on answers that were not the server's last word
   /// (a 5xx, an answer it could not read), any of which may have reached
-  /// the server: a create or upload marked so (`sent_at`) keeps the mark,
+  /// the server, or on the lookup for what such an answer may have left
+  /// there: a create or upload marked so (`sent_at`) keeps the mark,
   /// so its Retry looks first, and such a create takes no edit and no
   /// delete into it, as the server may have the task. Otherwise as
   /// [markFailed]. A label's create keeps the mark too.
@@ -1050,9 +1080,38 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
               ..orderBy([(o) => OrderingTerm.asc(o.sequence)]))
             .get();
     if (ops.isEmpty) return null;
-    return ops
-        .map((op) => decodeTaskChanges(op.payload))
-        .reduce((earlier, later) => earlier.merge(later));
+    final changes = [for (final op in ops) decodeTaskChanges(op.payload)];
+    final keepOnDone = await _viewsWithoutDoneColumn(changes);
+    return changes.reduce(
+      (earlier, later) =>
+          earlier.merge(later, viewsWithoutDoneColumn: keepOnDone),
+    );
+  }
+
+  /// [earlier] merged with [later]; see [_viewsWithoutDoneColumn].
+  Future<TaskChanges> _merged(TaskChanges earlier, TaskChanges later) async =>
+      earlier.merge(
+        later,
+        viewsWithoutDoneColumn: later.done == null
+            ? const {}
+            : await _viewsWithoutDoneColumn([earlier]),
+      );
+
+  /// The views [changes] place the task on that have no done column: a
+  /// change of the done state keeps the placements queued before it there,
+  /// as no move on such a view sets the done state back. A view not stored
+  /// here counts as one with a done column (decision log: Sets, relations,
+  /// positions, labels).
+  Future<Set<int>> _viewsWithoutDoneColumn(
+    Iterable<TaskChanges> changes,
+  ) async {
+    final viewIds = {for (final change in changes) ...?change.kanban?.keys};
+    if (viewIds.isEmpty) return const {};
+    final views = attachedDatabase.projectViews;
+    final query = selectOnly(views)
+      ..addColumns([views.id])
+      ..where(views.id.isIn(viewIds) & views.doneBucketId.equals(0));
+    return {for (final row in await query.get()) row.read(views.id)!};
   }
 
   /// Every queued op, whatever its state: all of them are changes the
@@ -1368,6 +1427,9 @@ final class OutboxDao extends DatabaseAccessor<AppDatabase>
 
   Future<void> _write(String id, Insertable<OutboxRow> values) =>
       (update(outbox)..where((o) => o.id.equals(id))).write(values);
+
+  static DateTime? _inWholeSeconds(DateTime? date) =>
+      date == null ? null : inWholeSeconds(date.toUtc());
 
   static TaskChanges _pendingOf(TaskRow row) => switch (row.pendingChanges) {
     final json? => decodeTaskChanges(json),

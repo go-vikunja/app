@@ -300,9 +300,9 @@ _FoundDate? _inAmountDate(String text, DateTime now) {
         },
     now.hour + (unit == 'hour' ? amount : 0),
     now.minute + (unit == 'minute' ? amount : 0),
+    // Not the fraction of the second: the server keeps whole seconds, and a
+    // finer instant would read as moved once the server's copy is synced.
     now.second,
-    now.millisecond,
-    now.microsecond,
   );
   // Vikunja refuses the extended ISO form that a later year needs.
   if (date.year > 9999) return null;

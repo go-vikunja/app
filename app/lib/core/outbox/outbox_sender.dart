@@ -149,6 +149,7 @@ final class OutboxSender {
     this._headless = false,
     int? Function()? currentUserId,
     int? Function()? maxUploadBytes,
+    Future<Duration?> Function()? serverClockOffset,
     int? processId,
   }) : _write = writeClient,
        _read = readClient,
@@ -156,12 +157,14 @@ final class OutboxSender {
        _random = random ?? Random(),
        _currentUserId = currentUserId ?? _unknownUser,
        _maxUploadBytes = maxUploadBytes ?? _unknownLimit,
+       _serverClockOffset = serverClockOffset ?? _unknownOffset,
        _process = processId ?? pid {
     _syncStatus = _sync.status.listen(_onSyncStatus);
   }
 
   static int? _unknownUser() => null;
   static int? _unknownLimit() => null;
+  static Future<Duration?> _unknownOffset() async => null;
 
   static const initialBackoff = Duration(seconds: 2);
   static const maxBackoff = Duration(minutes: 15);
@@ -180,9 +183,11 @@ final class OutboxSender {
   static const maxFailedUploadAnswersInARow = 4;
 
   /// How far before an unanswered create's attempt the lookup reaches: the
-  /// server's `created` is its clock, the attempt time this device's, and
-  /// the sync engine tolerates the same hour of skew between the two. The
-  /// exact title and project keep the match narrow.
+  /// server's `created` is its clock, the attempt time this device's, with
+  /// and without the server's clock offset the session learned (see
+  /// [_lookupWindow]), and the hour covers what that offset misses, as the
+  /// sync engine tolerates the same hour of skew. The exact title and
+  /// project keep the match narrow.
   static const lostResponseWindow = Duration(hours: 1);
 
   /// Above the longest a live sender spends on one op: the connect, send
@@ -214,6 +219,7 @@ final class OutboxSender {
   final bool _headless;
   final int? Function() _currentUserId;
   final int? Function() _maxUploadBytes;
+  final Future<Duration?> Function() _serverClockOffset;
   final int _process;
   final _uploading = <String, CancelToken>{};
   final _uploadingChanges = StreamController<Set<String>>.broadcast(sync: true);
@@ -459,7 +465,7 @@ final class OutboxSender {
     final taken = await _db.transaction(() async {
       if (fresh == null) {
         if (await _db.outboxDao.find(operationId) == null) return false;
-        await _db.outboxDao.remove(operationId);
+        await _db.outboxDao.removeAllOf(op.taskId);
         await _db.tasksDao.deleteRow(op.taskId);
         return true;
       }
@@ -468,7 +474,12 @@ final class OutboxSender {
       return true;
     });
     if (!taken) return;
-    _log.info('Took the server description of task ${op.taskId}');
+    if (fresh == null) {
+      await sweepUploads();
+      _log.info('Task ${op.taskId} was gone from the server with every op');
+    } else {
+      _log.info('Took the server description of task ${op.taskId}');
+    }
     await drain();
   }
 
@@ -708,11 +719,14 @@ final class OutboxSender {
       }
     }
     final Task? task;
+    var looking = false;
     try {
       switch (kind) {
         case OutboxOperationKind.createTask:
           final newTask = decodeNewTask(op.payload);
+          looking = true;
           final found = await _recoverCreate(op, newTask);
+          looking = false;
           if (found == null &&
               op.sentAt != null &&
               await _dropDeletedCreate(op, lookedUp: true)) {
@@ -738,6 +752,7 @@ final class OutboxSender {
         await _applyDelete(op);
         return true;
       }
+      if (looking && await _refusedLookup(op, failure)) return false;
       await _handleSendFailure(op, kind, failure);
       return false;
     } on Object catch (error) {
@@ -824,15 +839,7 @@ final class OutboxSender {
         _log.info('Label $labelId was gone from the server');
         return true;
       }
-      // A search the server refuses is no refusal of the create, which an
-      // earlier attempt may have made: Retry looks again first.
-      if (looking &&
-          failure is! SessionEnded &&
-          _retryOf(op, failure) == _Retry.never &&
-          !_disposed) {
-        await _db.outboxDao.markGivenUp(op.id, failure);
-        return false;
-      }
+      if (looking && await _refusedLookup(op, failure)) return false;
       await _handleSendFailure(op, kind, failure);
       return false;
     } on Object catch (error) {
@@ -883,8 +890,7 @@ final class OutboxSender {
       return (found: null, seen: const <int>{});
     }
     final title = queued.label.title;
-    final from = sentAt.subtract(lostResponseWindow);
-    final until = postedAt.add(lostResponseWindow);
+    final (:from, :until) = await _lookupWindow(sentAt, postedAt);
     final userId = _currentUserId();
     final matches = await _labelsTitledOnServer(title);
     final taken = {
@@ -1071,14 +1077,18 @@ final class OutboxSender {
     _uploading[op.id] = cancel;
     _uploadingChanged();
     final TaskAttachment attachment;
+    var looking = false;
     try {
       final length = await file.length();
       if (_maxUploadBytes() case final limit? when length > limit) {
         // Queued under a larger limit, or before the app had one.
         throw const FileTooLarge(code: _fileTooLargeCode);
       }
+      looking = true;
+      final found = await _recoverUpload(op, upload, length);
+      looking = false;
       attachment =
-          await _recoverUpload(op, upload, length) ??
+          found ??
           await _write.attachments.upload(
             op.taskId,
             fileName: upload.fileName,
@@ -1089,10 +1099,13 @@ final class OutboxSender {
             cancel: cancel,
           );
     } on VikunjaFailure catch (failure) {
+      if (looking && await _refusedLookup(op, failure)) return;
       if (_mayHaveReachedServer(failure) && !_disposed) {
         await _markUncertain(op);
       }
-      if (failure case NotFound(routeAbsent: true) when !_disposed) {
+      // The lookup's read has a route of its own.
+      if (failure case NotFound(routeAbsent: true)
+          when !looking && !_disposed) {
         await _db.outboxDao.markFailed(op.id, failure);
         _log.warning('Upload to task ${op.taskId} refused: no attachments');
         return;
@@ -1181,7 +1194,7 @@ final class OutboxSender {
     if (sentAt == null) return null;
     final details = await _read.tasks.readDetails(op.taskId);
     final userId = _currentUserId();
-    final since = sentAt.subtract(lostResponseWindow);
+    final since = (await _lookupWindow(sentAt, sentAt)).from;
     TaskAttachment? found;
     for (final candidate in details.attachments) {
       final created = candidate.created;
@@ -1213,25 +1226,64 @@ final class OutboxSender {
   /// The op's changes with every task its relations name and every label
   /// it adds or removes followed to the server id; null while one of them
   /// is still a task or a label created here whose create has not been
-  /// answered.
+  /// answered. Placements that would set the done state back are left out
+  /// (see [_placementsUndoingDone]).
   Future<TaskChanges?> _sendableChanges(OutboxRow op) async {
     final (:changes, :waits) = await _db.labelOpsDao.resolveLabels(
       decodeTaskChanges(op.payload),
       taskId: op.taskId,
     );
     if (waits) return null;
-    final relations = changes.relations;
-    if (relations == null) return changes;
+    final undoing = await _placementsUndoingDone(op, changes);
+    final sendable = undoing.isEmpty
+        ? changes
+        : withoutPlacementsOn(changes, undoing);
+    final relations = sendable.relations;
+    if (relations == null) return sendable;
     final resolved = <int, int>{};
-    for (final id in relatedTaskIds(changes)) {
+    for (final id in relatedTaskIds(sendable)) {
       final serverId = await _db.tasksDao.resolveId(id);
       if (serverId < 0) return null;
       resolved[id] = serverId;
     }
     return withRelations(
-      changes,
+      sendable,
       relations.mapTaskIds((id) => resolved[id] ?? id),
     );
+  }
+
+  /// The views of [changes]' placements on which the move, sent after the
+  /// body, would set their done change back: one out of the done bucket
+  /// after a Done that leaves the task done, one into it after anything
+  /// that leaves it open (a repeating task's Done reopens it). The merge
+  /// keeps a placement on a view that had no done bucket then, and one may
+  /// have been chosen on the web since (decision log: Sets, relations,
+  /// positions, labels).
+  Future<Set<int>> _placementsUndoingDone(
+    OutboxRow op,
+    TaskChanges changes,
+  ) async {
+    final done = changes.done;
+    final kanban = changes.kanban;
+    if (done == null || kanban == null || kanban.isEmpty) return const {};
+    final doneBuckets = await _db.projectsDao.doneBucketIds(kanban.keys);
+    if (doneBuckets.values.every((id) => id == 0)) return const {};
+    final staysDone =
+        done && !((await _db.tasksDao.find(op.taskId))?.repeats ?? false);
+    final undoing = {
+      for (final MapEntry(key: viewId, value: placement) in kanban.entries)
+        if (doneBuckets[viewId] case final doneBucket?
+            when doneBucket != 0 &&
+                (placement.bucketId == doneBucket) != staysDone)
+          viewId,
+    };
+    if (undoing.isNotEmpty) {
+      _log.info(
+        'Placements of task ${op.taskId} on views $undoing would undo its '
+        'done change; not sent',
+      );
+    }
+    return undoing;
   }
 
   /// The description to write over the server's [current]: the queued one
@@ -1277,8 +1329,9 @@ final class OutboxSender {
   Future<Task?> _recoverCreate(OutboxRow op, NewTask newTask) async {
     final sentAt = op.sentAt;
     if (sentAt == null) return null;
+    final since = (await _lookupWindow(sentAt, sentAt)).from;
     final query = TaskQuery(
-      filter: TaskFilters.createdSince(sentAt.subtract(lostResponseWindow)),
+      filter: TaskFilters.createdSince(since),
       sort: TaskFilters.byCreatedDescending,
     );
     final title = withoutNul(newTask.title);
@@ -1313,6 +1366,35 @@ final class OutboxSender {
       'Create of task ${op.taskId} did not reach the server; sent again',
     );
     return null;
+  }
+
+  /// The server times from [lostResponseWindow] before [first] to as long
+  /// after [last], two device times of the attempts. The stored offset is
+  /// the one learned last: a token refresh after the device clock changed
+  /// stores a new one the attempts were not made under, so the window
+  /// spans their times both moved by it and as they are.
+  Future<({DateTime from, DateTime until})> _lookupWindow(
+    DateTime first,
+    DateTime last,
+  ) async {
+    final offset = await _clockOffset();
+    final earlier = offset.isNegative ? offset : Duration.zero;
+    final later = offset.isNegative ? Duration.zero : offset;
+    return (
+      from: first.add(earlier).subtract(lostResponseWindow),
+      until: last.add(later).add(lostResponseWindow),
+    );
+  }
+
+  /// How far the server's clock is ahead of this device's; zero when no
+  /// offset is stored or it cannot be read.
+  Future<Duration> _clockOffset() async {
+    try {
+      return await _serverClockOffset() ?? Duration.zero;
+    } on Object catch (error) {
+      _log.info('Could not read the server clock offset: ${error.runtimeType}');
+      return Duration.zero;
+    }
   }
 
   /// The row moves to the server id with the response applied; the ops
@@ -1365,6 +1447,21 @@ final class OutboxSender {
       await _markUncertain(op);
     }
     await _handleFailure(op, failure);
+  }
+
+  /// A lookup the server refuses for good is no refusal of the create or
+  /// upload, which an earlier attempt may have made: it becomes a sync
+  /// problem that keeps its mark, so Retry looks again first. False, with
+  /// nothing done, for any other failure.
+  Future<bool> _refusedLookup(OutboxRow op, VikunjaFailure failure) async {
+    if (failure is SessionEnded ||
+        _retryOf(op, failure) != _Retry.never ||
+        _disposed) {
+      return false;
+    }
+    _log.warning('The lookup for ${op.kind} was refused: $failure');
+    await _db.outboxDao.markGivenUp(op.id, failure);
+    return true;
   }
 
   /// The next attempt looks for what this one may have left on the server.

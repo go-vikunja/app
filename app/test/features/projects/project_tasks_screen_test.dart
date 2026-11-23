@@ -326,6 +326,20 @@ void main() {
     expect(rows(tester).first, ('Eight', 0));
   });
 
+  testWidgets('a download stamped ahead of the clock, which was set back '
+      'since, fetches the view again when it opens', (tester) async {
+    data.tasks.setSnapshot(
+      'view:11',
+      ListSnapshot(
+        positions: const {7: 1},
+        loadedAt: now.add(const Duration(hours: 2)),
+      ),
+    );
+    await pumpProject(tester);
+
+    expect(data.tasks.projectListRefreshes, [(1, 11)]);
+  });
+
   testWidgets('a view never downloaded fetches its positions when it opens', (
     tester,
   ) async {

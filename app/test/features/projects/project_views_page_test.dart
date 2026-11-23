@@ -221,6 +221,12 @@ void main() {
     final original = data.projects.byId(1)!.views.first;
     expect(data.views.drafts.single.title, 'Open');
     expect(data.views.drafts.single.filter, same(original.filter));
+    // Sent are only the fields changed here, so a change made on the web
+    // since the sheet opened stays.
+    expect(data.views.drafts.single.unchanged, {
+      ViewDraftField.kind,
+      ViewDraftField.filter,
+    });
   });
 
   testWidgets('a filter the server refuses is explained at its field, '

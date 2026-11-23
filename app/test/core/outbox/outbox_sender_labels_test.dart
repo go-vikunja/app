@@ -40,6 +40,7 @@ void main() {
     bool headless = false,
     int? processId,
     DateTime Function()? clock,
+    Duration? serverClockOffset,
   }) {
     final sender = OutboxSender(
       db: db,
@@ -51,6 +52,7 @@ void main() {
       random: ZeroRandom(),
       currentUserId: () => userId,
       headless: headless,
+      serverClockOffset: () async => serverClockOffset,
       processId: processId,
     );
     addTearDown(sender.dispose);
@@ -614,6 +616,48 @@ void main() {
     expect(write.requests, isEmpty);
     expect(await db.labelsDao.resolveId(-1), 50);
     expect(await db.labelsDao.resolveId(-2), 60);
+  });
+
+  for (final offset in const [Duration(hours: 3), Duration(hours: -3)]) {
+    test('a server clock $offset off the phone still finds the label the '
+        "lost request made: the window moves by the server's clock offset "
+        'the session learned', () async {
+      write = FakeWriteClient(clock: () => now.add(offset));
+      loseCreateAnswers();
+      final outbox = sender(userId: me.id, serverClockOffset: offset);
+      await queueLabel('Errand');
+      await outbox.drain();
+      write.afterRequest = null;
+
+      now = now.add(const Duration(minutes: 1));
+      await outbox.sendNow();
+
+      expect(write.requests, ['create label Errand']);
+      expect(write.serverLabels, hasLength(1));
+      expect(await db.labelsDao.resolveId(-1), write.serverLabels.keys.single);
+    });
+  }
+
+  test('a phone clock set forward after the lost attempt still finds the '
+      'label: the offset learned since does not move the window before the '
+      'attempt', () async {
+    loseCreateAnswers();
+    final outbox = sender(userId: me.id);
+    await queueLabel('Errand');
+    await outbox.drain();
+    write.afterRequest = null;
+    await outbox.dispose();
+
+    final later = sender(
+      userId: me.id,
+      serverClockOffset: const Duration(hours: -2),
+    );
+    now = now.add(const Duration(minutes: 1));
+    await later.sendNow();
+
+    expect(write.requests, ['create label Errand']);
+    expect(write.serverLabels, hasLength(1));
+    expect(await db.labelsDao.resolveId(-1), write.serverLabels.keys.single);
   });
 
   test('from findOrCreate a label whose delete is queued here is not taken: '

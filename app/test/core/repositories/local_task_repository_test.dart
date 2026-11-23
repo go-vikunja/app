@@ -248,6 +248,61 @@ void main() {
       expect(await db.outboxDao.count(), 0);
     });
 
+    test("undoing a repeating task's Done that has not left keeps a due date "
+        'set after it: the server moved nothing back to restore', () async {
+      await db.tasksDao.upsertAll([daily], syncRunId: 'run');
+      write.serverTasks[5] = daily;
+      final previous = (await db.tasksDao.find(5))!;
+      final friday = DateTime.utc(2026, 10, 16, 9);
+      sender.pause();
+      await repository.setDone(5, done: true);
+      await repository.updateTask(
+        5,
+        TaskChanges(dueDate: DateChange.set(friday)),
+      );
+
+      await repository.undoDone(previous);
+      expect((await db.tasksDao.find(5))!.dueDate, friday);
+      await sender.resume();
+
+      expect(write.updates.single, (
+        5,
+        TaskChanges(done: false, dueDate: DateChange.set(friday)),
+      ));
+      expect(write.serverTasks[5]!.dueDate, friday);
+      expect(await db.outboxDao.count(), 0);
+    });
+
+    test('undoing a Done the server answered keeps a due date set since and '
+        'restores the dates it moved', () async {
+      await db.tasksDao.upsertAll([daily], syncRunId: 'run');
+      write.serverTasks[5] = daily;
+      final previous = (await db.tasksDao.find(5))!;
+      final friday = DateTime.utc(2026, 10, 16, 9);
+      await repository.setDone(5, done: true);
+      await pumpEventQueue();
+      sender.pause();
+      await repository.updateTask(
+        5,
+        TaskChanges(dueDate: DateChange.set(friday)),
+      );
+
+      await repository.undoDone(previous);
+      await sender.resume();
+
+      expect(write.updates.last, (
+        5,
+        TaskChanges(
+          done: false,
+          dueDate: DateChange.set(friday),
+          startDate: DateChange.set(previous.startDate!),
+        ),
+      ));
+      final server = write.serverTasks[5]!;
+      expect(server.dueDate, friday);
+      expect(server.startDate, previous.startDate);
+    });
+
     test('undoing a task that does not repeat sends done only', () async {
       final previous = (await db.tasksDao.find(2))!;
       await repository.setDone(2, done: true);

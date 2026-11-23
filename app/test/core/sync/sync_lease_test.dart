@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -164,6 +165,116 @@ void main() {
       jsonDecode((await state())[SyncStateKeys.syncLease]!),
       containsPair('owner', 'elsewhere'),
     );
+  });
+
+  test('a run whose lease another run took and let go again, or left to run '
+      'out, stops quietly too', () async {
+    await engine(server()).ensureInitialSync();
+    final lastFull = (await state())[SyncStateKeys.lastFullSyncAt];
+    for (final takenAndLeft in <Future<void> Function()>[
+      () => db.syncStateDao.write({SyncStateKeys.syncLease: null}),
+      () => leaseTo('elsewhere', now.subtract(const Duration(minutes: 1))),
+    ]) {
+      now = now.add(const Duration(minutes: 5));
+      final client = server();
+      final gate = RequestGate()..pattern = 'done = true';
+      client.beforeRequest = gate.call;
+      final running = engine(client).fullResync();
+      while (!gate.isHolding) {
+        await pumpEventQueue();
+      }
+      await db.tasksDao.upsertAll([
+        sampleTask(id: 99, title: 'Marked by the other run'),
+      ], syncRunId: 'other-run');
+      await takenAndLeft();
+
+      gate
+        ..pattern = null
+        ..release();
+      await running;
+
+      expect(await db.tasksDao.find(99), isNotNull);
+      expect((await state())[SyncStateKeys.lastFullSyncAt], lastFull);
+    }
+  });
+
+  test('an incremental run whose lease another run took and let go again '
+      'purges no project it reconciles', () async {
+    final client = server();
+    final sync = engine(client);
+    await sync.ensureInitialSync();
+    now = now.add(const Duration(minutes: 5));
+    // Task 6 is gone on the server, so project 1 is reconciled by id.
+    client.allTasks = tasks.take(5).toList();
+    final gate = RequestGate()..pattern = 'project 1 tasks id > 4';
+    client.beforeRequest = gate.call;
+    final running = sync.refresh();
+    while (!gate.isHolding) {
+      await pumpEventQueue();
+    }
+    await db.tasksDao.upsertAll([
+      sampleTask(id: 99, title: 'Marked by the other run'),
+    ], syncRunId: 'other-run');
+    await db.syncStateDao.write({SyncStateKeys.syncLease: null});
+
+    gate
+      ..pattern = null
+      ..release();
+
+    expect(await running, SyncOutcome.skipped);
+    expect(await db.tasksDao.findAll([6, 99]), hasLength(2));
+  });
+
+  test('dispose lets go of the lease of a run under way at once', () async {
+    final client = server();
+    final gate = RequestGate()..pattern = 'done = true';
+    client.beforeRequest = gate.call;
+    final sync = engine(client, headless: true);
+    final running = sync.ensureInitialSync();
+    while (!gate.isHolding) {
+      await pumpEventQueue();
+    }
+    expect((await state()).containsKey(SyncStateKeys.syncLease), isTrue);
+
+    await sync.dispose();
+
+    expect((await state()).containsKey(SyncStateKeys.syncLease), isFalse);
+    gate
+      ..pattern = null
+      ..release();
+    await running;
+    expect((await state()).containsKey(SyncStateKeys.syncLease), isFalse);
+  });
+
+  test('a disposed engine takes no lease back: a renewal that waited for the '
+      'database ends the run before its request', () async {
+    final client = server()
+      ..allProjects = [
+        for (var id = 1; id <= 3; id++) sampleProject(id: id, title: 'P$id'),
+      ];
+    final gate = RequestGate()..pattern = 'projects page 1';
+    client.beforeRequest = gate.call;
+    final sync = engine(client);
+    final running = sync.ensureInitialSync();
+    while (!gate.isHolding) {
+      await pumpEventQueue();
+    }
+    final busy = Completer<void>();
+    final blocking = db.transaction(() => busy.future);
+    await pumpEventQueue();
+    gate
+      ..pattern = null
+      ..release();
+    await pumpEventQueue();
+
+    final disposing = sync.dispose();
+    busy.complete();
+    await blocking;
+    await disposing;
+    await running;
+
+    expect(client.requests, isNot(contains(startsWith('projects page 2'))));
+    expect((await state()).containsKey(SyncStateKeys.syncLease), isFalse);
   });
 
   test('a failed run lets go of the lease', () async {

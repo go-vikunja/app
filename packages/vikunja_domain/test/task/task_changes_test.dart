@@ -125,12 +125,23 @@ void main() {
       );
     });
 
-    test('a later done change drops a placement queued without one', () {
+    test('a later done change drops a placement queued without one, except '
+        'on a view without a done column, where no move touches the done '
+        'state: there an Undo keeps it too', () {
       const placed = TaskChanges(kanban: {7: toDoing, 8: otherView});
+      const done = TaskChanges(done: true);
+      const undone = TaskChanges(done: false);
 
+      expect(placed.merge(done), done);
       expect(
-        placed.merge(const TaskChanges(done: true)),
-        const TaskChanges(done: true),
+        placed.merge(done, viewsWithoutDoneColumn: {8, 9}),
+        const TaskChanges(done: true, kanban: {8: otherView}),
+      );
+      expect(
+        placed
+            .merge(done, viewsWithoutDoneColumn: {7, 8})
+            .merge(undone, viewsWithoutDoneColumn: {7, 8}),
+        const TaskChanges(done: false, kanban: {7: toDoing, 8: otherView}),
       );
     });
 

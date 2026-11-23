@@ -224,7 +224,11 @@ class _ViewFormSheetState extends ConsumerState<ViewFormSheet> {
       if (view == null) {
         await repository.createView(widget.projectId, draft);
       } else {
-        await repository.updateView(widget.projectId, view.id, draft);
+        await repository.updateView(
+          widget.projectId,
+          view.id,
+          draft.changedFrom(view),
+        );
       }
       if (mounted) Navigator.of(context).pop();
       onSaved();

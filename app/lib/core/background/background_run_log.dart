@@ -94,7 +94,8 @@ final class BackgroundRunLog {
   Future<DateTime?> lastRunAt(String accountId) async =>
       _parse(await _store.getString(lastRunAtKey(accountId)));
 
-  /// The account's turn in a run began at [at], whatever came of it.
+  /// The account's turn in a run, or the drain of its queue before the
+  /// turns, began at [at], whatever came of it.
   Future<void> recordAttempt(String accountId, DateTime at) =>
       _store.setString(lastAttemptAtKey(accountId), _iso(at));
 
@@ -104,17 +105,21 @@ final class BackgroundRunLog {
   /// The account's turn that began at [lastAttemptAt] ended with
   /// [outcome]; [stopReason] is the OS's reason for a stop, as Android's
   /// `WorkInfo` numbers it, null when the run's own deadline stopped it.
+  /// [timedOut] tells an unreachable server that left a request unanswered
+  /// from one that failed at once (offline, refused).
   Future<void> recordAccountOutcome(
     String accountId,
     BackgroundAccountOutcome outcome, {
     required DateTime at,
     int? stopReason,
+    bool timedOut = false,
   }) => _store.setString(
     lastOutcomeKey(accountId),
     jsonEncode({
       'at': _iso(at),
       'outcome': outcome.name,
       'stopReason': ?stopReason,
+      if (timedOut) 'timedOut': true,
     }),
   );
 
@@ -139,6 +144,21 @@ final class BackgroundRunLog {
       // Falls through: an unreadable record counts as none.
     }
     return null;
+  }
+
+  /// Whether the account's last turn ended unreachable on a timeout.
+  Future<bool> lastOutcomeTimedOut(String accountId) async {
+    final raw = await _store.getString(lastOutcomeKey(accountId));
+    if (raw == null) return false;
+    try {
+      return switch (jsonDecode(raw)) {
+        {'outcome': final String outcome, 'timedOut': true} =>
+          outcome == BackgroundAccountOutcome.unreachable.name,
+        _ => false,
+      };
+    } on FormatException {
+      return false;
+    }
   }
 
   Future<void> recordResult(BackgroundRunOutcome outcome, DateTime at) =>

@@ -118,6 +118,38 @@ void main() {
     ]);
   });
 
+  test('an edit leaves what the draft left unchanged as the server has it, '
+      'so a change made elsewhere since the last sync stays', () async {
+    final changedElsewhere = ProjectView(
+      id: 11,
+      projectId: 1,
+      title: list.title,
+      kind: ProjectViewKind.table,
+      position: list.position,
+      filter: const ViewFilter(filter: 'priority >= 3'),
+    );
+    server.serverProjects[1] = sampleProject(
+      id: 1,
+      title: 'Work',
+      views: [changedElsewhere, board],
+    );
+
+    await repository.updateView(
+      1,
+      11,
+      ViewDraft(
+        title: 'Open',
+        kind: list.kind,
+        filter: list.filter,
+      ).changedFrom(list),
+    );
+
+    final stored = (await storedViews()).first;
+    expect(stored.title, 'Open');
+    expect(stored.kind, ProjectViewKind.table);
+    expect(stored.filter?.filter, 'priority >= 3');
+  });
+
   test('a new table or Gantt view is downloaded only when the device '
       'cannot evaluate its filter', () async {
     for (final (kind, filter, downloaded) in [

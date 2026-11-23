@@ -107,7 +107,7 @@ void main() {
 
     await tester.tap(markNotDone());
     await tester.pumpAndSettle();
-    expect(data.tasks.writes, ['setDone 2 true', 'setDone 2 false']);
+    expect(data.tasks.writes, ['setDone 2 true', 'undoDone 2']);
     expect(markDone(), findsOneWidget);
     expect(inSheet(find.text(en.taskDetailStatusOpen)), findsOneWidget);
     expect(
@@ -162,6 +162,49 @@ void main() {
     expect(undone.dueDate, due);
     expect(undone.reminders, [reminder]);
     expect(find.text(en.taskMarkedDone), findsNothing);
+  });
+
+  testWidgets('Mark as not done while the Undo is up is that Undo, so a '
+      'repeating task keeps the dates and reminders it had; once the Undo '
+      'has gone it only reopens the task', (tester) async {
+    final due = DateTime.utc(2026, 10, 10, 18);
+    final reminder = TaskReminder(reminder: DateTime.utc(2026, 10, 10, 17));
+    data.tasks.all = [
+      ...data.tasks.all,
+      sampleTask(
+        id: 3,
+        title: 'Water the plants',
+        due: due,
+        reminders: [reminder],
+        repeatAfter: const Duration(days: 1),
+      ),
+    ];
+    await openDetail(tester, 'Water the plants');
+    Finder markDone() =>
+        inSheet(find.widgetWithText(FilledButton, en.taskDetailMarkDone));
+    Finder markNotDone() =>
+        inSheet(find.widgetWithText(OutlinedButton, en.taskDetailMarkNotDone));
+
+    await tester.tap(markDone());
+    await tester.pumpAndSettle();
+    await tester.tap(markNotDone());
+    await tester.pumpAndSettle();
+
+    expect(data.tasks.writes, ['setDone 3 true', 'undoDone 3']);
+    final reopened = data.tasks.find(3)!;
+    expect(reopened.done, isFalse);
+    expect(reopened.dueDate, due);
+    expect(reopened.reminders, [reminder]);
+    expect(find.text(en.taskMarkedDone), findsNothing);
+
+    await tester.tap(markDone());
+    await tester.pumpAndSettle();
+    await tester.pump(markedDoneSnackBarDuration);
+    await tester.pumpAndSettle();
+    expect(find.text(en.taskMarkedDone), findsNothing);
+    await tester.tap(markNotDone());
+    await tester.pumpAndSettle();
+    expect(data.tasks.writes.last, 'setDone 3 false');
   });
 
   testWidgets('a sheet closed while its Undo is up hands the Undo to the '

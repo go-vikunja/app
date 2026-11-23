@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sqlite3/sqlite3.dart' show Database, sqlite3;
 import 'package:vikunja_api/vikunja_api.dart';
 import 'package:vikunja_domain/vikunja_domain.dart';
 import 'package:vikunja_mobile/core/auth/account_registry.dart';
@@ -26,6 +27,7 @@ import 'package:vikunja_mobile/core/platform/app_part.dart';
 import 'package:vikunja_mobile/core/repositories/repository_providers.dart';
 import 'package:vikunja_mobile/core/sync/sync_checkpoint.dart';
 import 'package:vikunja_mobile/core/sync/sync_engine.dart';
+import 'package:vikunja_mobile/core/sync/sync_engine_impl.dart';
 import 'package:vikunja_mobile/core/sync/sync_status.dart';
 import 'package:vikunja_mobile/core/time/clock_provider.dart';
 import 'package:vikunja_mobile/core/widgets/widget_config.dart';
@@ -63,6 +65,9 @@ void main() {
   late List<String> order;
   late FakeWidgetHost widgets;
   late RefreshCutoff Function() makeCutoff;
+  late FakeAccountDatabaseFiles files;
+  late AppDatabase Function(String accountId) newDatabase;
+  late SyncEngine Function(Ref ref, String accountId) newEngine;
   late ProviderContainer container;
 
   FakeSyncEngine engineOf(String accountId) => engines.putIfAbsent(
@@ -88,6 +93,49 @@ void main() {
     );
   });
 
+  ProviderContainer newContainer() => ProviderContainer(
+    overrides: [
+      ...auth.overrides,
+      accountDatabaseFilesProvider.overrideWithValue(files),
+      openDatabasesProvider.overrideWithValue(
+        OpenDatabases(
+          files,
+          open: (accountId, _) =>
+              databases.putIfAbsent(accountId, () => newDatabase(accountId)),
+        ),
+      ),
+      syncEngineProvider.overrideWith((ref, accountId) {
+        ref.onDispose(() => disposedEngines.add(accountId));
+        return newEngine(ref, accountId);
+      }),
+      readClientProvider.overrideWith((ref, accountId) => readOf(accountId)),
+      writeClientProvider.overrideWith((ref, accountId) => writeOf(accountId)),
+      clockProvider.overrideWithValue(() => now),
+      // Six hours behind UTC, so that the session reminders fall in the
+      // day.
+      utcOffsetAtProvider.overrideWithValue((_) => const Duration(hours: -6)),
+      notificationGatewayProvider.overrideWithValue(gateway),
+      widgetHostProvider.overrideWithValue(widgets),
+      refreshCutoffProvider.overrideWith((ref) => makeCutoff()),
+    ],
+  );
+
+  /// Databases that outlive a container, as the files outlive a run.
+  void databasesOutliveContainers() {
+    final sqlite = <String, Database>{};
+    addTearDown(() {
+      for (final database in sqlite.values) {
+        database.close();
+      }
+    });
+    newDatabase = (accountId) => AppDatabase(
+      NativeDatabase.opened(
+        sqlite.putIfAbsent(accountId, sqlite3.openInMemory),
+        closeUnderlyingOnClose: false,
+      ),
+    );
+  }
+
   setUp(() {
     now = monday;
     auth = AuthFakes();
@@ -101,37 +149,10 @@ void main() {
     order = [];
     widgets = FakeWidgetHost();
     makeCutoff = () => RefreshCutoff(clock: () => now);
-    final files = FakeAccountDatabaseFiles();
-    container = ProviderContainer(
-      overrides: [
-        ...auth.overrides,
-        accountDatabaseFilesProvider.overrideWithValue(files),
-        openDatabasesProvider.overrideWithValue(
-          OpenDatabases(
-            files,
-            open: (accountId, _) => databases.putIfAbsent(
-              accountId,
-              () => AppDatabase(NativeDatabase.memory()),
-            ),
-          ),
-        ),
-        syncEngineProvider.overrideWith((ref, accountId) {
-          ref.onDispose(() => disposedEngines.add(accountId));
-          return engineOf(accountId);
-        }),
-        readClientProvider.overrideWith((ref, accountId) => readOf(accountId)),
-        writeClientProvider.overrideWith(
-          (ref, accountId) => writeOf(accountId),
-        ),
-        clockProvider.overrideWithValue(() => now),
-        // Six hours behind UTC, so that the session reminders fall in the
-        // day.
-        utcOffsetAtProvider.overrideWithValue((_) => const Duration(hours: -6)),
-        notificationGatewayProvider.overrideWithValue(gateway),
-        widgetHostProvider.overrideWithValue(widgets),
-        refreshCutoffProvider.overrideWith((ref) => makeCutoff()),
-      ],
-    );
+    files = FakeAccountDatabaseFiles();
+    newDatabase = (_) => AppDatabase(NativeDatabase.memory());
+    newEngine = (_, accountId) => engineOf(accountId);
+    container = newContainer();
     addTearDown(() async {
       for (final db in databases.values) {
         await db.close();
@@ -161,10 +182,7 @@ void main() {
       tokens: issueTokens(issuedAt: now, userId: userId, username: 'u$userId'),
       needsReauth: needsReauth,
     );
-    final db = databases.putIfAbsent(
-      entry.id,
-      () => AppDatabase(NativeDatabase.memory()),
-    );
+    final db = databases.putIfAbsent(entry.id, () => newDatabase(entry.id));
     await db.syncStateDao.write({
       SyncStateKeys.lastSyncedAt: syncedAt?.toIso8601String(),
       if (activitySynced)
@@ -302,6 +320,146 @@ void main() {
       expect(engines[first.id]?.refreshCalls ?? 0, 0);
       expect(engines[second.id]?.refreshCalls ?? 0, 0);
       expect(await lastOutcome(), BackgroundRunOutcome.deadline);
+    });
+
+    test("a drain the deadline cut short counts as the account's attempt: "
+        'the next run gives the other account its turn first and sends the '
+        'queue in its own turn', () async {
+      databasesOutliveContainers();
+      final slow = await signedIn(
+        1,
+        syncedAt: monday.subtract(const Duration(hours: 2)),
+      );
+      final other = await signedIn(2, syncedAt: monday);
+      await queueDone(slow);
+      final sending = Completer<void>();
+      writeOf(slow.id).beforeRequest = (_) {
+        sending.complete();
+        return Completer<void>().future;
+      };
+      final log = BackgroundRunLog(auth.preferences);
+
+      final first = runner().run();
+      await sending.future;
+      timers.fireNext();
+
+      expect(await first, BackgroundRunOutcome.deadline);
+      expect(order, isEmpty);
+      expect(await log.lastAttemptAt(slow.id), monday);
+      expect(
+        (await log.lastOutcome(slow.id))?.outcome,
+        BackgroundAccountOutcome.stopped,
+      );
+
+      // The next run, in a container of its own.
+      now = monday.add(const Duration(minutes: 30));
+      databases.clear();
+      engines.clear();
+      container = newContainer();
+      writeOf(slow.id).beforeRequest = (request) async => order.add(request);
+
+      expect(await runner().run(), BackgroundRunOutcome.completed);
+
+      expect(order, ['sync ${other.id}', 'update 1', 'sync ${slow.id}']);
+      expect(await databases[slow.id]!.outboxDao.count(), 0);
+    });
+
+    test('a drain that found the server unreachable is noted as the '
+        "account's attempt, also when no turn follows", () async {
+      final down = await signedIn(
+        1,
+        syncedAt: monday.subtract(const Duration(hours: 2)),
+      );
+      await signedIn(2, syncedAt: monday);
+      await queueDone(down);
+      writeOf(down.id).beforeRequest = (_) async {
+        now = now.add(const Duration(seconds: 55));
+        throw const NetworkFailure(NetworkProblem.timeout);
+      };
+      final log = BackgroundRunLog(auth.preferences);
+
+      final outcome = await runner(deadline: const Duration(minutes: 1)).run();
+
+      expect(outcome, BackgroundRunOutcome.deadline);
+      expect(order, isEmpty);
+      expect(await log.lastAttemptAt(down.id), monday);
+      expect(
+        (await log.lastOutcome(down.id))?.outcome,
+        BackgroundAccountOutcome.unreachable,
+      );
+      expect(await log.lastOutcomeTimedOut(down.id), isTrue);
+    });
+
+    test('of an account whose server left its last attempt unanswered in its '
+        'own turn', () async {
+      final down = await signedIn(
+        1,
+        syncedAt: monday.subtract(const Duration(hours: 2)),
+      );
+      final other = await signedIn(2, syncedAt: monday);
+      await queueDone(down);
+      final log = BackgroundRunLog(auth.preferences);
+      await log.recordAttempt(
+        down.id,
+        monday.subtract(const Duration(hours: 1)),
+      );
+      await log.recordAccountOutcome(
+        down.id,
+        BackgroundAccountOutcome.unreachable,
+        at: monday.subtract(const Duration(hours: 1)),
+        timedOut: true,
+      );
+      await log.recordAttempt(
+        other.id,
+        monday.subtract(const Duration(hours: 2)),
+      );
+
+      expect(await runner().run(), BackgroundRunOutcome.completed);
+
+      expect(order, ['sync ${other.id}', 'update 1', 'sync ${down.id}']);
+    });
+
+    test('of accounts whose drains failed at once, offline, first again in '
+        'the next run: those failures took none of its time', () async {
+      databasesOutliveContainers();
+      final first = await signedIn(
+        1,
+        syncedAt: monday.subtract(const Duration(hours: 2)),
+      );
+      final second = await signedIn(2, syncedAt: monday);
+      await queueDone(first);
+      await queueDone(second);
+      for (final entry in [first, second]) {
+        writeOf(entry.id).beforeRequest = (_) async =>
+            throw const NetworkFailure(NetworkProblem.unreachable);
+      }
+      final log = BackgroundRunLog(auth.preferences);
+
+      expect(await runner().run(), BackgroundRunOutcome.partial);
+      expect(order, isEmpty);
+      expect(
+        (await log.lastOutcome(first.id))?.outcome,
+        BackgroundAccountOutcome.unreachable,
+      );
+      expect(await log.lastOutcomeTimedOut(first.id), isFalse);
+
+      now = monday.add(const Duration(minutes: 30));
+      databases.clear();
+      engines.clear();
+      container = newContainer();
+      for (final entry in [first, second]) {
+        writeOf(entry.id).beforeRequest = (request) async =>
+            order.add('$request of ${entry.id}');
+      }
+
+      expect(await runner().run(), BackgroundRunOutcome.completed);
+
+      expect(order, [
+        'update 1 of ${first.id}',
+        'update 1 of ${second.id}',
+        'sync ${first.id}',
+        'sync ${second.id}',
+      ]);
     });
 
     test('but not of an account that never synced or must sign in '
@@ -452,6 +610,36 @@ void main() {
       gate.complete();
     },
   );
+
+  test('a sync the deadline cut short lets go of its lease while the '
+      'database is still open', () async {
+    databasesOutliveContainers();
+    final entry = await signedIn(1, syncedAt: monday);
+    final gate = RequestGate()..pattern = 'projects';
+    readOf(entry.id).beforeRequest = gate.call;
+    newEngine = (ref, accountId) => DefaultSyncEngine(
+      db: ref.watch(appDatabaseProvider(accountId)),
+      client: readOf(accountId),
+      perPage: 50,
+      now: () => now,
+      headless: true,
+    );
+
+    final run = runner().run();
+    while (!gate.isHolding) {
+      await pumpEventQueue();
+    }
+    timers.fireNext();
+
+    expect(await run, BackgroundRunOutcome.deadline);
+    final db = newDatabase(entry.id);
+    addTearDown(db.close);
+    expect(
+      (await db.syncStateDao.readAll()).containsKey(SyncStateKeys.syncLease),
+      isFalse,
+    );
+    gate.release();
+  });
 
   test('a session that ended marks the account and notifies once', () async {
     final entry = await signedIn(1, syncedAt: monday);

@@ -189,12 +189,16 @@ final class TaskChanges {
   /// the earlier placements and positions: they name the previous
   /// project's views, and the server puts a moved task on top of the new
   /// project's views. A [done] in [later] that differs from this one's
-  /// drops the earlier placements too: the moves go after the body, and
-  /// one into or out of a done bucket would set the done state back. List
-  /// positions do not touch the done state, so they stay. The earliest
-  /// description base and done base stay, and taps stay taps only while
-  /// every description change was one.
-  TaskChanges merge(TaskChanges later) => TaskChanges(
+  /// drops the earlier placements too, except those on
+  /// [viewsWithoutDoneColumn]: the moves go after the body, and one into or
+  /// out of a done bucket would set the done state back, which a view
+  /// without a done column cannot. List positions do not touch the done
+  /// state, so they stay. The earliest description base and done base
+  /// stay, and taps stay taps only while every description change was one.
+  TaskChanges merge(
+    TaskChanges later, {
+    Set<int> viewsWithoutDoneColumn = const {},
+  }) => TaskChanges(
     title: later.title ?? title,
     description: later.description ?? description,
     descriptionBase: description != null
@@ -227,11 +231,10 @@ final class TaskChanges {
       (final earlier, null) => earlier,
       (null, final later) => later,
     },
-    kanban: switch ((kanban, later.kanban)) {
-      _
-          when later.projectId != null ||
-              (later.done != null && later.done != done) =>
-        later.kanban,
+    kanban: switch ((
+      _placementsKeptBy(later, viewsWithoutDoneColumn),
+      later.kanban,
+    )) {
       (final earlier?, final later?) => {...earlier, ...later},
       (final earlier, null) => earlier,
       (null, final later) => later,
@@ -246,6 +249,18 @@ final class TaskChanges {
         later.coverImageAttachmentId ?? coverImageAttachmentId,
     doneBase: doneBase ?? later.doneBase,
   );
+
+  /// What of these placements [merge] keeps under [later]'s; null for none.
+  Map<int, BucketPlacement>? _placementsKeptBy(
+    TaskChanges later,
+    Set<int> viewsWithoutDoneColumn,
+  ) {
+    if (later.projectId != null) return null;
+    if (later.done == null || later.done == done) return kanban;
+    final kept = {...?kanban}
+      ..removeWhere((view, _) => !viewsWithoutDoneColumn.contains(view));
+    return kept.isEmpty ? null : kept;
+  }
 
   static IdSetChange? _mergeSets(IdSetChange? earlier, IdSetChange? later) =>
       switch ((earlier, later)) {

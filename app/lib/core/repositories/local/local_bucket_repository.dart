@@ -72,7 +72,9 @@ final class LocalBucketRepository implements BucketRepository {
     String title,
   ) async {
     final trimmed = checkedTitle(title);
-    final bucket = await _stored(viewId, bucketId);
+    await _stored(viewId, bucketId);
+    final fresh = await _freshBuckets(projectId, viewId);
+    final bucket = _freshOne(fresh, projectId, viewId, bucketId);
     await _update(
       projectId,
       viewId,
@@ -92,7 +94,9 @@ final class LocalBucketRepository implements BucketRepository {
     int limit,
   ) async {
     if (limit < 0) throw ArgumentError.value(limit, 'limit');
-    final bucket = await _stored(viewId, bucketId);
+    await _stored(viewId, bucketId);
+    final fresh = await _freshBuckets(projectId, viewId);
+    final bucket = _freshOne(fresh, projectId, viewId, bucketId);
     await _update(
       projectId,
       viewId,
@@ -111,10 +115,19 @@ final class LocalBucketRepository implements BucketRepository {
     int bucketId, {
     required int toIndex,
   }) async {
-    final buckets = await _db.kanbanDao.buckets(viewId);
-    final bucket = _find(buckets, bucketId);
-    final position = planBucketMove(buckets, bucketId, toIndex);
-    if (position == null) return;
+    final shown = await _db.kanbanDao.buckets(viewId);
+    _find(shown, bucketId);
+    if (planBucketMove(shown, bucketId, toIndex) == null) return;
+    final fresh = await _freshBuckets(projectId, viewId);
+    final bucket = _freshOne(fresh, projectId, viewId, bucketId);
+    final freshIndex = _pastSameColumn(shown, fresh, bucketId, toIndex);
+    final position = freshIndex == null
+        ? null
+        : planBucketMove(fresh, bucketId, freshIndex);
+    if (position == null) {
+      _settle(projectId, viewId, 'Bucket $bucketId not moved after a read');
+      return;
+    }
     await _update(
       projectId,
       viewId,
@@ -353,6 +366,61 @@ final class LocalBucketRepository implements BucketRepository {
         doneBucketId: view.doneBucketId,
         defaultBucketId: view.defaultBucketId,
       );
+
+  /// The server replaces title, limit and position at once (decision log:
+  /// Kanban), and the stored board may be minutes old: the fields a change
+  /// leaves come from the server right before it. Only the buckets' own
+  /// rows are stored, as one task per bucket would cut the stored cards.
+  Future<List<Bucket>> _freshBuckets(int projectId, int viewId) async {
+    final board = await _read.buckets.board(projectId, viewId, perPage: 1);
+    final buckets = [for (final column in board) column.bucket];
+    await _db.transaction(() async {
+      for (final bucket in buckets) {
+        await _db.kanbanDao.updateBucket(
+          viewId,
+          bucket.id,
+          title: bucket.title,
+          limit: bucket.limit,
+          position: bucket.position,
+        );
+      }
+    });
+    return buckets;
+  }
+
+  Bucket _freshOne(
+    List<Bucket> fresh,
+    int projectId,
+    int viewId,
+    int bucketId,
+  ) {
+    final bucket = fresh.where((bucket) => bucket.id == bucketId).firstOrNull;
+    if (bucket != null) return bucket;
+    _settle(projectId, viewId, 'Bucket $bucketId is gone');
+    throw const NotFound(code: _bucketDoesNotExist);
+  }
+
+  /// [toIndex] is in the order the board showed; the bucket goes past the
+  /// same column in the server's order, which may have changed since. Null
+  /// when the server no longer has that column.
+  static int? _pastSameColumn(
+    List<Bucket> shown,
+    List<Bucket> fresh,
+    int bucketId,
+    int toIndex,
+  ) {
+    final before = [...shown]..sort(compareBucketOrder);
+    final from = before.indexWhere((bucket) => bucket.id == bucketId);
+    final to = toIndex.clamp(0, before.length - 1);
+    final passed = before[to].id;
+    final others = [
+      for (final bucket in [...fresh]..sort(compareBucketOrder))
+        if (bucket.id != bucketId) bucket.id,
+    ];
+    final index = others.indexOf(passed);
+    if (index < 0) return null;
+    return to < from ? index : index + 1;
+  }
 
   Future<Bucket> _stored(int viewId, int bucketId) async =>
       _find(await _db.kanbanDao.buckets(viewId), bucketId);

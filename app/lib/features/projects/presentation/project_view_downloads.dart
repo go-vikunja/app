@@ -30,6 +30,7 @@ mixin ProjectViewDownloads<W extends ConsumerStatefulWidget>
   Timer? _afterQueued;
   final _quietlyRefreshed = <int>{};
   final _quietlyRefreshing = <int>{};
+  final _quietAgain = <int>{};
   final _quietFailures = <int, Object>{};
 
   int get projectId;
@@ -50,6 +51,7 @@ mixin ProjectViewDownloads<W extends ConsumerStatefulWidget>
   void onRepositoryReplaced() {
     super.onRepositoryReplaced();
     _quietFailures.clear();
+    _quietAgain.clear();
     _queuedIn = null;
     _queuedIds = const {};
     _afterQueued?.cancel();
@@ -83,9 +85,13 @@ mixin ProjectViewDownloads<W extends ConsumerStatefulWidget>
           );
   }
 
-  bool _isStale(DateTime? loadedAt) =>
-      loadedAt == null ||
-      ref.read(clockProvider)().difference(loadedAt) >= _staleAfter;
+  /// One from the future was stamped before the clock was set back.
+  bool _isStale(DateTime? loadedAt) {
+    final now = ref.read(clockProvider)();
+    return loadedAt == null ||
+        loadedAt.isAfter(now) ||
+        now.difference(loadedAt) >= _staleAfter;
+  }
 
   /// Only for a view that has a download: a list view's snapshot, a
   /// board, or a table or Gantt view whose filter the device cannot
@@ -146,15 +152,23 @@ mixin ProjectViewDownloads<W extends ConsumerStatefulWidget>
 
   /// Offline the list shows the local data with the offline notice; a
   /// failure here is not the user's to handle, it only picks the words of
-  /// a view never downloaded.
+  /// a view never downloaded. One asked for while another of the view
+  /// runs follows it: the one running may have read the server before a
+  /// move was sent, and its write would then put the card or row back.
   Future<void> _refreshQuietly(int viewId, {required bool board}) async {
-    if (!_quietlyRefreshing.add(viewId)) return;
+    if (!_quietlyRefreshing.add(viewId)) {
+      _quietAgain.add(viewId);
+      return;
+    }
     try {
       await _download(viewId, board: board);
     } on Object catch (error) {
       if (mounted) setState(() => _quietFailures[viewId] = error);
     } finally {
       _quietlyRefreshing.remove(viewId);
+      if (_quietAgain.remove(viewId) && mounted) {
+        unawaited(_refreshQuietly(viewId, board: board));
+      }
     }
   }
 }

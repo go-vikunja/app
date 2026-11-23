@@ -291,7 +291,7 @@ void main() {
   });
 
   group('renaming and limiting', () {
-    test('a rename sends the stored limit and position along and keeps the '
+    test('a rename sends the limit and position along and keeps the '
         "bucket's count and cards", () async {
       await seed();
 
@@ -316,8 +316,8 @@ void main() {
       await expectLikeFreshDownload();
     });
 
-    test('a limit sends the stored title and position along; one below '
-        'the count is taken, 0 removes it', () async {
+    test('a limit sends the title and position along; one below the count '
+        'is taken, 0 removes it', () async {
       await seed();
 
       await repository.setLimit(7, 80, 1, 1);
@@ -336,6 +336,61 @@ void main() {
         [(1, 2), (0, 1), (0, 1)],
       );
       await expectLikeFreshDownload();
+    });
+
+    test('the fields left come from the server right before, as another '
+        'client may have changed them since the download; only the '
+        "buckets' own rows are stored", () async {
+      await seed();
+      write.serverBuckets[80]![1] = const Bucket(
+        id: 1,
+        viewId: 80,
+        title: 'Backlog',
+        position: 100,
+      );
+      write.serverBuckets[80]![2] = const Bucket(
+        id: 2,
+        viewId: 80,
+        title: 'In progress',
+        limit: 5,
+        position: 250,
+      );
+
+      await repository.rename(7, 80, 2, 'Doing now');
+      await repository.setLimit(7, 80, 1, 4);
+
+      expect(read.requests, [
+        'board project 7 view 80 per_page=1',
+        'board project 7 view 80 per_page=1',
+      ]);
+      expect(write.requests, [
+        'update bucket 2 view 80 Doing now limit 5 at 250.0',
+        'update bucket 1 view 80 Backlog limit 4 at 100.0',
+      ]);
+      final stored = await db.kanbanDao.load(80);
+      expect(
+        [for (final b in stored.buckets) (b.id, b.title, b.limit, b.count)],
+        [(1, 'Backlog', 4, 2), (2, 'Doing now', 5, 1), (3, 'Done', 0, 1)],
+      );
+      expect(stored.slots, slots);
+    });
+
+    test('a bucket the server no longer has is its NotFound 10001 without '
+        'a write, and the board downloads quietly', () async {
+      await seed();
+      deleteDoingElsewhere();
+
+      await expectLater(
+        repository.rename(7, 80, 2, 'Doing now'),
+        throwsA(isA<NotFound>().having((f) => f.code, 'code', 10001)),
+      );
+      await expectLater(
+        repository.setLimit(7, 80, 2, 2),
+        throwsA(isA<NotFound>().having((f) => f.code, 'code', 10001)),
+      );
+
+      expect(write.requests, isEmpty);
+      expect(refreshes, [(7, 80), (7, 80)]);
     });
 
     test('a blank title or a negative limit is refused without a '
@@ -489,7 +544,70 @@ void main() {
       await repository.move(7, 80, 2, toIndex: 1);
 
       expect(write.requests, isEmpty);
+      expect(read.requests, isEmpty);
       expect(refreshes, isEmpty);
+    });
+
+    test('goes past the column the board showed it passing, where the '
+        'server has that column now, with the title and limit the server '
+        'has', () async {
+      await seed();
+      // Doing went to the end and To-Do was renamed on the web since.
+      write.serverBuckets[80]![2] = const Bucket(
+        id: 2,
+        viewId: 80,
+        title: 'Doing',
+        limit: 3,
+        position: 500,
+      );
+      write.serverBuckets[80]![1] = const Bucket(
+        id: 1,
+        viewId: 80,
+        title: 'Backlog',
+        limit: 2,
+        position: 100,
+      );
+
+      await repository.move(7, 80, 1, toIndex: 1);
+
+      expect(read.requests, ['board project 7 view 80 per_page=1']);
+      expect(write.requests, [
+        'update bucket 1 view 80 Backlog limit 2 at 66036.0',
+      ]);
+      expect(idsOf(await db.kanbanDao.buckets(80)), [3, 2, 1]);
+      expect((await db.kanbanDao.load(80)).slots, slots);
+      expect(refreshes, [(7, 80)]);
+    });
+
+    test('one the server has there already sends nothing and downloads '
+        'the board', () async {
+      await seed();
+      write.serverBuckets[80]![1] = const Bucket(
+        id: 1,
+        viewId: 80,
+        title: 'To-Do',
+        position: 250,
+      );
+
+      await repository.move(7, 80, 1, toIndex: 1);
+
+      expect(write.requests, isEmpty);
+      expect(idsOf(await db.kanbanDao.buckets(80)), [2, 1, 3]);
+      expect(refreshes, [(7, 80)]);
+    });
+
+    test('a bucket the server no longer has is its NotFound 10001 without '
+        'a write', () async {
+      await seed();
+      deleteDoingElsewhere();
+
+      await expectLater(
+        repository.move(7, 80, 2, toIndex: 0),
+        throwsA(isA<NotFound>().having((f) => f.code, 'code', 10001)),
+      );
+
+      expect(write.requests, isEmpty);
+      expect(refreshes, [(7, 80)]);
     });
   });
 

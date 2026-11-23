@@ -855,6 +855,25 @@ void main() {
       );
     });
 
+    test('a last full run that lies ahead of a clock set back since is '
+        'due', () async {
+      final sync = engine();
+      await sync.ensureInitialSync();
+      now = now.subtract(const Duration(hours: 2));
+      final requests = client.requests.length;
+
+      await sync.refresh();
+
+      expect(
+        client.requests.skip(requests).where((r) => r.startsWith(fullPull)),
+        hasLength(1),
+      );
+      expect(
+        DateTime.parse((await state())[SyncStateKeys.lastFullSyncAt]!),
+        now,
+      );
+    });
+
     test('a write during a full run queues an incremental run, so '
         'everything is pulled once', () async {
       final sync = engine();

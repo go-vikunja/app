@@ -650,18 +650,22 @@ void main() {
   });
 
   group('in N units', () {
-    final now = DateTime(2021, 6, 24, 12, 34, 56, 789);
+    final now = DateTime(2021, 6, 24, 12, 34, 56, 789, 123);
 
-    test('adds to now, seconds included (QA-7 keeps this)', () {
+    test('adds to now to the second (QA-7 keeps this), without the '
+        'fraction, which the server does not keep', () {
       expect(
         parse('x in 3 days', now: now).date,
-        DateTime(2021, 6, 27, 12, 34, 56, 789),
+        DateTime(2021, 6, 27, 12, 34, 56),
       );
       expect(
         parse('x in 1 hours', now: now).date,
-        DateTime(2021, 6, 24, 13, 34, 56, 789),
+        DateTime(2021, 6, 24, 13, 34, 56),
       );
-      expect(parse('x in 0 days', now: now).date, now);
+      expect(
+        parse('x in 0 days', now: now).date,
+        DateTime(2021, 6, 24, 12, 34, 56),
+      );
     });
 
     test('a month from the 31st overflows like JS', () {
@@ -692,11 +696,11 @@ void main() {
     test('the unit in any case (the web since 2.8.0)', () {
       expect(
         parse('x IN 2 Days', now: now).date,
-        DateTime(2021, 6, 26, 12, 34, 56, 789),
+        DateTime(2021, 6, 26, 12, 34, 56),
       );
       expect(
         parse('x in 1 Month', now: now).date,
-        DateTime(2021, 7, 24, 12, 34, 56, 789),
+        DateTime(2021, 7, 24, 12, 34, 56),
       );
     });
 
@@ -710,7 +714,7 @@ void main() {
       expect(parse('x in 100001 hours', now: now).date, isNull);
       expect(
         parse('x in 100000 weeks', now: now).date,
-        DateTime(2021, 6, 24 + 700000, 12, 34, 56, 789),
+        DateTime(2021, 6, 24 + 700000, 12, 34, 56),
       );
       expect(parse('x in 100001 minutes', now: now).date, isNull);
       expect(parse('x in 100001 years', now: now).date, isNull);
@@ -719,29 +723,29 @@ void main() {
     test('a date up to the year 9999', () {
       expect(
         parse('x in 7000 years', now: now).date,
-        DateTime(9021, 6, 24, 12, 34, 56, 789),
+        DateTime(9021, 6, 24, 12, 34, 56),
       );
       expect(
         parse('x in 7978 years', now: now).date,
-        DateTime(9999, 6, 24, 12, 34, 56, 789),
+        DateTime(9999, 6, 24, 12, 34, 56),
       );
       expect(
         parse('x in 95742 months', now: now).date,
-        DateTime(9999, 12, 24, 12, 34, 56, 789),
+        DateTime(9999, 12, 24, 12, 34, 56),
       );
     });
 
     test('QA-6: punctuation may follow the unit (the web wants a space)', () {
       final comma = parse('Pay rent in 2 days, then call', now: now);
-      expect(comma.date, DateTime(2021, 6, 26, 12, 34, 56, 789));
+      expect(comma.date, DateTime(2021, 6, 26, 12, 34, 56));
       expect(comma.text, 'Pay rent, then call');
       final stop = parse('Call back in 4 Hours.', now: now);
-      expect(stop.date, DateTime(2021, 6, 24, 16, 34, 56, 789));
+      expect(stop.date, DateTime(2021, 6, 24, 16, 34, 56));
       expect(stop.text, 'Call back.');
       for (final text in ['x in 1 week; y', 'x in 1 week!', 'x in 1 week)']) {
         expect(
           parse(text, now: now).date,
-          DateTime(2021, 7, 1, 12, 34, 56, 789),
+          DateTime(2021, 7, 1, 12, 34, 56),
           reason: text,
         );
       }
