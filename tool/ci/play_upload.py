@@ -4,7 +4,7 @@
   python3 -I tool/ci/play_upload.py --package P --bundle F --version-code N
       --track beta|production --release-name S --metadata-dir D
       [--user-fraction F] [--service-account-file F] [--api-root URL]
-      [--dry-run]
+      [--changes-not-sent-for-review] [--dry-run]
 
 beta gets a completed release, production a staged rollout (inProgress) to
 --user-fraction of the users. A versionCode already on the track is skipped.
@@ -12,6 +12,10 @@ The release notes, Play's "What's new", are D/<language>/changelogs/<N>.txt
 (fastlane's layout, D = fastlane/metadata/android) of every language that
 has one: production needs en-US's, beta takes what is there. They are
 checked before any request, with --dry-run too.
+Play refuses a commit with 400 while changes in the Play Console must be
+sent for review there; --changes-not-sent-for-review commits the edit
+anyway, without sending it for review, and is refused with 400 once Play
+sends changes for review automatically again (docs/releasing.md).
 Standard library only, so that no third-party code handles the service
 account's key: openssl gets the key through stdin, and the access token is
 masked on GitHub Actions. --dry-run prints the calls and reads no
@@ -46,10 +50,27 @@ LANGUAGE = re.compile(r'[a-z]{2,3}(?:-[A-Za-z0-9]{2,8})*')
 DEFAULT_LANGUAGE = 'en-US'
 RELEASE_NOTES_LIMIT = 500
 SIGNING_FAILED = "openssl could not sign with the service account's private_key"
+NOT_SENT_FOR_REVIEW = re.compile(r'changesNotSentForReview|cannot be sent for review automatically', re.IGNORECASE)
+NOT_SENT_FOR_REVIEW_HINT = (
+    'Play takes this edit only without sending it for review, so nothing was committed. Send the changes '
+    'waiting in the Play Console for review (Publishing overview) and re-run, or commit this release unsent '
+    'with --changes-not-sent-for-review (in the release workflow the repository variable '
+    'VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW=true) and send it for review there afterwards '
+    '(docs/releasing.md, "When the publish job fails")')
+SENT_AUTOMATICALLY = re.compile(r'changesNotSentForReview must not be set|are sent for review automatically',
+                                re.IGNORECASE)
+SENT_AUTOMATICALLY_HINT = (
+    'Play sends changes for review automatically again and takes this edit only without '
+    '--changes-not-sent-for-review, so nothing was committed. Drop it (in the release workflow delete the '
+    'repository variable VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW) and re-run '
+    '(docs/releasing.md, "When the publish job fails")')
 
 
 class PlayError(Exception):
-    pass
+    def __init__(self, message, status=None, detail=''):
+        super().__init__(message)
+        self.status = status
+        self.detail = detail
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -80,6 +101,7 @@ def parse_arguments(argv):
     parser.add_argument('--user-fraction')
     parser.add_argument('--service-account-file')
     parser.add_argument('--api-root', default=DEFAULT_API_ROOT)
+    parser.add_argument('--changes-not-sent-for-review', action='store_true')
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args(argv)
 
@@ -166,6 +188,10 @@ def api_urls(args):
             f'{args.api_root}/upload/androidpublisher/v3/applications/{args.package}')
 
 
+def commit_query(args):
+    return '?changesNotSentForReview=true' if args.changes_not_sent_for_review else ''
+
+
 def print_dry_run(args):
     base, upload = api_urls(args)
     code = args.version_code
@@ -184,7 +210,8 @@ def print_dry_run(args):
     else:
         print(f"Would send no What's new: there is no {source}")
     print(f'Would PUT {base}/edits/<edit>/tracks/{args.track} (tracks.update) with {json.dumps(track)}')
-    print(f'Would POST {base}/edits/<edit>:commit (edits.commit)')
+    unsent = ', which does not send the changes for review' if args.changes_not_sent_for_review else ''
+    print(f'Would POST {base}/edits/<edit>:commit{commit_query(args)} (edits.commit){unsent}')
 
 
 def read_service_account(path):
@@ -271,7 +298,8 @@ def send(method, url, what, *, token=None, body=None, data=None, content_type=No
             error.close()
             return None
         message = api_message(error)
-        raise PlayError(f'{what} answered HTTP {error.code}' + (f': {message}' if message else '')) from None
+        raise PlayError(f'{what} answered HTTP {error.code}' + (f': {message}' if message else ''),
+                        status=error.code, detail=message) from None
     except OSError as error:
         raise PlayError(f'{what} failed: {getattr(error, "reason", None) or error}') from None
     if not raw.strip():
@@ -345,13 +373,26 @@ def publish(args):
             raise PlayError(f'bundles.upload answered versionCode {uploaded.get("versionCode")}, '
                             f'the release has {code}')
         send('PUT', track_url, 'tracks.update', token=token, body={'track': args.track, 'releases': [release]})
-        send('POST', f'{edit_url}:commit', 'edits.commit', token=token)
+        try:
+            send('POST', f'{edit_url}:commit{commit_query(args)}', 'edits.commit', token=token)
+        except PlayError as error:
+            pattern, hint = ((SENT_AUTOMATICALLY, SENT_AUTOMATICALLY_HINT) if args.changes_not_sent_for_review
+                             else (NOT_SENT_FOR_REVIEW, NOT_SENT_FOR_REVIEW_HINT))
+            if error.status == 400 and pattern.search(error.detail):
+                raise PlayError(f'{error}\n{hint}') from None
+            raise
     except PlayError:
         delete_edit(edit_url, token)
         raise
     detail = release['status'] + (f', {args.user_fraction:g}' if args.track == 'production' else '')
     notes = f"with the What's new in {notes_languages(args)}" if args.release_notes else "without a What's new"
-    print(f'Committed versionCode {code} to {args.track} ({detail}) {notes}')
+    unsent = ', without sending it for review' if args.changes_not_sent_for_review else ''
+    print(f'Committed versionCode {code} to {args.track} ({detail}) {notes}{unsent}')
+    if args.changes_not_sent_for_review:
+        reminder = f'send versionCode {code} for review in the Play Console (Publishing overview)'
+        print(f'warning: {reminder}', file=sys.stderr)
+        if os.environ.get('GITHUB_ACTIONS') == 'true':
+            print(f'::warning title=Not sent for review on Google Play::{reminder}')
     return 0
 
 

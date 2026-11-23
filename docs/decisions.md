@@ -312,7 +312,7 @@ Limits:
 ### Realtime
 - One WebSocket for the active account while the app is in front, after its first sync; never in the background, for a guest or while a sign-in is needed.
 - Only `notification.created` exists (server fact), so the socket is a hint: a task or project notification requests one debounced incremental sync, with an inbox catch-up alongside (why: events while disconnected are lost). It never replaces the timer or the inbox poll.
-- Failures fall back to polling quietly (why: the upgrade shares the server's limit of 10 logins a minute per IP): backoff 2–60 s, six failed authentications stop it until the next resume, a refused upgrade or early TLS error until a restart.
+- Failures fall back to polling quietly (why: the upgrade shares the server's limit of 10 logins a minute per IP): backoff 2–60 s, six attempts in a row without a successful authentication (`auth.success`), connection errors included and rate-limited ones not, stop it until the next resume, even when the network comes back, as does a TLS error; an upgrade refused before any socket was live stops it until a restart.
 
 Limits:
 - Until the daily full resync the delta misses position and bucket moves; a server clock that steps back more than 119 s hides the edits in that gap.

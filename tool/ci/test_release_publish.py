@@ -11,7 +11,8 @@ import tempfile
 import unittest
 
 from release_version import release_version
-from test_play_upload import EMAIL, OPENSSL, FakePlay, generate_key
+from test_play_upload import (API, EDIT, EMAIL, NOT_SENT, OPENSSL, REVIEW_AUTOMATIC, REVIEW_REFUSED, FakePlay,
+                              generate_key)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SCRIPT = os.path.join(ROOT, 'tool/ci/release_publish.sh')
@@ -79,6 +80,16 @@ if tool == 'gh':
         finish(out=json.dumps({'isDraft': state == 'draft', 'assets': [] if state == 'draft' else assets}))
     if argv[:2] == ['release', 'delete']:
         finish()
+    if argv[:2] == ['release', 'list']:
+        releases = os.environ.get('FAKE_GH_RELEASES', '[]')
+        if releases == 'error':
+            finish(1, err='HTTP 502: Bad Gateway (https://api.github.com/graphql)\n')
+        releases = json.loads(releases)
+        if '--exclude-drafts' in argv:
+            releases = [release for release in releases if not release['isDraft']]
+        if '--exclude-pre-releases' in argv:
+            releases = [release for release in releases if not release['isPrerelease']]
+        finish(out=''.join(f"{release['tagName']}\n" for release in releases))
     if argv[:2] == ['release', 'download']:
         source = os.environ.get('FAKE_GH_DOWNLOAD')
         if not source:
@@ -132,6 +143,12 @@ if operation == 'put-object':
     finish(out='{"ETag": "\\"0\\""}\n')
 finish(2, err='fake aws: unexpected call\n')
 '''
+
+
+def gh_releases(*releases):
+    """FAKE_GH_RELEASES of (tag, 'published' | 'draft' | 'prerelease')."""
+    return json.dumps([{'tagName': tag, 'isDraft': kind == 'draft', 'isPrerelease': kind == 'prerelease'}
+                       for tag, kind in releases])
 
 
 def write(path, data):
@@ -506,6 +523,7 @@ class CheckTest(Fixture):
                   if line.startswith('  ') and line.split()[0].isupper()]
         self.assertEqual(listed, list(SECRETS))
         self.assertIn('VIKUNJA_APP_PLAY_ROLLOUT', result.stdout)
+        self.assertIn('VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW', result.stdout)
         self.assertIn('Guard: GITHUB_ACTIONS=unset GITHUB_REPOSITORY=unset', result.stdout)
         self.assertIn('not official', result.stdout)
 
@@ -837,51 +855,85 @@ class GithubTest(Fixture):
         self.assertIn('gh release create v1.0.0-beta.1 --repo <GITHUB_REPOSITORY> --verify-tag '
                       '--title "Vikunja app 1.0.0-beta.1" --notes-file notes.md --prerelease --latest=false '
                       f'{" ".join(apk_files("1.0.0-beta.1"))} SHA256SUMS {DESUGAR}', result.stdout)
-        self.assertNotIn('higher final release tag', result.stdout)
+        self.assertNotIn('higher final release', result.stdout)
         self.assertIn('  - Source code: https://github.com/go-vikunja/app/tree/v1.0.0-beta.1', result.stdout)
         self.assertEqual(self.calls(), [])
 
 
 class FinalGithubTest(GithubTest):
     TAG = 'v1.0.0'
+    LIST = ['release', 'list', '--repo', 'go-vikunja/app', '--exclude-drafts', '--exclude-pre-releases',
+            '--limit', '1000', '--json', 'tagName', '--jq', '.[].tagName']
+
+    def assert_latest(self, result, latest, higher=None):
+        """FAKE_GIT_TAGS holds the repository's tags, which never decide."""
+        self.assertEqual(result.returncode, 0, result.stderr)
+        view, listing, create = self.calls('gh')
+        self.assertEqual(listing['argv'], self.LIST)
+        self.assertEqual(listing['env'], ['GH_TOKEN'])
+        self.assertEqual([call['argv'] for call in self.calls('git')], [
+            ['ls-remote', 'https://github.com/go-vikunja/app', 'refs/tags/v1.0.0', 'refs/tags/v1.0.0^{}']])
+        if latest:
+            self.assertNotIn('Not marked latest', result.stdout)
+        else:
+            self.assertIn(f'Not marked latest: go-vikunja/app has published the higher final release {higher}.',
+                          result.stdout)
+        return self.assert_created(create, prerelease=False, latest=latest)
 
     def test_absent_is_created(self):
-        result = self.github(FAKE_GIT_TAGS='v0.0.26-alpha v1.0.0-beta.2 v1.0.0 v1.1.0-beta.1')
-        self.assertEqual(result.returncode, 0, result.stderr)
-        notes = self.assert_created(self.calls('gh')[1], prerelease=False)
+        result = self.github(FAKE_GIT_TAGS='v0.0.26-alpha v1.0.0-beta.2 v1.0.0 v1.1.0-beta.1',
+                             FAKE_GH_RELEASES=gh_releases(('v0.0.26-alpha', 'published'),
+                                                          ('v1.0.0-beta.2', 'prerelease'),
+                                                          ('v1.1.0-beta.1', 'prerelease')))
+        notes = self.assert_latest(result, latest=True)
         self.assertTrue(notes.startswith('Vikunja app 1.0.0.\n\n'), notes)
-        tags = self.calls('git')[1]
-        self.assertEqual(tags['argv'], ['ls-remote', '--tags', '--refs', 'https://github.com/go-vikunja/app',
-                                        'refs/tags/v*'])
-        self.assertEqual(tags['prompt'], '0')
-        self.assertNotIn('Not marked latest', result.stdout)
 
     def test_an_older_line_is_not_latest(self):
         for higher in ('v1.0.1', 'v1.1.0', 'v2.0.0'):
             with self.subTest(higher=higher):
                 self.forget_calls()
-                result = self.github(FAKE_GIT_TAGS=f'v1.0.0 {higher} v3.0.0-beta.1')
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assert_created(self.calls('gh')[1], prerelease=False, latest=False)
-                self.assertIn(f'Not marked latest: go-vikunja/app has the higher final release tag {higher}.',
-                              result.stdout)
+                result = self.github(FAKE_GIT_TAGS=f'v1.0.0 {higher} v3.0.0-beta.1',
+                                     FAKE_GH_RELEASES=gh_releases((higher, 'published'),
+                                                                  ('v3.0.0-beta.1', 'prerelease')))
+                self.assert_latest(result, latest=False, higher=higher)
 
-    def test_tag_listing_errors_fail(self):
-        result = self.github(FAKE_GIT_TAGS='error')
+    def test_a_higher_tag_without_a_published_release_does_not_count(self):
+        for case, tags, releases in (
+                ('no release', 'v1.0.0-beta.1 v1.0.0 v1.1.0', [('v1.0.0-beta.1', 'prerelease')]),
+                ('a draft', 'v1.0.0 v1.1.0', [('v1.1.0', 'draft')])):
+            with self.subTest(case):
+                self.forget_calls()
+                self.assert_latest(self.github(FAKE_GIT_TAGS=tags, FAKE_GH_RELEASES=gh_releases(*releases)),
+                                   latest=True)
+
+    def test_a_higher_prerelease_does_not_count(self):
+        for case, tags, releases in (
+                ('a beta', 'v1.0.0 v1.1.0-beta.1', [('v1.1.0-beta.1', 'prerelease')]),
+                ('a final release marked as a prerelease', 'v1.0.0 v2.0.0', [('v2.0.0', 'prerelease')]),
+                ('a beta not marked as a prerelease', 'v1.0.0 v1.1.0-beta.1', [('v1.1.0-beta.1', 'published')])):
+            with self.subTest(case):
+                self.forget_calls()
+                self.assert_latest(self.github(FAKE_GIT_TAGS=tags, FAKE_GH_RELEASES=gh_releases(*releases)),
+                                   latest=True)
+
+    def test_release_listing_errors_fail(self):
+        result = self.github(FAKE_GH_RELEASES='error')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('error: git ls-remote failed:\n  fatal: unable to access', result.stderr)
-        self.assertEqual([call['argv'][1] for call in self.calls('gh')], [])
+        self.assertIn('error: gh release list failed:\n  HTTP 502: Bad Gateway', result.stderr)
+        self.assertEqual([call['argv'][1] for call in self.calls('gh')], ['view', 'list'])
 
     def test_draft_is_replaced(self):
         result = self.github(FAKE_GH_STATE='draft')
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assert_created(self.calls('gh')[2], prerelease=False)
+        self.assertEqual([call['argv'][1] for call in self.calls('gh')], ['view', 'delete', 'list', 'create'])
+        self.assert_created(self.calls('gh')[3], prerelease=False)
 
     def test_dry_run_prints_the_command_and_the_notes(self):
         result = self.publish('--dry-run', 'github')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('--notes-file notes.md --latest vikunja-app-1.0.0.apk', result.stdout)
-        self.assertIn('--latest=false instead if the repository has a higher final release tag', result.stdout)
+        self.assertIn('--latest=false instead if the repository has published a higher final release '
+                      '(gh release list)', result.stdout)
         self.assertEqual(self.calls(), [])
 
 
@@ -915,6 +967,25 @@ class FinalPlayDryRunTest(Fixture):
                 self.assertIn('"versionCodes": ["1000099"], "status": "inProgress", '
                               f'"userFraction": {expected}, "releaseNotes": {json.dumps(whats_new(1000099))}}}]',
                               result.stdout)
+
+    def test_not_sent_for_review(self):
+        for value, query, suffix in (('true', NOT_SENT, ', which does not send the changes for review'),
+                                     ('false', '', ''), ('', '', ''), (None, '', '')):
+            with self.subTest(value=value):
+                env = {} if value is None else {'VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW': value}
+                result = self.publish('--dry-run', 'play', env=env)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                commit = next(line for line in result.stdout.splitlines() if ':commit' in line)
+                self.assertTrue(commit.endswith(f'/edits/<edit>:commit{query} (edits.commit){suffix}'), commit)
+
+    def test_bad_not_sent_for_review_refused(self):
+        for value in ('True', 'yes', '1', 'true '):
+            with self.subTest(value=value):
+                result = self.publish('--dry-run', 'play', env={'VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW': value})
+                self.assertEqual(result.returncode, 1)
+                self.assertIn(f'error: VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW ({value}) is neither true nor '
+                              'false', result.stderr)
+                self.assertNotIn('Would ', result.stdout)
 
     def test_bad_rollout_refused(self):
         for rollout in ('1.5', 'abc', '1', '0', '0.0', '.5', '0.1 '):
@@ -1001,6 +1072,46 @@ class FinalPlayTest(PlayFixture):
             'track': 'production',
             'releases': [{'name': '1.0.0', 'versionCodes': ['1000099'], 'status': 'inProgress', 'userFraction': 0.25,
                           'releaseNotes': whats_new(1000099)}]})
+        self.assertEqual(fake.request('commit')['path'], f'{API}/edits/{EDIT}:commit')
+
+    def test_review_refused_fails_with_what_to_do(self):
+        fake = FakePlay(self.public_key, version_code=1000099)
+        self.addCleanup(fake.close)
+        fake.review_refused = True
+        result = self.play(fake)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(fake.kinds(), ['token', 'insert', 'track-get', 'upload', 'track-update', 'commit', 'delete'])
+        self.assertNotIn('Committed', result.stdout)
+        self.assertIn(f"error: edits.commit answered HTTP 400: {REVIEW_REFUSED[1]['error']['message']}\n",
+                      result.stderr)
+        self.assertIn('VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW=true', result.stderr)
+        self.assertIn('docs/releasing.md, "When the publish job fails"', result.stderr)
+
+    def test_variable_left_set_fails_once_review_is_automatic(self):
+        fake = FakePlay(self.public_key, version_code=1000099)
+        self.addCleanup(fake.close)
+        result = self.play(fake, VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW='true')
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(fake.kinds(), ['token', 'insert', 'track-get', 'upload', 'track-update', 'commit', 'delete'])
+        self.assertEqual(fake.request('commit')['path'], f'{API}/edits/{EDIT}:commit{NOT_SENT}')
+        self.assertNotIn('Committed', result.stdout)
+        self.assertIn(f"error: edits.commit answered HTTP 400: {REVIEW_AUTOMATIC[1]['error']['message']}\n",
+                      result.stderr)
+        self.assertIn('delete the repository variable VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW) and re-run',
+                      result.stderr)
+        self.assertIn('docs/releasing.md, "When the publish job fails"', result.stderr)
+
+    def test_committed_without_sending_for_review(self):
+        fake = FakePlay(self.public_key, version_code=1000099)
+        self.addCleanup(fake.close)
+        fake.review_refused = True
+        result = self.play(fake, VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW='true')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(fake.request('commit')['path'], f'{API}/edits/{EDIT}:commit{NOT_SENT}')
+        self.assertIn('Committed versionCode 1000099 to production (inProgress, 0.1) with the What\'s new in de-DE, '
+                      'en-US, without sending it for review\n', result.stdout)
+        self.assertIn('::warning title=Not sent for review on Google Play::send versionCode 1000099 for review in '
+                      'the Play Console (Publishing overview)\n', result.stdout)
 
 
 if __name__ == '__main__':

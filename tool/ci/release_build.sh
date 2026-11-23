@@ -202,6 +202,11 @@ must_exist "$apk_built"
 mkdir -p "$release_unsigned_dir"
 cp "$aab_built" "${release_unsigned_dir}/app-release.aab"
 cp "$apk_built" "${release_unsigned_dir}/app-release.apk"
+# Before the split build too, which moves the merged manifest into one folder
+# per ABI.
+python3 -I tool/check_exported_components.py --self-test
+python3 -I tool/check_exported_components.py \
+  app/build/app/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
 # Without the property Flutter adds 1000 times the ABI's number to the version
 # code, which would collide with the version codes of later releases.
 release_flutter_build apk --split-per-abi --android-project-arg=force-version-code-ignoring-abi=true
@@ -209,10 +214,6 @@ for built in "${abi_apks[@]}"; do
   must_exist "$built"
   cp "$built" "${release_unsigned_dir}/"
 done
-
-python3 -I tool/check_exported_components.py --self-test
-python3 -I tool/check_exported_components.py \
-  app/build/app/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml
 
 aab_report="$("$jarsigner" -verify "${release_unsigned_dir}/app-release.aab" 2>&1 || true)"
 if ! grep -q '^jar is unsigned\.' <<<"$aab_report"; then

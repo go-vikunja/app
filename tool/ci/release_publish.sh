@@ -14,7 +14,9 @@
 #           GITHUB_SHA; reads build/release/unsigned, the others
 #           build/release/signed
 #   play    GOOGLE_PLAY_SERVICE_ACCOUNT_JSON, VIKUNJA_APP_PLAY_ROLLOUT
-#           (production's user fraction, default 0.1); the What's new from
+#           (production's user fraction, default 0.1),
+#           VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW (true: Play saves the
+#           release without sending it for review); the What's new from
 #           fastlane/metadata/android/<language>/changelogs/<versionCode>.txt
 #   dl      S3_ACCESS_KEY, S3_SECRET_KEY, S3_ENDPOINT, S3_BUCKET, S3_REGION
 #           (optional, default us-east-1)
@@ -229,7 +231,7 @@ else
   play_track=production
   play_fraction="${VIKUNJA_APP_PLAY_ROLLOUT:-0.1}"
   release_flags=(--latest)
-  release_kind="marked latest unless the repository has a higher final release tag"
+  release_kind="marked latest unless the repository has published a higher final release"
 fi
 
 print_plan() {
@@ -288,7 +290,8 @@ run_check() {
       echo "  S3_ENDPOINT                       an https URL or a host name, host and port only (required)"
       echo "  S3_BUCKET                         (required)"
       echo "  S3_REGION                         (optional; us-east-1 when unset, which Cloudflare R2 takes as auto)"
-      echo "and the repository variable VIKUNJA_APP_PLAY_ROLLOUT (production's user fraction, 0.1 when unset)."
+      echo "and the repository variables VIKUNJA_APP_PLAY_ROLLOUT (production's user fraction, 0.1 when unset) and"
+      echo "VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW (true: Play saves the release without sending it for review)."
       echo "None of these secrets but S3_ENDPOINT, S3_BUCKET and S3_REGION may be a repository or organisation"
       echo "secret: the job secret-scope fails then. Before signing and before the GitHub release, the tag must"
       echo "still point at the built commit GITHUB_SHA (${GITHUB_SHA:-unset})."
@@ -338,14 +341,20 @@ run_check() {
 }
 
 run_play() {
-  local arguments
+  local arguments not_sent="${VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW:-}"
   if [[ -n "$play_fraction" && ! "$play_fraction" =~ $fraction_pattern ]]; then
     fail "VIKUNJA_APP_PLAY_ROLLOUT (${play_fraction}) is not a fraction between 0 and 1 such as 0.1"
+  fi
+  if [[ -n "$not_sent" && "$not_sent" != true && "$not_sent" != false ]]; then
+    fail "VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW (${not_sent}) is neither true nor false"
   fi
   arguments=(--package io.vikunja.app --bundle "${release_dir}/app-release.aab" --version-code "$build_number"
     --track "$play_track" --release-name "$build_name" --metadata-dir fastlane/metadata/android)
   if [[ -n "$play_fraction" ]]; then
     arguments+=(--user-fraction "$play_fraction")
+  fi
+  if [[ "$not_sent" == true ]]; then
+    arguments+=(--changes-not-sent-for-review)
   fi
   if [[ -n "${VIKUNJA_APP_PLAY_API_ROOT:-}" ]]; then
     arguments+=(--api-root "$VIKUNJA_APP_PLAY_API_ROOT")
@@ -471,21 +480,23 @@ release_notes() {
 }
 
 # Final releases only: an older line's patch must not become "Latest" while a
-# higher final release tag exists.
+# higher final release is published. A tag alone (its run failed or awaits
+# approval), a draft or a prerelease does not count; gh lists only 30
+# releases without --limit.
 latest_flags() {
-  local listing tag_number name number pattern='^refs/tags/v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
-  if ! listing="$(GIT_TERMINAL_PROMPT=0 git ls-remote --tags --refs "https://github.com/${GITHUB_REPOSITORY}" \
-    'refs/tags/v*' 2>"${work}/git.err")"; then
-    echo "error: git ls-remote failed:" >&2
-    sed 's/^/  /' "${work}/git.err" >&2
+  local listing tag_number name number pattern='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+  if ! listing="$(gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases \
+    --limit 1000 --json tagName --jq '.[].tagName' 2>"${work}/gh.err")"; then
+    echo "error: gh release list failed:" >&2
+    sed 's/^/  /' "${work}/gh.err" >&2
     exit 1
   fi
   tag_number=$((build_number - 99))
-  while read -r _ name; do
+  while read -r name; do
     if [[ "$name" =~ $pattern ]]; then
       number=$((BASH_REMATCH[1] * 1000000 + BASH_REMATCH[2] * 10000 + BASH_REMATCH[3] * 100))
       if ((number > tag_number)); then
-        echo "Not marked latest: ${GITHUB_REPOSITORY} has the higher final release tag ${name#refs/tags/}."
+        echo "Not marked latest: ${GITHUB_REPOSITORY} has published the higher final release ${name}."
         release_flags=(--latest=false)
         return
       fi
@@ -505,7 +516,7 @@ run_github() {
       "--title \"${release_title}\" --notes-file notes.md ${release_flags[*]} ${apk_files[*]} SHA256SUMS ${desugar_archive}"
     echo "  after checking that the tag still points at the built commit and deleting a leftover draft;"
     if [[ "$channel" != beta ]]; then
-      echo "  --latest=false instead if the repository has a higher final release tag (git ls-remote --tags);"
+      echo "  --latest=false instead if the repository has published a higher final release (gh release list);"
     fi
     echo "  a published release with these ${#files[@]} files, the same SHA-256 each, is left as it is"
     echo "with the notes:"
@@ -516,9 +527,6 @@ run_github() {
   [[ -n "${GH_TOKEN:-}" ]] || fail "GH_TOKEN is not set"
   [[ -n "${GITHUB_REPOSITORY:-}" ]] || fail "GITHUB_REPOSITORY is not set"
   check_tag
-  if [[ "$channel" != beta ]]; then
-    latest_flags
-  fi
   release_notes >"${work}/notes.md"
 
   gh release view "$tag" --repo "$GITHUB_REPOSITORY" --json isDraft,assets >"${work}/release.json" \
@@ -573,6 +581,9 @@ PYTHON
         "${retry_hint}"
       ;;
   esac
+  if [[ "$channel" != beta ]]; then
+    latest_flags
+  fi
   url="$(gh release create "$tag" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$release_title" \
     --notes-file "${work}/notes.md" "${release_flags[@]}" "${files[@]}")"
   echo "Published the GitHub release: ${url}"

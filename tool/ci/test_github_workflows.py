@@ -443,7 +443,9 @@ class GitHubWorkflowsTest(unittest.TestCase):
                          {name: f'${{{{ secrets.{name} }}}}' for name in SIGNING_SECRETS})
         self.assertEqual(step_running(publish, 'tool/ci/release_publish.sh play')['env'],
                          {PLAY_SECRET: f'${{{{ secrets.{PLAY_SECRET} }}}}',
-                          'VIKUNJA_APP_PLAY_ROLLOUT': '${{ vars.VIKUNJA_APP_PLAY_ROLLOUT }}'})
+                          'VIKUNJA_APP_PLAY_ROLLOUT': '${{ vars.VIKUNJA_APP_PLAY_ROLLOUT }}',
+                          'VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW':
+                              '${{ vars.VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW }}'})
         self.assertEqual(step_running(publish, 'tool/ci/release_publish.sh dl')['env'],
                          {name: f'${{{{ secrets.{name} }}}}' for name in S3_SECRETS})
         self.assertEqual(step_running(publish, 'tool/ci/release_publish.sh github')['env'],

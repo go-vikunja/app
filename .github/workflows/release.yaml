@@ -114,6 +114,7 @@ jobs:
         env:
           GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
           VIKUNJA_APP_PLAY_ROLLOUT: ${{ vars.VIKUNJA_APP_PLAY_ROLLOUT }}
+          VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW: ${{ vars.VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW }}
         run: tool/ci/release_publish.sh play
       - name: Publish the APK on dl.vikunja.io
         env:

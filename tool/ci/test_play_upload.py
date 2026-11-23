@@ -28,6 +28,14 @@ EDIT = 'edit-1'
 API = f'/androidpublisher/v3/applications/{PACKAGE}'
 UPLOAD = f'/upload/androidpublisher/v3/applications/{PACKAGE}'
 SIGNING_FAILED = "openssl could not sign with the service account's private_key"
+NOT_SENT = '?changesNotSentForReview=true'
+REVIEW_REFUSED = (400, {'error': {
+    'code': 400, 'message': 'Changes cannot be sent for review automatically. Please set the query parameter '
+    'changesNotSentForReview to true. Once committed, the changes in this edit can be sent for review from the '
+    'Google Play Console UI.'}})
+REVIEW_AUTOMATIC = (400, {'error': {
+    'code': 400, 'message': 'Changes are sent for review automatically. The query parameter changesNotSentForReview '
+    'must not be set.'}})
 NOTES = {'de-DE': 'Die neue Vikunja-App: Aufgaben offline, für dich.', 'en-US': 'The new Vikunja app.'}
 WHATS_NEW = [{'language': language, 'text': text} for language, text in sorted(NOTES.items())]
 
@@ -75,7 +83,10 @@ class LocalServer(http.server.ThreadingHTTPServer):
 class FakePlay:
     """The token endpoint and the Play edits API. Records every request;
     `tracks` holds each track's releases (a track not in it answers 404),
-    `errors` maps a request kind to the (status, JSON) it answers."""
+    `errors` maps a request kind to the (status, JSON) it answers;
+    `review_refused` answers a commit without changesNotSentForReview=true as
+    Play does while changes in its Console must be sent for review there;
+    without it, a commit with the flag gets Play's opposite answer."""
 
     def __init__(self, public_key=None, version_code=1000001):
         self.public_key = public_key
@@ -87,6 +98,7 @@ class FakePlay:
                                                    'status': 'completed'}]}
         self.upload_version_code = version_code
         self.errors = {}
+        self.review_refused = False
         self.server = LocalServer(('127.0.0.1', 0), self._handler())
         self.root = f'http://127.0.0.1:{self.server.server_address[1]}'
         self.token_uri = f'{self.root}/token'
@@ -137,6 +149,7 @@ class FakePlay:
             ('POST', f'{API}/edits'): 'insert',
             ('POST', f'{UPLOAD}/edits/{EDIT}/bundles?uploadType=media'): 'upload',
             ('POST', f'{edit}:commit'): 'commit',
+            ('POST', f'{edit}:commit{NOT_SENT}'): 'commit',
             ('DELETE', edit): 'delete',
         }
         for track in ('beta', 'production'):
@@ -166,6 +179,8 @@ class FakePlay:
         if kind == 'track-update':
             return 200, json.loads(body)
         if kind == 'commit':
+            if path.endswith(NOT_SENT) != self.review_refused:
+                return REVIEW_REFUSED if self.review_refused else REVIEW_AUTOMATIC
             return 200, {'id': EDIT}
         if kind == 'delete':
             return 204, None
@@ -344,6 +359,13 @@ class ArgumentTest(Fixture):
             lines[5])
         self.assertIn(':commit (edits.commit)', lines[6])
 
+    def test_dry_run_without_sending_for_review(self):
+        result = run_script(self.arguments() + ['--changes-not-sent-for-review', '--dry-run'], self.tmp)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines()[-1],
+                         f'Would POST https://androidpublisher.googleapis.com{API}/edits/<edit>:commit{NOT_SENT} '
+                         '(edits.commit), which does not send the changes for review')
+
     def test_dry_run_production(self):
         result = run_script(self.arguments(track='production', version_code='1000099', name='1.0.0',
                                            fraction='0.25') + ['--dry-run'], self.tmp)
@@ -441,10 +463,10 @@ class PlayUploadTest(Fixture):
         self.account = os.path.join(self.tmp, 'play.json')
         write_service_account(self.account, self.fake.token_uri, self.private_key)
 
-    def upload(self, extra_env=None, **arguments):
+    def upload(self, extra_env=None, flags=(), **arguments):
         arguments.setdefault('api_root', self.fake.root)
         arguments.setdefault('account', self.account)
-        result = run_script(self.arguments(**arguments), self.tmp, extra_env)
+        result = run_script(self.arguments(**arguments) + list(flags), self.tmp, extra_env)
         self.assert_no_secrets(result)
         return result
 
@@ -527,6 +549,70 @@ class PlayUploadTest(Fixture):
         self.assertEqual(result.returncode, 1)
         self.assertEqual(self.fake.kinds(), ['token', 'insert', 'track-get', 'upload', 'track-update', 'delete'])
         self.assertIn('error: tracks.update answered HTTP 403: The caller does not have permission', result.stderr)
+
+        del self.fake.errors['track-update']
+        self.fake.errors['commit'] = (400, {'error': {'code': 400, 'message': 'Request contains an invalid argument.'}})
+        for flags in ([], ['--changes-not-sent-for-review']):
+            with self.subTest(flags=flags):
+                result = self.upload(flags=flags)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stderr,
+                                 'error: edits.commit answered HTTP 400: Request contains an invalid argument.\n')
+
+    def test_review_refused_names_what_to_do(self):
+        self.fake.review_refused = True
+        self.fake.upload_version_code = 1000099
+        result = self.upload(track='production', version_code='1000099', name='1.0.0', fraction='0.1')
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.fake.kinds(), ['token', 'insert', 'track-get', 'upload', 'track-update', 'commit',
+                                             'delete'])
+        self.assertEqual(self.fake.request('commit')['path'], f'{API}/edits/{EDIT}:commit')
+        self.assertNotIn('Committed', result.stdout)
+        error = result.stderr.splitlines()
+        self.assertEqual(error[0], f"error: edits.commit answered HTTP 400: {REVIEW_REFUSED[1]['error']['message']}")
+        self.assertEqual(len(error), 2, result.stderr)
+        for text in ('nothing was committed', 'Play Console for review (Publishing overview) and re-run',
+                     '--changes-not-sent-for-review', 'VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW=true',
+                     'docs/releasing.md, "When the publish job fails"'):
+            self.assertIn(text, error[1])
+
+    def test_not_sending_for_review_refused_once_review_is_automatic(self):
+        self.fake.upload_version_code = 1000099
+        result = self.upload(flags=['--changes-not-sent-for-review'], track='production', version_code='1000099',
+                             name='1.0.0', fraction='0.1')
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(self.fake.kinds(), ['token', 'insert', 'track-get', 'upload', 'track-update', 'commit',
+                                             'delete'])
+        self.assertEqual(self.fake.request('commit')['path'], f'{API}/edits/{EDIT}:commit{NOT_SENT}')
+        self.assertNotIn('Committed', result.stdout)
+        error = result.stderr.splitlines()
+        self.assertEqual(error[0],
+                         f"error: edits.commit answered HTTP 400: {REVIEW_AUTOMATIC[1]['error']['message']}")
+        self.assertEqual(len(error), 2, result.stderr)
+        for text in ('Play sends changes for review automatically again', 'nothing was committed',
+                     'delete the repository variable VIKUNJA_APP_PLAY_CHANGES_NOT_SENT_FOR_REVIEW) and re-run',
+                     'docs/releasing.md, "When the publish job fails"'):
+            self.assertIn(text, error[1])
+        self.assertNotIn('=true', error[1])
+
+    def test_committed_without_sending_for_review(self):
+        self.fake.review_refused = True
+        self.fake.upload_version_code = 1000099
+        for actions in ('false', 'true'):
+            with self.subTest(github_actions=actions):
+                self.fake.requests.clear()
+                result = self.upload({'GITHUB_ACTIONS': actions}, ['--changes-not-sent-for-review'],
+                                     track='production', version_code='1000099', name='1.0.0', fraction='0.1')
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(self.fake.kinds(), ['token', 'insert', 'track-get', 'upload', 'track-update',
+                                                     'commit'])
+                self.assertEqual(self.fake.request('commit')['path'], f'{API}/edits/{EDIT}:commit{NOT_SENT}')
+                self.assertIn("Committed versionCode 1000099 to production (inProgress, 0.1) with the What's new in "
+                              'de-DE, en-US, without sending it for review\n', result.stdout)
+                reminder = 'send versionCode 1000099 for review in the Play Console (Publishing overview)'
+                self.assertEqual(result.stderr, f'warning: {reminder}\n')
+                self.assertEqual(f'::warning title=Not sent for review on Google Play::{reminder}' in
+                                 result.stdout.splitlines(), actions == 'true')
 
     def test_token_error(self):
         write_service_account(self.account, self.fake.token_uri, self.private_key, email='someone@example.com')
